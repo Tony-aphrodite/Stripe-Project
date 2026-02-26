@@ -1,0 +1,1004 @@
+/* ==========================================================================
+   Voltika Configurador - Main Stylesheet
+   All classes prefixed with vk- to prevent conflicts with host site
+   Mobile-first responsive design
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Reset (scoped to configurador only)
+   -------------------------------------------------------------------------- */
+.vk-configurador *,
+.vk-configurador *::before,
+.vk-configurador *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Configurador Container
+   -------------------------------------------------------------------------- */
+.vk-configurador {
+    font-family: var(--vk-font-family);
+    color: var(--vk-text-primary);
+    max-width: 500px;
+    margin: 0 auto;
+    padding: var(--vk-space-md);
+    background: var(--vk-bg-light);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* --------------------------------------------------------------------------
+   Progress Bar
+   -------------------------------------------------------------------------- */
+.vk-progress {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: var(--vk-space-md) var(--vk-space-lg);
+    margin-bottom: var(--vk-space-md);
+}
+
+.vk-progress--visible {
+    display: flex;
+}
+
+.vk-progress__step {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--vk-radius-circle);
+    background: var(--vk-border);
+    color: var(--vk-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--vk-font-bold);
+    font-size: var(--vk-font-size-sm);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.vk-progress__step--active,
+.vk-progress__step--completed {
+    background: var(--vk-green-primary);
+    color: var(--vk-text-white);
+}
+
+.vk-progress__label {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: var(--vk-font-size-xs);
+    font-weight: var(--vk-font-semibold);
+    color: var(--vk-text-secondary);
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+}
+
+.vk-progress__line {
+    flex: 1;
+    height: 3px;
+    background: var(--vk-border);
+    max-width: 80px;
+    margin: 0 var(--vk-space-xs);
+}
+
+.vk-progress__line--active {
+    background: var(--vk-green-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Paso (Slide) Container
+   -------------------------------------------------------------------------- */
+.vk-paso {
+    display: none;
+}
+
+.vk-paso--active {
+    display: block;
+    animation: vkSlideIn 0.35s ease forwards;
+}
+
+.vk-paso--exit {
+    animation: vkSlideOut 0.25s ease forwards;
+}
+
+@keyframes vkSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes vkSlideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+}
+
+/* Paso Header */
+.vk-paso__header {
+    margin-bottom: var(--vk-space-md);
+}
+
+.vk-paso__titulo {
+    font-size: var(--vk-font-size-xl);
+    font-weight: var(--vk-font-extrabold);
+    color: var(--vk-green-primary);
+    margin-bottom: var(--vk-space-2xs);
+}
+
+.vk-paso__subtitulo {
+    font-size: var(--vk-font-size-lg);
+    font-weight: var(--vk-font-medium);
+    color: var(--vk-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Model Card
+   -------------------------------------------------------------------------- */
+.vk-card {
+    position: relative;
+    max-width: var(--vk-card-max-width);
+    margin: 0 auto var(--vk-space-lg);
+    background: var(--vk-bg-card);
+    border-radius: var(--vk-radius-lg);
+    box-shadow: var(--vk-shadow-card);
+    overflow: hidden;
+}
+
+/* "Mas vendido" Badge */
+.vk-card__badge {
+    position: absolute;
+    top: 12px;
+    left: 0;
+    background: var(--vk-badge-yellow);
+    color: var(--vk-text-primary);
+    padding: 6px 16px 6px 12px;
+    font-weight: var(--vk-font-bold);
+    font-size: var(--vk-font-size-sm);
+    z-index: 2;
+    border-radius: 0 6px 6px 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: var(--vk-space-xs);
+}
+
+.vk-card__badge-star {
+    font-size: 14px;
+}
+
+/* Model Image */
+.vk-card__imagen {
+    position: relative;
+    width: 100%;
+    padding: var(--vk-space-lg) var(--vk-space-md) var(--vk-space-sm);
+    text-align: center;
+    background: linear-gradient(180deg, var(--vk-green-soft) 0%, var(--vk-bg-white) 100%);
+}
+
+.vk-card__imagen img {
+    max-width: 100%;
+    height: auto;
+    max-height: 220px;
+    object-fit: contain;
+}
+
+/* Model Info */
+.vk-card__info {
+    padding: 0 var(--vk-card-padding);
+}
+
+.vk-card__nombre {
+    font-size: var(--vk-font-size-2xl);
+    font-weight: var(--vk-font-extrabold);
+    color: var(--vk-text-primary);
+    margin-bottom: var(--vk-space-xs);
+}
+
+.vk-card__specs {
+    display: flex;
+    gap: var(--vk-space-lg);
+    margin-bottom: var(--vk-space-sm);
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-secondary);
+}
+
+.vk-card__specs strong {
+    color: var(--vk-text-primary);
+}
+
+.vk-card__precio-base {
+    font-size: var(--vk-font-size-lg);
+    color: var(--vk-text-green);
+    font-weight: var(--vk-font-semibold);
+    margin-bottom: var(--vk-space-md);
+}
+
+.vk-card__precio-base span {
+    font-weight: var(--vk-font-regular);
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-muted);
+}
+
+/* Green Banner */
+.vk-card__banner {
+    background: var(--vk-green-banner);
+    color: var(--vk-text-white);
+    text-align: center;
+    padding: var(--vk-space-sm) var(--vk-space-md);
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-semibold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--vk-space-sm);
+}
+
+.vk-card__banner-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+/* Bullets */
+.vk-card__bullets {
+    padding: var(--vk-space-sm) var(--vk-card-padding);
+    background: var(--vk-green-soft);
+}
+
+.vk-card__bullet {
+    display: flex;
+    align-items: center;
+    gap: var(--vk-space-sm);
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-primary);
+    padding: var(--vk-space-2xs) 0;
+    font-weight: var(--vk-font-medium);
+}
+
+.vk-card__bullet-icon {
+    color: var(--vk-green-check);
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Payment Tabs
+   -------------------------------------------------------------------------- */
+.vk-card__tabs {
+    display: flex;
+    margin: var(--vk-space-md) var(--vk-card-padding) 0;
+    border: 1.5px solid var(--vk-border);
+    border-radius: var(--vk-radius-pill);
+    overflow: hidden;
+    background: var(--vk-bg-white);
+}
+
+.vk-tab {
+    flex: 1;
+    padding: 10px 6px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--vk-font-family);
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-semibold);
+    color: var(--vk-text-secondary);
+    transition: all var(--vk-transition-fast);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.vk-tab--active {
+    background: var(--vk-green-primary);
+    color: var(--vk-text-white);
+    border-radius: var(--vk-radius-pill);
+}
+
+.vk-tab:hover:not(.vk-tab--active) {
+    color: var(--vk-text-primary);
+    background: var(--vk-green-light);
+}
+
+/* Tab Content */
+.vk-card__tab-content {
+    display: none;
+    padding: var(--vk-space-md) var(--vk-card-padding);
+    text-align: center;
+}
+
+.vk-card__tab-content--active {
+    display: block;
+}
+
+/* Credit tab content */
+.vk-card__credito-logo {
+    font-weight: var(--vk-font-bold);
+    font-size: var(--vk-font-size-base);
+    color: var(--vk-text-primary);
+    margin-bottom: var(--vk-space-xs);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--vk-space-sm);
+}
+
+.vk-card__credito-logo .vk-shield {
+    color: var(--vk-green-primary);
+}
+
+.vk-card__precio-destacado {
+    font-size: var(--vk-font-size-base);
+    color: var(--vk-text-primary);
+    margin-bottom: var(--vk-space-sm);
+}
+
+.vk-card__precio-destacado strong {
+    font-size: var(--vk-font-size-2xl);
+    font-weight: var(--vk-font-extrabold);
+}
+
+/* Tab microcopy bullets */
+.vk-card__tab-bullets {
+    text-align: left;
+    margin-top: var(--vk-space-sm);
+}
+
+.vk-card__tab-bullet {
+    display: flex;
+    align-items: center;
+    gap: var(--vk-space-sm);
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-secondary);
+    padding: 3px 0;
+}
+
+.vk-card__tab-bullet-icon {
+    color: var(--vk-green-check);
+    flex-shrink: 0;
+}
+
+/* Card logos */
+.vk-card__tarjetas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--vk-space-sm);
+    margin-bottom: var(--vk-space-sm);
+    font-size: var(--vk-font-size-xs);
+    color: var(--vk-text-muted);
+}
+
+.vk-card__tarjeta-logo {
+    height: 20px;
+    width: auto;
+    font-weight: var(--vk-font-bold);
+    font-size: var(--vk-font-size-sm);
+}
+
+/* MSI header */
+.vk-card__msi-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--vk-space-sm);
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-semibold);
+    color: var(--vk-text-primary);
+    margin-bottom: var(--vk-space-xs);
+    flex-wrap: wrap;
+}
+
+/* Contado */
+.vk-card__contado-label {
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-secondary);
+    margin-bottom: var(--vk-space-2xs);
+}
+
+.vk-card__iva {
+    font-size: var(--vk-font-size-xs);
+    color: var(--vk-text-muted);
+    margin-bottom: var(--vk-space-sm);
+}
+
+.vk-card__nota-logistico {
+    font-style: italic;
+    color: var(--vk-text-muted);
+    font-size: var(--vk-font-size-xs);
+    display: block;
+    margin-top: var(--vk-space-xs);
+}
+
+/* --------------------------------------------------------------------------
+   CTA Button
+   -------------------------------------------------------------------------- */
+.vk-btn {
+    display: block;
+    width: calc(100% - 2 * var(--vk-card-padding));
+    margin: var(--vk-space-md) auto;
+    padding: 14px var(--vk-space-md);
+    border: none;
+    border-radius: var(--vk-radius-sm);
+    font-family: var(--vk-font-family);
+    font-size: var(--vk-font-size-lg);
+    font-weight: var(--vk-font-bold);
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all var(--vk-transition-fast);
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.vk-btn--primary {
+    background: var(--vk-green-primary);
+    color: var(--vk-text-white);
+    box-shadow: var(--vk-shadow-button);
+}
+
+.vk-btn--primary:hover {
+    background: var(--vk-green-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(91, 122, 46, 0.4);
+}
+
+.vk-btn--primary:active {
+    transform: translateY(0);
+}
+
+.vk-btn--secondary {
+    background: var(--vk-bg-white);
+    color: var(--vk-green-primary);
+    border: 2px solid var(--vk-green-primary);
+}
+
+.vk-btn--secondary:hover {
+    background: var(--vk-green-light);
+}
+
+.vk-btn--blue {
+    background: var(--vk-blue-primary);
+    color: var(--vk-text-white);
+    box-shadow: 0 2px 8px rgba(59, 89, 152, 0.3);
+}
+
+.vk-btn--blue:hover {
+    background: #2D4A80;
+}
+
+/* Footer Note */
+.vk-card__footer-note {
+    text-align: center;
+    font-size: var(--vk-font-size-xs);
+    color: var(--vk-text-muted);
+    padding: 0 var(--vk-card-padding) var(--vk-space-md);
+}
+
+/* --------------------------------------------------------------------------
+   Trust Badges Footer
+   -------------------------------------------------------------------------- */
+.vk-trust-badges {
+    display: flex;
+    justify-content: center;
+    gap: var(--vk-space-lg);
+    padding: var(--vk-space-md) var(--vk-space-sm);
+    border-top: 1px solid var(--vk-border-light);
+    margin-top: var(--vk-space-sm);
+}
+
+.vk-trust-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--vk-space-xs);
+    font-size: var(--vk-font-size-xs);
+    color: var(--vk-text-secondary);
+    font-weight: var(--vk-font-medium);
+}
+
+.vk-trust-badge__icon {
+    font-size: 16px;
+    color: var(--vk-green-primary);
+}
+
+/* Scroll Hint */
+.vk-scroll-hint {
+    text-align: center;
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-muted);
+    padding: var(--vk-space-md) 0;
+    font-weight: var(--vk-font-medium);
+}
+
+.vk-scroll-hint__arrow {
+    display: inline-block;
+    animation: vkBounce 1.5s ease infinite;
+}
+
+@keyframes vkBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(4px); }
+}
+
+/* --------------------------------------------------------------------------
+   Color Picker (PASO 2)
+   -------------------------------------------------------------------------- */
+.vk-color-picker {
+    display: flex;
+    gap: var(--vk-space-sm);
+    margin: var(--vk-space-md) 0;
+}
+
+.vk-color-option {
+    flex: 1;
+    padding: var(--vk-space-md) var(--vk-space-sm);
+    border: 2px solid var(--vk-border);
+    border-radius: var(--vk-radius-md);
+    text-align: center;
+    cursor: pointer;
+    background: var(--vk-bg-white);
+    transition: border-color var(--vk-transition-fast);
+}
+
+.vk-color-option--active {
+    border-color: var(--vk-green-primary);
+    background: var(--vk-green-soft);
+}
+
+.vk-color-option:hover:not(.vk-color-option--active) {
+    border-color: var(--vk-text-muted);
+}
+
+.vk-color-option__dot {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--vk-radius-circle);
+    margin: 0 auto var(--vk-space-xs);
+    border: 1px solid var(--vk-border);
+}
+
+.vk-color-option__dot--negro { background: #1A1A1A; }
+.vk-color-option__dot--gris { background: #A0A0A0; }
+.vk-color-option__dot--blanco { background: #F5F5F5; border-color: #CCC; }
+
+.vk-color-option__label {
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-medium);
+    color: var(--vk-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Form Elements (PASO 3, 4)
+   -------------------------------------------------------------------------- */
+.vk-form-group {
+    margin-bottom: var(--vk-space-md);
+}
+
+.vk-form-label {
+    display: block;
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-semibold);
+    color: var(--vk-text-primary);
+    margin-bottom: var(--vk-space-xs);
+}
+
+.vk-form-input {
+    width: 100%;
+    padding: 12px var(--vk-space-md);
+    border: 1.5px solid var(--vk-border);
+    border-radius: var(--vk-radius-sm);
+    font-family: var(--vk-font-family);
+    font-size: var(--vk-font-size-base);
+    color: var(--vk-text-primary);
+    background: var(--vk-bg-white);
+    transition: border-color var(--vk-transition-fast);
+    outline: none;
+}
+
+.vk-form-input:focus {
+    border-color: var(--vk-green-primary);
+    box-shadow: 0 0 0 3px rgba(91, 122, 46, 0.1);
+}
+
+.vk-form-input::placeholder {
+    color: var(--vk-text-muted);
+}
+
+.vk-form-input--error {
+    border-color: #D32F2F;
+}
+
+.vk-form-error {
+    font-size: var(--vk-font-size-xs);
+    color: #D32F2F;
+    margin-top: var(--vk-space-2xs);
+}
+
+/* Checkbox */
+.vk-checkbox-group {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--vk-space-sm);
+    margin: var(--vk-space-md) 0;
+}
+
+.vk-checkbox {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--vk-green-primary);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.vk-checkbox-label {
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-secondary);
+    line-height: 1.4;
+}
+
+/* --------------------------------------------------------------------------
+   Info Box (PASO 3 delivery info)
+   -------------------------------------------------------------------------- */
+.vk-info-box {
+    background: var(--vk-bg-white);
+    border: 1px solid var(--vk-border);
+    border-radius: var(--vk-radius-md);
+    padding: var(--vk-card-padding);
+    margin: var(--vk-space-md) 0;
+}
+
+.vk-info-box__title {
+    font-size: var(--vk-font-size-lg);
+    font-weight: var(--vk-font-bold);
+    color: var(--vk-text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--vk-space-sm);
+    margin-bottom: var(--vk-space-sm);
+}
+
+.vk-info-box__title-icon {
+    color: var(--vk-green-primary);
+}
+
+.vk-info-box__subtitle {
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-secondary);
+    margin-bottom: var(--vk-space-md);
+}
+
+.vk-info-box__detail {
+    display: flex;
+    align-items: center;
+    gap: var(--vk-space-sm);
+    font-size: var(--vk-font-size-sm);
+    padding: var(--vk-space-xs) 0;
+}
+
+.vk-info-box__detail-icon {
+    color: var(--vk-green-check);
+}
+
+.vk-info-box__detail strong {
+    color: var(--vk-text-primary);
+}
+
+.vk-info-box__note {
+    font-size: var(--vk-font-size-xs);
+    color: var(--vk-text-muted);
+    margin-top: var(--vk-space-md);
+    line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   Payment Summary (PASO 4A)
+   -------------------------------------------------------------------------- */
+.vk-summary {
+    background: var(--vk-bg-white);
+    border: 1px solid var(--vk-border);
+    border-radius: var(--vk-radius-md);
+    padding: var(--vk-card-padding);
+    margin-bottom: var(--vk-space-md);
+}
+
+.vk-summary__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--vk-space-xs) 0;
+    font-size: var(--vk-font-size-sm);
+}
+
+.vk-summary__row--total {
+    border-top: 2px solid var(--vk-text-primary);
+    margin-top: var(--vk-space-sm);
+    padding-top: var(--vk-space-sm);
+    font-weight: var(--vk-font-bold);
+    font-size: var(--vk-font-size-lg);
+}
+
+.vk-summary__label {
+    color: var(--vk-text-secondary);
+}
+
+.vk-summary__value {
+    font-weight: var(--vk-font-semibold);
+    color: var(--vk-text-primary);
+}
+
+/* Payment Options (2 columns) */
+.vk-payment-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--vk-space-md);
+    margin: var(--vk-space-md) 0;
+}
+
+.vk-payment-option {
+    background: var(--vk-bg-white);
+    border: 1.5px solid var(--vk-border);
+    border-radius: var(--vk-radius-md);
+    padding: var(--vk-space-md);
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--vk-transition-fast);
+}
+
+.vk-payment-option:hover {
+    border-color: var(--vk-green-primary);
+    box-shadow: var(--vk-shadow-card);
+}
+
+.vk-payment-option__title {
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-bold);
+    margin-bottom: var(--vk-space-sm);
+}
+
+.vk-payment-option__bullet {
+    font-size: var(--vk-font-size-xs);
+    color: var(--vk-text-secondary);
+    text-align: left;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--vk-space-xs);
+    padding: 2px 0;
+}
+
+/* --------------------------------------------------------------------------
+   Credit Flow (PASO 4B)
+   -------------------------------------------------------------------------- */
+.vk-credit-summary {
+    background: var(--vk-bg-white);
+    border-radius: var(--vk-radius-lg);
+    padding: var(--vk-card-padding);
+    margin-bottom: var(--vk-space-md);
+    box-shadow: var(--vk-shadow-card);
+}
+
+.vk-credit-summary__model {
+    display: flex;
+    gap: var(--vk-space-md);
+    align-items: center;
+}
+
+.vk-credit-summary__img {
+    width: 120px;
+    height: auto;
+}
+
+.vk-credit-summary__details {
+    flex: 1;
+}
+
+.vk-credit-steps {
+    margin: var(--vk-space-lg) 0;
+}
+
+.vk-credit-steps__title {
+    font-size: var(--vk-font-size-lg);
+    font-weight: var(--vk-font-bold);
+    text-align: center;
+    margin-bottom: var(--vk-space-md);
+}
+
+.vk-credit-step {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--vk-space-md);
+    padding: var(--vk-space-md) 0;
+    border-bottom: 1px solid var(--vk-border-light);
+}
+
+.vk-credit-step:last-child {
+    border-bottom: none;
+}
+
+.vk-credit-step__number {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--vk-radius-circle);
+    background: var(--vk-green-primary);
+    color: var(--vk-text-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--vk-font-bold);
+    font-size: var(--vk-font-size-sm);
+    flex-shrink: 0;
+}
+
+.vk-credit-step__content {
+    flex: 1;
+}
+
+.vk-credit-step__title {
+    font-weight: var(--vk-font-semibold);
+    font-size: var(--vk-font-size-base);
+    margin-bottom: var(--vk-space-2xs);
+}
+
+.vk-credit-step__desc {
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   Security / Trust Section
+   -------------------------------------------------------------------------- */
+.vk-security {
+    text-align: center;
+    padding: var(--vk-space-md);
+    border-top: 1px solid var(--vk-border-light);
+    margin-top: var(--vk-space-md);
+}
+
+.vk-security__title {
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-semibold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--vk-space-sm);
+    margin-bottom: var(--vk-space-xs);
+}
+
+.vk-security__note {
+    font-size: var(--vk-font-size-xs);
+    color: var(--vk-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Back Button
+   -------------------------------------------------------------------------- */
+.vk-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--vk-space-xs);
+    background: none;
+    border: none;
+    color: var(--vk-text-secondary);
+    font-family: var(--vk-font-family);
+    font-size: var(--vk-font-size-sm);
+    cursor: pointer;
+    padding: var(--vk-space-sm) 0;
+    margin-bottom: var(--vk-space-sm);
+    transition: color var(--vk-transition-fast);
+}
+
+.vk-back-btn:hover {
+    color: var(--vk-green-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Loading Spinner
+   -------------------------------------------------------------------------- */
+.vk-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--vk-border);
+    border-top-color: var(--vk-green-primary);
+    border-radius: var(--vk-radius-circle);
+    animation: vkSpin 0.8s linear infinite;
+    margin: var(--vk-space-lg) auto;
+}
+
+@keyframes vkSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* --------------------------------------------------------------------------
+   Phone Input with Country Code
+   -------------------------------------------------------------------------- */
+.vk-phone-group {
+    display: flex;
+    gap: var(--vk-space-sm);
+}
+
+.vk-phone-prefix {
+    width: 80px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--vk-bg-light);
+    border: 1.5px solid var(--vk-border);
+    border-radius: var(--vk-radius-sm);
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-semibold);
+    color: var(--vk-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+/* Tablet and up */
+@media (min-width: 769px) {
+    .vk-configurador {
+        max-width: 520px;
+        padding: var(--vk-space-lg);
+    }
+
+    .vk-card__imagen img {
+        max-height: 260px;
+    }
+}
+
+/* Small mobile */
+@media (max-width: 380px) {
+    .vk-configurador {
+        padding: var(--vk-space-sm);
+    }
+
+    .vk-card__tabs {
+        margin: var(--vk-space-md) var(--vk-space-sm) 0;
+    }
+
+    .vk-tab {
+        font-size: var(--vk-font-size-xs);
+        padding: 8px 4px;
+    }
+
+    .vk-card__precio-destacado strong {
+        font-size: var(--vk-font-size-xl);
+    }
+
+    .vk-card__info {
+        padding: 0 var(--vk-space-sm);
+    }
+
+    .vk-card__tab-content {
+        padding: var(--vk-space-sm);
+    }
+
+    .vk-btn {
+        width: calc(100% - 2 * var(--vk-space-sm));
+        font-size: var(--vk-font-size-base);
+        padding: 12px;
+    }
+
+    .vk-trust-badges {
+        gap: var(--vk-space-md);
+    }
+
+    .vk-trust-badge {
+        font-size: 10px;
+    }
+
+    .vk-payment-options {
+        grid-template-columns: 1fr;
+    }
+}

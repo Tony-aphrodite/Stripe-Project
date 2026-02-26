@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurador Voltika - Elige tu moto electrica</title>
+    <link rel="stylesheet" href="css/configurador-variables.css">
+    <link rel="stylesheet" href="css/configurador.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="voltika-configurador" class="vk-configurador">
+
+        <!-- Progress Bar (hidden on PASO 1, visible on 2+) -->
+        <div class="vk-progress" id="vk-progress">
+            <div class="vk-progress__step vk-progress__step--completed" data-step="1">1</div>
+            <div class="vk-progress__line vk-progress__line--active"></div>
+            <div class="vk-progress__step vk-progress__step--active" data-step="2">2
+                <span class="vk-progress__label">SELECCION</span>
+            </div>
+            <div class="vk-progress__line"></div>
+            <div class="vk-progress__step" data-step="3">3
+                <span class="vk-progress__label">CONFIRMACION</span>
+            </div>
+        </div>
+
+        <!-- PASO 1: Seleccionar modelo -->
+        <div class="vk-paso vk-paso--active" id="vk-paso-1">
+            <div class="vk-paso__header">
+                <h2 class="vk-paso__titulo">PASO 1</h2>
+                <p class="vk-paso__subtitulo">Selecciona un modelo</p>
+            </div>
+            <div class="vk-paso__content" id="vk-modelos-container">
+                <!-- Rendered dynamically by paso1-modelo.js -->
+            </div>
+            <div class="vk-scroll-hint" id="vk-scroll-hint">
+                Desliza para ver mas modelos <span class="vk-scroll-hint__arrow">&#8595;</span>
+            </div>
+        </div>
+
+        <!-- PASO 2: Seleccionar color -->
+        <div class="vk-paso" id="vk-paso-2">
+            <div class="vk-paso__content" id="vk-color-container">
+                <!-- Rendered dynamically by paso2-color.js -->
+            </div>
+        </div>
+
+        <!-- PASO 3: Codigo Postal / Entrega -->
+        <div class="vk-paso" id="vk-paso-3">
+            <div class="vk-paso__content" id="vk-entrega-container">
+                <!-- Rendered dynamically by paso3-entrega.js -->
+            </div>
+        </div>
+
+        <!-- PASO 4A: Pago (Contado / MSI) -->
+        <div class="vk-paso" id="vk-paso-4a">
+            <div class="vk-paso__content" id="vk-pago-container">
+                <!-- Rendered dynamically by paso4a-pago.js -->
+            </div>
+        </div>
+
+        <!-- PASO 4B: Flujo de Credito -->
+        <div class="vk-paso" id="vk-paso-4b">
+            <div class="vk-paso__content" id="vk-credito-container">
+                <!-- Rendered dynamically by paso4b-credito.js -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- jQuery (will be provided by host site in production) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- Data -->
+    <script src="js/data/productos.js"></script>
+    <script src="js/data/codigospostales.js"></script>
+
+    <!-- Modules -->
+    <script src="js/modules/ui-components.js"></script>
+    <script src="js/modules/calculadora-credito.js"></script>
+    <script src="js/modules/validaciones.js"></script>
+    <script src="js/modules/paso1-modelo.js"></script>
+    <script src="js/modules/paso2-color.js"></script>
+    <script src="js/modules/paso3-entrega.js"></script>
+    <script src="js/modules/paso4a-pago.js"></script>
+    <script src="js/modules/paso4b-credito.js"></script>
+
+    <!-- Main Orchestrator -->
+    <script src="js/configurador.js"></script>
+
+</body>
+</html>
