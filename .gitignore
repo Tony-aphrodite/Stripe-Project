@@ -43,6 +43,10 @@ jspm_packages/
 vendor/
 */vendor/
 
+# PHP vendor 예외: configurador Stripe SDK는 포함
+!configurador/php/vendor/
+!configurador/php/vendor/**
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
