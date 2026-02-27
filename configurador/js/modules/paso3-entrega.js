@@ -68,11 +68,11 @@ var Paso3 = {
 
         html += '</div>'; // end info-box
 
-        // CTA (hidden until postal code is valid)
-        html += '<button class="vk-btn vk-btn--primary" id="vk-paso3-confirmar" style="display:none;">CONFIRMAR PEDIDO</button>';
+        // CTA
+        html += '<button class="vk-btn vk-btn--primary" id="vk-paso3-confirmar">CONFIRMAR PEDIDO</button>';
 
         // Microcopy
-        html += '<p class="vk-card__footer-note" id="vk-paso3-footer" style="display:none;">' +
+        html += '<p class="vk-card__footer-note" id="vk-paso3-footer">' +
             'Recibir\u00e1s confirmaci\u00f3n por WhatsApp y correo electr\u00f3nico.' +
             '</p>';
 
@@ -95,8 +95,6 @@ var Paso3 = {
             '</div>';
 
         $('#vk-cp-results').html(html).slideDown(300);
-        $('#vk-paso3-confirmar').fadeIn(300);
-        $('#vk-paso3-footer').fadeIn(300);
     },
 
     bindEvents: function() {
@@ -122,9 +120,13 @@ var Paso3 = {
         // Confirm order
         $(document).on('click', '#vk-paso3-confirmar', function() {
             var cp = $('#vk-cp-input').val();
-            if (VkValidacion.codigoPostal(cp)) {
+            if (VkValidacion.codigoPostal(cp) && self.app.state.ciudad) {
                 self.app.state.codigoPostal = cp;
                 self.app.irAPaso(4);
+            } else {
+                $('#vk-cp-input').focus();
+                $('#vk-cp-input').css('border-color', 'red');
+                setTimeout(function() { $('#vk-cp-input').css('border-color', ''); }, 2000);
             }
         });
     },
