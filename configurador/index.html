@@ -55,38 +55,67 @@
         /* Ensure content starts below fixed nav */
         .page-wrapper > main { padding-top: 80px; }
 
-        /* ── Navbar overrides (match original: dark uppercase links) ── */
-        #waituk-main-header {
-            background: #fff;
-            border-bottom: 1px solid #e8e8e8;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        /* ══ Navbar — match uploaded screenshot exactly ══════════════════ */
+        #waituk-main-header,
+        #waituk-main-header .bottom-header {
+            background: #fff !important;
+            border-bottom: 1px solid #ebebeb !important;
+            box-shadow: none !important;
         }
         #navbar-inner-container {
-            padding: 0 24px;
-            min-height: 64px;
-            align-items: center;
+            display: flex !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+            padding: 0 32px !important;
+            min-height: 70px !important;
+            background: #fff !important;
         }
+        /* Logo — left */
         #navbar-inner-container .navbar-brand {
-            padding: 0;
-            margin-right: 40px;
+            padding: 0 !important;
+            margin-right: auto !important;
+            flex-shrink: 0;
         }
-        #navbar-inner-container .navbar-nav .nav-link,
-        #navbar-inner-container .navbar-nav > li > a {
-            color: #222 !important;
-            font-size: 13px !important;
+        /* Nav links — uppercase dark gray */
+        #navbar-inner-container .navbar-collapse { flex-grow: 0 !important; }
+        #navbar-inner-container .navbar-nav { flex-direction: row !important; align-items: center !important; }
+        #navbar-inner-container .navbar-nav > li > a,
+        #navbar-inner-container .navbar-nav .nav-link {
+            color: #2c2c2c !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            font-size: 12.5px !important;
             font-weight: 600 !important;
-            letter-spacing: 0.8px !important;
+            letter-spacing: 1.5px !important;
             text-transform: uppercase !important;
-            padding: 22px 14px !important;
+            padding: 24px 16px !important;
+            white-space: nowrap !important;
+            background: none !important;
+            border: none !important;
         }
-        #navbar-inner-container .navbar-nav > li > a:hover,
-        #navbar-inner-container .navbar-nav .nav-link:hover {
-            color: #555 !important;
+        #navbar-inner-container .navbar-nav > li > a:hover { color: #888 !important; }
+        /* Hide Bootstrap dropdown caret */
+        #navbar-inner-container .dropdown-toggle::after { display: none !important; }
+        /* Right icons: search + hamburger */
+        .navbar-pos-search, .nav-trigger.overlay-trigger {
+            display: flex !important;
+            align-items: center !important;
+            margin-left: 8px !important;
         }
-        /* Hide dropdown arrows added by Bootstrap */
-        #navbar-inner-container .dropdown-toggle::after { display: none; }
-        /* Right-side icons */
-        .navbar-pos-search a, .nav-trigger a { color: #333 !important; font-size: 16px; }
+        .navbar-pos-search a.x-search-trigger,
+        .nav-trigger.overlay-trigger > a {
+            color: #2c2c2c !important;
+            font-size: 17px !important;
+            padding: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        /* Icon fallbacks using FontAwesome when site icon font is unavailable */
+        .custom-icon-search::before { font-family: FontAwesome; content: '\f002'; }
+        .icon-sort-1::before        { font-family: FontAwesome; content: '\f0c9'; }
+        /* Hide close/secondary search icon */
+        .x-search.icon-close-round { display: none !important; }
+        /* Hide mobile toggler on desktop */
+        .navbar-toggler { display: none !important; }
     </style>
 </head>
 
