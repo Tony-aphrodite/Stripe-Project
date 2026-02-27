@@ -12,6 +12,7 @@ var Paso2 = {
     },
 
     render: function() {
+        var self = this;
         var state = this.app.state;
         var modelo = this.app.getModelo(state.modeloSeleccionado);
         if (!modelo) return;
@@ -78,7 +79,28 @@ var Paso2 = {
 
         html += '</div>'; // end card
 
-        $('#vk-color-container').html(html);
+        jQuery('#vk-color-container').html(html);
+
+        // Attach color click handlers directly to elements (avoids delegation conflicts)
+        jQuery('#vk-paso-2 .vk-color-option').each(function() {
+            this.addEventListener('click', function() {
+                var color = this.getAttribute('data-color');
+                self.app.state.colorSeleccionado = color;
+
+                // Update active state
+                var options = document.querySelectorAll('#vk-paso-2 .vk-color-option');
+                for (var j = 0; j < options.length; j++) {
+                    options[j].classList.remove('vk-color-option--active');
+                }
+                this.classList.add('vk-color-option--active');
+
+                // Update image
+                var modeloActual = self.app.getModelo(self.app.state.modeloSeleccionado);
+                var newImg = VkUI.getImagenMoto(modeloActual.id, color);
+                var imgEl = document.querySelector('#vk-paso2-imagen img');
+                if (imgEl) imgEl.src = newImg;
+            });
+        });
     },
 
     renderPaymentInfo: function(modelo, metodo) {
@@ -119,25 +141,9 @@ var Paso2 = {
     bindEvents: function() {
         var self = this;
 
-        // Color selection (off first to prevent duplicate handlers on re-init)
-        $(document).off('click', '#vk-paso-2 .vk-color-option');
-        $(document).on('click', '#vk-paso-2 .vk-color-option', function() {
-            var color = $(this).data('color');
-            self.app.state.colorSeleccionado = color;
-
-            // Update active state
-            $('#vk-paso-2 .vk-color-option').removeClass('vk-color-option--active');
-            $(this).addClass('vk-color-option--active');
-
-            // Update image
-            var modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
-            var newImg = VkUI.getImagenMoto(modelo.id, color);
-            $('#vk-paso2-imagen img').attr('src', newImg);
-        });
-
-        // Continue to PASO 3
-        $(document).off('click', '#vk-paso2-continuar');
-        $(document).on('click', '#vk-paso2-continuar', function() {
+        // Continue to PASO 3 (delegation is fine for buttons)
+        jQuery(document).off('click', '#vk-paso2-continuar');
+        jQuery(document).on('click', '#vk-paso2-continuar', function() {
             self.app.irAPaso(3);
         });
     }

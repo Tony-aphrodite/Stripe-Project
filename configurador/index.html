@@ -424,6 +424,9 @@
     <script type="text/javascript" src="/js/js.js"></script>
     <script src="/js/revolution.js"></script>
 
+    <!-- Ensure $ is jQuery before loading configurador scripts -->
+    <script>if (typeof window.jQuery !== 'undefined') { window.$ = window.jQuery; }</script>
+
     <!-- Voltika Configurador JS -->
     <script src="js/data/productos.js"></script>
     <script src="js/data/codigospostales.js"></script>
