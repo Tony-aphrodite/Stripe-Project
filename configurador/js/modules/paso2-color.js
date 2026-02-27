@@ -30,24 +30,33 @@ var Paso2 = {
         // Step header
         html += '<h2 class="vk-paso__titulo">Elige el color <span style="font-weight:400;">con el que quieres rodar</span></h2>';
 
+        var btnTexto = state.metodoPago === 'contado' ? 'PAGAR DE CONTADO' :
+                      state.metodoPago === 'msi'     ? 'QUIERO MIS 9 MSI \u203a' :
+                      'CONFIRMAR COLOR Y CONTINUAR';
+
         // Card
         html += '<div class="vk-card">';
 
-        // Banner
+        // Banner + bullets — full-width row (always visible)
+        html += '<div class="vk-desktop-split-wrap">';
         html += VkUI.renderBanner();
         html += VkUI.renderBullets();
+        html += '</div>';
 
-        // Image
+        // Desktop 2-col split (stacks on mobile)
+        html += '<div class="vk-desktop-split">';
+
+        // ── Left: visual ──────────────────────────────────────
+        html += '<div class="vk-desktop-split__left">';
+
         html += '<div class="vk-card__imagen" id="vk-paso2-imagen">' +
             '<img src="' + img + '" alt="' + modelo.nombre + ' ' + colorActual + '">' +
             '</div>';
 
-        // Model name below image
         html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin:4px 0 12px;">' +
             'Modelo <strong>' + modelo.nombre + '</strong> seleccionado' +
             '</div>';
 
-        // Color picker — thumbnail images
         html += '<div class="vk-color-picker" style="padding:0 20px;">';
         for (var i = 0; i < modelo.colores.length; i++) {
             var c = modelo.colores[i];
@@ -62,28 +71,31 @@ var Paso2 = {
                 '</div>';
         }
         html += '</div>';
-        html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:6px 0 4px;">' +
+
+        html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:6px 0 16px;">' +
             'El color no afecta precio ni tiempo de entrega.' +
             '</p>';
 
-        // Payment info (varies by method)
-        html += '<div style="padding:16px 20px;text-align:center;">';
+        html += '</div>'; // end left
+
+        // ── Right: purchase ───────────────────────────────────
+        html += '<div class="vk-desktop-split__right">';
+
+        html += '<div style="padding:16px 20px 0;text-align:center;">';
         html += this.renderPaymentInfo(modelo, state.metodoPago);
         html += '</div>';
 
-        // CTA
-        var btnTexto = state.metodoPago === 'contado' ? 'PAGAR DE CONTADO' :
-                      state.metodoPago === 'msi'     ? 'QUIERO MIS 9 MSI \u203a' :
-                      'CONFIRMAR COLOR Y CONTINUAR';
         html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">' + btnTexto + '</button>';
 
-        // Footer
         html += '<p class="vk-card__footer-note">' +
             'Solo falta confirmar tu <strong>punto de entrega.</strong>' +
             '</p>';
 
-        // Trust badges
         html += VkUI.renderTrustBadges();
+
+        html += '</div>'; // end right
+
+        html += '</div>'; // end desktop-split
 
         html += '</div>'; // end card
 
