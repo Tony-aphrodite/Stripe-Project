@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configura tu Voltika - Elige tu moto electrica</title>
 
-    <!-- Main site CSS (absolute paths) -->
+    <!-- Main site CSS (absolute paths — available on production server) -->
     <link media="all" rel="stylesheet" href="/css/fonts/icomoon/icomoon.css">
     <link media="all" rel="stylesheet" href="/css/fonts/roxine-font-icon/roxine-font.css">
     <link media="all" rel="stylesheet" href="/vendors/font-awesome/css/font-awesome.css">
@@ -16,6 +16,13 @@
     <link media="all" rel="stylesheet" href="/css/main.css">
     <link media="all" rel="stylesheet" href="/css/custom.css">
     <link rel="stylesheet" type="text/css" href="/toastr/build/toastr.min.css">
+    <!-- CDN fallbacks for local dev (localhost only — no-op on production) -->
+    <script>
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        document.write('<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">');
+        document.write('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">');
+    }
+    </script>
 
     <!-- Voltika Configurador CSS -->
     <link rel="stylesheet" href="css/configurador-variables.css">
@@ -426,6 +433,8 @@
 
     <!-- Main site scripts (absolute paths) -->
     <script src="/vendors/jquery/jquery-2.1.4.min.js"></script>
+    <!-- CDN fallback: loads jQuery from CDN if the site-relative path failed -->
+    <script>window.jQuery || document.write('<scr'+'ipt src="https://code.jquery.com/jquery-2.2.4.min.js"><\/scr'+'ipt>')</script>
     <script src="/vendors/tether/dist/js/tether.min.js"></script>
     <script src="/vendors/bootstrap/js/bootstrap.min.js"></script>
     <script src="/vendors/stellar/jquery.stellar.min.js"></script>
