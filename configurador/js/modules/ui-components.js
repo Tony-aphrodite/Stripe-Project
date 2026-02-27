@@ -41,8 +41,10 @@ var VkUI = {
 
         if (pasoActual > 1) {
             $progress.addClass('vk-progress--visible');
+            $('#vk-logo').addClass('vk-logo--visible');
         } else {
             $progress.removeClass('vk-progress--visible');
+            $('#vk-logo').removeClass('vk-logo--visible');
         }
     },
 
