@@ -1,6 +1,7 @@
 /* ==========================================================================
    Voltika — Navbar functionality
-   Search toggle, side panel, sticky nav, mega menu hover, preloader
+   Preloader · Sticky nav · Search toggle · Side panel · Mega menu hover
+   Matches production at voltika.mx — uses body.nav-active + #wrapper:before
    ========================================================================== */
 
 (function ($) {
@@ -22,6 +23,7 @@
     });
 
     // ── Search toggle ───────────────────────────────────────────────────────
+    // #top-search is hidden via CSS (display:none) — .show()/.hide() override it
     var $searchForm  = $('#top-search');
     var $searchInput = $searchForm.find('input');
 
@@ -29,13 +31,14 @@
         e.preventDefault();
         $searchForm.toggleClass('active');
         if ($searchForm.hasClass('active')) {
-            $searchForm.removeAttr('style').show();
+            $searchForm.show();
             $searchInput.focus();
         } else {
             $searchForm.hide();
         }
     });
 
+    // Close search on outside click
     $(document).on('click', function (e) {
         if (!$(e.target).closest('#top-search, .x-search-trigger').length) {
             $searchForm.removeClass('active').hide();
@@ -43,36 +46,40 @@
     });
 
     // ── Side panel ──────────────────────────────────────────────────────────
-    var $navWrap = $('.nav-wrap');
-    var $overlay = $('<div class="nav-overlay"></div>').appendTo('body');
+    // Production approach: toggle body.nav-active
+    // CSS handles the transform animation and #wrapper:before overlay
+    var $body = $('body');
 
     function openPanel() {
-        $navWrap.addClass('open');
-        $overlay.addClass('visible');
-        $('body').addClass('panel-open');
+        $body.addClass('nav-active');
     }
 
     function closePanel() {
-        $navWrap.removeClass('open');
-        $overlay.removeClass('visible');
-        $('body').removeClass('panel-open');
+        $body.removeClass('nav-active');
     }
 
+    // Hamburger icon opens the panel
     $(document).on('click', '.overlay-trigger', function (e) {
         e.preventDefault();
         openPanel();
     });
 
+    // "Cerrar panel" button closes it
     $(document).on('click', '.nav-trigger-close', function (e) {
         e.preventDefault();
         closePanel();
     });
 
-    $overlay.on('click', function () {
-        closePanel();
+    // Click on the overlay (#wrapper:before) closes the panel.
+    // Pseudo-elements can't receive events directly, so we listen on #wrapper
+    // but only fire when the click target is NOT inside .nav-wrap.
+    $('#wrapper').on('click', function (e) {
+        if ($body.hasClass('nav-active') && !$(e.target).closest('.nav-wrap').length) {
+            closePanel();
+        }
     });
 
-    // ── Mega menu hover (desktop) ───────────────────────────────────────────
+    // ── Mega menu hover (desktop ≥992px) ────────────────────────────────────
     if ($(window).width() >= 992) {
         $(document).on('mouseenter', '#navbar-inner-container .dropdown', function () {
             $(this).addClass('show').find('> .dropdown-menu').addClass('show');
