@@ -50,6 +50,19 @@ configurador/php/vendor/stripe/stripe-php/README.md
 configurador/php/vendor/stripe/stripe-php/CHANGELOG.md
 configurador/php/vendor/stripe/stripe-php/CONTRIBUTING.md
 
+# Local dev symlinks (point to web_voltika/ assets — not needed on production server)
+configurador/vendors
+configurador/toastr
+configurador/css/bootstrap.css
+configurador/css/main.css
+configurador/css/custom.css
+configurador/css/fonts
+configurador/js/js.js
+configurador/js/mega-menu.js
+configurador/js/jquery.main.js
+configurador/js/revolution.js
+configurador/img/loader.svg
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
