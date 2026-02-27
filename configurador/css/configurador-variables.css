@@ -4,17 +4,17 @@
    ========================================================================== */
 
 :root {
-    /* Brand Colors (extracted from mockup designs) */
-    --vk-green-primary: #5B7A2E;
-    --vk-green-dark: #4A6624;
-    --vk-green-light: #E8F0DC;
-    --vk-green-banner: #5B7A2E;
-    --vk-green-check: #6B8E3A;
-    --vk-green-soft: #F2F7EC;
+    /* Brand Colors — Voltika primary #5645ff */
+    --vk-green-primary: #5645ff;
+    --vk-green-dark: #3D2EE0;
+    --vk-green-light: #EBE9FF;
+    --vk-green-banner: #5645ff;
+    --vk-green-check: #6655FF;
+    --vk-green-soft: #F3F2FF;
 
-    /* Credit flow blue (from PASO 4B mockup) */
-    --vk-blue-primary: #3B5998;
-    --vk-blue-light: #EBF0F9;
+    /* Credit flow (same brand blue) */
+    --vk-blue-primary: #5645ff;
+    --vk-blue-light: #EBE9FF;
 
     /* Badge */
     --vk-badge-yellow: #FFD700;
@@ -25,7 +25,7 @@
     --vk-text-secondary: #555555;
     --vk-text-muted: #999999;
     --vk-text-white: #FFFFFF;
-    --vk-text-green: #5B7A2E;
+    --vk-text-green: #5645ff;
     --vk-text-price: #333333;
 
     /* Backgrounds */
@@ -37,12 +37,12 @@
     /* Borders */
     --vk-border: #E0E0E0;
     --vk-border-light: #F0F0F0;
-    --vk-border-active: #5B7A2E;
+    --vk-border-active: #5645ff;
 
     /* Shadows */
     --vk-shadow-card: 0 2px 16px rgba(0, 0, 0, 0.08);
     --vk-shadow-card-hover: 0 4px 24px rgba(0, 0, 0, 0.12);
-    --vk-shadow-button: 0 2px 8px rgba(91, 122, 46, 0.3);
+    --vk-shadow-button: 0 2px 8px rgba(86, 69, 255, 0.3);
 
     /* Typography */
     --vk-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

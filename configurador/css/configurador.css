@@ -458,7 +458,7 @@
 .vk-btn--primary:hover {
     background: var(--vk-green-dark);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(91, 122, 46, 0.4);
+    box-shadow: 0 4px 12px rgba(86, 69, 255, 0.4);
 }
 
 .vk-btn--primary:active {
@@ -615,7 +615,7 @@
 
 .vk-form-input:focus {
     border-color: var(--vk-green-primary);
-    box-shadow: 0 0 0 3px rgba(91, 122, 46, 0.1);
+    box-shadow: 0 0 0 3px rgba(86, 69, 255, 0.1);
 }
 
 .vk-form-input::placeholder {
