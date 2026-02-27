@@ -79,6 +79,49 @@ for f in "${CSS_STUBS[@]}"; do
 done
 echo "  CSS stubs created"
 
+# ── Image stubs (nav/site images — not needed for configurador) ──
+EMPTY_SVG='<svg xmlns="http://www.w3.org/2000/svg"/>'
+# 1x1 transparent PNG (base64)
+EMPTY_PNG='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+
+SVG_STUBS=(
+    "img/loader.svg"
+    "img/msi_credito_black.svg"
+    "img/menu_ciudad.svg"
+    "img/menu_m03_tx.svg"
+    "img/menu_m05_tx.svg"
+    "img/menu_mc10_tx.svg"
+    "img/menu_mino_tx.svg"
+    "img/menu_pesgo_tx.svg"
+    "img/menu_premium.svg"
+    "img/menu_movilidad.svg"
+    "img/menu_ukko_tx.svg"
+)
+for f in "${SVG_STUBS[@]}"; do
+    if [ ! -f "$BASE/$f" ]; then
+        mkdir -p "$(dirname "$BASE/$f")"
+        echo "$EMPTY_SVG" > "$BASE/$f"
+    fi
+done
+
+PNG_STUBS=(
+    "img/logo_w.png"
+    "img/logo_b.png"
+    "img/menu/m03.png"
+    "img/menu/m05.png"
+    "img/menu/mc10.png"
+    "img/menu/mino.png"
+    "img/menu/pesgo.png"
+    "img/menu/ukko.png"
+)
+for f in "${PNG_STUBS[@]}"; do
+    if [ ! -f "$BASE/$f" ]; then
+        mkdir -p "$(dirname "$BASE/$f")"
+        echo "$EMPTY_PNG" | base64 -d > "$BASE/$f"
+    fi
+done
+echo "  Image stubs created"
+
 echo ""
 echo "Done. Start the server with:"
 echo "  php -S localhost:4000"
