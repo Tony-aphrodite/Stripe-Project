@@ -988,31 +988,191 @@
     }
 }
 
+/* ── PASO 1: mobile / desktop layout toggle ──────────────────────────── */
+.vk-paso1-mobile  { display: block; }
+.vk-paso1-desktop { display: none;  }
+
 /* Desktop (1024px+) */
 @media (min-width: 1024px) {
+
+    /* ── Container ────────────────────────────────────────────────────── */
     .vk-configurador {
-        max-width: 1000px;
+        max-width: 1020px;
         padding: var(--vk-space-xl) var(--vk-space-lg);
     }
 
-    /* PASO 1 — 3-column model grid */
-    #vk-modelos-container {
+    .vk-paso__titulo {
+        font-size: 26px;
+    }
+
+    /* ── PASO 1 layout toggle ─────────────────────────────────────────── */
+    .vk-paso1-mobile  { display: none;  }
+    .vk-paso1-desktop { display: block; }
+
+    /* ── Model-selector tab bar ───────────────────────────────────────── */
+    .vk-dtabs {
+        display: flex;
+        background: #fff;
+        border-radius: var(--vk-radius-lg) var(--vk-radius-lg) 0 0;
+        border-bottom: 2px solid var(--vk-border);
+        overflow: hidden;
+    }
+
+    .vk-dtab {
+        flex: 1;
+        padding: 18px 12px;
+        font-size: 15px;
+        font-weight: 700;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        color: var(--vk-text-secondary);
+        position: relative;
+        transition: color var(--vk-transition-fast), background var(--vk-transition-fast);
+        font-family: var(--vk-font-family);
+        letter-spacing: 0.3px;
+    }
+
+    .vk-dtab:hover {
+        background: var(--vk-bg-light);
+        color: var(--vk-text-primary);
+    }
+
+    .vk-dtab--active {
+        color: var(--vk-green-primary);
+        background: #fff;
+    }
+
+    .vk-dtab--active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--vk-green-primary);
+        border-radius: 2px 2px 0 0;
+    }
+
+    .vk-dtab__star {
+        font-size: 12px;
+        vertical-align: middle;
+    }
+
+    /* ── Hero two-column layout ───────────────────────────────────────── */
+    .vk-hero {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 24px;
-        align-items: start;
+        grid-template-columns: 3fr 2fr;
+        background: #fff;
+        border-radius: 0 0 var(--vk-radius-lg) var(--vk-radius-lg);
+        box-shadow: var(--vk-shadow-card);
+        min-height: 500px;
+        overflow: hidden;
     }
 
-    #vk-modelos-container .vk-card {
-        max-width: none;
+    /* Left: product visual */
+    .vk-hero__visual {
+        background: var(--vk-bg-light);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 40px 32px;
+        border-right: 1px solid var(--vk-border);
     }
 
-    /* Progress bar wider */
-    .vk-progress {
-        padding: var(--vk-space-md) var(--vk-space-xl);
+    .vk-hero__img {
+        max-height: 340px;
+        max-width: 100%;
+        object-fit: contain;
+        transition: opacity 0.2s ease;
     }
 
-    /* PASO 2+ — 2-column split inside card */
+    .vk-hero__badge {
+        margin-top: 16px;
+        display: inline-block;
+        background: var(--vk-badge-yellow-bg);
+        color: #7a5c00;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 4px 14px;
+        border-radius: var(--vk-radius-pill);
+    }
+
+    .vk-hero__specs {
+        margin-top: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--vk-text-secondary);
+    }
+
+    /* Right: configuration panel */
+    .vk-hero__panel {
+        padding: 28px 24px 24px;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    .vk-hero__nombre {
+        font-size: 30px;
+        font-weight: 800;
+        color: var(--vk-text-primary);
+        line-height: 1.1;
+        margin-bottom: 4px;
+    }
+
+    .vk-hero__subtitulo {
+        font-size: 13px;
+        color: var(--vk-text-secondary);
+        margin-bottom: 8px;
+        min-height: 18px;
+    }
+
+    .vk-hero__precio-base {
+        font-size: 13px;
+        color: var(--vk-text-muted);
+        margin-bottom: 18px;
+    }
+
+    /* Payment method tabs (inside right panel) */
+    .vk-hero__metodo-tabs {
+        display: flex;
+        border: 1px solid var(--vk-border);
+        border-radius: var(--vk-radius-md);
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+
+    .vk-hero__metodo-tab {
+        flex: 1;
+        padding: 9px 6px;
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        background: var(--vk-bg-light);
+        cursor: pointer;
+        color: var(--vk-text-secondary);
+        transition: background var(--vk-transition-fast), color var(--vk-transition-fast);
+        font-family: var(--vk-font-family);
+        border-right: 1px solid var(--vk-border);
+    }
+
+    .vk-hero__metodo-tab:last-child {
+        border-right: none;
+    }
+
+    .vk-hero__metodo-tab--active {
+        background: var(--vk-green-primary);
+        color: #fff;
+    }
+
+    .vk-hero__tab-content {
+        flex: 1;
+        margin-bottom: 16px;
+    }
+
+    /* ── PASO 2+ — 2-column split inside card ─────────────────────────── */
     .vk-desktop-split {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1021,23 +1181,16 @@
     }
 
     .vk-desktop-split__left .vk-card__imagen img {
-        max-height: 320px;
+        max-height: 340px;
     }
 
-    /* Right panel sticks while user picks color */
     .vk-desktop-split__right {
         position: sticky;
         top: 100px;
     }
 
-    /* Full-width rows inside the card (above the split) */
     .vk-desktop-split-wrap {
         padding: 0 var(--vk-card-padding);
-    }
-
-    /* Page title larger on desktop */
-    .vk-paso__titulo {
-        font-size: 26px;
     }
 }
 

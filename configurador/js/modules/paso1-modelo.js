@@ -1,9 +1,13 @@
 /* ==========================================================================
    Voltika - PASO 1: Model Selection
-   Full-width card per model with per-card payment tabs [Crédito|9 MSI|Contado]
+   Mobile: full-width card per model
+   Desktop (1024px+): hero configurator — model tabs + large image + payment panel
    ========================================================================== */
 
 var Paso1 = {
+
+    _activeModeloId: null,
+    _activeMetodo: 'credito',
 
     init: function(app) {
         this.app = app;
@@ -13,22 +17,177 @@ var Paso1 = {
 
     render: function() {
         var container = $('#vk-modelos-container');
+        var modelos = VOLTIKA_PRODUCTOS.modelos;
+
+        // Default: first model with badge, else first
+        var defaultModelo = null;
+        for (var i = 0; i < modelos.length; i++) {
+            if (modelos[i].badge && !defaultModelo) defaultModelo = modelos[i];
+        }
+        if (!defaultModelo) defaultModelo = modelos[0];
+
+        this._activeModeloId = defaultModelo.id;
+        this._activeMetodo   = 'credito';
+
         var html = '';
 
-        var modelos = VOLTIKA_PRODUCTOS.modelos;
-        for (var i = 0; i < modelos.length; i++) {
-            html += this.renderCard(modelos[i]);
+        // ── Desktop hero (hidden on mobile via CSS) ───────────
+        html += '<div class="vk-paso1-desktop">';
+        html += this._renderDesktopHero(modelos, defaultModelo);
+        html += '</div>';
+
+        // ── Mobile cards (hidden on desktop via CSS) ──────────
+        html += '<div class="vk-paso1-mobile">';
+        for (var j = 0; j < modelos.length; j++) {
+            html += this.renderCard(modelos[j]);
         }
+        html += '</div>';
 
         container.html(html);
     },
+
+    /* ------------------------------------------------------------------ */
+    /*  DESKTOP HERO                                                        */
+    /* ------------------------------------------------------------------ */
+
+    _renderDesktopHero: function(modelos, defaultModelo) {
+        var html = '';
+
+        // ── Top: horizontal model-selector bar ────────────────
+        html += '<div class="vk-dtabs">';
+        for (var i = 0; i < modelos.length; i++) {
+            var m = modelos[i];
+            var cls = m.id === defaultModelo.id ? ' vk-dtab--active' : '';
+            html += '<button class="vk-dtab' + cls + '" data-mid="' + m.id + '">';
+            if (m.badge) html += '<span class="vk-dtab__star">&#11088;</span> ';
+            html += m.nombre;
+            html += '</button>';
+        }
+        html += '</div>';
+
+        // ── Main hero area (image left / panel right) ─────────
+        html += '<div class="vk-hero">';
+
+        // Left: product visual
+        html += '<div class="vk-hero__visual">';
+        html += '<img class="vk-hero__img" id="vk-hero-img" ' +
+            'src="' + VkUI.getImagenMoto(defaultModelo.id, defaultModelo.colorDefault) + '" ' +
+            'alt="' + defaultModelo.nombre + '">';
+
+        if (defaultModelo.badge) {
+            html += '<div class="vk-hero__badge"><span>&#11088;</span> ' + defaultModelo.badge + '</div>';
+        } else {
+            html += '<div class="vk-hero__badge" id="vk-hero-badge" style="display:none;"></div>';
+        }
+
+        html += '<div class="vk-hero__specs" id="vk-hero-specs">';
+        if (defaultModelo.autonomia) {
+            html += '&#9889;&nbsp;' + defaultModelo.autonomia + ' km &nbsp;&bull;&nbsp; &#128694;&nbsp;' + defaultModelo.velocidad + ' km/h';
+        }
+        html += '</div>';
+        html += '</div>'; // end visual
+
+        // Right: configuration panel
+        html += '<div class="vk-hero__panel">';
+
+        html += '<div class="vk-hero__nombre" id="vk-hero-nombre">' + defaultModelo.nombre + '</div>';
+        html += '<div class="vk-hero__subtitulo" id="vk-hero-subtitulo">' + (defaultModelo.subtitulo || '') + '</div>';
+        html += '<div class="vk-hero__precio-base" id="vk-hero-precio-base">' +
+            'Precio contado: <strong>' + VkUI.formatPrecio(defaultModelo.precioContado) + ' MXN</strong>' +
+            '</div>';
+
+        // Payment-method tabs
+        html += '<div class="vk-hero__metodo-tabs" id="vk-hero-metodo-tabs">';
+        html += '<button class="vk-hero__metodo-tab vk-hero__metodo-tab--active" data-htab="credito">Cr&eacute;dito Voltika</button>';
+        html += '<button class="vk-hero__metodo-tab" data-htab="msi">9 MSI</button>';
+        html += '<button class="vk-hero__metodo-tab" data-htab="contado">Contado</button>';
+        html += '</div>';
+
+        // Tab content
+        html += '<div class="vk-hero__tab-content" id="vk-hero-tab-content">';
+        html += this.renderTabCredito(defaultModelo);
+        html += '</div>';
+
+        html += '<button class="vk-btn vk-btn--primary vk-hero__cta" id="vk-hero-cta">' +
+            'SELECCIONAR ' + defaultModelo.nombre.toUpperCase() + ' &#8250;</button>';
+
+        html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin-top:8px;">' +
+            'Confirmar\u00e1s tu Punto Voltika antes de continuar.' +
+            '</p>';
+
+        html += VkUI.renderTrustBadges();
+
+        html += '</div>'; // end panel
+        html += '</div>'; // end hero
+
+        return html;
+    },
+
+    _updateDesktopHero: function(modeloId, metodo) {
+        var modelo = this.app.getModelo(modeloId);
+        if (!modelo) return;
+
+        // Image (fade trick via opacity)
+        var $img = $('#vk-hero-img');
+        $img.css('opacity', 0);
+        setTimeout(function() {
+            $img.attr('src', VkUI.getImagenMoto(modelo.id, modelo.colorDefault))
+                .attr('alt', modelo.nombre)
+                .css('opacity', 1);
+        }, 150);
+
+        // Text info
+        $('#vk-hero-nombre').text(modelo.nombre);
+        $('#vk-hero-subtitulo').text(modelo.subtitulo || '');
+        $('#vk-hero-precio-base').html(
+            'Precio contado: <strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong>'
+        );
+
+        // Specs
+        var specs = '';
+        if (modelo.autonomia) {
+            specs = '&#9889;&nbsp;' + modelo.autonomia + ' km &nbsp;&bull;&nbsp; &#128694;&nbsp;' + modelo.velocidad + ' km/h';
+        }
+        $('#vk-hero-specs').html(specs);
+
+        // Badge
+        var $badge = $('#vk-hero-badge');
+        if ($badge.length) {
+            if (modelo.badge) {
+                $badge.html('<span>&#11088;</span> ' + modelo.badge).show();
+            } else {
+                $badge.hide();
+            }
+        }
+
+        // Tab content
+        this._updateHeroTabContent(modelo, metodo);
+
+        // CTA text
+        $('#vk-hero-cta').html('SELECCIONAR ' + modelo.nombre.toUpperCase() + ' &#8250;');
+    },
+
+    _updateHeroTabContent: function(modelo, metodo) {
+        var content = '';
+        if (metodo === 'credito') {
+            content = this.renderTabCredito(modelo);
+        } else if (metodo === 'msi') {
+            content = this.renderTabMSI(modelo);
+        } else {
+            content = this.renderTabContado(modelo);
+        }
+        $('#vk-hero-tab-content').html(content);
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  MOBILE CARDS (unchanged)                                            */
+    /* ------------------------------------------------------------------ */
 
     renderCard: function(modelo) {
         var img = VkUI.getImagenMoto(modelo.id, modelo.colorDefault);
 
         var html = '<div class="vk-card" data-modelo="' + modelo.id + '">';
 
-        // Badge
         if (modelo.badge) {
             html += '<div class="vk-card__badge">' +
                 '<span class="vk-card__badge-star">&#11088;</span> ' +
@@ -36,68 +195,52 @@ var Paso1 = {
                 '</div>';
         }
 
-        // Image
         html += '<div class="vk-card__imagen">' +
             '<img src="' + img + '" alt="' + modelo.nombre + '" loading="lazy">' +
             '</div>';
 
-        // Info block
         html += '<div class="vk-card__info">';
         html += '<div class="vk-card__nombre">' + modelo.nombre + '</div>';
         if (modelo.subtitulo) {
             html += '<div class="vk-card__subtitulo">' + modelo.subtitulo + '</div>';
         }
-
         if (modelo.autonomia) {
             html += '<div class="vk-card__specs">' +
                 '<span>&#9889; ' + modelo.autonomia + ' Km</span>' +
                 '<span>&#128663; ' + modelo.velocidad + ' Km/h</span>' +
                 '</div>';
         }
-
         html += '<div class="vk-card__precio-base">Desde ' + VkUI.formatPrecio(modelo.precioContado) + ' MXN <span>(contado)</span></div>';
-        html += '</div>'; // end info
+        html += '</div>';
 
-        // Green banner
         html += VkUI.renderBanner();
-
-        // Bullets
         html += VkUI.renderBullets();
 
-        // Per-card payment tabs
         html += '<div class="vk-card__tabs">';
         html += '<button class="vk-tab vk-tab--active" data-tab="credito">Credito Voltika</button>';
         html += '<button class="vk-tab" data-tab="msi">9 MSI</button>';
         html += '<button class="vk-tab" data-tab="contado">Contado</button>';
         html += '</div>';
 
-        // Tab content — Credito (default active)
         html += '<div class="vk-card__tab-content vk-card__tab-content--active" data-tab-content="credito">';
         html += this.renderTabCredito(modelo);
         html += '</div>';
 
-        // Tab content — MSI
         html += '<div class="vk-card__tab-content" data-tab-content="msi">';
         html += this.renderTabMSI(modelo);
         html += '</div>';
 
-        // Tab content — Contado
         html += '<div class="vk-card__tab-content" data-tab-content="contado">';
         html += this.renderTabContado(modelo);
         html += '</div>';
 
-        // CTA button
         html += '<button class="vk-btn vk-btn--primary vk-card__continuar" data-modelo="' + modelo.id + '">' +
             'SELECCIONAR' +
             '</button>';
 
-        // Microcopy
-        html += '<p class="vk-card__footer-note">Podras confirmar tu Punto Voltika antes de continuar.</p>';
-
-        // Trust badges
+        html += '<p class="vk-card__footer-note">Podr\u00e1s confirmar tu Punto Voltika antes de continuar.</p>';
         html += VkUI.renderTrustBadges();
-
-        html += '</div>'; // end card
+        html += '</div>';
 
         return html;
     },
@@ -118,7 +261,7 @@ var Paso1 = {
         var html = '';
         if (!modelo.tieneMSI) {
             html += '<div style="padding:12px 0;text-align:center;">';
-            html += '<div class="vk-card__precio-secundario">Sin opcion MSI para este modelo</div>';
+            html += '<div class="vk-card__precio-secundario">Sin opci\u00f3n MSI para este modelo</div>';
             html += '<div class="vk-card__precio-secundario">Contado: ' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</div>';
             html += '</div>';
             return html;
@@ -147,29 +290,62 @@ var Paso1 = {
         return html;
     },
 
+    /* ------------------------------------------------------------------ */
+    /*  EVENTS                                                              */
+    /* ------------------------------------------------------------------ */
+
     bindEvents: function() {
         var self = this;
 
-        // Per-card tab switching
+        // ── Desktop: model selector tabs ──────────────────────
+        $(document).off('click', '#vk-paso-1 .vk-dtab');
+        $(document).on('click', '#vk-paso-1 .vk-dtab', function() {
+            var mid = $(this).data('mid');
+            self._activeModeloId = mid;
+
+            $('#vk-paso-1 .vk-dtab').removeClass('vk-dtab--active');
+            $(this).addClass('vk-dtab--active');
+
+            self._updateDesktopHero(mid, self._activeMetodo);
+        });
+
+        // ── Desktop: payment method tabs ──────────────────────
+        $(document).off('click', '#vk-hero-metodo-tabs .vk-hero__metodo-tab');
+        $(document).on('click', '#vk-hero-metodo-tabs .vk-hero__metodo-tab', function() {
+            var metodo = $(this).data('htab');
+            self._activeMetodo = metodo;
+
+            $('#vk-hero-metodo-tabs .vk-hero__metodo-tab').removeClass('vk-hero__metodo-tab--active');
+            $(this).addClass('vk-hero__metodo-tab--active');
+
+            var modelo = self.app.getModelo(self._activeModeloId);
+            if (modelo) self._updateHeroTabContent(modelo, metodo);
+        });
+
+        // ── Desktop: CTA ──────────────────────────────────────
+        $(document).off('click', '#vk-hero-cta');
+        $(document).on('click', '#vk-hero-cta', function() {
+            self.app.seleccionarModelo(self._activeModeloId, self._activeMetodo);
+        });
+
+        // ── Mobile: per-card tab switching ────────────────────
         $(document).off('click', '#vk-paso-1 .vk-card__tabs .vk-tab');
         $(document).on('click', '#vk-paso-1 .vk-card__tabs .vk-tab', function() {
             var tab = $(this).data('tab');
             var $card = $(this).closest('.vk-card');
 
-            // Toggle active tab within this card only
             $(this).closest('.vk-card__tabs').find('.vk-tab').removeClass('vk-tab--active');
             $(this).addClass('vk-tab--active');
 
-            // Show matching tab content within this card
             $card.find('.vk-card__tab-content').removeClass('vk-card__tab-content--active');
             $card.find('[data-tab-content="' + tab + '"]').addClass('vk-card__tab-content--active');
         });
 
-        // SELECCIONAR button — passes active tab as metodoPago
+        // ── Mobile: SELECCIONAR button ────────────────────────
         $(document).off('click', '.vk-card__continuar');
         $(document).on('click', '.vk-card__continuar', function() {
-            var modeloId = $(this).closest('.vk-card').data('modelo');
-            var $card = $(this).closest('.vk-card');
+            var modeloId  = $(this).closest('.vk-card').data('modelo');
+            var $card     = $(this).closest('.vk-card');
             var activeTab = $card.find('.vk-tab--active').data('tab') || 'credito';
             self.app.seleccionarModelo(modeloId, activeTab);
         });
