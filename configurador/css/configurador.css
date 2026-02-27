@@ -546,6 +546,17 @@
 }
 
 /* --------------------------------------------------------------------------
+   Desktop Split Layout (PASO 2 — mobile base, desktop overridden in media query)
+   -------------------------------------------------------------------------- */
+.vk-desktop-split__left {
+    padding-bottom: var(--vk-space-md);
+}
+
+.vk-desktop-split__right {
+    padding: 0 0 var(--vk-space-lg);
+}
+
+/* --------------------------------------------------------------------------
    Color Picker (PASO 2)
    -------------------------------------------------------------------------- */
 .vk-color-picker {
@@ -585,6 +596,11 @@
 .vk-color-option__dot--negro { background: #1A1A1A; }
 .vk-color-option__dot--gris { background: #A0A0A0; }
 .vk-color-option__dot--blanco { background: #F5F5F5; border-color: #CCC; }
+
+.vk-color-option__thumb {
+    text-align: center;
+    margin-bottom: 4px;
+}
 
 .vk-color-option__label {
     font-size: var(--vk-font-size-sm);
@@ -1172,21 +1188,41 @@
         margin-bottom: 16px;
     }
 
-    /* ── PASO 2+ — 2-column split inside card ─────────────────────────── */
+    /* ── PASO 2+ — card goes full-width on desktop ────────────────────── */
+    #vk-paso-2 .vk-card,
+    #vk-paso-3 .vk-card,
+    #vk-paso-4a .vk-card,
+    #vk-paso-4b .vk-card,
+    #vk-paso-resumen .vk-card {
+        max-width: none;
+    }
+
+    /* ── 2-column split inside card ────────────────────────────────────── */
     .vk-desktop-split {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 28px;
+        gap: 0;
         align-items: start;
     }
 
+    .vk-desktop-split__left {
+        border-right: 1px solid var(--vk-border);
+    }
+
     .vk-desktop-split__left .vk-card__imagen img {
-        max-height: 340px;
+        max-height: 380px;
     }
 
     .vk-desktop-split__right {
-        position: sticky;
-        top: 100px;
+        padding: 28px var(--vk-card-padding);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .vk-desktop-split__right .vk-btn {
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
     }
 
     .vk-desktop-split-wrap {

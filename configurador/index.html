@@ -25,14 +25,13 @@
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
           media="none" onload="this.media='all'">
     <script>
-    // On production the site's own /css/bootstrap.css loads first.
-    // These CDN links are kept with media="none" by default and enabled only on localhost.
-    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-        document.getElementById('vk-cdn-bootstrap').media    = 'none';
-        document.getElementById('vk-cdn-fontawesome').media  = 'none';
+    // Bootstrap: loaded locally by setup-dev.sh (/css/bootstrap.css) — never need CDN.
+    // FontAwesome: only a stub locally, so load CDN on localhost.
+    document.getElementById('vk-cdn-bootstrap').media = 'none'; // always disabled — local file covers both envs
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        document.getElementById('vk-cdn-fontawesome').media = 'all'; // FA stub locally → use CDN
     } else {
-        document.getElementById('vk-cdn-bootstrap').media    = 'all';
-        document.getElementById('vk-cdn-fontawesome').media  = 'all';
+        document.getElementById('vk-cdn-fontawesome').media = 'none'; // production has real FA
     }
     </script>
 
@@ -42,13 +41,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        /* Show only black logo on solid white header */
-        .main-header.header-white:not(.transparent) .navbar .navbar-brand img:first-child {
-            display: none !important;
-        }
-        .main-header.header-white:not(.transparent) .navbar .navbar-brand img:last-child {
-            display: block !important;
-        }
+        /* Logo: first-child = dark logo (white bg), last-child = white logo (dark/transparent bg) */
+        /* Default: hide white logo */
+        .navbar .navbar-brand img:last-child { display: none !important; }
+        /* White header: show dark logo */
+        .main-header.header-white:not(.transparent) .navbar .navbar-brand img:first-child { display: block !important; }
+        .main-header.header-white:not(.transparent) .navbar .navbar-brand img:last-child  { display: none  !important; }
+        /* Transparent header: hide dark logo, show white logo */
+        .main-header.transparent .navbar .navbar-brand img:first-child { display: none  !important; }
+        .main-header.transparent .navbar .navbar-brand img:last-child  { display: block !important; }
         /* Ensure content starts below fixed nav */
         .page-wrapper > main {
             padding-top: 80px;
@@ -115,7 +116,10 @@
                 <button type="button" class="navbar-toggler navbar-toggler-left" data-toggle="collapse" data-target="#mega-menu">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <a class="navbar-brand mr-auto m-sm-auto" href="/"> <img src="img/voltika_logo.svg" alt="Voltika" style="height:40px;"> <img src="img/voltika_logo.svg" alt="Voltika" style="height:40px;filter:invert(1) brightness(2);"> </a>
+                <a class="navbar-brand mr-auto m-sm-auto" href="/">
+                    <img src="img/voltika_logo.svg" alt="Voltika" style="height:36px;display:block;">
+                    <img src="img/voltika_logo.svg" alt="Voltika" style="height:36px;display:block;filter:invert(1) brightness(10);">
+                </a>
                 <div class="collapse navbar-collapse flex-row-reverse" id="mega-menu" >
                     <ul class="nav navbar-nav">
                         
