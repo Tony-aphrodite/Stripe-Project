@@ -456,6 +456,11 @@
     <script src="/toastr/build/toastr.min.js"></script>
     <script src="https://js.stripe.com/v3/"></script>
     <script type="text/javascript" src="/js/js.js"></script>
+    <script>
+    /* Guard: revolution.js requires RevSlider premium plugin (not available locally).
+       Define a stub so it doesn't throw and halt further script execution. */
+    window.revslider_showDoubleJqueryError = function(){};
+    </script>
     <script src="/js/revolution.js"></script>
 
     <!-- Ensure $ is jQuery before loading configurador scripts -->
