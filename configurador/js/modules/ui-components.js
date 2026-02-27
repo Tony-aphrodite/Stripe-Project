@@ -41,10 +41,8 @@ var VkUI = {
 
         if (pasoActual > 1) {
             $progress.addClass('vk-progress--visible');
-            $('#vk-logo').addClass('vk-logo--visible');
         } else {
             $progress.removeClass('vk-progress--visible');
-            $('#vk-logo').removeClass('vk-logo--visible');
         }
     },
 
@@ -172,11 +170,12 @@ var VkUI = {
         var folder = modeloFolderMap[modeloId];
         var file   = colorFileMap[color];
 
+        var base = (window.VK_BASE_PATH || '');
         if (folder && file) {
-            return 'img/' + folder + '/' + file + '.png';
+            return base + 'img/' + folder + '/' + file + '.png';
         }
         if (folder) {
-            return 'img/' + folder + '/model.png';
+            return base + 'img/' + folder + '/model.png';
         }
 
         return 'data:image/svg+xml,' + encodeURIComponent(
