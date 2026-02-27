@@ -19,10 +19,24 @@ var Paso1 = {
         var container = $('#vk-modelos-container');
         var modelos = VOLTIKA_PRODUCTOS.modelos;
 
-        // Default: first model with badge, else first
+        // Pre-select model from URL param ?m=model_id  (e.g. configurador?m=m03)
+        var paramModelo = null;
+        try {
+            var urlParams = new URLSearchParams(window.location.search);
+            paramModelo   = urlParams.get('m');
+        } catch(e) { /* IE fallback: ignore */ }
+
+        // Default: URL param > first model with badge > first model
         var defaultModelo = null;
-        for (var i = 0; i < modelos.length; i++) {
-            if (modelos[i].badge && !defaultModelo) defaultModelo = modelos[i];
+        if (paramModelo) {
+            for (var k = 0; k < modelos.length; k++) {
+                if (modelos[k].id === paramModelo) { defaultModelo = modelos[k]; break; }
+            }
+        }
+        if (!defaultModelo) {
+            for (var i = 0; i < modelos.length; i++) {
+                if (modelos[i].badge && !defaultModelo) defaultModelo = modelos[i];
+            }
         }
         if (!defaultModelo) defaultModelo = modelos[0];
 

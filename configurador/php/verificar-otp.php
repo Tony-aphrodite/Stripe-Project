@@ -29,7 +29,7 @@ $expira          = $_SESSION['otp_expira']   ?? 0;
 
 // Verificar expiración
 if (time() > $expira) {
-    echo json_encode(['ok' => false, 'error' => 'Código expirado. Solicita uno nuevo.']);
+    echo json_encode(['valido' => false, 'error' => 'Código expirado. Solicita uno nuevo.']);
     exit;
 }
 
@@ -37,7 +37,7 @@ if (time() > $expira) {
 if ($codigoIngresado === $codigoEsperado) {
     // Limpiar sesión OTP
     unset($_SESSION['otp_codigo'], $_SESSION['otp_telefono'], $_SESSION['otp_expira']);
-    echo json_encode(['ok' => true]);
+    echo json_encode(['valido' => true]);
 } else {
-    echo json_encode(['ok' => false, 'error' => 'Código incorrecto.']);
+    echo json_encode(['valido' => false, 'error' => 'Código incorrecto.']);
 }

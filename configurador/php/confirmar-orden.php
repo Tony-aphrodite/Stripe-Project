@@ -20,16 +20,7 @@ if (file_exists($autoload)) {
     require_once $autoload;
 }
 
-// PHPMailer (incluido directamente si no hay composer)
-$mailerPath = __DIR__ . '/../../../Stripe-payment/web_voltika/php/PHPMailer/PHPMailer.php';
-if (file_exists($mailerPath)) {
-    require_once __DIR__ . '/../../../Stripe-payment/web_voltika/php/PHPMailer/Exception.php';
-    require_once $mailerPath;
-    require_once __DIR__ . '/../../../Stripe-payment/web_voltika/php/PHPMailer/SMTP.php';
-}
-
 use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
 // ── Request ───────────────────────────────────────────────────────────────────
@@ -153,30 +144,42 @@ $cuerpo = '<!DOCTYPE html>
 </html>';
 
 $emailSent = false;
+$asunto    = 'Confirmacion de tu compra Voltika #' . $pedidoNum;
+
 if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+    // PHPMailer (via composer require phpmailer/phpmailer)
     try {
         $mail = new PHPMailer(true);
         $mail->isSMTP();
-        $mail->SMTPAuth  = true;
-        $mail->Host      = 'smtp.ionos.mx';
-        $mail->Port      = 465;
-        $mail->Username  = 'voltika@riactor.com';
-        $mail->Password  = 'Lemon2022;';
+        $mail->SMTPAuth   = true;
+        $mail->Host       = 'smtp.ionos.mx';
+        $mail->Port       = 465;
+        $mail->Username   = 'voltika@riactor.com';
+        $mail->Password   = 'Lemon2022;';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
         $mail->setFrom('voltika@riactor.com', 'Voltika México');
         $mail->addAddress($email, $nombre);
         $mail->addAddress('redes@voltika.com.mx');
-        $mail->CharSet  = 'UTF-8';
-        $mail->Encoding = 'base64';
+        $mail->CharSet    = 'UTF-8';
+        $mail->Encoding   = 'base64';
         $mail->isHTML(true);
-        $mail->Subject  = 'Confirmacion de tu compra Voltika #' . $pedidoNum;
-        $mail->Body     = $cuerpo;
-        $mail->AltBody  = strip_tags($cuerpo);
+        $mail->Subject    = $asunto;
+        $mail->Body       = $cuerpo;
+        $mail->AltBody    = strip_tags($cuerpo);
         $mail->send();
         $emailSent = true;
     } catch (Exception $e) {
-        error_log('Voltika email error: ' . $e->getMessage());
+        error_log('Voltika PHPMailer error: ' . $e->getMessage());
     }
+}
+
+// Fallback: PHP mail() si PHPMailer no está disponible
+if (!$emailSent && !empty($email)) {
+    $headers  = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $headers .= "From: Voltika México <voltika@riactor.com>\r\n";
+    $headers .= "Bcc: redes@voltika.com.mx\r\n";
+    $emailSent = @mail($email, $asunto, $cuerpo, $headers);
 }
 
 echo json_encode([
