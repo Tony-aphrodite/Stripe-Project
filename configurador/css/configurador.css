@@ -762,9 +762,14 @@
     transition: all var(--vk-transition-fast);
 }
 
-.vk-payment-option:hover {
+.vk-payment-option:hover,
+.vk-payment-option--selected {
     border-color: var(--vk-green-primary);
     box-shadow: var(--vk-shadow-card);
+}
+
+.vk-payment-option--selected {
+    background: var(--vk-green-soft);
 }
 
 .vk-payment-option__title {
