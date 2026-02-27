@@ -5,32 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configura tu Voltika - Elige tu moto electrica</title>
 
-    <!-- Main site CSS (absolute paths — available on production server) -->
-    <link media="all" rel="stylesheet" href="/css/fonts/icomoon/icomoon.css">
-    <link media="all" rel="stylesheet" href="/css/fonts/roxine-font-icon/roxine-font.css">
-    <link media="all" rel="stylesheet" href="/vendors/font-awesome/css/font-awesome.css">
-    <link media="all" rel="stylesheet" href="/vendors/owl-carousel/dist/assets/owl.carousel.min.css">
-    <link media="all" rel="stylesheet" href="/vendors/owl-carousel/dist/assets/owl.theme.default.min.css">
-    <link media="all" rel="stylesheet" href="/vendors/animate/animate.css">
-    <link media="all" rel="stylesheet" href="/css/bootstrap.css">
-    <link media="all" rel="stylesheet" href="/css/main.css">
-    <link media="all" rel="stylesheet" href="/css/custom.css">
-    <link rel="stylesheet" type="text/css" href="/toastr/build/toastr.min.css">
-    <!-- CDN fallbacks for local dev (localhost / 127.0.0.1 only) -->
-    <!-- Using <noscript>-free inline injection so Chrome doesn't block document.write -->
-    <link id="vk-cdn-bootstrap" rel="stylesheet"
-          href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
-          media="none">
-    <link id="vk-cdn-fontawesome" rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-          media="none">
+    <!-- Main site CSS: media="none" on localhost, activated on production via script below -->
+    <link id="vk-site-fonts1"   media="none" rel="stylesheet" href="/css/fonts/icomoon/icomoon.css">
+    <link id="vk-site-fonts2"   media="none" rel="stylesheet" href="/css/fonts/roxine-font-icon/roxine-font.css">
+    <link id="vk-site-fa"       media="none" rel="stylesheet" href="/vendors/font-awesome/css/font-awesome.css">
+    <link id="vk-site-owl1"     media="none" rel="stylesheet" href="/vendors/owl-carousel/dist/assets/owl.carousel.min.css">
+    <link id="vk-site-owl2"     media="none" rel="stylesheet" href="/vendors/owl-carousel/dist/assets/owl.theme.default.min.css">
+    <link id="vk-site-animate"  media="none" rel="stylesheet" href="/vendors/animate/animate.css">
+    <link id="vk-site-bs"       media="none" rel="stylesheet" href="/css/bootstrap.css">
+    <link id="vk-site-main"     media="none" rel="stylesheet" href="/css/main.css">
+    <link id="vk-site-custom"   media="none" rel="stylesheet" href="/css/custom.css">
+    <link id="vk-site-toastr"   media="none" rel="stylesheet" href="/toastr/build/toastr.min.css">
+    <!-- CDN: Bootstrap 4 + FontAwesome for localhost -->
+    <link id="vk-cdn-bootstrap" media="none" rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link id="vk-cdn-fontawesome" media="none" rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <script>
-    // On localhost: load Bootstrap 4 + FontAwesome from CDN (local files may be wrong version)
-    // On production: real main.css / bootstrap.css already loaded above
-    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-        document.getElementById('vk-cdn-bootstrap').media   = 'all';
-        document.getElementById('vk-cdn-fontawesome').media = 'all';
-    }
+    (function() {
+        var isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+        if (isLocal) {
+            // Localhost: Bootstrap 4 CDN + FontAwesome CDN only — no local site CSS
+            document.getElementById('vk-cdn-bootstrap').media   = 'all';
+            document.getElementById('vk-cdn-fontawesome').media = 'all';
+        } else {
+            // Production: activate all real site CSS, skip CDN
+            ['vk-site-fonts1','vk-site-fonts2','vk-site-fa','vk-site-owl1','vk-site-owl2',
+             'vk-site-animate','vk-site-bs','vk-site-main','vk-site-custom','vk-site-toastr']
+            .forEach(function(id){ document.getElementById(id).media = 'all'; });
+        }
+    })();
     </script>
 
     <!-- Voltika Configurador CSS -->
