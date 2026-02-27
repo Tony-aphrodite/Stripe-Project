@@ -302,12 +302,19 @@ var Paso4B = {
         // Remove previous handlers to prevent duplicates on re-init
         $(document).off('click', '#vk-iniciar-proceso')
                    .off('click', '#vk-iniciar-credito')
+                   .off('click', '#vk-continuar-truora')
                    .off('click', '#vk-switch-msi')
                    .off('click', '#vk-switch-contado')
                    .off('click', '#vk-recalcular-condicional')
                    .off('click', '.vk-plazo-btn')
                    .off('input', '#vk-enganche-slider')
                    .off('change', '#vk-ingreso-select');
+
+        // "Continuar" after PREAPROBADO — go to personal info form
+        $(document).on('click', '#vk-continuar-truora', function() {
+            self.app.state.creditoAprobado = true;
+            self.app.irAPaso('credito-datos');
+        });
 
         // "Iniciar proceso" button — reveals the V3 form
         $(document).on('click', '#vk-iniciar-proceso', function() {
@@ -458,12 +465,12 @@ var Paso4B = {
             html += '</div></div>';
 
             html += '<p style="font-size:13px;color:#555;margin-bottom:12px;">' +
-                'Siguiente paso: verificar tu identidad con INE + selfie (Truora).' +
+                'Siguiente paso: completa tus datos personales y verifica tu tel\u00e9fono.' +
                 '</p>';
             html += '<button class="vk-btn vk-btn--blue" id="vk-continuar-truora" style="margin-bottom:8px;">' +
-                '&#128196; Verificar identidad (INE + selfie)' +
+                '&#128196; Continuar con mi solicitud' +
                 '</button>';
-            html += '<p style="font-size:12px;color:#9CA3AF;text-align:center;">No afecta tu historial crediticio.</p>';
+            html += '<p style="font-size:12px;color:#9CA3AF;text-align:center;">Solo toma 2 minutos.</p>';
 
             // Alternativa: pagar con tarjeta (aun en caso PREAPROBADO)
             html += '<div style="border-top:1px solid #C8E6C9;margin-top:14px;padding-top:12px;">';

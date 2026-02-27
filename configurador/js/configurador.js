@@ -11,7 +11,7 @@
         state: {
             pasoActual: 1,
             modeloSeleccionado: null,
-            metodoPago: 'credito',      // default tab
+            metodoPago: 'credito',
             colorSeleccionado: null,
             codigoPostal: null,
             ciudad: null,
@@ -20,28 +20,22 @@
             nombre: null,
             email: null,
             telefono: null,
+            fechaNacimiento: null,
+            cpDomicilio: null,
             aceptaTerminos: false,
             enganchePorcentaje: 0.30,
-            plazoMeses: 12
+            plazoMeses: 12,
+            totalPagado: null,
+            pagoCompletado: false,
+            creditoAprobado: false
         },
 
-        /**
-         * Initialize the configurator
-         */
         init: function() {
-            // Hide progress bar on step 1
             VkUI.renderProgressBar(1);
-
-            // Initialize PASO 1
             Paso1.init(this);
-
-            // Bind global navigation
             this.bindGlobalEvents();
         },
 
-        /**
-         * Get model data by ID
-         */
         getModelo: function(modeloId) {
             var modelos = VOLTIKA_PRODUCTOS.modelos;
             for (var i = 0; i < modelos.length; i++) {
@@ -50,74 +44,72 @@
             return null;
         },
 
-        /**
-         * Called from PASO 1 when user clicks CONTINUAR
-         */
         seleccionarModelo: function(modeloId, metodoPago) {
             this.state.modeloSeleccionado = modeloId;
             this.state.metodoPago = metodoPago;
-            this.state.colorSeleccionado = null; // reset for new selection
+            this.state.colorSeleccionado = null;
+            // For credito, skip to paso 4B (calculator) after paso 2
             this.irAPaso(2);
         },
 
         /**
-         * Navigate to a specific step
+         * Navigate to a step — accepts number OR string
+         * Strings: 'resumen', 'credito-datos', 'credito-otp',
+         *          'facturacion', 'exito'
          */
-        irAPaso: function(numeroPaso) {
+        irAPaso: function(paso) {
             var self = this;
             var $current = $('.vk-paso--active');
 
-            // Determine target element
             var targetId;
-            if (numeroPaso === 4) {
-                targetId = self.state.metodoPago === 'credito' ? 'vk-paso-4b' : 'vk-paso-4a';
+            if (typeof paso === 'number') {
+                if (paso === 4) {
+                    targetId = self.state.metodoPago === 'credito' ? 'vk-paso-4b' : 'vk-paso-4a';
+                } else {
+                    targetId = 'vk-paso-' + paso;
+                }
             } else {
-                targetId = 'vk-paso-' + numeroPaso;
+                targetId = 'vk-paso-' + paso;
             }
-            var $target = $('#' + targetId);
 
-            // Animate out
+            var $target = $('#' + targetId);
             $current.addClass('vk-paso--exit');
 
             setTimeout(function() {
-                // Hide current
                 $current.removeClass('vk-paso--active vk-paso--exit');
-
-                // Initialize target step
-                self.inicializarPaso(numeroPaso);
-
-                // Show target
+                self.inicializarPaso(paso);
                 $target.addClass('vk-paso--active');
 
-                // Update progress bar
-                VkUI.renderProgressBar(numeroPaso);
+                // Progress bar: map named pasos to numeric equivalents
+                var pasoNum = typeof paso === 'number' ? paso : self._pasoNumerico(paso);
+                VkUI.renderProgressBar(pasoNum);
 
-                // Update scroll hint visibility
-                if (numeroPaso === 1) {
+                if (paso === 1) {
                     $('#vk-scroll-hint').show();
+                    $('#vk-paso-1 .vk-paso__header').show();
                 } else {
                     $('#vk-scroll-hint').hide();
                 }
 
-                // Show/hide paso 1 header
-                if (numeroPaso === 1) {
-                    $('#vk-paso-1 .vk-paso__header').show();
-                }
-
-                // Scroll to top
                 VkUI.scrollToTop();
-
-                self.state.pasoActual = numeroPaso;
+                self.state.pasoActual = paso;
             }, 280);
         },
 
-        /**
-         * Initialize the content for a step
-         */
+        _pasoNumerico: function(paso) {
+            var mapa = {
+                'resumen': 3,
+                'credito-datos': 4,
+                'credito-otp': 4,
+                'facturacion': 4,
+                'exito': 4
+            };
+            return mapa[paso] || 3;
+        },
+
         inicializarPaso: function(paso) {
             switch (paso) {
                 case 1:
-                    // PASO 1 is already rendered on init
                     break;
                 case 2:
                     Paso2.init(this);
@@ -132,31 +124,43 @@
                         Paso4A.init(this);
                     }
                     break;
+                case 'resumen':
+                    PasoResumen.init(this);
+                    break;
+                case 'credito-datos':
+                    PasoCreditoDatos.init(this);
+                    break;
+                case 'credito-otp':
+                    PasoCreditoOTP.init(this);
+                    break;
+                case 'facturacion':
+                    PasoFacturacion.init(this);
+                    break;
+                case 'exito':
+                    PasoExito.init(this);
+                    break;
             }
         },
 
-        /**
-         * Bind global events (back buttons, etc.)
-         */
         bindGlobalEvents: function() {
             var self = this;
 
-            // Back button navigation
             $(document).on('click', '.vk-back-btn', function() {
-                var targetPaso = parseInt($(this).data('go-to'));
-                if (targetPaso >= 1) {
-                    self.irAPaso(targetPaso);
+                var raw = $(this).data('go-to');
+                var num = parseInt(raw);
+                if (!isNaN(num) && num >= 1) {
+                    self.irAPaso(num);
+                } else if (raw) {
+                    self.irAPaso(String(raw));
                 }
             });
         }
     };
 
-    // Initialize when DOM is ready
     $(document).ready(function() {
         Configurador.init();
     });
 
-    // Expose globally for embedding
     window.VoltikConfigurador = Configurador;
 
 })(jQuery);

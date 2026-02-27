@@ -300,6 +300,13 @@ var Paso4A = {
     _confirmarOrden: function(customerData, modelo, paymentIntentId, total, msiPago) {
         var self = this;
 
+        // Save to app state for facturación and exito screens
+        self.app.state.nombre       = customerData.nombre;
+        self.app.state.email        = customerData.email;
+        self.app.state.telefono     = customerData.telefono;
+        self.app.state.totalPagado  = total;
+        self.app.state.pagoCompletado = true;
+
         $.ajax({
             url: self.ORDER_CONFIRM_URL,
             method: 'POST',
@@ -321,26 +328,9 @@ var Paso4A = {
             }),
             complete: function() {
                 self._setLoading(false);
-                self._showSuccess(customerData, modelo, total);
+                self.app.irAPaso('facturacion');
             }
         });
-    },
-
-    _showSuccess: function(customerData, modelo, total) {
-        var html = '';
-        html += '<div style="background:#E8F5E9;border:2px solid #4CAF50;border-radius:12px;padding:24px;text-align:center;margin-top:24px;">';
-        html += '<div style="font-size:48px;">&#10004;</div>';
-        html += '<h3 style="color:#2E7D32;margin:8px 0 4px;">&#161;Pago exitoso! Tu Voltika ya es tuya.</h3>';
-        html += '<p style="font-size:14px;color:#555;margin:8px 0;">Confirmacion enviada a <strong>' + customerData.email + '</strong></p>';
-        html += '<div style="background:#FFF;border-radius:8px;padding:12px;margin-top:12px;font-size:13px;text-align:left;">';
-        html += '<div><strong>Modelo:</strong> ' + modelo.nombre + '</div>';
-        html += '<div><strong>Total pagado:</strong> ' + VkUI.formatPrecio(total) + ' MXN</div>';
-        html += '<div><strong>Entrega:</strong> Un asesor Voltika te contactara en 24-48 horas.</div>';
-        html += '</div>';
-        html += '</div>';
-
-        $('#vk-pago-container').html(html);
-        VkUI.scrollToTop();
     },
 
     _showError: function(msg) {

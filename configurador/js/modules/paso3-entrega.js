@@ -11,14 +11,24 @@ var Paso3 = {
         this.bindEvents();
     },
 
+    _calcFechaEntrega: function() {
+        var d = new Date();
+        d.setDate(d.getDate() + 15);
+        var m = ['enero','febrero','marzo','abril','mayo','junio',
+                 'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        return d.getDate() + ' de ' + m[d.getMonth()] + ' de ' + d.getFullYear();
+    },
+
     render: function() {
         var state = this.app.state;
         var esCredito = state.metodoPago === 'credito';
         var config = VOLTIKA_PRODUCTOS.config;
+        var fechaEntrega = this._calcFechaEntrega();
         var html = '';
 
-        // Back button
-        html += VkUI.renderBackButton(2);
+        // Back button — for crédito path, back goes to credito-otp; otherwise to paso 2
+        var backTarget = (esCredito && state.creditoAprobado) ? 'credito-otp' : 2;
+        html += VkUI.renderBackButton(backTarget);
 
         // Header
         html += '<h2 class="vk-paso__titulo">PASO 3</h2>';
@@ -56,7 +66,10 @@ var Paso3 = {
 
         // Delivery time
         html += '<div class="vk-info-box__detail">' +
-            '<span style="font-weight:700;">Entrega estimada: ' + config.entregaDiasHabiles + ' d\u00edas h\u00e1biles</span>' +
+            '<span style="font-weight:700;">Entrega estimada: ' + fechaEntrega + '</span>' +
+            '</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-top:2px;">' +
+            '(15 d\u00edas naturales desde hoy)' +
             '</div>';
 
         // Advisor note
@@ -117,12 +130,12 @@ var Paso3 = {
             }
         });
 
-        // Confirm order
+        // Confirm order — goes to Resumen (shared for all payment methods)
         $(document).on('click', '#vk-paso3-confirmar', function() {
             var cp = $('#vk-cp-input').val();
             if (VkValidacion.codigoPostal(cp) && self.app.state.ciudad) {
                 self.app.state.codigoPostal = cp;
-                self.app.irAPaso(4);
+                self.app.irAPaso('resumen');
             } else {
                 $('#vk-cp-input').focus();
                 $('#vk-cp-input').css('border-color', 'red');
