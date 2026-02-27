@@ -16,11 +16,23 @@
     <link media="all" rel="stylesheet" href="/css/main.css">
     <link media="all" rel="stylesheet" href="/css/custom.css">
     <link rel="stylesheet" type="text/css" href="/toastr/build/toastr.min.css">
-    <!-- CDN fallbacks for local dev (localhost only — no-op on production) -->
+    <!-- CDN fallbacks for local dev (localhost / 127.0.0.1 only) -->
+    <!-- Using <noscript>-free inline injection so Chrome doesn't block document.write -->
+    <link id="vk-cdn-bootstrap" rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
+          media="none" onload="this.media='all'">
+    <link id="vk-cdn-fontawesome" rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+          media="none" onload="this.media='all'">
     <script>
-    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-        document.write('<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">');
-        document.write('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">');
+    // On production the site's own /css/bootstrap.css loads first.
+    // These CDN links are kept with media="none" by default and enabled only on localhost.
+    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        document.getElementById('vk-cdn-bootstrap').media    = 'none';
+        document.getElementById('vk-cdn-fontawesome').media  = 'none';
+    } else {
+        document.getElementById('vk-cdn-bootstrap').media    = 'all';
+        document.getElementById('vk-cdn-fontawesome').media  = 'all';
     }
     </script>
 
@@ -433,8 +445,15 @@
 
     <!-- Main site scripts (absolute paths) -->
     <script src="/vendors/jquery/jquery-2.1.4.min.js"></script>
-    <!-- CDN fallback: loads jQuery from CDN if the site-relative path failed -->
-    <script>window.jQuery || document.write('<scr'+'ipt src="https://code.jquery.com/jquery-2.2.4.min.js"><\/scr'+'ipt>')</script>
+    <!-- CDN fallback without document.write (Chrome blocks cross-origin document.write) -->
+    <script>
+    if (!window.jQuery) {
+        var _jqs = document.createElement('script');
+        _jqs.src = 'https://code.jquery.com/jquery-2.2.4.min.js';
+        _jqs.async = false; // synchronous so subsequent scripts can use $
+        document.head.appendChild(_jqs);
+    }
+    </script>
     <script src="/vendors/tether/dist/js/tether.min.js"></script>
     <script src="/vendors/bootstrap/js/bootstrap.min.js"></script>
     <script src="/vendors/stellar/jquery.stellar.min.js"></script>
