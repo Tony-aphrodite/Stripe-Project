@@ -1,15 +1,12 @@
 /* ==========================================================================
    Voltika - PASO 1: Model Selection
-   2-column grid with global payment method selector
+   Full-width card per model with per-card payment tabs [Crédito|9 MSI|Contado]
    ========================================================================== */
 
 var Paso1 = {
 
-    _metodoActivo: 'credito',
-
     init: function(app) {
         this.app = app;
-        this._metodoActivo = 'credito';
         this.render();
         this.bindEvents();
     },
@@ -18,14 +15,6 @@ var Paso1 = {
         var container = $('#vk-modelos-container');
         var html = '';
 
-        // Global payment method selector
-        html += '<div class="vk-metodo-tabs" id="vk-metodo-tabs">';
-        html += '<div class="vk-metodo-tab vk-metodo-tab--active" data-metodo="credito">Credito<br>Voltika</div>';
-        html += '<div class="vk-metodo-tab" data-metodo="msi">9 MSI</div>';
-        html += '<div class="vk-metodo-tab" data-metodo="contado">Contado</div>';
-        html += '</div>';
-
-        // 2-column model cards
         var modelos = VOLTIKA_PRODUCTOS.modelos;
         for (var i = 0; i < modelos.length; i++) {
             html += this.renderCard(modelos[i]);
@@ -53,80 +42,132 @@ var Paso1 = {
             '</div>';
 
         // Info block
-        html += '<div style="padding:0 10px;text-align:center;">';
+        html += '<div class="vk-card__info">';
         html += '<div class="vk-card__nombre">' + modelo.nombre + '</div>';
 
         if (modelo.autonomia) {
-            html += '<div style="font-size:11px;color:#777;margin-bottom:6px;">' +
-                modelo.autonomia + ' Km &middot; ' + modelo.velocidad + ' Km/h' +
+            html += '<div class="vk-card__specs">' +
+                '<span>&#9889; ' + modelo.autonomia + ' Km</span>' +
+                '<span>&#128663; ' + modelo.velocidad + ' Km/h</span>' +
                 '</div>';
         }
 
-        // Price area (swappable on method change)
-        html += '<div class="vk-precio-area">' + this.renderPrecio(modelo, this._metodoActivo) + '</div>';
-
+        html += '<div class="vk-card__precio-base">Desde ' + VkUI.formatPrecio(modelo.precioContado) + ' MXN <span>(contado)</span></div>';
         html += '</div>'; // end info
 
-        // CTA
+        // Green banner
+        html += VkUI.renderBanner();
+
+        // Bullets
+        html += VkUI.renderBullets();
+
+        // Per-card payment tabs
+        html += '<div class="vk-card__tabs">';
+        html += '<button class="vk-tab vk-tab--active" data-tab="credito">Credito Voltika</button>';
+        html += '<button class="vk-tab" data-tab="msi">9 MSI</button>';
+        html += '<button class="vk-tab" data-tab="contado">Contado</button>';
+        html += '</div>';
+
+        // Tab content — Credito (default active)
+        html += '<div class="vk-card__tab-content vk-card__tab-content--active" data-tab-content="credito">';
+        html += this.renderTabCredito(modelo);
+        html += '</div>';
+
+        // Tab content — MSI
+        html += '<div class="vk-card__tab-content" data-tab-content="msi">';
+        html += this.renderTabMSI(modelo);
+        html += '</div>';
+
+        // Tab content — Contado
+        html += '<div class="vk-card__tab-content" data-tab-content="contado">';
+        html += this.renderTabContado(modelo);
+        html += '</div>';
+
+        // CTA button
         html += '<button class="vk-btn vk-btn--primary vk-card__continuar" data-modelo="' + modelo.id + '">' +
             'SELECCIONAR' +
             '</button>';
+
+        // Microcopy
+        html += '<p class="vk-card__footer-note">Podras confirmar tu Punto Voltika antes de continuar.</p>';
+
+        // Trust badges
+        html += VkUI.renderTrustBadges();
 
         html += '</div>'; // end card
 
         return html;
     },
 
-    renderPrecio: function(modelo, metodo) {
-        if (metodo === 'credito') {
-            return '<div class="vk-card__precio-destacado">' +
-                '<strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong>/sem' +
-                '</div>' +
-                '<div class="vk-card__precio-secundario">Contado ' + VkUI.formatPrecio(modelo.precioContado) + '</div>';
+    renderTabCredito: function(modelo) {
+        var html = '';
+        html += '<div class="vk-card__credito-logo"><span class="vk-shield">&#9745;</span> Credito Voltika</div>';
+        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> / semana</div>';
+        html += '<div class="vk-card__tab-bullets">';
+        html += VkUI.renderTabBullet('Aprobacion en minutos');
+        html += VkUI.renderTabBullet('Flete incluido');
+        html += VkUI.renderTabBullet('Confirmas tu punto de entrega en el siguiente paso');
+        html += '</div>';
+        return html;
+    },
+
+    renderTabMSI: function(modelo) {
+        var html = '';
+        if (!modelo.tieneMSI) {
+            html += '<div style="padding:12px 0;text-align:center;">';
+            html += '<div class="vk-card__precio-secundario">Sin opcion MSI para este modelo</div>';
+            html += '<div class="vk-card__precio-secundario">Contado: ' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</div>';
+            html += '</div>';
+            return html;
         }
-        if (metodo === 'msi') {
-            if (!modelo.tieneMSI) {
-                return '<div class="vk-card__precio-secundario">Sin opcion MSI</div>' +
-                    '<div class="vk-card__precio-secundario">Contado ' + VkUI.formatPrecio(modelo.precioContado) + '</div>';
-            }
-            return '<div class="vk-card__precio-destacado">' +
-                '<strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong>/mes' +
-                '</div>' +
-                '<div class="vk-card__precio-secundario">9 MSI sin intereses</div>';
-        }
-        // contado
-        return '<div class="vk-card__precio-destacado">' +
-            '<strong>' + VkUI.formatPrecio(modelo.precioContado) + '</strong> MXN' +
-            '</div>' +
-            '<div class="vk-card__precio-secundario">IVA incluido</div>';
+        html += '<div class="vk-card__msi-header">9 Meses sin intereses ' + VkUI.renderCardLogos() + '</div>';
+        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> / mes</div>';
+        html += '<div class="vk-card__tab-bullets">';
+        html += VkUI.renderTabBullet('9 MSI con tu tarjeta de credito');
+        html += VkUI.renderTabBullet('Sin intereses ni cargos ocultos');
+        html += VkUI.renderTabBullet('Confirmas tu punto de entrega en el siguiente paso');
+        html += '</div>';
+        return html;
+    },
+
+    renderTabContado: function(modelo) {
+        var html = '';
+        html += '<div class="vk-card__contado-label">Pago de contado</div>';
+        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
+        html += '<div class="vk-card__iva">IVA incluido</div>';
+        html += '<div class="vk-card__tarjetas">' + VkUI.renderCardLogos() + '</div>';
+        html += '<div class="vk-card__tab-bullets">';
+        html += VkUI.renderTabBullet('Pago 100% seguro con Stripe');
+        html += VkUI.renderTabBullet('Confirmas tu punto de entrega en el siguiente paso');
+        html += '</div>';
+        return html;
     },
 
     bindEvents: function() {
         var self = this;
 
-        // Payment method tab switching — updates all card prices
-        $(document).off('click', '#vk-metodo-tabs .vk-metodo-tab');
-        $(document).on('click', '#vk-metodo-tabs .vk-metodo-tab', function() {
-            var metodo = $(this).data('metodo');
-            self._metodoActivo = metodo;
+        // Per-card tab switching
+        $(document).off('click', '#vk-paso-1 .vk-card__tabs .vk-tab');
+        $(document).on('click', '#vk-paso-1 .vk-card__tabs .vk-tab', function() {
+            var tab = $(this).data('tab');
+            var $card = $(this).closest('.vk-card');
 
-            $('#vk-metodo-tabs .vk-metodo-tab').removeClass('vk-metodo-tab--active');
-            $(this).addClass('vk-metodo-tab--active');
+            // Toggle active tab within this card only
+            $(this).closest('.vk-card__tabs').find('.vk-tab').removeClass('vk-tab--active');
+            $(this).addClass('vk-tab--active');
 
-            // Refresh price area on every card
-            var modelos = VOLTIKA_PRODUCTOS.modelos;
-            for (var i = 0; i < modelos.length; i++) {
-                var m = modelos[i];
-                $('.vk-card[data-modelo="' + m.id + '"] .vk-precio-area')
-                    .html(self.renderPrecio(m, metodo));
-            }
+            // Show matching tab content within this card
+            $card.find('.vk-card__tab-content').removeClass('vk-card__tab-content--active');
+            $card.find('[data-tab-content="' + tab + '"]').addClass('vk-card__tab-content--active');
         });
 
-        // SELECCIONAR button
+        // SELECCIONAR button — passes active tab as metodoPago
         $(document).off('click', '.vk-card__continuar');
         $(document).on('click', '.vk-card__continuar', function() {
             var modeloId = $(this).closest('.vk-card').data('modelo');
-            self.app.seleccionarModelo(modeloId, self._metodoActivo);
+            var $card = $(this).closest('.vk-card');
+            var activeTab = $card.find('.vk-tab--active').data('tab') || 'credito';
+            self.app.seleccionarModelo(modeloId, activeTab);
         });
     }
 };
