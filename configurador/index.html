@@ -91,6 +91,32 @@
         .icon-sort-1::before        { font-family: FontAwesome; content: '\f0c9'; font-size: .875rem; }
         /* Hide mobile toggler on desktop */
         @media (min-width: 992px) { .navbar-toggler { display: none !important; } }
+
+        /* ══ Side panel ══════════════════════════════════════════════════════ */
+        .nav-wrap {
+            position: fixed;
+            top: 0;
+            right: -320px;
+            width: 300px;
+            height: 100%;
+            z-index: 9999;
+            overflow-y: auto;
+            padding: 30px 20px;
+            transition: right 0.35s ease;
+            box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+        }
+        .nav-wrap.open { right: 0; }
+        .nav-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 9998;
+        }
+        .nav-overlay.visible { display: block; }
+        body.panel-open { overflow: hidden; }
+        .nav-trigger-close { cursor: pointer; margin-bottom: 20px; }
+        .nav-trigger-close a { color: #333; text-decoration: none; font-size: .875rem; font-weight: 600; }
     </style>
 </head>
 
@@ -102,7 +128,7 @@
     </div>
     <script>window.addEventListener('load',function(){var p=document.getElementById('pageLoad');if(p)p.style.display='none';});</script>
     <!--Side panel-->
-    <nav class="nav-wrap bg-white" style="display:none;">
+    <nav class="nav-wrap bg-white">
         <!-- opener inside of collapsible menu -->
         <div class="nav-trigger nav-trigger-close"> 
             <a href="#" style="color:#000;">Cerrar panel <i class="icon-long-arrow-right"></i> </a>
@@ -496,8 +522,26 @@
         document.head.appendChild(_jqs);
     }
     </script>
+    <!-- Tether (required by Bootstrap 4 alpha.6 for tooltips/dropdowns) -->
     <script src="/vendors/tether/dist/js/tether.min.js"></script>
+    <script>
+    if (typeof Tether === 'undefined') {
+        var _ts = document.createElement('script');
+        _ts.src = 'https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js';
+        _ts.async = false;
+        document.head.appendChild(_ts);
+    }
+    </script>
+    <!-- Bootstrap 4.0.0-alpha.6 JS -->
     <script src="/vendors/bootstrap/js/bootstrap.min.js"></script>
+    <script>
+    if (typeof $.fn.modal === 'undefined') {
+        var _bs = document.createElement('script');
+        _bs.src = 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js';
+        _bs.async = false;
+        document.head.appendChild(_bs);
+    }
+    </script>
     <script src="/vendors/stellar/jquery.stellar.min.js"></script>
     <script src="/vendors/isotope/javascripts/isotope.pkgd.min.js"></script>
     <script src="/vendors/isotope/javascripts/packery-mode.pkgd.js"></script>
