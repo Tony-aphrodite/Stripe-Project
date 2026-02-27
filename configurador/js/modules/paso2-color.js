@@ -115,7 +115,8 @@ var Paso2 = {
     bindEvents: function() {
         var self = this;
 
-        // Color selection
+        // Color selection (off first to prevent duplicate handlers on re-init)
+        $(document).off('click', '#vk-paso-2 .vk-color-option');
         $(document).on('click', '#vk-paso-2 .vk-color-option', function() {
             var color = $(this).data('color');
             self.app.state.colorSeleccionado = color;
@@ -131,6 +132,7 @@ var Paso2 = {
         });
 
         // Continue to PASO 3
+        $(document).off('click', '#vk-paso2-continuar');
         $(document).on('click', '#vk-paso2-continuar', function() {
             self.app.irAPaso(3);
         });
