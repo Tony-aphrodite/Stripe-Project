@@ -28,11 +28,7 @@ var Paso2 = {
         html += VkUI.renderBackButton(1);
 
         // Step header
-        html += '<h2 class="vk-paso__titulo">PASO 2</h2>';
-        html += '<p class="vk-paso__subtitulo">Selecciona el color de tu moto</p>';
-
-        // Model name
-        html += '<h3 class="vk-card__nombre" style="margin:12px 0 8px;">' + modelo.nombre + '</h3>';
+        html += '<h2 class="vk-paso__titulo">Elige el color <span style="font-weight:400;">con el que quieres rodar</span></h2>';
 
         // Card
         html += '<div class="vk-card">';
@@ -46,17 +42,29 @@ var Paso2 = {
             '<img src="' + img + '" alt="' + modelo.nombre + ' ' + colorActual + '">' +
             '</div>';
 
-        // Color picker
+        // Model name below image
+        html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin:4px 0 12px;">' +
+            'Modelo <strong>' + modelo.nombre + '</strong> seleccionado' +
+            '</div>';
+
+        // Color picker — thumbnail images
         html += '<div class="vk-color-picker" style="padding:0 20px;">';
         for (var i = 0; i < modelo.colores.length; i++) {
             var c = modelo.colores[i];
             var activeCls = c.id === colorActual ? ' vk-color-option--active' : '';
+            var thumb = VkUI.getImagenMoto(modelo.id, c.id);
             html += '<div class="vk-color-option' + activeCls + '" data-color="' + c.id + '">' +
-                '<div class="vk-color-option__dot vk-color-option__dot--' + c.id + '" style="background:' + c.hex + ';"></div>' +
+                '<div class="vk-color-option__thumb">' +
+                '<img src="' + thumb + '" alt="' + c.nombre + '" ' +
+                'style="width:52px;height:36px;object-fit:contain;">' +
+                '</div>' +
                 '<div class="vk-color-option__label">' + c.nombre + '</div>' +
                 '</div>';
         }
         html += '</div>';
+        html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:6px 0 4px;">' +
+            'El color no afecta precio ni tiempo de entrega.' +
+            '</p>';
 
         // Payment info (varies by method)
         html += '<div style="padding:16px 20px;text-align:center;">';
@@ -107,12 +115,11 @@ var Paso2 = {
         var html = '';
 
         if (metodo === 'credito') {
+            html += '<div class="vk-card__credito-logo"><span class="vk-shield">&#9745;</span> cr\u00e9dito voltika seleccionado</div>';
             html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
             html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
-            html += VkUI.renderTabBullet('Aprobaci\u00f3n en minutos');
-            html += VkUI.renderTabBullet('Incluye flete');
-            html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
-            html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
+            html += VkUI.renderTabBullet('Aprobaci\u00f3n en 2 minutos');
+            html += VkUI.renderTabBullet('Env\u00edo asegurado incluido');
             html += '</div>';
         } else if (metodo === 'msi') {
             html += '<div style="font-size:18px;font-weight:700;margin-bottom:6px;">' +
