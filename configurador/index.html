@@ -16,20 +16,21 @@
     <link id="vk-site-main"     media="none" rel="stylesheet" href="/css/main.css">
     <link id="vk-site-custom"   media="none" rel="stylesheet" href="/css/custom.css">
     <link id="vk-site-toastr"   media="none" rel="stylesheet" href="/toastr/build/toastr.min.css">
-    <!-- CDN: Bootstrap 4 + FontAwesome for localhost -->
+    <!-- CDN: Bootstrap 4.0.0-alpha.6 (exact production version) + FontAwesome + Montserrat -->
     <link id="vk-cdn-bootstrap" media="none" rel="stylesheet"
-          href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+          href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css">
     <link id="vk-cdn-fontawesome" media="none" rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link id="vk-cdn-montserrat" media="none" rel="stylesheet"
+          href="https://fonts.googleapis.com/css?family=Montserrat:400,500,600,700">
     <script>
     (function() {
         var isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
         if (isLocal) {
-            // Localhost: Bootstrap 4 CDN + FontAwesome CDN only — no local site CSS
             document.getElementById('vk-cdn-bootstrap').media   = 'all';
             document.getElementById('vk-cdn-fontawesome').media = 'all';
+            document.getElementById('vk-cdn-montserrat').media  = 'all';
         } else {
-            // Production: activate all real site CSS, skip CDN
             ['vk-site-fonts1','vk-site-fonts2','vk-site-fa','vk-site-owl1','vk-site-owl2',
              'vk-site-animate','vk-site-bs','vk-site-main','vk-site-custom','vk-site-toastr']
             .forEach(function(id){ document.getElementById(id).media = 'all'; });
@@ -55,70 +56,41 @@
         /* Ensure content starts below fixed nav */
         .page-wrapper > main { padding-top: 80px; }
 
-        /* ══ Navbar — match uploaded screenshot exactly ══════════════════ */
-        #waituk-main-header,
-        #waituk-main-header .bottom-header {
-            background: #fff !important;
-            border-bottom: 1px solid #ebebeb !important;
-            box-shadow: none !important;
+        /* ══ Navbar — exact values from production main.css ═════════════ */
+        .main-header.header-white.sticky-nav { background: #fff; }
+        .main-header .navbar {
+            padding: 0;
+            min-height: 6.063rem;
+            font-family: 'Montserrat', sans-serif;
         }
-        #navbar-inner-container {
-            display: flex !important;
-            align-items: center !important;
-            flex-wrap: nowrap !important;
-            padding: 0 32px !important;
-            min-height: 70px !important;
-            background: #fff !important;
+        .main-header .navbar .navbar-brand { margin-left: 0; padding: 0; }
+        /* Force navbar-collapse visible (alpha.6 handles via navbar-toggleable-lg) */
+        .main-header .navbar .navbar-collapse { display: flex !important; }
+        .main-header .navbar .navbar-nav { flex-direction: row; }
+        .main-header .navbar .navbar-nav li {
+            text-transform: uppercase;
+            font-size: .75rem;
+            font-weight: 500;
         }
-        /* Logo — left */
-        #navbar-inner-container .navbar-brand {
-            padding: 0 !important;
-            margin-right: auto !important;
-            flex-shrink: 0;
+        .main-header .navbar .navbar-nav li a {
+            color: #55565b;
+            padding: 2.25rem 1rem;
+            display: inline-block;
         }
-        /* Nav links — uppercase dark gray */
-        #navbar-inner-container .navbar-collapse {
-            display: flex !important;
-            flex-grow: 0 !important;
+        .main-header .navbar .navbar-nav li a:hover,
+        .main-header .navbar .navbar-nav li a:focus {
+            background: none;
+            color: #a7a7a7;
         }
-        #navbar-inner-container .navbar-nav { flex-direction: row !important; align-items: center !important; }
-        #navbar-inner-container .navbar-nav > li > a,
-        #navbar-inner-container .navbar-nav .nav-link {
-            color: #2c2c2c !important;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-            font-size: 12.5px !important;
-            font-weight: 600 !important;
-            letter-spacing: 1.5px !important;
-            text-transform: uppercase !important;
-            padding: 24px 16px !important;
-            white-space: nowrap !important;
-            background: none !important;
-            border: none !important;
-        }
-        #navbar-inner-container .navbar-nav > li > a:hover { color: #888 !important; }
-        /* Hide Bootstrap dropdown caret */
-        #navbar-inner-container .dropdown-toggle::after { display: none !important; }
-        /* Right icons: search + hamburger */
-        .navbar-pos-search, .nav-trigger.overlay-trigger {
-            display: flex !important;
-            align-items: center !important;
-            margin-left: 8px !important;
-        }
-        .navbar-pos-search a.x-search-trigger,
-        .nav-trigger.overlay-trigger > a {
-            color: #2c2c2c !important;
-            font-size: 17px !important;
-            padding: 8px !important;
-            display: flex !important;
-            align-items: center !important;
-        }
-        /* Icon fallbacks using FontAwesome when site icon font is unavailable */
-        .custom-icon-search::before { font-family: FontAwesome; content: '\f002'; }
-        .icon-sort-1::before        { font-family: FontAwesome; content: '\f0c9'; }
-        /* Hide close/secondary search icon */
-        .x-search.icon-close-round { display: none !important; }
+        .main-header .navbar .navbar-nav li a.dropdown-toggle::after { display: none; }
+        /* Right-side icons */
+        .main-header.header-white .navbar-pos-search a { color: #55565b; }
+        .main-header .navbar-pos-search a.icon-close-round { display: none; }
+        /* Icon fallbacks (site icon font unavailable locally) */
+        .custom-icon-search::before { font-family: FontAwesome; content: '\f002'; font-size: .875rem; }
+        .icon-sort-1::before        { font-family: FontAwesome; content: '\f0c9'; font-size: .875rem; }
         /* Hide mobile toggler on desktop */
-        .navbar-toggler { display: none !important; }
+        @media (min-width: 992px) { .navbar-toggler { display: none !important; } }
     </style>
 </head>
 
