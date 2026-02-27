@@ -19,19 +19,17 @@
     <!-- CDN fallbacks for local dev (localhost / 127.0.0.1 only) -->
     <!-- Using <noscript>-free inline injection so Chrome doesn't block document.write -->
     <link id="vk-cdn-bootstrap" rel="stylesheet"
-          href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
-          media="none" onload="this.media='all'">
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+          media="none">
     <link id="vk-cdn-fontawesome" rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-          media="none" onload="this.media='all'">
+          media="none">
     <script>
-    // Bootstrap: loaded locally by setup-dev.sh (/css/bootstrap.css) — never need CDN.
-    // FontAwesome: only a stub locally, so load CDN on localhost.
-    document.getElementById('vk-cdn-bootstrap').media = 'none'; // always disabled — local file covers both envs
+    // On localhost: load Bootstrap 4 + FontAwesome from CDN (local files may be wrong version)
+    // On production: real main.css / bootstrap.css already loaded above
     if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-        document.getElementById('vk-cdn-fontawesome').media = 'all'; // FA stub locally → use CDN
-    } else {
-        document.getElementById('vk-cdn-fontawesome').media = 'none'; // production has real FA
+        document.getElementById('vk-cdn-bootstrap').media   = 'all';
+        document.getElementById('vk-cdn-fontawesome').media = 'all';
     }
     </script>
 
@@ -51,9 +49,40 @@
         .main-header.transparent .navbar .navbar-brand img:first-child { display: none  !important; }
         .main-header.transparent .navbar .navbar-brand img:last-child  { display: block !important; }
         /* Ensure content starts below fixed nav */
-        .page-wrapper > main {
-            padding-top: 80px;
+        .page-wrapper > main { padding-top: 80px; }
+
+        /* ── Navbar overrides (match original: dark uppercase links) ── */
+        #waituk-main-header {
+            background: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }
+        #navbar-inner-container {
+            padding: 0 24px;
+            min-height: 64px;
+            align-items: center;
+        }
+        #navbar-inner-container .navbar-brand {
+            padding: 0;
+            margin-right: 40px;
+        }
+        #navbar-inner-container .navbar-nav .nav-link,
+        #navbar-inner-container .navbar-nav > li > a {
+            color: #222 !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.8px !important;
+            text-transform: uppercase !important;
+            padding: 22px 14px !important;
+        }
+        #navbar-inner-container .navbar-nav > li > a:hover,
+        #navbar-inner-container .navbar-nav .nav-link:hover {
+            color: #555 !important;
+        }
+        /* Hide dropdown arrows added by Bootstrap */
+        #navbar-inner-container .dropdown-toggle::after { display: none; }
+        /* Right-side icons */
+        .navbar-pos-search a, .nav-trigger a { color: #333 !important; font-size: 16px; }
     </style>
 </head>
 

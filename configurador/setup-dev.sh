@@ -21,7 +21,7 @@ fi
 mkdir -p "$BASE/css"
 if [ ! -f "$BASE/css/bootstrap.css" ]; then
     curl -s -o "$BASE/css/bootstrap.css" \
-        https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css
+        https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css
     echo "  Downloaded Bootstrap CSS"
 else
     echo "  Bootstrap CSS already present"
