@@ -98,6 +98,9 @@ var Paso3 = {
     bindEvents: function() {
         var self = this;
 
+        // Remove previous handlers to prevent duplicates on re-init
+        $(document).off('input', '#vk-cp-input').off('click', '#vk-paso3-confirmar');
+
         // Postal code input
         $(document).on('input', '#vk-cp-input', function() {
             var val = $(this).val().replace(/\D/g, '');

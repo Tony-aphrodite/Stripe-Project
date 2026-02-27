@@ -186,7 +186,18 @@ var Paso4B = {
 
         // Iniciar proceso CTA
         html += '<button class="vk-btn vk-btn--blue" id="vk-iniciar-proceso">Iniciar proceso</button>';
-        html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin:4px 0 24px;">Toma menos de 2 minutos.</p>';
+        html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin:4px 0 16px;">Toma menos de 2 minutos.</p>';
+
+        // Alternativa: pagar con tarjeta
+        html += '<div style="border-top:1px solid var(--vk-border-light);padding-top:14px;margin-bottom:20px;text-align:center;">';
+        html += '<p style="font-size:13px;color:var(--vk-text-muted);margin-bottom:8px;">\u00bfPrefieres pagar con tarjeta?</p>';
+        html += '<div style="display:flex;gap:10px;justify-content:center;">';
+        if (modelo.tieneMSI) {
+            html += '<button class="vk-btn vk-btn--secondary" id="vk-switch-msi" style="flex:1;max-width:180px;font-size:13px;padding:10px;">9 MSI sin intereses</button>';
+        }
+        html += '<button class="vk-btn vk-btn--secondary" id="vk-switch-contado" style="flex:1;max-width:180px;font-size:13px;padding:10px;">Pago contado</button>';
+        html += '</div>';
+        html += '</div>';
 
         // ── V3 FORM (hidden until "Iniciar proceso" is clicked) ───────────
         html += '<div id="vk-v3-form" style="display:none;">';
@@ -287,6 +298,16 @@ var Paso4B = {
 
     bindEvents: function() {
         var self = this;
+
+        // Remove previous handlers to prevent duplicates on re-init
+        $(document).off('click', '#vk-iniciar-proceso')
+                   .off('click', '#vk-iniciar-credito')
+                   .off('click', '#vk-switch-msi')
+                   .off('click', '#vk-switch-contado')
+                   .off('click', '#vk-recalcular-condicional')
+                   .off('click', '.vk-plazo-btn')
+                   .off('input', '#vk-enganche-slider')
+                   .off('change', '#vk-ingreso-select');
 
         // "Iniciar proceso" button — reveals the V3 form
         $(document).on('click', '#vk-iniciar-proceso', function() {
@@ -443,6 +464,17 @@ var Paso4B = {
                 '&#128196; Verificar identidad (INE + selfie)' +
                 '</button>';
             html += '<p style="font-size:12px;color:#9CA3AF;text-align:center;">No afecta tu historial crediticio.</p>';
+
+            // Alternativa: pagar con tarjeta (aun en caso PREAPROBADO)
+            html += '<div style="border-top:1px solid #C8E6C9;margin-top:14px;padding-top:12px;">';
+            html += '<p style="font-size:12px;color:#555;text-align:center;margin-bottom:8px;">\u00bfPrefieres pagar con tarjeta en su lugar?</p>';
+            html += '<div style="display:flex;gap:8px;justify-content:center;">';
+            if (modelo.tieneMSI) {
+                html += '<button class="vk-btn vk-btn--secondary" id="vk-switch-msi" style="flex:1;font-size:12px;padding:8px;">9 MSI</button>';
+            }
+            html += '<button class="vk-btn vk-btn--secondary" id="vk-switch-contado" style="flex:1;font-size:12px;padding:8px;">Contado</button>';
+            html += '</div></div>';
+
             html += '</div>';
 
         } else if (resultado.status === 'CONDICIONAL' || resultado.status === 'CONDICIONAL_ESTIMADO') {
