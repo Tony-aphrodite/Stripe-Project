@@ -1013,7 +1013,7 @@
 
     /* ── Container ────────────────────────────────────────────────────── */
     .vk-configurador {
-        max-width: 1020px;
+        max-width: 83%;
         padding: var(--vk-space-xl) var(--vk-space-lg);
     }
 
