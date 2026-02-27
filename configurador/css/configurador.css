@@ -570,11 +570,12 @@
     display: block;
 }
 
-/* Method selector tabs above the grid */
+/* Method selector tabs above the grid — spans both columns */
 .vk-metodo-tabs {
     display: flex;
     gap: 6px;
     margin-bottom: 14px;
+    grid-column: 1 / -1;
 }
 
 .vk-metodo-tab {
