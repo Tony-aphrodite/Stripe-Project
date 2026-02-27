@@ -21,6 +21,20 @@
     <link rel="stylesheet" href="css/configurador-variables.css">
     <link rel="stylesheet" href="css/configurador.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* Show only black logo on solid white header */
+        .main-header.header-white:not(.transparent) .navbar .navbar-brand img:first-child {
+            display: none !important;
+        }
+        .main-header.header-white:not(.transparent) .navbar .navbar-brand img:last-child {
+            display: block !important;
+        }
+        /* Ensure content starts below fixed nav */
+        .page-wrapper > main {
+            padding-top: 80px;
+        }
+    </style>
 </head>
 
 <body>
