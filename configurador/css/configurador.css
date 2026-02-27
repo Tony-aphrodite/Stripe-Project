@@ -44,7 +44,8 @@
 
 .vk-logo__img {
     width: 160px;
-    height: auto;
+    height: 105px;
+    object-fit: contain;
 }
 
 /* --------------------------------------------------------------------------
