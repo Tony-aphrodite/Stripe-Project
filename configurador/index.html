@@ -70,7 +70,7 @@
     <div id="wrapper">
         <div class="page-wrapper">
             
-<header class="fixed-top main-header header-white transparent with-side-panel-ico  sticky-nav " id="waituk-main-header">
+<header class="fixed-top main-header header-white with-side-panel-ico sticky-nav" id="waituk-main-header">
     <div id="nav-section">
         <div class="bottom-header container-fluid mega-menus" id="mega-menus">
             <nav class="navbar navbar-toggleable-lg no-border-radius no-margin mega-menu-multiple" id="navbar-inner-container">
@@ -385,11 +385,8 @@
         </div>
     </div>
 
-    <!-- Stripe.js -->
-    <script src="https://js.stripe.com/v3/"></script>
-
     <!-- Main site scripts (absolute paths) -->
-<script src="/vendors/jquery/jquery-2.1.4.min.js"></script>
+    <script src="/vendors/jquery/jquery-2.1.4.min.js"></script>
     <script src="/vendors/tether/dist/js/tether.min.js"></script>
     <script src="/vendors/bootstrap/js/bootstrap.min.js"></script>
     <script src="/vendors/stellar/jquery.stellar.min.js"></script>
@@ -408,44 +405,10 @@
     <script src="/vendors/bootstrap-select/dist/js/bootstrap-select.min.js"></script>
     <script src="/js/mega-menu.js"></script>
     <script src="/js/jquery.main.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/jquery.themepunch.tools.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/jquery.themepunch.revolution.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/extensions/revolution.extension.actions.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/extensions/revolution.extension.carousel.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/extensions/revolution.extension.kenburn.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/extensions/revolution.extension.layeranimation.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/extensions/revolution.extension.migration.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/extensions/revolution.extension.navigation.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/extensions/revolution.extension.parallax.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/extensions/revolution.extension.slideanims.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution/js/extensions/revolution.extension.video.min.js"></script>
-    <script type="text/javascript" src="/vendors/rev-slider/revolution-addons/snow/revolution.addon.snow.min.js"></script>
     <script src="/toastr/build/toastr.min.js"></script>
     <script src="https://js.stripe.com/v3/"></script>
     <script type="text/javascript" src="/js/js.js"></script>
     <script src="/js/revolution.js"></script>
-    <script>
-        document.querySelectorAll("img").forEach(img => {
-            const src = img.getAttribute("src");
-            if (src && !src.includes("?")) {
-            img.src = src + "?v=" + Date.now();
-            }
-        });
-    </script>
-    <!-- START Botmaker Webchat-->
-    <script>
-        (function () {
-            let js = document.createElement('script');
-            js.type = 'text/javascript';
-            js.async = 1;
-            js.src = 'https://go.botmaker.com/rest/webchat/p/ORT0DFP8XV/init.js';
-            document.body.appendChild(js);
-        })();
-    </script>
-    <!-- END Botmaker Webchat-->
-</body>
-
-</html>
 
     <!-- Voltika Configurador JS -->
     <script src="js/data/productos.js"></script>
@@ -460,5 +423,16 @@
     <script src="js/modules/paso4b-credito.js"></script>
     <script src="js/configurador.js"></script>
 
+    <!-- START Botmaker Webchat-->
+    <script>
+        (function () {
+            let js = document.createElement('script');
+            js.type = 'text/javascript';
+            js.async = 1;
+            js.src = 'https://go.botmaker.com/rest/webchat/p/ORT0DFP8XV/init.js';
+            document.body.appendChild(js);
+        })();
+    </script>
+    <!-- END Botmaker Webchat-->
 </body>
 </html>
