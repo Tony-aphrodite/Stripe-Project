@@ -205,7 +205,14 @@
     font-size: var(--vk-font-size-2xl);
     font-weight: var(--vk-font-extrabold);
     color: var(--vk-text-primary);
-    margin-bottom: var(--vk-space-xs);
+    margin-bottom: var(--vk-space-2xs);
+}
+
+.vk-card__subtitulo {
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-secondary);
+    margin-bottom: var(--vk-space-sm);
+    font-weight: var(--vk-font-regular);
 }
 
 .vk-card__specs {
@@ -786,6 +793,19 @@
     align-items: flex-start;
     gap: var(--vk-space-xs);
     padding: 2px 0;
+}
+
+/* Dual pay buttons (PASO 4A) */
+.vk-dual-pay-btns {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vk-space-sm);
+    margin-top: var(--vk-space-md);
+}
+
+.vk-dual-pay-btns .vk-btn {
+    margin: 0;
+    width: 100%;
 }
 
 /* --------------------------------------------------------------------------

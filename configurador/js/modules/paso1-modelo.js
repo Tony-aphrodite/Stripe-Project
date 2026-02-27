@@ -44,6 +44,9 @@ var Paso1 = {
         // Info block
         html += '<div class="vk-card__info">';
         html += '<div class="vk-card__nombre">' + modelo.nombre + '</div>';
+        if (modelo.subtitulo) {
+            html += '<div class="vk-card__subtitulo">' + modelo.subtitulo + '</div>';
+        }
 
         if (modelo.autonomia) {
             html += '<div class="vk-card__specs">' +
@@ -101,12 +104,12 @@ var Paso1 = {
 
     renderTabCredito: function(modelo) {
         var html = '';
-        html += '<div class="vk-card__credito-logo"><span class="vk-shield">&#9745;</span> Credito Voltika</div>';
-        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> / semana</div>';
+        html += '<div class="vk-card__credito-logo"><span class="vk-shield">&#9745;</span> credito voltika</div>';
+        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> / semana</div>';
         html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Aprobacion en minutos');
-        html += VkUI.renderTabBullet('Flete incluido');
-        html += VkUI.renderTabBullet('Confirmas tu punto de entrega en el siguiente paso');
+        html += VkUI.renderTabBullet('Aprobaci\u00f3n en minutos \u00b7 Solo INE');
+        html += VkUI.renderTabBullet('Costo de env\u00edo a tu ciudad incluido');
+        html += VkUI.renderTabBullet('Confirmas tu Punto Voltika en el siguiente paso');
         html += '</div>';
         return html;
     },
@@ -120,26 +123,27 @@ var Paso1 = {
             html += '</div>';
             return html;
         }
-        html += '<div class="vk-card__msi-header">9 Meses sin intereses ' + VkUI.renderCardLogos() + '</div>';
-        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> / mes</div>';
+        html += '<div class="vk-card__msi-header">9 MSI con todas las tarjetas ' + VkUI.renderCardLogos() + '</div>';
+        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> / mes</div>';
         html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('9 MSI con tu tarjeta de credito');
-        html += VkUI.renderTabBullet('Sin intereses ni cargos ocultos');
-        html += VkUI.renderTabBullet('Confirmas tu punto de entrega en el siguiente paso');
+        html += VkUI.renderTabBullet('Sin tr\u00e1mites \u00b7 Pago con tarjeta');
+        html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
+        html += VkUI.renderTabBullet('Moto lista para circular + Documentos para emplacar');
         html += '</div>';
         return html;
     },
 
     renderTabContado: function(modelo) {
         var html = '';
-        html += '<div class="vk-card__contado-label">Pago de contado</div>';
+        html += '<div class="vk-card__contado-label">Precio contado</div>';
         html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
-        html += '<div class="vk-card__iva">IVA incluido</div>';
-        html += '<div class="vk-card__tarjetas">' + VkUI.renderCardLogos() + '</div>';
+        html += '<div class="vk-card__iva">IVA incluido &middot; ' + VkUI.renderCardLogos() + '</div>';
         html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Pago 100% seguro con Stripe');
-        html += VkUI.renderTabBullet('Confirmas tu punto de entrega en el siguiente paso');
+        html += VkUI.renderTabBullet('Sin tr\u00e1mites adicionales');
+        html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
+        html += VkUI.renderTabBullet('Moto lista para circular + documentos para emplacar');
         html += '</div>';
+        html += '<div class="vk-card__nota-logistico">*Costo log\u00edstico se confirma seg\u00fan tu ciudad.*</div>';
         return html;
     },
 

@@ -18,8 +18,8 @@ var Paso4A = {
         this.app = app;
         this._stripe = null;
         this._cardElement = null;
-        // Pre-select payment type based on what was chosen in PASO 1
-        this._pagoTipo = (app.state.metodoPago === 'msi') ? 'msi' : 'unico';
+        // _pagoTipo is set when user clicks a pay button
+        this._pagoTipo = 'unico';
         this.render();
         this.bindEvents();
         // Mount Stripe automatically — no click required
@@ -40,18 +40,20 @@ var Paso4A = {
         // Back button
         html += VkUI.renderBackButton(3);
 
-        // Card logos
-        html += '<div style="text-align:center;padding:8px 0 4px;">' +
+        // Card logos + header — matches mockup page 13
+        html += '<div style="text-align:center;padding:10px 0 6px;">' +
             VkUI.renderCardLogos() +
             '</div>';
 
-        // Header
-        html += '<h2 class="vk-paso__titulo">PASO 4</h2>';
-        html += '<p class="vk-paso__subtitulo">Completa tu pago de forma segura</p>';
+        html += '<div style="text-align:center;margin-bottom:4px;">';
+        html += '<div style="font-size:22px;font-weight:800;color:var(--vk-text-primary);">Total hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
+        if (modelo.tieneMSI) {
+            html += '<div style="font-size:13px;color:var(--vk-green-primary);font-weight:600;margin-top:4px;">&#10003; 9 MSI disponibles ' + VkUI.renderCardLogos() + '</div>';
+        }
+        html += '</div>';
 
         // ── Order summary ─────────────────────────────────────────────────
-        html += '<div class="vk-summary">';
-        html += '<div style="font-weight:700;font-size:15px;margin-bottom:12px;">&#128230; Resumen de tu compra</div>';
+        html += '<div class="vk-summary" style="margin-top:14px;">';
 
         html += '<div class="vk-summary__row">';
         html += '<span class="vk-summary__label">Modelo:</span>';
@@ -59,93 +61,53 @@ var Paso4A = {
         html += '</div>';
 
         html += '<div class="vk-summary__row">';
-        html += '<span class="vk-summary__label">Entrega en:</span>';
-        html += '<span class="vk-summary__value">' + (state.ciudad || '--') + ', ' + (state.estado || '--') + '</span>';
+        html += '<span class="vk-summary__label">Entrega:</span>';
+        html += '<span class="vk-summary__value">' + VOLTIKA_PRODUCTOS.config.entregaDiasHabiles + ' d\u00edas h\u00e1biles &middot; ' + (state.ciudad || '--') + '</span>';
         html += '</div>';
 
-        html += '<div class="vk-summary__row">';
-        html += '<span class="vk-summary__label">Tiempo de entrega:</span>';
-        html += '<span class="vk-summary__value">' + VOLTIKA_PRODUCTOS.config.entregaDiasHabiles + ' dias habiles</span>';
-        html += '</div>';
-
-        html += '<div style="font-size:12px;color:var(--vk-text-muted);padding:4px 0 8px;">' +
-            'Un asesor Voltika confirma el centro de entrega en 24-48 hrs.' +
+        html += '<div style="font-size:11px;color:var(--vk-text-muted);padding:2px 0 6px;">' +
+            'Un asesor Voltika confirmar\u00e1 el centro de entrega en 24-48 hrs.' +
             '</div>';
 
         if (state.costoLogistico > 0) {
             html += '<div class="vk-summary__row">';
-            html += '<span class="vk-summary__label">Costo logistico:</span>';
+            html += '<span class="vk-summary__label">Costo log\u00edstico:</span>';
             html += '<span class="vk-summary__value">' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</span>';
             html += '</div>';
         }
 
-        html += '<div class="vk-summary__row vk-summary__row--total">';
-        html += '<span>Total:</span>';
-        html += '<span>' + VkUI.formatPrecio(total) + ' MXN</span>';
-        html += '</div>';
+        if (modelo.tieneMSI) {
+            html += '<div style="font-size:12px;color:var(--vk-text-secondary);padding:4px 0 2px;">' +
+                'o ' + 9 + ' pagos de ' + VkUI.formatPrecio(msiPago) + ' MXN (9 MSI sin intereses)' +
+                '</div>';
+        }
 
         html += '</div>'; // end summary
 
-        // ── Payment type selector ─────────────────────────────────────────
-        html += '<div style="margin:16px 0 12px;">';
-        html += '<div style="font-weight:700;font-size:14px;margin-bottom:10px;">Selecciona tu forma de pago:</div>';
-        html += '<div class="vk-payment-options">';
-
-        // Option 1: Pago unico
-        var unicoCls = this._pagoTipo === 'unico' ? ' vk-payment-option--selected' : '';
-        html += '<div class="vk-payment-option' + unicoCls + '" data-pago-tipo="unico" style="cursor:pointer;">';
-        html += '<div class="vk-payment-option__title">Pago unico</div>';
-        html += '<div style="font-size:18px;font-weight:800;color:var(--vk-green-primary);margin:6px 0;">' + VkUI.formatPrecio(total) + '</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-muted);">MXN &middot; pago unico</div>';
-        html += '<div class="vk-payment-option__bullet" style="margin-top:8px;">&#10004; Sin cargos adicionales</div>';
-        html += '<div class="vk-payment-option__bullet">&#10004; Pago 100% seguro con Stripe</div>';
-        html += '</div>';
-
-        // Option 2: MSI
-        var msiCls = this._pagoTipo === 'msi' ? ' vk-payment-option--selected' : '';
-        if (modelo.tieneMSI) {
-            html += '<div class="vk-payment-option' + msiCls + '" data-pago-tipo="msi" style="cursor:pointer;">';
-            html += '<div class="vk-payment-option__title">9 MSI sin intereses</div>';
-            html += '<div style="font-size:18px;font-weight:800;color:var(--vk-green-primary);margin:6px 0;">' + VkUI.formatPrecio(msiPago) + '</div>';
-            html += '<div style="font-size:12px;color:var(--vk-text-muted);">MXN / mes &middot; 9 meses</div>';
-            html += '<div class="vk-payment-option__bullet" style="margin-top:8px;">&#10004; Sin intereses ni cargos ocultos</div>';
-            html += '<div class="vk-payment-option__bullet">&#10004; Con tu tarjeta de credito ' + VkUI.renderCardLogos() + '</div>';
-            html += '</div>';
-        } else {
-            html += '<div class="vk-payment-option" style="opacity:0.5;pointer-events:none;">';
-            html += '<div class="vk-payment-option__title">9 MSI</div>';
-            html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-top:8px;">No disponible para este modelo</div>';
-            html += '</div>';
-        }
-
-        html += '</div>'; // end vk-payment-options
-        html += '</div>';
-
-        // ── Contact + Card form (always visible) ──────────────────────────
-        html += '<div id="vk-checkout-form">';
-        html += '<div style="border-top:2px solid var(--vk-border);margin-top:8px;padding-top:20px;">';
+        // ── Contact + Card form ────────────────────────────────────────────
+        html += '<div id="vk-checkout-form" style="border-top:2px solid var(--vk-border);margin-top:14px;padding-top:18px;">';
 
         // Terms
         html += '<div class="vk-checkbox-group" style="margin-bottom:16px;">';
         html += '<input type="checkbox" class="vk-checkbox" id="vk-terms-check">';
         html += '<label class="vk-checkbox-label" for="vk-terms-check">' +
-            'Acepto los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:var(--vk-green-primary);">terminos y condiciones</a> y el aviso de privacidad' +
+            'Acepto los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:var(--vk-green-primary);">t\u00e9rminos y condiciones</a> y el aviso de privacidad' +
             '</label>';
         html += '</div>';
 
         // Contact fields
         html += '<div class="vk-form-group">';
         html += '<label class="vk-form-label">Nombre completo</label>';
-        html += '<input type="text" class="vk-form-input" id="vk-nombre" placeholder="Juan Perez" autocomplete="name">';
+        html += '<input type="text" class="vk-form-input" id="vk-nombre" placeholder="Juan P\u00e9rez" autocomplete="name">';
         html += '</div>';
 
         html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">Correo electronico</label>';
+        html += '<label class="vk-form-label">Correo electr\u00f3nico</label>';
         html += '<input type="email" class="vk-form-input" id="vk-email" placeholder="juanperez@email.com" autocomplete="email">';
         html += '</div>';
 
         html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">Telefono</label>';
+        html += '<label class="vk-form-label">Tel\u00e9fono</label>';
         html += '<div class="vk-phone-group">';
         html += '<div class="vk-phone-prefix">&#127474;&#127485; +52</div>';
         html += '<input type="tel" class="vk-form-input" id="vk-telefono" placeholder="55 1234 5678" maxlength="15" autocomplete="tel">';
@@ -155,38 +117,42 @@ var Paso4A = {
         // Stripe card element
         html += '<div class="vk-form-group">';
         html += '<label class="vk-form-label">&#128179; Datos de tarjeta</label>';
-        html += '<div id="vk-stripe-card-element" style="border:1.5px solid var(--vk-border);border-radius:6px;padding:14px;background:#FAFAFA;min-height:46px;">' +
-            '</div>';
+        html += '<div id="vk-stripe-card-element" style="border:1.5px solid var(--vk-border);border-radius:6px;padding:14px;background:#FAFAFA;min-height:46px;"></div>';
         html += '<div id="vk-stripe-card-errors" style="color:#C62828;font-size:12px;margin-top:6px;display:none;"></div>';
         html += '</div>';
 
-        // Pay button
-        html += '<button class="vk-btn vk-btn--primary" id="vk-submit-pago" style="margin-top:8px;">';
-        html += '<span id="vk-submit-pago-label">' + this._getLabelPago(total, msiPago) + '</span>';
-        html += '<span id="vk-submit-pago-spinner" style="display:none;">' + VkUI.renderSpinner() + ' Procesando...</span>';
+        // ── TWO pay buttons (per client mockup page 13) ───────────────────
+        html += '<div class="vk-dual-pay-btns">';
+
+        // Button 1: Pago único
+        html += '<button class="vk-btn vk-btn--primary vk-pay-btn" id="vk-pay-unico" data-tipo="unico">';
+        html += '<span class="vk-pay-btn__label">&#128274; PAGAR ' + VkUI.formatPrecio(total) + ' MXN</span>';
+        html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + ' Procesando...</span>';
         html += '</button>';
 
+        // Button 2: 9 MSI (only if available)
+        if (modelo.tieneMSI) {
+            html += '<button class="vk-btn vk-btn--primary vk-pay-btn" id="vk-pay-msi" data-tipo="msi">';
+            html += '<span class="vk-pay-btn__label">9 MSI de ' + VkUI.formatPrecio(msiPago) + ' /mes</span>';
+            html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + ' Procesando...</span>';
+            html += '</button>';
+        }
+
+        html += '</div>'; // end dual-pay-btns
+
         html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:12px;">' +
-            '&#128274; Pago cifrado SSL &middot; Powered by Stripe' +
+            '&#128274; Pago cifrado SSL &middot; ' + VkUI.renderCardLogos() +
             '</div>';
-        html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:4px;">' +
-            'Los datos para facturar se te pediran posteriormente.' +
+        html += '<div style="text-align:center;font-size:11px;color:var(--vk-text-muted);margin-top:4px;">' +
+            'Los datos para facturar se te pedir\u00e1n posteriormente.' +
             '</div>';
 
-        html += '</div>'; // end inner padding
         html += '</div>'; // end checkout-form
 
         // Error message
         html += '<div id="vk-pago-error" style="display:none;color:#C62828;background:#FFEBEE;border:1px solid #E53935;border-radius:6px;padding:12px;margin-top:12px;font-size:13px;"></div>';
 
         $('#vk-pago-container').html(html);
-    },
-
-    _getLabelPago: function(total, msiPago) {
-        if (this._pagoTipo === 'msi') {
-            return 'PAGAR PRIMER CARGO ' + VkUI.formatPrecio(msiPago) + ' MXN';
-        }
-        return 'PAGAR ' + VkUI.formatPrecio(total) + ' MXN';
     },
 
     _mountStripe: function() {
@@ -232,29 +198,19 @@ var Paso4A = {
     bindEvents: function() {
         var self = this;
 
-        // Payment type selector — update button label only
-        $(document).off('click', '#vk-paso-4a .vk-payment-option');
-        $(document).on('click', '#vk-paso-4a .vk-payment-option', function() {
-            var tipo = $(this).data('pago-tipo');
-            if (!tipo) return;
-
-            self._pagoTipo = tipo;
-
-            // Update selected state
-            $('#vk-paso-4a .vk-payment-option').removeClass('vk-payment-option--selected');
-            $(this).addClass('vk-payment-option--selected');
-
-            // Update pay button label
-            var modelo  = self.app.getModelo(self.app.state.modeloSeleccionado);
-            var total   = modelo.precioContado + self.app.state.costoLogistico;
-            var msiPago = modelo.tieneMSI ? Math.round(modelo.precioMSI) : Math.round(total / 9);
-            $('#vk-submit-pago-label').text(self._getLabelPago(total, msiPago));
+        // Button 1: Pago único
+        $(document).off('click', '#vk-pay-unico');
+        $(document).on('click', '#vk-pay-unico', function(e) {
+            e.preventDefault();
+            self._pagoTipo = 'unico';
+            self._handleSubmit();
         });
 
-        // Submit payment
-        $(document).off('click', '#vk-submit-pago');
-        $(document).on('click', '#vk-submit-pago', function(e) {
+        // Button 2: 9 MSI
+        $(document).off('click', '#vk-pay-msi');
+        $(document).on('click', '#vk-pay-msi', function(e) {
             e.preventDefault();
+            self._pagoTipo = 'msi';
             self._handleSubmit();
         });
     },
@@ -392,15 +348,16 @@ var Paso4A = {
     },
 
     _setLoading: function(isLoading) {
-        var $btn = $('#vk-submit-pago');
+        var $btn = this._pagoTipo === 'msi' ? $('#vk-pay-msi') : $('#vk-pay-unico');
         if (isLoading) {
-            $btn.prop('disabled', true);
-            $('#vk-submit-pago-label').hide();
-            $('#vk-submit-pago-spinner').show();
+            // Disable both buttons while processing
+            $('.vk-pay-btn').prop('disabled', true);
+            $btn.find('.vk-pay-btn__label').hide();
+            $btn.find('.vk-pay-btn__spinner').show();
         } else {
-            $btn.prop('disabled', false);
-            $('#vk-submit-pago-label').show();
-            $('#vk-submit-pago-spinner').hide();
+            $('.vk-pay-btn').prop('disabled', false);
+            $btn.find('.vk-pay-btn__label').show();
+            $btn.find('.vk-pay-btn__spinner').hide();
         }
     }
 };
