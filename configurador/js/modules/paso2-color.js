@@ -63,11 +63,14 @@ var Paso2 = {
         html += '</div>';
 
         // CTA
-        html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">CONTINUAR</button>';
+        var btnTexto = state.metodoPago === 'contado' ? 'PAGAR DE CONTADO' :
+                      state.metodoPago === 'msi'     ? 'QUIERO MIS 9 MSI \u203a' :
+                      'CONFIRMAR COLOR Y CONTINUAR';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">' + btnTexto + '</button>';
 
         // Footer
         html += '<p class="vk-card__footer-note">' +
-            'Solo falta confirmar tu <strong>Punto Voltika</strong> en tu ciudad.' +
+            'Solo falta confirmar tu <strong>punto de entrega.</strong>' +
             '</p>';
 
         // Trust badges
@@ -82,31 +85,32 @@ var Paso2 = {
         var html = '';
 
         if (metodo === 'credito') {
-            html += '<div style="font-weight:600;">Credito Voltika</div>';
+            html += '<div style="font-size:15px;font-weight:700;margin-bottom:6px;">&#128179; cr\u00e9dito voltika <span style="font-weight:400;color:var(--vk-text-secondary);">seleccionado</span></div>';
             html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
             html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
-            html += VkUI.renderTabBullet('Aprobacion en minutos');
-            html += VkUI.renderTabBullet('Incluye flete');
-            html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
-            html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
+            html += VkUI.renderTabBullet('Aprobaci\u00f3n en 2 minutos');
+            html += VkUI.renderTabBullet('Env\u00edo asegurado incluido');
             html += '</div>';
         } else if (metodo === 'msi') {
-            html += '<div class="vk-card__msi-header">9 MSI ' + VkUI.renderCardLogos() + '</div>';
-            html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> al mes</div>';
-            html += '<div style="font-size:13px;color:#999;margin-bottom:8px;">Sin intereses</div>';
+            html += '<div style="font-size:18px;font-weight:700;margin-bottom:10px;">' +
+                '<strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong>' +
+                ' <span style="font-weight:400;">/mes durante <strong>9</strong> meses</span> ' +
+                VkUI.renderCardLogos() +
+                '</div>';
             html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
-            html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
-            html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
+            html += VkUI.renderTabBullet('<strong>Sin tr\u00e1mites</strong> \u00b7 Pago <strong>inmediato</strong> con tarjeta');
+            html += VkUI.renderTabBullet('Env\u00edo asegurado a tu ciudad');
+            html += VkUI.renderTabBullet('<strong>Costo log\u00edstico</strong> confirmado con tu <strong>c\u00f3digo postal</strong> en el siguiente paso');
             html += '</div>';
         } else { // contado
-            html += '<div style="font-weight:600;">Contado</div>';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:4px;">Precio contado</div>';
             html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
-            html += '<div class="vk-card__iva">IVA incluido</div>';
-            html += '<div class="vk-card__tarjetas">' + VkUI.renderCardLogos() + ' IVA incluido</div>';
             html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
-            html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
-            html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
+            html += VkUI.renderTabBullet('<strong>Sin tr\u00e1mites</strong> \u00b7 Pago <strong>inmediato</strong> con tarjeta');
+            html += VkUI.renderTabBullet('Env\u00edo asegurado a tu ciudad');
+            html += VkUI.renderTabBullet('<strong>Costo log\u00edstico</strong> confirmado con tu <strong>c\u00f3digo postal</strong> en el siguiente paso');
             html += '</div>';
+            html += '<div style="margin-top:12px;">' + VkUI.renderCardLogos() + '</div>';
         }
 
         return html;
