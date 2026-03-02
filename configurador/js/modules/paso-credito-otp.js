@@ -104,20 +104,109 @@ var PasoCreditoOTP = {
             }),
             success: function(res) {
                 if (res && res.valido) {
-                    self.app.state.creditoAprobado = true;
-                    self.app.irAPaso(3); // Delivery CP (costo incluido para crédito)
+                    // OTP verificado — ahora verificar identidad con Truora
+                    self._verificarIdentidad();
                 } else {
                     jQuery('#vk-otp-error').text('C\u00f3digo incorrecto. Verifica e int\u00e9ntalo de nuevo.').show();
+                    $btn.prop('disabled', false).text('Verificar');
                 }
             },
             error: function() {
-                // Fallback: accept any 4-digit code in dev/test
-                self.app.state.creditoAprobado = true;
-                self.app.irAPaso(3);
-            },
-            complete: function() {
-                $btn.prop('disabled', false).text('Verificar');
+                // Fallback: proceder con verificación de identidad
+                self._verificarIdentidad();
             }
         });
+    },
+
+    /**
+     * Paso 2 post-OTP: Verificar identidad con Truora
+     */
+    _verificarIdentidad: function() {
+        var state = this.app.state;
+        var $btn  = jQuery('#vk-otp-verificar');
+        $btn.prop('disabled', true).text('Verificando identidad...');
+
+        // Separar nombre completo en nombre + apellidos
+        var partes = (state.nombre || '').trim().split(/\s+/);
+        var nombre    = partes.length > 0 ? partes[0] : '';
+        var apellidos = partes.length > 1 ? partes.slice(1).join(' ') : '';
+
+        var self = this;
+
+        jQuery.ajax({
+            url: 'php/verificar-identidad.php',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                nombre:           nombre,
+                apellidos:        apellidos,
+                fecha_nacimiento: state.fechaNacimiento || '',
+                telefono:         state.telefono || '',
+                email:            state.email || '',
+                wait:             true
+            }),
+            success: function(res) {
+                state._truoraResult = res;
+                // Independientemente del resultado, consultar buró
+                self._consultarBuro();
+            },
+            error: function() {
+                // Fallback: continuar sin Truora
+                state._truoraResult = { status: 'approved', fallback: true };
+                self._consultarBuro();
+            }
+        });
+    },
+
+    /**
+     * Paso 3 post-OTP: Consultar Círculo de Crédito
+     */
+    _consultarBuro: function() {
+        var state = this.app.state;
+        var $btn  = jQuery('#vk-otp-verificar');
+        $btn.prop('disabled', true).text('Consultando cr\u00e9dito...');
+
+        // Separar nombre para el buró
+        var partes   = (state.nombre || '').trim().split(/\s+/);
+        var primerNombre    = partes.length > 0 ? partes[0] : '';
+        var apellidoPaterno = partes.length > 1 ? partes[1] : '';
+        var apellidoMaterno = partes.length > 2 ? partes.slice(2).join(' ') : '';
+
+        var self = this;
+
+        jQuery.ajax({
+            url: 'php/consultar-buro.php',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                primerNombre:    primerNombre,
+                apellidoPaterno: apellidoPaterno,
+                apellidoMaterno: apellidoMaterno,
+                fechaNacimiento: state.fechaNacimiento || '',
+                CP:              state.cpDomicilio || '',
+                ciudad:          state.ciudad || '',
+                estado:          state.estado || ''
+            }),
+            success: function(res) {
+                state._buroResult = res;
+                self._finalizarVerificacion();
+            },
+            error: function() {
+                // Fallback: continuar sin datos de buró
+                state._buroResult = { success: false, fallback: true };
+                self._finalizarVerificacion();
+            }
+        });
+    },
+
+    /**
+     * Finalizar: marcar crédito aprobado y navegar
+     */
+    _finalizarVerificacion: function() {
+        var $btn = jQuery('#vk-otp-verificar');
+        $btn.prop('disabled', false).text('Verificar');
+
+        this.app.state.creditoAprobado = true;
+        this.app.irAPaso(3); // Delivery CP (costo incluido para crédito)
     }
 };

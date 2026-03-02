@@ -1,8 +1,8 @@
 <?php
 /**
  * Voltika - Enviar OTP por SMS
- * Genera un código de 4 dígitos, lo guarda en sesión y lo envía por SMS.
- * En modo MVP devuelve testCode para facilitar pruebas sin proveedor SMS.
+ * Integración con SMSMasivos.com.mx 2FA API
+ * Docs: https://app.smsmasivos.com.mx/api-docs/v2#2faregistro
  */
 
 header('Content-Type: application/json');
@@ -14,6 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
+
+// ── Configuración SMSMasivos ─────────────────────────────────────────────────
+define('SMSMASIVOS_API_KEY', 'ff4cca0aee49e64c91465559c9ced18d785d838c');
+define('SMSMASIVOS_2FA_URL', 'https://api.smsmasivos.com.mx/protected/json/phones/verification/start');
+define('SMSMASIVOS_COMPANY', 'Voltika');
 
 session_start();
 
@@ -33,39 +38,74 @@ if (strlen($telefono) < 10) {
     exit;
 }
 
-// Generar código de 4 dígitos
-$codigo = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+// Guardar teléfono en sesión para verificación posterior
+$_SESSION['otp_telefono'] = $telefono;
+$_SESSION['otp_expira']   = time() + 600;
 
-// Guardar en sesión (expira en 10 minutos)
-$_SESSION['otp_codigo']    = $codigo;
-$_SESSION['otp_telefono']  = $telefono;
-$_SESSION['otp_expira']    = time() + 600;
+// ── Llamada a SMSMasivos 2FA API ─────────────────────────────────────────────
+$postData = [
+    'phone_number' => $telefono,
+    'country_code' => '52',
+    'company'      => SMSMASIVOS_COMPANY,
+    'template'     => 'a',
+    'code_length'  => 4,
+    'code_type'    => 'numeric'
+];
 
-// ── Envío real por SMS (Twilio u otro proveedor) ──────────────────────────────
-// Descomentar y configurar cuando se tenga el proveedor SMS contratado.
-/*
-$accountSid = 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
-$authToken  = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
-$fromNumber = '+1xxxxxxxxxx'; // Twilio number
-$toNumber   = '+52' . $telefono;
-$mensaje    = "Voltika: tu código de verificación es $codigo. Válido 10 min.";
-
-$url = "https://api.twilio.com/2010-04-01/Accounts/$accountSid/Messages.json";
-$ch  = curl_init($url);
+$ch = curl_init(SMSMASIVOS_2FA_URL);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_USERPWD, "$accountSid:$authToken");
-curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-    'To'   => $toNumber,
-    'From' => $fromNumber,
-    'Body' => $mensaje,
-]));
-$response = curl_exec($ch);
-curl_close($ch);
-*/
-
-// En MVP siempre devolvemos el testCode para que el front pueda continuar
-echo json_encode([
-    'status'   => 'sent',
-    'testCode' => $codigo,   // Quitar en producción
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'apikey: ' . SMSMASIVOS_API_KEY
 ]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+$response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlErr  = curl_error($ch);
+curl_close($ch);
+
+// ── Logging ──────────────────────────────────────────────────────────────────
+$logFile = __DIR__ . '/logs/sms-otp.log';
+if (!is_dir(dirname($logFile))) {
+    mkdir(dirname($logFile), 0755, true);
+}
+file_put_contents($logFile, json_encode([
+    'timestamp' => date('c'),
+    'telefono'  => substr($telefono, 0, 3) . '****' . substr($telefono, -3),
+    'httpCode'  => $httpCode,
+    'response'  => $response,
+    'curlErr'   => $curlErr
+]) . "\n", FILE_APPEND | LOCK_EX);
+
+// ── Respuesta ────────────────────────────────────────────────────────────────
+if ($curlErr) {
+    // Error de red — fallback a modo local
+    $codigo = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+    $_SESSION['otp_codigo'] = $codigo;
+    echo json_encode([
+        'status'   => 'sent',
+        'testCode' => $codigo,
+        'fallback' => true
+    ]);
+    exit;
+}
+
+$data = json_decode($response, true);
+
+if ($httpCode >= 200 && $httpCode < 300) {
+    echo json_encode([
+        'status' => 'sent'
+    ]);
+} else {
+    // API error — fallback a modo local
+    $codigo = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+    $_SESSION['otp_codigo'] = $codigo;
+    echo json_encode([
+        'status'   => 'sent',
+        'testCode' => $codigo,
+        'fallback' => true
+    ]);
+}

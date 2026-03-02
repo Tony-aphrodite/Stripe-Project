@@ -3,9 +3,10 @@
  * Voltika - Pre-aprobación Web V3
  * Implementa el algoritmo exacto de VOLTIKA_Preaprobacion_V3_Guia_Programador.docx
  *
- * Fase actual: evaluación estimada (sin Círculo de Crédito).
- * Cuando Truora + Círculo estén integrados, reemplazar $score, $pago_mensual_buro
- * y $dpd90_flag con los valores reales de la API.
+ * Integración completa:
+ *   - Si se proveen datos personales, consulta Círculo de Crédito vía API
+ *   - Si la sesión tiene datos de Círculo (de consultar-buro.php), los usa
+ *   - Fallback: evaluación estimada solo por PTI (sin Círculo)
  */
 
 header('Content-Type: application/json');
@@ -17,6 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
+
+session_start();
 
 // ── Request ───────────────────────────────────────────────────────────────────
 $json = json_decode(file_get_contents('php://input'), true);
@@ -34,12 +37,20 @@ $plazo_meses          = intval($json['plazo_meses']            ?? 12);
 $precio_contado       = floatval($json['precio_contado']       ?? 0);
 $modelo               = $json['modelo'] ?? '';
 
-// ── Datos de Círculo de Crédito (pendiente integración Truora) ────────────────
-// TODO: Obtener de la sesión después de verificación Truora
-$score             = null;   // null = sin dato de Círculo aún
-$pago_mensual_buro = 0;      // 0 conservador hasta tener dato real
-$dpd90_flag        = null;   // null = no verificado
-$dpd_max           = null;
+// ── Datos de Círculo de Crédito ─────────────────────────────────────────────
+// Prioridad 1: datos enviados directamente en el request (de consultar-buro.php)
+// Prioridad 2: datos guardados en sesión (si ya se consultó previamente)
+// Prioridad 3: null (evaluación estimada sin Círculo)
+
+$score             = $json['score']             ?? $_SESSION['cdc_score']             ?? null;
+$pago_mensual_buro = $json['pago_mensual_buro'] ?? $_SESSION['cdc_pago_mensual_buro'] ?? 0;
+$dpd90_flag        = $json['dpd90_flag']        ?? $_SESSION['cdc_dpd90_flag']        ?? null;
+$dpd_max           = $json['dpd_max']           ?? $_SESSION['cdc_dpd_max']           ?? null;
+
+// Asegurar tipos correctos
+if ($score !== null) $score = intval($score);
+$pago_mensual_buro = floatval($pago_mensual_buro);
+if ($dpd90_flag !== null) $dpd90_flag = (bool)$dpd90_flag;
 
 // ── Validación de inputs ──────────────────────────────────────────────────────
 if ($ingreso_mensual_est <= 0 || $pago_semanal_voltika <= 0) {
@@ -129,6 +140,8 @@ $log = [
     'pti_total'            => round($pti_total, 4),
     'score'                => $score,
     'dpd90_flag'           => $dpd90_flag,
+    'dpd_max'              => $dpd_max,
+    'circulo_source'       => ($score !== null) ? 'real' : 'estimado',
     'enganche_pct'         => $enganche_pct,
     'plazo_meses'          => $plazo_meses,
     'status'               => $result['status'],
