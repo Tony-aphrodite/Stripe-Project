@@ -85,11 +85,9 @@
                 VkUI.renderProgressBar(pasoNum, self.state.metodoPago);
 
                 if (paso === 1) {
-                    $('#vk-scroll-hint').show();
                     $('#vk-paso-1 .vk-paso__header').show();
-                } else {
-                    $('#vk-scroll-hint').hide();
                 }
+                $('#vk-scroll-hint').hide();
 
                 VkUI.scrollToTop();
                 self.state.pasoActual = paso;

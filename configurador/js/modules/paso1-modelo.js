@@ -50,15 +50,10 @@ var Paso1 = {
         html += this._renderDesktopHero(modelos, defaultModelo);
         html += '</div>';
 
-        // ── Mobile cards (hidden on desktop via CSS) ──────────
+        // ── Mobile hero + sidebar (hidden on desktop via CSS) ─
         html += '<div class="vk-paso1-mobile">';
-        for (var j = 0; j < modelos.length; j++) {
-            html += this.renderCard(modelos[j]);
-            // GO electric footer after first card
-            if (j === 0) {
-                html += VkUI.renderGoElectricFooter();
-            }
-        }
+        html += this._renderMobileHero(modelos, defaultModelo);
+        html += VkUI.renderGoElectricFooter();
         html += '</div>';
 
         container.html(html);
@@ -201,7 +196,115 @@ var Paso1 = {
     },
 
     /* ------------------------------------------------------------------ */
-    /*  MOBILE CARDS (unchanged)                                            */
+    /*  MOBILE HERO + SIDEBAR                                               */
+    /* ------------------------------------------------------------------ */
+
+    _renderMobileHero: function(modelos, defaultModelo) {
+        var html = '<div class="vk-mhero">';
+
+        // Main content area
+        html += '<div class="vk-mhero__main" id="vk-mhero-main">';
+        html += this._renderMobileMainContent(defaultModelo);
+        html += '</div>';
+
+        // Sidebar with thumbnails
+        html += '<div class="vk-mhero__sidebar">';
+        for (var i = 0; i < modelos.length; i++) {
+            var m = modelos[i];
+            var active = m.id === defaultModelo.id ? ' vk-mhero__thumb--active' : '';
+            html += '<button class="vk-mhero__thumb' + active + '" data-mhero-id="' + m.id + '">';
+            html += '<img src="' + VkUI.getImagenMoto(m.id, m.colorDefault) + '" alt="' + m.nombre + '">';
+            if (m.badge) {
+                html += '<span class="vk-mhero__thumb-star">&#11088;</span>';
+            }
+            html += '<span class="vk-mhero__thumb-label">' + m.nombre + '</span>';
+            html += '</button>';
+        }
+        html += '</div>';
+
+        html += '</div>'; // end mhero
+        return html;
+    },
+
+    _renderMobileMainContent: function(modelo) {
+        var img = VkUI.getImagenMoto(modelo.id, modelo.colorDefault);
+        var html = '';
+
+        html += '<div class="vk-card" data-modelo="' + modelo.id + '">';
+
+        if (modelo.badge) {
+            html += '<div class="vk-card__badge">' +
+                '<span class="vk-card__badge-star">&#11088;</span> ' +
+                modelo.badge.toUpperCase() +
+                '</div>';
+        }
+
+        html += '<div class="vk-card__imagen">' +
+            '<img src="' + img + '" alt="' + modelo.nombre + '">' +
+            '</div>';
+
+        html += '<div class="vk-card__info">';
+        html += '<div class="vk-card__nombre">' + modelo.nombre + '</div>';
+        if (modelo.autonomia) {
+            html += '<div class="vk-card__specs">' +
+                'Autonom\u00eda: ' + modelo.autonomia + ' Km \u00b7 ' +
+                'Velocidad: ' + modelo.velocidad + ' Km/h' +
+                '</div>';
+        }
+        html += '<div class="vk-card__precio-base">Desde ' + VkUI.formatPrecio(modelo.precioContado) + ' MXN <span>(contado)</span></div>';
+        html += '</div>';
+
+        html += VkUI.renderBanner();
+        html += VkUI.renderBullets();
+
+        html += '<div class="vk-card__formas-pago-label">Formas de Pago: <span>(selecciona)</span></div>';
+
+        html += '<div class="vk-card__tabs">';
+        html += '<button class="vk-tab vk-tab--active" data-tab="credito">Cr\u00e9dito Voltika</button>';
+        html += '<button class="vk-tab" data-tab="msi">MSI</button>';
+        html += '<button class="vk-tab" data-tab="contado">Contado</button>';
+        html += '</div>';
+
+        html += '<div class="vk-card__tab-content vk-card__tab-content--active" data-tab-content="credito">';
+        html += this.renderTabCredito(modelo);
+        html += '</div>';
+
+        html += '<div class="vk-card__tab-content" data-tab-content="msi">';
+        html += this.renderTabMSI(modelo);
+        html += '</div>';
+
+        html += '<div class="vk-card__tab-content" data-tab-content="contado">';
+        html += this.renderTabContado(modelo);
+        html += '</div>';
+
+        html += '</div>'; // end card
+
+        return html;
+    },
+
+    _updateMobileHero: function(modeloId) {
+        var modelo = this.app.getModelo(modeloId);
+        if (!modelo) return;
+
+        this._activeModeloId = modeloId;
+
+        // Update sidebar active state
+        $('.vk-mhero__thumb').removeClass('vk-mhero__thumb--active');
+        $('.vk-mhero__thumb[data-mhero-id="' + modeloId + '"]').addClass('vk-mhero__thumb--active');
+
+        // Fade out, swap content, fade in
+        var self = this;
+        var $main = $('#vk-mhero-main');
+        $main.addClass('vk-mhero__main--fading');
+
+        setTimeout(function() {
+            $main.html(self._renderMobileMainContent(modelo));
+            $main.removeClass('vk-mhero__main--fading');
+        }, 200);
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  MOBILE CARDS (legacy, kept for compatibility)                       */
     /* ------------------------------------------------------------------ */
 
     renderCard: function(modelo) {
@@ -351,6 +454,15 @@ var Paso1 = {
         $(document).off('click', '#vk-hero-cta');
         $(document).on('click', '#vk-hero-cta', function() {
             self.app.seleccionarModelo(self._activeModeloId, self._activeMetodo);
+        });
+
+        // ── Mobile hero: sidebar thumbnail click ─────────────
+        $(document).off('click', '.vk-mhero__thumb');
+        $(document).on('click', '.vk-mhero__thumb', function() {
+            var mid = $(this).data('mhero-id');
+            if (mid && mid !== self._activeModeloId) {
+                self._updateMobileHero(mid);
+            }
         });
 
         // ── Mobile: per-card tab switching ────────────────────

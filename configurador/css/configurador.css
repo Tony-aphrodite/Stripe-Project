@@ -1348,6 +1348,169 @@
 }
 
 /* --------------------------------------------------------------------------
+   PASO 1 Mobile Hero: sidebar model selector (replaces stacked cards)
+   -------------------------------------------------------------------------- */
+.vk-mhero {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    min-height: 0;
+}
+
+.vk-mhero__main {
+    flex: 1;
+    min-width: 0;
+    transition: opacity 0.2s ease;
+}
+
+.vk-mhero__main--fading {
+    opacity: 0;
+}
+
+/* Sidebar with thumbnails */
+.vk-mhero__sidebar {
+    width: 72px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 4px;
+    overflow-y: auto;
+    background: var(--vk-bg-white);
+    border-left: 1px solid var(--vk-border-light);
+}
+
+.vk-mhero__thumb {
+    width: 62px;
+    padding: 4px 2px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: var(--vk-bg-light);
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.vk-mhero__thumb--active {
+    border-color: var(--vk-green-primary);
+    background: var(--vk-green-soft);
+}
+
+.vk-mhero__thumb img {
+    width: 48px;
+    height: 36px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+
+.vk-mhero__thumb-label {
+    font-size: 8px;
+    font-weight: 600;
+    color: var(--vk-text-secondary);
+    line-height: 1.1;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vk-mhero__thumb--active .vk-mhero__thumb-label {
+    color: var(--vk-green-primary);
+    font-weight: 700;
+}
+
+.vk-mhero__thumb-star {
+    font-size: 8px;
+    display: block;
+    line-height: 1;
+}
+
+/* Main content compact styles */
+.vk-mhero .vk-card {
+    margin-bottom: 0;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.vk-mhero .vk-card__imagen {
+    padding: 10px 8px 6px;
+}
+
+.vk-mhero .vk-card__imagen img {
+    max-height: 140px;
+}
+
+.vk-mhero .vk-card__nombre {
+    font-size: 18px;
+}
+
+.vk-mhero .vk-card__specs {
+    font-size: 12px;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.vk-mhero .vk-card__precio-base {
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.vk-mhero .vk-card__banner {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.vk-mhero .vk-card__bullets {
+    padding: 4px 12px;
+}
+
+.vk-mhero .vk-card__bullet {
+    font-size: 12px;
+    padding: 1px 0;
+}
+
+.vk-mhero .vk-card__tabs {
+    margin: 6px 12px 0;
+}
+
+.vk-mhero .vk-tab {
+    padding: 7px 4px;
+    font-size: 12px;
+}
+
+.vk-mhero .vk-card__tab-content {
+    padding: 8px 12px;
+}
+
+.vk-mhero .vk-card__precio-destacado {
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.vk-mhero .vk-card__precio-destacado strong {
+    font-size: 20px;
+}
+
+.vk-mhero .vk-card__tab-bullet {
+    font-size: 12px;
+    padding: 1px 0;
+}
+
+.vk-mhero .vk-btn {
+    margin: 6px auto;
+    padding: 10px 12px;
+    font-size: 14px;
+}
+
+.vk-mhero .vk-card__formas-pago-label {
+    padding-top: 4px;
+    font-size: 12px;
+}
+
+/* --------------------------------------------------------------------------
    Mobile-compact: reduce line-height + spacing to fit more on screen
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
@@ -1464,5 +1627,23 @@
 
     .vk-payment-options {
         grid-template-columns: 1fr;
+    }
+
+    /* Sidebar narrower on small screens */
+    .vk-mhero__sidebar {
+        width: 60px;
+    }
+
+    .vk-mhero__thumb {
+        width: 52px;
+    }
+
+    .vk-mhero__thumb img {
+        width: 40px;
+        height: 30px;
+    }
+
+    .vk-mhero__thumb-label {
+        font-size: 7px;
     }
 }
