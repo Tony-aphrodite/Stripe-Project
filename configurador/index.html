@@ -66,6 +66,63 @@
         .main-header .navbar .navbar-brand { margin-left: 0; padding: 0; font-size: inherit; }
         .main-header .navbar .navbar-collapse { display: -webkit-flex !important; display: flex !important; }
         .main-header .navbar .navbar-nav { -webkit-flex-direction: row; flex-direction: row; }
+        @media (max-width: 991px) {
+            .main-header .navbar .navbar-collapse { display: none !important; }
+            .main-header .navbar .navbar-collapse.show { display: flex !important; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0; background: #fff; box-shadow: 0 4px 8px rgba(0,0,0,.1); z-index: 999; }
+            .main-header .navbar .navbar-nav { flex-direction: column; }
+            .main-header .navbar .navbar-nav li a { padding: 0.75rem 1rem; }
+            /* Logo: vertically centered, stays LEFT with spacing */
+            .main-header .navbar .navbar-brand {
+                margin-right: auto !important;
+                margin-left: 15px !important;
+                display: flex;
+                align-items: center;
+                height: 6.063rem;
+            }
+            .main-header .navbar .navbar-brand img { max-height: 40px; }
+            /* Shift search & side-panel icons left to make room for hamburger on far right */
+            .main-header .navbar-pos-search.with-side-panel { right: 72px !important; }
+            .main-header .navbar-pos-search.overlay-trigger { right: 40px !important; }
+            /* Hamburger: far RIGHT, pure CSS 3-line icon */
+            .main-header .navbar .navbar-toggler {
+                display: block !important;
+                position: absolute;
+                right: 8px;
+                left: auto !important;
+                top: 50%;
+                transform: translateY(-50%);
+                border: 1px solid #ddd;
+                border-radius: 3px;
+                padding: 0;
+                width: 36px;
+                height: 30px;
+                background: transparent;
+                cursor: pointer;
+                z-index: 100;
+            }
+            .main-header .navbar .navbar-toggler .navbar-toggler-icon {
+                display: block;
+                width: 20px;
+                height: 2px;
+                background: #55565b;
+                position: relative;
+                margin: 0 auto;
+                /* reset any Bootstrap defaults */
+                background-image: none !important;
+            }
+            .main-header .navbar .navbar-toggler .navbar-toggler-icon::before,
+            .main-header .navbar .navbar-toggler .navbar-toggler-icon::after {
+                content: '';
+                display: block;
+                width: 20px;
+                height: 2px;
+                background: #55565b;
+                position: absolute;
+                left: 0;
+            }
+            .main-header .navbar .navbar-toggler .navbar-toggler-icon::before { top: -6px; }
+            .main-header .navbar .navbar-toggler .navbar-toggler-icon::after { top: 6px; }
+        }
         .main-header .navbar .navbar-nav li { text-transform: uppercase; font-size: .75rem; font-weight: 500; -webkit-transition: all linear .2s; transition: all linear .2s; color: #55565b; }
         .main-header .navbar .navbar-nav li a { color: #55565b; padding: 2.25rem 1rem; display: inline-block; }
         .main-header .navbar .navbar-nav li a:hover, .main-header .navbar .navbar-nav li a:focus { background: none; color: #a7a7a7; }
@@ -417,7 +474,7 @@
 </header>
 
             <main>
-                <div style="padding: 80px 0 40px;">
+                <div style="padding: 0 0 40px;">
                     <div id="voltika-configurador" class="vk-configurador">
 
                         <!-- Progress Bar (hidden on PASO 1, visible on 2+) -->
