@@ -51,28 +51,6 @@ var VOLTIKA_PRODUCTOS = {
             orden: 2
         },
         {
-            id: 'mino',
-            nombre: 'Mino-B',
-            subtitulo: 'Compacta y urbana',
-            badge: null,
-            autonomia: 70,
-            velocidad: 60,
-            precioContado: 36600,
-            precioSemanal: 490,
-            precioMSI: Math.round(39320 / 9),   // $4,369/mes
-            precioMSITotal: 39320,
-            msiMeses: 9,
-            tieneMSI: true,
-            enganchePorcentaje: 0.30,
-            colores: [
-                { id: 'azul',  nombre: 'Azul',  hex: '#1E6FBF' },
-                { id: 'verde', nombre: 'Verde', hex: '#3DAA5E' },
-                { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' }
-            ],
-            colorDefault: 'azul',
-            orden: 3
-        },
-        {
             id: 'ukko-s',
             nombre: 'Ukko S+',
             subtitulo: 'Premium, mas potencia',
@@ -93,7 +71,7 @@ var VOLTIKA_PRODUCTOS = {
                 { id: 'naranja', nombre: 'Naranja', hex: '#E87722' }
             ],
             colorDefault: 'negro',
-            orden: 4
+            orden: 3
         },
         {
             id: 'mc10',
@@ -114,7 +92,7 @@ var VOLTIKA_PRODUCTOS = {
                 { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' }
             ],
             colorDefault: 'negro',
-            orden: 5
+            orden: 4
         },
         {
             id: 'pesgo-plus',
@@ -137,7 +115,7 @@ var VOLTIKA_PRODUCTOS = {
                 { id: 'plata', nombre: 'Plata', hex: '#C0C0C0' }
             ],
             colorDefault: 'negro',
-            orden: 6
+            orden: 5
         }
     ],
 

@@ -168,7 +168,7 @@ var VkUI = {
             '&#10004; Cada semana m\u00e1s mexicanos eligen <strong>Voltika</strong>' +
             '</div>' +
             '<div class="vk-go-electric__more">' +
-            'Modelos para todos los estilos de vida' +
+            'M\u00e1s modelos disponibles \u2193' +
             '</div>' +
             '</div>';
     },
