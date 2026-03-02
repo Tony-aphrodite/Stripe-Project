@@ -108,6 +108,8 @@ var Paso3 = {
             '</div>';
 
         $('#vk-cp-results').html(html).slideDown(300);
+        $('#vk-paso3-confirmar').fadeIn(300);
+        $('#vk-paso3-footer').fadeIn(300);
     },
 
     bindEvents: function() {
