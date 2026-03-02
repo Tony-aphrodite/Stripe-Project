@@ -240,24 +240,29 @@
     color: var(--vk-text-muted);
 }
 
-/* Green Banner */
+/* Green Banner (2-line) */
 .vk-card__banner {
     background: var(--vk-green-banner);
     color: var(--vk-text-white);
     text-align: center;
-    padding: var(--vk-space-sm) var(--vk-space-md);
+    padding: 8px var(--vk-space-md);
     font-size: var(--vk-font-size-sm);
     font-weight: var(--vk-font-semibold);
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: var(--vk-space-sm);
+    gap: 2px;
+}
+
+.vk-card__banner-line {
+    display: flex;
+    align-items: center;
+    gap: var(--vk-space-xs);
 }
 
 .vk-card__banner-icon {
-    width: 18px;
-    height: 18px;
     flex-shrink: 0;
+    font-size: 14px;
 }
 
 /* Bullets */
@@ -434,6 +439,73 @@
     font-size: var(--vk-font-size-xs);
     display: block;
     margin-top: var(--vk-space-xs);
+}
+
+/* "Formas de Pago" label */
+.vk-card__formas-pago-label {
+    text-align: center;
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-bold);
+    color: var(--vk-text-primary);
+    padding: var(--vk-space-sm) var(--vk-card-padding) 0;
+}
+
+.vk-card__formas-pago-label span {
+    font-weight: var(--vk-font-regular);
+    color: var(--vk-text-muted);
+}
+
+/* Per-tab CTA button */
+.vk-card__tab-cta {
+    margin-top: var(--vk-space-sm) !important;
+    margin-bottom: 0 !important;
+}
+
+/* Card logos inside tab */
+.vk-card__tab-logos {
+    text-align: center;
+    margin-top: var(--vk-space-xs);
+    margin-bottom: var(--vk-space-2xs);
+}
+
+/* --------------------------------------------------------------------------
+   GO electric Footer
+   -------------------------------------------------------------------------- */
+.vk-go-electric {
+    text-align: center;
+    padding: var(--vk-space-lg) var(--vk-space-md);
+    margin: var(--vk-space-md) 0;
+}
+
+.vk-go-electric__logo {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--vk-text-primary);
+    letter-spacing: -0.5px;
+}
+
+.vk-go-electric__logo span {
+    color: var(--vk-green-primary);
+    font-weight: 600;
+}
+
+.vk-go-electric__tagline {
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-secondary);
+    margin-top: var(--vk-space-2xs);
+}
+
+.vk-go-electric__social {
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-green-primary);
+    margin-top: var(--vk-space-xs);
+}
+
+.vk-go-electric__more {
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-muted);
+    margin-top: var(--vk-space-sm);
+    font-weight: var(--vk-font-medium);
 }
 
 /* --------------------------------------------------------------------------
@@ -729,6 +801,51 @@
     color: var(--vk-text-muted);
     margin-top: var(--vk-space-md);
     line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   PASO 3: Result sections (Centro Voltika, logistics, Qualitas, etc.)
+   -------------------------------------------------------------------------- */
+.vk-paso3-section {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--vk-border-light);
+    align-items: flex-start;
+}
+
+.vk-paso3-section:last-child {
+    border-bottom: none;
+}
+
+.vk-paso3-section__icon {
+    flex-shrink: 0;
+    font-size: 20px;
+    width: 28px;
+    text-align: center;
+    margin-top: 2px;
+}
+
+.vk-paso3-shield {
+    color: #B8860B;
+}
+
+.vk-paso3-check {
+    color: var(--vk-green-primary);
+}
+
+.vk-paso3-section__content {
+    flex: 1;
+    font-size: 13px;
+    color: var(--vk-text-primary);
+    line-height: 1.35;
+}
+
+.vk-paso3-sub {
+    font-size: 12px;
+    color: var(--vk-text-secondary);
+    margin-top: 2px;
+    line-height: 1.3;
 }
 
 /* --------------------------------------------------------------------------
@@ -1227,6 +1344,80 @@
 
     .vk-desktop-split-wrap {
         padding: 0 var(--vk-card-padding);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Mobile-compact: reduce line-height + spacing to fit more on screen
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    .vk-configurador {
+        line-height: 1.3;
+    }
+
+    .vk-card__nombre {
+        margin-bottom: 2px;
+    }
+
+    .vk-card__specs {
+        margin-bottom: 4px;
+        line-height: 1.2;
+    }
+
+    .vk-card__precio-base {
+        margin-bottom: 8px;
+    }
+
+    .vk-card__bullets {
+        padding: 6px var(--vk-card-padding);
+    }
+
+    .vk-card__bullet {
+        padding: 2px 0;
+        line-height: 1.25;
+    }
+
+    .vk-card__tab-content {
+        padding: 10px var(--vk-card-padding);
+    }
+
+    .vk-card__tab-bullet {
+        padding: 2px 0;
+        line-height: 1.25;
+    }
+
+    .vk-card__precio-destacado {
+        margin-bottom: 6px;
+    }
+
+    .vk-card__tabs {
+        margin-top: 8px;
+    }
+
+    .vk-tab {
+        padding: 8px 6px;
+    }
+
+    .vk-btn {
+        margin: 8px auto;
+        padding: 12px var(--vk-space-md);
+    }
+
+    .vk-card__formas-pago-label {
+        padding-top: 6px;
+    }
+
+    .vk-card__banner {
+        padding: 6px var(--vk-space-md);
+    }
+
+    .vk-card__imagen {
+        padding: var(--vk-space-md) var(--vk-space-sm) var(--vk-space-xs);
+    }
+
+    .vk-go-electric {
+        padding: var(--vk-space-md) var(--vk-space-md);
+        margin: var(--vk-space-sm) 0;
     }
 }
 

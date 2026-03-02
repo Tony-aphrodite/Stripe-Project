@@ -9,12 +9,21 @@ var VkUI = {
      * Render the progress bar for steps 2+
      * @param {number} pasoActual - Current step number (1-4)
      */
-    renderProgressBar: function(pasoActual) {
-        var steps = [
-            { num: 1, label: '' },
-            { num: 2, label: 'SELECCION' },
-            { num: 3, label: 'CONFIRMACION' }
-        ];
+    renderProgressBar: function(pasoActual, metodo) {
+        var steps;
+        if (metodo === 'credito') {
+            steps = [
+                { num: 1, label: 'SELECCION' },
+                { num: 2, label: 'CONFIRMACION' },
+                { num: 3, label: 'ENTREGA OFICIAL' }
+            ];
+        } else {
+            steps = [
+                { num: 1, label: 'DATOS' },
+                { num: 2, label: 'PAGO' },
+                { num: 3, label: 'ENTREGA OFICIAL' }
+            ];
+        }
 
         var html = '';
         for (var i = 0; i < steps.length; i++) {
@@ -51,8 +60,14 @@ var VkUI = {
      */
     renderBanner: function() {
         return '<div class="vk-card__banner">' +
-            '<span class="vk-card__banner-icon">&#9745;</span> ' +
-            'Entrega en Punto Voltika autorizado en tu ciudad' +
+            '<div class="vk-card__banner-line">' +
+            '<span class="vk-card__banner-icon">&#10004;</span> ' +
+            '<strong>Entrega Garantizada en tu Ciudad</strong>' +
+            '</div>' +
+            '<div class="vk-card__banner-line">' +
+            '<span class="vk-card__banner-icon">\u24d8</span> ' +
+            'Punto Voltika autorizado' +
+            '</div>' +
             '</div>';
     },
 
@@ -63,11 +78,11 @@ var VkUI = {
         return '<div class="vk-card__bullets">' +
             '<div class="vk-card__bullet">' +
                 '<span class="vk-card__bullet-icon">&#10004;</span> ' +
-                'Moto lista para circular en tu ciudad' +
+                'Moto lista para circular en tu ciudad \u00b7 <strong>Garant\u00eda incluida</strong>' +
             '</div>' +
             '<div class="vk-card__bullet">' +
                 '<span class="vk-card__bullet-icon">&#10004;</span> ' +
-                'Documentos para emplacar incluidos' +
+                'Documentos para que tramites <strong>tus placas</strong> en tu ciudad incluidos' +
             '</div>' +
             '</div>';
     },
@@ -145,9 +160,19 @@ var VkUI = {
         return '<div class="vk-spinner"></div>';
     },
 
-    /**
-     * Get image URL for a motorcycle model + color combination
-     */
+    renderGoElectricFooter: function() {
+        return '<div class="vk-go-electric">' +
+            '<div class="vk-go-electric__logo">GO<span>electric</span></div>' +
+            '<div class="vk-go-electric__tagline">Movilidad el\u00e9ctrica inteligente para M\u00e9xico</div>' +
+            '<div class="vk-go-electric__social">' +
+            '&#10004; Cada semana m\u00e1s mexicanos eligen <strong>Voltika</strong>' +
+            '</div>' +
+            '<div class="vk-go-electric__more">' +
+            'M\u00e1s modelos disponibles <span class="vk-scroll-hint__arrow">&#8595;</span>' +
+            '</div>' +
+            '</div>';
+    },
+
     getImagenMoto: function(modeloId, color) {
         var modeloFolderMap = {
             'm03':        'm03',

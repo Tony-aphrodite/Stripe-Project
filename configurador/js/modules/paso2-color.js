@@ -61,12 +61,8 @@ var Paso2 = {
         for (var i = 0; i < modelo.colores.length; i++) {
             var c = modelo.colores[i];
             var activeCls = c.id === colorActual ? ' vk-color-option--active' : '';
-            var thumb = VkUI.getImagenMoto(modelo.id, c.id);
             html += '<div class="vk-color-option' + activeCls + '" data-color="' + c.id + '">' +
-                '<div class="vk-color-option__thumb">' +
-                '<img src="' + thumb + '" alt="' + c.nombre + '" ' +
-                'style="width:52px;height:36px;object-fit:contain;">' +
-                '</div>' +
+                '<div class="vk-color-option__dot" style="background:' + c.hex + ';width:40px;height:40px;border-radius:50%;margin:0 auto 6px;border:2px solid ' + (c.id === 'blanco' || c.hex === '#F5F5F5' || c.hex === '#C0C0C0' ? '#CCC' : c.hex) + ';"></div>' +
                 '<div class="vk-color-option__label">' + c.nombre + '</div>' +
                 '</div>';
         }

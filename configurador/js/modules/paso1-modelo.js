@@ -54,6 +54,10 @@ var Paso1 = {
         html += '<div class="vk-paso1-mobile">';
         for (var j = 0; j < modelos.length; j++) {
             html += this.renderCard(modelos[j]);
+            // GO electric footer after first card
+            if (j === 0) {
+                html += VkUI.renderGoElectricFooter();
+            }
         }
         html += '</div>';
 
@@ -123,10 +127,10 @@ var Paso1 = {
         html += '</div>';
 
         html += '<button class="vk-btn vk-btn--primary vk-hero__cta" id="vk-hero-cta">' +
-            'SELECCIONAR ' + defaultModelo.nombre.toUpperCase() + ' &#8250;</button>';
+            'VER PLAN &#8250;</button>';
 
         html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin-top:8px;">' +
-            'Confirmar\u00e1s tu Punto Voltika antes de continuar.' +
+            'Solo falta confirmar tu <strong>punto de entrega</strong>.' +
             '</p>';
 
         html += VkUI.renderTrustBadges();
@@ -177,8 +181,11 @@ var Paso1 = {
         // Tab content
         this._updateHeroTabContent(modelo, metodo);
 
-        // CTA text
-        $('#vk-hero-cta').html('SELECCIONAR ' + modelo.nombre.toUpperCase() + ' &#8250;');
+        // CTA text based on method
+        var ctaText = 'VER PLAN &#8250;';
+        if (metodo === 'msi') ctaText = 'QUIERO MIS 9 MSI &#8250;';
+        if (metodo === 'contado') ctaText = 'PAGAR DE CONTADO';
+        $('#vk-hero-cta').html(ctaText);
     },
 
     _updateHeroTabContent: function(modelo, metodo) {
@@ -205,7 +212,7 @@ var Paso1 = {
         if (modelo.badge) {
             html += '<div class="vk-card__badge">' +
                 '<span class="vk-card__badge-star">&#11088;</span> ' +
-                modelo.badge +
+                modelo.badge.toUpperCase() +
                 '</div>';
         }
 
@@ -215,13 +222,10 @@ var Paso1 = {
 
         html += '<div class="vk-card__info">';
         html += '<div class="vk-card__nombre">' + modelo.nombre + '</div>';
-        if (modelo.subtitulo) {
-            html += '<div class="vk-card__subtitulo">' + modelo.subtitulo + '</div>';
-        }
         if (modelo.autonomia) {
             html += '<div class="vk-card__specs">' +
-                '<span>&#9889; ' + modelo.autonomia + ' Km</span>' +
-                '<span>&#128663; ' + modelo.velocidad + ' Km/h</span>' +
+                'Autonom\u00eda: ' + modelo.autonomia + ' Km \u00b7 ' +
+                'Velocidad: ' + modelo.velocidad + ' Km/h' +
                 '</div>';
         }
         html += '<div class="vk-card__precio-base">Desde ' + VkUI.formatPrecio(modelo.precioContado) + ' MXN <span>(contado)</span></div>';
@@ -230,9 +234,12 @@ var Paso1 = {
         html += VkUI.renderBanner();
         html += VkUI.renderBullets();
 
+        // "Formas de Pago" label
+        html += '<div class="vk-card__formas-pago-label">Formas de Pago: <span>(selecciona)</span></div>';
+
         html += '<div class="vk-card__tabs">';
-        html += '<button class="vk-tab vk-tab--active" data-tab="credito">Credito Voltika</button>';
-        html += '<button class="vk-tab" data-tab="msi">9 MSI</button>';
+        html += '<button class="vk-tab vk-tab--active" data-tab="credito">Cr\u00e9dito Voltika</button>';
+        html += '<button class="vk-tab" data-tab="msi">MSI</button>';
         html += '<button class="vk-tab" data-tab="contado">Contado</button>';
         html += '</div>';
 
@@ -248,26 +255,21 @@ var Paso1 = {
         html += this.renderTabContado(modelo);
         html += '</div>';
 
-        html += '<button class="vk-btn vk-btn--primary vk-card__continuar" data-modelo="' + modelo.id + '">' +
-            'SELECCIONAR' +
-            '</button>';
-
-        html += '<p class="vk-card__footer-note">Podr\u00e1s confirmar tu Punto Voltika antes de continuar.</p>';
-        html += VkUI.renderTrustBadges();
-        html += '</div>';
+        html += '</div>'; // end card
 
         return html;
     },
 
     renderTabCredito: function(modelo) {
         var html = '';
-        html += '<div class="vk-card__credito-logo"><span class="vk-shield">&#9745;</span> credito voltika</div>';
-        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> / semana</div>';
+        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
         html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Aprobaci\u00f3n en minutos \u00b7 Solo INE');
-        html += VkUI.renderTabBullet('Costo de env\u00edo a tu ciudad incluido');
-        html += VkUI.renderTabBullet('Confirmas tu Punto Voltika en el siguiente paso');
+        html += VkUI.renderTabBullet('<strong>Enganche flexible</strong> \u00b7 Sin penalizaci\u00f3n por pago anticipado');
+        html += VkUI.renderTabBullet('Aprobaci\u00f3n inmediata en menos de <strong>2 minutos</strong> \u00b7 solo con tu INE');
+        html += VkUI.renderTabBullet('Costo de env\u00edo de entrega segura <strong>SIN COSTO</strong> incluido en tu plan');
         html += '</div>';
+        html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito">' +
+            'VER PLAN &#8250;</button>';
         return html;
     },
 
@@ -280,13 +282,14 @@ var Paso1 = {
             html += '</div>';
             return html;
         }
-        html += '<div class="vk-card__msi-header">9 MSI con todas las tarjetas ' + VkUI.renderCardLogos() + '</div>';
-        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> / mes</div>';
+        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> /mes durante 9 meses &nbsp;' + VkUI.renderCardLogos() + '</div>';
         html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Sin tr\u00e1mites \u00b7 Pago con tarjeta');
-        html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
-        html += VkUI.renderTabBullet('Moto lista para circular + Documentos para emplacar');
+        html += VkUI.renderTabBullet('<strong>Sin tr\u00e1mites</strong> \u00b7 Pago <strong>inmediato</strong> con tarjeta');
+        html += VkUI.renderTabBullet('Env\u00edo asegurado a tu ciudad');
+        html += VkUI.renderTabBullet('<strong>Costo log\u00edstico</strong> confirmado con tu <strong>c\u00f3digo postal</strong> en el siguiente paso');
         html += '</div>';
+        html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="msi">' +
+            'QUIERO MIS 9 MSI &#8250;</button>';
         return html;
     },
 
@@ -294,13 +297,14 @@ var Paso1 = {
         var html = '';
         html += '<div class="vk-card__contado-label">Precio contado</div>';
         html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
-        html += '<div class="vk-card__iva">IVA incluido &middot; ' + VkUI.renderCardLogos() + '</div>';
         html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Sin tr\u00e1mites adicionales');
-        html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
-        html += VkUI.renderTabBullet('Moto lista para circular + documentos para emplacar');
+        html += VkUI.renderTabBullet('<strong>Sin tr\u00e1mites</strong> \u00b7 Pago <strong>inmediato</strong> con tarjeta');
+        html += VkUI.renderTabBullet('Env\u00edo asegurado a tu ciudad');
+        html += VkUI.renderTabBullet('<strong>Costo log\u00edstico</strong> confirmado con tu <strong>c\u00f3digo postal</strong> en el siguiente paso');
         html += '</div>';
-        html += '<div class="vk-card__nota-logistico">*Costo log\u00edstico se confirma seg\u00fan tu ciudad.*</div>';
+        html += '<div class="vk-card__tab-logos">' + VkUI.renderCardLogos() + '</div>';
+        html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="contado">' +
+            'PAGAR DE CONTADO</button>';
         return html;
     },
 
@@ -333,7 +337,14 @@ var Paso1 = {
             $(this).addClass('vk-hero__metodo-tab--active');
 
             var modelo = self.app.getModelo(self._activeModeloId);
-            if (modelo) self._updateHeroTabContent(modelo, metodo);
+            if (modelo) {
+                self._updateHeroTabContent(modelo, metodo);
+                // Update CTA text based on method
+                var ctaText = 'VER PLAN &#8250;';
+                if (metodo === 'msi') ctaText = 'QUIERO MIS 9 MSI &#8250;';
+                if (metodo === 'contado') ctaText = 'PAGAR DE CONTADO';
+                $('#vk-hero-cta').html(ctaText);
+            }
         });
 
         // ── Desktop: CTA ──────────────────────────────────────
@@ -355,13 +366,12 @@ var Paso1 = {
             $card.find('[data-tab-content="' + tab + '"]').addClass('vk-card__tab-content--active');
         });
 
-        // ── Mobile: SELECCIONAR button ────────────────────────
-        $(document).off('click', '.vk-card__continuar');
-        $(document).on('click', '.vk-card__continuar', function() {
-            var modeloId  = $(this).closest('.vk-card').data('modelo');
-            var $card     = $(this).closest('.vk-card');
-            var activeTab = $card.find('.vk-tab--active').data('tab') || 'credito';
-            self.app.seleccionarModelo(modeloId, activeTab);
+        // ── Mobile: per-tab CTA buttons ────────────────────────
+        $(document).off('click', '.vk-card__tab-cta');
+        $(document).on('click', '.vk-card__tab-cta', function() {
+            var modeloId = $(this).data('modelo');
+            var metodo   = $(this).data('metodo');
+            self.app.seleccionarModelo(modeloId, metodo);
         });
     }
 };

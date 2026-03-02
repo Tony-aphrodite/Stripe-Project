@@ -31,7 +31,7 @@
         },
 
         init: function() {
-            VkUI.renderProgressBar(1);
+            VkUI.renderProgressBar(1, 'credito');
             Paso1.init(this);
             this.bindGlobalEvents();
         },
@@ -82,7 +82,7 @@
 
                 // Progress bar: map named pasos to numeric equivalents
                 var pasoNum = typeof paso === 'number' ? paso : self._pasoNumerico(paso);
-                VkUI.renderProgressBar(pasoNum);
+                VkUI.renderProgressBar(pasoNum, self.state.metodoPago);
 
                 if (paso === 1) {
                     $('#vk-scroll-hint').show();
