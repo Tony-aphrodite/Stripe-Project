@@ -1305,6 +1305,11 @@
         margin-bottom: 16px;
     }
 
+    /* Hide tab-internal CTA inside desktop hero (hero has its own #vk-hero-cta) */
+    .vk-hero__tab-content .vk-card__tab-cta {
+        display: none;
+    }
+
     /* ── PASO 2+ — card goes full-width on desktop ────────────────────── */
     #vk-paso-2 .vk-card,
     #vk-paso-3 .vk-card,
@@ -1469,62 +1474,61 @@
 }
 
 .vk-mhero .vk-card__banner {
-    padding: 6px 14px;
-    font-size: 13px;
+    padding: 5px 12px;
+    font-size: 11px;
 }
 
 .vk-mhero .vk-card__banner-line {
-    gap: 6px;
+    gap: 4px;
 }
 
 .vk-mhero .vk-card__bullets {
-    padding: 6px 14px;
+    padding: 4px 12px;
 }
 
 .vk-mhero .vk-card__bullet {
-    font-size: 13px;
-    padding: 2px 0;
+    font-size: 11px;
+    padding: 1px 0;
     line-height: 1.3;
 }
 
 .vk-mhero .vk-card__tabs {
-    margin: 8px 14px 0;
+    margin: 6px 12px 0;
 }
 
 .vk-mhero .vk-tab {
-    padding: 8px 6px;
-    font-size: 12px;
+    padding: 7px 4px;
+    font-size: 11px;
 }
 
 .vk-mhero .vk-card__tab-content {
-    padding: 10px 14px;
+    padding: 8px 12px;
 }
 
 .vk-mhero .vk-card__precio-destacado {
-    font-size: 14px;
+    font-size: 13px;
     margin-bottom: 4px;
 }
 
 .vk-mhero .vk-card__precio-destacado strong {
-    font-size: 24px;
+    font-size: 22px;
 }
 
 .vk-mhero .vk-card__tab-bullet {
-    font-size: 13px;
-    padding: 2px 0;
+    font-size: 11px;
+    padding: 1px 0;
     line-height: 1.3;
 }
 
 .vk-mhero .vk-btn {
-    margin: 8px auto;
-    padding: 12px 14px;
-    font-size: 15px;
+    margin: 6px auto;
+    padding: 10px 12px;
+    font-size: 14px;
 }
 
 .vk-mhero .vk-card__formas-pago-label {
-    padding-top: 6px;
-    font-size: 13px;
-    font-weight: 700;
+    padding-top: 4px;
+    font-size: 12px;
 }
 
 /* --------------------------------------------------------------------------

@@ -175,11 +175,7 @@ var PasoResumen = {
         var self = this;
         jQuery(document).off('click', '#vk-resumen-continuar');
         jQuery(document).on('click', '#vk-resumen-continuar', function() {
-            if (self.app.state.metodoPago === 'credito') {
-                self.app.irAPaso('exito');
-            } else {
-                self.app.irAPaso(4); // goes to paso 4A (Stripe)
-            }
+            self.app.irAPaso(4); // credit → Paso4B, contado/msi → Paso4A (Stripe)
         });
     }
 };

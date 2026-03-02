@@ -254,86 +254,31 @@ var Paso1 = {
         html += '<div class="vk-card__precio-base">' + VkUI.formatPrecio(modelo.precioContado) + ' MXN <span>(contado)</span></div>';
         html += '</div>';
 
-        // Compact banner for mobile
-        html += '<div class="vk-card__banner">' +
-            '<div class="vk-card__banner-line">' +
-            '<span class="vk-card__banner-icon">&#10004;</span> ' +
-            'Entrega garantizada en tu ciudad' +
-            '</div>' +
-            '</div>';
+        html += VkUI.renderBanner();
+        html += VkUI.renderBullets();
 
-        // Compact bullets for mobile
-        html += '<div class="vk-card__bullets">';
-        html += '<div class="vk-card__bullet"><span class="vk-card__bullet-icon">&#10004;</span> Moto lista \u00b7 Garant\u00eda incluida</div>';
-        html += '<div class="vk-card__bullet"><span class="vk-card__bullet-icon">&#10004;</span> Documentos y placas incluidos</div>';
-        html += '</div>';
-
-        html += '<div class="vk-card__formas-pago-label">Forma de Pago:</div>';
+        html += '<div class="vk-card__formas-pago-label">Formas de Pago: <span>(selecciona)</span></div>';
 
         html += '<div class="vk-card__tabs">';
-        html += '<button class="vk-tab vk-tab--active" data-tab="credito">Cr\u00e9dito</button>';
+        html += '<button class="vk-tab vk-tab--active" data-tab="credito">Cr\u00e9dito Voltika</button>';
         html += '<button class="vk-tab" data-tab="msi">MSI</button>';
         html += '<button class="vk-tab" data-tab="contado">Contado</button>';
         html += '</div>';
 
         html += '<div class="vk-card__tab-content vk-card__tab-content--active" data-tab-content="credito">';
-        html += this._renderMobileTabCredito(modelo);
+        html += this.renderTabCredito(modelo);
         html += '</div>';
 
         html += '<div class="vk-card__tab-content" data-tab-content="msi">';
-        html += this._renderMobileTabMSI(modelo);
+        html += this.renderTabMSI(modelo);
         html += '</div>';
 
         html += '<div class="vk-card__tab-content" data-tab-content="contado">';
-        html += this._renderMobileTabContado(modelo);
+        html += this.renderTabContado(modelo);
         html += '</div>';
 
         html += '</div>'; // end card
 
-        return html;
-    },
-
-    _renderMobileTabCredito: function(modelo) {
-        var html = '';
-        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> /semana</div>';
-        html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Enganche flexible');
-        html += VkUI.renderTabBullet('Aprobaci\u00f3n en <strong>2 min</strong> con INE');
-        html += VkUI.renderTabBullet('Env\u00edo <strong>SIN COSTO</strong>');
-        html += '</div>';
-        html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito">' +
-            'VER PLAN &#8250;</button>';
-        return html;
-    },
-
-    _renderMobileTabMSI: function(modelo) {
-        var html = '';
-        if (!modelo.tieneMSI) {
-            html += '<div style="padding:8px 0;text-align:center;">';
-            html += '<div class="vk-card__precio-secundario">Sin MSI para este modelo</div>';
-            html += '<div class="vk-card__precio-secundario">' + VkUI.formatPrecio(modelo.precioContado) + ' MXN contado</div>';
-            html += '</div>';
-            return html;
-        }
-        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> /mes \u00d7 9</div>';
-        html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Pago inmediato con tarjeta');
-        html += VkUI.renderTabBullet('Env\u00edo asegurado a tu ciudad');
-        html += '</div>';
-        html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="msi">' +
-            '9 MSI &#8250;</button>';
-        return html;
-    },
-
-    _renderMobileTabContado: function(modelo) {
-        var html = '';
-        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
-        html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Pago inmediato con tarjeta');
-        html += VkUI.renderTabBullet('Env\u00edo asegurado a tu ciudad');
-        html += '</div>';
-        html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="contado">' +
-            'PAGAR CONTADO</button>';
         return html;
     },
 
