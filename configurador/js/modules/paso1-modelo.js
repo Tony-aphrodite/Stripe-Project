@@ -202,13 +202,13 @@ var Paso1 = {
     _renderMobileHero: function(modelos, defaultModelo) {
         var html = '<div class="vk-mhero">';
 
-        // Main content area
+        // Main content area (full width)
         html += '<div class="vk-mhero__main" id="vk-mhero-main">';
         html += this._renderMobileMainContent(defaultModelo);
         html += '</div>';
 
-        // Sidebar with thumbnails
-        html += '<div class="vk-mhero__sidebar">';
+        // Horizontal model nav at bottom
+        html += '<div class="vk-mhero__nav">';
         for (var i = 0; i < modelos.length; i++) {
             var m = modelos[i];
             var active = m.id === defaultModelo.id ? ' vk-mhero__thumb--active' : '';
