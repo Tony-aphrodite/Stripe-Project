@@ -116,6 +116,28 @@ var VOLTIKA_PRODUCTOS = {
             ],
             colorDefault: 'negro',
             orden: 5
+        },
+        {
+            id: 'mino',
+            nombre: 'Mino-B',
+            subtitulo: 'Compacta y versatil',
+            badge: null,
+            autonomia: null,          // TODO: confirmar con cliente
+            velocidad: null,          // TODO: confirmar con cliente
+            precioContado: 36600,
+            precioSemanal: 490,
+            precioMSI: Math.round(39320 / 9),   // $4,369/mes
+            precioMSITotal: 39320,
+            msiMeses: 9,
+            tieneMSI: true,
+            enganchePorcentaje: 0.30,
+            colores: [
+                { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' },
+                { id: 'azul',  nombre: 'Azul',  hex: '#1E6FBF' },
+                { id: 'verde', nombre: 'Verde', hex: '#2E8B57' }
+            ],
+            colorDefault: 'gris',
+            orden: 6
         }
     ],
 
