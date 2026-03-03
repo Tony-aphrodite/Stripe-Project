@@ -240,19 +240,18 @@
     color: var(--vk-text-muted);
 }
 
-/* Green Banner */
+/* Green Banner (2-line) */
 .vk-card__banner {
     background: var(--vk-green-banner);
     color: var(--vk-text-white);
     text-align: center;
-    padding: 10px var(--vk-space-md);
+    padding: 8px var(--vk-space-md);
     font-size: var(--vk-font-size-sm);
     font-weight: var(--vk-font-semibold);
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: var(--vk-space-xs);
-    line-height: 1.3;
+    gap: 2px;
 }
 
 .vk-card__banner-line {
@@ -263,7 +262,7 @@
 
 .vk-card__banner-icon {
     flex-shrink: 0;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 /* Bullets */
@@ -477,123 +476,6 @@
 }
 
 /* --------------------------------------------------------------------------
-   Step Headers (PASO 1, 2, 3)
-   -------------------------------------------------------------------------- */
-.vk-paso1-header,
-.vk-paso-header {
-    margin-bottom: var(--vk-space-md);
-}
-
-.vk-paso1-header__step,
-.vk-paso-header__step {
-    font-size: var(--vk-font-size-xl);
-    font-weight: var(--vk-font-extrabold);
-    color: var(--vk-green-primary);
-    margin-bottom: var(--vk-space-2xs);
-}
-
-.vk-paso1-header__title,
-.vk-paso-header__title {
-    font-size: var(--vk-font-size-lg);
-    font-weight: var(--vk-font-medium);
-    color: var(--vk-text-primary);
-    margin: 0;
-}
-
-/* --------------------------------------------------------------------------
-   Credit Tab Header (shield + credito voltika)
-   -------------------------------------------------------------------------- */
-.vk-card__credito-header {
-    font-size: var(--vk-font-size-base);
-    color: var(--vk-text-primary);
-    margin-bottom: var(--vk-space-xs);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--vk-space-xs);
-}
-
-.vk-shield-icon {
-    color: #B8860B;
-    font-size: 18px;
-}
-
-/* --------------------------------------------------------------------------
-   Contado Tab Elements
-   -------------------------------------------------------------------------- */
-.vk-card__contado-iva {
-    font-size: var(--vk-font-size-sm);
-    color: var(--vk-text-muted);
-    margin-bottom: var(--vk-space-xs);
-}
-
-.vk-card__contado-logos {
-    margin-bottom: var(--vk-space-sm);
-}
-
-.vk-card__contado-note {
-    font-size: var(--vk-font-size-xs);
-    color: var(--vk-text-muted);
-    margin-top: var(--vk-space-xs);
-    font-style: italic;
-}
-
-/* --------------------------------------------------------------------------
-   PASO 2: Image wrap with green banner overlay
-   -------------------------------------------------------------------------- */
-.vk-card__imagen-wrap {
-    position: relative;
-    margin-bottom: var(--vk-space-sm);
-}
-
-.vk-card__imagen-banner {
-    background: rgba(76, 110, 60, 0.85);
-    color: var(--vk-text-white);
-    text-align: center;
-    padding: 8px 12px;
-    font-size: var(--vk-font-size-sm);
-    font-weight: var(--vk-font-semibold);
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 2;
-    line-height: 1.4;
-}
-
-.vk-card__color-note {
-    font-size: var(--vk-font-size-xs);
-    color: var(--vk-text-muted);
-    text-align: center;
-    margin: var(--vk-space-xs) 0 var(--vk-space-md);
-}
-
-.vk-card__payment-info {
-    padding: var(--vk-space-md) var(--vk-card-padding);
-    text-align: center;
-    border-top: 1px solid var(--vk-border-light);
-}
-
-.vk-payment-label {
-    font-size: var(--vk-font-size-base);
-    font-weight: var(--vk-font-semibold);
-    color: var(--vk-text-primary);
-    margin-bottom: var(--vk-space-xs);
-}
-
-/* --------------------------------------------------------------------------
-   PASO 3: Note section
-   -------------------------------------------------------------------------- */
-.vk-paso3-note {
-    font-size: 12px;
-    color: var(--vk-text-secondary);
-    margin-top: var(--vk-space-sm);
-    padding-top: var(--vk-space-sm);
-    border-top: 1px solid var(--vk-border-light);
-    line-height: 1.5;
-}
-
-/* --------------------------------------------------------------------------
    GO electric Footer
    -------------------------------------------------------------------------- */
 .vk-go-electric {
@@ -783,11 +665,11 @@
 }
 
 .vk-color-option__dot {
-    width: 40px;
-    height: 40px;
+    width: 24px;
+    height: 24px;
     border-radius: var(--vk-radius-circle);
     margin: 0 auto var(--vk-space-xs);
-    border: 2px solid var(--vk-border);
+    border: 1px solid var(--vk-border);
 }
 
 .vk-color-option__dot--negro { background: #1A1A1A; }
