@@ -7,20 +7,19 @@ var VkUI = {
 
     /**
      * Render the progress bar for steps 2+
-     * @param {number} pasoActual - Current step number (1-4)
      */
     renderProgressBar: function(pasoActual, metodo) {
         var steps;
         if (metodo === 'credito') {
             steps = [
-                { num: 1, label: 'SELECCION' },
-                { num: 2, label: 'CONFIRMACION' },
+                { num: 1, label: 'SELECCI\u00d3N' },
+                { num: 2, label: 'CONFIRMACI\u00d3N' },
                 { num: 3, label: 'ENTREGA OFICIAL' }
             ];
         } else {
             steps = [
-                { num: 1, label: 'DATOS' },
-                { num: 2, label: 'PAGO' },
+                { num: 1, label: 'SELECCI\u00d3N' },
+                { num: 2, label: 'CONFIRMACI\u00d3N' },
                 { num: 3, label: 'ENTREGA OFICIAL' }
             ];
         }
@@ -56,39 +55,33 @@ var VkUI = {
     },
 
     /**
-     * Render the green "Punto Voltika" banner
+     * Render the green "Punto Voltika" banner (matches reference design)
      */
     renderBanner: function() {
         return '<div class="vk-card__banner">' +
-            '<div class="vk-card__banner-line">' +
-            '<span class="vk-card__banner-icon">&#10004;</span> ' +
-            '<strong>Entrega Garantizada en tu Ciudad</strong>' +
-            '</div>' +
-            '<div class="vk-card__banner-line">' +
-            '<span class="vk-card__banner-icon">\u24d8</span> ' +
-            'Punto Voltika autorizado' +
-            '</div>' +
+            '<span class="vk-card__banner-icon">&#128737;</span> ' +
+            '<strong>Entrega en Punto Voltika autorizado en tu ciudad</strong>' +
             '</div>';
     },
 
     /**
-     * Render standard bullets (Moto lista + Documentos)
+     * Render standard bullets (matches reference design)
      */
     renderBullets: function() {
         return '<div class="vk-card__bullets">' +
             '<div class="vk-card__bullet">' +
                 '<span class="vk-card__bullet-icon">&#10004;</span> ' +
-                'Moto lista para circular en tu ciudad \u00b7 <strong>Garant\u00eda incluida</strong>' +
+                '<strong>Moto</strong> lista para circular en tu ciudad' +
             '</div>' +
             '<div class="vk-card__bullet">' +
                 '<span class="vk-card__bullet-icon">&#10004;</span> ' +
-                'Documentos para que tramites <strong>tus placas</strong> en tu ciudad incluidos' +
+                '<strong>Documentos</strong> para emplacar <strong>incluidos</strong>' +
             '</div>' +
             '</div>';
     },
 
     /**
-     * Render card logo images (Visa, MC, Amex as text placeholders)
+     * Render card logo images (Visa, MC, Amex)
      */
     renderCardLogos: function() {
         return '<span class="vk-card__tarjeta-logo" style="color:#1A1F71;font-weight:800;">VISA</span> ' +
@@ -98,15 +91,15 @@ var VkUI = {
     },
 
     /**
-     * Render trust badges footer
+     * Render trust badges footer (matches reference: 100% Electrica | Garantia Voltika | Hasta 9 MSI)
      */
     renderTrustBadges: function() {
         return '<div class="vk-trust-badges">' +
             '<div class="vk-trust-badge">' +
-                '<span class="vk-trust-badge__icon">&#9889;</span> 100% Electrica' +
+                '<span class="vk-trust-badge__icon">&#9889;</span> 100% El\u00e9ctrica' +
             '</div>' +
             '<div class="vk-trust-badge">' +
-                '<span class="vk-trust-badge__icon">&#9745;</span> Garantia Voltika' +
+                '<span class="vk-trust-badge__icon">&#128737;</span> Garant\u00eda Voltika' +
             '</div>' +
             '<div class="vk-trust-badge">' +
                 '<span class="vk-trust-badge__icon">&#128179;</span> Hasta 9 MSI' +
