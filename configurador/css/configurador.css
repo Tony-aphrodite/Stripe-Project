@@ -158,10 +158,10 @@
     overflow: hidden;
 }
 
-/* "Más vendido" Badge — flag ribbon bottom-left of image */
+/* "Más vendido" Badge — flag ribbon top-left of image */
 .vk-card__badge {
     position: absolute;
-    bottom: 8px;
+    top: 10px;
     left: 0;
     display: inline-flex;
     align-items: center;
