@@ -217,8 +217,14 @@ var Paso1 = {
 
         var html = '<div class="vk-card" data-modelo="' + modelo.id + '">';
 
-        html += '<div class="vk-card__imagen">' +
-            '<img src="' + img + '" alt="' + modelo.nombre + '" loading="lazy">' +
+        html += '<div class="vk-card__imagen">';
+        if (modelo.badge) {
+            html += '<div class="vk-card__badge">' +
+                '<span class="vk-card__badge-star">&#11088;</span> ' +
+                modelo.badge +
+                '</div>';
+        }
+        html += '<img src="' + img + '" alt="' + modelo.nombre + '" loading="lazy">' +
             '</div>';
 
         html += '<div class="vk-card__info-row">';
@@ -228,12 +234,6 @@ var Paso1 = {
             html += '<div class="vk-card__spec-item">Velocidad:<br><strong>' + modelo.velocidad + ' Km/h</strong></div>';
         }
         html += '</div>';
-        if (modelo.badge) {
-            html += '<div class="vk-card__badge">' +
-                '<span class="vk-card__badge-star">&#11088;</span> ' +
-                modelo.badge +
-                '</div>';
-        }
         html += '<div class="vk-card__precio-base">Desde ' + VkUI.formatPrecio(modelo.precioContado) + ' MXN <span>(contado)</span></div>';
 
         html += VkUI.renderBanner();
