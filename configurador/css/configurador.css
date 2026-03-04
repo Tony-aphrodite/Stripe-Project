@@ -1552,6 +1552,58 @@
     }
 }
 
+/* --------------------------------------------------------------------------
+   GO electric Footer
+   -------------------------------------------------------------------------- */
+.vk-go-electric {
+    text-align: center;
+    padding: var(--vk-space-lg) var(--vk-space-md);
+    margin: var(--vk-space-md) 0;
+    background: var(--vk-bg-light);
+    border-radius: var(--vk-radius-lg);
+}
+
+.vk-go-electric__logo {
+    margin-bottom: var(--vk-space-sm);
+}
+
+.vk-go-electric__svg {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+}
+
+.vk-go-electric__tagline {
+    font-size: var(--vk-font-size-sm);
+    color: var(--vk-text-secondary);
+    margin-bottom: var(--vk-space-sm);
+}
+
+.vk-go-electric__social {
+    font-size: var(--vk-font-size-xs);
+    color: var(--vk-text-muted);
+    margin-bottom: var(--vk-space-sm);
+}
+
+.vk-go-electric__chevron {
+    font-size: 10px;
+    color: var(--vk-text-muted);
+    margin-bottom: var(--vk-space-xs);
+}
+
+.vk-go-electric__divider {
+    width: 40px;
+    height: 1px;
+    background: var(--vk-border);
+    margin: 0 auto var(--vk-space-sm);
+}
+
+.vk-go-electric__more {
+    font-size: var(--vk-font-size-xs);
+    color: var(--vk-text-muted);
+    font-weight: var(--vk-font-medium);
+}
+
 /* Small mobile */
 @media (max-width: 380px) {
     .vk-configurador {

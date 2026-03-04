@@ -150,11 +150,19 @@ var PasoResumen = {
         html += VkUI.renderBanner();
 
         // CTA
-        if (metodo === 'credito') {
-            html += '<button class="vk-btn vk-btn--primary" id="vk-resumen-continuar">' +
+        if (metodo === 'credito' && state.creditoAprobado) {
+            // Second visit (post-verification): go to enganche payment
+            html += '<button class="vk-btn vk-btn--primary" id="vk-resumen-continuar" data-target="credito-enganche">' +
+                '&#128274; Pagar enganche y continuar</button>';
+            html += '<p class="vk-card__footer-note">' +
+                'Ser\u00e1s dirigido al formulario de pago seguro con Stripe.' +
+                '</p>';
+        } else if (metodo === 'credito') {
+            // First visit: go to credit calculator
+            html += '<button class="vk-btn vk-btn--primary" id="vk-resumen-continuar" data-target="4">' +
                 '&#10004; Confirmar solicitud</button>';
             html += '<p class="vk-card__footer-note">' +
-                'Un asesor Voltika te contactar\u00e1 por WhatsApp para coordinar tu enganche.' +
+                'Siguiente paso: calculadora de cr\u00e9dito y pre-aprobaci\u00f3n.' +
                 '</p>';
         } else {
             html += '<button class="vk-btn vk-btn--primary" id="vk-resumen-continuar">' +
@@ -175,7 +183,12 @@ var PasoResumen = {
         var self = this;
         jQuery(document).off('click', '#vk-resumen-continuar');
         jQuery(document).on('click', '#vk-resumen-continuar', function() {
-            self.app.irAPaso(4); // credit → Paso4B, contado/msi → Paso4A (Stripe)
+            var target = jQuery(this).data('target');
+            if (target === 'credito-enganche') {
+                self.app.irAPaso('credito-enganche');
+            } else {
+                self.app.irAPaso(4); // credit → Paso4B, contado/msi → Paso4A (Stripe)
+            }
         });
     }
 };

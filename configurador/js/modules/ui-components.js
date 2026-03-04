@@ -156,7 +156,7 @@ var VkUI = {
 
     renderGoElectricFooter: function() {
         return '<div class="vk-go-electric">' +
-            '<div class="vk-go-electric__logo">G<span class="vk-go-electric__o">O</span><span>electric</span></div>' +
+            '<div class="vk-go-electric__logo"><img src="img/goelectric.svg" alt="GO electric" class="vk-go-electric__svg"></div>' +
             '<div class="vk-go-electric__tagline">Movilidad el\u00e9ctrica <em>inteligente</em> para M\u00e9xico</div>' +
             '<div class="vk-go-electric__social">' +
             '&#9889; Cada semana m\u00e1s mexicanos eligen <strong>Voltika</strong>' +
