@@ -15,8 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// ── Configuración SMSMasivos ─────────────────────────────────────────────────
-define('SMSMASIVOS_API_KEY', 'ff4cca0aee49e64c91465559c9ced18d785d838c');
+// ── Central config ───────────────────────────────────────────────────────────
+require_once __DIR__ . '/config.php';
+
 define('SMSMASIVOS_2FA_URL', 'https://api.smsmasivos.com.mx/protected/json/phones/verification/start');
 define('SMSMASIVOS_COMPANY', 'Voltika');
 

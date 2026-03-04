@@ -14,14 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// ── Dependencias ──────────────────────────────────────────────────────────────
-$autoload = __DIR__ . '/vendor/autoload.php';
-if (file_exists($autoload)) {
-    require_once $autoload;
-}
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
+// ── Central config ───────────────────────────────────────────────────────────
+require_once __DIR__ . '/config.php';
 
 // ── Request ───────────────────────────────────────────────────────────────────
 $json = json_decode(file_get_contents('php://input'), true);
@@ -51,12 +45,25 @@ $fecha     = date('Y-m-d H:i');
 
 // ── Guardar en BD ─────────────────────────────────────────────────────────────
 try {
-    $pdo = new PDO(
-        'mysql:host=localhost;dbname=voltika_;charset=utf8mb4',
-        'voltika',
-        'Lemon2022;',
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
+    $pdo = getDB();
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS transacciones (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        nombre     VARCHAR(200),
+        email      VARCHAR(200),
+        telefono   VARCHAR(30),
+        modelo     VARCHAR(200),
+        color      VARCHAR(100),
+        ciudad     VARCHAR(100),
+        estado     VARCHAR(100),
+        cp         VARCHAR(10),
+        tpago      VARCHAR(50),
+        precio     DECIMAL(12,2),
+        total      DECIMAL(12,2),
+        freg       DATETIME DEFAULT CURRENT_TIMESTAMP,
+        pedido     VARCHAR(20),
+        stripe_pi  VARCHAR(100)
+    )");
 
     $stmt = $pdo->prepare("
         INSERT INTO transacciones
@@ -87,14 +94,12 @@ $cuerpo = '<!DOCTYPE html>
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;">
     <tr><td align="center" style="padding:24px;">
       <table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;max-width:620px;width:100%;">
-        <!-- Header verde -->
         <tr>
           <td style="background:#22C55E;padding:24px 28px;color:#fff;">
             <h1 style="margin:0;font-size:22px;font-weight:800;">&#9745; voltika</h1>
             <p style="margin:8px 0 0;font-size:16px;">Tu Voltika ya es tuya. &#127881;</p>
           </td>
         </tr>
-        <!-- Cuerpo -->
         <tr>
           <td style="padding:28px;">
             <p style="margin:0 0 16px;font-size:15px;color:#111;">Hola <strong>' . htmlspecialchars($nombre) . '</strong>,</p>
@@ -143,44 +148,8 @@ $cuerpo = '<!DOCTYPE html>
 </body>
 </html>';
 
-$emailSent = false;
-$asunto    = 'Confirmacion de tu compra Voltika #' . $pedidoNum;
-
-if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-    // PHPMailer (via composer require phpmailer/phpmailer)
-    try {
-        $mail = new PHPMailer(true);
-        $mail->isSMTP();
-        $mail->SMTPAuth   = true;
-        $mail->Host       = 'smtp.ionos.mx';
-        $mail->Port       = 465;
-        $mail->Username   = 'voltika@riactor.com';
-        $mail->Password   = 'Lemon2022;';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->setFrom('voltika@riactor.com', 'Voltika México');
-        $mail->addAddress($email, $nombre);
-        $mail->addAddress('redes@voltika.com.mx');
-        $mail->CharSet    = 'UTF-8';
-        $mail->Encoding   = 'base64';
-        $mail->isHTML(true);
-        $mail->Subject    = $asunto;
-        $mail->Body       = $cuerpo;
-        $mail->AltBody    = strip_tags($cuerpo);
-        $mail->send();
-        $emailSent = true;
-    } catch (Exception $e) {
-        error_log('Voltika PHPMailer error: ' . $e->getMessage());
-    }
-}
-
-// Fallback: PHP mail() si PHPMailer no está disponible
-if (!$emailSent && !empty($email)) {
-    $headers  = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $headers .= "From: Voltika México <voltika@riactor.com>\r\n";
-    $headers .= "Bcc: redes@voltika.com.mx\r\n";
-    $emailSent = @mail($email, $asunto, $cuerpo, $headers);
-}
+$asunto = 'Confirmacion de tu compra Voltika #' . $pedidoNum;
+$emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
 
 echo json_encode([
     'status'    => 'ok',

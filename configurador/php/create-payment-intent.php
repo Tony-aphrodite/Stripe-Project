@@ -14,28 +14,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// ── Central config ───────────────────────────────────────────────────────────
+require_once __DIR__ . '/config.php';
+
 // ── Stripe SDK ────────────────────────────────────────────────────────────────
-// Asegurate de que stripe-php este en la carpeta php/vendor/
-// Instalacion: cd php && composer require stripe/stripe-php
 $stripePhpPath = __DIR__ . '/vendor/autoload.php';
 if (!file_exists($stripePhpPath)) {
     http_response_code(500);
-    echo json_encode(['error' => 'Stripe SDK no encontrado. Ejecuta: composer require stripe/stripe-php']);
+    echo json_encode(['error' => 'Stripe SDK no encontrado. Ejecuta: cd php && composer install']);
     exit;
 }
 require_once $stripePhpPath;
 
-// ── Configuracion ─────────────────────────────────────────────────────────────
-// Usar variables de entorno para las API keys
-$stripeSecretKey = $_ENV['STRIPE_SECRET_KEY'] ?? getenv('STRIPE_SECRET_KEY');
-
-if (!$stripeSecretKey) {
+if (!STRIPE_SECRET_KEY || STRIPE_SECRET_KEY === 'sk_test_PLACEHOLDER') {
     http_response_code(500);
-    echo json_encode(['error' => 'STRIPE_SECRET_KEY environment variable not set']);
+    echo json_encode(['error' => 'STRIPE_SECRET_KEY no configurada. Edita el archivo .env']);
     exit;
 }
 
-\Stripe\Stripe::setApiKey($stripeSecretKey);
+\Stripe\Stripe::setApiKey(STRIPE_SECRET_KEY);
 
 // ── Request ───────────────────────────────────────────────────────────────────
 $json = json_decode(file_get_contents('php://input'), true);

@@ -31,8 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// ── Configuración Círculo de Crédito (Sandbox) ─────────────────────────────
-define('CDC_API_KEY',  '5WdpF9Eqw7925TFAosGKifwkZ7nDuNUN');
+// ── Central config ───────────────────────────────────────────────────────────
+require_once __DIR__ . '/config.php';
+
 define('CDC_BASE_URL', 'https://services.circulodecredito.com.mx/sandbox/v2/rcc/ficoscore');
 define('CDC_FOLIO',    '0000080008');  // Folio otorgante de prueba
 

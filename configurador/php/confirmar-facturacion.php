@@ -15,6 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// ── Central config ───────────────────────────────────────────────────────────
+require_once __DIR__ . '/config.php';
+
 $json = json_decode(file_get_contents('php://input'), true);
 if (!$json) {
     http_response_code(400);
@@ -38,12 +41,7 @@ $factura     = !empty($rfc);
 
 // ── Guardar en BD ─────────────────────────────────────────────────────────────
 try {
-    $pdo = new PDO(
-        'mysql:host=localhost;dbname=voltika_;charset=utf8mb4',
-        'voltika',
-        'Lemon2022;',
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
+    $pdo = getDB();
 
     // Crear tabla si no existe (primera vez)
     $pdo->exec("CREATE TABLE IF NOT EXISTS facturacion (

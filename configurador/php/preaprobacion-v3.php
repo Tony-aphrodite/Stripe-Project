@@ -19,6 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// ── Central config ───────────────────────────────────────────────────────────
+require_once __DIR__ . '/config.php';
+
 session_start();
 
 // ── Request ───────────────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ var PasoCreditoEnganche = {
     _elements: null,
     _cardElement: null,
 
-    STRIPE_PUBLISHABLE_KEY: 'pk_live_51QpalADzBRkc6ufKZhJOivZHTWJsTaMJC5WJFDjMDJ2OEF9WuFUBHNjixmxZbhPGzMo5G6AW28dMtk5bEXvXUbEW00xTIexSaz',
+    STRIPE_PUBLISHABLE_KEY: 'pk_test_51Rr5XCDPx1FQbvVSr8odW16SQzUgPoyMJroHp5emN9PttKU4oHs0jAOsBpxM50ISn4xmUzemZomXX6IuIrQN8FRB00NM2T7eGp',
     PAYMENT_INTENT_URL: 'php/create-payment-intent.php',
     ORDER_CONFIRM_URL:  'php/confirmar-orden.php',
 

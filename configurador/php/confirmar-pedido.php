@@ -15,12 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// ── Dependencias ──────────────────────────────────────────────────────────────
-$autoload = __DIR__ . '/vendor/autoload.php';
-if (file_exists($autoload)) require_once $autoload;
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
+// ── Central config ───────────────────────────────────────────────────────────
+require_once __DIR__ . '/config.php';
 
 // ── Request ───────────────────────────────────────────────────────────────────
 $json = json_decode(file_get_contents('php://input'), true);
@@ -60,12 +56,7 @@ if ($metodoPago === 'credito') {
 
 // ── Guardar en BD ─────────────────────────────────────────────────────────────
 try {
-    $pdo = new PDO(
-        'mysql:host=localhost;dbname=voltika_;charset=utf8mb4',
-        'voltika',
-        'Lemon2022;',
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
+    $pdo = getDB();
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS pedidos (
         id         INT AUTO_INCREMENT PRIMARY KEY,
@@ -176,48 +167,8 @@ $cuerpo = '<!DOCTYPE html>
 </body>
 </html>';
 
-$emailSent = false;
 $asunto    = 'Confirmación de tu pedido Voltika ' . $pedidoNum;
-
-if (!empty($email) && class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-    // PHPMailer (via composer require phpmailer/phpmailer)
-    try {
-        $mail = new PHPMailer(true);
-        $mail->isSMTP();
-        $mail->SMTPAuth   = true;
-        $mail->Host       = 'smtp.ionos.mx';
-        $mail->Port       = 465;
-        $mail->Username   = 'voltika@riactor.com';
-        $mail->Password   = 'Lemon2022;';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->setFrom('voltika@riactor.com', 'Voltika México');
-        $mail->addAddress($email, $nombre);
-        $mail->addAddress('redes@voltika.com.mx');
-        $mail->CharSet    = 'UTF-8';
-        $mail->Encoding   = 'base64';
-        $mail->isHTML(true);
-        $mail->Subject    = $asunto;
-        $mail->Body       = $cuerpo;
-        $mail->AltBody    = strip_tags($cuerpo);
-        $mail->send();
-        $emailSent = true;
-    } catch (Exception $e) {
-        error_log('Voltika PHPMailer error: ' . $e->getMessage());
-    }
-}
-
-// Fallback: PHP mail() si PHPMailer no está disponible
-if (!$emailSent && !empty($email)) {
-    $headers  = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $headers .= "From: Voltika México <voltika@riactor.com>\r\n";
-    $headers .= "Bcc: redes@voltika.com.mx\r\n";
-    $emailSent = @mail($email, $asunto, $cuerpo, $headers);
-}
-
-// ── Zoho CRM (stub — implementar con Zoho OAuth cuando esté disponible) ───────
-// TODO: enviar lead/deal a Zoho CRM usando Zoho API v2
-// $zohoResult = _enviarAZoho($nombre, $email, $telefono, $modelo, $metodoPago, $total);
+$emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
 
 echo json_encode([
     'status'    => 'ok',
