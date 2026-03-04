@@ -162,7 +162,7 @@
 .vk-card__badge {
     position: absolute;
     top: 10px;
-    left: 0;
+    left: 12px;
     display: inline-flex;
     align-items: center;
     gap: 10px;
