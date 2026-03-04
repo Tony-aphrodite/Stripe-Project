@@ -158,27 +158,27 @@
     overflow: hidden;
 }
 
-/* "Más vendido" Badge — ribbon top-left of image */
+/* "Más vendido" Badge — flag ribbon bottom-left of image */
 .vk-card__badge {
     position: absolute;
-    top: 10px;
+    bottom: 8px;
     left: 0;
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    background: linear-gradient(135deg, #FFD700 0%, #F5C400 100%);
+    background: linear-gradient(180deg, #FFE44D 0%, #F5C400 100%);
     color: var(--vk-text-primary);
-    padding: 4px 14px 4px 10px;
+    padding: 6px 20px 6px 12px;
     font-weight: var(--vk-font-semibold);
-    font-size: 12px;
+    font-size: 13px;
     font-style: italic;
-    border-radius: 0 6px 6px 0;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    border-radius: 0;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
     z-index: 2;
 }
 
 .vk-card__badge-star {
-    font-size: 11px;
+    font-size: 13px;
 }
 
 /* Model Image */
