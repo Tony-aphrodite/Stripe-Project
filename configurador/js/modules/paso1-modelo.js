@@ -257,6 +257,8 @@ var Paso1 = {
         html += this.renderTabContado(modelo);
         html += '</div>';
 
+        html += VkUI.renderTrustBadges();
+
         html += '</div>'; // end card
 
         return html;
@@ -272,6 +274,7 @@ var Paso1 = {
         html += '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito">' +
             'CONTINUAR</button>';
+        html += '<p class="vk-card__tab-microcopy">Podr\u00e1s confirmar tu Punto Voltika antes de finalizar.</p>';
         return html;
     },
 
@@ -292,6 +295,7 @@ var Paso1 = {
         html += '<div class="vk-card__tab-logos">' + VkUI.renderCardLogos() + '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="msi">' +
             'CONTINUAR</button>';
+        html += '<p class="vk-card__tab-microcopy">Podr\u00e1s confirmar tu Punto Voltika antes de finalizar.</p>';
         return html;
     },
 
@@ -306,6 +310,7 @@ var Paso1 = {
         html += '<div class="vk-card__tab-logos">' + VkUI.renderCardLogos() + '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="contado">' +
             'CONTINUAR</button>';
+        html += '<p class="vk-card__tab-microcopy">Podr\u00e1s confirmar tu Punto Voltika antes de finalizar.</p>';
         return html;
     },
 
