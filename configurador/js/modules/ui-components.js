@@ -78,11 +78,19 @@ var VkUI = {
         return '<div class="vk-card__bullets">' +
             '<div class="vk-card__bullet">' +
                 '<span class="vk-card__bullet-icon">&#10004;</span> ' +
-                'Moto lista para circular en tu ciudad \u00b7 <strong>Garant\u00eda incluida</strong>' +
+                'Moto lista para circular en tu ciudad' +
             '</div>' +
             '<div class="vk-card__bullet">' +
                 '<span class="vk-card__bullet-icon">&#10004;</span> ' +
-                'Documentos para que tramites <strong>tus placas</strong> en tu ciudad incluidos' +
+                '<strong>Garant\u00eda incluida</strong>' +
+            '</div>' +
+            '<div class="vk-card__bullet">' +
+                '<span class="vk-card__bullet-icon">&#10004;</span> ' +
+                'Documentos para <strong>tus placas</strong> incluidos' +
+            '</div>' +
+            '<div class="vk-card__bullet">' +
+                '<span class="vk-card__bullet-icon">&#10004;</span> ' +
+                'Entrega en tu ciudad' +
             '</div>' +
             '</div>';
     },
