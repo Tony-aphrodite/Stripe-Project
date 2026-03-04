@@ -217,27 +217,24 @@ var Paso1 = {
 
         var html = '<div class="vk-card" data-modelo="' + modelo.id + '">';
 
-        if (modelo.badge) {
-            html += '<div class="vk-card__badge">' +
-                '<span class="vk-card__badge-star">&#11088;</span> ' +
-                modelo.badge.toUpperCase() +
-                '</div>';
-        }
-
         html += '<div class="vk-card__imagen">' +
             '<img src="' + img + '" alt="' + modelo.nombre + '" loading="lazy">' +
             '</div>';
 
-        html += '<div class="vk-card__info">';
+        html += '<div class="vk-card__info-row">';
         html += '<div class="vk-card__nombre">' + modelo.nombre + '</div>';
         if (modelo.autonomia) {
-            html += '<div class="vk-card__specs-group">' +
-                '<div class="vk-card__spec-item">Autonom\u00eda:<br><strong>' + modelo.autonomia + ' Km</strong></div>' +
-                '<div class="vk-card__spec-item">Velocidad:<br><strong>' + modelo.velocidad + ' Km/h</strong></div>' +
+            html += '<div class="vk-card__spec-item">Autonom\u00eda:<br><strong>' + modelo.autonomia + ' Km</strong></div>';
+            html += '<div class="vk-card__spec-item">Velocidad:<br><strong>' + modelo.velocidad + ' Km/h</strong></div>';
+        }
+        html += '</div>';
+        if (modelo.badge) {
+            html += '<div class="vk-card__badge">' +
+                '<span class="vk-card__badge-star">&#11088;</span> ' +
+                modelo.badge +
                 '</div>';
         }
         html += '<div class="vk-card__precio-base">Desde ' + VkUI.formatPrecio(modelo.precioContado) + ' MXN <span>(contado)</span></div>';
-        html += '</div>';
 
         html += VkUI.renderBanner();
         html += VkUI.renderBullets();
