@@ -158,29 +158,29 @@
     overflow: hidden;
 }
 
-/* Ribbon badge — top-left of image */
+/* Ribbon badge  top-left of image */
 .vk-card__badge {
     position: absolute;
     top: 10px;
     left: 0;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    height: 34px;
+    gap: 3px;
+    height: 25px;
     padding: 0 22px 0 14px;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 10px;
     font-style: italic;
     color: #2b2b2b;
     background: linear-gradient(180deg, #f7dc6f 0%, #f0c030 50%, #d4a017 100%);
-    border-radius: 3px 0 0 3px;
-    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,.2));
+    border-radius: 3px 0 50px 0px;
+    /* clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); */
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .2));
     z-index: 2;
 }
 
 .vk-card__badge-star {
-    font-size: 14px;
+    font-size: 12px;
     line-height: 1;
 }
 
@@ -200,7 +200,7 @@
     object-fit: contain;
 }
 
-/* Model Info Row — nombre left, specs center+right */
+/* Model Info Row  nombre left, specs center+right */
 .vk-card__info-row {
     padding: 0 var(--vk-card-padding);
     display: flex;
@@ -312,7 +312,7 @@
     font-size: 12px;
 }
 
-/* créditovoltika brand inside credit tab */
+/* cr�ditovoltika brand inside credit tab */
 .vk-card__credito-brand {
     display: flex;
     align-items: center;
@@ -660,7 +660,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   Desktop Split Layout (PASO 2 — mobile base, desktop overridden in media query)
+   Desktop Split Layout (PASO 2  mobile base, desktop overridden in media query)
    -------------------------------------------------------------------------- */
 .vk-desktop-split__left {
     padding-bottom: var(--vk-space-md);
@@ -1163,14 +1163,14 @@
     }
 }
 
-/* ── PASO 1: mobile / desktop layout toggle ──────────────────────────── */
+/*    PASO 1: mobile / desktop layout toggle                              */
 .vk-paso1-mobile  { display: block; }
 .vk-paso1-desktop { display: none;  }
 
 /* Desktop (1024px+) */
 @media (min-width: 1024px) {
 
-    /* ── Container ────────────────────────────────────────────────────── */
+    /*    Container                                                        */
     .vk-configurador {
         max-width: 83%;
         padding: var(--vk-space-xl) var(--vk-space-lg);
@@ -1180,11 +1180,11 @@
         font-size: 26px;
     }
 
-    /* ── PASO 1 layout toggle ─────────────────────────────────────────── */
+    /*    PASO 1 layout toggle                                             */
     .vk-paso1-mobile  { display: none;  }
     .vk-paso1-desktop { display: block; }
 
-    /* ── Model-selector tab bar ───────────────────────────────────────── */
+    /*    Model-selector tab bar                                           */
     .vk-dtabs {
         display: flex;
         background: #fff;
@@ -1234,7 +1234,7 @@
         vertical-align: middle;
     }
 
-    /* ── Hero two-column layout ───────────────────────────────────────── */
+    /*    Hero two-column layout                                           */
     .vk-hero {
         display: grid;
         grid-template-columns: 3fr 2fr;
@@ -1352,7 +1352,7 @@
         display: none;
     }
 
-    /* ── PASO 2+ — card goes full-width on desktop ────────────────────── */
+    /*    PASO 2+  card goes full-width on desktop                        */
     #vk-paso-2 .vk-card,
     #vk-paso-3 .vk-card,
     #vk-paso-4a .vk-card,
@@ -1361,7 +1361,7 @@
         max-width: none;
     }
 
-    /* ── 2-column split inside card ────────────────────────────────────── */
+    /*    2-column split inside card                                        */
     .vk-desktop-split {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1415,6 +1415,7 @@
 
     .vk-card__nombre {
         margin-bottom: 2px;
+        font-size: 18px;
     }
 
     .vk-card__specs {
@@ -1423,7 +1424,9 @@
     }
 
     .vk-card__precio-base {
-        margin-bottom: 8px;
+        margin-top: 2px;
+        margin-bottom: 4px;
+        font-size: 15px
     }
 
     .vk-card__bullets {
@@ -1433,6 +1436,7 @@
     .vk-card__bullet {
         padding: 2px 0;
         line-height: 1.25;
+        font-size: 10px;
     }
 
     .vk-card__tab-content {
@@ -1442,6 +1446,7 @@
     .vk-card__tab-bullet {
         padding: 2px 0;
         line-height: 1.25;
+        font-size: 10px;
     }
 
     .vk-card__precio-destacado {
@@ -1507,9 +1512,9 @@
     }
 
     .vk-btn {
-        width: calc(100% - 2 * var(--vk-space-sm));
-        font-size: var(--vk-font-size-base);
-        padding: 12px;
+        width: calc(65% - 2 * var(--vk-space-sm));
+        font-size: 13px;
+        padding: 8px;
     }
 
     .vk-trust-badges {
