@@ -525,13 +525,19 @@
     text-align: center;
     padding: var(--vk-space-lg) var(--vk-space-md);
     margin: var(--vk-space-md) 0;
+    background: var(--vk-bg-light);
+    border-radius: var(--vk-radius-md);
 }
 
 .vk-go-electric__logo {
-    font-size: 28px;
+    font-size: 22px;
     font-weight: 800;
     color: var(--vk-text-primary);
     letter-spacing: -0.5px;
+}
+
+.vk-go-electric__o {
+    color: var(--vk-green-primary);
 }
 
 .vk-go-electric__logo span {
@@ -543,12 +549,29 @@
     font-size: var(--vk-font-size-sm);
     color: var(--vk-text-secondary);
     margin-top: var(--vk-space-2xs);
+    font-style: italic;
+}
+
+.vk-go-electric__tagline em {
+    font-style: italic;
 }
 
 .vk-go-electric__social {
     font-size: var(--vk-font-size-sm);
-    color: var(--vk-green-primary);
+    color: var(--vk-text-secondary);
     margin-top: var(--vk-space-xs);
+}
+
+.vk-go-electric__chevron {
+    font-size: 10px;
+    color: var(--vk-text-muted);
+    margin-top: var(--vk-space-xs);
+}
+
+.vk-go-electric__divider {
+    height: 1px;
+    background: var(--vk-border);
+    margin: var(--vk-space-sm) var(--vk-space-lg);
 }
 
 .vk-go-electric__more {
@@ -670,9 +693,9 @@
 /* --------------------------------------------------------------------------
    Desktop Split Layout (PASO 2  mobile base, desktop overridden in media query)
    -------------------------------------------------------------------------- */
-.vk-desktop-split__left {
+/* .vk-desktop-split__left {
     padding-bottom: var(--vk-space-md);
-}
+} */
 
 .vk-desktop-split__right {
     padding: 0 0 var(--vk-space-lg);
@@ -1421,7 +1444,7 @@
         line-height: 1.3;
     }
 
-    /* Progress bar — smaller on mobile */
+    /* Progress bar  smaller on mobile */
     .vk-progress {
         padding: var(--vk-space-sm) var(--vk-space-md);
         margin-bottom: var(--vk-space-sm);
@@ -1444,7 +1467,7 @@
         height: 2px;
     }
 
-    /* Color swatches — smaller on mobile */
+    /* Color swatches  smaller on mobile */
     .vk-color-option {
         padding: var(--vk-space-sm) var(--vk-space-xs);
     }

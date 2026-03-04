@@ -156,11 +156,13 @@ var VkUI = {
 
     renderGoElectricFooter: function() {
         return '<div class="vk-go-electric">' +
-            '<div class="vk-go-electric__logo">GO<span>electric</span></div>' +
-            '<div class="vk-go-electric__tagline">Movilidad el\u00e9ctrica inteligente para M\u00e9xico</div>' +
+            '<div class="vk-go-electric__logo">G<span class="vk-go-electric__o">O</span><span>electric</span></div>' +
+            '<div class="vk-go-electric__tagline">Movilidad el\u00e9ctrica <em>inteligente</em> para M\u00e9xico</div>' +
             '<div class="vk-go-electric__social">' +
-            '&#10004; Cada semana m\u00e1s mexicanos eligen <strong>Voltika</strong>' +
+            '&#9889; Cada semana m\u00e1s mexicanos eligen <strong>Voltika</strong>' +
             '</div>' +
+            '<div class="vk-go-electric__chevron">&#9660;</div>' +
+            '<div class="vk-go-electric__divider"></div>' +
             '<div class="vk-go-electric__more">' +
             'M\u00e1s modelos disponibles \u2193' +
             '</div>' +
