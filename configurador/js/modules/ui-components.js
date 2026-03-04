@@ -60,14 +60,8 @@ var VkUI = {
      */
     renderBanner: function() {
         return '<div class="vk-card__banner">' +
-            '<div class="vk-card__banner-line">' +
-            '<span class="vk-card__banner-icon">&#10004;</span> ' +
-            '<strong>Entrega Garantizada en tu Ciudad</strong>' +
-            '</div>' +
-            '<div class="vk-card__banner-line">' +
-            '<span class="vk-card__banner-icon">\u24d8</span> ' +
-            'Punto Voltika autorizado' +
-            '</div>' +
+            '<span class="vk-card__banner-icon">&#x1F6E1;</span> ' +
+            'Entrega en <strong>Punto Voltika autorizado</strong> en tu ciudad' +
             '</div>';
     },
 
@@ -77,20 +71,12 @@ var VkUI = {
     renderBullets: function() {
         return '<div class="vk-card__bullets">' +
             '<div class="vk-card__bullet">' +
-                '<span class="vk-card__bullet-icon">&#10004;</span> ' +
+                '<span class="vk-icon-check">&#10003;</span> ' +
                 'Moto lista para circular en tu ciudad' +
             '</div>' +
             '<div class="vk-card__bullet">' +
-                '<span class="vk-card__bullet-icon">&#10004;</span> ' +
-                '<strong>Garant\u00eda incluida</strong>' +
-            '</div>' +
-            '<div class="vk-card__bullet">' +
-                '<span class="vk-card__bullet-icon">&#10004;</span> ' +
-                'Documentos para <strong>tus placas</strong> incluidos' +
-            '</div>' +
-            '<div class="vk-card__bullet">' +
-                '<span class="vk-card__bullet-icon">&#10004;</span> ' +
-                'Entrega en tu ciudad' +
+                '<span class="vk-icon-check">&#10003;</span> ' +
+                'Documentos para emplacar incluidos' +
             '</div>' +
             '</div>';
     },
@@ -127,7 +113,7 @@ var VkUI = {
      */
     renderTabBullet: function(text) {
         return '<div class="vk-card__tab-bullet">' +
-            '<span class="vk-card__tab-bullet-icon">&#10004;</span> ' +
+            '<span class="vk-icon-check">&#10003;</span> ' +
             text +
             '</div>';
     },
