@@ -266,7 +266,7 @@ var Paso1 = {
 
     renderTabCredito: function(modelo) {
         var html = '';
-        html += '<div class="vk-card__credito-brand"><span class="vk-icon-shield">&#x1F6E1;</span>cr\u00e9ditovoltika</div>';
+        html += '<div class="vk-card__credito-brand"><img class="vk-shield-icon" src="img/voltika_shield.svg" alt="Voltika">cr\u00e9ditovoltika</div>';
         html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> / semana</div>';
         html += '<div class="vk-card__tab-bullets">';
         html += VkUI.renderTabBullet('Aprobaci\u00f3n en minutos \u00b7 Solo INE');

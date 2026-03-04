@@ -124,7 +124,7 @@ var Paso2 = {
         var html = '';
 
         if (metodo === 'credito') {
-            html += '<div class="vk-card__credito-logo"><span class="vk-shield">&#9745;</span> cr\u00e9dito voltika seleccionado</div>';
+            html += '<div class="vk-card__credito-logo"><img class="vk-shield-icon" src="img/voltika_shield.svg" alt="Voltika"> cr\u00e9dito voltika seleccionado</div>';
             html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
             html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
             html += VkUI.renderTabBullet('Aprobaci\u00f3n en 2 minutos');
