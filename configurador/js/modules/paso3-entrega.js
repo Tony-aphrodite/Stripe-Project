@@ -1,6 +1,11 @@
 /* ==========================================================================
    Voltika - PASO 3: Postal Code / Delivery
-   Full redesign per client mockup: Centro Voltika, logistics, Qualitas, placas
+   Per Dibujo.pdf spec:
+   - CP input + 2 interactive checkboxes (Asesoría placas, Seguro)
+   - Basic info visible BEFORE entering CP
+   - CP fills city/state/cost dynamically
+   - For crédito: shipping cost included
+   - For contado/msi: shipping cost calculated by state
    ========================================================================== */
 
 var Paso3 = {
@@ -27,140 +32,119 @@ var Paso3 = {
     render: function() {
         var state = this.app.state;
         var esCredito = state.metodoPago === 'credito';
+        var fechaEntrega = this._calcFechaEntrega();
         var html = '';
 
-        // Back button
-        var backTarget = (esCredito && state.creditoAprobado) ? 'credito-resultado' : 2;
+        // Back button: crédito → calculator (4B), contado/msi → color (2)
+        var backTarget = esCredito ? 4 : 2;
+        if (esCredito && state.creditoAprobado) backTarget = 'credito-resultado';
         html += VkUI.renderBackButton(backTarget);
 
         // Header
         html += '<div style="text-align:center;margin-bottom:12px;">';
         html += '<div style="font-size:13px;color:var(--vk-text-muted);margin-bottom:4px;">\u00b7 PASO 3 \u00b7</div>';
-        if (!esCredito) {
-            html += '<div style="font-size:14px;font-weight:600;color:var(--vk-text-primary);margin-bottom:2px;">Pago de Contado o MSI</div>';
-        }
-        html += '<h2 class="vk-paso__titulo" style="margin-bottom:0;">Confirma tu punto de entrega oficial</h2>';
+        html += '<h2 class="vk-paso__titulo" style="margin-bottom:0;">Entrega en tu ciudad</h2>';
         html += '</div>';
 
         // Postal code input with search icon
-        html += '<div class="vk-form-group" style="position:relative;">';
+        html += '<div class="vk-card" style="padding:20px;">';
+
+        html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">Ingresa tu C\u00f3digo Postal</div>';
+        html += '<div class="vk-form-group" style="position:relative;margin-bottom:8px;">';
         html += '<input type="text" id="vk-cp-input" class="vk-form-input" ' +
-            'placeholder="Ingresa tu C\u00f3digo Postal (C.P 5 d\u00edgitos)" ' +
+            'placeholder="C.P. 5 d\u00edgitos" ' +
             'maxlength="5" inputmode="numeric" pattern="[0-9]*" ' +
             'value="' + (state.codigoPostal || '') + '" ' +
             'style="padding-right:40px;">';
         html += '<span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--vk-text-muted);font-size:18px;">&#128269;</span>';
         html += '</div>';
 
-        // Note below input
-        html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin:-8px 0 12px;">' +
-            'Red nacional Voltika con cobertura en todo M\u00e9xico.' +
-            '</p>';
+        // City/state display (filled dynamically)
+        html += '<div id="vk-cp-city" style="display:none;margin-bottom:14px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;">';
+        html += '<span style="color:#D4A017;font-size:20px;">&#128205;</span>';
+        html += '<strong id="vk-cp-city-name"></strong>';
+        html += '</div>';
+        html += '</div>';
 
-        // Results container (hidden until CP found)
-        html += '<div id="vk-cp-results" style="display:none;"></div>';
+        // Centro Voltika (always visible)
+        html += '<div style="background:var(--vk-bg-light);border-radius:8px;padding:12px;margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:flex-start;gap:10px;">';
+        html += '<span style="font-size:20px;">&#128737;</span>';
+        html += '<div>';
+        html += '<strong>Entrega en Centro Voltika Autorizado</strong>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Centro certificado para revisi\u00f3n y entrega profesional.</div>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
 
-        // CTA (hidden until CP found)
-        html += '<button class="vk-btn vk-btn--primary" id="vk-paso3-confirmar" style="display:none;">' +
-            (esCredito ? 'CONFIRMAR ENTREGA OFICIAL' : 'CONFIRMAR ENTREGA EN MI CIUDAD') +
+        // Logistics cost / Flete info
+        if (esCredito) {
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:var(--vk-green-soft);border-radius:8px;">';
+            html += '<span style="color:var(--vk-green-primary);">&#10004;</span>';
+            html += '<span style="font-size:14px;font-weight:600;">En Cr\u00e9dito Voltika: <strong>Flete incluido</strong></span>';
+            html += '</div>';
+        } else {
+            html += '<div id="vk-cp-logistics" style="display:none;margin-bottom:12px;padding:8px 12px;background:var(--vk-bg-light);border-radius:8px;">';
+            html += '<div style="display:flex;align-items:center;gap:8px;">';
+            html += '<span style="color:var(--vk-green-primary);">&#10004;</span>';
+            html += '<span style="font-size:14px;font-weight:600;">Costo log\u00edstico: <strong id="vk-cp-logistics-price"></strong> MXN</span>';
+            html += '</div>';
+            html += '</div>';
+        }
+
+        // Delivery date (always visible)
+        html += '<div style="margin-bottom:14px;">';
+        html += '<strong>Entrega estimada: 7\u201310 d\u00edas h\u00e1biles</strong>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">' +
+            'Nuestro equipo de log\u00edstica confirmar\u00e1 contigo el Centro Voltika m\u00e1s cercano dentro de las pr\u00f3ximas 24\u201348 horas.' +
+            '</div>';
+        html += '</div>';
+
+        html += '</div>'; // end card
+
+        // ── 2 Interactive Checkboxes (always visible) ──
+        html += '<div style="margin-top:16px;">';
+
+        // Checkbox 1: Asesoría placas
+        html += '<label class="vk-checkbox-card" style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:1.5px solid var(--vk-border);border-radius:8px;margin-bottom:10px;cursor:pointer;">';
+        html += '<input type="checkbox" id="vk-check-placas" class="vk-checkbox" style="margin-top:3px;"' +
+            (state.asesoriaPlacos ? ' checked' : '') + '>';
+        html += '<div>';
+        html += '<div style="font-weight:700;font-size:14px;">Asesor\u00eda para placas en tu estado</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Te conectamos con gestores verificados. Pago directo al gestor.</div>';
+        html += '</div>';
+        html += '</label>';
+
+        // Checkbox 2: Seguro
+        html += '<label class="vk-checkbox-card" style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:1.5px solid var(--vk-border);border-radius:8px;margin-bottom:16px;cursor:pointer;">';
+        html += '<input type="checkbox" id="vk-check-seguro" class="vk-checkbox" style="margin-top:3px;"' +
+            (state.seguro ? ' checked' : '') + '>';
+        html += '<div>';
+        html += '<div style="font-weight:700;font-size:14px;">Seguro activo Qual\u00edtas desde la entrega</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Cotizamos y enviamos tu p\u00f3liza. Pago directo a la aseguradora.</div>';
+        html += '</div>';
+        html += '</label>';
+
+        html += '</div>';
+
+        // CTA
+        html += '<button class="vk-btn vk-btn--primary" id="vk-paso3-confirmar" disabled>' +
+            'CONFIRMAR PEDIDO' +
             '</button>';
 
-        // Social proof (hidden until CP found)
-        html += '<p id="vk-paso3-footer" style="display:none;text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:8px;">' +
-            '+ M\u00e1s de 1,000 clientes ya recibieron su Voltika' +
+        html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:8px;">' +
+            'Recibir\u00e1s confirmaci\u00f3n por WhatsApp y correo electr\u00f3nico.' +
             '</p>';
 
         $('#vk-entrega-container').html(html);
     },
 
-    renderResults: function(data) {
-        var state = this.app.state;
-        var esCredito = state.metodoPago === 'credito';
-        var config = VOLTIKA_PRODUCTOS.config;
-        var fechaEntrega = this._calcFechaEntrega();
-
-        state.costoLogistico = esCredito ? 0 : config.costoLogistico;
-        state.ciudad = data.ciudad;
-        state.estado = data.estado;
-
-        var html = '';
-
-        // City/State with location pin
-        html += '<div class="vk-paso3-section">';
-        html += '<div class="vk-paso3-section__icon" style="color:#D4A017;">&#128205;</div>';
-        html += '<div class="vk-paso3-section__content">';
-        html += '<strong>' + data.ciudad + ', ' + data.estado + '</strong>';
-        html += '</div>';
-        html += '</div>';
-
-        // Centro Voltika Autorizado
-        html += '<div class="vk-paso3-section">';
-        html += '<div class="vk-paso3-section__icon vk-paso3-shield">&#128737;</div>';
-        html += '<div class="vk-paso3-section__content">';
-        html += '<strong>Centro Voltika Autorizado</strong>';
-        html += '<div class="vk-paso3-sub">\u00b7 Revisi\u00f3n y activaci\u00f3n profesional</div>';
-        if (esCredito) {
-            html += '<div class="vk-paso3-sub">\u00b7 <strong>Flete incluido en Cr\u00e9dito Voltika</strong></div>';
-        } else {
-            html += '<div class="vk-paso3-sub">\u00b7 Log\u00edstica a tu ciudad</div>';
-        }
-        html += '</div>';
-        html += '</div>';
-
-        // Costo logístico (only for contado/MSI)
-        if (!esCredito) {
-            html += '<div class="vk-paso3-section">';
-            html += '<div class="vk-paso3-section__icon">&#128666;</div>';
-            html += '<div class="vk-paso3-section__content">';
-            html += '<strong>Costo log\u00edstico para tu zona: ' + VkUI.formatPrecio(config.costoLogistico) + ' MXN</strong>';
-            html += '<div class="vk-paso3-sub">\u00b7 Transporte especializado</div>';
-            html += '<div class="vk-paso3-sub">\u00b7 Revisi\u00f3n y activaci\u00f3n profesional</div>';
-            html += '<div class="vk-paso3-sub">\u00b7 Entrega personalizada</div>';
-            html += '</div>';
-            html += '</div>';
-        }
-
-        // Entrega garantizada
-        html += '<div class="vk-paso3-section">';
-        html += '<div class="vk-paso3-section__icon">&#128197;</div>';
-        html += '<div class="vk-paso3-section__content">';
-        if (esCredito) {
-            html += '<strong>Entrega Garantizada</strong><br>';
-        }
-        html += '<strong>Entrega garantizada antes del ' + fechaEntrega + '</strong>';
-        html += '<div class="vk-paso3-sub">Tu <strong>Asesor Personal Voltika</strong> confirmar\u00e1 contigo el punto exacto de entrega en <strong>m\u00e1x. 48 horas</strong>.</div>';
-        html += '</div>';
-        html += '</div>';
-
-        // Asesoría para placas
-        html += '<div class="vk-paso3-section">';
-        html += '<div class="vk-paso3-section__icon vk-paso3-check">&#9745;</div>';
-        html += '<div class="vk-paso3-section__content">';
-        html += '<strong>Asesor\u00eda para placas en tu estado</strong>';
-        html += '<div class="vk-paso3-sub">Te conectamos con gestores verificados.</div>';
-        html += '<div class="vk-paso3-sub">Pago directo al gestor.</div>';
-        html += '</div>';
-        html += '</div>';
-
-        // Seguro Qualitas
-        html += '<div class="vk-paso3-section">';
-        html += '<div class="vk-paso3-section__icon vk-paso3-check">&#9745;</div>';
-        html += '<div class="vk-paso3-section__content">';
-        html += '<strong>Seguro activo Qual\u00edtas desde la entrega</strong> <img src="img/qualitas-logo.png" alt="Qualitas" style="height:18px;vertical-align:middle;margin-left:6px;" onerror="this.outerHTML=\'<span style=font-size:12px;color:var(--vk-text-muted);font-weight:600;margin-left:6px;>|| Qual\u00edtas</span>\'">';
-        html += '<div class="vk-paso3-sub">Cotizamos y enviamos tu p\u00f3liza.</div>';
-        html += '<div class="vk-paso3-sub">Pago directo a la aseguradora.</div>';
-        html += '</div>';
-        html += '</div>';
-
-        $('#vk-cp-results').html(html).slideDown(300);
-        $('#vk-paso3-confirmar').fadeIn(300);
-        $('#vk-paso3-footer').fadeIn(300);
-    },
-
     bindEvents: function() {
         var self = this;
 
-        $(document).off('input', '#vk-cp-input').off('click', '#vk-paso3-confirmar');
+        $(document).off('input', '#vk-cp-input').off('click', '#vk-paso3-confirmar')
+            .off('change', '#vk-check-placas').off('change', '#vk-check-seguro');
 
         // Postal code input
         $(document).on('input', '#vk-cp-input', function() {
@@ -170,13 +154,22 @@ var Paso3 = {
             if (val.length === 5) {
                 self.buscarCP(val);
             } else {
-                $('#vk-cp-results').slideUp(200);
-                $('#vk-paso3-confirmar').fadeOut(200);
-                $('#vk-paso3-footer').fadeOut(200);
+                $('#vk-cp-city').hide();
+                $('#vk-cp-logistics').hide();
+                $('#vk-paso3-confirmar').prop('disabled', true);
+                self.app.state.ciudad = null;
             }
         });
 
-        // Confirm — goes to Resumen
+        // Checkboxes
+        $(document).on('change', '#vk-check-placas', function() {
+            self.app.state.asesoriaPlacos = this.checked;
+        });
+        $(document).on('change', '#vk-check-seguro', function() {
+            self.app.state.seguro = this.checked;
+        });
+
+        // Confirm
         $(document).on('click', '#vk-paso3-confirmar', function() {
             var cp = $('#vk-cp-input').val();
             if (VkValidacion.codigoPostal(cp) && self.app.state.ciudad) {
@@ -194,14 +187,36 @@ var Paso3 = {
         var resultado = VOLTIKA_CP._buscar(cp);
 
         if (resultado) {
-            this.renderResults(resultado);
+            var state = this.app.state;
+            var esCredito = state.metodoPago === 'credito';
+            var config = VOLTIKA_PRODUCTOS.config;
+
+            state.ciudad = resultado.ciudad;
+            state.estado = resultado.estado;
+            state.costoLogistico = esCredito ? 0 : config.costoLogistico;
+
+            // Show city
+            $('#vk-cp-city-name').text(resultado.ciudad + ', ' + resultado.estado);
+            $('#vk-cp-city').slideDown(200);
+
+            // Show logistics cost (contado/msi only)
+            if (!esCredito) {
+                $('#vk-cp-logistics-price').text(VkUI.formatPrecio(config.costoLogistico));
+                $('#vk-cp-logistics').slideDown(200);
+            }
+
+            // Enable confirm button
+            $('#vk-paso3-confirmar').prop('disabled', false);
         } else {
-            var html = '<div style="text-align:center;padding:16px;color:var(--vk-text-muted);">' +
-                '<p>No encontramos informaci\u00f3n para el c\u00f3digo postal <strong>' + cp + '</strong>.</p>' +
-                '<p style="font-size:12px;margin-top:8px;">Verifica el c\u00f3digo e intenta de nuevo.</p>' +
+            $('#vk-cp-city').hide();
+            $('#vk-cp-logistics').hide();
+            $('#vk-paso3-confirmar').prop('disabled', true);
+            this.app.state.ciudad = null;
+
+            var html = '<div style="text-align:center;padding:10px;color:var(--vk-text-muted);">' +
+                '<p>No encontramos informaci\u00f3n para <strong>' + cp + '</strong>. Verifica el c\u00f3digo.</p>' +
                 '</div>';
-            $('#vk-cp-results').html(html).slideDown(300);
-            $('#vk-paso3-confirmar').fadeOut(200);
+            $('#vk-cp-city').html(html).show();
         }
     }
 };

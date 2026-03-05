@@ -27,9 +27,9 @@ var PasoCreditoOTP = {
         html += '<p style="font-size:17px;font-weight:700;margin-bottom:20px;">' + tel + '</p>';
 
         html += '<div class="vk-form-group" style="max-width:200px;margin:0 auto 16px;">';
-        html += '<label class="vk-form-label">C\u00f3digo de 4 d\u00edgitos</label>';
+        html += '<label class="vk-form-label">C\u00f3digo de 6 d\u00edgitos</label>';
         html += '<input type="text" class="vk-form-input" id="vk-otp-input" ' +
-            'placeholder="1 2 3 4" maxlength="4" inputmode="numeric" pattern="[0-9]*" ' +
+            'placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]*" ' +
             'style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:700;">';
         html += '</div>';
 
@@ -65,12 +65,12 @@ var PasoCreditoOTP = {
             self._verificar();
         });
 
-        // Auto-submit when 4 digits entered
+        // Auto-submit when 6 digits entered
         jQuery(document).off('input', '#vk-otp-input');
         jQuery(document).on('input', '#vk-otp-input', function() {
             var val = jQuery(this).val().replace(/\D/g, '');
             jQuery(this).val(val);
-            if (val.length === 4) self._verificar();
+            if (val.length === 6) self._verificar();
         });
 
         jQuery(document).off('click', '#vk-otp-reenviar');
@@ -83,8 +83,8 @@ var PasoCreditoOTP = {
         var code  = jQuery('#vk-otp-input').val().trim();
         var state = this.app.state;
 
-        if (!code || code.length !== 4) {
-            jQuery('#vk-otp-error').text('Ingresa el c\u00f3digo de 4 d\u00edgitos.').show();
+        if (!code || code.length !== 6) {
+            jQuery('#vk-otp-error').text('Ingresa el c\u00f3digo de 6 d\u00edgitos.').show();
             return;
         }
 

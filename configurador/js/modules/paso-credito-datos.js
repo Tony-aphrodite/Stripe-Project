@@ -152,7 +152,7 @@ var PasoCreditoDatos = {
             },
             error: function() {
                 // Fallback: proceed anyway (phone can't be reached)
-                self.app.state._otpTestCode = '1234';
+                self.app.state._otpTestCode = '123456';
                 self.app.irAPaso('credito-otp');
             },
             complete: function() {

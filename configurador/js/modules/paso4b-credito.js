@@ -136,8 +136,8 @@ var Paso4B = {
 
         var html = '';
 
-        // Back button
-        html += VkUI.renderBackButton(3);
+        // Back button — back to color selection (paso 2)
+        html += VkUI.renderBackButton(2);
 
         // ── INTRO SECTION ─────────────────────────────────────────────────
         html += '<div style="text-align:center;margin-bottom:20px;">';
@@ -310,14 +310,13 @@ var Paso4B = {
                    .off('input', '#vk-enganche-slider')
                    .off('change', '#vk-ingreso-select');
 
-        // "Continuar" after PREAPROBADO — save selections and go to personal info form
+        // "Continuar" after PREAPROBADO — save selections and go to CP (Paso 3)
         $(document).on('click', '#vk-continuar-truora', function() {
             // Save enganche/plazo/income to state for downstream screens
             self.app.state.enganchePorcentaje = self._enganchePct;
             self.app.state.plazoMeses = self._plazoMeses;
             self.app.state._ingresoMensual = self._ingresoVal;
-            // creditoAprobado is set later in credito-resultado after full verification
-            self.app.irAPaso('credito-datos');
+            self.app.irAPaso(3); // Go to CP screen
         });
 
         // "Iniciar proceso" button — reveals the V3 form
@@ -469,7 +468,7 @@ var Paso4B = {
             html += '</div></div>';
 
             html += '<p style="font-size:13px;color:#555;margin-bottom:12px;">' +
-                'Siguiente paso: completa tus datos personales y verifica tu tel\u00e9fono.' +
+                'Siguiente paso: confirma tu punto de entrega.' +
                 '</p>';
             html += '<button class="vk-btn vk-btn--blue" id="vk-continuar-truora" style="margin-bottom:8px;">' +
                 '&#128196; Continuar con mi solicitud' +

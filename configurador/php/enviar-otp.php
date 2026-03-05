@@ -49,7 +49,7 @@ $postData = [
     'country_code' => '52',
     'company'      => SMSMASIVOS_COMPANY,
     'template'     => 'a',
-    'code_length'  => 4,
+    'code_length'  => 6,
     'code_type'    => 'numeric'
 ];
 
@@ -84,7 +84,7 @@ file_put_contents($logFile, json_encode([
 // ── Respuesta ────────────────────────────────────────────────────────────────
 if ($curlErr) {
     // Error de red — fallback a modo local
-    $codigo = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+    $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
     $_SESSION['otp_codigo'] = $codigo;
     echo json_encode([
         'status'   => 'sent',
@@ -102,7 +102,7 @@ if ($httpCode >= 200 && $httpCode < 300) {
     ]);
 } else {
     // API error — fallback a modo local
-    $codigo = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+    $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
     $_SESSION['otp_codigo'] = $codigo;
     echo json_encode([
         'status'   => 'sent',

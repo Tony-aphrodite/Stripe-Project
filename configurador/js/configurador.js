@@ -17,11 +17,19 @@
             ciudad: null,
             estado: null,
             costoLogistico: 0,
+            asesoriaPlacos: false,
+            seguro: false,
             nombre: null,
+            apellidoPaterno: null,
+            apellidoMaterno: null,
             email: null,
             telefono: null,
             fechaNacimiento: null,
             cpDomicilio: null,
+            estadoDomicilio: null,
+            calle: null,
+            numeroExterior: null,
+            colonia: null,
             aceptaTerminos: false,
             enganchePorcentaje: 0.30,
             plazoMeses: 12,
@@ -99,6 +107,11 @@
         _pasoNumerico: function(paso) {
             var mapa = {
                 'resumen': 3,
+                'credito-nombre': 3,
+                'credito-nacimiento': 3,
+                'credito-cp-dom': 3,
+                'credito-domicilio': 3,
+                'credito-ingresos': 3,
                 'credito-datos': 4,
                 'credito-otp': 4,
                 'credito-consentimiento': 4,
@@ -131,6 +144,21 @@
                     break;
                 case 'resumen':
                     PasoResumen.init(this);
+                    break;
+                case 'credito-nombre':
+                    PasoCreditoNombre.init(this);
+                    break;
+                case 'credito-nacimiento':
+                    PasoCreditoNacimiento.init(this);
+                    break;
+                case 'credito-cp-dom':
+                    PasoCreditoCPDom.init(this);
+                    break;
+                case 'credito-domicilio':
+                    PasoCreditoDomicilio.init(this);
+                    break;
+                case 'credito-ingresos':
+                    PasoCreditoIngresos.init(this);
                     break;
                 case 'credito-datos':
                     PasoCreditoDatos.init(this);

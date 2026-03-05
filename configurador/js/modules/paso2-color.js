@@ -53,16 +53,13 @@ var Paso2 = {
             '<img src="' + img + '" alt="' + modelo.nombre + ' ' + colorActual + '">' +
             '</div>';
 
-        html += '<div class="vk-color-picker" style="padding:0 20px;">';
+        html += '<div class="vk-color-picker">';
         for (var i = 0; i < modelo.colores.length; i++) {
             var c = modelo.colores[i];
-            var activeCls = c.id === colorActual ? ' vk-color-option--active' : '';
-            var colorImg = VkUI.getImagenMoto(modelo.id, c.id);
-            html += '<div class="vk-color-option' + activeCls + '" data-color="' + c.id + '">' +
-                '<div class="vk-color-option__card">' +
-                '<img src="' + colorImg + '" alt="' + c.nombre + '" class="vk-color-option__img">' +
-                '</div>' +
-                '<div class="vk-color-option__label">' + c.nombre + '</div>' +
+            var activeCls = c.id === colorActual ? ' vk-color-swatch--active' : '';
+            html += '<div class="vk-color-swatch' + activeCls + '" data-color="' + c.id + '">' +
+                '<div class="vk-color-swatch__circle" style="background:' + c.hex + ';"></div>' +
+                '<div class="vk-color-swatch__label">' + c.nombre + '</div>' +
                 '</div>';
         }
         html += '</div>';
@@ -97,17 +94,17 @@ var Paso2 = {
         jQuery('#vk-color-container').html(html);
 
         // Attach color click handlers directly to elements (avoids delegation conflicts)
-        jQuery('#vk-paso-2 .vk-color-option').each(function() {
+        jQuery('#vk-paso-2 .vk-color-swatch').each(function() {
             this.addEventListener('click', function() {
                 var color = this.getAttribute('data-color');
                 self.app.state.colorSeleccionado = color;
 
                 // Update active state
-                var options = document.querySelectorAll('#vk-paso-2 .vk-color-option');
+                var options = document.querySelectorAll('#vk-paso-2 .vk-color-swatch');
                 for (var j = 0; j < options.length; j++) {
-                    options[j].classList.remove('vk-color-option--active');
+                    options[j].classList.remove('vk-color-swatch--active');
                 }
-                this.classList.add('vk-color-option--active');
+                this.classList.add('vk-color-swatch--active');
 
                 // Update image
                 var modeloActual = self.app.getModelo(self.app.state.modeloSeleccionado);
@@ -156,10 +153,14 @@ var Paso2 = {
     bindEvents: function() {
         var self = this;
 
-        // Continue to PASO 3 (delegation is fine for buttons)
+        // Continue: crédito → calculator (4B), contado/msi → CP (3)
         jQuery(document).off('click', '#vk-paso2-continuar');
         jQuery(document).on('click', '#vk-paso2-continuar', function() {
-            self.app.irAPaso(3);
+            if (self.app.state.metodoPago === 'credito') {
+                self.app.irAPaso(4); // Goes to Paso4B (calculator)
+            } else {
+                self.app.irAPaso(3); // Goes to Paso3 (CP)
+            }
         });
     }
 };

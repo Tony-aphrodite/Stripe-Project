@@ -714,73 +714,7 @@
     padding: 0 0 var(--vk-space-lg);
 }
 
-/* --------------------------------------------------------------------------
-   Color Picker (PASO 2)
-   -------------------------------------------------------------------------- */
-.vk-color-picker {
-    display: flex;
-    gap: var(--vk-space-sm);
-    margin: var(--vk-space-md) 0;
-}
-
-.vk-color-option {
-    flex: 1;
-    padding: var(--vk-space-md) var(--vk-space-sm);
-    border: 2px solid var(--vk-border);
-    border-radius: var(--vk-radius-md);
-    text-align: center;
-    cursor: pointer;
-    background: var(--vk-bg-white);
-    transition: border-color var(--vk-transition-fast);
-}
-
-.vk-color-option--active {
-    border-color: var(--vk-green-primary);
-    background: var(--vk-green-soft);
-}
-
-.vk-color-option:hover:not(.vk-color-option--active) {
-    border-color: var(--vk-text-muted);
-}
-
-.vk-color-option__dot {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--vk-radius-circle);
-    margin: 0 auto 6px;
-    border: 2px solid var(--vk-border);
-}
-
-.vk-color-option__card {
-    width: 100%;
-    aspect-ratio: 4/3;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 6px;
-    overflow: hidden;
-}
-
-.vk-color-option__img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-}
-
-.vk-color-option__dot--negro { background: #1A1A1A; }
-.vk-color-option__dot--gris { background: #A0A0A0; }
-.vk-color-option__dot--blanco { background: #F5F5F5; border-color: #CCC; }
-
-.vk-color-option__thumb {
-    text-align: center;
-    margin-bottom: 4px;
-}
-
-.vk-color-option__label {
-    font-size: var(--vk-font-size-sm);
-    font-weight: var(--vk-font-medium);
-    color: var(--vk-text-primary);
-}
+/* Color Picker (PASO 2) — see Color Swatch section at bottom */
 
 /* --------------------------------------------------------------------------
    Form Elements (PASO 3, 4)
@@ -1497,17 +1431,13 @@
     }
 
     /* Color swatches  smaller on mobile */
-    .vk-color-option {
-        padding: var(--vk-space-sm) var(--vk-space-xs);
+    .vk-color-swatch__circle {
+        width: 32px;
+        height: 32px;
     }
 
-    .vk-color-option__dot {
-        width: 28px !important;
-        height: 28px !important;
-    }
-
-    .vk-color-option__label {
-        font-size: 11px;
+    .vk-color-swatch__label {
+        font-size: 10px;
     }
 
     .vk-card__nombre {
@@ -1691,4 +1621,53 @@
     text-align: center;
     margin-bottom: var(--vk-space-sm);
     padding: 0 var(--vk-card-padding);
+}
+
+/* --------------------------------------------------------------------------
+   Color Swatch Picker (PASO 2)
+   -------------------------------------------------------------------------- */
+.vk-color-picker {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding: 0 20px;
+    flex-wrap: wrap;
+}
+
+.vk-color-swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.vk-color-swatch:hover {
+    transform: scale(1.1);
+}
+
+.vk-color-swatch__circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid #E0E0E0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vk-color-swatch--active .vk-color-swatch__circle {
+    border-color: var(--vk-green-primary);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.25), 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.vk-color-swatch__label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--vk-text-muted);
+    transition: color 0.2s ease;
+}
+
+.vk-color-swatch--active .vk-color-swatch__label {
+    color: var(--vk-green-primary);
 }
