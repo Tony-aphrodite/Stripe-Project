@@ -325,7 +325,7 @@
     font-size: 12px;
 }
 
-/* cr�ditovoltika brand inside credit tab */
+/* creditovoltika brand inside credit tab */
 .vk-card__credito-brand {
     display: flex;
     align-items: center;
@@ -1157,14 +1157,14 @@
     }
 }
 
-/*    PASO 1: mobile / desktop layout toggle                              */
+/*  PASO 1: mobile / desktop layout toggle  */
 .vk-paso1-mobile  { display: block; }
 .vk-paso1-desktop { display: none;  }
 
 /* Desktop (1024px+) */
 @media (min-width: 1024px) {
 
-    /*    Container                                                        */
+    /*  Container  */
     .vk-configurador {
         max-width: 83%;
         padding: var(--vk-space-xl) var(--vk-space-lg);
@@ -1174,11 +1174,11 @@
         font-size: 26px;
     }
 
-    /*    PASO 1 layout toggle                                             */
+    /*  PASO 1 layout toggle  */
     .vk-paso1-mobile  { display: none;  }
     .vk-paso1-desktop { display: block; }
 
-    /*    Model-selector tab bar                                           */
+    /*  Model-selector tab bar  */
     .vk-dtabs {
         display: flex;
         background: #fff;
@@ -1228,7 +1228,7 @@
         vertical-align: middle;
     }
 
-    /*    Hero two-column layout                                           */
+    /*  Hero two-column layout  */
     .vk-hero {
         display: grid;
         grid-template-columns: 3fr 2fr;
@@ -1346,7 +1346,7 @@
         display: none;
     }
 
-    /*    PASO 2+  card goes full-width on desktop                        */
+    /*  PASO 2+  card goes full-width on desktop  */
     #vk-paso-2 .vk-card,
     #vk-paso-3 .vk-card,
     #vk-paso-4a .vk-card,
@@ -1355,7 +1355,7 @@
         max-width: none;
     }
 
-    /*    2-column split inside card                                        */
+    /*  2-column split inside card  */
     .vk-desktop-split {
         display: grid;
         grid-template-columns: 1fr 1fr;
