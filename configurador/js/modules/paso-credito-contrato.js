@@ -75,7 +75,7 @@ var PasoCreditoContrato = {
 
         html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">';
         html += '<span style="color:var(--vk-text-secondary);">Tasa anual</span>';
-        html += '<span style="font-weight:600;">' + Math.round(credito.tasaAnual * 100) + '%</span>';
+        html += '<span style="font-weight:600;">' + Math.round(credito.tasaAnual) + '%</span>';
         html += '</div>';
 
         html += '<div style="border-top:1px solid var(--vk-border);margin:8px 0;"></div>';

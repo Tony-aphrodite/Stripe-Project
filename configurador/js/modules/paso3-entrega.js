@@ -9,6 +9,11 @@ var Paso3 = {
         this.app = app;
         this.render();
         this.bindEvents();
+        // Auto-search if CP already in state (revisiting this step)
+        var self = this;
+        if (app.state.codigoPostal && app.state.codigoPostal.length === 5) {
+            setTimeout(function() { self.buscarCP(app.state.codigoPostal); }, 200);
+        }
     },
 
     _calcFechaEntrega: function() {
@@ -25,7 +30,7 @@ var Paso3 = {
         var html = '';
 
         // Back button
-        var backTarget = (esCredito && state.creditoAprobado) ? 'credito-otp' : 2;
+        var backTarget = (esCredito && state.creditoAprobado) ? 'credito-resultado' : 2;
         html += VkUI.renderBackButton(backTarget);
 
         // Header
@@ -42,6 +47,7 @@ var Paso3 = {
         html += '<input type="text" id="vk-cp-input" class="vk-form-input" ' +
             'placeholder="Ingresa tu C\u00f3digo Postal (C.P 5 d\u00edgitos)" ' +
             'maxlength="5" inputmode="numeric" pattern="[0-9]*" ' +
+            'value="' + (state.codigoPostal || '') + '" ' +
             'style="padding-right:40px;">';
         html += '<span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--vk-text-muted);font-size:18px;">&#128269;</span>';
         html += '</div>';

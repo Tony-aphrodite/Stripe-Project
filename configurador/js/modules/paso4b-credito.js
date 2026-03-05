@@ -310,9 +310,13 @@ var Paso4B = {
                    .off('input', '#vk-enganche-slider')
                    .off('change', '#vk-ingreso-select');
 
-        // "Continuar" after PREAPROBADO — go to personal info form
+        // "Continuar" after PREAPROBADO — save selections and go to personal info form
         $(document).on('click', '#vk-continuar-truora', function() {
-            self.app.state.creditoAprobado = true;
+            // Save enganche/plazo/income to state for downstream screens
+            self.app.state.enganchePorcentaje = self._enganchePct;
+            self.app.state.plazoMeses = self._plazoMeses;
+            self.app.state._ingresoMensual = self._ingresoVal;
+            // creditoAprobado is set later in credito-resultado after full verification
             self.app.irAPaso('credito-datos');
         });
 
@@ -362,15 +366,15 @@ var Paso4B = {
             self._iniciarVerificacion();
         });
 
-        // Switch a contado/MSI desde NO_VIABLE
+        // Switch a contado/MSI — go to PASO 3 to recalculate logistics cost
         $(document).on('click', '#vk-switch-contado', function() {
             self.app.state.metodoPago = 'contado';
-            self.app.irAPaso(4);
+            self.app.irAPaso(3);
         });
 
         $(document).on('click', '#vk-switch-msi', function() {
             self.app.state.metodoPago = 'msi';
-            self.app.irAPaso(4);
+            self.app.irAPaso(3);
         });
 
         // Botón "recalcular" en CONDICIONAL
