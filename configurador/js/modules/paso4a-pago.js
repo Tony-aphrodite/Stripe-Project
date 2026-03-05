@@ -18,8 +18,8 @@ var Paso4A = {
         this.app = app;
         this._stripe = null;
         this._cardElement = null;
-        // _pagoTipo is set when user clicks a pay button
-        this._pagoTipo = 'unico';
+        // Set _pagoTipo based on what user chose in PASO 1
+        this._pagoTipo = (app.state.metodoPago === 'msi') ? 'msi' : 'unico';
         this.render();
         this.bindEvents();
         // Mount Stripe automatically — no click required
@@ -45,10 +45,17 @@ var Paso4A = {
             VkUI.renderCardLogos() +
             '</div>';
 
+        var esMSI = state.metodoPago === 'msi';
+
         html += '<div style="text-align:center;margin-bottom:4px;">';
-        html += '<div style="font-size:22px;font-weight:800;color:var(--vk-text-primary);">Total hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
-        if (modelo.tieneMSI) {
-            html += '<div style="font-size:13px;color:var(--vk-green-primary);font-weight:600;margin-top:4px;">&#10003; 9 MSI disponibles ' + VkUI.renderCardLogos() + '</div>';
+        if (esMSI) {
+            html += '<div style="font-size:22px;font-weight:800;color:var(--vk-text-primary);">9 MSI de ' + VkUI.formatPrecio(msiPago) + ' /mes</div>';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:4px;">Sin intereses \u00b7 Total: ' + VkUI.formatPrecio(total) + ' MXN ' + VkUI.renderCardLogos() + '</div>';
+        } else {
+            html += '<div style="font-size:22px;font-weight:800;color:var(--vk-text-primary);">Total hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
+            if (modelo.tieneMSI) {
+                html += '<div style="font-size:13px;color:var(--vk-green-primary);font-weight:600;margin-top:4px;">&#10003; 9 MSI tambi\u00e9n disponibles ' + VkUI.renderCardLogos() + '</div>';
+            }
         }
         html += '</div>';
 
@@ -76,9 +83,13 @@ var Paso4A = {
             html += '</div>';
         }
 
-        if (modelo.tieneMSI) {
+        if (esMSI) {
             html += '<div style="font-size:12px;color:var(--vk-text-secondary);padding:4px 0 2px;">' +
-                'o ' + 9 + ' pagos de ' + VkUI.formatPrecio(msiPago) + ' MXN (9 MSI sin intereses)' +
+                '9 pagos de ' + VkUI.formatPrecio(msiPago) + ' MXN (sin intereses)' +
+                '</div>';
+        } else if (modelo.tieneMSI) {
+            html += '<div style="font-size:12px;color:var(--vk-text-secondary);padding:4px 0 2px;">' +
+                'o 9 pagos de ' + VkUI.formatPrecio(msiPago) + ' MXN (9 MSI sin intereses)' +
                 '</div>';
         }
 
@@ -121,24 +132,18 @@ var Paso4A = {
         html += '<div id="vk-stripe-card-errors" style="color:#C62828;font-size:12px;margin-top:6px;display:none;"></div>';
         html += '</div>';
 
-        // ── TWO pay buttons (per client mockup page 13) ───────────────────
-        html += '<div class="vk-dual-pay-btns">';
-
-        // Button 1: Pago único
-        html += '<button class="vk-btn vk-btn--primary vk-pay-btn" id="vk-pay-unico" data-tipo="unico">';
-        html += '<span class="vk-pay-btn__label">&#128274; PAGAR ' + VkUI.formatPrecio(total) + ' MXN</span>';
-        html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + ' Procesando...</span>';
-        html += '</button>';
-
-        // Button 2: 9 MSI (only if available)
-        if (modelo.tieneMSI) {
+        // ── Single pay button (based on PASO 1 selection) ─────────────────
+        if (esMSI) {
             html += '<button class="vk-btn vk-btn--primary vk-pay-btn" id="vk-pay-msi" data-tipo="msi">';
-            html += '<span class="vk-pay-btn__label">9 MSI de ' + VkUI.formatPrecio(msiPago) + ' /mes</span>';
+            html += '<span class="vk-pay-btn__label">&#128274; 9 MSI de ' + VkUI.formatPrecio(msiPago) + ' /mes</span>';
+            html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + ' Procesando...</span>';
+            html += '</button>';
+        } else {
+            html += '<button class="vk-btn vk-btn--primary vk-pay-btn" id="vk-pay-unico" data-tipo="unico">';
+            html += '<span class="vk-pay-btn__label">&#128274; PAGAR ' + VkUI.formatPrecio(total) + ' MXN</span>';
             html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + ' Procesando...</span>';
             html += '</button>';
         }
-
-        html += '</div>'; // end dual-pay-btns
 
         html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:12px;">' +
             '&#128274; Pago cifrado SSL &middot; ' + VkUI.renderCardLogos() +
@@ -338,14 +343,13 @@ var Paso4A = {
     },
 
     _setLoading: function(isLoading) {
-        var $btn = this._pagoTipo === 'msi' ? $('#vk-pay-msi') : $('#vk-pay-unico');
+        var $btn = $('.vk-pay-btn');
         if (isLoading) {
-            // Disable both buttons while processing
-            $('.vk-pay-btn').prop('disabled', true);
+            $btn.prop('disabled', true);
             $btn.find('.vk-pay-btn__label').hide();
             $btn.find('.vk-pay-btn__spinner').show();
         } else {
-            $('.vk-pay-btn').prop('disabled', false);
+            $btn.prop('disabled', false);
             $btn.find('.vk-pay-btn__label').show();
             $btn.find('.vk-pay-btn__spinner').hide();
         }
