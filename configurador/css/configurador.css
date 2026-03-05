@@ -262,14 +262,27 @@
     color: var(--vk-text-muted);
 }
 
-/* Banner (single line) */
+/* Banner (two lines per PDF) */
 .vk-card__banner {
     background: var(--vk-green-banner);
     color: var(--vk-text-white);
     text-align: center;
-    padding: 6px var(--vk-space-md);
+    padding: 8px var(--vk-space-md);
     font-size: var(--vk-font-size-xs);
     font-weight: var(--vk-font-medium);
+}
+
+.vk-card__banner-line1 {
+    font-size: var(--vk-font-size-sm);
+    margin-bottom: 2px;
+}
+
+.vk-card__banner-line2 {
+    font-size: var(--vk-font-size-xs);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
 }
 
 .vk-card__banner-icon {
@@ -736,6 +749,22 @@
     border-radius: var(--vk-radius-circle);
     margin: 0 auto 6px;
     border: 2px solid var(--vk-border);
+}
+
+.vk-color-option__card {
+    width: 100%;
+    aspect-ratio: 4/3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+    overflow: hidden;
+}
+
+.vk-color-option__img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
 }
 
 .vk-color-option__dot--negro { background: #1A1A1A; }
@@ -1649,4 +1678,17 @@
         grid-template-columns: 1fr;
     }
 
+}
+
+/* --------------------------------------------------------------------------
+   "Formas de Pago" label (above payment tabs)
+   -------------------------------------------------------------------------- */
+.vk-card__formas-label,
+.vk-hero__formas-label {
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-semi);
+    color: var(--vk-text-primary);
+    text-align: center;
+    margin-bottom: var(--vk-space-sm);
+    padding: 0 var(--vk-card-padding);
 }

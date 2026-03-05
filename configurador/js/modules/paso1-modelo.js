@@ -111,8 +111,9 @@ var Paso1 = {
 
         // Payment-method tabs
         html += '<div class="vk-hero__metodo-tabs" id="vk-hero-metodo-tabs">';
+        html += '<div class="vk-hero__formas-label">Formas de Pago: <span style="font-weight:400;">(selecciona)</span></div>';
         html += '<button class="vk-hero__metodo-tab vk-hero__metodo-tab--active" data-htab="credito">Cr&eacute;dito Voltika</button>';
-        html += '<button class="vk-hero__metodo-tab" data-htab="msi">9 MSI</button>';
+        html += '<button class="vk-hero__metodo-tab" data-htab="msi">MSI</button>';
         html += '<button class="vk-hero__metodo-tab" data-htab="contado">Contado</button>';
         html += '</div>';
 
@@ -122,7 +123,7 @@ var Paso1 = {
         html += '</div>';
 
         html += '<button class="vk-btn vk-btn--primary vk-hero__cta" id="vk-hero-cta">' +
-            'CONTINUAR</button>';
+            'VER PLAN &#8250;</button>';
 
         html += VkUI.renderTrustBadges();
 
@@ -172,8 +173,11 @@ var Paso1 = {
         // Tab content
         this._updateHeroTabContent(modelo, metodo);
 
-        // CTA text
-        $('#vk-hero-cta').html('CONTINUAR');
+        // CTA text based on active method
+        var ctaText = 'VER PLAN &#8250;';
+        if (this._activeMetodo === 'msi') ctaText = 'QUIERO MIS 9 MSI &#8250;';
+        if (this._activeMetodo === 'contado') ctaText = 'PAGAR DE CONTADO';
+        $('#vk-hero-cta').html(ctaText);
     },
 
     _updateHeroTabContent: function(modelo, metodo) {
@@ -239,9 +243,10 @@ var Paso1 = {
         html += VkUI.renderBanner();
         html += VkUI.renderBullets();
 
+        html += '<div class="vk-card__formas-label">Formas de Pago: <span style="font-weight:400;">(selecciona)</span></div>';
         html += '<div class="vk-card__tabs">';
         html += '<button class="vk-tab vk-tab--active" data-tab="credito">Cr\u00e9dito Voltika</button>';
-        html += '<button class="vk-tab" data-tab="msi">9 MSI</button>';
+        html += '<button class="vk-tab" data-tab="msi">MSI</button>';
         html += '<button class="vk-tab" data-tab="contado">Contado</button>';
         html += '</div>';
 
@@ -267,14 +272,14 @@ var Paso1 = {
     renderTabCredito: function(modelo) {
         var html = '';
         html += '<div class="vk-card__credito-brand"><img class="vk-shield-icon" src="img/voltika_shield.svg" alt="Voltika">cr\u00e9ditovoltika</div>';
-        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> / semana</div>';
+        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
         html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Aprobaci\u00f3n en minutos \u00b7 Solo INE');
-        html += VkUI.renderTabBullet('Costo de env\u00edo a tu ciudad incluido');
+        html += VkUI.renderTabBullet('<strong>Enganche flexible</strong> \u00b7 Sin penalizaci\u00f3n por pago anticipado');
+        html += VkUI.renderTabBullet('Aprobaci\u00f3n inmediata en menos de <strong>2 minutos</strong> \u00b7 solo con tu INE');
+        html += VkUI.renderTabBullet('Costo de env\u00edo de entrega segura <strong>SIN COSTO</strong> incluido en tu plan');
         html += '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito">' +
-            'CONTINUAR</button>';
-        html += '<p class="vk-card__tab-microcopy">Podr\u00e1s confirmar tu Punto Voltika antes de finalizar.</p>';
+            'VER PLAN &#8250;</button>';
         return html;
     },
 
@@ -287,15 +292,14 @@ var Paso1 = {
             html += '</div>';
             return html;
         }
-        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> /mes durante 9 meses</div>';
+        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> /mes durante 9 meses ' + VkUI.renderCardLogos() + '</div>';
         html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Pago inmediato con tarjeta \u00b7 Sin tr\u00e1mites');
+        html += VkUI.renderTabBullet('Sin tr\u00e1mites \u00b7 Pago <strong>inmediato</strong> con tarjeta');
         html += VkUI.renderTabBullet('Env\u00edo asegurado a tu ciudad');
+        html += VkUI.renderTabBullet('Costo <strong>log\u00edstico</strong> confirmado con tu <strong>c\u00f3digo postal</strong> en el siguiente paso');
         html += '</div>';
-        html += '<div class="vk-card__tab-logos">' + VkUI.renderCardLogos() + '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="msi">' +
-            'CONTINUAR</button>';
-        html += '<p class="vk-card__tab-microcopy">Podr\u00e1s confirmar tu Punto Voltika antes de finalizar.</p>';
+            'QUIERO MIS 9 MSI &#8250;</button>';
         return html;
     },
 
@@ -304,13 +308,13 @@ var Paso1 = {
         html += '<div class="vk-card__contado-label">Precio contado</div>';
         html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
         html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Pago inmediato con tarjeta \u00b7 Sin tr\u00e1mites');
+        html += VkUI.renderTabBullet('Sin tr\u00e1mites \u00b7 Pago <strong>inmediato</strong> con tarjeta');
         html += VkUI.renderTabBullet('Env\u00edo asegurado a tu ciudad');
+        html += VkUI.renderTabBullet('Costo <strong>log\u00edstico</strong> confirmado con tu <strong>c\u00f3digo postal</strong> en el siguiente paso');
         html += '</div>';
         html += '<div class="vk-card__tab-logos">' + VkUI.renderCardLogos() + '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="contado">' +
-            'CONTINUAR</button>';
-        html += '<p class="vk-card__tab-microcopy">Podr\u00e1s confirmar tu Punto Voltika antes de finalizar.</p>';
+            'PAGAR DE CONTADO</button>';
         return html;
     },
 

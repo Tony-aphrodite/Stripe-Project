@@ -104,7 +104,7 @@ var Paso3 = {
         // Costo logístico (only for contado/MSI)
         if (!esCredito) {
             html += '<div class="vk-paso3-section">';
-            html += '<div class="vk-paso3-section__icon">&#128230;</div>';
+            html += '<div class="vk-paso3-section__icon">&#128666;</div>';
             html += '<div class="vk-paso3-section__content">';
             html += '<strong>Costo log\u00edstico para tu zona: ' + VkUI.formatPrecio(config.costoLogistico) + ' MXN</strong>';
             html += '<div class="vk-paso3-sub">\u00b7 Transporte especializado</div>';
@@ -118,7 +118,10 @@ var Paso3 = {
         html += '<div class="vk-paso3-section">';
         html += '<div class="vk-paso3-section__icon">&#128197;</div>';
         html += '<div class="vk-paso3-section__content">';
-        html += '<strong>Entrega garantizada a m\u00e1s tardar el ' + fechaEntrega + '</strong>';
+        if (esCredito) {
+            html += '<strong>Entrega Garantizada</strong><br>';
+        }
+        html += '<strong>Entrega garantizada antes del ' + fechaEntrega + '</strong>';
         html += '<div class="vk-paso3-sub">Tu <strong>Asesor Personal Voltika</strong> confirmar\u00e1 contigo el punto exacto de entrega en <strong>m\u00e1x. 48 horas</strong>.</div>';
         html += '</div>';
         html += '</div>';
@@ -137,7 +140,7 @@ var Paso3 = {
         html += '<div class="vk-paso3-section">';
         html += '<div class="vk-paso3-section__icon vk-paso3-check">&#9745;</div>';
         html += '<div class="vk-paso3-section__content">';
-        html += '<strong>Seguro activo Qual\u00edtas desde la entrega</strong> <span style="font-size:12px;color:var(--vk-text-muted);font-weight:600;">|| Qual\u00edtas</span>';
+        html += '<strong>Seguro activo Qual\u00edtas desde la entrega</strong> <img src="img/qualitas-logo.png" alt="Qualitas" style="height:18px;vertical-align:middle;margin-left:6px;" onerror="this.outerHTML=\'<span style=font-size:12px;color:var(--vk-text-muted);font-weight:600;margin-left:6px;>|| Qual\u00edtas</span>\'">';
         html += '<div class="vk-paso3-sub">Cotizamos y enviamos tu p\u00f3liza.</div>';
         html += '<div class="vk-paso3-sub">Pago directo a la aseguradora.</div>';
         html += '</div>';

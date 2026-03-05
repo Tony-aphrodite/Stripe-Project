@@ -60,8 +60,8 @@ var VkUI = {
      */
     renderBanner: function() {
         return '<div class="vk-card__banner">' +
-            '<span class="vk-card__banner-icon">&#x1F6E1;</span> ' +
-            'Entrega en <strong>Punto Voltika autorizado</strong> en tu ciudad' +
+            '<div class="vk-card__banner-line1">&#10003; Entrega <strong>Garantizada</strong> en tu <strong>Ciudad</strong></div>' +
+            '<div class="vk-card__banner-line2"><span class="vk-card__banner-icon">&#x1F6E1;</span> Punto Voltika autorizado</div>' +
             '</div>';
     },
 
@@ -72,11 +72,11 @@ var VkUI = {
         return '<div class="vk-card__bullets">' +
             '<div class="vk-card__bullet">' +
                 '<span class="vk-icon-check">&#10003;</span> ' +
-                'Moto lista para circular en tu ciudad' +
+                'Moto lista para circular en tu ciudad \u00b7 <strong>Garant\u00eda incluida</strong>' +
             '</div>' +
             '<div class="vk-card__bullet">' +
                 '<span class="vk-icon-check">&#10003;</span> ' +
-                'Documentos para emplacar incluidos' +
+                'Documentos para que tramites <strong>tus placas</strong> en tu ciudad incluidos' +
             '</div>' +
             '</div>';
     },

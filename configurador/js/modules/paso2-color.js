@@ -27,8 +27,8 @@ var Paso2 = {
         // Back button
         html += VkUI.renderBackButton(1);
 
-        // Step header
-        html += '<h2 class="vk-paso__titulo">Elige el color <span style="font-weight:400;">con el que quieres rodar</span></h2>';
+        // Step header — PDF: "Modelo M05 seleccionado" as primary heading
+        html += '<h2 class="vk-paso__titulo">Modelo <strong>' + modelo.nombre + '</strong> seleccionado</h2>';
 
         var btnTexto = state.metodoPago === 'contado' ? 'PAGAR DE CONTADO' :
                       state.metodoPago === 'msi'     ? 'QUIERO MIS 9 MSI \u203a' :
@@ -53,17 +53,15 @@ var Paso2 = {
             '<img src="' + img + '" alt="' + modelo.nombre + ' ' + colorActual + '">' +
             '</div>';
 
-        html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin:4px 0 12px;">' +
-            'Modelo <strong>' + modelo.nombre + '</strong> seleccionado' +
-            '</div>';
-
         html += '<div class="vk-color-picker" style="padding:0 20px;">';
         for (var i = 0; i < modelo.colores.length; i++) {
             var c = modelo.colores[i];
             var activeCls = c.id === colorActual ? ' vk-color-option--active' : '';
-            var dotBorder = (c.id === 'blanco' || c.hex === '#F5F5F5' || c.hex === '#C0C0C0') ? '#CCC' : c.hex;
+            var colorImg = VkUI.getImagenMoto(modelo.id, c.id);
             html += '<div class="vk-color-option' + activeCls + '" data-color="' + c.id + '">' +
-                '<div class="vk-color-option__dot" style="background:' + c.hex + ';border-color:' + dotBorder + ';"></div>' +
+                '<div class="vk-color-option__card">' +
+                '<img src="' + colorImg + '" alt="' + c.nombre + '" class="vk-color-option__img">' +
+                '</div>' +
                 '<div class="vk-color-option__label">' + c.nombre + '</div>' +
                 '</div>';
         }

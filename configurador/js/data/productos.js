@@ -10,7 +10,7 @@ var VOLTIKA_PRODUCTOS = {
             id: 'm05',
             nombre: 'M05',
             subtitulo: 'Ideal para ciudad y carretera',
-            badge: 'Mas vendido',
+            badge: 'MAS VENDIDO',
             autonomia: 100,
             velocidad: 90,
             precioContado: 48260,
@@ -142,7 +142,7 @@ var VOLTIKA_PRODUCTOS = {
     ],
 
     config: {
-        costoLogistico: 3700,
+        costoLogistico: 1800,
         creditoFleteIncluido: true,
         entregaDiasHabiles: '7-10',
         contactoHoras: '24-48',
