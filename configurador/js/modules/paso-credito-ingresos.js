@@ -99,6 +99,9 @@ var PasoCreditoIngresos = {
                     console.log('[OTP] enviar-otp response:', res);
                     if (res && res.testCode) {
                         self.app.state._otpTestCode = res.testCode;
+                    } else {
+                        // SMS enviado exitosamente — no mostrar código de prueba
+                        self.app.state._otpTestCode = null;
                     }
                     self.app.irAPaso('credito-consentimiento'); // Screen 11
                 },

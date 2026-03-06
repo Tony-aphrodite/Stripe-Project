@@ -102,15 +102,29 @@ if ($curlErr) {
     exit;
 }
 
-if ($httpCode >= 200 && $httpCode < 300 && isset($data['success']) && $data['success'] === true) {
-    // SMS sent successfully via SMSMasivos — limpiar fallback si existe
+// Código "verification_03" = SMS ya fue enviado y está pendiente de verificación
+// En este caso, el SMS YA llegó al teléfono — tratarlo como éxito
+$apiCode = $data['code'] ?? '';
+$smsSent = false;
+
+if ($httpCode >= 200 && $httpCode < 300) {
+    if ((isset($data['success']) && $data['success'] === true) || $apiCode === 'verification_03') {
+        $smsSent = true;
+    }
+}
+
+if ($smsSent) {
+    // SMS enviado (o ya pendiente) via SMSMasivos — limpiar fallback si existe
     $fallbackFile = __DIR__ . '/otp_temp/' . hash('sha256', $telefono) . '.json';
-    if (file_exists($fallbackFile)) unlink($fallbackFile);
+    if (file_exists($fallbackFile)) @unlink($fallbackFile);
     echo json_encode([
-        'status' => 'sent'
+        'status'  => 'sent',
+        'message' => $apiCode === 'verification_03'
+            ? 'Código ya enviado previamente. Revisa tu SMS.'
+            : null
     ]);
 } else {
-    // API error — fallback a modo local
+    // API error real — fallback a modo local
     $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
     guardarOTPFallback($telefono, $codigo);
     echo json_encode([
