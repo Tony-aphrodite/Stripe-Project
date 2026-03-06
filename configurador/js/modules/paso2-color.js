@@ -83,7 +83,7 @@ var Paso2 = {
             'Solo falta confirmar tu <strong>punto de entrega.</strong>' +
             '</p>';
 
-        html += VkUI.renderTrustBadges();
+        html += VkUI.renderTrustBadges(state.metodoPago || 'credito');
 
         html += '</div>'; // end right
 

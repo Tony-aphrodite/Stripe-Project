@@ -99,7 +99,7 @@ var PasoCreditoOTP = {
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
-                telefono: '+52' + state.telefono,
+                telefono: state.telefono,
                 codigo: code
             }),
             success: function(res) {

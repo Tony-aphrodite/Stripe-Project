@@ -110,11 +110,11 @@ var Paso1 = {
             '</div>';
 
         // Payment-method label + tabs
-        html += '<div class="vk-hero__formas-label">Formas de Pago: <span style="font-weight:400;">(selecciona)</span></div>';
+        html += '<div class="vk-hero__formas-label">&iquest;C&oacute;mo prefieres pagar tu Voltika?</div>';
         html += '<div class="vk-hero__metodo-tabs" id="vk-hero-metodo-tabs">';
-        html += '<button class="vk-hero__metodo-tab vk-hero__metodo-tab--active" data-htab="credito">Cr&eacute;dito Voltika</button>';
-        html += '<button class="vk-hero__metodo-tab" data-htab="msi">MSI</button>';
-        html += '<button class="vk-hero__metodo-tab" data-htab="contado">Contado</button>';
+        html += '<button class="vk-hero__metodo-tab vk-hero__metodo-tab--active" data-htab="credito">' + VkUI.renderCreditoLogo(16) + '</button>';
+        html += '<button class="vk-hero__metodo-tab" data-htab="msi">MSI ' + VkUI.renderCardLogos() + '</button>';
+        html += '<button class="vk-hero__metodo-tab" data-htab="contado">Contado ' + VkUI.renderCardLogos() + '</button>';
         html += '</div>';
 
         // Tab content
@@ -123,9 +123,9 @@ var Paso1 = {
         html += '</div>';
 
         html += '<button class="vk-btn vk-btn--primary vk-hero__cta" id="vk-hero-cta">' +
-            'VER PLAN &#8250;</button>';
+            'CALCULAR MI CR&Eacute;DITO &#8250;</button>';
 
-        html += VkUI.renderTrustBadges();
+        html += '<div id="vk-hero-trust-badges">' + VkUI.renderTrustBadges('credito') + '</div>';
 
         html += '</div>'; // end panel
         html += '</div>'; // end hero
@@ -174,10 +174,13 @@ var Paso1 = {
         this._updateHeroTabContent(modelo, metodo);
 
         // CTA text based on active method
-        var ctaText = 'VER PLAN &#8250;';
+        var ctaText = 'CALCULAR MI CR&Eacute;DITO &#8250;';
         if (this._activeMetodo === 'msi') ctaText = 'QUIERO MIS 9 MSI &#8250;';
         if (this._activeMetodo === 'contado') ctaText = 'PAGAR DE CONTADO';
         $('#vk-hero-cta').html(ctaText);
+
+        // Update trust badges
+        $('#vk-hero-trust-badges').html(VkUI.renderTrustBadges(this._activeMetodo));
     },
 
     _updateHeroTabContent: function(modelo, metodo) {
@@ -242,9 +245,9 @@ var Paso1 = {
 
         html += VkUI.renderBanner();
 
-        html += '<div class="vk-card__formas-label">Formas de Pago: <span style="font-weight:400;">(selecciona)</span></div>';
+        html += '<div class="vk-card__formas-label">&iquest;C&oacute;mo prefieres pagar tu Voltika?</div>';
         html += '<div class="vk-card__tabs">';
-        html += '<button class="vk-tab vk-tab--active" data-tab="credito">Cr\u00e9dito Voltika</button>';
+        html += '<button class="vk-tab vk-tab--active" data-tab="credito">' + VkUI.renderCreditoLogo(14) + '</button>';
         html += '<button class="vk-tab" data-tab="msi">MSI</button>';
         html += '<button class="vk-tab" data-tab="contado">Contado</button>';
         html += '</div>';
@@ -261,7 +264,7 @@ var Paso1 = {
         html += this.renderTabContado(modelo);
         html += '</div>';
 
-        html += VkUI.renderTrustBadges();
+        html += '<div class="vk-card__trust-badges" data-modelo-badges="' + modelo.id + '">' + VkUI.renderTrustBadges('credito') + '</div>';
 
         html += '</div>'; // end card
 
@@ -270,10 +273,10 @@ var Paso1 = {
 
     renderTabCredito: function(modelo) {
         var html = '';
-        html += '<div class="vk-card__credito-brand"><img class="vk-shield-icon" src="img/voltika_shield.svg" alt="Voltika">cr\u00e9ditovoltika</div>';
+        html += '<div class="vk-card__credito-brand">' + VkUI.renderCreditoLogo(26) + '</div>';
         html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito">' +
-            'VER PLAN &#8250;</button>';
+            'CALCULAR MI CR\u00c9DITO &#8250;</button>';
         return html;
     },
 
@@ -334,10 +337,13 @@ var Paso1 = {
             if (modelo) {
                 self._updateHeroTabContent(modelo, metodo);
                 // Update CTA text based on method
-                var ctaText = 'VER PLAN &#8250;';
+                var ctaText = 'CALCULAR MI CR&Eacute;DITO &#8250;';
                 if (metodo === 'msi') ctaText = 'QUIERO MIS 9 MSI &#8250;';
                 if (metodo === 'contado') ctaText = 'PAGAR DE CONTADO';
                 $('#vk-hero-cta').html(ctaText);
+
+                // Update trust badges
+                $('#vk-hero-trust-badges').html(VkUI.renderTrustBadges(metodo));
             }
         });
 
@@ -358,6 +364,9 @@ var Paso1 = {
 
             $card.find('.vk-card__tab-content').removeClass('vk-card__tab-content--active');
             $card.find('[data-tab-content="' + tab + '"]').addClass('vk-card__tab-content--active');
+
+            // Update trust badges for this card
+            $card.find('.vk-card__trust-badges').html(VkUI.renderTrustBadges(tab));
         });
 
         // ── Mobile: per-tab CTA buttons ────────────────────────

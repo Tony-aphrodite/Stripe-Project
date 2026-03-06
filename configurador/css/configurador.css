@@ -219,7 +219,7 @@ html, body {
 }
 
 .vk-card__nombre {
-    font-size: var(--vk-font-size-2xl);
+    font-size: var(--vk-font-size-3xl);
     font-weight: var(--vk-font-extrabold);
     color: var(--vk-text-primary);
     margin-bottom: var(--vk-space-2xs);
@@ -472,6 +472,22 @@ html, body {
     width: auto;
     font-weight: var(--vk-font-bold);
     font-size: var(--vk-font-size-sm);
+}
+
+.vk-card-logos img {
+    height: 16px;
+    width: auto;
+    vertical-align: middle;
+}
+
+.vk-tab .vk-card-logos img,
+.vk-hero__metodo-tab .vk-card-logos img {
+    height: 12px;
+}
+
+.vk-credito-logo {
+    display: inline-block;
+    vertical-align: middle;
 }
 
 /* MSI header */
@@ -1295,7 +1311,7 @@ html, body {
     }
 
     .vk-hero__nombre {
-        font-size: 30px;
+        font-size: 36px;
         font-weight: 800;
         color: var(--vk-text-primary);
         line-height: 1.1;

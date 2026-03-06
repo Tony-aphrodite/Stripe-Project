@@ -85,27 +85,59 @@ var VkUI = {
      * Render card logo images (Visa, MC, Amex as text placeholders)
      */
     renderCardLogos: function() {
-        return '<span class="vk-card__tarjeta-logo" style="color:#1A1F71;font-weight:800;">VISA</span> ' +
-            '<span class="vk-card__tarjeta-logo" style="color:#EB001B;font-weight:800;">&#9679;</span>' +
-            '<span class="vk-card__tarjeta-logo" style="color:#FF5F00;font-weight:800;">&#9679;</span> ' +
-            '<span class="vk-card__tarjeta-logo" style="color:#006FCF;font-weight:800;">AMEX</span>';
+        var base = (window.VK_BASE_PATH || '');
+        return '<span class="vk-card-logos">' +
+            '<img src="' + base + 'img/tarjetas/visa.svg" alt="Visa" style="height:20px;vertical-align:middle;">' +
+            '<img src="' + base + 'img/tarjetas/mastercard.svg" alt="Mastercard" style="height:20px;vertical-align:middle;margin:0 4px;">' +
+            '<img src="' + base + 'img/tarjetas/amex.svg" alt="American Express" style="height:20px;vertical-align:middle;">' +
+            '</span>';
     },
 
     /**
      * Render trust badges footer
      */
-    renderTrustBadges: function() {
-        return '<div class="vk-trust-badges">' +
-            '<div class="vk-trust-badge">' +
-                '<span class="vk-trust-badge__icon">&#9889;</span> 100% Electrica' +
-            '</div>' +
-            '<div class="vk-trust-badge">' +
-                '<span class="vk-trust-badge__icon">&#9745;</span> Garantia Voltika' +
-            '</div>' +
-            '<div class="vk-trust-badge">' +
-                '<span class="vk-trust-badge__icon">&#128179;</span> Hasta 9 MSI' +
-            '</div>' +
-            '</div>';
+    renderTrustBadges: function(metodo) {
+        var items = [];
+        if (metodo === 'credito') {
+            items = [
+                'P\u00e1gala con tu ahorro en gasolina',
+                'Documentos para placas incluidos',
+                'Garant\u00eda Voltika'
+            ];
+        } else if (metodo === 'msi') {
+            items = [
+                'Sin gasolina desde hoy',
+                'Documentos para placas incluidos',
+                'Garant\u00eda Voltika'
+            ];
+        } else if (metodo === 'contado') {
+            items = [
+                'Ahorra gasolina cada mes',
+                'Documentos para placas incluidos',
+                'Garant\u00eda Voltika'
+            ];
+        } else {
+            items = [
+                '100% Electrica',
+                'Garant\u00eda Voltika',
+                'Hasta 9 MSI'
+            ];
+        }
+        var icons = ['&#9889;', '&#9745;', '&#128179;'];
+        var html = '<div class="vk-trust-badges">';
+        for (var i = 0; i < items.length; i++) {
+            html += '<div class="vk-trust-badge">' +
+                '<span class="vk-trust-badge__icon">' + icons[i] + '</span> ' + items[i] +
+                '</div>';
+        }
+        html += '</div>';
+        return html;
+    },
+
+    renderCreditoLogo: function(height) {
+        var base = (window.VK_BASE_PATH || '');
+        var h = height || 22;
+        return '<img src="' + base + 'img/credito_voltika_logo.svg" alt="Cr\u00e9dito Voltika" class="vk-credito-logo" style="height:' + h + 'px;vertical-align:middle;">';
     },
 
     /**

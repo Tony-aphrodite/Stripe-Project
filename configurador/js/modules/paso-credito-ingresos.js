@@ -94,7 +94,7 @@ var PasoCreditoIngresos = {
                 url: 'php/enviar-otp.php',
                 method: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ telefono: '+52' + telefono, nombre: self.app.state.nombre || '' }),
+                data: JSON.stringify({ telefono: telefono, nombre: self.app.state.nombre || '' }),
                 success: function(res) {
                     if (res && res.testCode) {
                         self.app.state._otpTestCode = res.testCode;

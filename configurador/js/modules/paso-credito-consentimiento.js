@@ -128,7 +128,7 @@ var PasoCreditoConsentimiento = {
                 url: 'php/enviar-otp.php',
                 method: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ telefono: '+52' + tel, nombre: self.app.state.nombre || '' }),
+                data: JSON.stringify({ telefono: tel, nombre: self.app.state.nombre || '' }),
                 success: function(res) {
                     if (res && res.testCode) {
                         self.app.state._otpTestCode = res.testCode;
@@ -165,9 +165,9 @@ var PasoCreditoConsentimiento = {
             url: 'php/verificar-otp.php',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ telefono: '+52' + state.telefono, codigo: otp }),
+            data: JSON.stringify({ telefono: state.telefono, codigo: otp }),
             success: function(res) {
-                if (res && res.verificado) {
+                if (res && res.valido) {
                     state._otpVerificado = true;
                     // Now query Círculo de Crédito
                     self._consultarBuro();
