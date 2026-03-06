@@ -27,8 +27,8 @@ var Paso2 = {
         // Back button
         html += VkUI.renderBackButton(1);
 
-        // Step header — PDF: "Modelo M05 seleccionado" as primary heading
-        html += '<h2 class="vk-paso__titulo">Modelo <strong>' + modelo.nombre + '</strong> seleccionado</h2>';
+        // Step header
+        html += '<h2 class="vk-paso__titulo">Elige el color de tu Voltika <strong>' + modelo.nombre + '</strong></h2>';
 
         var btnTexto = state.metodoPago === 'contado' ? 'PAGAR DE CONTADO' :
                       state.metodoPago === 'msi'     ? 'QUIERO MIS 9 MSI \u203a' :
@@ -37,10 +37,11 @@ var Paso2 = {
         // Card
         html += '<div class="vk-card">';
 
-        // Banner + bullets — full-width row (always visible)
-        html += '<div class="vk-desktop-split-wrap">';
-        html += VkUI.renderBanner();
-        html += VkUI.renderBullets();
+        // Subtitle bullets
+        html += '<div class="vk-card__subtitle-bullets" style="padding:12px 16px 8px;">';
+        html += '<div class="vk-card__bullet"><span class="vk-icon-check">&#10003;</span> Moto se entrega lista para circular en tu ciudad</div>';
+        html += '<div class="vk-card__bullet"><span class="vk-icon-check">&#10003;</span> Garant\u00eda incluida</div>';
+        html += '<div class="vk-card__bullet"><span class="vk-icon-check">&#10003;</span> Documentos para tr\u00e1mites de placas incluidos</div>';
         html += '</div>';
 
         // Desktop 2-col split (stacks on mobile)
@@ -119,20 +120,20 @@ var Paso2 = {
         var html = '';
 
         if (metodo === 'credito') {
-            html += '<div class="vk-card__credito-logo"><img class="vk-shield-icon" src="img/voltika_shield.svg" alt="Voltika"> cr\u00e9dito voltika seleccionado</div>';
+            html += '<div class="vk-card__credito-logo">' + VkUI.renderCreditoLogo(24) + ' seleccionado</div>';
             html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
             html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
-            html += VkUI.renderTabBullet('Aprobaci\u00f3n en minutos');
-            html += VkUI.renderTabBullet('Incluye flete');
-            html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
-            html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
+            html += VkUI.renderTabBullet('Aprobaci\u00f3n en 2 minutos solo con INE');
+            html += VkUI.renderTabBullet('En cr\u00e9dito Voltika se incluye flete a tu ciudad');
+            html += VkUI.renderTabBullet('Enganche flexible');
+            html += VkUI.renderTabBullet('Sin penalizaci\u00f3n por pago anticipado');
             html += '</div>';
         } else if (metodo === 'msi') {
             html += '<div style="font-size:18px;font-weight:700;margin-bottom:6px;">' +
                 '<strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong>' +
                 ' <span style="font-weight:400;">/mes</span>' +
                 '</div>';
-            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">Sin intereses &middot; 9 MSI con todas las tarjetas ' + VkUI.renderCardLogos() + '</div>';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">Sin intereses &middot; 9 MSI ' + VkUI.renderCardLogos() + '</div>';
             html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
             html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
             html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
@@ -142,9 +143,8 @@ var Paso2 = {
             html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
             html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">IVA incluido &middot; ' + VkUI.renderCardLogos() + '</div>';
             html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
-            html += VkUI.renderTabBullet('Sin tr\u00e1mites adicionales');
             html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
-            html += VkUI.renderTabBullet('Moto lista para circular + documentos para emplacar');
+            html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
             html += '</div>';
         }
 
