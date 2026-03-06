@@ -1070,10 +1070,23 @@ html, body {
 .vk-credit-summary__img {
     width: 120px;
     height: auto;
+    flex-shrink: 0;
 }
 
 .vk-credit-summary__details {
     flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 480px) {
+    .vk-credit-summary__model {
+        flex-direction: column-reverse;
+        text-align: center;
+    }
+    .vk-credit-summary__img {
+        width: 160px;
+        margin: 0 auto;
+    }
 }
 
 .vk-credit-steps {
