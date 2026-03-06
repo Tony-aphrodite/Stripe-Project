@@ -60,10 +60,13 @@ var Paso3 = {
         html += '</div>';
 
         // City/state display (filled dynamically)
-        html += '<div id="vk-cp-city" style="display:none;margin-bottom:14px;">';
+        html += '<div id="vk-cp-city" style="display:none;margin-bottom:14px;background:var(--vk-green-soft);border-radius:8px;padding:12px;">';
         html += '<div style="display:flex;align-items:center;gap:8px;">';
         html += '<span style="color:#D4A017;font-size:20px;">&#128205;</span>';
-        html += '<strong id="vk-cp-city-name"></strong>';
+        html += '<div>';
+        html += '<div id="vk-cp-city-name" style="font-weight:700;font-size:16px;color:var(--vk-text-primary);"></div>';
+        html += '<div id="vk-cp-state-name" style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;"></div>';
+        html += '</div>';
         html += '</div>';
         html += '</div>';
 
@@ -195,9 +198,10 @@ var Paso3 = {
             state.estado = resultado.estado;
             state.costoLogistico = esCredito ? 0 : config.costoLogistico;
 
-            // Show city
-            $('#vk-cp-city-name').text(resultado.ciudad + ', ' + resultado.estado);
-            $('#vk-cp-city').slideDown(200);
+            // Show city + state
+            $('#vk-cp-city-name').text(resultado.ciudad);
+            $('#vk-cp-state-name').text(resultado.estado + ' \u00b7 C.P. ' + cp);
+            $('#vk-cp-city').css('background', 'var(--vk-green-soft)').slideDown(200);
 
             // Show logistics cost (contado/msi only)
             if (!esCredito) {
@@ -213,10 +217,9 @@ var Paso3 = {
             $('#vk-paso3-confirmar').prop('disabled', true);
             this.app.state.ciudad = null;
 
-            var html = '<div style="text-align:center;padding:10px;color:var(--vk-text-muted);">' +
-                '<p>No encontramos informaci\u00f3n para <strong>' + cp + '</strong>. Verifica el c\u00f3digo.</p>' +
-                '</div>';
-            $('#vk-cp-city').html(html).show();
+            $('#vk-cp-city-name').text('C\u00f3digo no encontrado');
+            $('#vk-cp-state-name').text('Verifica el C.P. ' + cp + ' e intenta de nuevo.');
+            $('#vk-cp-city').css('background', '#FFEBEE').slideDown(200);
         }
     }
 };
