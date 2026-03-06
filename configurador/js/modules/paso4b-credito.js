@@ -183,33 +183,7 @@ var Paso4B = {
         html += '</div>'; // end info-box
 
         // ── CONFIRMAR COMPRA button ─────────────────────────────────────────
-        html += '<button class="vk-btn vk-btn--blue" id="vk-iniciar-proceso" style="margin-top:16px;">CONFIRMAR COMPRA</button>';
-
-        // ── Hidden V3 form fields (income selector + pre-approval) ──────────
-        html += '<div id="vk-v3-form" style="display:none;">';
-
-        html += '<div class="vk-info-box" style="margin-top:16px;">';
-        html += '<div style="font-weight:700;font-size:14px;margin-bottom:12px;">&#128181; \u00bfCual es tu ingreso mensual?</div>';
-        html += '<select id="vk-ingreso-select" class="vk-form-input" style="width:100%;">';
-        html += '<option value="">-- Selecciona tu rango --</option>';
-        for (var i = 0; i < RANGOS_INGRESO.length; i++) {
-            html += '<option value="' + RANGOS_INGRESO[i].valor + '">' + RANGOS_INGRESO[i].label + '</option>';
-        }
-        html += '</select>';
-        html += '</div>';
-
-        html += '<div id="vk-preaprobacion-panel">';
-        html += '<div style="text-align:center;margin-top:16px;">';
-        html += '<button class="vk-btn vk-btn--blue" id="vk-iniciar-credito" disabled>' +
-            '&#10004; Verificar pre-aprobaci\u00f3n' +
-            '</button>';
-        html += '<p style="font-size:12px;color:var(--vk-text-muted);margin-top:8px;">Selecciona tu ingreso para continuar.</p>';
-        html += '</div>';
-        html += '</div>';
-
-        html += '<div id="vk-credito-resultado" style="display:none;margin-top:20px;"></div>';
-
-        html += '</div>'; // end v3-form
+        html += '<button class="vk-btn vk-btn--blue" id="vk-confirmar-credito" style="margin-top:16px;">CONFIRMAR COMPRA</button>';
 
         $('#vk-credito-container').html(html);
     },
@@ -254,31 +228,17 @@ var Paso4B = {
         var self = this;
 
         // Remove previous handlers to prevent duplicates on re-init
-        $(document).off('click', '#vk-iniciar-proceso')
-                   .off('click', '#vk-iniciar-credito')
-                   .off('click', '#vk-continuar-truora')
+        $(document).off('click', '#vk-confirmar-credito')
                    .off('click', '#vk-switch-msi')
                    .off('click', '#vk-switch-contado')
-                   .off('click', '#vk-recalcular-condicional')
                    .off('click', '.vk-plazo-btn')
-                   .off('input', '#vk-enganche-slider')
-                   .off('change', '#vk-ingreso-select');
+                   .off('input', '#vk-enganche-slider');
 
-        // "Continuar" after PREAPROBADO — save selections and go to CP (Paso 3)
-        $(document).on('click', '#vk-continuar-truora', function() {
-            // Save enganche/plazo/income to state for downstream screens
+        // "CONFIRMAR COMPRA" — save enganche/plazo and go to next credit step
+        $(document).on('click', '#vk-confirmar-credito', function() {
             self.app.state.enganchePorcentaje = self._enganchePct;
             self.app.state.plazoMeses = self._plazoMeses;
-            self.app.state._ingresoMensual = self._ingresoVal;
-            self.app.irAPaso(3); // Go to CP screen
-        });
-
-        // "Iniciar proceso" button — reveals the V3 form
-        $(document).on('click', '#vk-iniciar-proceso', function() {
-            $(this).hide();
-            $(this).next('p').hide();
-            $('#vk-v3-form').slideDown(400);
-            VkUI.scrollToTop();
+            self.app.irAPaso('credito-nombre');
         });
 
         // Slider enganche
@@ -307,19 +267,7 @@ var Paso4B = {
             self._actualizarCTA();
         });
 
-        // Selector de ingreso
-        $(document).on('change', '#vk-ingreso-select', function() {
-            var val = $(this).val();
-            self._ingresoVal = val ? parseInt(val) : null;
-            self._actualizarCTA();
-        });
-
-        // Botón verificar
-        $(document).on('click', '#vk-iniciar-credito', function() {
-            self._iniciarVerificacion();
-        });
-
-        // Switch a contado/MSI — go to PASO 3 to recalculate logistics cost
+        // Switch a contado/MSI
         $(document).on('click', '#vk-switch-contado', function() {
             self.app.state.metodoPago = 'contado';
             self.app.irAPaso(3);
@@ -328,11 +276,6 @@ var Paso4B = {
         $(document).on('click', '#vk-switch-msi', function() {
             self.app.state.metodoPago = 'msi';
             self.app.irAPaso(3);
-        });
-
-        // Botón "recalcular" en CONDICIONAL
-        $(document).on('click', '#vk-recalcular-condicional', function() {
-            self._iniciarVerificacion();
         });
     },
 
