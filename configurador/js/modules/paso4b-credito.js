@@ -276,7 +276,7 @@ var Paso4B = {
         $(document).on('click', '#vk-confirmar-credito', function() {
             self.app.state.enganchePorcentaje = self._enganchePct;
             self.app.state.plazoMeses = self._plazoMeses;
-            self.app.irAPaso('credito-nombre');
+            self.app.irAPaso(3); // Go to CP/delivery screen
         });
 
         // Slider enganche

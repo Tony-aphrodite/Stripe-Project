@@ -182,7 +182,8 @@ var Paso3 = {
             var cp = $('#vk-cp-input').val();
             if (VkValidacion.codigoPostal(cp) && self.app.state.ciudad) {
                 self.app.state.codigoPostal = cp;
-                self.app.irAPaso('resumen');
+                var nextStep = self.app.state.metodoPago === 'credito' ? 'credito-nombre' : 'resumen';
+                self.app.irAPaso(nextStep);
             } else {
                 $('#vk-cp-input').focus();
                 $('#vk-cp-input').css('border-color', 'red');
