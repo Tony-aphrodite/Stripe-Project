@@ -29,9 +29,6 @@ if (!$json) {
 
 $codigoIngresado = trim($json['codigo'] ?? '');
 $telefono        = preg_replace('/\D/', '', $json['telefono'] ?? '');
-$countryCode     = preg_replace('/\D/', '', $json['countryCode'] ?? '52');
-$allowedCodes    = ['52', '48'];
-if (!in_array($countryCode, $allowedCodes)) $countryCode = '52';
 
 if (!$telefono || !$codigoIngresado) {
     echo json_encode(['valido' => false, 'error' => 'Datos incompletos.']);
@@ -76,7 +73,7 @@ if (file_exists($fallbackFile)) {
 // ── Verificar contra SMSMasivos API (SMS fue enviado exitosamente) ───────────
 $postData = [
     'phone_number'      => $telefono,
-    'country_code'      => $countryCode,
+    'country_code'      => '52',
     'verification_code' => $codigoIngresado
 ];
 

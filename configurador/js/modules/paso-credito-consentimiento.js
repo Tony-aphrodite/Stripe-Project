@@ -25,8 +25,7 @@ var PasoCreditoConsentimiento = {
         html += '<div class="vk-card" style="padding:20px;">';
 
         // Phone display
-        var cc = state._countryCode || '52';
-        var telDisplay = state.telefono ? ('+' + cc + ' ' + state.telefono.replace(/(\d{2,3})(\d{3,4})(\d{3,4})/, '$1 $2 $3')) : '';
+        var telDisplay = state.telefono ? ('+52 ' + state.telefono.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3')) : '';
         html += '<div style="text-align:center;margin-bottom:16px;">';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);">C\u00f3digo enviado a</div>';
         html += '<div style="font-size:16px;font-weight:700;">' + telDisplay + '</div>';
@@ -129,7 +128,7 @@ var PasoCreditoConsentimiento = {
                 url: 'php/enviar-otp.php',
                 method: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ telefono: tel, countryCode: self.app.state._countryCode || '52', nombre: self.app.state.nombre || '' }),
+                data: JSON.stringify({ telefono: tel, nombre: self.app.state.nombre || '' }),
                 success: function(res) {
                     if (res && res.testCode) {
                         self.app.state._otpTestCode = res.testCode;
@@ -166,7 +165,7 @@ var PasoCreditoConsentimiento = {
             url: 'php/verificar-otp.php',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ telefono: state.telefono, countryCode: state._countryCode || '52', codigo: otp }),
+            data: JSON.stringify({ telefono: state.telefono, codigo: otp }),
             success: function(res) {
                 if (res && res.valido) {
                     state._otpVerificado = true;
