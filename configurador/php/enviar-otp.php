@@ -82,6 +82,8 @@ file_put_contents($logFile, json_encode([
 ]) . "\n", FILE_APPEND | LOCK_EX);
 
 // ── Respuesta ────────────────────────────────────────────────────────────────
+$data = json_decode($response, true);
+
 if ($curlErr) {
     // Error de red — fallback a modo local
     $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
@@ -94,11 +96,14 @@ if ($curlErr) {
     exit;
 }
 
-$data = json_decode($response, true);
-
 if ($httpCode >= 200 && $httpCode < 300) {
+    // API accepted — also generate fallback code in case SMS doesn't arrive
+    $codigoFallback = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+    $_SESSION['otp_codigo'] = $codigoFallback;
     echo json_encode([
-        'status' => 'sent'
+        'status'   => 'sent',
+        'testCode' => $codigoFallback,
+        'apiResponse' => $data
     ]);
 } else {
     // API error — fallback a modo local
@@ -107,6 +112,7 @@ if ($httpCode >= 200 && $httpCode < 300) {
     echo json_encode([
         'status'   => 'sent',
         'testCode' => $codigo,
-        'fallback' => true
+        'fallback' => true,
+        'httpCode' => $httpCode
     ]);
 }

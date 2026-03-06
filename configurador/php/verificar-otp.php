@@ -48,6 +48,7 @@ if (time() > $expira) {
 // ── Primero intentar verificar contra SMSMasivos ─────────────────────────────
 $postData = [
     'phone_number'      => $telefono,
+    'country_code'      => '52',
     'verification_code' => $codigoIngresado
 ];
 

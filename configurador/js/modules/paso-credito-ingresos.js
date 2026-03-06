@@ -96,12 +96,14 @@ var PasoCreditoIngresos = {
                 contentType: 'application/json',
                 data: JSON.stringify({ telefono: telefono, nombre: self.app.state.nombre || '' }),
                 success: function(res) {
+                    console.log('[OTP] enviar-otp response:', res);
                     if (res && res.testCode) {
                         self.app.state._otpTestCode = res.testCode;
                     }
                     self.app.irAPaso('credito-consentimiento'); // Screen 11
                 },
-                error: function() {
+                error: function(xhr) {
+                    console.log('[OTP] enviar-otp error:', xhr.status, xhr.responseText);
                     self.app.state._otpTestCode = '123456';
                     self.app.irAPaso('credito-consentimiento');
                 },
