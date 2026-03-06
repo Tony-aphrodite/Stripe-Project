@@ -707,6 +707,21 @@ html, body {
     cursor: pointer;
     box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
+@media (max-width: 600px) {
+    #vk-enganche-slider {
+        height: 4px;
+    }
+    #vk-enganche-slider::-webkit-slider-thumb {
+        width: 20px;
+        height: 20px;
+        border-width: 2px;
+    }
+    #vk-enganche-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-width: 2px;
+    }
+}
 
 /* Footer Note */
 .vk-card__footer-note {
