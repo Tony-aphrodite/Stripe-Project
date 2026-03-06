@@ -351,11 +351,12 @@
    -------------------------------------------------------------------------- */
 .vk-card__tabs {
     display: flex;
-    margin: var(--vk-space-md) var(--vk-card-padding) 0;
-    border: 1.5px solid var(--vk-border);
-    border-radius: var(--vk-radius-pill);
+    margin: 16px 20px 0;
+    margin: var(--vk-space-md, 16px) var(--vk-card-padding, 20px) 0;
+    border: 1.5px solid var(--vk-border, #E0E0E0);
+    border-radius: var(--vk-radius-pill, 50px);
     overflow: hidden;
-    background: var(--vk-bg-white);
+    background: var(--vk-bg-white, #fff);
 }
 
 .vk-tab {
@@ -364,24 +365,24 @@
     border: none;
     background: transparent;
     cursor: pointer;
-    font-family: var(--vk-font-family);
-    font-size: var(--vk-font-size-sm);
-    font-weight: var(--vk-font-semibold);
-    color: var(--vk-text-secondary);
-    transition: all var(--vk-transition-fast);
+    font-family: var(--vk-font-family, 'Inter', sans-serif);
+    font-size: var(--vk-font-size-sm, 13px);
+    font-weight: var(--vk-font-semibold, 600);
+    color: var(--vk-text-secondary, #555);
+    transition: all 0.15s ease;
     text-align: center;
     white-space: nowrap;
 }
 
 .vk-tab--active {
-    background: var(--vk-green-primary);
-    color: var(--vk-text-white);
-    border-radius: var(--vk-radius-pill);
+    background: var(--vk-green-primary, #039fe1);
+    color: var(--vk-text-white, #fff);
+    border-radius: var(--vk-radius-pill, 50px);
 }
 
 .vk-tab:hover:not(.vk-tab--active) {
-    color: var(--vk-text-primary);
-    background: var(--vk-green-light);
+    color: var(--vk-text-primary, #1A1A1A);
+    background: var(--vk-green-light, #E0F4FD);
 }
 
 /* Tab Content */
@@ -1307,8 +1308,8 @@
     /* Payment method tabs (inside right panel) */
     .vk-hero__metodo-tabs {
         display: flex;
-        border: 1px solid var(--vk-border);
-        border-radius: var(--vk-radius-md);
+        border: 1px solid var(--vk-border, #E0E0E0);
+        border-radius: var(--vk-radius-md, 10px);
         overflow: hidden;
         margin-bottom: 16px;
     }
@@ -1319,12 +1320,12 @@
         font-size: 12px;
         font-weight: 600;
         border: none;
-        background: var(--vk-bg-light);
+        background: var(--vk-bg-light, #F7F7F7);
         cursor: pointer;
-        color: var(--vk-text-secondary);
-        transition: background var(--vk-transition-fast), color var(--vk-transition-fast);
-        font-family: var(--vk-font-family);
-        border-right: 1px solid var(--vk-border);
+        color: var(--vk-text-secondary, #555);
+        transition: background 0.15s ease, color 0.15s ease;
+        font-family: var(--vk-font-family, 'Inter', sans-serif);
+        border-right: 1px solid var(--vk-border, #E0E0E0);
     }
 
     .vk-hero__metodo-tab:last-child {
@@ -1332,7 +1333,7 @@
     }
 
     .vk-hero__metodo-tab--active {
-        background: var(--vk-green-primary);
+        background: var(--vk-green-primary, #039fe1);
         color: #fff;
     }
 
@@ -1616,7 +1617,7 @@
 .vk-card__formas-label,
 .vk-hero__formas-label {
     font-size: var(--vk-font-size-sm);
-    font-weight: var(--vk-font-semi);
+    font-weight: var(--vk-font-semibold, 600);
     color: var(--vk-text-primary);
     text-align: center;
     margin-bottom: var(--vk-space-sm);
