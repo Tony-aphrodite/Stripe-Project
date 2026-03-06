@@ -1312,10 +1312,18 @@
     /* Payment method tabs (inside right panel) */
     .vk-hero__metodo-tabs {
         display: flex;
+        flex-wrap: wrap;
         border: 1px solid var(--vk-border);
         border-radius: var(--vk-radius-md);
         overflow: hidden;
         margin-bottom: 16px;
+    }
+
+    .vk-hero__metodo-tabs .vk-hero__formas-label {
+        width: 100%;
+        margin-bottom: 0;
+        padding: 8px 12px 4px;
+        border-bottom: 1px solid var(--vk-border);
     }
 
     .vk-hero__metodo-tab {
