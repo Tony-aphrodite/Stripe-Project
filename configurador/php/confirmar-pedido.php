@@ -36,6 +36,8 @@ $ciudad     = trim($json['ciudad']     ?? '');
 $estado     = trim($json['estado']     ?? '');
 $cp         = trim($json['cp']         ?? '');
 $total      = floatval($json['total']  ?? 0);
+$asesoria   = !empty($json['asesoriaPlacos']);
+$seguro     = !empty($json['seguro']);
 $credito    = $json['credito']         ?? null;
 $fecha      = date('d/m/Y H:i');
 $pedidoNum  = 'VK-' . strtoupper(base_convert(time(), 10, 36));
@@ -71,17 +73,20 @@ try {
         estado     VARCHAR(100),
         cp         VARCHAR(10),
         total      DECIMAL(12,2),
+        asesoria_placas TINYINT(1) DEFAULT 0,
+        seguro_qualitas TINYINT(1) DEFAULT 0,
         freg       DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
 
     $stmt = $pdo->prepare("
         INSERT INTO pedidos
-            (pedido_num, nombre, email, telefono, modelo, color, metodo, ciudad, estado, cp, total)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (pedido_num, nombre, email, telefono, modelo, color, metodo, ciudad, estado, cp, total, asesoria_placas, seguro_qualitas)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $pedidoNum, $nombre, $email, $telefono, $modelo, $color,
         $metodoPago, $ciudad, $estado, $cp, $total,
+        $asesoria ? 1 : 0, $seguro ? 1 : 0,
     ]);
 } catch (PDOException $e) {
     error_log('Voltika pedidos DB error: ' . $e->getMessage());
@@ -149,9 +154,17 @@ $cuerpo = '<!DOCTYPE html>
               </tr>
               ' . ($total > 0 ? '
               <tr style="background:#F9FAFB;">
-                <td style="color:#6B7280;padding:10px 12px;">Total</td>
-                <td style="padding:10px 12px;font-weight:700;color:#22C55E;">' . $totalFmt . '</td>
+                <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">Total</td>
+                <td style="padding:10px 12px;font-weight:700;color:#22C55E;border-bottom:1px solid #E5E7EB;">' . $totalFmt . '</td>
               </tr>' : '') . '
+              <tr>
+                <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">Asesoría placas</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E5E7EB;">' . ($asesoria ? '&#10004; Sí' : 'No') . '</td>
+              </tr>
+              <tr style="background:#F9FAFB;">
+                <td style="color:#6B7280;padding:10px 12px;">Seguro Qualitas</td>
+                <td style="padding:10px 12px;">' . ($seguro ? '&#10004; Sí' : 'No') . '</td>
+              </tr>
             </table>
 
             <p style="margin:24px 0 0;font-size:13px;color:#9CA3AF;">

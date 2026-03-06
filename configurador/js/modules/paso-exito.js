@@ -147,6 +147,8 @@ var PasoExito = {
                 estado:    state.estado,
                 cp:        state.codigoPostal,
                 total:     state.totalPagado || 0,
+                asesoriaPlacos: state.asesoriaPlacos || false,
+                seguro:         state.seguro || false,
                 credito:   state.metodoPago === 'credito' ? {
                     enganchePct: state.enganchePorcentaje,
                     plazoMeses:  state.plazoMeses
