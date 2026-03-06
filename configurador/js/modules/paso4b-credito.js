@@ -145,7 +145,7 @@ var Paso4B = {
         html += '</div>';
 
         // ── Model summary (compact) ─────────────────────────────────────────
-        html += '<div style="background:var(--vk-bg-light);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">';
+        html += '<div style="background:#fff;border:1.5px solid var(--vk-border);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">';
         html += '<div>';
         html += '<div style="font-size:16px;font-weight:800;">' + modelo.nombre + '</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Color: ' + (state.colorSeleccionado || modelo.colorDefault) + '</div>';
@@ -162,7 +162,7 @@ var Paso4B = {
         html += '<div id="vk-enganche-big" style="font-size:32px;font-weight:800;color:var(--vk-text-primary);margin-bottom:8px;">' +
             VkUI.formatPrecio(modelo.precioContado * this._enganchePct) + '</div>';
         html += '<input type="range" id="vk-enganche-slider" min="25" max="80" value="' + Math.round(this._enganchePct * 100) + '" step="5" ' +
-            'style="width:100%;accent-color:#2563EB;height:8px;">';
+            'style="width:100%;accent-color:#2563EB;">';
         html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--vk-text-muted);margin-top:4px;">' +
             '<span>25%</span><span>80%</span></div>';
         html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-top:6px;">M\u00e1s enganche = menor pago semanal</div>';

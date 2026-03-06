@@ -677,6 +677,37 @@ html, body {
     background: #2D4A80;
 }
 
+/* Enganche Slider */
+#vk-enganche-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #2563EB;
+    outline: none;
+}
+#vk-enganche-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #2563EB;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+#vk-enganche-slider::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #2563EB;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+
 /* Footer Note */
 .vk-card__footer-note {
     text-align: center;
