@@ -27,6 +27,9 @@
     background: var(--vk-bg-light);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 /* --------------------------------------------------------------------------
@@ -289,8 +292,9 @@
     font-size: 12px;
 }
 
-/* Bullets */
+/* Bullets — hidden on mobile, shown on desktop */
 .vk-card__bullets {
+    display: none;
     padding: var(--vk-space-sm) var(--vk-card-padding);
     background: var(--vk-green-soft);
 }
@@ -428,8 +432,9 @@
     margin-bottom: var(--vk-space-xs);
 }
 
-/* Tab microcopy bullets */
+/* Tab microcopy bullets — hidden on mobile, shown on desktop */
 .vk-card__tab-bullets {
+    display: none;
     text-align: left;
     margin-top: var(--vk-space-sm);
 }
@@ -1457,7 +1462,12 @@
     }
 
     .vk-card__bullets {
+        display: block;
         padding: 6px var(--vk-card-padding);
+    }
+
+    .vk-card__tab-bullets {
+        display: block;
     }
 
     .vk-card__bullet {

@@ -241,7 +241,6 @@ var Paso1 = {
         html += '<div class="vk-card__precio-base">Desde ' + VkUI.formatPrecio(modelo.precioContado) + ' MXN <span>(contado)</span></div>';
 
         html += VkUI.renderBanner();
-        html += VkUI.renderBullets();
 
         html += '<div class="vk-card__formas-label">Formas de Pago: <span style="font-weight:400;">(selecciona)</span></div>';
         html += '<div class="vk-card__tabs">';
@@ -273,11 +272,6 @@ var Paso1 = {
         var html = '';
         html += '<div class="vk-card__credito-brand"><img class="vk-shield-icon" src="img/voltika_shield.svg" alt="Voltika">cr\u00e9ditovoltika</div>';
         html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
-        html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('<strong>Enganche flexible</strong> \u00b7 Sin penalizaci\u00f3n por pago anticipado');
-        html += VkUI.renderTabBullet('Aprobaci\u00f3n inmediata en menos de <strong>2 minutos</strong> \u00b7 solo con tu INE');
-        html += VkUI.renderTabBullet('Costo de env\u00edo de entrega segura <strong>SIN COSTO</strong> incluido en tu plan');
-        html += '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito">' +
             'VER PLAN &#8250;</button>';
         return html;
@@ -293,11 +287,6 @@ var Paso1 = {
             return html;
         }
         html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> /mes durante 9 meses ' + VkUI.renderCardLogos() + '</div>';
-        html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Sin tr\u00e1mites \u00b7 Pago <strong>inmediato</strong> con tarjeta');
-        html += VkUI.renderTabBullet('Env\u00edo asegurado a tu ciudad');
-        html += VkUI.renderTabBullet('Costo <strong>log\u00edstico</strong> confirmado con tu <strong>c\u00f3digo postal</strong> en el siguiente paso');
-        html += '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="msi">' +
             'QUIERO MIS 9 MSI &#8250;</button>';
         return html;
@@ -307,11 +296,6 @@ var Paso1 = {
         var html = '';
         html += '<div class="vk-card__contado-label">Precio contado</div>';
         html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
-        html += '<div class="vk-card__tab-bullets">';
-        html += VkUI.renderTabBullet('Sin tr\u00e1mites \u00b7 Pago <strong>inmediato</strong> con tarjeta');
-        html += VkUI.renderTabBullet('Env\u00edo asegurado a tu ciudad');
-        html += VkUI.renderTabBullet('Costo <strong>log\u00edstico</strong> confirmado con tu <strong>c\u00f3digo postal</strong> en el siguiente paso');
-        html += '</div>';
         html += '<div class="vk-card__tab-logos">' + VkUI.renderCardLogos() + '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="contado">' +
             'PAGAR DE CONTADO</button>';
