@@ -137,7 +137,11 @@ var VkUI = {
     renderCreditoLogo: function(height) {
         var base = (window.VK_BASE_PATH || '');
         var h = height || 22;
-        return '<img src="' + base + 'img/credito_voltika_logo.svg" alt="Cr\u00e9dito Voltika" class="vk-credito-logo" style="height:' + h + 'px;vertical-align:middle;">';
+        var shieldH = Math.round(h * 0.9);
+        return '<span class="vk-credito-logo" style="display:inline-flex;align-items:center;gap:3px;vertical-align:middle;">' +
+            '<img src="' + base + 'img/voltika_shield.svg" alt="" style="height:' + shieldH + 'px;width:auto;">' +
+            '<span style="font-size:' + Math.round(h * 0.55) + 'px;line-height:1;">cr\u00e9dito<strong style="color:#00B140;">voltika</strong></span>' +
+            '</span>';
     },
 
     /**
