@@ -139,94 +139,35 @@ var Paso4B = {
         // Back button — back to color selection (paso 2)
         html += VkUI.renderBackButton(2);
 
-        // ── INTRO SECTION ─────────────────────────────────────────────────
-        html += '<div style="text-align:center;margin-bottom:20px;">';
-        html += '<div style="font-size:22px;font-weight:800;">&#9745; voltika</div>';
-        html += '<h2 style="font-size:22px;font-weight:800;margin-top:8px;">&#161;Toma solo 2 minutos! &#9200;</h2>';
+        // ── Title ───────────────────────────────────────────────────────────
+        html += '<div style="text-align:center;margin-bottom:16px;">';
+        html += '<div style="font-size:20px;font-weight:800;">Calculadora de cr\u00e9dito</div>';
         html += '</div>';
 
-        // Model summary box
+        // ── Model summary (compact) ─────────────────────────────────────────
         html += '<div class="vk-credit-summary">';
         html += '<div class="vk-credit-summary__model">';
         html += '<div class="vk-credit-summary__details">';
-        html += '<div style="font-size:15px;font-weight:700;margin-bottom:6px;">' + modelo.nombre + '</div>';
-        html += '<div style="font-size:13px;margin-bottom:2px;">Enganche: <strong>' + VkUI.formatPrecio(credito.enganche) + '</strong></div>';
-        html += '<div style="font-size:13px;margin-bottom:2px;"><strong>' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong> / semana</div>';
+        html += '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">' + modelo.nombre + '</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);">Color: ' + (state.colorSeleccionado || modelo.colorDefault) + '</div>';
-        html += '<div style="background:var(--vk-green-soft);border-radius:6px;padding:6px 8px;margin-top:8px;font-size:12px;">' +
-            '<span style="color:var(--vk-green-primary);">&#10004;</span> Entrega en Centro Voltika en tu ciudad' +
-            '</div>';
         html += '</div>';
         html += '<img class="vk-credit-summary__img" src="' + img + '" alt="' + modelo.nombre + '">';
         html += '</div>';
-        html += '</div>'; // end credit-summary
-
-        // 5 pasos list
-        html += '<div class="vk-credit-steps">';
-        html += '<div class="vk-credit-steps__title">5 pasos muy sencillos:</div>';
-
-        var pasos = [
-            ['Verifica tu identidad', 'INE y selfie'],
-            ['Confirma tu lugar de entrega cercano', 'Centro Voltika autorizado en tu ciudad'],
-            ['Hablamos contigo y te guiamos en persona', 'Un asesor Voltika te contacta directamente'],
-            ['Paga tu enganche de forma segura', 'Con tarjeta de credito o debito'],
-            ['Firma contrato y recibe tu moto', 'Con permiso provisional y documentos para emplacar']
-        ];
-
-        for (var s = 0; s < pasos.length; s++) {
-            html += '<div class="vk-credit-step">';
-            html += '<div class="vk-credit-step__number">' + (s + 1) + '</div>';
-            html += '<div class="vk-credit-step__content">';
-            html += '<div class="vk-credit-step__title">' + pasos[s][0] + '</div>';
-            html += '<div class="vk-credit-step__desc">' + pasos[s][1] + '</div>';
-            html += '</div>';
-            html += '</div>';
-        }
-        html += '</div>'; // end credit-steps
-
-        // Iniciar proceso CTA
-        html += '<button class="vk-btn vk-btn--blue" id="vk-iniciar-proceso">Iniciar proceso</button>';
-        html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin:4px 0 16px;">Toma menos de 2 minutos.</p>';
-
-        // Alternativa: pagar con tarjeta
-        html += '<div style="border-top:1px solid var(--vk-border-light);padding-top:14px;margin-bottom:20px;text-align:center;">';
-        html += '<p style="font-size:13px;color:var(--vk-text-muted);margin-bottom:8px;">\u00bfPrefieres pagar con tarjeta?</p>';
-        html += '<div style="display:flex;gap:10px;justify-content:center;">';
-        if (modelo.tieneMSI) {
-            html += '<button class="vk-btn vk-btn--secondary" id="vk-switch-msi" style="flex:1;max-width:180px;font-size:13px;padding:10px;">9 MSI sin intereses</button>';
-        }
-        html += '<button class="vk-btn vk-btn--secondary" id="vk-switch-contado" style="flex:1;max-width:180px;font-size:13px;padding:10px;">Pago contado</button>';
-        html += '</div>';
         html += '</div>';
 
-        // ── V3 FORM (hidden until "Iniciar proceso" is clicked) ───────────
-        html += '<div id="vk-v3-form" style="display:none;">';
-
-        // Bloque 1: Ingreso mensual
-        html += '<div class="vk-info-box">';
-        html += '<div style="font-weight:700;font-size:14px;margin-bottom:12px;">&#128181; 1. ¿Cual es tu ingreso mensual?</div>';
-        html += '<select id="vk-ingreso-select" class="vk-form-input" style="width:100%;">';
-        html += '<option value="">-- Selecciona tu rango --</option>';
-        for (var i = 0; i < RANGOS_INGRESO.length; i++) {
-            html += '<option value="' + RANGOS_INGRESO[i].valor + '">' + RANGOS_INGRESO[i].label + '</option>';
-        }
-        html += '</select>';
-        html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-top:6px;">Usamos el minimo de tu rango para ser conservadores.</div>';
-        html += '</div>';
-
-        // Bloque 2: Calculadora
+        // ── Enganche slider (per Dibujo.pdf) ────────────────────────────────
         html += '<div class="vk-info-box" style="margin-top:16px;">';
-        html += '<div style="font-weight:700;font-size:14px;margin-bottom:12px;">&#128200; 2. Ajusta tu plan de pago</div>';
 
         html += '<div class="vk-form-group">';
         html += '<label class="vk-form-label">Enganche: <strong id="vk-enganche-display">' +
-            Math.round(this._enganchePct * 100) + '% — ' + VkUI.formatPrecio(modelo.precioContado * this._enganchePct) + '</strong></label>';
+            Math.round(this._enganchePct * 100) + '% \u2014 ' + VkUI.formatPrecio(modelo.precioContado * this._enganchePct) + '</strong></label>';
         html += '<input type="range" id="vk-enganche-slider" min="25" max="80" value="30" step="5" ' +
             'style="width:100%;accent-color:var(--vk-green-primary);">';
         html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--vk-text-muted);">' +
-            '<span>25% min</span><span>80%</span></div>';
+            '<span>25%</span><span>80%</span></div>';
         html += '</div>';
 
+        // ── Plazo buttons (per Dibujo.pdf) ──────────────────────────────────
         html += '<div class="vk-form-group">';
         html += '<label class="vk-form-label">Plazo:</label>';
         html += '<div id="vk-plazo-btns" style="display:flex;gap:8px;flex-wrap:wrap;">';
@@ -234,25 +175,38 @@ var Paso4B = {
         html += '</div>';
         html += '</div>';
 
+        // ── Calculated results (Enganche, pago semanal, plazo total) ────────
         html += '<div id="vk-calc-results">';
         html += this._renderCalcResults(modelo, credito);
         html += '</div>';
-        html += '</div>'; // end bloque 2
 
-        // Bloque 3: CTA pre-aprobación
+        html += '</div>'; // end info-box
+
+        // ── CONFIRMAR COMPRA button ─────────────────────────────────────────
+        html += '<button class="vk-btn vk-btn--blue" id="vk-iniciar-proceso" style="margin-top:16px;">CONFIRMAR COMPRA</button>';
+
+        // ── Hidden V3 form fields (income selector + pre-approval) ──────────
+        html += '<div id="vk-v3-form" style="display:none;">';
+
+        html += '<div class="vk-info-box" style="margin-top:16px;">';
+        html += '<div style="font-weight:700;font-size:14px;margin-bottom:12px;">&#128181; \u00bfCual es tu ingreso mensual?</div>';
+        html += '<select id="vk-ingreso-select" class="vk-form-input" style="width:100%;">';
+        html += '<option value="">-- Selecciona tu rango --</option>';
+        for (var i = 0; i < RANGOS_INGRESO.length; i++) {
+            html += '<option value="' + RANGOS_INGRESO[i].valor + '">' + RANGOS_INGRESO[i].label + '</option>';
+        }
+        html += '</select>';
+        html += '</div>';
+
         html += '<div id="vk-preaprobacion-panel">';
         html += '<div style="text-align:center;margin-top:16px;">';
-        html += '<p style="font-size:13px;color:var(--vk-text-muted);margin-bottom:12px;">' +
-            'Al continuar verificamos tu identidad con INE y consultamos Circulo de Credito (no afecta tu historial).' +
-            '</p>';
         html += '<button class="vk-btn vk-btn--blue" id="vk-iniciar-credito" disabled>' +
-            '&#10004; Verificar pre-aprobacion' +
+            '&#10004; Verificar pre-aprobaci\u00f3n' +
             '</button>';
         html += '<p style="font-size:12px;color:var(--vk-text-muted);margin-top:8px;">Selecciona tu ingreso para continuar.</p>';
         html += '</div>';
         html += '</div>';
 
-        // Panel de resultado
         html += '<div id="vk-credito-resultado" style="display:none;margin-top:20px;"></div>';
 
         html += '</div>'; // end v3-form
