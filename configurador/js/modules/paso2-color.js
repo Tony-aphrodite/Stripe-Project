@@ -40,6 +40,7 @@ var Paso2 = {
         // Banner + bullets — full-width row (always visible)
         html += '<div class="vk-desktop-split-wrap">';
         html += VkUI.renderBanner();
+        html += VkUI.renderBullets();
         html += '</div>';
 
         // Desktop 2-col split (stacks on mobile)
@@ -120,17 +121,31 @@ var Paso2 = {
         if (metodo === 'credito') {
             html += '<div class="vk-card__credito-logo"><img class="vk-shield-icon" src="img/voltika_shield.svg" alt="Voltika"> cr\u00e9dito voltika seleccionado</div>';
             html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
+            html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
+            html += VkUI.renderTabBullet('Aprobaci\u00f3n en minutos');
+            html += VkUI.renderTabBullet('Incluye flete');
+            html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
+            html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
+            html += '</div>';
         } else if (metodo === 'msi') {
             html += '<div style="font-size:18px;font-weight:700;margin-bottom:6px;">' +
                 '<strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong>' +
                 ' <span style="font-weight:400;">/mes</span>' +
                 '</div>';
             html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">Sin intereses &middot; 9 MSI con todas las tarjetas ' + VkUI.renderCardLogos() + '</div>';
+            html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
+            html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
+            html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
+            html += '</div>';
         } else { // contado
             html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:4px;">Precio contado</div>';
             html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
             html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">IVA incluido &middot; ' + VkUI.renderCardLogos() + '</div>';
-            html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-top:8px;">*Costo log\u00edstico se confirma seg\u00fan tu ciudad.*</div>';
+            html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
+            html += VkUI.renderTabBullet('Sin tr\u00e1mites adicionales');
+            html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
+            html += VkUI.renderTabBullet('Moto lista para circular + documentos para emplacar');
+            html += '</div>';
         }
 
         return html;
