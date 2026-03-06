@@ -109,9 +109,9 @@ var Paso1 = {
             'Precio contado: <strong>' + VkUI.formatPrecio(defaultModelo.precioContado) + ' MXN</strong>' +
             '</div>';
 
-        // Payment-method label + tabs
-        html += '<div class="vk-hero__formas-label">Formas de Pago: <span style="font-weight:400;">(selecciona)</span></div>';
+        // Payment-method tabs
         html += '<div class="vk-hero__metodo-tabs" id="vk-hero-metodo-tabs">';
+        html += '<div class="vk-hero__formas-label">Formas de Pago: <span style="font-weight:400;">(selecciona)</span></div>';
         html += '<button class="vk-hero__metodo-tab vk-hero__metodo-tab--active" data-htab="credito">Cr&eacute;dito Voltika</button>';
         html += '<button class="vk-hero__metodo-tab" data-htab="msi">MSI</button>';
         html += '<button class="vk-hero__metodo-tab" data-htab="contado">Contado</button>';
