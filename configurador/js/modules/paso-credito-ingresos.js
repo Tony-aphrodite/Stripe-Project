@@ -33,9 +33,12 @@ var PasoCreditoIngresos = {
 
         // Phone
         html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">Tel\u00e9fono celular (10 d\u00edgitos)</label>';
+        html += '<label class="vk-form-label">Tel\u00e9fono celular</label>';
         html += '<div class="vk-phone-group">';
-        html += '<div class="vk-phone-prefix">&#127474;&#127485; +52</div>';
+        html += '<select id="vk-cing-country" class="vk-form-input" style="width:auto;min-width:100px;padding:8px 6px;font-size:14px;">';
+        html += '<option value="52"' + ((state._countryCode || '52') === '52' ? ' selected' : '') + '>MX +52</option>';
+        html += '<option value="48"' + ((state._countryCode) === '48' ? ' selected' : '') + '>PL +48</option>';
+        html += '</select>';
         html += '<input type="tel" class="vk-form-input" id="vk-cing-telefono" ' +
             'placeholder="55 1234 5678" maxlength="15" autocomplete="tel" ' +
             'value="' + (state.telefono || '') + '">';
@@ -67,13 +70,15 @@ var PasoCreditoIngresos = {
         var self = this;
         jQuery(document).off('click', '#vk-cing-continuar');
         jQuery(document).on('click', '#vk-cing-continuar', function() {
-            var ingreso  = jQuery('#vk-cing-ingreso').val().trim();
-            var telefono = jQuery('#vk-cing-telefono').val().replace(/\D/g, '');
-            var email    = jQuery('#vk-cing-email').val().trim();
+            var ingreso     = jQuery('#vk-cing-ingreso').val().trim();
+            var telefono    = jQuery('#vk-cing-telefono').val().replace(/\D/g, '');
+            var countryCode = jQuery('#vk-cing-country').val();
+            var email       = jQuery('#vk-cing-email').val().trim();
 
+            var minDigits = countryCode === '48' ? 9 : 10;
             var errores = [];
             if (!ingreso || parseInt(ingreso) < 1000) errores.push('Ingresa tu ingreso mensual (m\u00ednimo $1,000).');
-            if (!telefono || telefono.length < 10) errores.push('Ingresa tu tel\u00e9fono de 10 d\u00edgitos.');
+            if (!telefono || telefono.length < minDigits) errores.push('Ingresa tu tel\u00e9fono (' + minDigits + ' d\u00edgitos).');
             if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errores.push('Ingresa un correo v\u00e1lido.');
 
             if (errores.length) {
@@ -84,6 +89,7 @@ var PasoCreditoIngresos = {
 
             self.app.state._ingresoMensual = parseInt(ingreso);
             self.app.state.telefono = telefono;
+            self.app.state._countryCode = countryCode;
             self.app.state.email = email;
 
             // Send OTP SMS
@@ -94,7 +100,7 @@ var PasoCreditoIngresos = {
                 url: 'php/enviar-otp.php',
                 method: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ telefono: telefono, nombre: self.app.state.nombre || '' }),
+                data: JSON.stringify({ telefono: telefono, countryCode: countryCode, nombre: self.app.state.nombre || '' }),
                 success: function(res) {
                     console.log('[OTP] enviar-otp response:', res);
                     if (res && res.testCode) {

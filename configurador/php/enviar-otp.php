@@ -28,10 +28,15 @@ if (!$json) {
     exit;
 }
 
-$telefono = preg_replace('/\D/', '', $json['telefono'] ?? '');
-$nombre   = trim($json['nombre'] ?? '');
+$telefono    = preg_replace('/\D/', '', $json['telefono'] ?? '');
+$countryCode = preg_replace('/\D/', '', $json['countryCode'] ?? '52');
+$nombre      = trim($json['nombre'] ?? '');
 
-if (strlen($telefono) < 10) {
+// Validate country code (whitelist)
+$allowedCodes = ['52', '48']; // MX, PL
+if (!in_array($countryCode, $allowedCodes)) $countryCode = '52';
+
+if (strlen($telefono) < 9) {
     http_response_code(400);
     echo json_encode(['error' => 'Teléfono inválido']);
     exit;
@@ -40,7 +45,7 @@ if (strlen($telefono) < 10) {
 // ── Llamada a SMSMasivos 2FA API ─────────────────────────────────────────────
 $postData = [
     'phone_number' => $telefono,
-    'country_code' => '52',
+    'country_code' => $countryCode,
     'company'      => SMSMASIVOS_COMPANY,
     'template'     => 'a',
     'code_length'  => 6,
