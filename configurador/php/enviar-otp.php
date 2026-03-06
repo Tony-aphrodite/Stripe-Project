@@ -21,8 +21,6 @@ require_once __DIR__ . '/config.php';
 define('SMSMASIVOS_2FA_URL', 'https://api.smsmasivos.com.mx/protected/json/phones/verification/start');
 define('SMSMASIVOS_COMPANY', 'Voltika');
 
-session_start();
-
 $json = json_decode(file_get_contents('php://input'), true);
 if (!$json) {
     http_response_code(400);
@@ -38,10 +36,6 @@ if (strlen($telefono) < 10) {
     echo json_encode(['error' => 'Teléfono inválido']);
     exit;
 }
-
-// Guardar teléfono en sesión para verificación posterior
-$_SESSION['otp_telefono'] = $telefono;
-$_SESSION['otp_expira']   = time() + 600;
 
 // ── Llamada a SMSMasivos 2FA API ─────────────────────────────────────────────
 $postData = [
@@ -84,10 +78,22 @@ file_put_contents($logFile, json_encode([
 // ── Respuesta ────────────────────────────────────────────────────────────────
 $data = json_decode($response, true);
 
+// Helper: guardar código fallback en archivo (no depende de sesiones)
+function guardarOTPFallback($telefono, $codigo) {
+    $dir = __DIR__ . '/otp_temp';
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+    $file = $dir . '/' . hash('sha256', $telefono) . '.json';
+    file_put_contents($file, json_encode([
+        'codigo'  => $codigo,
+        'expira'  => time() + 600,
+        'telefono' => $telefono
+    ]), LOCK_EX);
+}
+
 if ($curlErr) {
     // Error de red — fallback a modo local
     $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-    $_SESSION['otp_codigo'] = $codigo;
+    guardarOTPFallback($telefono, $codigo);
     echo json_encode([
         'status'   => 'sent',
         'testCode' => $codigo,
@@ -97,14 +103,16 @@ if ($curlErr) {
 }
 
 if ($httpCode >= 200 && $httpCode < 300 && isset($data['success']) && $data['success'] === true) {
-    // SMS sent successfully via SMSMasivos
+    // SMS sent successfully via SMSMasivos — limpiar fallback si existe
+    $fallbackFile = __DIR__ . '/otp_temp/' . hash('sha256', $telefono) . '.json';
+    if (file_exists($fallbackFile)) unlink($fallbackFile);
     echo json_encode([
         'status' => 'sent'
     ]);
 } else {
     // API error — fallback a modo local
     $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-    $_SESSION['otp_codigo'] = $codigo;
+    guardarOTPFallback($telefono, $codigo);
     echo json_encode([
         'status'   => 'sent',
         'testCode' => $codigo,

@@ -20,8 +20,6 @@ require_once __DIR__ . '/config.php';
 
 define('SMSMASIVOS_CHECK_URL', 'https://api.smsmasivos.com.mx/protected/json/phones/verification/check');
 
-session_start();
-
 $json = json_decode(file_get_contents('php://input'), true);
 if (!$json) {
     http_response_code(400);
@@ -31,21 +29,48 @@ if (!$json) {
 
 $codigoIngresado = trim($json['codigo'] ?? '');
 $telefono        = preg_replace('/\D/', '', $json['telefono'] ?? '');
-$telefonoSession = $_SESSION['otp_telefono'] ?? '';
-$expira          = $_SESSION['otp_expira'] ?? 0;
 
-// Usar teléfono de sesión si no se proporcionó
-if (!$telefono && $telefonoSession) {
-    $telefono = $telefonoSession;
-}
-
-// Verificar expiración
-if (time() > $expira) {
-    echo json_encode(['valido' => false, 'error' => 'Código expirado. Solicita uno nuevo.']);
+if (!$telefono || !$codigoIngresado) {
+    echo json_encode(['valido' => false, 'error' => 'Datos incompletos.']);
     exit;
 }
 
-// ── Primero intentar verificar contra SMSMasivos ─────────────────────────────
+// ── Fallback: verificar contra archivo local PRIMERO ─────────────────────────
+$fallbackFile = __DIR__ . '/otp_temp/' . hash('sha256', $telefono) . '.json';
+
+if (file_exists($fallbackFile)) {
+    $fallbackData = json_decode(file_get_contents($fallbackFile), true);
+    $codigoEsperado = $fallbackData['codigo'] ?? null;
+    $expira         = $fallbackData['expira'] ?? 0;
+
+    // Logging
+    $logFile = __DIR__ . '/logs/sms-otp.log';
+    if (!is_dir(dirname($logFile))) mkdir(dirname($logFile), 0755, true);
+    file_put_contents($logFile, json_encode([
+        'timestamp' => date('c'),
+        'action'    => 'verify-fallback',
+        'telefono'  => substr($telefono, 0, 3) . '****' . substr($telefono, -3),
+        'expected'  => $codigoEsperado,
+        'received'  => $codigoIngresado,
+        'match'     => ($codigoIngresado === $codigoEsperado)
+    ]) . "\n", FILE_APPEND | LOCK_EX);
+
+    if (time() > $expira) {
+        @unlink($fallbackFile);
+        echo json_encode(['valido' => false, 'error' => 'Código expirado. Solicita uno nuevo.']);
+        exit;
+    }
+
+    if ($codigoEsperado && $codigoIngresado === $codigoEsperado) {
+        @unlink($fallbackFile);
+        echo json_encode(['valido' => true]);
+    } else {
+        echo json_encode(['valido' => false, 'error' => 'Código incorrecto. Verifica e intenta de nuevo.']);
+    }
+    exit;
+}
+
+// ── Verificar contra SMSMasivos API (SMS fue enviado exitosamente) ───────────
 $postData = [
     'phone_number'      => $telefono,
     'country_code'      => '52',
@@ -69,20 +94,19 @@ curl_close($ch);
 
 // Logging
 $logFile = __DIR__ . '/logs/sms-otp.log';
+if (!is_dir(dirname($logFile))) mkdir(dirname($logFile), 0755, true);
 file_put_contents($logFile, json_encode([
     'timestamp' => date('c'),
-    'action'    => 'verify',
+    'action'    => 'verify-api',
     'telefono'  => substr($telefono, 0, 3) . '****' . substr($telefono, -3),
     'httpCode'  => $httpCode,
-    'response'  => $response
+    'response'  => $response,
+    'curlErr'   => $curlErr
 ]) . "\n", FILE_APPEND | LOCK_EX);
 
-// ── Evaluar respuesta ────────────────────────────────────────────────────────
 if (!$curlErr && $httpCode >= 200 && $httpCode < 300) {
     $data = json_decode($response, true);
-    // SMSMasivos returns { success: true/false, message: "..." }
     if (isset($data['success']) && $data['success'] === true) {
-        unset($_SESSION['otp_codigo'], $_SESSION['otp_telefono'], $_SESSION['otp_expira']);
         echo json_encode(['valido' => true]);
         exit;
     }
@@ -90,12 +114,5 @@ if (!$curlErr && $httpCode >= 200 && $httpCode < 300) {
     exit;
 }
 
-// ── Fallback: verificar contra sesión local ──────────────────────────────────
-$codigoEsperado = $_SESSION['otp_codigo'] ?? null;
-
-if ($codigoEsperado && $codigoIngresado === $codigoEsperado) {
-    unset($_SESSION['otp_codigo'], $_SESSION['otp_telefono'], $_SESSION['otp_expira']);
-    echo json_encode(['valido' => true]);
-} else {
-    echo json_encode(['valido' => false, 'error' => 'Código incorrecto.']);
-}
+// API error — accept code anyway (SMS was sent but API check failed)
+echo json_encode(['valido' => false, 'error' => 'Error de verificación. Intenta de nuevo.']);
