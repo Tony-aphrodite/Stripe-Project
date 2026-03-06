@@ -96,14 +96,10 @@ if ($curlErr) {
     exit;
 }
 
-if ($httpCode >= 200 && $httpCode < 300) {
-    // API accepted — also generate fallback code in case SMS doesn't arrive
-    $codigoFallback = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-    $_SESSION['otp_codigo'] = $codigoFallback;
+if ($httpCode >= 200 && $httpCode < 300 && isset($data['success']) && $data['success'] === true) {
+    // SMS sent successfully via SMSMasivos
     echo json_encode([
-        'status'   => 'sent',
-        'testCode' => $codigoFallback,
-        'apiResponse' => $data
+        'status' => 'sent'
     ]);
 } else {
     // API error — fallback a modo local
@@ -112,7 +108,6 @@ if ($httpCode >= 200 && $httpCode < 300) {
     echo json_encode([
         'status'   => 'sent',
         'testCode' => $codigo,
-        'fallback' => true,
-        'httpCode' => $httpCode
+        'fallback' => true
     ]);
 }

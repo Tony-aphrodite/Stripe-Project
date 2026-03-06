@@ -80,18 +80,13 @@ file_put_contents($logFile, json_encode([
 // ── Evaluar respuesta ────────────────────────────────────────────────────────
 if (!$curlErr && $httpCode >= 200 && $httpCode < 300) {
     $data = json_decode($response, true);
-    // SMSMasivos devuelve un status de verificación
-    if (isset($data['status']) && $data['status'] === 'approved') {
+    // SMSMasivos returns { success: true/false, message: "..." }
+    if (isset($data['success']) && $data['success'] === true) {
         unset($_SESSION['otp_codigo'], $_SESSION['otp_telefono'], $_SESSION['otp_expira']);
         echo json_encode(['valido' => true]);
         exit;
     }
-    if (isset($data['valid']) && $data['valid'] === true) {
-        unset($_SESSION['otp_codigo'], $_SESSION['otp_telefono'], $_SESSION['otp_expira']);
-        echo json_encode(['valido' => true]);
-        exit;
-    }
-    echo json_encode(['valido' => false, 'error' => 'Código incorrecto.']);
+    echo json_encode(['valido' => false, 'error' => $data['message'] ?? 'Código incorrecto.']);
     exit;
 }
 
