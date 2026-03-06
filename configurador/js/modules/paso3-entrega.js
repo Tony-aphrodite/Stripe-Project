@@ -41,67 +41,72 @@ var Paso3 = {
         html += VkUI.renderBackButton(backTarget);
 
         // Header
-        html += '<div style="text-align:center;margin-bottom:12px;">';
+        html += '<div style="text-align:center;margin-bottom:16px;">';
         html += '<div style="font-size:13px;color:var(--vk-text-muted);margin-bottom:4px;">\u00b7 PASO 3 \u00b7</div>';
-        html += '<h2 class="vk-paso__titulo" style="margin-bottom:0;">Entrega en tu ciudad</h2>';
+        html += '<h2 class="vk-paso__titulo" style="margin-bottom:0;font-size:22px;font-weight:800;">Entrega en tu ciudad</h2>';
         html += '</div>';
 
         // Postal code input with search icon
         html += '<div class="vk-card" style="padding:20px;">';
 
-        html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">Ingresa tu C\u00f3digo Postal</div>';
-        html += '<div class="vk-form-group" style="position:relative;margin-bottom:8px;">';
+        html += '<div style="font-weight:700;font-size:16px;margin-bottom:10px;">Ingresa tu C\u00f3digo Postal</div>';
+        html += '<div class="vk-form-group" style="position:relative;margin-bottom:12px;">';
         html += '<input type="text" id="vk-cp-input" class="vk-form-input" ' +
             'placeholder="C.P. 5 d\u00edgitos" ' +
             'maxlength="5" inputmode="numeric" pattern="[0-9]*" ' +
             'value="' + (state.codigoPostal || '') + '" ' +
-            'style="padding-right:40px;">';
+            'style="padding-right:40px;font-size:16px;">';
         html += '<span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--vk-text-muted);font-size:18px;">&#128269;</span>';
         html += '</div>';
 
         // City/state display (filled dynamically)
-        html += '<div id="vk-cp-city" style="display:none;margin-bottom:14px;background:var(--vk-green-soft);border-radius:8px;padding:12px;">';
-        html += '<div style="display:flex;align-items:center;gap:8px;">';
-        html += '<span style="color:#D4A017;font-size:20px;">&#128205;</span>';
+        html += '<div id="vk-cp-city" style="display:none;margin-bottom:16px;background:var(--vk-green-soft);border-radius:10px;padding:14px 16px;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;">';
+        html += '<span style="font-size:24px;">&#128205;</span>';
         html += '<div>';
-        html += '<div id="vk-cp-city-name" style="font-weight:700;font-size:16px;color:var(--vk-text-primary);"></div>';
-        html += '<div id="vk-cp-state-name" style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;"></div>';
+        html += '<div id="vk-cp-city-name" style="font-weight:800;font-size:20px;color:var(--vk-text-primary);"></div>';
+        html += '<div id="vk-cp-state-name" style="font-size:14px;color:var(--vk-text-secondary);margin-top:2px;"></div>';
         html += '</div>';
         html += '</div>';
         html += '</div>';
 
-        // Centro Voltika (always visible)
-        html += '<div style="background:var(--vk-bg-light);border-radius:8px;padding:12px;margin-bottom:12px;">';
-        html += '<div style="display:flex;align-items:flex-start;gap:10px;">';
-        html += '<span style="font-size:20px;">&#128737;</span>';
+        // Centro Voltika Autorizado section
+        html += '<div style="background:var(--vk-bg-light);border-radius:10px;padding:16px;margin-bottom:14px;">';
+        html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
+        html += '<span style="font-size:24px;">&#128737;</span>';
         html += '<div>';
-        html += '<strong>Entrega en Centro Voltika Autorizado</strong>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Centro certificado para revisi\u00f3n y entrega profesional.</div>';
-        html += '</div>';
-        html += '</div>';
-        html += '</div>';
-
-        // Logistics cost / Flete info
+        html += '<div style="font-weight:800;font-size:17px;margin-bottom:6px;">Centro Voltika Autorizado</div>';
+        html += '<div style="font-size:14px;color:var(--vk-text-secondary);margin-bottom:4px;">&#10003; Revisi\u00f3n y activaci\u00f3n profesional</div>';
         if (esCredito) {
-            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:var(--vk-green-soft);border-radius:8px;">';
-            html += '<span style="color:var(--vk-green-primary);">&#10004;</span>';
-            html += '<span style="font-size:14px;font-weight:600;">En Cr\u00e9dito Voltika: <strong>Flete incluido</strong></span>';
-            html += '</div>';
+            html += '<div style="font-size:14px;color:var(--vk-green-primary);font-weight:600;">&#10003; Flete incluido en Cr\u00e9dito Voltika</div>';
         } else {
-            html += '<div id="vk-cp-logistics" style="display:none;margin-bottom:12px;padding:8px 12px;background:var(--vk-bg-light);border-radius:8px;">';
-            html += '<div style="display:flex;align-items:center;gap:8px;">';
-            html += '<span style="color:var(--vk-green-primary);">&#10004;</span>';
-            html += '<span style="font-size:14px;font-weight:600;">Costo log\u00edstico: <strong id="vk-cp-logistics-price"></strong> MXN</span>';
-            html += '</div>';
+            html += '<div id="vk-cp-logistics" style="display:none;font-size:14px;color:var(--vk-text-secondary);">';
+            html += '&#10003; Costo log\u00edstico: <strong id="vk-cp-logistics-price"></strong> MXN';
             html += '</div>';
         }
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
 
-        // Delivery date (always visible)
-        html += '<div style="margin-bottom:14px;">';
-        html += '<strong>Entrega estimada: 7\u201310 d\u00edas h\u00e1biles</strong>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">' +
-            'Nuestro equipo de log\u00edstica confirmar\u00e1 contigo el Centro Voltika m\u00e1s cercano dentro de las pr\u00f3ximas 24\u201348 horas.' +
-            '</div>';
+        // Entrega Garantizada section
+        html += '<div style="background:var(--vk-green-soft);border-radius:10px;padding:16px;margin-bottom:14px;">';
+        html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
+        html += '<span style="font-size:24px;color:var(--vk-green-primary);">&#9889;</span>';
+        html += '<div>';
+        html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Entrega Garantizada</div>';
+        html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega garantizada a m\u00e1s tardar el <strong style="color:var(--vk-green-primary);">' + fechaEntrega + '</strong></div>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+
+        // Asesor Personal Voltika section
+        html += '<div style="padding:12px 4px;margin-bottom:10px;">';
+        html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
+        html += '<span style="font-size:22px;">&#128100;</span>';
+        html += '<div style="font-size:14px;color:var(--vk-text-secondary);line-height:1.5;">';
+        html += 'Tu <strong style="color:var(--vk-text-primary);">Asesor Personal Voltika</strong> confirmar\u00e1 contigo el punto exacto de entrega en m\u00e1x. <strong>48 horas</strong>.';
+        html += '</div>';
+        html += '</div>';
         html += '</div>';
 
         html += '</div>'; // end card
@@ -110,30 +115,30 @@ var Paso3 = {
         html += '<div style="margin-top:16px;">';
 
         // Checkbox 1: Asesoría placas
-        html += '<label class="vk-checkbox-card" style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:1.5px solid var(--vk-border);border-radius:8px;margin-bottom:10px;cursor:pointer;">';
+        html += '<label class="vk-checkbox-card" style="display:flex;align-items:flex-start;gap:12px;padding:16px;border:1.5px solid var(--vk-border);border-radius:10px;margin-bottom:10px;cursor:pointer;">';
         html += '<input type="checkbox" id="vk-check-placas" class="vk-checkbox" style="margin-top:3px;"' +
             (state.asesoriaPlacos ? ' checked' : '') + '>';
         html += '<div>';
-        html += '<div style="font-weight:700;font-size:14px;">Asesor\u00eda para placas en tu estado</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Te conectamos con gestores verificados. Pago directo al gestor.</div>';
+        html += '<div style="font-weight:800;font-size:15px;">Asesor\u00eda para placas en tu estado</div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Te conectamos con gestores verificados. Pago directo al gestor.</div>';
         html += '</div>';
         html += '</label>';
 
         // Checkbox 2: Seguro
-        html += '<label class="vk-checkbox-card" style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:1.5px solid var(--vk-border);border-radius:8px;margin-bottom:16px;cursor:pointer;">';
+        html += '<label class="vk-checkbox-card" style="display:flex;align-items:flex-start;gap:12px;padding:16px;border:1.5px solid var(--vk-border);border-radius:10px;margin-bottom:16px;cursor:pointer;">';
         html += '<input type="checkbox" id="vk-check-seguro" class="vk-checkbox" style="margin-top:3px;"' +
             (state.seguro ? ' checked' : '') + '>';
         html += '<div>';
-        html += '<div style="font-weight:700;font-size:14px;">Seguro activo Qual\u00edtas desde la entrega</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Cotizamos y enviamos tu p\u00f3liza. Pago directo a la aseguradora.</div>';
+        html += '<div style="font-weight:800;font-size:15px;">Seguro activo Qual\u00edtas desde la entrega</div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Cotizamos y enviamos tu p\u00f3liza. Pago directo a la aseguradora.</div>';
         html += '</div>';
         html += '</label>';
 
         html += '</div>';
 
         // CTA
-        html += '<button class="vk-btn vk-btn--primary" id="vk-paso3-confirmar" disabled>' +
-            'CONFIRMAR PEDIDO' +
+        html += '<button class="vk-btn vk-btn--primary" id="vk-paso3-confirmar" disabled style="font-size:16px;font-weight:800;letter-spacing:0.5px;">' +
+            'CONFIRMAR ENTREGA OFICIAL' +
             '</button>';
 
         html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:8px;">' +
@@ -206,13 +211,12 @@ var Paso3 = {
             // Show logistics cost (contado/msi only)
             if (!esCredito) {
                 $('#vk-cp-logistics-price').text(VkUI.formatPrecio(config.costoLogistico));
-                $('#vk-cp-logistics').slideDown(200);
+                $('#vk-cp-logistics').show();
             }
 
             // Enable confirm button
             $('#vk-paso3-confirmar').prop('disabled', false);
         } else {
-            $('#vk-cp-city').hide();
             $('#vk-cp-logistics').hide();
             $('#vk-paso3-confirmar').prop('disabled', true);
             this.app.state.ciudad = null;
