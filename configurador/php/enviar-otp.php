@@ -102,18 +102,33 @@ if ($curlErr) {
     exit;
 }
 
-// Código "verification_03" = SMS ya fue enviado y está pendiente de verificación
-// En este caso, el SMS YA llegó al teléfono — tratarlo como éxito
+// API response codes:
+// verification_01 = new code sent successfully
+// verification_03 = code already pending (SMS was sent previously)
+// verification_04 = user already verified (number completed verification before)
 $apiCode = $data['code'] ?? '';
 $smsSent = false;
+$alreadyVerified = false;
 
 if ($httpCode >= 200 && $httpCode < 300) {
     if ((isset($data['success']) && $data['success'] === true) || $apiCode === 'verification_03') {
         $smsSent = true;
     }
+    if ($apiCode === 'verification_04') {
+        $alreadyVerified = true;
+    }
 }
 
-if ($smsSent) {
+if ($alreadyVerified) {
+    // User already verified this number — skip OTP entirely
+    $fallbackFile = __DIR__ . '/otp_temp/' . hash('sha256', $telefono) . '.json';
+    if (file_exists($fallbackFile)) @unlink($fallbackFile);
+    echo json_encode([
+        'status'           => 'already_verified',
+        'already_verified' => true,
+        'message'          => 'Tu número ya fue verificado anteriormente.'
+    ]);
+} elseif ($smsSent) {
     // SMS enviado (o ya pendiente) via SMSMasivos — limpiar fallback si existe
     $fallbackFile = __DIR__ . '/otp_temp/' . hash('sha256', $telefono) . '.json';
     if (file_exists($fallbackFile)) @unlink($fallbackFile);

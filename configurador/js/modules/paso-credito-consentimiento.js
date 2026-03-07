@@ -26,25 +26,35 @@ var PasoCreditoConsentimiento = {
 
         // Phone display
         var telDisplay = state.telefono ? ('+52 ' + state.telefono.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3')) : '';
-        html += '<div style="text-align:center;margin-bottom:16px;">';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);">C\u00f3digo enviado a</div>';
-        html += '<div style="font-size:16px;font-weight:700;">' + telDisplay + '</div>';
-        html += '</div>';
 
-        // Test code hint
-        if (state._otpTestCode) {
-            html += '<div style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
-                '&#128161; C\u00f3digo de prueba: <strong>' + state._otpTestCode + '</strong></div>';
+        if (state._otpVerificado) {
+            // Already verified — show green confirmation, no OTP input needed
+            html += '<div style="background:var(--vk-green-soft);border-radius:8px;padding:14px;text-align:center;margin-bottom:16px;">';
+            html += '<div style="font-size:24px;margin-bottom:4px;">&#9989;</div>';
+            html += '<div style="font-size:14px;font-weight:700;color:var(--vk-green-primary);">Tel\u00e9fono verificado</div>';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);">' + telDisplay + '</div>';
+            html += '</div>';
+        } else {
+            html += '<div style="text-align:center;margin-bottom:16px;">';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);">C\u00f3digo enviado a</div>';
+            html += '<div style="font-size:16px;font-weight:700;">' + telDisplay + '</div>';
+            html += '</div>';
+
+            // Test code hint
+            if (state._otpTestCode) {
+                html += '<div style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
+                    '&#128161; C\u00f3digo de prueba: <strong>' + state._otpTestCode + '</strong></div>';
+            }
+
+            // 6-digit OTP input
+            html += '<div class="vk-form-group" style="margin-bottom:16px;">';
+            html += '<label class="vk-form-label" style="text-align:center;display:block;">Ingresa el c\u00f3digo de 6 d\u00edgitos</label>';
+            html += '<input type="text" class="vk-form-input" id="vk-cons-otp" ' +
+                'maxlength="6" inputmode="numeric" pattern="[0-9]*" ' +
+                'placeholder="000000" ' +
+                'style="text-align:center;font-size:28px;letter-spacing:8px;font-weight:700;padding:14px;">';
+            html += '</div>';
         }
-
-        // 6-digit OTP input
-        html += '<div class="vk-form-group" style="margin-bottom:16px;">';
-        html += '<label class="vk-form-label" style="text-align:center;display:block;">Ingresa el c\u00f3digo de 6 d\u00edgitos</label>';
-        html += '<input type="text" class="vk-form-input" id="vk-cons-otp" ' +
-            'maxlength="6" inputmode="numeric" pattern="[0-9]*" ' +
-            'placeholder="000000" ' +
-            'style="text-align:center;font-size:28px;letter-spacing:8px;font-weight:700;padding:14px;">';
-        html += '</div>';
 
         html += '<div style="border-top:1px solid var(--vk-border);margin:16px 0;"></div>';
 
@@ -77,11 +87,13 @@ var PasoCreditoConsentimiento = {
             '<span id="vk-cons-spinner" style="display:none;">' + VkUI.renderSpinner() + ' Evaluando...</span>' +
             '</button>';
 
-        // Resend + change phone
-        html += '<div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">';
-        html += '<button class="vk-btn vk-btn--secondary" id="vk-cons-reenviar" style="font-size:12px;padding:8px 14px;">Reenviar c\u00f3digo</button>';
-        html += '<button class="vk-btn vk-btn--secondary" id="vk-cons-cambiar-tel" style="font-size:12px;padding:8px 14px;">Cambiar tel\u00e9fono</button>';
-        html += '</div>';
+        // Resend + change phone (hide if already verified)
+        if (!state._otpVerificado) {
+            html += '<div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">';
+            html += '<button class="vk-btn vk-btn--secondary" id="vk-cons-reenviar" style="font-size:12px;padding:8px 14px;">Reenviar c\u00f3digo</button>';
+            html += '<button class="vk-btn vk-btn--secondary" id="vk-cons-cambiar-tel" style="font-size:12px;padding:8px 14px;">Cambiar tel\u00e9fono</button>';
+            html += '</div>';
+        }
 
         html += '</div>'; // end card
 
@@ -89,10 +101,10 @@ var PasoCreditoConsentimiento = {
     },
 
     _updateCTA: function() {
-        var otp = jQuery('#vk-cons-otp').val().replace(/\D/g, '');
+        var otpOk = this.app.state._otpVerificado || (jQuery('#vk-cons-otp').val() || '').replace(/\D/g, '').length === 6;
         var tyc = jQuery('#vk-cons-tyc').is(':checked');
         var buro = jQuery('#vk-cons-buro').is(':checked');
-        jQuery('#vk-cons-evaluar').prop('disabled', !(otp.length === 6 && tyc && buro));
+        jQuery('#vk-cons-evaluar').prop('disabled', !(otpOk && tyc && buro));
     },
 
     bindEvents: function() {
@@ -153,13 +165,19 @@ var PasoCreditoConsentimiento = {
     _evaluar: function() {
         var self = this;
         var state = self.app.state;
-        var otp = jQuery('#vk-cons-otp').val().replace(/\D/g, '');
 
-        // First verify OTP
         jQuery('#vk-cons-evaluar').prop('disabled', true);
         jQuery('#vk-cons-label').hide();
         jQuery('#vk-cons-spinner').show();
         jQuery('#vk-cons-error').hide();
+
+        // If already verified (verification_04), skip OTP check
+        if (state._otpVerificado) {
+            self._consultarBuro();
+            return;
+        }
+
+        var otp = jQuery('#vk-cons-otp').val().replace(/\D/g, '');
 
         jQuery.ajax({
             url: 'php/verificar-otp.php',
