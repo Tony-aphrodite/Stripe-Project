@@ -19,7 +19,7 @@ var VOLTIKA_PRODUCTOS = {
             precioMSITotal: 53500,
             msiMeses: 9,
             tieneMSI: true,
-            enganchePorcentaje: 0.30,
+            enganchePorcentaje: 0.25,
             colores: [
                 { id: 'negro', nombre: 'Negro', hex: '#1A1A1A' },
                 { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' },
@@ -41,7 +41,7 @@ var VOLTIKA_PRODUCTOS = {
             precioMSITotal: 46800,
             msiMeses: 9,
             tieneMSI: true,
-            enganchePorcentaje: 0.30,
+            enganchePorcentaje: 0.25,
             colores: [
                 { id: 'negro', nombre: 'Negro', hex: '#1A1A1A' },
                 { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' },
@@ -63,7 +63,7 @@ var VOLTIKA_PRODUCTOS = {
             precioMSITotal: 105990,
             msiMeses: 9,
             tieneMSI: true,
-            enganchePorcentaje: 0.30,
+            enganchePorcentaje: 0.25,
             colores: [
                 { id: 'negro',   nombre: 'Negro',   hex: '#1A1A1A' },
                 { id: 'gris',    nombre: 'Gris',    hex: '#A0A0A0' },
@@ -86,7 +86,7 @@ var VOLTIKA_PRODUCTOS = {
             precioMSITotal: 109900,
             msiMeses: 9,
             tieneMSI: true,
-            enganchePorcentaje: 0.30,
+            enganchePorcentaje: 0.25,
             colores: [
                 { id: 'negro', nombre: 'Negro', hex: '#1A1A1A' },
                 { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' }
@@ -107,7 +107,7 @@ var VOLTIKA_PRODUCTOS = {
             precioMSITotal: null,
             msiMeses: 9,
             tieneMSI: false,
-            enganchePorcentaje: 0.30,
+            enganchePorcentaje: 0.25,
             colores: [
                 { id: 'negro', nombre: 'Negro', hex: '#1A1A1A' },
                 { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' },
@@ -130,7 +130,7 @@ var VOLTIKA_PRODUCTOS = {
             precioMSITotal: 39320,
             msiMeses: 9,
             tieneMSI: true,
-            enganchePorcentaje: 0.30,
+            enganchePorcentaje: 0.25,
             colores: [
                 { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' },
                 { id: 'azul',  nombre: 'Azul',  hex: '#1E6FBF' },

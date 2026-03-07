@@ -272,9 +272,11 @@ var Paso1 = {
     },
 
     renderTabCredito: function(modelo) {
+        // Calculate weekly payment with 25% down, 36 months
+        var credito = VkCalculadora.calcular(modelo.precioContado, 0.25, 36);
         var html = '';
         html += '<div class="vk-card__credito-brand">' + VkUI.renderCreditoLogo(26) + '</div>';
-        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
+        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong> semanales</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito">' +
             'CALCULAR MI CR\u00c9DITO &#8250;</button>';
         return html;
