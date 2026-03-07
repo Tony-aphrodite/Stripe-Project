@@ -1,8 +1,9 @@
 <?php
 /**
  * Voltika - Enviar OTP por SMS
- * Integración con SMSMasivos.com.mx 2FA API
- * Docs: https://app.smsmasivos.com.mx/api-docs/v2#2faregistro
+ * Uses SMSMasivos regular SMS API (not 2FA) to send verification codes.
+ * This allows unlimited re-sends to the same number.
+ * Docs: https://app.smsmasivos.com.mx/api-docs/v2
  */
 
 header('Content-Type: application/json');
@@ -18,8 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-define('SMSMASIVOS_2FA_URL', 'https://api.smsmasivos.com.mx/protected/json/phones/verification/start');
-define('SMSMASIVOS_COMPANY', 'Voltika');
+define('SMSMASIVOS_SMS_URL', 'https://api.smsmasivos.com.mx/sms/send');
 
 $json = json_decode(file_get_contents('php://input'), true);
 if (!$json) {
@@ -37,24 +37,34 @@ if (strlen($telefono) < 10) {
     exit;
 }
 
-// ── Llamada a SMSMasivos 2FA API ─────────────────────────────────────────────
-$postData = [
-    'phone_number' => $telefono,
-    'country_code' => '52',
-    'company'      => SMSMASIVOS_COMPANY,
-    'template'     => 'a',
-    'code_length'  => 6,
-    'code_type'    => 'numeric'
-];
+// ── Generate 6-digit code ────────────────────────────────────────────────────
+$codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
 
-$ch = curl_init(SMSMASIVOS_2FA_URL);
+// ── Save code to file (for verification later) ──────────────────────────────
+$dir = __DIR__ . '/otp_temp';
+if (!is_dir($dir)) mkdir($dir, 0755, true);
+$file = $dir . '/' . hash('sha256', $telefono) . '.json';
+file_put_contents($file, json_encode([
+    'codigo'   => $codigo,
+    'expira'   => time() + 600, // 10 minutes
+    'telefono' => $telefono
+]), LOCK_EX);
+
+// ── Send SMS via SMSMasivos regular API ──────────────────────────────────────
+$mensaje = "Voltika: Tu codigo de verificacion es {$codigo}. Valido por 10 minutos.";
+
+$ch = curl_init(SMSMASIVOS_SMS_URL);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'apikey: ' . SMSMASIVOS_API_KEY
+    'apikey: ' . SMSMASIVOS_API_KEY,
+    'Content-Type: application/x-www-form-urlencoded'
 ]);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+    'message'      => $mensaje,
+    'numbers'      => $telefono,
+    'country_code' => '52'
+]));
 curl_setopt($ch, CURLOPT_TIMEOUT, 15);
 
 $response = curl_exec($ch);
@@ -69,79 +79,24 @@ if (!is_dir(dirname($logFile))) {
 }
 file_put_contents($logFile, json_encode([
     'timestamp' => date('c'),
+    'action'    => 'send-sms',
     'telefono'  => substr($telefono, 0, 3) . '****' . substr($telefono, -3),
     'httpCode'  => $httpCode,
     'response'  => $response,
     'curlErr'   => $curlErr
 ]) . "\n", FILE_APPEND | LOCK_EX);
 
-// ── Respuesta ────────────────────────────────────────────────────────────────
+// ── Response ─────────────────────────────────────────────────────────────────
 $data = json_decode($response, true);
 
-// Helper: guardar código fallback en archivo (no depende de sesiones)
-function guardarOTPFallback($telefono, $codigo) {
-    $dir = __DIR__ . '/otp_temp';
-    if (!is_dir($dir)) mkdir($dir, 0755, true);
-    $file = $dir . '/' . hash('sha256', $telefono) . '.json';
-    file_put_contents($file, json_encode([
-        'codigo'  => $codigo,
-        'expira'  => time() + 600,
-        'telefono' => $telefono
-    ]), LOCK_EX);
-}
-
-if ($curlErr) {
-    // Error de red — fallback a modo local
-    $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-    guardarOTPFallback($telefono, $codigo);
-    echo json_encode([
-        'status'   => 'sent',
-        'testCode' => $codigo,
-        'fallback' => true
-    ]);
-    exit;
-}
-
-// API response codes:
-// verification_01 = new code sent successfully
-// verification_03 = code already pending (SMS was sent previously)
-// verification_04 = user already verified (number completed verification before)
-$apiCode = $data['code'] ?? '';
-$smsSent = false;
-$alreadyVerified = false;
-
-if ($httpCode >= 200 && $httpCode < 300) {
-    if ((isset($data['success']) && $data['success'] === true) || $apiCode === 'verification_03') {
-        $smsSent = true;
-    }
-    if ($apiCode === 'verification_04') {
-        $alreadyVerified = true;
-    }
-}
-
-if ($alreadyVerified) {
-    // User already verified this number — skip OTP entirely
-    $fallbackFile = __DIR__ . '/otp_temp/' . hash('sha256', $telefono) . '.json';
-    if (file_exists($fallbackFile)) @unlink($fallbackFile);
-    echo json_encode([
-        'status'           => 'already_verified',
-        'already_verified' => true,
-        'message'          => 'Tu número ya fue verificado anteriormente.'
-    ]);
-} elseif ($smsSent) {
-    // SMS enviado (o ya pendiente) via SMSMasivos — limpiar fallback si existe
-    $fallbackFile = __DIR__ . '/otp_temp/' . hash('sha256', $telefono) . '.json';
-    if (file_exists($fallbackFile)) @unlink($fallbackFile);
+if (!$curlErr && $httpCode >= 200 && $httpCode < 300 && !empty($data['success'])) {
+    // SMS sent successfully
     echo json_encode([
         'status'  => 'sent',
-        'message' => $apiCode === 'verification_03'
-            ? 'Código ya enviado previamente. Revisa tu SMS.'
-            : null
+        'message' => 'Código enviado por SMS.'
     ]);
 } else {
-    // API error real — fallback a modo local
-    $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-    guardarOTPFallback($telefono, $codigo);
+    // API failed — return fallback test code so user can still proceed
     echo json_encode([
         'status'   => 'sent',
         'testCode' => $codigo,

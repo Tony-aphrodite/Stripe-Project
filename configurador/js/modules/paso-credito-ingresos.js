@@ -97,20 +97,14 @@ var PasoCreditoIngresos = {
                 data: JSON.stringify({ telefono: telefono, nombre: self.app.state.nombre || '' }),
                 success: function(res) {
                     console.log('[OTP] enviar-otp response:', res);
-                    if (res && res.already_verified) {
-                        // Number already verified by SMSMasivos — skip OTP
-                        self.app.state._otpVerificado = true;
-                        self.app.state._otpTestCode = null;
-                        self.app.irAPaso('credito-consentimiento');
-                        return;
-                    }
                     if (res && res.testCode) {
                         self.app.state._otpTestCode = res.testCode;
                     } else {
-                        // SMS enviado exitosamente — no mostrar código de prueba
+                        // SMS sent successfully — no test code needed
                         self.app.state._otpTestCode = null;
                     }
-                    self.app.irAPaso('credito-consentimiento'); // Screen 11
+                    self.app.state._otpVerificado = false;
+                    self.app.irAPaso('credito-consentimiento');
                 },
                 error: function(xhr) {
                     console.log('[OTP] enviar-otp error:', xhr.status, xhr.responseText);
