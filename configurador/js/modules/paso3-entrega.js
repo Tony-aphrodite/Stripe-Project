@@ -119,7 +119,7 @@ var Paso3 = {
         html += '<input type="checkbox" id="vk-check-placas" class="vk-checkbox" style="margin-top:3px;"' +
             (state.asesoriaPlacos ? ' checked' : '') + '>';
         html += '<div>';
-        html += '<div style="font-weight:800;font-size:15px;">Asesor\u00eda para placas en tu estado</div>';
+        html += '<div style="font-weight:800;font-size:15px;">Quiero asesor\u00eda para placas en mi estado</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Te conectamos con gestores verificados. Pago directo al gestor.</div>';
         html += '</div>';
         html += '</label>';
@@ -129,7 +129,7 @@ var Paso3 = {
         html += '<input type="checkbox" id="vk-check-seguro" class="vk-checkbox" style="margin-top:3px;"' +
             (state.seguro ? ' checked' : '') + '>';
         html += '<div>';
-        html += '<div style="font-weight:800;font-size:15px;">Seguro activo Qual\u00edtas desde la entrega</div>';
+        html += '<div style="font-weight:800;font-size:15px;">Quiero cotizar y activar el seguro con <span style="color:#00529B;">Qu\u00e1litas</span> desde la entrega</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Cotizamos y enviamos tu p\u00f3liza. Pago directo a la aseguradora.</div>';
         html += '</div>';
         html += '</label>';

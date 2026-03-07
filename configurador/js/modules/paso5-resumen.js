@@ -128,7 +128,7 @@ var PasoResumen = {
     _renderCredito: function(modelo, state) {
         var credito = VkCalculadora.calcular(
             modelo.precioContado,
-            state.enganchePorcentaje || 0.30,
+            state.enganchePorcentaje || 0.25,
             state.plazoMeses || 12
         );
         var img = VkUI.getImagenMoto(modelo.id, state.colorSeleccionado || modelo.colorDefault);
@@ -138,8 +138,8 @@ var PasoResumen = {
 
         // Header
         html += '<div style="text-align:center;margin-bottom:16px;">';
-        html += '<div style="font-size:22px;font-weight:800;">&#9745; voltika</div>';
-        html += '<h2 style="font-size:22px;font-weight:800;margin-top:8px;">&#161;Toma solo 2 minutos! &#9200;</h2>';
+        html += '<div style="font-size:22px;font-weight:800;">voltika</div>';
+        html += '<h2 style="font-size:22px;font-weight:800;margin-top:8px;">&#161;Toma solo 2 minutos!</h2>';
         html += '</div>';
 
         // Selection summary
@@ -152,7 +152,7 @@ var PasoResumen = {
         html += '<div style="font-size:13px;margin-bottom:2px;">Desde <strong>' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong> por semana</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);">Color: ' + (state.colorSeleccionado || modelo.colorDefault) + '</div>';
         html += '<div style="background:var(--vk-green-soft);border-radius:6px;padding:6px 8px;margin-top:8px;font-size:12px;">' +
-            '<span style="color:var(--vk-green-primary);">&#10004;</span> Entrega en tu ciudad en punto aliado Voltika<br>' +
+            'Entrega en tu ciudad en punto aliado Voltika<br>' +
             '<span style="font-size:11px;color:var(--vk-text-secondary);">Se entrega en permiso provisional y documentos para que puedas emplacar\u00e1cilmente</span>' +
             '</div>';
         html += '</div>';
