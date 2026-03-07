@@ -204,14 +204,53 @@ var PasoCreditoConsentimiento = {
             success: function(res) {
                 state._buroResult = res;
                 state._buroConsent = true;
-                self.app.irAPaso('credito-identidad');
+                self._routeByBuroResult(res);
             },
             error: function() {
                 state._buroResult = { success: false, fallback: true };
                 state._buroConsent = true;
+                // API error → proceed to Truora (evaluation will be estimated)
                 self.app.irAPaso('credito-identidad');
             }
         });
+    },
+
+    /**
+     * Route based on Círculo de Crédito result:
+     * - NO_VIABLE → skip Truora, go to credito-resultado
+     * - Otherwise → proceed to Truora (credito-identidad)
+     */
+    _routeByBuroResult: function(buroRes) {
+        var state = this.app.state;
+        var modelo = this.app.getModelo(state.modeloSeleccionado);
+
+        if (modelo && typeof PreaprobacionV3 !== 'undefined') {
+            var credito = VkCalculadora.calcular(
+                modelo.precioContado,
+                state.enganchePorcentaje || 0.30,
+                state.plazoMeses || 12
+            );
+
+            var resultado = PreaprobacionV3.evaluar({
+                ingreso_mensual_est:  state._ingresoMensual || 10000,
+                pago_semanal_voltika: credito.pagoSemanal,
+                score:                buroRes.score || null,
+                pago_mensual_buro:    buroRes.pago_mensual_buro || 0,
+                dpd90_flag:           buroRes.dpd90_flag || false,
+                dpd_max:              buroRes.dpd_max || 0
+            });
+
+            state._resultadoFinal = resultado;
+
+            if (resultado.status === 'NO_VIABLE') {
+                // Credit declined → skip Truora, show result directly
+                this.app.irAPaso('credito-resultado');
+                return;
+            }
+        }
+
+        // PREAPROBADO, CONDICIONAL, or couldn't evaluate → proceed to Truora
+        this.app.irAPaso('credito-identidad');
     },
 
     _resetCTA: function() {

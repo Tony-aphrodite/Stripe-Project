@@ -46,31 +46,35 @@ var PasoCreditoResultado = {
 
         var html = '';
 
-        html += VkUI.renderBackButton('credito-identidad');
+        // If NO_VIABLE (skipped Truora), back goes to consentimiento
+        var backTarget = (resultado.status === 'NO_VIABLE') ? 'credito-consentimiento' : 'credito-identidad';
+        html += VkUI.renderBackButton(backTarget);
 
         html += '<h2 class="vk-paso__titulo">Resultado de evaluación</h2>';
 
         html += '<div class="vk-card">';
         html += '<div style="padding:24px 20px;">';
 
-        // Identity verification result
-        html += '<div style="margin-bottom:20px;">';
-        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);' +
-            'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Identidad</div>';
+        // Identity verification result (only show if Truora was performed)
+        if (resultado.status !== 'NO_VIABLE') {
+            html += '<div style="margin-bottom:20px;">';
+            html += '<div style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);' +
+                'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Identidad</div>';
 
-        var idStatus = (truora && truora.status === 'approved') || truora.fallback;
-        html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;' +
-            'border-radius:8px;background:' + (idStatus ? 'var(--vk-green-soft)' : '#FFF3E0') + ';">';
-        html += '<span style="font-size:24px;">' + (idStatus ? '&#9989;' : '&#9888;') + '</span>';
-        html += '<div>';
-        html += '<div style="font-weight:700;font-size:14px;">' +
-            (idStatus ? 'Identidad verificada' : 'Verificación pendiente') + '</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);">' +
-            (idStatus ? 'Tu INE y selfie coinciden correctamente' : 'Se requiere revisión adicional por un asesor') +
-            '</div>';
-        html += '</div>';
-        html += '</div>';
-        html += '</div>';
+            var idStatus = (truora && truora.status === 'approved') || truora.fallback;
+            html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;' +
+                'border-radius:8px;background:' + (idStatus ? 'var(--vk-green-soft)' : '#FFF3E0') + ';">';
+            html += '<span style="font-size:24px;">' + (idStatus ? '&#9989;' : '&#9888;') + '</span>';
+            html += '<div>';
+            html += '<div style="font-weight:700;font-size:14px;">' +
+                (idStatus ? 'Identidad verificada' : 'Verificación pendiente') + '</div>';
+            html += '<div style="font-size:12px;color:var(--vk-text-secondary);">' +
+                (idStatus ? 'Tu INE y selfie coinciden correctamente' : 'Se requiere revisión adicional por un asesor') +
+                '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+        }
 
         // Credit bureau result
         html += '<div style="margin-bottom:20px;">';
