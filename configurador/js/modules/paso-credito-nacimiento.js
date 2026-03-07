@@ -17,13 +17,14 @@ var PasoCreditoNacimiento = {
 
         html += VkUI.renderBackButton('credito-nombre');
 
-        html += '<h2 class="vk-paso__titulo">Fecha de nacimiento</h2>';
-        html += '<p class="vk-paso__subtitulo">Requerida para tu solicitud de cr\u00e9dito</p>';
+        html += '<h2 class="vk-paso__titulo">\u00bfCu\u00e1l es tu fecha de nacimiento?</h2>';
+        html += '<p class="vk-paso__subtitulo">Nos ayuda a validar tu identidad para aprobar tu cr\u00e9dito Voltika.</p>';
+        html += '<p style="font-size:14px;color:#2E7D32;margin-bottom:16px;">\u2705 Tu aprobaci\u00f3n tarda <strong>menos de 2 minutos</strong></p>';
 
         html += '<div class="vk-card" style="padding:20px;">';
 
         html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">Fecha (D\u00eda/Mes/A\u00f1o)</label>';
+        html += '<label class="vk-form-label">Fecha de nacimiento</label>';
         html += '<input type="date" class="vk-form-input" id="vk-cnac-fecha" ' +
             'value="' + (state.fechaNacimiento || '') + '" ' +
             'max="2008-01-01" min="1940-01-01">';
@@ -32,7 +33,12 @@ var PasoCreditoNacimiento = {
         html += '<div id="vk-cnac-error" style="display:none;color:#C62828;font-size:13px;' +
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
-        html += '<button class="vk-btn vk-btn--primary" id="vk-cnac-continuar">CONTINUAR</button>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-cnac-continuar">CONTINUAR \u2192</button>';
+
+        html += '<div style="margin-top:12px;font-size:13px;color:#2E7D32;">';
+        html += '<div>\u2705 Proceso seguro</div>';
+        html += '<div>\u2705 No afecta tu historial crediticio</div>';
+        html += '</div>';
 
         html += '</div>';
 

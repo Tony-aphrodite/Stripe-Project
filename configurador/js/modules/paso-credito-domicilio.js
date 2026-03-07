@@ -17,8 +17,8 @@ var PasoCreditoDomicilio = {
 
         html += VkUI.renderBackButton('credito-cp-dom');
 
-        html += '<h2 class="vk-paso__titulo">Tu domicilio actual</h2>';
-        html += '<p class="vk-paso__subtitulo">Direcci\u00f3n completa</p>';
+        html += '<h2 class="vk-paso__titulo">Direcci\u00f3n de tu domicilio</h2>';
+        html += '<p class="vk-paso__subtitulo">Para continuar con tu solicitud de cr\u00e9dito<br><span style="font-size:13px;color:var(--vk-text-muted);">(como aparece en tu INE o comprobante)</span></p>';
 
         html += '<div class="vk-card" style="padding:20px;">';
 
@@ -29,11 +29,19 @@ var PasoCreditoDomicilio = {
             'value="' + (state.calle || '') + '">';
         html += '</div>';
 
-        html += '<div class="vk-form-group">';
+        html += '<div style="display:flex;gap:10px;">';
+        html += '<div class="vk-form-group" style="flex:1;">';
         html += '<label class="vk-form-label">N\u00famero exterior</label>';
         html += '<input type="text" class="vk-form-input" id="vk-cdom-numero" ' +
-            'placeholder="Ej: 123" ' +
+            'placeholder="123" ' +
             'value="' + (state.numeroExterior || '') + '">';
+        html += '</div>';
+        html += '<div class="vk-form-group" style="flex:1;">';
+        html += '<label class="vk-form-label">N\u00famero interior <span style="font-weight:400;color:var(--vk-text-muted);">(opcional)</span></label>';
+        html += '<input type="text" class="vk-form-input" id="vk-cdom-interior" ' +
+            'placeholder="Ej: 4B" ' +
+            'value="' + (state.numeroInterior || '') + '">';
+        html += '</div>';
         html += '</div>';
 
         html += '<div class="vk-form-group">';
@@ -43,10 +51,13 @@ var PasoCreditoDomicilio = {
             'value="' + (state.colonia || '') + '">';
         html += '</div>';
 
+        html += '<div style="font-size:13px;color:#2E7D32;margin-bottom:12px;">\u2705 Informaci\u00f3n protegida</div>';
+
         html += '<div id="vk-cdom-error" style="display:none;color:#C62828;font-size:13px;' +
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
-        html += '<button class="vk-btn vk-btn--primary" id="vk-cdom-continuar">CONTINUAR</button>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-cdom-continuar">CONTINUAR \u2192</button>';
+        html += '<div style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin-top:8px;">Solo toma unos segundos</div>';
 
         html += '</div>';
 
@@ -57,9 +68,10 @@ var PasoCreditoDomicilio = {
         var self = this;
         jQuery(document).off('click', '#vk-cdom-continuar');
         jQuery(document).on('click', '#vk-cdom-continuar', function() {
-            var calle   = jQuery('#vk-cdom-calle').val().trim();
-            var numero  = jQuery('#vk-cdom-numero').val().trim();
-            var colonia = jQuery('#vk-cdom-colonia').val().trim();
+            var calle    = jQuery('#vk-cdom-calle').val().trim();
+            var numero   = jQuery('#vk-cdom-numero').val().trim();
+            var interior = jQuery('#vk-cdom-interior').val().trim();
+            var colonia  = jQuery('#vk-cdom-colonia').val().trim();
 
             var errores = [];
             if (!calle || calle.length < 3) errores.push('Ingresa tu calle.');
@@ -74,6 +86,7 @@ var PasoCreditoDomicilio = {
 
             self.app.state.calle = calle;
             self.app.state.numeroExterior = numero;
+            self.app.state.numeroInterior = interior;
             self.app.state.colonia = colonia;
 
             self.app.irAPaso('credito-ingresos');

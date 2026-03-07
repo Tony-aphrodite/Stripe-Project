@@ -47,7 +47,7 @@ var PasoCreditoNombre = {
         html += '<div id="vk-cn-error" style="display:none;color:#C62828;font-size:13px;' +
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
-        html += '<button class="vk-btn vk-btn--primary" id="vk-cn-continuar">INICIAR PROCESO</button>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-cn-continuar">CONTINUAR \u2192</button>';
 
         html += '</div>';
 
