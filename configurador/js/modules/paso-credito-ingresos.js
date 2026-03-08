@@ -94,6 +94,7 @@ var PasoCreditoIngresos = {
                 url: 'php/enviar-otp.php',
                 method: 'POST',
                 contentType: 'application/json',
+                xhrFields: { withCredentials: true },
                 data: JSON.stringify({ telefono: telefono, nombre: self.app.state.nombre || '' }),
                 success: function(res) {
                     console.log('[OTP] enviar-otp response:', res);

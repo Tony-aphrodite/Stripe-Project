@@ -128,6 +128,7 @@ var PasoCreditoConsentimiento = {
                 url: 'php/enviar-otp.php',
                 method: 'POST',
                 contentType: 'application/json',
+                xhrFields: { withCredentials: true },
                 data: JSON.stringify({ telefono: tel, nombre: self.app.state.nombre || '' }),
                 success: function(res) {
                     if (res && res.testCode) {
@@ -175,6 +176,7 @@ var PasoCreditoConsentimiento = {
             url: 'php/verificar-otp.php',
             method: 'POST',
             contentType: 'application/json',
+            xhrFields: { withCredentials: true },
             data: JSON.stringify({ telefono: state.telefono, codigo: otp }),
             success: function(res) {
                 console.log('[OTP] verificar-otp response:', res);
