@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Loading Screen</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #f0f0f0; display: flex; justify-content: center; padding: 20px; font-family: 'Inter', -apple-system, sans-serif; }
+.container { max-width: 500px; width: 100%; }
+
+.vk-loading-screen {
+    background: linear-gradient(135deg, #1a3a6e 0%, #2563a8 50%, #1a5fb4 100%);
+    border-radius: 16px;
+    padding: 40px 20px;
+    text-align: center;
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Motorcycle image container */
+.vk-loading-screen__moto {
+    width: 340px;
+    max-width: 95%;
+    margin: 0 auto 24px;
+    position: relative;
+    z-index: 1;
+}
+
+.vk-loading-moto__img {
+    width: 100%;
+    height: auto;
+    display: block;
+    mix-blend-mode: screen;
+    opacity: 0.85;
+    animation: vk-moto-pulse 3s ease-in-out infinite;
+}
+
+@keyframes vk-moto-pulse {
+    0%, 100% { filter: brightness(1) drop-shadow(0 0 8px rgba(0,180,255,0.3)); opacity: 0.85; }
+    50% { filter: brightness(1.15) drop-shadow(0 0 20px rgba(0,180,255,0.5)); opacity: 1; }
+}
+
+/* Animated neon wheel overlays */
+.vk-loading-wheel {
+    position: absolute;
+    border-radius: 50%;
+    border: 3px solid rgba(0,200,255,0.7);
+    box-shadow:
+        0 0 12px rgba(0,180,255,0.6),
+        0 0 30px rgba(0,180,255,0.3),
+        inset 0 0 12px rgba(0,180,255,0.3);
+    animation: vk-wheel-rotate 1.2s linear infinite, vk-wheel-glow 2s ease-in-out infinite;
+}
+
+/* Rear wheel */
+.vk-loading-wheel--rear {
+    width: 22%;
+    height: 0;
+    padding-bottom: 22%;
+    bottom: 12%;
+    left: 12%;
+    animation-delay: 0s, 0.3s;
+}
+
+/* Front wheel */
+.vk-loading-wheel--front {
+    width: 22%;
+    height: 0;
+    padding-bottom: 22%;
+    bottom: 12%;
+    right: 14%;
+}
+
+@keyframes vk-wheel-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes vk-wheel-glow {
+    0%, 100% {
+        box-shadow:
+            0 0 8px rgba(0,180,255,0.5),
+            0 0 20px rgba(0,180,255,0.2),
+            inset 0 0 8px rgba(0,180,255,0.2);
+        border-color: rgba(0,200,255,0.6);
+    }
+    50% {
+        box-shadow:
+            0 0 16px rgba(0,220,255,0.8),
+            0 0 40px rgba(0,180,255,0.4),
+            inset 0 0 16px rgba(0,180,255,0.4);
+        border-color: rgba(0,240,255,0.9);
+    }
+}
+
+/* Speed lines */
+.vk-loading-speed-lines {
+    position: absolute;
+    left: 5%;
+    top: 35%;
+    width: 15%;
+    height: 20%;
+    z-index: 1;
+}
+
+.vk-loading-speed-line {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(0,200,255,0.5), transparent);
+    margin-bottom: 8px;
+    border-radius: 1px;
+    animation: vk-speed-line 1.5s ease-in-out infinite;
+}
+.vk-loading-speed-line:nth-child(2) {
+    animation-delay: 0.3s;
+    width: 80%;
+}
+.vk-loading-speed-line:nth-child(3) {
+    animation-delay: 0.6s;
+    width: 60%;
+}
+
+@keyframes vk-speed-line {
+    0% { opacity: 0; transform: translateX(20px); }
+    30% { opacity: 0.8; }
+    100% { opacity: 0; transform: translateX(-30px); }
+}
+
+.vk-loading-screen__text { color: white; margin-bottom: 16px; position: relative; z-index: 1; }
+.vk-loading-screen__text h2 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+.vk-loading-screen__text p { font-size: 18px; font-weight: 500; opacity: 0.85; line-height: 1.4; }
+.vk-loading-screen__hint { color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 24px; position: relative; z-index: 1; }
+.vk-loading-screen__dots { display: flex; gap: 10px; justify-content: center; position: relative; z-index: 1; }
+
+.vk-loading-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(0,180,255,0.4);
+    animation: vk-dot-pulse 1.4s ease-in-out infinite;
+}
+.vk-loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.vk-loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes vk-dot-pulse {
+    0%, 80%, 100% { background: rgba(0,180,255,0.3); transform: scale(0.8); }
+    40% { background: rgba(0,220,255,1); transform: scale(1.3); box-shadow: 0 0 10px rgba(0,200,255,0.6); }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="vk-loading-screen">
+
+    <div class="vk-loading-screen__moto">
+        <img src="img/loding.png" alt="" class="vk-loading-moto__img">
+        <div class="vk-loading-wheel vk-loading-wheel--rear"></div>
+        <div class="vk-loading-wheel vk-loading-wheel--front"></div>
+    </div>
+
+    <div class="vk-loading-speed-lines">
+        <div class="vk-loading-speed-line"></div>
+        <div class="vk-loading-speed-line"></div>
+        <div class="vk-loading-speed-line"></div>
+    </div>
+
+    <div class="vk-loading-screen__text">
+        <h2>Un momento...</h2>
+        <p>Estamos confirmando<br>tu aprobaci&oacute;n Voltika</p>
+    </div>
+    <div class="vk-loading-screen__hint">Esto toma solo unos segundos</div>
+    <div class="vk-loading-screen__dots">
+        <span class="vk-loading-dot"></span>
+        <span class="vk-loading-dot"></span>
+        <span class="vk-loading-dot"></span>
+    </div>
+</div>
+</div>
+</body>
+</html>
