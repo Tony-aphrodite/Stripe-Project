@@ -1269,7 +1269,7 @@ html, body {
    Credit Loading Screen (motorcycle image + animated wheel overlays)
    -------------------------------------------------------------------------- */
 .vk-loading-screen {
-    background: linear-gradient(135deg, #1a3a6e 0%, #2563a8 50%, #1a5fb4 100%);
+    background: linear-gradient(180deg, #1c3eaf 0%, #2758ca 50%, #376ee3 100%);
     border-radius: var(--vk-radius-lg);
     padding: 40px 20px;
     text-align: center;
@@ -1301,45 +1301,35 @@ html, body {
     width: 100%;
     height: auto;
     display: block;
-    mix-blend-mode: screen;
-    opacity: 0.85;
-    animation: vk-moto-pulse 3s ease-in-out infinite;
 }
 
-@keyframes vk-moto-pulse {
-    0%, 100% { filter: brightness(1) drop-shadow(0 0 8px rgba(0,180,255,0.3)); opacity: 0.85; }
-    50% { filter: brightness(1.15) drop-shadow(0 0 20px rgba(0,180,255,0.5)); opacity: 1; }
-}
-
-/* Animated neon wheel overlays */
+/* Animated neon wheel overlays — subtle rotating glow ring */
 .vk-loading-wheel {
     position: absolute;
     border-radius: 50%;
-    border: 3px solid rgba(0,200,255,0.7);
-    box-shadow:
-        0 0 12px rgba(0,180,255,0.6),
-        0 0 30px rgba(0,180,255,0.3),
-        inset 0 0 12px rgba(0,180,255,0.3);
-    animation: vk-wheel-rotate 1.2s linear infinite, vk-wheel-glow 2s ease-in-out infinite;
+    border: 2px solid transparent;
+    border-top-color: rgba(0,220,255,0.8);
+    border-right-color: rgba(0,220,255,0.4);
+    animation: vk-wheel-rotate 1s linear infinite, vk-wheel-glow 2s ease-in-out infinite;
 }
 
-/* Rear wheel — positioned over the left wheel in the image */
+/* Rear wheel */
 .vk-loading-wheel--rear {
-    width: 22%;
+    width: 24%;
     height: 0;
-    padding-bottom: 22%;
-    bottom: 12%;
-    left: 12%;
+    padding-bottom: 24%;
+    bottom: 10%;
+    left: 11%;
     animation-delay: 0s, 0.3s;
 }
 
-/* Front wheel — positioned over the right wheel in the image */
+/* Front wheel */
 .vk-loading-wheel--front {
-    width: 22%;
+    width: 24%;
     height: 0;
-    padding-bottom: 22%;
-    bottom: 12%;
-    right: 14%;
+    padding-bottom: 24%;
+    bottom: 10%;
+    right: 12%;
 }
 
 @keyframes vk-wheel-rotate {
@@ -1349,51 +1339,11 @@ html, body {
 
 @keyframes vk-wheel-glow {
     0%, 100% {
-        box-shadow:
-            0 0 8px rgba(0,180,255,0.5),
-            0 0 20px rgba(0,180,255,0.2),
-            inset 0 0 8px rgba(0,180,255,0.2);
-        border-color: rgba(0,200,255,0.6);
+        box-shadow: 0 0 8px rgba(0,180,255,0.2), inset 0 0 8px rgba(0,180,255,0.1);
     }
     50% {
-        box-shadow:
-            0 0 16px rgba(0,220,255,0.8),
-            0 0 40px rgba(0,180,255,0.4),
-            inset 0 0 16px rgba(0,180,255,0.4);
-        border-color: rgba(0,240,255,0.9);
+        box-shadow: 0 0 18px rgba(0,200,255,0.5), inset 0 0 18px rgba(0,200,255,0.2);
     }
-}
-
-/* Speed lines */
-.vk-loading-speed-lines {
-    position: absolute;
-    left: 5%;
-    top: 35%;
-    width: 15%;
-    height: 20%;
-    z-index: 1;
-}
-
-.vk-loading-speed-line {
-    height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(0,200,255,0.5), transparent);
-    margin-bottom: 8px;
-    border-radius: 1px;
-    animation: vk-speed-line 1.5s ease-in-out infinite;
-}
-.vk-loading-speed-line:nth-child(2) {
-    animation-delay: 0.3s;
-    width: 80%;
-}
-.vk-loading-speed-line:nth-child(3) {
-    animation-delay: 0.6s;
-    width: 60%;
-}
-
-@keyframes vk-speed-line {
-    0% { opacity: 0; transform: translateX(20px); }
-    30% { opacity: 0.8; }
-    100% { opacity: 0; transform: translateX(-30px); }
 }
 
 .vk-loading-screen__text {

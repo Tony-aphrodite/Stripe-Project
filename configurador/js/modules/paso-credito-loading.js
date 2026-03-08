@@ -20,25 +20,17 @@ var PasoCreditoLoading = {
 
         html += '<div class="vk-loading-screen">';
 
-        // Voltika logo
+        // Voltika shield + logo
         html += '<div class="vk-loading-screen__logo">';
-        html += '<img src="' + base + 'img/voltika-logo-white.png" alt="Voltika" style="height:36px;" onerror="this.style.display=\'none\'">';
+        html += '<img src="' + base + 'img/voltika_shield.svg" alt="" style="height:28px;margin-right:6px;vertical-align:middle;" onerror="this.style.display=\'none\'">';
+        html += '<span style="font-size:22px;font-weight:700;color:white;vertical-align:middle;letter-spacing:0.5px;">voltika</span>';
         html += '</div>';
 
-        // Motorcycle image with animated wheel overlays
+        // Motorcycle image with rotating wheel overlays
         html += '<div class="vk-loading-screen__moto">';
         html += '<img src="' + base + 'img/loding.png" alt="" class="vk-loading-moto__img">';
-        // Rear wheel neon ring overlay
         html += '<div class="vk-loading-wheel vk-loading-wheel--rear"></div>';
-        // Front wheel neon ring overlay
         html += '<div class="vk-loading-wheel vk-loading-wheel--front"></div>';
-        html += '</div>';
-
-        // Speed lines overlay
-        html += '<div class="vk-loading-speed-lines">';
-        html += '<div class="vk-loading-speed-line"></div>';
-        html += '<div class="vk-loading-speed-line"></div>';
-        html += '<div class="vk-loading-speed-line"></div>';
         html += '</div>';
 
         // Text
