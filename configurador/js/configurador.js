@@ -115,6 +115,8 @@
                 'credito-datos': 4,
                 'credito-otp': 4,
                 'credito-consentimiento': 4,
+                'credito-loading': 4,
+                'credito-aprobado': 4,
                 'credito-identidad': 4,
                 'credito-resultado': 4,
                 'credito-enganche': 4,
@@ -168,6 +170,12 @@
                     break;
                 case 'credito-consentimiento':
                     PasoCreditoConsentimiento.init(this);
+                    break;
+                case 'credito-loading':
+                    PasoCreditoLoading.init(this);
+                    break;
+                case 'credito-aprobado':
+                    PasoCreditoAprobado.init(this);
                     break;
                 case 'credito-identidad':
                     PasoCreditoIdentidad.init(this);

@@ -219,8 +219,8 @@ var PasoCreditoConsentimiento = {
             error: function() {
                 state._buroResult = { success: false, fallback: true };
                 state._buroConsent = true;
-                // API error → proceed to Truora (evaluation will be estimated)
-                self.app.irAPaso('credito-identidad');
+                // API error → proceed to loading/approved (evaluation will be estimated)
+                self.app.irAPaso('credito-loading');
             }
         });
     },
@@ -259,8 +259,8 @@ var PasoCreditoConsentimiento = {
             }
         }
 
-        // PREAPROBADO, CONDICIONAL, or couldn't evaluate → proceed to Truora
-        this.app.irAPaso('credito-identidad');
+        // PREAPROBADO, CONDICIONAL, or couldn't evaluate → show loading then approved
+        this.app.irAPaso('credito-loading');
     },
 
     _resetCTA: function() {
