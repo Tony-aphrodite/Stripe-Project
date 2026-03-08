@@ -33,7 +33,7 @@ var PasoCreditoConsentimiento = {
 
         // Test code hint (only shown when SMS API fails)
         if (state._otpTestCode) {
-            html += '<div style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
+            html += '<div id="vk-cons-test-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
                 '&#128161; C\u00f3digo de prueba: <strong>' + state._otpTestCode + '</strong></div>';
         }
 
@@ -132,6 +132,16 @@ var PasoCreditoConsentimiento = {
                 success: function(res) {
                     if (res && res.testCode) {
                         self.app.state._otpTestCode = res.testCode;
+                        // Show test code hint dynamically
+                        var $hint = jQuery('#vk-cons-test-hint');
+                        if ($hint.length) {
+                            $hint.html('&#128161; C\u00f3digo de prueba: <strong>' + res.testCode + '</strong>').show();
+                        } else {
+                            jQuery('#vk-cons-otp').closest('.vk-form-group').before(
+                                '<div id="vk-cons-test-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
+                                '&#128161; C\u00f3digo de prueba: <strong>' + res.testCode + '</strong></div>'
+                            );
+                        }
                     }
                     jQuery('#vk-cons-error').html('&#10004; C\u00f3digo reenviado.').css('color', 'var(--vk-green-primary)').css('background', 'var(--vk-green-soft)').show();
                 },
@@ -227,7 +237,7 @@ var PasoCreditoConsentimiento = {
         if (modelo && typeof PreaprobacionV3 !== 'undefined') {
             var credito = VkCalculadora.calcular(
                 modelo.precioContado,
-                state.enganchePorcentaje || 0.30,
+                state.enganchePorcentaje || 0.25,
                 state.plazoMeses || 12
             );
 

@@ -142,16 +142,19 @@ html, body {
 }
 
 .vk-paso__titulo {
-    font-size: 13px;
+    font-size: 22px;
     font-weight: var(--vk-font-extrabold);
-    color: var(--vk-green-primary);
-    margin-bottom: var(--vk-space-2xs);
+    color: var(--vk-text-primary);
+    margin-bottom: 6px;
+    line-height: 1.3;
 }
 
 .vk-paso__subtitulo {
-    font-size: var(--vk-font-size-lg);
-    font-weight: var(--vk-font-medium);
-    color: var(--vk-text-primary);
+    font-size: var(--vk-font-size-sm);
+    font-weight: var(--vk-font-regular);
+    color: var(--vk-text-secondary);
+    margin-bottom: var(--vk-space-md);
+    line-height: 1.4;
 }
 
 /* --------------------------------------------------------------------------
@@ -1163,6 +1166,57 @@ html, body {
 
 .vk-security__note {
     font-size: var(--vk-font-size-xs);
+    color: var(--vk-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Trust Indicators (credit screens)
+   -------------------------------------------------------------------------- */
+.vk-trust {
+    font-size: 13px;
+    color: #2E7D32;
+    line-height: 1.8;
+    margin: 12px 0;
+}
+
+.vk-trust--center {
+    text-align: center;
+}
+
+.vk-trust-highlight {
+    font-size: 14px;
+    color: #2E7D32;
+    margin-bottom: 16px;
+}
+
+.vk-hint {
+    font-size: 12px;
+    color: var(--vk-text-muted);
+    text-align: center;
+    margin-top: 8px;
+}
+
+.vk-info-box {
+    padding: 14px;
+    margin-bottom: 16px;
+    background: var(--vk-bg-light);
+    border-radius: var(--vk-radius-lg);
+    border: 1px solid var(--vk-border-light);
+}
+
+.vk-info-box__label {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.vk-info-box__value {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.vk-info-box__note {
+    font-size: 12px;
     color: var(--vk-text-muted);
 }
 

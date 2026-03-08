@@ -18,7 +18,7 @@ var PasoCreditoDomicilio = {
         html += VkUI.renderBackButton('credito-cp-dom');
 
         html += '<h2 class="vk-paso__titulo">Direcci\u00f3n de tu domicilio</h2>';
-        html += '<p class="vk-paso__subtitulo">Para continuar con tu solicitud de cr\u00e9dito<br><span style="font-size:13px;color:var(--vk-text-muted);">(como aparece en tu INE o comprobante)</span></p>';
+        html += '<p class="vk-paso__subtitulo">Para continuar con tu solicitud de cr\u00e9dito (como aparece en tu INE o comprobante)</p>';
 
         html += '<div class="vk-card" style="padding:20px;">';
 
@@ -51,13 +51,13 @@ var PasoCreditoDomicilio = {
             'value="' + (state.colonia || '') + '">';
         html += '</div>';
 
-        html += '<div style="font-size:13px;color:#2E7D32;margin-bottom:12px;">\u2705 Informaci\u00f3n protegida</div>';
+        html += '<div class="vk-trust">\u2705 Informaci\u00f3n protegida</div>';
 
         html += '<div id="vk-cdom-error" style="display:none;color:#C62828;font-size:13px;' +
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
         html += '<button class="vk-btn vk-btn--primary" id="vk-cdom-continuar">CONTINUAR \u2192</button>';
-        html += '<div style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin-top:8px;">Solo toma unos segundos</div>';
+        html += '<div class="vk-hint">Solo toma unos segundos</div>';
 
         html += '</div>';
 

@@ -22,16 +22,16 @@ var PasoCreditoCPDom = {
         // Show previously selected delivery point
         if (state.codigoPostal) {
             var cpInfo = VOLTIKA_CP._buscar(state.codigoPostal);
-            html += '<div class="vk-card" style="padding:14px;margin-bottom:16px;background:var(--vk-bg-light);">';
-            html += '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">\ud83d\udce6 Punto de entrega seleccionado</div>';
-            html += '<div style="font-size:16px;font-weight:700;">' + state.codigoPostal;
+            html += '<div class="vk-info-box">';
+            html += '<div class="vk-info-box__label">\ud83d\udce6 Punto de entrega seleccionado</div>';
+            html += '<div class="vk-info-box__value">' + state.codigoPostal;
             if (cpInfo) html += ' \u2014 ' + cpInfo.ciudad + ', ' + cpInfo.estado;
             html += '</div>';
-            html += '<div style="font-size:12px;color:var(--vk-text-muted);">(este fue para recibir tu Voltika)</div>';
+            html += '<div class="vk-info-box__note">(este fue para recibir tu Voltika)</div>';
             html += '</div>';
         }
 
-        html += '<p class="vk-paso__subtitulo">Confirma el c\u00f3digo postal de tu domicilio<br><span style="font-size:13px;color:var(--vk-text-muted);">(como aparece en tu INE o comprobante)</span></p>';
+        html += '<p class="vk-paso__subtitulo">Confirma el c\u00f3digo postal de tu domicilio (como aparece en tu INE o comprobante)</p>';
 
         html += '<div class="vk-card" style="padding:20px;">';
 
@@ -40,14 +40,14 @@ var PasoCreditoCPDom = {
         html += '<input type="text" class="vk-form-input" id="vk-ccp-cp" ' +
             'placeholder="Ej: 44100" maxlength="5" inputmode="numeric" pattern="[0-9]*" ' +
             'value="' + (state.cpDomicilio || '') + '">';
-        html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-top:4px;">Solo toma unos segundos</div>';
+        html += '<div class="vk-hint" style="text-align:left;margin-top:4px;">Solo toma unos segundos</div>';
         html += '</div>';
 
         html += '<div id="vk-ccp-estado" style="display:none;padding:10px;background:var(--vk-bg-light);border-radius:8px;margin-bottom:12px;">';
         html += '<strong id="vk-ccp-estado-text"></strong>';
         html += '</div>';
 
-        html += '<div style="font-size:13px;color:#2E7D32;margin-bottom:12px;">';
+        html += '<div class="vk-trust">';
         html += '<div>\u2705 Validaci\u00f3n segura</div>';
         html += '<div>\u2705 Aprobaci\u00f3n en menos de 2 minutos</div>';
         html += '</div>';

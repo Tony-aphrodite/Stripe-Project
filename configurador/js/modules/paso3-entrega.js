@@ -43,7 +43,7 @@ var Paso3 = {
         // Header
         html += '<div style="text-align:center;margin-bottom:16px;">';
         html += '<div style="font-size:13px;color:var(--vk-text-muted);margin-bottom:4px;">\u00b7 PASO 3 \u00b7</div>';
-        html += '<h2 class="vk-paso__titulo" style="margin-bottom:0;font-size:22px;font-weight:800;">Entrega en tu ciudad</h2>';
+        html += '<h2 class="vk-paso__titulo" style="margin-bottom:0;">Entrega en tu ciudad</h2>';
         html += '</div>';
 
         // Postal code input with search icon
