@@ -1172,21 +1172,66 @@ html, body {
 /* --------------------------------------------------------------------------
    Trust Indicators (credit screens)
    -------------------------------------------------------------------------- */
+
+/* Blue circle checkmark icon */
+.vk-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border-radius: 50%;
+    background: #1976D2;
+    vertical-align: middle;
+    margin-right: 6px;
+    position: relative;
+}
+.vk-check::after {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-top: -1px;
+}
+.vk-check--sm {
+    width: 15px;
+    height: 15px;
+    min-width: 15px;
+}
+.vk-check--sm::after {
+    width: 4px;
+    height: 7px;
+    border-width: 0 1.5px 1.5px 0;
+}
+
 .vk-trust {
     font-size: 13px;
-    color: #2E7D32;
-    line-height: 1.8;
+    color: #1565C0;
+    line-height: 2;
     margin: 12px 0;
+}
+.vk-trust div {
+    display: flex;
+    align-items: center;
 }
 
 .vk-trust--center {
     text-align: center;
 }
+.vk-trust--center div {
+    justify-content: center;
+}
 
 .vk-trust-highlight {
     font-size: 14px;
-    color: #2E7D32;
+    color: #1565C0;
     margin-bottom: 16px;
+    display: flex;
+    align-items: center;
 }
 
 .vk-hint {
@@ -1224,11 +1269,11 @@ html, body {
    Credit Loading Screen (animated motorcycle)
    -------------------------------------------------------------------------- */
 .vk-loading-screen {
-    background: linear-gradient(135deg, #0D47A1 0%, #1565C0 40%, #1976D2 100%);
+    background: linear-gradient(135deg, #0a1628 0%, #0d2847 40%, #0a3060 100%);
     border-radius: var(--vk-radius-lg);
     padding: 40px 20px;
     text-align: center;
-    min-height: 420px;
+    min-height: 500px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1237,64 +1282,104 @@ html, body {
     overflow: hidden;
 }
 
+/* Background grid effect */
+.vk-loading-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgba(0,150,255,0.03) 1px, transparent 1px),
+        linear-gradient(rgba(0,150,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+}
+
 .vk-loading-screen__logo {
     margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
 }
 
 .vk-loading-screen__moto {
-    width: 220px;
-    height: 140px;
-    margin: 0 auto 24px;
+    width: 300px;
+    height: 180px;
+    margin: 0 auto 32px;
+    position: relative;
 }
 
 .vk-loading-moto__svg {
     width: 100%;
     height: 100%;
+    overflow: visible;
 }
 
-.vk-loading-moto__wheel {
-    animation: vk-spin-wheel 0.8s linear infinite;
-    transform-origin: center;
+/* Neon glow wheel animation */
+.vk-neon-wheel {
+    animation: vk-wheel-glow 2s ease-in-out infinite;
 }
 
-.vk-loading-moto__spokes {
-    animation: vk-spin-spokes 0.4s linear infinite;
+.vk-neon-wheel--rear {
+    animation: vk-wheel-glow 2s ease-in-out infinite 0.3s;
 }
 
-.vk-loading-moto__speed1 {
-    animation: vk-speed-line 1.2s ease-in-out infinite;
+@keyframes vk-wheel-glow {
+    0%, 100% { filter: drop-shadow(0 0 4px rgba(0,180,255,0.6)); opacity: 0.8; }
+    50% { filter: drop-shadow(0 0 12px rgba(0,200,255,1)); opacity: 1; }
 }
 
-.vk-loading-moto__speed2 {
-    animation: vk-speed-line 1.2s ease-in-out infinite 0.2s;
+/* Wheel spin via dash animation */
+.vk-wheel-spin {
+    stroke-dasharray: 8 4;
+    animation: vk-dash-spin 0.6s linear infinite;
 }
 
-.vk-loading-moto__speed3 {
-    animation: vk-speed-line 1.2s ease-in-out infinite 0.4s;
+@keyframes vk-dash-spin {
+    to { stroke-dashoffset: -24; }
 }
 
-@keyframes vk-spin-wheel {
-    from { stroke-dasharray: 4 8; stroke-dashoffset: 0; }
-    to { stroke-dasharray: 4 8; stroke-dashoffset: -12; }
+/* Speed lines */
+.vk-speed-line {
+    animation: vk-speed 1.5s ease-in-out infinite;
+}
+.vk-speed-line:nth-child(2) { animation-delay: 0.3s; }
+.vk-speed-line:nth-child(3) { animation-delay: 0.6s; }
+.vk-speed-line:nth-child(4) { animation-delay: 0.9s; }
+
+@keyframes vk-speed {
+    0% { opacity: 0; transform: translateX(10px); }
+    30% { opacity: 0.7; }
+    100% { opacity: 0; transform: translateX(-30px); }
 }
 
-@keyframes vk-spin-spokes {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(90deg); }
+/* Body pulse */
+.vk-moto-body {
+    animation: vk-body-pulse 3s ease-in-out infinite;
 }
 
-@keyframes vk-speed-line {
-    0%, 100% { opacity: 0.2; transform: translateX(0); }
-    50% { opacity: 0.8; transform: translateX(-10px); }
+@keyframes vk-body-pulse {
+    0%, 100% { filter: drop-shadow(0 0 2px rgba(100,180,255,0.3)); }
+    50% { filter: drop-shadow(0 0 6px rgba(100,180,255,0.5)); }
+}
+
+/* Headlight */
+.vk-headlight {
+    animation: vk-headlight-flicker 2s ease-in-out infinite;
+}
+
+@keyframes vk-headlight-flicker {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
 }
 
 .vk-loading-screen__text {
     color: white;
     margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
 }
 
 .vk-loading-screen__text h2 {
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 700;
     margin-bottom: 8px;
 }
@@ -1302,27 +1387,31 @@ html, body {
 .vk-loading-screen__text p {
     font-size: 18px;
     font-weight: 500;
-    opacity: 0.9;
+    opacity: 0.85;
     line-height: 1.4;
 }
 
 .vk-loading-screen__hint {
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.5);
     font-size: 14px;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
 }
 
 .vk-loading-screen__dots {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     justify-content: center;
+    position: relative;
+    z-index: 1;
 }
 
 .vk-loading-dot {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.4);
+    background: rgba(0,180,255,0.4);
     animation: vk-dot-pulse 1.4s ease-in-out infinite;
 }
 
@@ -1330,8 +1419,8 @@ html, body {
 .vk-loading-dot:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes vk-dot-pulse {
-    0%, 80%, 100% { background: rgba(255, 255, 255, 0.3); transform: scale(0.8); }
-    40% { background: rgba(255, 255, 255, 0.9); transform: scale(1.2); }
+    0%, 80%, 100% { background: rgba(0,180,255,0.3); transform: scale(0.8); }
+    40% { background: rgba(0,220,255,1); transform: scale(1.3); box-shadow: 0 0 10px rgba(0,200,255,0.6); }
 }
 
 /* --------------------------------------------------------------------------

@@ -48,8 +48,8 @@ var PasoCreditoCPDom = {
         html += '</div>';
 
         html += '<div class="vk-trust">';
-        html += '<div>\u2705 Validaci\u00f3n segura</div>';
-        html += '<div>\u2705 Aprobaci\u00f3n en menos de 2 minutos</div>';
+        html += '<div><span class="vk-check vk-check--sm"></span> Validaci\u00f3n segura</div>';
+        html += '<div><span class="vk-check vk-check--sm"></span> Aprobaci\u00f3n en menos de 2 minutos</div>';
         html += '</div>';
 
         html += '<div id="vk-ccp-error" style="display:none;color:#C62828;font-size:13px;' +

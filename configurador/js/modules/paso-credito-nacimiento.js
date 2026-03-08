@@ -19,7 +19,7 @@ var PasoCreditoNacimiento = {
 
         html += '<h2 class="vk-paso__titulo">\u00bfCu\u00e1l es tu fecha de nacimiento?</h2>';
         html += '<p class="vk-paso__subtitulo">Nos ayuda a validar tu identidad para aprobar tu cr\u00e9dito Voltika.</p>';
-        html += '<p class="vk-trust-highlight">\u2705 Tu aprobaci\u00f3n tarda <strong>menos de 2 minutos</strong></p>';
+        html += '<p class="vk-trust-highlight"><span class="vk-check"></span> Tu aprobaci\u00f3n tarda <strong>menos de 2 minutos</strong></p>';
 
         html += '<div class="vk-card" style="padding:20px;">';
 
@@ -36,8 +36,8 @@ var PasoCreditoNacimiento = {
         html += '<button class="vk-btn vk-btn--primary" id="vk-cnac-continuar">CONTINUAR \u2192</button>';
 
         html += '<div class="vk-trust">';
-        html += '<div>\u2705 Proceso seguro</div>';
-        html += '<div>\u2705 No afecta tu historial crediticio</div>';
+        html += '<div><span class="vk-check vk-check--sm"></span> Proceso seguro</div>';
+        html += '<div><span class="vk-check vk-check--sm"></span> No afecta tu historial crediticio</div>';
         html += '</div>';
 
         html += '</div>';

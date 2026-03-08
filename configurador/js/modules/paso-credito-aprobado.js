@@ -26,7 +26,7 @@ var PasoCreditoAprobado = {
         html += '<div class="vk-aprobado-header">';
         html += '<div class="vk-aprobado-header__check">';
         html += '<svg viewBox="0 0 80 80" width="80" height="80">';
-        html += '<circle cx="40" cy="40" r="36" fill="#4CAF50" />';
+        html += '<circle cx="40" cy="40" r="36" fill="#1976D2" />';
         html += '<path d="M24 40 L35 52 L56 28" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />';
         html += '</svg>';
         html += '</div>';
@@ -43,7 +43,7 @@ var PasoCreditoAprobado = {
         if (cpEntrega) {
             html += '<div class="vk-aprobado-info">';
             html += '<div class="vk-aprobado-info__row">';
-            html += '<span style="color:#4CAF50;font-size:18px;">&#9989;</span>';
+            html += '<span class="vk-check"></span>';
             html += '<div>';
             html += '<strong>Tu moto ya est\u00e1 apartada</strong> para entrega en:';
             html += '<div style="font-weight:700;">' + ciudadEntrega + ' (CP ' + cpEntrega + ')</div>';
@@ -58,8 +58,8 @@ var PasoCreditoAprobado = {
         html += '<span style="font-size:16px;">&#9201;</span>';
         html += '<strong>Solo toma menos de 30 segundos</strong>';
         html += '</div>';
-        html += '<div class="vk-aprobado-steps__item"><span style="color:#4CAF50;">&#9989;</span> Toma una foto de tu INE</div>';
-        html += '<div class="vk-aprobado-steps__item"><span style="color:#4CAF50;">&#9989;</span> Selfie r\u00e1pida</div>';
+        html += '<div class="vk-aprobado-steps__item"><span class="vk-check vk-check--sm"></span> Toma una foto de tu INE</div>';
+        html += '<div class="vk-aprobado-steps__item"><span class="vk-check vk-check--sm"></span> Selfie r\u00e1pida</div>';
         html += '</div>';
 
         // CTA

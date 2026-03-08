@@ -51,7 +51,7 @@ var PasoCreditoDomicilio = {
             'value="' + (state.colonia || '') + '">';
         html += '</div>';
 
-        html += '<div class="vk-trust">\u2705 Informaci\u00f3n protegida</div>';
+        html += '<div class="vk-trust"><div><span class="vk-check vk-check--sm"></span> Informaci\u00f3n protegida</div></div>';
 
         html += '<div id="vk-cdom-error" style="display:none;color:#C62828;font-size:13px;' +
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
