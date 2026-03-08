@@ -97,6 +97,9 @@ var PasoCreditoIngresos = {
                 data: JSON.stringify({ telefono: telefono, nombre: self.app.state.nombre || '' }),
                 success: function(res) {
                     console.log('[OTP] enviar-otp response:', res);
+                    if (res && res.fileOk === false) {
+                        console.warn('[OTP] WARNING: Code file was NOT saved on server!');
+                    }
                     if (res && res.testCode) {
                         self.app.state._otpTestCode = res.testCode;
                     } else {

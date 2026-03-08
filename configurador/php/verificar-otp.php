@@ -31,17 +31,25 @@ if (!$telefono || !$codigoIngresado) {
 }
 
 // ── Verify against stored code ───────────────────────────────────────────────
-$codeFile = __DIR__ . '/otp_temp/' . hash('sha256', $telefono) . '.json';
+$otpDir  = __DIR__ . '/otp_temp';
+$codeFile = $otpDir . '/' . hash('sha256', $telefono) . '.json';
 
 $logFile = __DIR__ . '/logs/sms-otp.log';
 if (!is_dir(dirname($logFile))) mkdir(dirname($logFile), 0755, true);
 
 if (!file_exists($codeFile)) {
+    // Check if the otp_temp directory even exists
+    $dirExists = is_dir($otpDir);
+    $dirFiles  = $dirExists ? scandir($otpDir) : [];
+
     file_put_contents($logFile, json_encode([
-        'timestamp' => date('c'),
-        'action'    => 'verify',
-        'telefono'  => substr($telefono, 0, 3) . '****' . substr($telefono, -3),
-        'result'    => 'no_code_found'
+        'timestamp'  => date('c'),
+        'action'     => 'verify',
+        'telefono'   => substr($telefono, 0, 3) . '****' . substr($telefono, -3),
+        'result'     => 'no_code_found',
+        'dirExists'  => $dirExists,
+        'dirFiles'   => count($dirFiles),
+        'lookingFor' => hash('sha256', $telefono) . '.json'
     ]) . "\n", FILE_APPEND | LOCK_EX);
 
     echo json_encode(['valido' => false, 'error' => 'No hay código pendiente. Solicita uno nuevo.']);

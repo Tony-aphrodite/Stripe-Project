@@ -42,13 +42,24 @@ $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
 
 // ── Save code to file (for verification later) ──────────────────────────────
 $dir = __DIR__ . '/otp_temp';
-if (!is_dir($dir)) mkdir($dir, 0755, true);
+if (!is_dir($dir)) {
+    if (!mkdir($dir, 0777, true)) {
+        error_log('Voltika OTP: Failed to create otp_temp directory');
+    }
+}
+// Ensure directory is writable
+if (!is_writable($dir)) {
+    @chmod($dir, 0777);
+}
 $file = $dir . '/' . hash('sha256', $telefono) . '.json';
-file_put_contents($file, json_encode([
+$written = file_put_contents($file, json_encode([
     'codigo'   => $codigo,
     'expira'   => time() + 600, // 10 minutes
     'telefono' => $telefono
 ]), LOCK_EX);
+if ($written === false) {
+    error_log('Voltika OTP: Failed to write code file: ' . $file);
+}
 
 // ── Send SMS via SMSMasivos regular API ──────────────────────────────────────
 $mensaje = "Voltika: Tu codigo de verificacion es {$codigo}. Valido por 10 minutos.";
@@ -92,14 +103,16 @@ $data = json_decode($response, true);
 if (!$curlErr && $httpCode >= 200 && $httpCode < 300 && !empty($data['success'])) {
     // SMS sent successfully
     echo json_encode([
-        'status'  => 'sent',
-        'message' => 'Código enviado por SMS.'
+        'status'    => 'sent',
+        'message'   => 'Código enviado por SMS.',
+        'fileOk'    => ($written !== false)
     ]);
 } else {
     // API failed — return fallback test code so user can still proceed
     echo json_encode([
         'status'   => 'sent',
         'testCode' => $codigo,
-        'fallback' => true
+        'fallback' => true,
+        'fileOk'   => ($written !== false)
     ]);
 }

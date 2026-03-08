@@ -177,12 +177,14 @@ var PasoCreditoConsentimiento = {
             contentType: 'application/json',
             data: JSON.stringify({ telefono: state.telefono, codigo: otp }),
             success: function(res) {
+                console.log('[OTP] verificar-otp response:', res);
                 if (res && res.valido) {
                     state._otpVerificado = true;
                     // Now query Círculo de Crédito
                     self._consultarBuro();
                 } else {
-                    jQuery('#vk-cons-error').html('C\u00f3digo incorrecto. Verifica e intenta de nuevo.').css('color', '#C62828').css('background', '#FFEBEE').show();
+                    var errorMsg = (res && res.error) ? res.error : 'C\u00f3digo incorrecto. Verifica e intenta de nuevo.';
+                    jQuery('#vk-cons-error').html(errorMsg).css('color', '#C62828').css('background', '#FFEBEE').show();
                     self._resetCTA();
                 }
             },
