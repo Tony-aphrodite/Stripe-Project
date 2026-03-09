@@ -210,14 +210,10 @@ var PasoCreditoResultado = {
         html += '</div>';
 
         html += '<p style="font-size:13px;color:var(--vk-text-secondary);text-align:center;margin-bottom:16px;">' +
-            'Sin embargo, puedes adquirir tu Voltika de otras formas:</p>';
+            'Sin embargo, puedes adquirir tu Voltika pagando con tarjeta:</p>';
 
-        html += '<div style="display:flex;gap:10px;margin-bottom:16px;">';
-        html += '<button class="vk-btn vk-btn--primary" id="vk-resultado-contado" style="flex:1;">' +
-            'Pago de contado</button>';
-        html += '<button class="vk-btn vk-btn--secondary" id="vk-resultado-msi" style="flex:1;">' +
-            '9 MSI</button>';
-        html += '</div>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-resultado-contado" style="width:100%;margin-bottom:10px;">' +
+            '&#128179; Pagar con tarjeta (Stripe)</button>';
 
         html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);">' +
             'También puedes hablar con un asesor: <strong>ventas@voltika.com.mx</strong></p>';
