@@ -86,9 +86,10 @@ var PasoCreditoIngresos = {
             self.app.state.telefono = telefono;
             self.app.state.email = email;
 
-            // Send OTP SMS
+            // Send OTP SMS — guard against double-tap on mobile
             var $btn = jQuery('#vk-cing-continuar');
-            $btn.prop('disabled', true).text('Enviando SMS...');
+            if ($btn.data('sending')) return;
+            $btn.data('sending', true).prop('disabled', true).text('Enviando SMS...');
 
             jQuery.ajax({
                 url: 'php/enviar-otp.php',
@@ -116,7 +117,7 @@ var PasoCreditoIngresos = {
                     self.app.irAPaso('credito-consentimiento');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('CONTINUAR');
+                    $btn.data('sending', false).prop('disabled', false).text('CONTINUAR');
                 }
             });
         });

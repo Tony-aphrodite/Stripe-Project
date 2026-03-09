@@ -39,14 +39,22 @@ if (strlen($telefono) < 10) {
     exit;
 }
 
-// ── Generate 6-digit code ────────────────────────────────────────────────────
-$codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-
-// ── Save code to SESSION (reliable, no file permission issues) ──────────────
+// ── Start session and reuse existing code if still valid ─────────────────────
 session_start();
-$_SESSION['otp_code']    = $codigo;
-$_SESSION['otp_phone']   = $telefono;
-$_SESSION['otp_expires'] = time() + 600; // 10 minutes
+$existingCode  = $_SESSION['otp_code']    ?? null;
+$existingPhone = $_SESSION['otp_phone']   ?? null;
+$existingExp   = $_SESSION['otp_expires'] ?? 0;
+
+if ($existingCode && $existingPhone === $telefono && time() < $existingExp) {
+    // Reuse the same code — prevents double-tap overwrite on mobile
+    $codigo = $existingCode;
+} else {
+    // ── Generate new 6-digit code ─────────────────────────────────────────────
+    $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+    $_SESSION['otp_code']    = $codigo;
+    $_SESSION['otp_phone']   = $telefono;
+    $_SESSION['otp_expires'] = time() + 600; // 10 minutes
+}
 
 // Also save to file as backup
 $dir = __DIR__ . '/otp_temp';
