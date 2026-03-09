@@ -671,13 +671,13 @@ html, body {
 }
 
 .vk-btn--blue {
-    background: var(--vk-blue-primary);
+    background: #039fe1;
     color: var(--vk-text-white);
-    box-shadow: 0 2px 8px rgba(59, 89, 152, 0.3);
+    box-shadow: 0 2px 8px rgba(3, 159, 225, 0.3);
 }
 
 .vk-btn--blue:hover {
-    background: #2D4A80;
+    background: #0285bc;
 }
 
 /* Enganche Slider */
