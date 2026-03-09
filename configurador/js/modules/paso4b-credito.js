@@ -264,7 +264,7 @@ var Paso4B = {
             var cls = 'vk-plazo-btn';
             var style = 'flex:1;min-width:60px;padding:10px 8px;font-size:13px;font-weight:600;border-radius:8px;border:1.5px solid var(--vk-border);cursor:pointer;';
             if (isActive) {
-                style += 'background:#2563EB;color:#fff;border-color:#2563EB;';
+                style += 'background:#039fe1;color:#fff;border-color:#039fe1;';
             } else {
                 style += 'background:#fff;color:var(--vk-text-primary);';
             }
@@ -337,9 +337,9 @@ var Paso4B = {
                 'border-color': 'var(--vk-border)'
             });
             $(this).css({
-                'background': '#2563EB',
+                'background': '#039fe1',
                 'color': '#fff',
-                'border-color': '#2563EB'
+                'border-color': '#039fe1'
             });
 
             $('#vk-calc-results').html(self._renderCalcResults(modelo, credito));
