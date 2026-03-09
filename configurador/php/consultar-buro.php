@@ -170,6 +170,41 @@ $_SESSION['cdc_dpd90_flag']        = $result['dpd90_flag'];
 $_SESSION['cdc_dpd_max']           = $result['dpd_max'];
 $_SESSION['cdc_folio_consulta']    = $result['folioConsulta'];
 
+// ── Guardar en BD ─────────────────────────────────────────────────────────────
+try {
+    $pdo = getDB();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS consultas_buro (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        nombre           VARCHAR(200),
+        apellido_paterno VARCHAR(100),
+        apellido_materno VARCHAR(100),
+        fecha_nacimiento VARCHAR(20),
+        cp               VARCHAR(10),
+        score            INT,
+        pago_mensual     DECIMAL(12,2),
+        dpd90_flag       TINYINT(1),
+        dpd_max          INT,
+        num_cuentas      INT,
+        folio_consulta   VARCHAR(100),
+        freg             DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $stmt = $pdo->prepare("
+        INSERT INTO consultas_buro
+            (nombre, apellido_paterno, apellido_materno, fecha_nacimiento, cp,
+             score, pago_mensual, dpd90_flag, dpd_max, num_cuentas, folio_consulta)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([
+        $primerNombre, $apellidoPaterno, $apellidoMaterno, $fechaNacimiento, $cp,
+        $result['score'], $result['pago_mensual_buro'],
+        $result['dpd90_flag'] ? 1 : 0,
+        $result['dpd_max'], $result['num_cuentas'],
+        $result['folioConsulta'],
+    ]);
+} catch (PDOException $e) {
+    error_log('Voltika consultas_buro DB error: ' . $e->getMessage());
+}
+
 echo json_encode($result);
 
 // ── Funciones auxiliares ────────────────────────────────────────────────────

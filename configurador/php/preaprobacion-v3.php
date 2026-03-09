@@ -170,6 +170,47 @@ if (!is_dir(dirname($logFile))) {
 }
 file_put_contents($logFile, json_encode($log) . "\n", FILE_APPEND | LOCK_EX);
 
+// ── Guardar en BD ─────────────────────────────────────────────────────────────
+try {
+    $pdo = getDB();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS preaprobaciones (
+        id                   INT AUTO_INCREMENT PRIMARY KEY,
+        modelo               VARCHAR(200),
+        ingreso_mensual      DECIMAL(12,2),
+        pago_semanal         DECIMAL(10,2),
+        pago_mensual         DECIMAL(10,2),
+        pago_mensual_buro    DECIMAL(12,2),
+        pti_total            DECIMAL(8,4),
+        score                INT,
+        dpd90_flag           TINYINT(1),
+        dpd_max              INT,
+        circulo_source       VARCHAR(20),
+        enganche_pct         DECIMAL(5,2),
+        plazo_meses          INT,
+        status               VARCHAR(40),
+        enganche_requerido   DECIMAL(5,2),
+        plazo_max            INT,
+        freg                 DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $stmt = $pdo->prepare("
+        INSERT INTO preaprobaciones
+            (modelo, ingreso_mensual, pago_semanal, pago_mensual, pago_mensual_buro,
+             pti_total, score, dpd90_flag, dpd_max, circulo_source,
+             enganche_pct, plazo_meses, status, enganche_requerido, plazo_max)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([
+        $log['modelo'], $log['ingreso_mensual_est'], $log['pago_semanal_voltika'],
+        $log['pago_mensual_voltika'], $log['pago_mensual_buro'],
+        $log['pti_total'], $log['score'],
+        $dpd90_flag ? 1 : 0, $dpd_max,
+        $log['circulo_source'], $log['enganche_pct'], $log['plazo_meses'],
+        $log['status'], $log['enganche_requerido'], $log['plazo_max'],
+    ]);
+} catch (PDOException $e) {
+    error_log('Voltika preaprobaciones DB error: ' . $e->getMessage());
+}
+
 echo json_encode($result);
 
 // ── Funciones auxiliares ──────────────────────────────────────────────────────

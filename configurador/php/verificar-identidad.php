@@ -246,6 +246,38 @@ if ($result) {
         'approved'  => $approved,
     ]) . "\n", FILE_APPEND | LOCK_EX);
 
+    // ── Guardar en BD ─────────────────────────────────────────────────────────
+    try {
+        $pdo = getDB();
+        $pdo->exec("CREATE TABLE IF NOT EXISTS verificaciones_identidad (
+            id               INT AUTO_INCREMENT PRIMARY KEY,
+            nombre           VARCHAR(200),
+            apellidos        VARCHAR(200),
+            fecha_nacimiento VARCHAR(20),
+            telefono         VARCHAR(30),
+            email            VARCHAR(200),
+            truora_check_id  VARCHAR(100),
+            truora_score     DECIMAL(5,4),
+            identity_status  VARCHAR(50),
+            approved         TINYINT(1),
+            files_saved      TEXT,
+            freg             DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        $stmt = $pdo->prepare("
+            INSERT INTO verificaciones_identidad
+                (nombre, apellidos, fecha_nacimiento, telefono, email,
+                 truora_check_id, truora_score, identity_status, approved, files_saved)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $nombre, $apellidos, $fechaNac, $telefono, $email,
+            $checkId, $score, $identityStatus, $approved ? 1 : 0,
+            json_encode(array_values($savedFiles)),
+        ]);
+    } catch (PDOException $e) {
+        error_log('Voltika verificaciones_identidad DB error: ' . $e->getMessage());
+    }
+
     echo json_encode([
         'status'   => $approved ? 'approved' : 'rejected',
         'score'    => $score,
