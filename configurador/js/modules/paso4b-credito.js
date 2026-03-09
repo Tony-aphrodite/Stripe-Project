@@ -14,102 +14,133 @@ var RANGOS_INGRESO = [
     { label: '$30,000 o mas',             valor: 30000 }
 ];
 
-// ── Algoritmo V3 (implementación exacta del documento) ───────────────────────
+// ── Algoritmo V3 — config-driven (ajustar umbrales aquí sin tocar lógica) ─────
 var PreaprobacionV3 = {
 
-    /**
-     * Evalúa inputs y devuelve resultado V3.
-     * @param {object} inputs
-     *   ingreso_mensual_est   – mínimo del rango elegido
-     *   pago_semanal_voltika  – del slider
-     *   score                 – Círculo de Crédito (null = pendiente)
-     *   pago_mensual_buro     – Círculo de Crédito (null = pendiente)
-     *   dpd90_flag            – boolean (null = pendiente)
-     *   dpd_max               – número (null = pendiente)
-     */
+    config: {
+        downPaymentMin: 0.25,
+        KO: {
+            scoreMin:   420,
+            ptiExtreme: 1.05,
+            severeDPD:  true
+        },
+        PRE: {
+            scoreMin: 480,
+            ptiMax:   0.90
+        },
+        CONDITIONAL: {
+            downPaymentRequiredByPTI: [
+                { maxPTI: 0.90, required: 0.25 },
+                { maxPTI: 0.95, required: 0.30 },
+                { maxPTI: 1.00, required: 0.35 },
+                { maxPTI: 1.05, required: 0.45 }
+            ],
+            maxTermByRisk: [
+                { minScore: 520, maxPTI: 0.85, term: 36 },
+                { minScore: 480, maxPTI: 0.90, term: 24 },
+                { minScore: 440, maxPTI: 0.95, term: 18 },
+                { minScore: 420, maxPTI: 1.05, term: 18 }
+            ],
+            lowScorePTIGuardrail: { scoreMax: 439, ptiMax: 0.95 }
+        }
+    },
+
     evaluar: function(inputs) {
-        var ing   = inputs.ingreso_mensual_est;
-        var psv   = inputs.pago_semanal_voltika;
-        var score = inputs.score;
-        var buro  = inputs.pago_mensual_buro || 0;
-        var dpd90 = inputs.dpd90_flag;
+        var ing    = inputs.ingreso_mensual_est;
+        var psv    = inputs.pago_semanal_voltika;
+        var score  = inputs.score;
+        var buro   = inputs.pago_mensual_buro || 0;
+        var dpd90  = inputs.dpd90_flag;
         var dpdMax = inputs.dpd_max;
+        var cfg    = this.config;
 
         if (!isFinite(ing) || ing <= 0 || !isFinite(psv) || psv <= 0) {
             return { status: 'ERROR', mensaje: 'Datos insuficientes para evaluar.' };
         }
 
-        // Mensualización: pago_mensual_voltika = pago_semanal * 4.3333
-        var pmv   = psv * 4.3333;
-        var pti   = (buro + pmv) / ing;
+        var pmv  = psv * 4.3333;
+        var pti  = (buro + pmv) / ing;
+        var mora = dpd90 === true || (dpdMax != null && dpdMax >= 90);
 
-        var mora  = dpd90 === true || (dpdMax != null && dpdMax >= 90);
-
-        // Sin datos de Círculo → estimación solo por PTI
+        // Sin datos de Círculo → evaluación estimada solo por PTI
         if (score === null || score === undefined) {
-            return this._evaluarSinCirculo(pti, pmv, ing);
+            return this._evaluarSinCirculo(pti);
         }
 
-        // ── Con datos completos de Círculo ────────────────────────────────
-        // KO reales → NO_VIABLE
-        if (score < 420 || mora || pti > 1.05) {
-            return { status: 'NO_VIABLE', pti: pti, reasons: ['KO_REAL'] };
+        var s = Number(score);
+
+        // 1) KO reales → NO_VIABLE
+        if (s < cfg.KO.scoreMin) {
+            return { status: 'NO_VIABLE', pti: pti, enganche_min: cfg.downPaymentMin, reasons: ['KO_SCORE_LT_MIN'] };
+        }
+        if (cfg.KO.severeDPD && mora) {
+            return { status: 'NO_VIABLE', pti: pti, enganche_min: cfg.downPaymentMin, reasons: ['KO_SEVERE_DPD_90PLUS'] };
+        }
+        if (pti > cfg.KO.ptiExtreme) {
+            return { status: 'NO_VIABLE', pti: pti, enganche_min: cfg.downPaymentMin, reasons: ['KO_PTI_EXTREME'] };
         }
 
-        // Guardrail → NO_VIABLE
-        if (score <= 439 && pti > 0.95) {
-            return { status: 'NO_VIABLE', pti: pti, reasons: ['GUARDRAIL'] };
+        // 2) Guardrail: score bajo + PTI alto → NO_VIABLE
+        if (s <= cfg.CONDITIONAL.lowScorePTIGuardrail.scoreMax && pti > cfg.CONDITIONAL.lowScorePTIGuardrail.ptiMax) {
+            return { status: 'NO_VIABLE', pti: pti, enganche_min: cfg.downPaymentMin, reasons: ['KO_GUARDRAIL_LOW_SCORE_HIGH_PTI'] };
         }
 
-        // PREAPROBADO
-        if (score >= 480 && pti <= 0.90) {
+        // 3) PREAPROBADO
+        if (s >= cfg.PRE.scoreMin && pti <= cfg.PRE.ptiMax) {
             return {
                 status: 'PREAPROBADO',
                 pti: pti,
-                plazo_max_meses: this._plazoMax(score, pti)
+                enganche_min:          cfg.downPaymentMin,
+                enganche_requerido_min: cfg.downPaymentMin,
+                plazo_max_meses:       this._plazoMax(s, pti)
             };
         }
 
-        // CONDICIONAL (todo lo demás)
+        // 4) CONDICIONAL — palancas: enganche mayor y/o plazo más corto
+        var engReq = Math.min(Math.max(this._engancheMin(pti), cfg.downPaymentMin), 0.60);
         return {
             status: 'CONDICIONAL',
             pti: pti,
-            enganche_requerido_min: this._engancheMin(pti),
-            plazo_max_meses: this._plazoMax(score, pti)
+            enganche_min:          cfg.downPaymentMin,
+            enganche_requerido_min: engReq,
+            plazo_max_meses:       this._plazoMax(s, pti)
         };
     },
 
-    // Evaluación sin datos de Círculo (solo PTI estimado)
+    // Sin Círculo: evaluación estimada solo por PTI
     _evaluarSinCirculo: function(pti) {
-        if (pti > 1.05) {
-            return { status: 'NO_VIABLE', pti: pti, reasons: ['PTI_EXTREMO'] };
+        var cfg    = this.config;
+        var engMin = cfg.downPaymentMin;
+        if (pti > cfg.KO.ptiExtreme) {
+            return { status: 'NO_VIABLE', pti: pti, reasons: ['PTI_EXTREMO_SIN_CIRCULO'] };
         }
         if (pti <= 0.75) {
-            return { status: 'PREAPROBADO_ESTIMADO', pti: pti, plazo_max_meses: 36 };
+            return { status: 'PREAPROBADO_ESTIMADO', pti: pti, enganche_requerido_min: engMin, plazo_max_meses: 36 };
         }
         return {
             status: 'CONDICIONAL_ESTIMADO',
             pti: pti,
-            enganche_requerido_min: this._engancheMin(pti),
+            enganche_requerido_min: Math.min(Math.max(this._engancheMin(pti), engMin), 0.60),
             plazo_max_meses: 24
         };
     },
 
-    // Enganche mínimo por PTI (tabla V3)
+    // Enganche mínimo requerido por tabla PTI
     _engancheMin: function(pti) {
-        if (pti <= 0.90) return 0.25;
-        if (pti <= 0.95) return 0.30;
-        if (pti <= 1.00) return 0.35;
-        return 0.45;
+        var table = this.config.CONDITIONAL.downPaymentRequiredByPTI;
+        for (var i = 0; i < table.length; i++) {
+            if (pti <= table[i].maxPTI) return table[i].required;
+        }
+        return table[table.length - 1].required;
     },
 
-    // Plazo máximo por score + PTI (tabla V3)
+    // Plazo máximo por score + PTI
     _plazoMax: function(score, pti) {
-        if (score >= 520 && pti <= 0.85) return 36;
-        if (score >= 480 && pti <= 0.90) return 24;
-        if (score >= 440 && pti <= 0.95) return 18;
-        if (score >= 420 && pti <= 1.05) return 18;
-        return 18; // fallback
+        var rules = this.config.CONDITIONAL.maxTermByRisk;
+        for (var i = 0; i < rules.length; i++) {
+            if (score >= rules[i].minScore && pti <= rules[i].maxPTI) return rules[i].term;
+        }
+        return 18;
     }
 };
 

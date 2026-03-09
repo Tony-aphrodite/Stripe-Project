@@ -62,73 +62,85 @@ if ($ingreso_mensual_est <= 0 || $pago_semanal_voltika <= 0) {
     exit;
 }
 
-// ── Fórmulas V3 ───────────────────────────────────────────────────────────────
-// Mensualización: pago_mensual_voltika = pago_semanal * 4.3333 (52/12)
-$pago_mensual_voltika = $pago_semanal_voltika * 4.3333;
-$pti_total = ($pago_mensual_buro + $pago_mensual_voltika) / $ingreso_mensual_est;
+// ── Config V3 (ajustar umbrales aquí sin tocar lógica) ───────────────────────
+$V3 = [
+    'downPaymentMin' => 0.25,
+    'KO' => [
+        'scoreMin'   => 420,
+        'ptiExtreme' => 1.05,
+        'severeDPD'  => true,
+    ],
+    'PRE' => [
+        'scoreMin' => 480,
+        'ptiMax'   => 0.90,
+    ],
+    'CONDITIONAL' => [
+        'downPaymentRequiredByPTI' => [
+            ['maxPTI' => 0.90, 'required' => 0.25],
+            ['maxPTI' => 0.95, 'required' => 0.30],
+            ['maxPTI' => 1.00, 'required' => 0.35],
+            ['maxPTI' => 1.05, 'required' => 0.45],
+        ],
+        'maxTermByRisk' => [
+            ['minScore' => 520, 'maxPTI' => 0.85, 'term' => 36],
+            ['minScore' => 480, 'maxPTI' => 0.90, 'term' => 24],
+            ['minScore' => 440, 'maxPTI' => 0.95, 'term' => 18],
+            ['minScore' => 420, 'maxPTI' => 1.05, 'term' => 18],
+        ],
+        'lowScorePTIGuardrail' => ['scoreMax' => 439, 'ptiMax' => 0.95],
+    ],
+];
 
-// Mora severa
-$mora_severa = ($dpd90_flag === true) || ($dpd_max !== null && $dpd_max >= 90);
+// ── Fórmulas V3 ───────────────────────────────────────────────────────────────
+$pago_mensual_voltika = $pago_semanal_voltika * 4.3333;
+$pti_total   = ($pago_mensual_buro + $pago_mensual_voltika) / $ingreso_mensual_est;
+$mora_severa = ($dpd90_flag === true) || ($dpd_max !== null && (float)$dpd_max >= 90);
+$eng_min     = $V3['downPaymentMin'];
 
 // ── Evaluación V3 ─────────────────────────────────────────────────────────────
 $result = [];
 
 if ($score === null) {
     // Sin datos de Círculo → evaluación estimada solo por PTI
-    if ($pti_total > 1.05) {
-        $result = [
-            'status'   => 'NO_VIABLE',
-            'pti_total'=> round($pti_total, 4),
-            'reasons'  => ['PTI_EXTREMO_SIN_CIRCULO']
-        ];
+    if ($pti_total > $V3['KO']['ptiExtreme']) {
+        $result = ['status' => 'NO_VIABLE',            'pti_total' => round($pti_total, 4), 'reasons' => ['PTI_EXTREMO_SIN_CIRCULO']];
     } elseif ($pti_total <= 0.75) {
-        $result = [
-            'status'            => 'PREAPROBADO_ESTIMADO',
-            'pti_total'         => round($pti_total, 4),
-            'plazo_max_meses'   => 36
-        ];
+        $result = ['status' => 'PREAPROBADO_ESTIMADO', 'pti_total' => round($pti_total, 4),
+                   'enganche_requerido_min' => $eng_min, 'plazo_max_meses' => 36];
     } else {
-        $result = [
-            'status'                 => 'CONDICIONAL_ESTIMADO',
-            'pti_total'              => round($pti_total, 4),
-            'enganche_requerido_min' => calcularEngancheMin($pti_total),
-            'plazo_max_meses'        => 24
-        ];
+        $result = ['status' => 'CONDICIONAL_ESTIMADO', 'pti_total' => round($pti_total, 4),
+                   'enganche_requerido_min' => min(max(calcularEngancheMin($pti_total, $V3), $eng_min), 0.60),
+                   'plazo_max_meses' => 24];
     }
 } else {
     // Con datos completos de Círculo
-    // 1. KO reales → NO_VIABLE
-    if ($score < 420 || $mora_severa || $pti_total > 1.05) {
-        $result = [
-            'status'   => 'NO_VIABLE',
-            'pti_total'=> round($pti_total, 4),
-            'reasons'  => ['KO_REAL']
-        ];
+    // 1. KO reales
+    if ($score < $V3['KO']['scoreMin']) {
+        $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4), 'enganche_min' => $eng_min, 'reasons' => ['KO_SCORE_LT_MIN']];
     }
-    // 2. Guardrail → NO_VIABLE
-    elseif ($score <= 439 && $pti_total > 0.95) {
-        $result = [
-            'status'   => 'NO_VIABLE',
-            'pti_total'=> round($pti_total, 4),
-            'reasons'  => ['GUARDRAIL']
-        ];
+    elseif ($V3['KO']['severeDPD'] && $mora_severa) {
+        $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4), 'enganche_min' => $eng_min, 'reasons' => ['KO_SEVERE_DPD_90PLUS']];
+    }
+    elseif ($pti_total > $V3['KO']['ptiExtreme']) {
+        $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4), 'enganche_min' => $eng_min, 'reasons' => ['KO_PTI_EXTREME']];
+    }
+    // 2. Guardrail: score bajo + PTI alto
+    elseif ($score <= $V3['CONDITIONAL']['lowScorePTIGuardrail']['scoreMax']
+         && $pti_total > $V3['CONDITIONAL']['lowScorePTIGuardrail']['ptiMax']) {
+        $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4), 'enganche_min' => $eng_min, 'reasons' => ['KO_GUARDRAIL_LOW_SCORE_HIGH_PTI']];
     }
     // 3. PREAPROBADO
-    elseif ($score >= 480 && $pti_total <= 0.90) {
-        $result = [
-            'status'          => 'PREAPROBADO',
-            'pti_total'       => round($pti_total, 4),
-            'plazo_max_meses' => calcularPlazoMax($score, $pti_total)
-        ];
+    elseif ($score >= $V3['PRE']['scoreMin'] && $pti_total <= $V3['PRE']['ptiMax']) {
+        $result = ['status' => 'PREAPROBADO', 'pti_total' => round($pti_total, 4),
+                   'enganche_min' => $eng_min, 'enganche_requerido_min' => $eng_min,
+                   'plazo_max_meses' => calcularPlazoMax($score, $pti_total, $V3)];
     }
-    // 4. CONDICIONAL (todo lo demás)
+    // 4. CONDICIONAL
     else {
-        $result = [
-            'status'                 => 'CONDICIONAL',
-            'pti_total'              => round($pti_total, 4),
-            'enganche_requerido_min' => calcularEngancheMin($pti_total),
-            'plazo_max_meses'        => calcularPlazoMax($score, $pti_total)
-        ];
+        $eng_req = min(max(calcularEngancheMin($pti_total, $V3), $eng_min), 0.60);
+        $result  = ['status' => 'CONDICIONAL', 'pti_total' => round($pti_total, 4),
+                    'enganche_min' => $eng_min, 'enganche_requerido_min' => $eng_req,
+                    'plazo_max_meses' => calcularPlazoMax($score, $pti_total, $V3)];
     }
 }
 
@@ -162,24 +174,17 @@ echo json_encode($result);
 
 // ── Funciones auxiliares ──────────────────────────────────────────────────────
 
-/**
- * Enganche mínimo requerido por PTI (tabla V3)
- */
-function calcularEngancheMin(float $pti): float {
-    if ($pti <= 0.90) return 0.25;
-    if ($pti <= 0.95) return 0.30;
-    if ($pti <= 1.00) return 0.35;
-    return 0.45;
+function calcularEngancheMin(float $pti, array $cfg): float {
+    foreach ($cfg['CONDITIONAL']['downPaymentRequiredByPTI'] as $row) {
+        if ($pti <= $row['maxPTI']) return $row['required'];
+    }
+    return end($cfg['CONDITIONAL']['downPaymentRequiredByPTI'])['required'];
 }
 
-/**
- * Plazo máximo permitido por score + PTI (tabla V3)
- */
-function calcularPlazoMax(?int $score, float $pti): int {
+function calcularPlazoMax(?int $score, float $pti, array $cfg): int {
     if ($score === null) return 18;
-    if ($score >= 520 && $pti <= 0.85) return 36;
-    if ($score >= 480 && $pti <= 0.90) return 24;
-    if ($score >= 440 && $pti <= 0.95) return 18;
-    if ($score >= 420 && $pti <= 1.05) return 18;
+    foreach ($cfg['CONDITIONAL']['maxTermByRisk'] as $row) {
+        if ($score >= $row['minScore'] && $pti <= $row['maxPTI']) return $row['term'];
+    }
     return 18;
 }
