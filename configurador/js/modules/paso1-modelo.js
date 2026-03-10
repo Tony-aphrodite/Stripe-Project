@@ -453,6 +453,9 @@ var Paso1 = {
         // ── Model slider: auto-play every 2.5 seconds ─────────
         this._startAutoPlay();
 
+        // ── Gallery images: auto-play every 3 seconds ─────────
+        this._startGalleryAutoPlay();
+
         // ── Mobile: touch swipe on model slider ───────────────
         var $track = $('#vk-modelo-slider-track');
         if ($track.length) {
@@ -484,6 +487,7 @@ var Paso1 = {
             var next   = isPrev ? (curr - 1 + $imgs.length) % $imgs.length : (curr + 1) % $imgs.length;
             $imgs.removeClass('vk-gal__img--active').eq(next).addClass('vk-gal__img--active');
             $dots.removeClass('vk-gal__dot--active').eq(next).addClass('vk-gal__dot--active');
+            self._startGalleryAutoPlay();
         });
 
         // ── Gallery dots ───────────────────────────────────────
@@ -501,6 +505,7 @@ var Paso1 = {
 
     _currentSlide: 0,
     _autoPlayInterval: null,
+    _galleryAutoPlayInterval: null,
 
     _goToSlide: function(idx) {
         var modelos = VOLTIKA_PRODUCTOS.modelos;
@@ -528,5 +533,33 @@ var Paso1 = {
             var next = ((self._currentSlide || 0) + 1) % modelos.length;
             self._goToSlide(next);
         }, 2500);
+    },
+
+    _startGalleryAutoPlay: function() {
+        var self = this;
+        if (self._galleryAutoPlayInterval) clearInterval(self._galleryAutoPlayInterval);
+        self._galleryAutoPlayInterval = setInterval(function() {
+            // Advance gallery for each mobile card
+            var modelos = VOLTIKA_PRODUCTOS.modelos;
+            for (var i = 0; i < modelos.length; i++) {
+                var galId = modelos[i].id;
+                var $imgs = $('#vk-gal-track-' + galId + ' .vk-gal__img');
+                if ($imgs.length <= 1) continue;
+                var $dots = $('[data-gal="' + galId + '"].vk-gal__dot');
+                var curr = $imgs.index($imgs.filter('.vk-gal__img--active'));
+                var next = (curr + 1) % $imgs.length;
+                $imgs.removeClass('vk-gal__img--active').eq(next).addClass('vk-gal__img--active');
+                $dots.removeClass('vk-gal__dot--active').eq(next).addClass('vk-gal__dot--active');
+            }
+            // Also advance desktop gallery
+            var $dImgs = $('#vk-gal-track-desktop .vk-gal__img');
+            if ($dImgs.length > 1) {
+                var $dDots = $('[data-gal="desktop"].vk-gal__dot');
+                var currD = $dImgs.index($dImgs.filter('.vk-gal__img--active'));
+                var nextD = (currD + 1) % $dImgs.length;
+                $dImgs.removeClass('vk-gal__img--active').eq(nextD).addClass('vk-gal__img--active');
+                $dDots.removeClass('vk-gal__dot--active').eq(nextD).addClass('vk-gal__dot--active');
+            }
+        }, 3000);
     }
 };

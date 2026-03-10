@@ -2190,29 +2190,31 @@ html, body {
 
 .vk-modelo-tabs {
     display: flex;
-    overflow-x: scroll;
-    -webkit-overflow-scrolling: touch;
-    gap: 6px;
-    padding: 10px 12px 4px;
+    overflow-x: hidden;
+    gap: 4px;
+    padding: 10px 8px 4px;
     scrollbar-width: none;
-    scroll-snap-type: x proximity;
 }
 
 .vk-modelo-tabs::-webkit-scrollbar { display: none; }
 
 .vk-modelo-tab {
-    flex-shrink: 0;
-    scroll-snap-align: center;
-    padding: 6px 14px;
-    border-radius: 20px;
+    flex: 1;
+    min-width: 0;
+    padding: 5px 4px;
+    border-radius: 16px;
     border: 1.5px solid var(--vk-border);
     background: #fff;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 600;
     cursor: pointer;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.2;
+    text-align: center;
+    min-height: 36px;
     color: var(--vk-text-secondary);
     transition: all 0.2s;
-    white-space: nowrap;
 }
 
 .vk-modelo-tab--active {
