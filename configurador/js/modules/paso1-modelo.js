@@ -498,7 +498,6 @@ var Paso1 = {
     },
 
     _currentSlide: 0,
-    _autoPlayInterval: null,
     _galleryAutoPlayInterval: null,
 
     _goToSlide: function(idx) {
@@ -517,16 +516,6 @@ var Paso1 = {
                 $active[0].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
             } catch(e) {}
         }
-    },
-
-    _startAutoPlay: function() {
-        var self = this;
-        if (self._autoPlayInterval) clearInterval(self._autoPlayInterval);
-        self._autoPlayInterval = setInterval(function() {
-            var modelos = VOLTIKA_PRODUCTOS.modelos;
-            var next = ((self._currentSlide || 0) + 1) % modelos.length;
-            self._goToSlide(next);
-        }, 2500);
     },
 
     _startGalleryAutoPlay: function() {
