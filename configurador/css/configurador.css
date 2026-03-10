@@ -2613,3 +2613,79 @@ html, body {
     margin-bottom: 10px;
     margin-top: -4px;
 }
+
+/* ── Fixed bottom benefits bar (Paso 1 mobile) ─────────────────────────── */
+.vk-fixed-benefits {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: #fff;
+    border-top: 2px solid var(--vk-green-primary);
+    box-shadow: 0 -3px 12px rgba(0,0,0,0.10);
+    padding: 10px 12px 12px;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    gap: 6px;
+}
+.vk-fixed-benefits--visible {
+    display: flex;
+}
+.vk-fixed-benefits__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--vk-text-secondary);
+    text-align: center;
+    max-width: 90px;
+    line-height: 1.3;
+}
+.vk-fixed-benefits__item span {
+    font-size: 18px;
+    color: var(--vk-green-primary);
+}
+/* Only show on mobile — hide on desktop */
+@media (min-width: 768px) {
+    .vk-fixed-benefits {
+        display: none !important;
+    }
+}
+/* Add bottom padding to paso 1 mobile content so it's not hidden behind fixed bar */
+.vk-paso1-mobile {
+    padding-bottom: 72px;
+}
+
+/* ── Swipe hint animation ───────────────────────────────────────────────── */
+.vk-swipe-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 6px;
+    margin-bottom: 2px;
+    font-size: 12px;
+    color: var(--vk-text-muted);
+}
+.vk-swipe-hint__hand {
+    display: inline-block;
+    font-size: 20px;
+    animation: vk-swipe 1.6s ease-in-out infinite;
+    transform-origin: center;
+}
+.vk-swipe-hint__text {
+    font-size: 12px;
+    color: var(--vk-text-muted);
+    font-weight: 500;
+}
+@keyframes vk-swipe {
+    0%   { transform: translateX(0); }
+    30%  { transform: translateX(12px); }
+    60%  { transform: translateX(-12px); }
+    100% { transform: translateX(0); }
+}

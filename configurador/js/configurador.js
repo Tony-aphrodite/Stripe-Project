@@ -92,6 +92,10 @@
 
             setTimeout(function() {
                 $current.removeClass('vk-paso--active vk-paso--exit');
+                // Hide fixed benefits bar when leaving paso 1
+                if (paso !== 1) {
+                    $('#vk-fixed-benefits').removeClass('vk-fixed-benefits--visible');
+                }
                 self.inicializarPaso(paso);
                 $target.addClass('vk-paso--active');
 

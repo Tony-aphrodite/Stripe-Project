@@ -13,6 +13,8 @@ var Paso1 = {
         this.app = app;
         this.render();
         this.bindEvents();
+        // Show fixed bottom benefits bar on paso 1
+        jQuery('#vk-fixed-benefits').addClass('vk-fixed-benefits--visible');
     },
 
     render: function() {
@@ -255,7 +257,7 @@ var Paso1 = {
         }
         html += '</div>';
 
-        html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:4px;">Desliza para ver m\u00e1s modelos \u2192</div>';
+        html += '<div class="vk-swipe-hint"><span class="vk-swipe-hint__hand">&#128072;</span><span class="vk-swipe-hint__text">Desliza para ver m\u00e1s modelos</span></div>';
 
         return html;
     },
