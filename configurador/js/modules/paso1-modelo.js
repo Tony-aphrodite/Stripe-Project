@@ -13,8 +13,6 @@ var Paso1 = {
         this.app = app;
         this.render();
         this.bindEvents();
-        // Show fixed bottom benefits bar on paso 1
-        jQuery('#vk-fixed-benefits').addClass('vk-fixed-benefits--visible');
     },
 
     render: function() {
@@ -247,7 +245,8 @@ var Paso1 = {
         html += '</div>';
         html += '</div>';
 
-        // Model name tabs at the bottom
+        // Model name tabs — fixed at bottom of viewport
+        html += '<div class="vk-modelo-nav-fixed">';
         html += '<div class="vk-modelo-tabs" id="vk-modelo-tabs">';
         for (var j = 0; j < modelos.length; j++) {
             var cls = modelos[j].id === defaultModelo.id ? ' vk-modelo-tab--active' : '';
@@ -256,8 +255,8 @@ var Paso1 = {
             html += '</button>';
         }
         html += '</div>';
-
         html += '<div class="vk-swipe-hint"><span class="vk-swipe-hint__hand">&#128072;</span><span class="vk-swipe-hint__text">Desliza para ver m\u00e1s modelos</span></div>';
+        html += '</div>';
 
         return html;
     },

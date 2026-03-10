@@ -2614,51 +2614,27 @@ html, body {
     margin-top: -4px;
 }
 
-/* ── Fixed bottom benefits bar (Paso 1 mobile) ─────────────────────────── */
-.vk-fixed-benefits {
-    display: none;
+/* ── Fixed bottom model nav (Paso 1 mobile) ────────────────────────────── */
+.vk-modelo-nav-fixed {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     z-index: 200;
     background: #fff;
-    border-top: 2px solid var(--vk-green-primary);
-    box-shadow: 0 -3px 12px rgba(0,0,0,0.10);
-    padding: 10px 12px 12px;
-    flex-direction: row;
-    justify-content: space-around;
-    align-items: center;
-    gap: 6px;
+    border-top: 2px solid #039fe1;
+    box-shadow: 0 -3px 14px rgba(0,0,0,0.12);
+    padding: 6px 8px 10px;
 }
-.vk-fixed-benefits--visible {
-    display: flex;
-}
-.vk-fixed-benefits__item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--vk-text-secondary);
-    text-align: center;
-    max-width: 90px;
-    line-height: 1.3;
-}
-.vk-fixed-benefits__item span {
-    font-size: 18px;
-    color: var(--vk-green-primary);
-}
-/* Only show on mobile — hide on desktop */
+/* Hide on desktop — only needed on mobile */
 @media (min-width: 768px) {
-    .vk-fixed-benefits {
+    .vk-modelo-nav-fixed {
         display: none !important;
     }
 }
-/* Add bottom padding to paso 1 mobile content so it's not hidden behind fixed bar */
-.vk-paso1-mobile {
-    padding-bottom: 72px;
+/* Give slider content room so it's not hidden behind fixed nav */
+.vk-modelo-slider {
+    padding-bottom: 90px;
 }
 
 /* ── Swipe hint animation ───────────────────────────────────────────────── */
