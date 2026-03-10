@@ -2304,8 +2304,8 @@ html, body {
     }
 
     .vk-go-electric {
-        padding: var(--vk-space-md) var(--vk-space-md);
-        margin: var(--vk-space-sm) 0;
+        padding: var(--vk-space-sm) var(--vk-space-md) var(--vk-space-md);
+        margin: 4px 0 0;
     }
 }
 
@@ -2314,8 +2314,8 @@ html, body {
    -------------------------------------------------------------------------- */
 .vk-go-electric {
     text-align: center;
-    padding: var(--vk-space-lg) var(--vk-space-md);
-    margin: var(--vk-space-md) 0;
+    padding: var(--vk-space-sm) var(--vk-space-md) var(--vk-space-md);
+    margin: 4px 0 0;
     background: var(--vk-bg-light);
     border-radius: var(--vk-radius-lg);
 }
@@ -2632,9 +2632,9 @@ html, body {
         display: none !important;
     }
 }
-/* Give slider content room so it's not hidden behind fixed nav */
-.vk-modelo-slider {
-    padding-bottom: 90px;
+/* Give the whole mobile section room so go-electric isn't hidden behind fixed nav */
+.vk-paso1-mobile {
+    padding-bottom: 100px;
 }
 
 /* ── Swipe hint animation ───────────────────────────────────────────────── */
