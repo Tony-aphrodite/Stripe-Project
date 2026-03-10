@@ -203,6 +203,30 @@ var VkUI = {
             '</div>';
     },
 
+    getGaleriaImagenes: function(modeloId) {
+        var base = (window.VK_BASE_PATH || '');
+        var folderMap = {
+            'm03':        'm03',
+            'm05':        'm05',
+            'mc10':       'mc10',
+            'mino':       'mino',
+            'pesgo-plus': 'pesgo',
+            'ukko-s':     'ukko'
+        };
+        var galeria = {
+            'm03':        ['gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'm05':        ['gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'mc10':       ['gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'mino':       ['gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'pesgo-plus': ['gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'ukko-s':     ['model.png','black_side.png','blue_side.png','grey_side.png']
+        };
+        var folder = folderMap[modeloId];
+        var files  = galeria[modeloId];
+        if (!folder || !files) return [];
+        return files.map(function(f) { return base + 'img/' + folder + '/' + f; });
+    },
+
     getImagenMoto: function(modeloId, color) {
         var modeloFolderMap = {
             'm03':        'm03',

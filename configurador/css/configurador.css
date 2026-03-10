@@ -2077,3 +2077,142 @@ html, body {
 .vk-color-swatch--active .vk-color-swatch__label {
     color: var(--vk-green-primary);
 }
+
+/* ==========================================================================
+   Gallery Slider (model card images)
+   ========================================================================== */
+
+.vk-card__galeria {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px 12px 0 0;
+    background: #f0f0f0;
+    aspect-ratio: 4/3;
+}
+
+.vk-gal__track {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.vk-gal__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    flex-shrink: 0;
+    display: none;
+}
+
+.vk-gal__img--active {
+    display: block;
+}
+
+.vk-gal__arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    background: rgba(255,255,255,0.85);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.vk-gal__arrow--prev { left: 8px; }
+.vk-gal__arrow--next { right: 8px; }
+
+.vk-gal__dots {
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+}
+
+.vk-gal__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.vk-gal__dot--active {
+    background: #fff;
+}
+
+/* ==========================================================================
+   Horizontal Model Slider (mobile)
+   ========================================================================== */
+
+.vk-modelo-slider {
+    overflow: hidden;
+    width: 100%;
+}
+
+.vk-modelo-slider__track {
+    display: flex;
+    transition: transform 0.35s ease;
+    will-change: transform;
+}
+
+.vk-modelo-slider__item {
+    min-width: 100%;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.vk-modelo-tabs {
+    display: flex;
+    overflow-x: auto;
+    gap: 6px;
+    padding: 10px 12px 4px;
+    scrollbar-width: none;
+}
+
+.vk-modelo-tabs::-webkit-scrollbar { display: none; }
+
+.vk-modelo-tab {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--vk-border);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--vk-text-secondary);
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.vk-modelo-tab--active {
+    background: #039fe1;
+    border-color: #039fe1;
+    color: #fff;
+}
+
+/* ==========================================================================
+   Daily payment label
+   ========================================================================== */
+
+.vk-card__precio-diario {
+    font-size: 13px;
+    color: var(--vk-text-secondary);
+    text-align: center;
+    margin-bottom: 10px;
+    margin-top: -4px;
+}

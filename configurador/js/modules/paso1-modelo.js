@@ -202,15 +202,28 @@ var Paso1 = {
     _renderMobileHero: function(modelos, defaultModelo) {
         var html = '';
 
-        // Render ALL model cards vertically
+        // Horizontal slider wrapper
+        html += '<div class="vk-modelo-slider" id="vk-modelo-slider">';
+        html += '<div class="vk-modelo-slider__track" id="vk-modelo-slider-track">';
         for (var i = 0; i < modelos.length; i++) {
+            html += '<div class="vk-modelo-slider__item">';
             html += this.renderCard(modelos[i]);
-
-            // Scroll hint after first card
-            if (i === 0 && modelos.length > 1) {
-                html += '<div class="vk-scroll-hint">Desliza para ver m\u00e1s modelos &#8595;</div>';
-            }
+            html += '</div>';
         }
+        html += '</div>';
+        html += '</div>';
+
+        // Model name tabs at the bottom
+        html += '<div class="vk-modelo-tabs" id="vk-modelo-tabs">';
+        for (var j = 0; j < modelos.length; j++) {
+            var cls = modelos[j].id === defaultModelo.id ? ' vk-modelo-tab--active' : '';
+            html += '<button class="vk-modelo-tab' + cls + '" data-slide="' + j + '" data-mid="' + modelos[j].id + '">';
+            html += modelos[j].nombre;
+            html += '</button>';
+        }
+        html += '</div>';
+
+        html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:4px;">Desliza para ver m\u00e1s modelos \u2192</div>';
 
         return html;
     },
@@ -220,19 +233,34 @@ var Paso1 = {
     /* ------------------------------------------------------------------ */
 
     renderCard: function(modelo) {
-        var img = VkUI.getImagenMoto(modelo.id, modelo.colorDefault);
+        var galeria = VkUI.getGaleriaImagenes(modelo.id);
+        var img     = VkUI.getImagenMoto(modelo.id, modelo.colorDefault);
 
         var html = '<div class="vk-card" data-modelo="' + modelo.id + '">';
 
-        html += '<div class="vk-card__imagen">';
+        // Gallery slider
+        html += '<div class="vk-card__galeria" id="vk-galeria-' + modelo.id + '">';
         if (modelo.badge) {
-            html += '<div class="vk-card__badge">' +
-                '<span class="vk-card__badge-star">&#11088;</span> ' +
-                modelo.badge +
-                '</div>';
+            html += '<div class="vk-card__badge"><span class="vk-card__badge-star">&#11088;</span> ' + modelo.badge + '</div>';
         }
-        html += '<img src="' + img + '" alt="' + modelo.nombre + '" loading="lazy">' +
-            '</div>';
+        if (galeria.length > 1) {
+            html += '<button class="vk-gal__arrow vk-gal__arrow--prev" data-gal="' + modelo.id + '" aria-label="anterior">&#8249;</button>';
+            html += '<button class="vk-gal__arrow vk-gal__arrow--next" data-gal="' + modelo.id + '" aria-label="siguiente">&#8250;</button>';
+        }
+        html += '<div class="vk-gal__track" id="vk-gal-track-' + modelo.id + '">';
+        var srcs = galeria.length ? galeria : [img];
+        for (var gi = 0; gi < srcs.length; gi++) {
+            html += '<img class="vk-gal__img' + (gi === 0 ? ' vk-gal__img--active' : '') + '" src="' + srcs[gi] + '" alt="' + modelo.nombre + ' ' + (gi+1) + '" loading="' + (gi === 0 ? 'eager' : 'lazy') + '">';
+        }
+        html += '</div>';
+        if (srcs.length > 1) {
+            html += '<div class="vk-gal__dots">';
+            for (var di = 0; di < srcs.length; di++) {
+                html += '<span class="vk-gal__dot' + (di === 0 ? ' vk-gal__dot--active' : '') + '" data-gal="' + modelo.id + '" data-idx="' + di + '"></span>';
+            }
+            html += '</div>';
+        }
+        html += '</div>';
 
         html += '<div class="vk-card__info-row">';
         html += '<div class="vk-card__nombre">' + modelo.nombre + '</div>';
@@ -273,10 +301,12 @@ var Paso1 = {
 
     renderTabCredito: function(modelo) {
         // Calculate weekly payment with 25% down, 36 months
-        var credito = VkCalculadora.calcular(modelo.precioContado, 0.25, 36);
+        var credito    = VkCalculadora.calcular(modelo.precioContado, 0.25, 36);
+        var pagoDiario = Math.ceil(credito.pagoSemanal / 7);
         var html = '';
         html += '<div class="vk-card__credito-brand">' + VkUI.renderCreditoLogo(26) + '</div>';
         html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong> semanales</div>';
+        html += '<div class="vk-card__precio-diario">Menos de <strong>$' + pagoDiario + '</strong> diarios</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito">' +
             'CALCULAR MI CR\u00c9DITO &#8250;</button>';
         return html;
@@ -378,5 +408,69 @@ var Paso1 = {
             var metodo   = $(this).data('metodo');
             self.app.seleccionarModelo(modeloId, metodo);
         });
+
+        // ── Mobile: horizontal model slider tabs ───────────────
+        $(document).off('click', '#vk-paso-1 .vk-modelo-tab');
+        $(document).on('click', '#vk-paso-1 .vk-modelo-tab', function() {
+            var idx = parseInt($(this).data('slide'));
+            self._goToSlide(idx);
+        });
+
+        // ── Mobile: touch swipe on model slider ───────────────
+        var $track = $('#vk-modelo-slider-track');
+        if ($track.length) {
+            var touchStartX = 0;
+            var modelos = VOLTIKA_PRODUCTOS.modelos;
+            $track[0].addEventListener('touchstart', function(e) {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+            $track[0].addEventListener('touchend', function(e) {
+                var dx = e.changedTouches[0].screenX - touchStartX;
+                if (Math.abs(dx) > 40) {
+                    var current = self._currentSlide || 0;
+                    if (dx < 0 && current < modelos.length - 1) self._goToSlide(current + 1);
+                    if (dx > 0 && current > 0) self._goToSlide(current - 1);
+                }
+            }, { passive: true });
+        }
+
+        // ── Gallery arrows ─────────────────────────────────────
+        $(document).off('click', '.vk-gal__arrow');
+        $(document).on('click', '.vk-gal__arrow', function(e) {
+            e.stopPropagation();
+            var galId = $(this).data('gal');
+            var isPrev = $(this).hasClass('vk-gal__arrow--prev');
+            var $imgs  = $('#vk-gal-track-' + galId + ' .vk-gal__img');
+            var $dots  = $('[data-gal="' + galId + '"].vk-gal__dot');
+            var curr   = $imgs.index($imgs.filter('.vk-gal__img--active'));
+            var next   = isPrev ? (curr - 1 + $imgs.length) % $imgs.length : (curr + 1) % $imgs.length;
+            $imgs.removeClass('vk-gal__img--active').eq(next).addClass('vk-gal__img--active');
+            $dots.removeClass('vk-gal__dot--active').eq(next).addClass('vk-gal__dot--active');
+        });
+
+        // ── Gallery dots ───────────────────────────────────────
+        $(document).off('click', '.vk-gal__dot');
+        $(document).on('click', '.vk-gal__dot', function(e) {
+            e.stopPropagation();
+            var galId = $(this).data('gal');
+            var idx   = parseInt($(this).data('idx'));
+            var $imgs = $('#vk-gal-track-' + galId + ' .vk-gal__img');
+            var $dots = $('[data-gal="' + galId + '"].vk-gal__dot');
+            $imgs.removeClass('vk-gal__img--active').eq(idx).addClass('vk-gal__img--active');
+            $dots.removeClass('vk-gal__dot--active').eq(idx).addClass('vk-gal__dot--active');
+        });
+    },
+
+    _currentSlide: 0,
+
+    _goToSlide: function(idx) {
+        var modelos = VOLTIKA_PRODUCTOS.modelos;
+        if (idx < 0 || idx >= modelos.length) return;
+        this._currentSlide = idx;
+        var $track = $('#vk-modelo-slider-track');
+        var w = $track.closest('#vk-modelo-slider').width();
+        $track.css('transform', 'translateX(-' + (idx * w) + 'px)');
+        $('#vk-modelo-tabs .vk-modelo-tab').removeClass('vk-modelo-tab--active')
+            .filter('[data-slide="' + idx + '"]').addClass('vk-modelo-tab--active');
     }
 };
