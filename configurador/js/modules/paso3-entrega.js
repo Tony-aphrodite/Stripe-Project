@@ -129,7 +129,7 @@ var Paso3 = {
         html += '<input type="checkbox" id="vk-check-seguro" class="vk-checkbox" style="margin-top:3px;"' +
             (state.seguro ? ' checked' : '') + '>';
         html += '<div>';
-        html += '<div style="font-weight:800;font-size:15px;">Quiero cotizar y activar el seguro con <span style="color:#00529B;">Qu\u00e1litas</span> desde la entrega</div>';
+        html += '<div style="font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">Quiero cotizar y activar el seguro con <img src="img/Qualitas.png" alt="Qu\u00e1litas" style="height:20px;vertical-align:middle;"> desde la entrega</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Cotizamos y enviamos tu p\u00f3liza. Pago directo a la aseguradora.</div>';
         html += '</div>';
         html += '</label>';
