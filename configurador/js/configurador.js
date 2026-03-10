@@ -92,6 +92,10 @@
 
             setTimeout(function() {
                 $current.removeClass('vk-paso--active vk-paso--exit');
+                // Hide fixed model tabs when leaving paso 1
+                if (paso !== 1) {
+                    $('#vk-modelo-nav-fixed').hide();
+                }
                 self.inicializarPaso(paso);
                 $target.addClass('vk-paso--active');
 

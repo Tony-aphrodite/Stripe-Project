@@ -12,7 +12,22 @@ var Paso1 = {
     init: function(app) {
         this.app = app;
         this.render();
+        this._buildFixedNav();
         this.bindEvents();
+    },
+
+    _buildFixedNav: function() {
+        var modelos = VOLTIKA_PRODUCTOS.modelos;
+        var activeId = this._activeModeloId;
+        var html = '';
+        for (var j = 0; j < modelos.length; j++) {
+            var cls = modelos[j].id === activeId ? ' vk-modelo-tab--active' : '';
+            html += '<button class="vk-modelo-tab' + cls + '" data-slide="' + j + '" data-mid="' + modelos[j].id + '">';
+            html += modelos[j].nombre;
+            html += '</button>';
+        }
+        jQuery('#vk-modelo-tabs-fixed').html(html);
+        jQuery('#vk-modelo-nav-fixed').show();
     },
 
     render: function() {
@@ -52,7 +67,7 @@ var Paso1 = {
 
         // ── Mobile hero + sidebar (hidden on desktop via CSS) ─
         html += '<div class="vk-paso1-mobile">';
-        html += this._renderMobileHero(modelos, defaultModelo);
+        html += this._renderMobileHero(modelos);
         html += VkUI.renderGoElectricFooter();
         html += '</div>';
 
@@ -231,7 +246,7 @@ var Paso1 = {
     /*  MOBILE HERO + SIDEBAR                                               */
     /* ------------------------------------------------------------------ */
 
-    _renderMobileHero: function(modelos, defaultModelo) {
+    _renderMobileHero: function(modelos) {
         var html = '';
 
         // Horizontal slider wrapper
@@ -245,18 +260,6 @@ var Paso1 = {
         html += '</div>';
         html += '</div>';
 
-        // Model name tabs — fixed at bottom of viewport
-        html += '<div class="vk-modelo-nav-fixed">';
-        html += '<div class="vk-modelo-tabs" id="vk-modelo-tabs">';
-        for (var j = 0; j < modelos.length; j++) {
-            var cls = modelos[j].id === defaultModelo.id ? ' vk-modelo-tab--active' : '';
-            html += '<button class="vk-modelo-tab' + cls + '" data-slide="' + j + '" data-mid="' + modelos[j].id + '">';
-            html += modelos[j].nombre;
-            html += '</button>';
-        }
-        html += '</div>';
-        html += '<div class="vk-swipe-hint"><span class="vk-swipe-hint__hand">&#128072;</span><span class="vk-swipe-hint__text">Desliza para ver m\u00e1s modelos</span></div>';
-        html += '</div>';
 
         return html;
     },
@@ -446,9 +449,9 @@ var Paso1 = {
             self.app.seleccionarModelo(modeloId, metodo);
         });
 
-        // ── Mobile: horizontal model slider tabs ───────────────
-        $(document).off('click', '#vk-paso-1 .vk-modelo-tab');
-        $(document).on('click', '#vk-paso-1 .vk-modelo-tab', function() {
+        // ── Mobile: fixed model tabs (body level) ─────────────
+        $(document).off('click', '#vk-modelo-tabs-fixed .vk-modelo-tab');
+        $(document).on('click', '#vk-modelo-tabs-fixed .vk-modelo-tab', function() {
             var idx = parseInt($(this).data('slide'));
             self._goToSlide(idx);
         });
@@ -512,10 +515,10 @@ var Paso1 = {
         var $track = $('#vk-modelo-slider-track');
         var w = $track.closest('#vk-modelo-slider').width();
         $track.css('transform', 'translateX(-' + (idx * w) + 'px)');
-        var $tabs = $('#vk-modelo-tabs .vk-modelo-tab');
+        // Sync both inline tabs (if any) and body-level fixed tabs
+        var $tabs = $('#vk-modelo-tabs-fixed .vk-modelo-tab');
         $tabs.removeClass('vk-modelo-tab--active');
         var $active = $tabs.filter('[data-slide="' + idx + '"]').addClass('vk-modelo-tab--active');
-        // Scroll active tab into view within the tab bar
         if ($active.length) {
             try {
                 $active[0].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
