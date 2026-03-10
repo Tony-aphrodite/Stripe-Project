@@ -239,15 +239,20 @@ var Paso4B = {
         html += '</div>';
 
         // ── Price summary ───────────────────────────────────────────────────
-        html += '<div id="vk-price-summary" style="display:flex;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--vk-border);margin-top:8px;">';
-        html += '<div style="font-size:14px;">';
-        html += '<div>Precio de la moto</div>';
-        html += '<div style="margin-top:4px;">Enganche</div>';
-        html += '</div>';
-        html += '<div style="font-size:14px;text-align:right;font-weight:700;">';
-        html += '<div>' + VkUI.formatPrecio(modelo.precioContado) + '</div>';
-        html += '<div style="margin-top:4px;color:var(--vk-green-primary);" id="vk-enganche-summary">' + VkUI.formatPrecio(modelo.precioContado * this._enganchePct) + '</div>';
-        html += '</div>';
+        html += '<div id="vk-price-summary" style="padding:12px 16px;border-top:1px solid var(--vk-border);margin-top:8px;">';
+        var summaryRows = [
+            { label: 'Precio de la moto',   id: '',                    val: VkUI.formatPrecio(modelo.precioContado),              color: '' },
+            { label: 'Enganche',            id: 'vk-enganche-summary', val: VkUI.formatPrecio(credito.enganche),                  color: 'color:var(--vk-green-primary);' },
+            { label: 'Monto a financiar',   id: 'vk-monto-summary',    val: VkUI.formatPrecio(credito.montoFinanciado),           color: '' },
+            { label: 'Plazo y pago',        id: 'vk-plazo-summary',    val: this._plazoMeses + ' meses &middot; ' + VkUI.formatPrecio(credito.pagoSemanal) + '/semana', color: 'color:#039fe1;' }
+        ];
+        for (var si = 0; si < summaryRows.length; si++) {
+            var row = summaryRows[si];
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;' + (si > 0 ? 'margin-top:6px;' : '') + '">';
+            html += '<span style="font-size:14px;color:var(--vk-text-secondary);">' + row.label + '</span>';
+            html += '<span style="font-size:14px;font-weight:700;' + row.color + '"' + (row.id ? ' id="' + row.id + '"' : '') + '>' + row.val + '</span>';
+            html += '</div>';
+        }
         html += '</div>';
 
         // ── APARTAR MI VOLTIKA button ───────────────────────────────────────
@@ -326,6 +331,8 @@ var Paso4B = {
             $('#vk-enganche-amount-display').text(engancheStr);
             $('#vk-enganche-big').text(engancheStr);
             $('#vk-enganche-summary').text(engancheStr);
+            $('#vk-monto-summary').text(VkUI.formatPrecio(credito.montoFinanciado));
+            $('#vk-plazo-summary').html(self._plazoMeses + ' meses &middot; ' + VkUI.formatPrecio(credito.pagoSemanal) + '/semana');
             $('#vk-calc-results').html(self._renderCalcResults(modelo, credito));
         });
 
@@ -347,6 +354,8 @@ var Paso4B = {
                 'border-color': '#039fe1'
             });
 
+            $('#vk-monto-summary').text(VkUI.formatPrecio(credito.montoFinanciado));
+            $('#vk-plazo-summary').html(self._plazoMeses + ' meses &middot; ' + VkUI.formatPrecio(credito.pagoSemanal) + '/semana');
             $('#vk-calc-results').html(self._renderCalcResults(modelo, credito));
         });
 
