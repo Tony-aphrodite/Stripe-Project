@@ -1545,6 +1545,166 @@ html, body {
 }
 
 /* --------------------------------------------------------------------------
+   Credit Identity Screen (Confirma tu identidad)
+   -------------------------------------------------------------------------- */
+.vk-identidad-logo {
+    text-align: center;
+    padding: 20px 0 4px;
+}
+.vk-identidad-logo img {
+    height: 28px;
+}
+
+.vk-identidad-progress {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    margin-bottom: 4px;
+}
+.vk-identidad-progress__step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--vk-text-muted);
+}
+.vk-identidad-progress__step--done { color: var(--vk-green-primary); }
+.vk-identidad-progress__step--active { color: #1976D2; }
+.vk-identidad-progress__num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--vk-border-light);
+    color: var(--vk-text-muted);
+}
+.vk-identidad-progress__step--done .vk-identidad-progress__num {
+    background: var(--vk-green-primary);
+    color: white;
+}
+.vk-identidad-progress__step--active .vk-identidad-progress__num {
+    background: #1976D2;
+    color: white;
+}
+.vk-identidad-progress__line {
+    flex: 1;
+    max-width: 40px;
+    height: 2px;
+    background: var(--vk-border-light);
+}
+
+.vk-identidad-title {
+    font-size: 22px;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 8px;
+    color: var(--vk-text-primary);
+}
+.vk-identidad-subtitle {
+    font-size: 14px;
+    color: var(--vk-text-secondary);
+    text-align: center;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    padding: 0 8px;
+}
+
+.vk-identidad-security {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #E3F2FD;
+    border: 1px solid #90CAF9;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+}
+.vk-identidad-security__icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.vk-identidad-security__title { font-size: 13px; font-weight: 700; color: #0D47A1; margin-bottom: 3px; }
+.vk-identidad-security__text { font-size: 12px; color: #1565C0; line-height: 1.4; }
+
+.vk-identidad-step {
+    display: grid;
+    grid-template-columns: 36px 1fr 28px;
+    align-items: center;
+    gap: 12px;
+    border: 1.5px solid var(--vk-border-light);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+}
+.vk-identidad-step:hover { border-color: #1976D2; background: #F8FBFF; }
+.vk-identidad-step--done { border-color: var(--vk-green-primary) !important; background: var(--vk-green-soft) !important; }
+.vk-identidad-step__num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #1976D2;
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.vk-identidad-step__title { font-size: 14px; font-weight: 700; color: #1976D2; margin-bottom: 2px; }
+.vk-identidad-step__desc { font-size: 12px; color: var(--vk-text-secondary); line-height: 1.4; }
+.vk-identidad-step__status { font-size: 20px; color: var(--vk-border); text-align: center; }
+
+.vk-identidad-timer {
+    text-align: center;
+    font-size: 13px;
+    color: #1976D2;
+    margin: 4px 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.vk-identidad-consejos {
+    background: var(--vk-bg-light);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 14px;
+}
+.vk-identidad-consejos__title {
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 10px;
+    color: var(--vk-text-primary);
+}
+.vk-identidad-consejos__grid { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.vk-identidad-consejos__item {
+    font-size: 13px;
+    color: var(--vk-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 45%;
+}
+.vk-identidad-check { color: var(--vk-green-primary); font-weight: 700; }
+
+.vk-identidad-footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--vk-text-muted);
+    margin-top: 14px;
+    padding-bottom: 8px;
+}
+
+/* --------------------------------------------------------------------------
    Back Button
    -------------------------------------------------------------------------- */
 .vk-back-btn {

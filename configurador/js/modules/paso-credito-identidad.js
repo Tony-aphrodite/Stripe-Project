@@ -21,80 +21,85 @@ var PasoCreditoIdentidad = {
     render: function() {
         var html = '';
 
-        html += VkUI.renderBackButton('credito-consentimiento');
+        // 1. Logo
+        html += '<div class="vk-identidad-logo">';
+        html += '<img src="img/voltika_logo_h.svg" alt="Voltika">';
+        html += '</div>';
 
-        html += '<h2 class="vk-paso__titulo">Verificación de identidad</h2>';
-        html += '<p style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-bottom:16px;">' +
-            'Necesitamos verificar tu identidad con tu INE vigente</p>';
+        // 2. Progress indicator
+        html += '<div class="vk-identidad-progress">';
+        html += '<div class="vk-identidad-progress__step vk-identidad-progress__step--done">';
+        html += '<span class="vk-identidad-progress__num">&#10003;</span>';
+        html += '<span class="vk-identidad-progress__label">Cr\u00e9dito aprobado</span>';
+        html += '</div>';
+        html += '<div class="vk-identidad-progress__line"></div>';
+        html += '<div class="vk-identidad-progress__step vk-identidad-progress__step--active">';
+        html += '<span class="vk-identidad-progress__num">2</span>';
+        html += '<span class="vk-identidad-progress__label">Confirmar identidad</span>';
+        html += '</div>';
+        html += '</div>';
 
-        html += '<div class="vk-card">';
-        html += '<div style="padding:20px;">';
+        // 3. Title & subtitle
+        html += '<h2 class="vk-identidad-title">Confirma tu identidad</h2>';
+        html += '<p class="vk-identidad-subtitle">Este es el \u00faltimo paso para activar tu cr\u00e9dito Voltika y liberar la entrega de tu moto.</p>';
 
-        // Step 1: INE Frente
-        html += this._renderUploadStep(
-            1, 'ine-frente', 'INE - Frente',
-            'Toma una foto clara del frente de tu INE',
-            '&#127466;&#127465;'
-        );
+        // 4. Security info box
+        html += '<div class="vk-identidad-security">';
+        html += '<div class="vk-identidad-security__icon">&#128274;</div>';
+        html += '<div>';
+        html += '<div class="vk-identidad-security__title">Tu informaci\u00f3n est\u00e1 protegida y cifrada.</div>';
+        html += '<div class="vk-identidad-security__text">Voltika utiliza verificaci\u00f3n segura para proteger tu cr\u00e9dito y evitar fraudes.</div>';
+        html += '</div>';
+        html += '</div>';
 
-        // Step 2: INE Reverso
-        html += this._renderUploadStep(
-            2, 'ine-reverso', 'INE - Reverso',
-            'Toma una foto clara del reverso de tu INE',
-            '&#127466;&#127465;'
-        );
+        // 5. Upload steps
+        html += this._renderUploadStep(1, 'ine-frente',  'INE \u2013 Frente',           'Toma una foto clara del <strong>frente</strong> de tu INE');
+        html += this._renderUploadStep(2, 'ine-reverso', 'INE \u2013 Reverso',          'Toma una foto clara del <strong>reverso</strong> de tu INE');
+        html += this._renderUploadStep(3, 'selfie',      'Selfie de verificaci\u00f3n', 'Toma una foto de tu rostro mirando a la c\u00e1mara');
 
-        // Step 3: Selfie
-        html += this._renderUploadStep(
-            3, 'selfie', 'Selfie de verificación',
-            'Toma una foto de tu rostro mirando a la cámara',
-            '&#129489;'
-        );
-
-        // Tips
-        html += '<div style="background:var(--vk-bg-light);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--vk-text-secondary);">';
-        html += '<strong>Consejos:</strong><br>';
-        html += '&#8226; Buena iluminación, sin reflejos<br>';
-        html += '&#8226; Documento completo y legible<br>';
-        html += '&#8226; Selfie con rostro despejado (sin lentes/gorra)';
+        // 6. 30-second notice
+        html += '<div class="vk-identidad-timer">';
+        html += '<span style="font-size:15px;">&#9201;</span> Este proceso toma <strong>menos de 30 segundos</strong>';
         html += '</div>';
 
         // Error
         html += '<div id="vk-identidad-error" style="display:none;color:#C62828;font-size:13px;' +
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
-        // CTA
-        html += '<button class="vk-btn vk-btn--primary" id="vk-identidad-continuar" disabled>' +
-            '<span id="vk-identidad-label">Verificar identidad</span>' +
+        // 7. CTA button — always active, validates on click
+        html += '<button class="vk-btn vk-btn--primary" id="vk-identidad-continuar" style="text-transform:uppercase;letter-spacing:0.5px;">' +
+            '<span id="vk-identidad-label">Continuar y confirmar mi identidad &rsaquo;</span>' +
             '<span id="vk-identidad-spinner" style="display:none;">' + VkUI.renderSpinner() + ' Verificando...</span>' +
             '</button>';
 
-        html += '</div>'; // end padding
-        html += '</div>'; // end card
+        // 8. Consejos rápidos
+        html += '<div class="vk-identidad-consejos">';
+        html += '<div class="vk-identidad-consejos__title">Consejos r\u00e1pidos</div>';
+        html += '<div class="vk-identidad-consejos__grid">';
+        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Buena iluminaci\u00f3n</div>';
+        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Documento completo</div>';
+        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Selfie con rostro despejado</div>';
+        html += '</div>';
+        html += '</div>';
+
+        // 9. Footer text
+        html += '<p class="vk-identidad-footer">Tu moto permanecer\u00e1 reservada mientras completas este paso.</p>';
 
         jQuery('#vk-credito-identidad-container').html(html);
     },
 
-    _renderUploadStep: function(num, id, title, description, icon) {
+    _renderUploadStep: function(num, id, title, description) {
         var html = '';
-        html += '<div class="vk-upload-step" id="vk-upload-' + id + '" style="' +
-            'border:2px dashed var(--vk-border);border-radius:10px;padding:16px;margin-bottom:14px;' +
-            'text-align:center;cursor:pointer;transition:all .2s;">';
-        html += '<div style="display:flex;align-items:center;gap:12px;">';
-        html += '<div style="font-size:32px;flex-shrink:0;">' + icon + '</div>';
-        html += '<div style="text-align:left;flex:1;">';
-        html += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);">' +
-            '<span style="color:var(--vk-green-primary);">Paso ' + num + ':</span> ' + title + '</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-top:2px;">' + description + '</div>';
+        html += '<div class="vk-identidad-step" id="vk-upload-' + id + '">';
+        html += '<div class="vk-identidad-step__num">' + num + '</div>';
+        html += '<div class="vk-identidad-step__body">';
+        html += '<div class="vk-identidad-step__title">' + title + '</div>';
+        html += '<div class="vk-identidad-step__desc">' + description + '</div>';
         html += '</div>';
-        html += '<div id="vk-status-' + id + '" style="flex-shrink:0;font-size:20px;color:var(--vk-border);">&#9711;</div>';
-        html += '</div>';
-        // Hidden file inputs — camera preferred on mobile
-        html += '<input type="file" id="vk-file-' + id + '" accept="image/*" capture="environment" ' +
-            'style="display:none;">';
-        // Preview
-        html += '<div id="vk-preview-' + id + '" style="display:none;margin-top:10px;">';
-        html += '<img style="max-width:100%;max-height:150px;border-radius:6px;border:1px solid var(--vk-border);">';
+        html += '<div id="vk-status-' + id + '" class="vk-identidad-step__status">&#9711;</div>';
+        html += '<input type="file" id="vk-file-' + id + '" accept="image/*" capture="environment" style="display:none;">';
+        html += '<div id="vk-preview-' + id + '" style="display:none;margin-top:10px;grid-column:1/-1;">';
+        html += '<img style="max-width:100%;max-height:120px;border-radius:6px;border:1px solid var(--vk-border);">';
         html += '</div>';
         html += '</div>';
         return html;
@@ -103,7 +108,6 @@ var PasoCreditoIdentidad = {
     bindEvents: function() {
         var self = this;
 
-        // Click upload areas to trigger file input
         var ids = ['ine-frente', 'ine-reverso', 'selfie'];
         ids.forEach(function(id) {
             jQuery(document).off('click', '#vk-upload-' + id);
@@ -120,11 +124,17 @@ var PasoCreditoIdentidad = {
             });
         });
 
-        // Use camera capture for selfie
         jQuery('#vk-file-selfie').attr('capture', 'user');
 
         jQuery(document).off('click', '#vk-identidad-continuar');
         jQuery(document).on('click', '#vk-identidad-continuar', function() {
+            // Validate all 3 uploaded before proceeding
+            if (!self._ineFrente || !self._ineReverso || !self._selfie) {
+                jQuery('#vk-identidad-error')
+                    .text('Por favor sube las 3 fotos antes de continuar (INE frente, reverso y selfie).')
+                    .show();
+                return;
+            }
             self._verificar();
         });
     },
@@ -132,41 +142,28 @@ var PasoCreditoIdentidad = {
     _handleFile: function(id, file) {
         var self = this;
 
-        // Validate file
         if (!file.type.startsWith('image/')) {
             jQuery('#vk-identidad-error').text('Solo se permiten imágenes.').show();
             return;
         }
-        if (file.size > 10 * 1024 * 1024) { // 10MB max
+        if (file.size > 10 * 1024 * 1024) {
             jQuery('#vk-identidad-error').text('La imagen es muy grande. Máximo 10 MB.').show();
             return;
         }
 
-        // Store file reference
         if (id === 'ine-frente')  self._ineFrente = file;
         if (id === 'ine-reverso') self._ineReverso = file;
         if (id === 'selfie')      self._selfie = file;
 
-        // Show preview
         var reader = new FileReader();
         reader.onload = function(e) {
             jQuery('#vk-preview-' + id).show().find('img').attr('src', e.target.result);
             jQuery('#vk-status-' + id).html('&#10004;').css('color', 'var(--vk-green-primary)');
-            jQuery('#vk-upload-' + id).css({
-                'border-color': 'var(--vk-green-primary)',
-                'background': 'var(--vk-green-soft)'
-            });
+            jQuery('#vk-upload-' + id).addClass('vk-identidad-step--done');
         };
         reader.readAsDataURL(file);
 
-        // Check if all 3 uploaded
         jQuery('#vk-identidad-error').hide();
-        self._checkAllUploaded();
-    },
-
-    _checkAllUploaded: function() {
-        var allDone = this._ineFrente && this._ineReverso && this._selfie;
-        jQuery('#vk-identidad-continuar').prop('disabled', !allDone);
     },
 
     _verificar: function() {
@@ -178,13 +175,11 @@ var PasoCreditoIdentidad = {
         jQuery('#vk-identidad-spinner').show();
         jQuery('#vk-identidad-error').hide();
 
-        // Build FormData for multipart upload
         var formData = new FormData();
         formData.append('ine_frente', self._ineFrente);
         formData.append('ine_reverso', self._ineReverso);
         formData.append('selfie', self._selfie);
 
-        // Add user data
         var partes    = (state.nombre || '').trim().split(/\s+/);
         var nombre    = partes.length > 0 ? partes[0] : '';
         var apellidos = partes.length > 1 ? partes.slice(1).join(' ') : '';
@@ -207,7 +202,6 @@ var PasoCreditoIdentidad = {
                 self.app.irAPaso('credito-resultado');
             },
             error: function() {
-                // Fallback: continue with approved status
                 state._truoraResult = { status: 'approved', fallback: true };
                 state._identidadVerificada = true;
                 self.app.irAPaso('credito-resultado');
