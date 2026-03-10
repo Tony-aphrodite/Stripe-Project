@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test - Confirma tu identidad</title>
+<link rel="stylesheet" href="css/configurador.css">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #f0f0f0; display: flex; justify-content: center; padding: 20px; font-family: 'Inter', -apple-system, sans-serif; }
+.container { max-width: 420px; width: 100%; background: white; border-radius: 16px; padding: 0 20px 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+</style>
+</head>
+<body>
+<div class="container" id="vk-credito-identidad-container"></div>
+
+<script>
+(function render() {
+    var html = '';
+
+    // 1. Logo
+    html += '<div class="vk-identidad-logo">';
+    html += '<img src="img/voltika_logo_h.svg" alt="Voltika">';
+    html += '</div>';
+
+    // 2. Progress indicator
+    html += '<div class="vk-identidad-progress">';
+    html += '<div class="vk-identidad-progress__step vk-identidad-progress__step--done">';
+    html += '<span class="vk-identidad-progress__num">&#10003;</span>';
+    html += '<span class="vk-identidad-progress__label">Cr\u00e9dito aprobado</span>';
+    html += '</div>';
+    html += '<div class="vk-identidad-progress__line"></div>';
+    html += '<div class="vk-identidad-progress__step vk-identidad-progress__step--active">';
+    html += '<span class="vk-identidad-progress__num">2</span>';
+    html += '<span class="vk-identidad-progress__label">Confirmar identidad</span>';
+    html += '</div>';
+    html += '</div>';
+
+    // 3. Title & subtitle
+    html += '<h2 class="vk-identidad-title">Confirma tu identidad</h2>';
+    html += '<p class="vk-identidad-subtitle">Este es el \u00faltimo paso para activar tu cr\u00e9dito Voltika y liberar la entrega de tu moto.</p>';
+
+    // 4. Security info box
+    html += '<div class="vk-identidad-security">';
+    html += '<div class="vk-identidad-security__icon">&#128274;</div>';
+    html += '<div>';
+    html += '<div class="vk-identidad-security__title">Tu informaci\u00f3n est\u00e1 protegida y cifrada.</div>';
+    html += '<div class="vk-identidad-security__text">Voltika utiliza verificaci\u00f3n segura para proteger tu cr\u00e9dito y evitar fraudes.</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // 5. Upload steps
+    function renderStep(num, id, title, description) {
+        var s = '';
+        s += '<div class="vk-identidad-step" id="vk-upload-' + id + '" onclick="document.getElementById(\'vk-file-' + id + '\').click()">';
+        s += '<div class="vk-identidad-step__num">' + num + '</div>';
+        s += '<div class="vk-identidad-step__body">';
+        s += '<div class="vk-identidad-step__title">' + title + '</div>';
+        s += '<div class="vk-identidad-step__desc">' + description + '</div>';
+        s += '</div>';
+        s += '<div id="vk-status-' + id + '" class="vk-identidad-step__status">&#9711;</div>';
+        s += '<input type="file" id="vk-file-' + id + '" accept="image/*" style="display:none;" onchange="handleFile(\'' + id + '\', this.files[0])">';
+        s += '<div id="vk-preview-' + id + '" style="display:none;margin-top:10px;grid-column:1/-1;">';
+        s += '<img style="max-width:100%;max-height:120px;border-radius:6px;border:1px solid #ddd;">';
+        s += '</div>';
+        s += '</div>';
+        return s;
+    }
+
+    html += renderStep(1, 'ine-frente',  'INE \u2013 Frente',           'Toma una foto clara del <strong>frente</strong> de tu INE');
+    html += renderStep(2, 'ine-reverso', 'INE \u2013 Reverso',          'Toma una foto clara del <strong>reverso</strong> de tu INE');
+    html += renderStep(3, 'selfie',      'Selfie de verificaci\u00f3n', 'Toma una foto de tu rostro mirando a la c\u00e1mara');
+
+    // 6. Timer
+    html += '<div class="vk-identidad-timer">';
+    html += '<span style="font-size:15px;">&#9201;</span> Este proceso toma <strong>menos de 30 segundos</strong>';
+    html += '</div>';
+
+    // Error
+    html += '<div id="vk-identidad-error" style="display:none;color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
+
+    // 7. CTA
+    html += '<button class="vk-btn vk-btn--primary" onclick="checkAndContinue()" style="text-transform:uppercase;letter-spacing:0.5px;">Continuar y confirmar mi identidad &rsaquo;</button>';
+
+    // 8. Consejos
+    html += '<div class="vk-identidad-consejos">';
+    html += '<div class="vk-identidad-consejos__title">Consejos r\u00e1pidos</div>';
+    html += '<div class="vk-identidad-consejos__grid">';
+    html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Buena iluminaci\u00f3n</div>';
+    html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Documento completo</div>';
+    html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Selfie con rostro despejado</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // 9. Footer
+    html += '<p class="vk-identidad-footer">Tu moto permanecer\u00e1 reservada mientras completas este paso.</p>';
+
+    document.getElementById('vk-credito-identidad-container').innerHTML = html;
+})();
+
+var uploaded = {};
+
+function handleFile(id, file) {
+    if (!file) return;
+    uploaded[id] = true;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('vk-preview-' + id).style.display = 'block';
+        document.getElementById('vk-preview-' + id).querySelector('img').src = e.target.result;
+        document.getElementById('vk-status-' + id).innerHTML = '&#10004;';
+        document.getElementById('vk-status-' + id).style.color = '#2E7D32';
+        document.getElementById('vk-upload-' + id).classList.add('vk-identidad-step--done');
+    };
+    reader.readAsDataURL(file);
+    document.getElementById('vk-identidad-error').style.display = 'none';
+}
+
+function checkAndContinue() {
+    if (!uploaded['ine-frente'] || !uploaded['ine-reverso'] || !uploaded['selfie']) {
+        var err = document.getElementById('vk-identidad-error');
+        err.textContent = 'Por favor sube las 3 fotos antes de continuar (INE frente, reverso y selfie).';
+        err.style.display = 'block';
+        return;
+    }
+    alert('✓ Todas las fotos cargadas. Continuando...');
+}
+</script>
+</body>
+</html>

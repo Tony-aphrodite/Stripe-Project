@@ -214,11 +214,11 @@ var VkUI = {
             'ukko-s':     'ukko'
         };
         var galeria = {
-            'm03':        ['gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
-            'm05':        ['gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
-            'mc10':       ['gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
-            'mino':       ['gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
-            'pesgo-plus': ['gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'm03':        ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'm05':        ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'mc10':       ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'mino':       ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'pesgo-plus': ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
             'ukko-s':     ['model.png','black_side.png','blue_side.png','grey_side.png']
         };
         var folder = folderMap[modeloId];
