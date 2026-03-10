@@ -24,9 +24,12 @@ var PasoCreditoAprobado = {
 
         // Blue gradient header
         html += '<div class="vk-aprobado-header">';
+        html += '<div class="vk-aprobado-header__logo">';
+        html += '<img src="img/voltika_logo_h.svg" alt="Voltika">';
+        html += '</div>';
         html += '<div class="vk-aprobado-header__check">';
         html += '<svg viewBox="0 0 80 80" width="80" height="80">';
-        html += '<circle cx="40" cy="40" r="36" fill="#1976D2" />';
+        html += '<circle cx="40" cy="40" r="36" fill="#4CAF50" />';
         html += '<path d="M24 40 L35 52 L56 28" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />';
         html += '</svg>';
         html += '</div>';
@@ -63,13 +66,14 @@ var PasoCreditoAprobado = {
         html += '</div>';
 
         // CTA
-        html += '<button class="vk-btn vk-btn--primary" id="vk-aprobado-continuar" style="margin-top:16px;">Ver mi plan de pagos &rsaquo;</button>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-aprobado-continuar" style="margin-top:16px;text-transform:uppercase;letter-spacing:0.5px;">Continuar y confirmar mi identidad &rsaquo;</button>';
         html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:6px;">Tu plan de pagos se mostrar\u00e1 en el siguiente paso.</p>';
 
-        // Trust indicators
-        html += '<div style="margin-top:20px;text-align:center;font-size:13px;color:var(--vk-text-secondary);">';
-        html += '<div style="margin-bottom:6px;">&#128274; Proceso seguro</div>';
-        html += '<div>&#128172; Un asesor Voltika estar\u00e1 disponible si necesitas ayuda.</div>';
+        // Trust badges
+        html += '<div class="vk-aprobado-trust">';
+        html += '<div class="vk-aprobado-trust__item">&#128274; Proceso 100% seguro y encriptado</div>';
+        html += '<div class="vk-aprobado-trust__item">&#9989; Consulta en Bur\u00f3 de Cr\u00e9dito</div>';
+        html += '<div class="vk-aprobado-trust__item">&#128172; Un asesor Voltika estar\u00e1 disponible si necesitas ayuda.</div>';
         html += '</div>';
 
         html += '</div>'; // end body

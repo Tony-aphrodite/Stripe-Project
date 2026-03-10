@@ -1402,28 +1402,84 @@ html, body {
    Credit Approved Screen (Felicidades)
    -------------------------------------------------------------------------- */
 .vk-aprobado-header {
-    background: linear-gradient(135deg, #0D47A1 0%, #1976D2 100%);
+    background: linear-gradient(160deg, #1a3ccc 0%, #1565C0 50%, #0D47A1 100%);
     border-radius: var(--vk-radius-lg) var(--vk-radius-lg) 0 0;
-    padding: 32px 20px;
+    padding: 28px 20px 36px;
     text-align: center;
     color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Sparkle dots */
+.vk-aprobado-header::before,
+.vk-aprobado-header::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    animation: vk-sparkle 2s ease-in-out infinite alternate;
+}
+.vk-aprobado-header::before {
+    width: 8px; height: 8px;
+    top: 30px; left: 30px;
+}
+.vk-aprobado-header::after {
+    width: 6px; height: 6px;
+    top: 50px; right: 40px;
+    animation-delay: 0.5s;
+}
+
+@keyframes vk-sparkle {
+    0%   { opacity: 0.3; transform: scale(0.8); }
+    100% { opacity: 1;   transform: scale(1.3); }
+}
+
+.vk-aprobado-header__logo {
+    margin-bottom: 20px;
+}
+
+.vk-aprobado-header__logo img {
+    height: 26px;
+    filter: brightness(0) invert(1);
 }
 
 .vk-aprobado-header__check {
-    margin-bottom: 12px;
+    position: relative;
+    display: inline-block;
+    margin-bottom: 16px;
+}
+
+/* Decorative sparkle stars around checkmark */
+.vk-aprobado-header__check::before {
+    content: '✦';
+    position: absolute;
+    top: -8px; left: -16px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    animation: vk-sparkle 1.5s ease-in-out infinite alternate;
+}
+.vk-aprobado-header__check::after {
+    content: '✦';
+    position: absolute;
+    bottom: 4px; right: -18px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    animation: vk-sparkle 1.8s ease-in-out infinite alternate;
+    animation-delay: 0.4s;
 }
 
 .vk-aprobado-header__title {
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 800;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
 }
 
 .vk-aprobado-header__subtitle {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 600;
     opacity: 0.95;
-    line-height: 1.3;
+    line-height: 1.4;
 }
 
 .vk-aprobado-body {
@@ -1471,6 +1527,21 @@ html, body {
     display: flex;
     gap: 8px;
     align-items: center;
+}
+
+.vk-aprobado-trust {
+    margin-top: 20px;
+    border-top: 1px solid var(--vk-border-light);
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.vk-aprobado-trust__item {
+    font-size: 13px;
+    color: var(--vk-text-secondary);
+    text-align: center;
 }
 
 /* --------------------------------------------------------------------------
