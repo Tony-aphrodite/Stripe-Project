@@ -5,7 +5,8 @@
    ========================================================================== */
 
 /* Prevent horizontal overflow on mobile (WordPress wrapper can cause scroll) */
-html, body {
+/* NOTE: overflow-x:hidden on body breaks position:fixed on iOS Safari — apply to html only */
+html {
     overflow-x: hidden;
     max-width: 100vw;
 }
