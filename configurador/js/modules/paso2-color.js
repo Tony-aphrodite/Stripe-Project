@@ -24,8 +24,9 @@ var Paso2 = {
 
         var html = '';
 
-        // Back button
-        html += VkUI.renderBackButton(1);
+        // Back button — credit: back to calculator (4B), others: back to model (1)
+        var backPaso = state.metodoPago === 'credito' ? 4 : 1;
+        html += VkUI.renderBackButton(backPaso);
 
         // Step header
         html += '<h2 class="vk-paso__titulo">Elige el color de tu Voltika <strong>' + modelo.nombre + '</strong></h2>';
@@ -154,14 +155,11 @@ var Paso2 = {
     bindEvents: function() {
         var self = this;
 
-        // Continue: crédito → calculator (4B), contado/msi → CP (3)
+        // Continue: all methods → delivery (3)
+        // Credit flux: calculator already done before color selection
         jQuery(document).off('click', '#vk-paso2-continuar');
         jQuery(document).on('click', '#vk-paso2-continuar', function() {
-            if (self.app.state.metodoPago === 'credito') {
-                self.app.irAPaso(4); // Goes to Paso4B (calculator)
-            } else {
-                self.app.irAPaso(3); // Goes to Paso3 (CP)
-            }
+            self.app.irAPaso(3);
         });
     }
 };

@@ -56,8 +56,13 @@
             this.state.modeloSeleccionado = modeloId;
             this.state.metodoPago = metodoPago;
             this.state.colorSeleccionado = null;
-            // For credito, skip to paso 4B (calculator) after paso 2
-            this.irAPaso(2);
+            // Credit flux: model → calculator → color
+            // Other flux:  model → color → delivery
+            if (metodoPago === 'credito') {
+                this.irAPaso(4); // Go to credit calculator first
+            } else {
+                this.irAPaso(2); // Go to color selector
+            }
         },
 
         /**

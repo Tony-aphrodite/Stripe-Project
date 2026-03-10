@@ -167,8 +167,8 @@ var Paso4B = {
 
         var html = '';
 
-        // Back button — back to color selection (paso 2)
-        html += VkUI.renderBackButton(2);
+        // Back button — back to model selection (paso 1)
+        html += VkUI.renderBackButton(1);
 
         // ── Title ───────────────────────────────────────────────────────────
         html += '<div style="text-align:left;margin-bottom:16px;">';
@@ -303,11 +303,11 @@ var Paso4B = {
                    .off('click', '.vk-plazo-btn')
                    .off('input', '#vk-enganche-slider');
 
-        // "CONFIRMAR COMPRA" — save enganche/plazo and go to next credit step
+        // "CONFIRMAR COMPRA" — save enganche/plazo and go to color selection
         $(document).on('click', '#vk-confirmar-credito', function() {
             self.app.state.enganchePorcentaje = self._enganchePct;
             self.app.state.plazoMeses = self._plazoMeses;
-            self.app.irAPaso(3); // Go to CP/delivery screen
+            self.app.irAPaso(2); // Go to color selector
         });
 
         // Slider enganche
@@ -345,15 +345,15 @@ var Paso4B = {
             $('#vk-calc-results').html(self._renderCalcResults(modelo, credito));
         });
 
-        // Switch a contado/MSI
+        // Switch a contado/MSI — go to color selector first (color not yet chosen)
         $(document).on('click', '#vk-switch-contado', function() {
             self.app.state.metodoPago = 'contado';
-            self.app.irAPaso(3);
+            self.app.irAPaso(2);
         });
 
         $(document).on('click', '#vk-switch-msi', function() {
             self.app.state.metodoPago = 'msi';
-            self.app.irAPaso(3);
+            self.app.irAPaso(2);
         });
     }
 };
