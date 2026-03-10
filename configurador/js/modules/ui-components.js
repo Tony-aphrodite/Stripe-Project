@@ -195,11 +195,6 @@ var VkUI = {
             '<div class="vk-go-electric__social">' +
             '&#9889; Cada semana m\u00e1s mexicanos eligen <strong>Voltika</strong>' +
             '</div>' +
-            '<div class="vk-go-electric__chevron">&#9660;</div>' +
-            '<div class="vk-go-electric__divider"></div>' +
-            '<div class="vk-go-electric__more">' +
-            'M\u00e1s modelos disponibles \u2193' +
-            '</div>' +
             '</div>';
     },
 
