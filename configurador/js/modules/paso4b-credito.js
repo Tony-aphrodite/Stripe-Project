@@ -187,9 +187,14 @@ var Paso4B = {
         // ── Enganche slider ────────────────────────────────────────────────
         html += '<div class="vk-card" style="padding:20px;">';
 
-        html += '<div style="font-size:14px;margin-bottom:4px;">Enganche recomendado <strong id="vk-enganche-pct-display">' +
-            Math.round(this._enganchePct * 100) + '%</strong> \u2014 <strong id="vk-enganche-amount-display">' +
-            VkUI.formatPrecio(modelo.precioContado * this._enganchePct) + '</strong></div>';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:nowrap;">' +
+            '<span style="font-size:13px;color:var(--vk-text-secondary);">Enganche recomendado</span>' +
+            '<span style="font-size:14px;font-weight:700;white-space:nowrap;margin-left:8px;">' +
+            '<span id="vk-enganche-pct-display">' + Math.round(this._enganchePct * 100) + '%</span>' +
+            ' \u2014 ' +
+            '<span id="vk-enganche-amount-display">' + VkUI.formatPrecio(modelo.precioContado * this._enganchePct) + '</span>' +
+            '</span>' +
+            '</div>';
         html += '<div id="vk-enganche-big" style="font-size:32px;font-weight:800;color:var(--vk-text-primary);margin-bottom:8px;">' +
             VkUI.formatPrecio(modelo.precioContado * this._enganchePct) + '</div>';
         html += '<input type="range" id="vk-enganche-slider" min="25" max="80" value="' + Math.round(this._enganchePct * 100) + '" step="5" ' +
