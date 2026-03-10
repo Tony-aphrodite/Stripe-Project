@@ -456,6 +456,19 @@ var Paso1 = {
             self._goToSlide(idx);
         });
 
+        // ── Hide swipe hint on scroll down, show on scroll up ─
+        var lastScrollY = window.scrollY || 0;
+        $(window).off('scroll.paso1hint');
+        $(window).on('scroll.paso1hint', function() {
+            var currentY = window.scrollY || 0;
+            if (currentY > lastScrollY && currentY > 60) {
+                $('#vk-modelo-nav-fixed').addClass('vk-modelo-nav-fixed--compact');
+            } else {
+                $('#vk-modelo-nav-fixed').removeClass('vk-modelo-nav-fixed--compact');
+            }
+            lastScrollY = currentY;
+        });
+
         // ── Gallery images: auto-play every 3 seconds ─────────
         this._startGalleryAutoPlay();
 

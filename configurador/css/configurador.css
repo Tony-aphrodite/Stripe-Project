@@ -2647,6 +2647,17 @@ html, body {
     margin-bottom: 2px;
     font-size: 12px;
     color: var(--vk-text-muted);
+    overflow: hidden;
+    max-height: 36px;
+    opacity: 1;
+    transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
+}
+/* Compact state: scroll down hides the hint */
+.vk-modelo-nav-fixed--compact .vk-swipe-hint {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    margin-bottom: 0;
 }
 .vk-swipe-hint__hand {
     display: inline-block;
