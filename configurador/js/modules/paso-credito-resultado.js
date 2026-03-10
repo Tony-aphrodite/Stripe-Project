@@ -238,14 +238,12 @@ var PasoCreditoResultado = {
             // CONDICIONAL: enforce required minimum enganche and maximum plazo
             if (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO') {
                 if (resultado.enganche_requerido_min) {
-                    // Apply only if higher than what user already chose
                     var minEnganche = resultado.enganche_requerido_min;
                     if (!self.app.state.enganchePorcentaje || self.app.state.enganchePorcentaje < minEnganche) {
                         self.app.state.enganchePorcentaje = minEnganche;
                     }
                 }
                 if (resultado.plazo_max_meses) {
-                    // Apply only if user's chosen plazo exceeds the maximum allowed
                     var maxPlazo = resultado.plazo_max_meses;
                     if (!self.app.state.plazoMeses || self.app.state.plazoMeses > maxPlazo) {
                         self.app.state.plazoMeses = maxPlazo;
@@ -253,7 +251,7 @@ var PasoCreditoResultado = {
                 }
             }
 
-            self.app.irAPaso(3); // Back to delivery CP confirmation
+            self.app.irAPaso('credito-pago'); // Confirmation screen before Stripe payment
         });
 
         jQuery(document).off('click', '#vk-resultado-contado');

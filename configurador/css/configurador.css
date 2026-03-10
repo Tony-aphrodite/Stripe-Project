@@ -1545,6 +1545,153 @@ html, body {
 }
 
 /* --------------------------------------------------------------------------
+   Credit Pago Screen (Tu Voltika está lista)
+   -------------------------------------------------------------------------- */
+.vk-cpago-logo {
+    text-align: center;
+    padding: 20px 0 4px;
+}
+.vk-cpago-logo img {
+    height: 28px;
+}
+
+.vk-cpago-title {
+    font-size: 24px;
+    font-weight: 800;
+    text-align: center;
+    color: var(--vk-text-primary);
+    margin: 12px 0 8px;
+}
+
+.vk-cpago-subtitle {
+    font-size: 14px;
+    color: var(--vk-text-secondary);
+    text-align: center;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    padding: 0 4px;
+}
+
+.vk-cpago-note {
+    background: #F1F8E9;
+    border: 1px solid #AED581;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #33691E;
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.vk-cpago-amount {
+    background: var(--vk-bg-light);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+.vk-cpago-amount__label {
+    font-size: 13px;
+    color: var(--vk-text-secondary);
+    margin-bottom: 6px;
+}
+.vk-cpago-amount__value {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--vk-green-primary);
+    line-height: 1;
+    margin-bottom: 6px;
+}
+.vk-cpago-amount__value span {
+    font-size: 16px;
+    font-weight: 600;
+}
+.vk-cpago-amount__detail {
+    font-size: 12px;
+    color: var(--vk-text-muted);
+}
+
+.vk-cpago-checks {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.vk-cpago-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    padding: 12px 14px;
+    border: 1.5px solid var(--vk-border-light);
+    border-radius: 10px;
+    transition: border-color .2s, background .2s;
+}
+.vk-cpago-check:hover {
+    border-color: var(--vk-green-primary);
+    background: var(--vk-green-soft);
+}
+.vk-cpago-check input[type="checkbox"] {
+    display: none;
+}
+.vk-cpago-check__box {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    border-radius: 5px;
+    border: 2px solid var(--vk-border);
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+    transition: all .15s;
+}
+.vk-cpago-check input[type="checkbox"]:checked + .vk-cpago-check__box {
+    background: var(--vk-green-primary);
+    border-color: var(--vk-green-primary);
+}
+.vk-cpago-check input[type="checkbox"]:checked + .vk-cpago-check__box::after {
+    content: '✓';
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+}
+.vk-cpago-check input[type="checkbox"]:checked ~ .vk-cpago-check__text {
+    color: var(--vk-text-primary);
+}
+.vk-cpago-check__text {
+    font-size: 14px;
+    color: var(--vk-text-secondary);
+    line-height: 1.4;
+}
+
+.vk-cpago-btn {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 15px;
+}
+.vk-cpago-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.vk-cpago-footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--vk-text-muted);
+    margin-top: 14px;
+    padding-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------------------
    Credit Identity Screen (Confirma tu identidad)
    -------------------------------------------------------------------------- */
 .vk-identidad-logo {

@@ -124,6 +124,7 @@
                 'credito-aprobado': 4,
                 'credito-identidad': 4,
                 'credito-resultado': 4,
+                'credito-pago': 4,
                 'credito-enganche': 4,
                 'credito-contrato': 4,
                 'facturacion': 4,
@@ -187,6 +188,9 @@
                     break;
                 case 'credito-resultado':
                     PasoCreditoResultado.init(this);
+                    break;
+                case 'credito-pago':
+                    PasoCreditoPago.init(this);
                     break;
                 case 'credito-enganche':
                     PasoCreditoEnganche.init(this);
