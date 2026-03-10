@@ -53,9 +53,9 @@ var PasoCreditoIdentidad = {
         html += '</div>';
 
         // 5. Upload steps
-        html += this._renderUploadStep(1, 'ine-frente',  'INE \u2013 Frente',           'Toma una foto clara del <strong>frente</strong> de tu INE');
-        html += this._renderUploadStep(2, 'ine-reverso', 'INE \u2013 Reverso',          'Toma una foto clara del <strong>reverso</strong> de tu INE');
-        html += this._renderUploadStep(3, 'selfie',      'Selfie de verificaci\u00f3n', 'Toma una foto de tu rostro mirando a la c\u00e1mara');
+        html += this._renderUploadStep(1, 'ine-frente',  'INE \u2013 Frente',           'Toma una foto clara del <strong>frente</strong> de tu INE',  'ine-front');
+        html += this._renderUploadStep(2, 'ine-reverso', 'INE \u2013 Reverso',          'Toma una foto clara del <strong>reverso</strong> de tu INE', 'ine-back');
+        html += this._renderUploadStep(3, 'selfie',      'Selfie de verificaci\u00f3n', 'Toma una foto de tu rostro mirando a la c\u00e1mara',         'selfie');
 
         // 6. 30-second notice
         html += '<div class="vk-identidad-timer">';
@@ -88,13 +88,69 @@ var PasoCreditoIdentidad = {
         jQuery('#vk-credito-identidad-container').html(html);
     },
 
-    _renderUploadStep: function(num, id, title, description) {
+    _svgINE: function(isBack) {
+        // SVG illustration of Mexican INE card
+        var bg = isBack ? '#E8F0FE' : '#E3F2FD';
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 52" width="56" height="36" style="display:block;">';
+        // Card body
+        svg += '<rect width="80" height="52" rx="4" fill="' + bg + '" stroke="#90CAF9" stroke-width="1.5"/>';
+        if (!isBack) {
+            // Front: eagle emblem placeholder + photo + text lines
+            svg += '<rect x="5" y="5" width="14" height="14" rx="2" fill="#1565C0" opacity="0.3"/>'; // emblem
+            svg += '<text x="12" y="15" font-size="7" text-anchor="middle" fill="#1565C0" font-weight="bold">INE</text>';
+            svg += '<rect x="5" y="22" width="18" height="22" rx="2" fill="#BBDEFB"/>'; // photo box
+            svg += '<circle cx="14" cy="28" r="5" fill="#90CAF9"/>'; // head
+            svg += '<ellipse cx="14" cy="38" rx="7" ry="4" fill="#90CAF9"/>'; // body
+            // Text lines on right
+            svg += '<rect x="27" y="22" width="30" height="3" rx="1.5" fill="#1976D2" opacity="0.5"/>';
+            svg += '<rect x="27" y="29" width="22" height="2.5" rx="1.25" fill="#90CAF9"/>';
+            svg += '<rect x="27" y="34" width="26" height="2.5" rx="1.25" fill="#90CAF9"/>';
+            svg += '<rect x="27" y="39" width="18" height="2.5" rx="1.25" fill="#90CAF9"/>';
+            // Chip
+            svg += '<rect x="60" y="5" width="14" height="10" rx="2" fill="#FDD835" opacity="0.8"/>';
+        } else {
+            // Back: magnetic strip + barcode + text lines
+            svg += '<rect x="0" y="8" width="80" height="10" fill="#455A64" opacity="0.7"/>'; // mag strip
+            svg += '<rect x="5" y="24" width="50" height="20" rx="2" fill="white" opacity="0.6"/>'; // white area
+            // Barcode lines
+            for (var i = 0; i < 18; i++) {
+                svg += '<rect x="' + (7 + i * 2.5) + '" y="27" width="' + (i % 3 === 0 ? 2 : 1) + '" height="10" fill="#212121" opacity="0.7"/>';
+            }
+            svg += '<rect x="5" y="39" width="40" height="2" rx="1" fill="#90CAF9"/>';
+            svg += '<rect x="5" y="43" width="30" height="2" rx="1" fill="#90CAF9"/>';
+        }
+        svg += '</svg>';
+        return svg;
+    },
+
+    _svgSelfie: function() {
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52" width="36" height="36" style="display:block;">';
+        svg += '<rect width="52" height="52" rx="26" fill="#E8F5E9"/>';
+        svg += '<circle cx="26" cy="20" r="10" fill="#81C784"/>'; // head
+        svg += '<ellipse cx="26" cy="42" rx="14" ry="8" fill="#81C784"/>'; // body
+        svg += '<circle cx="22" cy="18" r="2" fill="white"/>'; // eye
+        svg += '<circle cx="30" cy="18" r="2" fill="white"/>'; // eye
+        svg += '<path d="M22 25 Q26 28 30 25" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"/>'; // smile
+        svg += '</svg>';
+        return svg;
+    },
+
+    _renderUploadStep: function(num, id, title, description, iconType) {
+        var self = this;
+        var icon = '';
+        if (iconType === 'ine-front') icon = self._svgINE(false);
+        else if (iconType === 'ine-back') icon = self._svgINE(true);
+        else if (iconType === 'selfie') icon = self._svgSelfie();
+
         var html = '';
         html += '<div class="vk-identidad-step" id="vk-upload-' + id + '">';
         html += '<div class="vk-identidad-step__num">' + num + '</div>';
         html += '<div class="vk-identidad-step__body">';
         html += '<div class="vk-identidad-step__title">' + title + '</div>';
         html += '<div class="vk-identidad-step__desc">' + description + '</div>';
+        if (icon) {
+            html += '<div class="vk-identidad-step__icon">' + icon + '</div>';
+        }
         html += '</div>';
         html += '<div id="vk-status-' + id + '" class="vk-identidad-step__status">&#9711;</div>';
         html += '<input type="file" id="vk-file-' + id + '" accept="image/*" capture="environment" style="display:none;">';

@@ -1807,6 +1807,7 @@ html, body {
 .vk-identidad-step__title { font-size: 14px; font-weight: 700; color: #1976D2; margin-bottom: 2px; }
 .vk-identidad-step__desc { font-size: 12px; color: var(--vk-text-secondary); line-height: 1.4; }
 .vk-identidad-step__status { font-size: 20px; color: var(--vk-border); text-align: center; }
+.vk-identidad-step__icon { margin-top: 8px; }
 
 .vk-identidad-timer {
     text-align: center;
