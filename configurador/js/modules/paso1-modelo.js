@@ -83,9 +83,29 @@ var Paso1 = {
 
         // Left: product visual
         html += '<div class="vk-hero__visual">';
-        html += '<img class="vk-hero__img" id="vk-hero-img" ' +
-            'src="' + VkUI.getImagenMoto(defaultModelo.id, defaultModelo.colorDefault) + '" ' +
-            'alt="' + defaultModelo.nombre + '">';
+
+        // Gallery carousel
+        var galD = VkUI.getGaleriaImagenes(defaultModelo.id);
+        var imgD = VkUI.getImagenMoto(defaultModelo.id, defaultModelo.colorDefault);
+        var srcsD = galD.length ? galD : [imgD];
+        html += '<div class="vk-card__galeria vk-hero__galeria" id="vk-galeria-desktop">';
+        if (srcsD.length > 1) {
+            html += '<button class="vk-gal__arrow vk-gal__arrow--prev" data-gal="desktop" aria-label="anterior">&#8249;</button>';
+            html += '<button class="vk-gal__arrow vk-gal__arrow--next" data-gal="desktop" aria-label="siguiente">&#8250;</button>';
+        }
+        html += '<div class="vk-gal__track" id="vk-gal-track-desktop">';
+        for (var gid = 0; gid < srcsD.length; gid++) {
+            html += '<img class="vk-gal__img' + (gid === 0 ? ' vk-gal__img--active' : '') + '" src="' + srcsD[gid] + '" alt="' + defaultModelo.nombre + ' ' + (gid+1) + '" loading="' + (gid === 0 ? 'eager' : 'lazy') + '">';
+        }
+        html += '</div>';
+        if (srcsD.length > 1) {
+            html += '<div class="vk-gal__dots">';
+            for (var did = 0; did < srcsD.length; did++) {
+                html += '<span class="vk-gal__dot' + (did === 0 ? ' vk-gal__dot--active' : '') + '" data-gal="desktop" data-idx="' + did + '"></span>';
+            }
+            html += '</div>';
+        }
+        html += '</div>'; // end galeria
 
         if (defaultModelo.badge) {
             html += '<div class="vk-hero__badge"><span>&#11088;</span> ' + defaultModelo.badge + '</div>';
@@ -137,14 +157,26 @@ var Paso1 = {
         var modelo = this.app.getModelo(modeloId);
         if (!modelo) return;
 
-        // Image (fade trick via opacity)
-        var $img = $('#vk-hero-img');
-        $img.css('opacity', 0);
-        setTimeout(function() {
-            $img.attr('src', VkUI.getImagenMoto(modelo.id, modelo.colorDefault))
-                .attr('alt', modelo.nombre)
-                .css('opacity', 1);
-        }, 150);
+        // Refresh desktop gallery
+        var galD = VkUI.getGaleriaImagenes(modelo.id);
+        var imgD = VkUI.getImagenMoto(modelo.id, modelo.colorDefault);
+        var srcsD = galD.length ? galD : [imgD];
+        var trackHtml = '';
+        for (var gi = 0; gi < srcsD.length; gi++) {
+            trackHtml += '<img class="vk-gal__img' + (gi === 0 ? ' vk-gal__img--active' : '') + '" src="' + srcsD[gi] + '" alt="' + modelo.nombre + ' ' + (gi+1) + '">';
+        }
+        $('#vk-gal-track-desktop').html(trackHtml);
+        var $gal = $('#vk-galeria-desktop');
+        $gal.find('.vk-gal__dots').remove();
+        $gal.find('.vk-gal__arrow').toggle(srcsD.length > 1);
+        if (srcsD.length > 1) {
+            var dotsHtml = '<div class="vk-gal__dots">';
+            for (var di = 0; di < srcsD.length; di++) {
+                dotsHtml += '<span class="vk-gal__dot' + (di === 0 ? ' vk-gal__dot--active' : '') + '" data-gal="desktop" data-idx="' + di + '"></span>';
+            }
+            dotsHtml += '</div>';
+            $gal.append(dotsHtml);
+        }
 
         // Text info
         $('#vk-hero-nombre').text(modelo.nombre);
@@ -414,7 +446,12 @@ var Paso1 = {
         $(document).on('click', '#vk-paso-1 .vk-modelo-tab', function() {
             var idx = parseInt($(this).data('slide'));
             self._goToSlide(idx);
+            // Restart auto-play after manual interaction
+            self._startAutoPlay();
         });
+
+        // ── Model slider: auto-play every 2.5 seconds ─────────
+        this._startAutoPlay();
 
         // ── Mobile: touch swipe on model slider ───────────────
         var $track = $('#vk-modelo-slider-track');
@@ -430,6 +467,7 @@ var Paso1 = {
                     var current = self._currentSlide || 0;
                     if (dx < 0 && current < modelos.length - 1) self._goToSlide(current + 1);
                     if (dx > 0 && current > 0) self._goToSlide(current - 1);
+                    self._startAutoPlay();
                 }
             }, { passive: true });
         }
@@ -462,6 +500,7 @@ var Paso1 = {
     },
 
     _currentSlide: 0,
+    _autoPlayInterval: null,
 
     _goToSlide: function(idx) {
         var modelos = VOLTIKA_PRODUCTOS.modelos;
@@ -470,7 +509,24 @@ var Paso1 = {
         var $track = $('#vk-modelo-slider-track');
         var w = $track.closest('#vk-modelo-slider').width();
         $track.css('transform', 'translateX(-' + (idx * w) + 'px)');
-        $('#vk-modelo-tabs .vk-modelo-tab').removeClass('vk-modelo-tab--active')
-            .filter('[data-slide="' + idx + '"]').addClass('vk-modelo-tab--active');
+        var $tabs = $('#vk-modelo-tabs .vk-modelo-tab');
+        $tabs.removeClass('vk-modelo-tab--active');
+        var $active = $tabs.filter('[data-slide="' + idx + '"]').addClass('vk-modelo-tab--active');
+        // Scroll active tab into view within the tab bar
+        if ($active.length) {
+            try {
+                $active[0].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            } catch(e) {}
+        }
+    },
+
+    _startAutoPlay: function() {
+        var self = this;
+        if (self._autoPlayInterval) clearInterval(self._autoPlayInterval);
+        self._autoPlayInterval = setInterval(function() {
+            var modelos = VOLTIKA_PRODUCTOS.modelos;
+            var next = ((self._currentSlide || 0) + 1) % modelos.length;
+            self._goToSlide(next);
+        }, 2500);
     }
 };

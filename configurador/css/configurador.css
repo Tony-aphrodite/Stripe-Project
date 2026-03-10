@@ -1747,6 +1747,19 @@ html, body {
         display: none;
     }
 
+    /* Desktop gallery inside hero visual */
+    .vk-hero__galeria {
+        width: 100%;
+        border-radius: 8px;
+        aspect-ratio: unset;
+        height: 300px;
+        max-height: 300px;
+    }
+    .vk-hero__galeria .vk-gal__img--active {
+        object-fit: contain;
+        background: var(--vk-bg-light);
+    }
+
     /*  PASO 2+  card goes full-width on desktop  */
     #vk-paso-2 .vk-card,
     #vk-paso-3 .vk-card,
@@ -2177,16 +2190,19 @@ html, body {
 
 .vk-modelo-tabs {
     display: flex;
-    overflow-x: auto;
+    overflow-x: scroll;
+    -webkit-overflow-scrolling: touch;
     gap: 6px;
     padding: 10px 12px 4px;
     scrollbar-width: none;
+    scroll-snap-type: x proximity;
 }
 
 .vk-modelo-tabs::-webkit-scrollbar { display: none; }
 
 .vk-modelo-tab {
     flex-shrink: 0;
+    scroll-snap-align: center;
     padding: 6px 14px;
     border-radius: 20px;
     border: 1.5px solid var(--vk-border);
