@@ -446,12 +446,7 @@ var Paso1 = {
         $(document).on('click', '#vk-paso-1 .vk-modelo-tab', function() {
             var idx = parseInt($(this).data('slide'));
             self._goToSlide(idx);
-            // Restart auto-play after manual interaction
-            self._startAutoPlay();
         });
-
-        // ── Model slider: auto-play every 2.5 seconds ─────────
-        this._startAutoPlay();
 
         // ── Gallery images: auto-play every 3 seconds ─────────
         this._startGalleryAutoPlay();
@@ -470,7 +465,6 @@ var Paso1 = {
                     var current = self._currentSlide || 0;
                     if (dx < 0 && current < modelos.length - 1) self._goToSlide(current + 1);
                     if (dx > 0 && current > 0) self._goToSlide(current - 1);
-                    self._startAutoPlay();
                 }
             }, { passive: true });
         }
