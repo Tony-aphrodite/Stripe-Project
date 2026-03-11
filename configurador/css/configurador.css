@@ -493,6 +493,9 @@ html {
     display: inline-block;
     vertical-align: middle;
 }
+.vk-hero__metodo-tab--active .vk-credito-logo img {
+    filter: brightness(0) invert(1);
+}
 
 /* MSI header */
 .vk-card__msi-header {
@@ -2115,9 +2118,6 @@ html {
     .vk-hero__metodo-tab--active {
         background: var(--vk-green-primary);
         color: #fff;
-    }
-    .vk-hero__metodo-tab--active .vk-credito-logo img {
-        filter: brightness(0) invert(1);
     }
 
     .vk-hero__tab-content {
