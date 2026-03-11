@@ -35,18 +35,20 @@ var PasoCreditoPago = {
         html += 'Este pago se aplica directamente a tu financiamiento.';
         html += '</p>';
 
-        // Checkboxes — pre-checked
+        // Checkboxes — pre-checked, box styled inline so :checked CSS is not needed
+        var checkedBox = '<span class="vk-cpago-check__box" style="background:#2e7d32;border-color:#2e7d32;color:white;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;">&#10003;</span>';
+
         html += '<div class="vk-cpago-checks">';
 
         html += '<label class="vk-cpago-check">';
         html += '<input type="checkbox" id="vk-cpago-check1" checked>';
-        html += '<span class="vk-cpago-check__box"></span>';
+        html += checkedBox;
         html += '<span class="vk-cpago-check__text">Confirmo que deseo <strong>continuar</strong> con mi cr\u00e9dito Voltika</span>';
         html += '</label>';
 
         html += '<label class="vk-cpago-check">';
         html += '<input type="checkbox" id="vk-cpago-check2" checked>';
-        html += '<span class="vk-cpago-check__box"></span>';
+        html += checkedBox;
         html += '<span class="vk-cpago-check__text">Acepto los t\u00e9rminos del <strong>cr\u00e9dito</strong> y registro de m\u00e9todo de pago</span>';
         html += '</label>';
 
@@ -71,9 +73,15 @@ var PasoCreditoPago = {
     bindEvents: function() {
         var self = this;
 
-        // Disable button if either checkbox is unchecked
+        // Toggle inline box style + button on change
         jQuery(document).off('change', '#vk-cpago-check1, #vk-cpago-check2');
         jQuery(document).on('change', '#vk-cpago-check1, #vk-cpago-check2', function() {
+            var $box = jQuery(this).next('.vk-cpago-check__box');
+            if (jQuery(this).is(':checked')) {
+                $box.css({ background:'#2e7d32', 'border-color':'#2e7d32', color:'white' }).html('&#10003;');
+            } else {
+                $box.css({ background:'white', 'border-color':'#ccc', color:'transparent' }).html('');
+            }
             var both = jQuery('#vk-cpago-check1').is(':checked') &&
                        jQuery('#vk-cpago-check2').is(':checked');
             jQuery('#vk-cpago-continuar').prop('disabled', !both)

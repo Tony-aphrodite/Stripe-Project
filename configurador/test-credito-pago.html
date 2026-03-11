@@ -28,17 +28,19 @@ body { background: #f0f0f0; display: flex; justify-content: center; padding: 20p
     html += 'Este pago se aplica directamente a tu financiamiento.';
     html += '</p>';
 
+    var checkedBox = '<span class="vk-cpago-check__box" style="background:#2e7d32;border-color:#2e7d32;color:white;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;">&#10003;</span>';
+
     html += '<div class="vk-cpago-checks">';
 
     html += '<label class="vk-cpago-check">';
     html += '<input type="checkbox" id="vk-cpago-check1" checked>';
-    html += '<span class="vk-cpago-check__box"></span>';
+    html += checkedBox;
     html += '<span class="vk-cpago-check__text">Confirmo que deseo <strong>continuar</strong> con mi cr\u00e9dito Voltika</span>';
     html += '</label>';
 
     html += '<label class="vk-cpago-check">';
     html += '<input type="checkbox" id="vk-cpago-check2" checked>';
-    html += '<span class="vk-cpago-check__box"></span>';
+    html += checkedBox;
     html += '<span class="vk-cpago-check__text">Acepto los t\u00e9rminos del <strong>cr\u00e9dito</strong> y registro de m\u00e9todo de pago</span>';
     html += '</label>';
 
@@ -57,9 +59,21 @@ body { background: #f0f0f0; display: flex; justify-content: center; padding: 20p
 
     document.querySelector('.container').innerHTML = html;
 
-    // Re-bind checkbox change
+    // Re-bind checkbox change — update inline box style too
     document.addEventListener('change', function(e) {
         if (e.target.id === 'vk-cpago-check1' || e.target.id === 'vk-cpago-check2') {
+            var box = e.target.nextElementSibling;
+            if (e.target.checked) {
+                box.style.background = '#2e7d32';
+                box.style.borderColor = '#2e7d32';
+                box.style.color = 'white';
+                box.innerHTML = '&#10003;';
+            } else {
+                box.style.background = 'white';
+                box.style.borderColor = '#ccc';
+                box.style.color = 'transparent';
+                box.innerHTML = '';
+            }
             var both = document.getElementById('vk-cpago-check1').checked &&
                        document.getElementById('vk-cpago-check2').checked;
             var btn = document.getElementById('vk-cpago-continuar');
