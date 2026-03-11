@@ -30,15 +30,15 @@ var PasoCreditoDomicilio = {
             'value="' + (state.calle || '') + '">';
         html += '</div>';
 
-        html += '<div style="display:flex;gap:10px;">';
-        html += '<div class="vk-form-group" style="flex:1;">';
-        html += '<label class="vk-form-label">N\u00famero exterior</label>';
+        html += '<div style="display:flex;gap:10px;align-items:flex-start;">';
+        html += '<div class="vk-form-group" style="flex:1;min-width:0;">';
+        html += '<label class="vk-form-label" style="white-space:nowrap;">N\u00famero exterior</label>';
         html += '<input type="text" class="vk-form-input" id="vk-cdom-numero" ' +
             'placeholder="123" ' +
             'value="' + (state.numeroExterior || '') + '">';
         html += '</div>';
-        html += '<div class="vk-form-group" style="flex:1;">';
-        html += '<label class="vk-form-label">N\u00famero interior <span style="font-weight:400;color:var(--vk-text-muted);">(opcional)</span></label>';
+        html += '<div class="vk-form-group" style="flex:1;min-width:0;">';
+        html += '<label class="vk-form-label" style="white-space:nowrap;">N\u00famero interior <span style="font-weight:400;color:#999;font-size:11px;">(opcional)</span></label>';
         html += '<input type="text" class="vk-form-input" id="vk-cdom-interior" ' +
             'placeholder="Ej: 4B" ' +
             'value="' + (state.numeroInterior || '') + '">';
