@@ -123,70 +123,81 @@ var PasoResumen = {
             state.plazoMeses || 12
         );
         var img = VkUI.getImagenMoto(modelo.id, state.colorSeleccionado || modelo.colorDefault);
+        var color = state.colorSeleccionado || modelo.colorDefault || '';
+        var pagoDiario = Math.ceil(credito.pagoSemanal / 7);
 
         var html = '';
         html += VkUI.renderBackButton(3);
 
-        // Header
-        html += '<div style="text-align:center;margin-bottom:16px;">';
-        html += '<div style="font-size:22px;font-weight:800;">voltika</div>';
-        html += '<h2 style="font-size:22px;font-weight:800;margin-top:8px;">&#161;Toma solo 2 minutos!</h2>';
+        // 1. Header
+        html += '<div style="margin-bottom:16px;">';
+        html += '<div style="font-size:20px;font-weight:900;line-height:1.2;">Obt\u00e9n tu aprobaci\u00f3n en 2 minutos</div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:4px;">Proceso seguro y 100% digital</div>';
         html += '</div>';
 
-        // Selection summary
-        html += '<div class="vk-credit-summary">';
-        html += '<div class="vk-credit-summary__model">';
-        html += '<div class="vk-credit-summary__details">';
-        html += '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">Resumen de tu selecci\u00f3n:</div>';
-        html += '<div style="font-size:14px;margin-bottom:2px;">Modelo: <strong>' + modelo.nombre + '</strong></div>';
-        html += '<div style="font-size:14px;margin-bottom:2px;">Enganche: <strong style="color:var(--vk-green-primary);">' + VkUI.formatPrecio(credito.enganche) + '</strong></div>';
-        html += '<div style="font-size:13px;margin-bottom:2px;">Desde <strong>' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong> por semana</div>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);">Color: ' + (state.colorSeleccionado || modelo.colorDefault) + '</div>';
-        html += '<div style="background:var(--vk-green-soft);border-radius:6px;padding:6px 8px;margin-top:8px;font-size:12px;">' +
-            'Entrega en tu ciudad en punto aliado Voltika<br>' +
-            '<span style="font-size:11px;color:var(--vk-text-secondary);">Se entrega en permiso provisional y documentos para que puedas emplacar\u00e1cilmente</span>' +
-            '</div>';
+        // 2. Model card
+        html += '<div class="vk-card" style="padding:16px;margin-bottom:14px;">';
+        html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">Tu Voltika seleccionada</div>';
+        html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">';
+        html += '<div style="flex:1;">';
+        html += '<div style="font-size:16px;font-weight:800;">' + modelo.nombre + '</div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">Color: ' + color + '</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Pago semanal desde</div>';
+        html += '<div style="font-size:32px;font-weight:900;color:var(--vk-text-primary);line-height:1.1;">' + VkUI.formatPrecio(credito.pagoSemanal) + '</div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">';
+        html += '<div style="font-size:12px;font-weight:700;">Enganche<br><span style="color:var(--vk-green-primary);">' + VkUI.formatPrecio(credito.enganche) + '</span></div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);">menos de <strong>' + VkUI.formatPrecio(pagoDiario) + '</strong> al d\u00eda</div>';
         html += '</div>';
-        html += '<img class="vk-credit-summary__img" src="' + img + '" alt="' + modelo.nombre + '">';
+        html += '</div>';
+        html += '<img src="' + img + '" alt="' + modelo.nombre + '" style="width:100px;height:auto;object-fit:contain;flex-shrink:0;">';
+        html += '</div>';
+        html += '<div style="display:flex;align-items:center;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--vk-border);">';
+        html += '<span style="color:var(--vk-green-primary);font-size:16px;">&#10003;</span>';
+        html += '<span style="font-size:13px;"><strong>Entrega garantizada</strong> en tu ciudad<br><span style="font-size:12px;color:var(--vk-text-secondary);">Incluye documentos para tramitar placas</span></span>';
         html += '</div>';
         html += '</div>';
 
-        // 5 pasos list
-        html += '<div class="vk-credit-steps">';
-        html += '<div class="vk-credit-steps__title">5 pasos muy sencillos:</div>';
+        // 3. 5 pasos
+        html += '<div style="margin-bottom:16px;">';
+        html += '<div style="font-size:15px;font-weight:800;margin-bottom:12px;">Solo 5 pasos (menos de 2 minutos)</div>';
 
         var pasos = [
-            ['Verifica tu identidad', 'INE y selfie'],
-            ['Confirma tu lugar de entrega cercano', 'Puedes elegir un punto aliado Voltika'],
-            ['Hablamos contigo y te guiamos en persona', 'Tu asesor Voltika te llama, resuelve tus dudas y agenda la entrega'],
-            ['Paga tu enganche de forma segura', 'Puedes pagar con tarjeta, efectivo o transferencia'],
-            ['Firma contrato y recibe tu moto', 'Activamos pagos semanales con tu tarjeta']
+            ['Verifica tu identidad',             'INE + selfie'],
+            ['Confirma tu ciudad de entrega',      'Asignamos tu punto Voltika cercano'],
+            ['Recibe tu aprobaci\u00f3n',          'En menos de 2 minutos'],
+            ['Paga tu enganche de forma segura',   'Tarjeta, transferencia o efectivo'],
+            ['Firma digital y recibe tu Voltika',  'Primer pago 7 d\u00edas despu\u00e9s de la entrega']
         ];
 
         for (var s = 0; s < pasos.length; s++) {
-            html += '<div class="vk-credit-step">';
-            html += '<div class="vk-credit-step__number">' + (s + 1) + '</div>';
-            html += '<div class="vk-credit-step__content">';
-            html += '<div class="vk-credit-step__title">' + pasos[s][0] + '</div>';
-            html += '<div class="vk-credit-step__desc">' + pasos[s][1] + '</div>';
+            html += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;">';
+            html += '<div style="width:28px;height:28px;border-radius:50%;background:#039fe1;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (s + 1) + '</div>';
+            html += '<div>';
+            html += '<div style="font-size:14px;font-weight:700;">' + pasos[s][0] + '</div>';
+            html += '<div style="font-size:12px;color:var(--vk-text-secondary);">' + pasos[s][1] + '</div>';
             html += '</div>';
             html += '</div>';
         }
         html += '</div>';
 
-        // CTA
-        html += '<button class="vk-btn vk-btn--blue" id="vk-resumen-iniciar-credito">Iniciar proceso</button>';
-        html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin:4px 0 16px;">Toma menos de 2 minutos.</p>';
+        // 4. CTA button
+        html += '<button id="vk-resumen-iniciar-credito" style="display:block;width:100%;padding:16px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:17px;font-weight:900;cursor:pointer;letter-spacing:0.5px;margin-bottom:10px;">&#9889; VER SI CALIFICO</button>';
 
-        // Alternative: pay with card
-        html += '<div style="border-top:1px solid var(--vk-border-light);padding-top:14px;text-align:center;">';
-        html += '<p style="font-size:13px;color:var(--vk-text-muted);margin-bottom:8px;">\u00bfPrefieres pagar con tarjeta?</p>';
-        html += '<div style="display:flex;gap:10px;justify-content:center;">';
+        // 5. Trust badges
+        html += '<div style="display:flex;justify-content:center;gap:16px;margin-bottom:14px;font-size:12px;color:var(--vk-text-secondary);">';
+        html += '<span><span style="color:var(--vk-green-primary);">&#10003;</span> En menos de 2 minutos</span>';
+        html += '<span><span style="color:var(--vk-green-primary);">&#10003;</span> Solo necesitas tu INE</span>';
+        html += '</div>';
+
+        // 6. Orange banner
+        html += '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:8px;padding:10px 14px;text-align:center;font-size:13px;font-weight:600;color:#e65100;margin-bottom:16px;">&#11088; M\u00e1s de 3,000 clientes ya se movieron con Voltika</div>';
+
+        // 7. Bottom text links
+        html += '<div style="display:flex;justify-content:center;gap:0;border-top:1px solid var(--vk-border);padding-top:14px;">';
         if (modelo.tieneMSI) {
-            html += '<button class="vk-btn vk-btn--secondary" id="vk-switch-msi" style="flex:1;max-width:180px;font-size:13px;">9 MSI sin intereses</button>';
+            html += '<button id="vk-switch-msi" style="flex:1;background:none;border:none;border-right:1px solid var(--vk-border);font-size:13px;font-weight:700;color:#039fe1;cursor:pointer;padding:8px 4px;">9 MSI SIN INTERESES</button>';
         }
-        html += '<button class="vk-btn vk-btn--secondary" id="vk-switch-contado" style="flex:1;max-width:180px;font-size:13px;">Pago contado</button>';
-        html += '</div>';
+        html += '<button id="vk-switch-contado" style="flex:1;background:none;border:none;font-size:13px;font-weight:700;color:var(--vk-text-secondary);cursor:pointer;padding:8px 4px;">PAGO DE CONTADO</button>';
         html += '</div>';
 
         jQuery('#vk-resumen-container').html(html);
