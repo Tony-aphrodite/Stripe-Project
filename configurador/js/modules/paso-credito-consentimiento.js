@@ -1,8 +1,6 @@
 /* ==========================================================================
    Voltika - Crédito Screen 11: Aceptación de acuerdos
-   Per Dibujo.pdf: 2 checkboxes + 6-digit OTP input
-   When OTP correct + checkboxes checked → "EVALUAR MI SOLICITUD"
-   If OTP incorrect → "REENVIAR" + change phone button
+   Per Dibujo.pdf: 2 checkboxes + 6-digit OTP input (individual boxes)
    ========================================================================== */
 
 var PasoCreditoConsentimiento = {
@@ -20,51 +18,66 @@ var PasoCreditoConsentimiento = {
         html += VkUI.renderBackButton('credito-ingresos');
         html += VkUI.renderCreditoStepBar(4);
 
-        html += '<h2 class="vk-paso__titulo">Aceptaci\u00f3n de acuerdos</h2>';
-        html += '<p class="vk-paso__subtitulo">Verifica tu c\u00f3digo y autoriza la consulta</p>';
+        // Title (centered, large)
+        html += '<h2 class="vk-paso__titulo" style="text-align:center;font-size:22px;line-height:1.3;">Verifica tu n\u00famero para ver tu resultado</h2>';
+        html += '<p class="vk-paso__subtitulo" style="text-align:center;">Te enviamos un c\u00f3digo por SMS para confirmar tu identidad.</p>';
 
         html += '<div class="vk-card" style="padding:20px;">';
 
         // Phone display
-        var telDisplay = state.telefono ? ('+52 ' + state.telefono.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3')) : '';
+        var telDisplay = state.telefono
+            ? ('+52 ' + state.telefono.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3'))
+            : '';
         html += '<div style="text-align:center;margin-bottom:16px;">';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);">C\u00f3digo enviado a</div>';
         html += '<div style="font-size:16px;font-weight:700;">' + telDisplay + '</div>';
         html += '</div>';
 
-        // Test code hint (only shown when SMS API fails)
+        // Test code hint
         if (state._otpTestCode) {
             html += '<div id="vk-cons-test-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
                 '&#128161; C\u00f3digo de prueba: <strong>' + state._otpTestCode + '</strong></div>';
         }
 
-        // 6-digit OTP input
-        html += '<div class="vk-form-group" style="margin-bottom:16px;">';
-        html += '<label class="vk-form-label" style="text-align:center;display:block;">Ingresa el c\u00f3digo de 6 d\u00edgitos</label>';
-        html += '<input type="text" class="vk-form-input" id="vk-cons-otp" ' +
-            'maxlength="6" inputmode="numeric" pattern="[0-9]*" ' +
-            'placeholder="000000" ' +
-            'style="text-align:center;font-size:28px;letter-spacing:8px;font-weight:700;padding:14px;">';
+        // 6 individual OTP boxes
+        html += '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">';
+        for (var i = 0; i < 6; i++) {
+            html += '<input type="text" class="vk-otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" ' +
+                'style="width:44px;height:52px;text-align:center;font-size:24px;font-weight:700;' +
+                'border:2px solid #e5e7eb;border-radius:8px;outline:none;' +
+                'transition:border-color 0.15s;-moz-appearance:textfield;" ' +
+                'data-index="' + i + '">';
+        }
         html += '</div>';
 
-        html += '<div style="border-top:1px solid var(--vk-border);margin:16px 0;"></div>';
+        // Timer hint
+        html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-bottom:4px;">' +
+            '&#9201; Esto toma menos de 10 segundos' +
+            '</div>';
+
+        // Resend link
+        html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-bottom:16px;">' +
+            '\u00bfNo lleg\u00f3 el c\u00f3digo? ' +
+            '<button id="vk-cons-reenviar" style="background:none;border:none;padding:0;color:#039fe1;font-size:12px;cursor:pointer;text-decoration:underline;">Reenviar</button>' +
+            '</div>';
+
+        html += '<div style="border-top:1px solid var(--vk-border);margin:12px 0;"></div>';
 
         // Checkbox 1: TyC
-        html += '<div class="vk-checkbox-group" style="margin-bottom:12px;">';
-        html += '<input type="checkbox" class="vk-checkbox" id="vk-cons-tyc">';
+        html += '<div class="vk-checkbox-group" style="margin-bottom:12px;display:flex;gap:10px;align-items:flex-start;">';
+        html += '<input type="checkbox" class="vk-checkbox" id="vk-cons-tyc" style="margin-top:3px;flex-shrink:0;">';
         html += '<label class="vk-checkbox-label" for="vk-cons-tyc" style="font-size:13px;">' +
-            'He le\u00eddo y acepto los ' +
-            '<a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:var(--vk-green-primary);">T\u00e9rminos y Condiciones</a> ' +
-            'y el Aviso de Privacidad de Voltika.' +
+            'Al continuar aceptas los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:#039fe1;">T\u00e9rminos y condiciones</a>, ' +
+            'las <a href="https://voltika.mx/docs/clausulas_2026.pdf" target="_blank" style="color:#039fe1;">cl\u00e1usulas de medios electr\u00f3nicos</a> ' +
+            'y autorizas la consulta de tu <a href="https://voltika.mx/docs/buro_2026.pdf" target="_blank" style="color:#039fe1;">reporte de cr\u00e9dito</a>.' +
             '</label>';
         html += '</div>';
 
-        // Checkbox 2: Círculo de Crédito consent
-        html += '<div class="vk-checkbox-group" style="margin-bottom:16px;">';
-        html += '<input type="checkbox" class="vk-checkbox" id="vk-cons-buro">';
+        // Checkbox 2: Aviso de privacidad
+        html += '<div class="vk-checkbox-group" style="margin-bottom:16px;display:flex;gap:10px;align-items:flex-start;">';
+        html += '<input type="checkbox" class="vk-checkbox" id="vk-cons-buro" style="margin-top:3px;flex-shrink:0;">';
         html += '<label class="vk-checkbox-label" for="vk-cons-buro" style="font-size:13px;">' +
-            'Autorizo expresamente a Voltika S.A. de C.V. a consultar mi historial crediticio ante ' +
-            'C\u00edrculo de Cr\u00e9dito y/o cualquier Sociedad de Informaci\u00f3n Crediticia.' +
+            'Estoy de acuerdo con el <a href="https://voltika.mx/docs/aviso_privacidad_2026.pdf" target="_blank" style="color:#039fe1;">aviso de privacidad</a>.' +
             '</label>';
         html += '</div>';
 
@@ -74,14 +87,14 @@ var PasoCreditoConsentimiento = {
 
         // CTA
         html += '<button class="vk-btn vk-btn--primary" id="vk-cons-evaluar" disabled>' +
-            '<span id="vk-cons-label">EVALUAR MI SOLICITUD</span>' +
+            '<span id="vk-cons-label">VER MI RESULTADO \u2192</span>' +
             '<span id="vk-cons-spinner" style="display:none;">' + VkUI.renderSpinner() + ' Evaluando...</span>' +
             '</button>';
 
-        // Resend + change phone
-        html += '<div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">';
-        html += '<button class="vk-btn vk-btn--secondary" id="vk-cons-reenviar" style="font-size:12px;padding:8px 14px;">Reenviar c\u00f3digo</button>';
-        html += '<button class="vk-btn vk-btn--secondary" id="vk-cons-cambiar-tel" style="font-size:12px;padding:8px 14px;">Cambiar tel\u00e9fono</button>';
+        // Trust badges
+        html += '<div class="vk-trust" style="margin-top:12px;">';
+        html += '<div><span class="vk-check vk-check--sm"></span> Informaci\u00f3n protegida</div>';
+        html += '<div><span class="vk-check vk-check--sm"></span> Resultado en segundos</div>';
         html += '</div>';
 
         html += '</div>'; // end card
@@ -89,9 +102,17 @@ var PasoCreditoConsentimiento = {
         jQuery('#vk-credito-consentimiento-container').html(html);
     },
 
+    _getOTPValue: function() {
+        var code = '';
+        jQuery('.vk-otp-box').each(function() {
+            code += jQuery(this).val();
+        });
+        return code;
+    },
+
     _updateCTA: function() {
-        var otp = jQuery('#vk-cons-otp').val().replace(/\D/g, '');
-        var tyc = jQuery('#vk-cons-tyc').is(':checked');
+        var otp  = this._getOTPValue();
+        var tyc  = jQuery('#vk-cons-tyc').is(':checked');
         var buro = jQuery('#vk-cons-buro').is(':checked');
         jQuery('#vk-cons-evaluar').prop('disabled', !(otp.length === 6 && tyc && buro));
     },
@@ -99,24 +120,76 @@ var PasoCreditoConsentimiento = {
     bindEvents: function() {
         var self = this;
 
-        jQuery(document).off('input', '#vk-cons-otp')
-            .off('change', '#vk-cons-tyc')
-            .off('change', '#vk-cons-buro')
-            .off('click', '#vk-cons-evaluar')
-            .off('click', '#vk-cons-reenviar')
-            .off('click', '#vk-cons-cambiar-tel');
+        jQuery(document)
+            .off('keyup',   '.vk-otp-box')
+            .off('keydown', '.vk-otp-box')
+            .off('paste',   '.vk-otp-box')
+            .off('focus',   '.vk-otp-box')
+            .off('change',  '#vk-cons-tyc')
+            .off('change',  '#vk-cons-buro')
+            .off('click',   '#vk-cons-evaluar')
+            .off('click',   '#vk-cons-reenviar');
 
-        jQuery(document).on('input', '#vk-cons-otp', function() {
-            var val = jQuery(this).val().replace(/\D/g, '');
-            jQuery(this).val(val);
+        // OTP box: numeric input + auto-advance
+        jQuery(document).on('keydown', '.vk-otp-box', function(e) {
+            var $this = jQuery(this);
+            var idx   = parseInt($this.data('index'));
+
+            // Allow: backspace, delete, tab, arrows
+            if (e.key === 'Backspace') {
+                if ($this.val() === '' && idx > 0) {
+                    jQuery('.vk-otp-box[data-index="' + (idx - 1) + '"]').val('').focus();
+                } else {
+                    $this.val('');
+                }
+                self._updateCTA();
+                e.preventDefault();
+                return;
+            }
+            // Block non-numeric
+            if (!/^[0-9]$/.test(e.key) && !['Tab','ArrowLeft','ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+
+        jQuery(document).on('keyup', '.vk-otp-box', function() {
+            var $this = jQuery(this);
+            var idx   = parseInt($this.data('index'));
+            var val   = $this.val().replace(/\D/g, '');
+            $this.val(val.slice(-1)); // keep only last digit
+            if (val && idx < 5) {
+                jQuery('.vk-otp-box[data-index="' + (idx + 1) + '"]').focus();
+            }
             self._updateCTA();
+        });
+
+        // Paste: fill all boxes from pasted value
+        jQuery(document).on('paste', '.vk-otp-box', function(e) {
+            e.preventDefault();
+            var clipData = e.originalEvent.clipboardData || (e.originalEvent && e.originalEvent['clipboardData']);
+            var pasted = clipData ? clipData.getData('text').replace(/\D/g, '').slice(0, 6) : '';
+            jQuery('.vk-otp-box').each(function(i) {
+                jQuery(this).val(pasted[i] || '');
+            });
+            if (pasted.length > 0) {
+                var focusIdx = Math.min(pasted.length, 5);
+                jQuery('.vk-otp-box[data-index="' + focusIdx + '"]').focus();
+            }
+            self._updateCTA();
+        });
+
+        // Focus: highlight box
+        jQuery(document).on('focus', '.vk-otp-box', function() {
+            jQuery(this).css('border-color', '#039fe1');
+        });
+        jQuery(document).on('blur', '.vk-otp-box', function() {
+            jQuery(this).css('border-color', jQuery(this).val() ? '#039fe1' : '#e5e7eb');
         });
 
         jQuery(document).on('change', '#vk-cons-tyc, #vk-cons-buro', function() {
             self._updateCTA();
         });
 
-        // EVALUAR MI SOLICITUD
         jQuery(document).on('click', '#vk-cons-evaluar', function() {
             self._evaluar();
         });
@@ -134,39 +207,32 @@ var PasoCreditoConsentimiento = {
                 success: function(res) {
                     if (res && res.testCode) {
                         self.app.state._otpTestCode = res.testCode;
-                        // Show test code hint dynamically
                         var $hint = jQuery('#vk-cons-test-hint');
                         if ($hint.length) {
                             $hint.html('&#128161; C\u00f3digo de prueba: <strong>' + res.testCode + '</strong>').show();
                         } else {
-                            jQuery('#vk-cons-otp').closest('.vk-form-group').before(
+                            jQuery('.vk-otp-box').first().closest('div').before(
                                 '<div id="vk-cons-test-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
                                 '&#128161; C\u00f3digo de prueba: <strong>' + res.testCode + '</strong></div>'
                             );
                         }
                     }
-                    jQuery('#vk-cons-error').html('&#10004; C\u00f3digo reenviado.').css('color', 'var(--vk-green-primary)').css('background', 'var(--vk-green-soft)').show();
+                    jQuery('#vk-cons-error').html('&#10004; C\u00f3digo reenviado.').css({'color':'var(--vk-green-primary)','background':'var(--vk-green-soft)'}).show();
                 },
                 error: function() {
-                    jQuery('#vk-cons-error').html('Error al reenviar. Intenta de nuevo.').css('color', '#C62828').css('background', '#FFEBEE').show();
+                    jQuery('#vk-cons-error').html('Error al reenviar. Intenta de nuevo.').css({'color':'#C62828','background':'#FFEBEE'}).show();
                 },
                 complete: function() {
-                    jQuery('#vk-cons-reenviar').prop('disabled', false).text('Reenviar c\u00f3digo');
+                    jQuery('#vk-cons-reenviar').prop('disabled', false).text('Reenviar');
                 }
             });
-        });
-
-        // Change phone → go back to ingresos
-        jQuery(document).on('click', '#vk-cons-cambiar-tel', function() {
-            self.app.irAPaso('credito-ingresos');
         });
     },
 
     _evaluar: function() {
-        var self = this;
+        var self  = this;
         var state = self.app.state;
-
-        var otp = jQuery('#vk-cons-otp').val().replace(/\D/g, '');
+        var otp   = this._getOTPValue();
 
         jQuery('#vk-cons-evaluar').prop('disabled', true);
         jQuery('#vk-cons-label').hide();
@@ -183,16 +249,14 @@ var PasoCreditoConsentimiento = {
                 console.log('[OTP] verificar-otp response:', res);
                 if (res && res.valido) {
                     state._otpVerificado = true;
-                    // Now query Círculo de Crédito
                     self._consultarBuro();
                 } else {
-                    var errorMsg = (res && res.error) ? res.error : 'C\u00f3digo incorrecto. Verifica e intenta de nuevo.';
-                    jQuery('#vk-cons-error').html(errorMsg).css('color', '#C62828').css('background', '#FFEBEE').show();
+                    var msg = (res && res.error) ? res.error : 'C\u00f3digo incorrecto. Verifica e intenta de nuevo.';
+                    jQuery('#vk-cons-error').html(msg).css({'color':'#C62828','background':'#FFEBEE'}).show();
                     self._resetCTA();
                 }
             },
             error: function() {
-                // Fallback: accept OTP and proceed
                 state._otpVerificado = true;
                 self._consultarBuro();
             }
@@ -200,7 +264,7 @@ var PasoCreditoConsentimiento = {
     },
 
     _consultarBuro: function() {
-        var self = this;
+        var self  = this;
         var state = self.app.state;
 
         jQuery.ajax({
@@ -217,26 +281,20 @@ var PasoCreditoConsentimiento = {
                 estado:          state.estadoDomicilio || state.estado || ''
             }),
             success: function(res) {
-                state._buroResult = res;
+                state._buroResult  = res;
                 state._buroConsent = true;
                 self._routeByBuroResult(res);
             },
             error: function() {
-                state._buroResult = { success: false, fallback: true };
+                state._buroResult  = { success: false, fallback: true };
                 state._buroConsent = true;
-                // API error → proceed to loading/approved (evaluation will be estimated)
                 self.app.irAPaso('credito-loading');
             }
         });
     },
 
-    /**
-     * Route based on Círculo de Crédito result:
-     * - NO_VIABLE → skip Truora, go to credito-resultado
-     * - Otherwise → proceed to Truora (credito-identidad)
-     */
     _routeByBuroResult: function(buroRes) {
-        var state = this.app.state;
+        var state  = this.app.state;
         var modelo = this.app.getModelo(state.modeloSeleccionado);
 
         if (modelo && typeof PreaprobacionV3 !== 'undefined') {
@@ -258,13 +316,11 @@ var PasoCreditoConsentimiento = {
             state._resultadoFinal = resultado;
 
             if (resultado.status === 'NO_VIABLE') {
-                // Credit declined → skip Truora, show result directly
                 this.app.irAPaso('credito-resultado');
                 return;
             }
         }
 
-        // PREAPROBADO, CONDICIONAL, or couldn't evaluate → show loading then approved
         this.app.irAPaso('credito-loading');
     },
 
