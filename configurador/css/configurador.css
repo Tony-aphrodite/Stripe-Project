@@ -2116,6 +2116,9 @@ html {
         background: var(--vk-green-primary);
         color: #fff;
     }
+    .vk-hero__metodo-tab--active .vk-credito-logo img {
+        filter: brightness(0) invert(1);
+    }
 
     .vk-hero__tab-content {
         flex: 1;
@@ -2521,7 +2524,7 @@ html {
     box-shadow: 0 1px 4px rgba(0,0,0,0.2);
 }
 
-.vk-gal__arrow--prev { left: 8px; }
+.vk-gal__arrow--prev { left: 10px; }
 .vk-gal__arrow--next { right: 8px; }
 
 .vk-gal__dots {
