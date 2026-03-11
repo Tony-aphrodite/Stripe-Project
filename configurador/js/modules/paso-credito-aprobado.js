@@ -62,7 +62,7 @@ var PasoCreditoAprobado = {
         html += '</div>';
 
         // CTA
-        html += '<button class="vk-btn vk-btn--primary" id="vk-aprobado-continuar" style="margin-top:16px;text-transform:uppercase;letter-spacing:0.5px;">CONTINUAR Y CONFIRMAR MI IDENTIDAD &rsaquo;</button>';
+        html += '<button id="vk-aprobado-continuar" style="display:block;width:100%;padding:16px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;margin-top:16px;">CONTINUAR Y CONFIRMAR MI IDENTIDAD &rsaquo;</button>';
         html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:6px;">Tu plan de pagos se mostrar\u00e1 en el siguiente paso.</p>';
 
         // Trust badges — pill buttons
