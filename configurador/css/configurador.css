@@ -2645,7 +2645,7 @@ html {
 }
 /* Give the whole mobile section room so go-electric isn't hidden behind fixed nav */
 .vk-paso1-mobile {
-    padding-bottom: 100px;
+    padding-bottom: 15px;
 }
 
 /* ── Swipe hint animation ───────────────────────────────────────────────── */
