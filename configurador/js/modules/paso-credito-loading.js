@@ -26,11 +26,10 @@ var PasoCreditoLoading = {
         html += '<span style="font-size:22px;font-weight:700;color:white;vertical-align:middle;letter-spacing:0.5px;">voltika</span>';
         html += '</div>';
 
-        // Motorcycle image with rotating wheel overlays
-        html += '<div class="vk-loading-screen__moto">';
-        html += '<img src="' + base + 'img/loding.png" alt="" class="vk-loading-moto__img">';
-        html += '<div class="vk-loading-wheel vk-loading-wheel--rear"></div>';
-        html += '<div class="vk-loading-wheel vk-loading-wheel--front"></div>';
+        // Voltika logo (white)
+        html += '<div class="vk-loading-screen__moto" style="display:flex;align-items:center;justify-content:center;">';
+        html += '<img src="' + base + 'img/voltika_logo.svg" alt="Voltika" ' +
+            'style="width:220px;max-width:80%;filter:brightness(0) invert(1);">';
         html += '</div>';
 
         // Text
