@@ -50,7 +50,7 @@ var Paso3 = {
         html += '<div class="vk-card" style="padding:20px;">';
 
         html += '<div style="font-weight:700;font-size:16px;margin-bottom:10px;">Ingresa tu C\u00f3digo Postal</div>';
-        html += '<div class="vk-form-group" style="position:relative;margin-bottom:12px;">';
+        html += '<div class="vk-form-group" style="position:relative;margin-bottom:4px;">';
         html += '<input type="text" id="vk-cp-input" class="vk-form-input" ' +
             'placeholder="C.P. 5 d\u00edgitos" ' +
             'maxlength="5" inputmode="numeric" pattern="[0-9]*" ' +
@@ -58,6 +58,7 @@ var Paso3 = {
             'style="padding-right:40px;font-size:16px;">';
         html += '<span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--vk-text-muted);font-size:18px;">&#128269;</span>';
         html += '</div>';
+        html += '<div id="vk-cp-error" style="display:none;color:#D32F2F;font-size:13px;margin-bottom:10px;">&#9888; Por favor ingresa tu C\u00f3digo Postal para continuar.</div>';
 
         // City/state display (filled dynamically)
         html += '<div id="vk-cp-city" style="display:none;margin-bottom:16px;background:var(--vk-green-soft);border-radius:10px;padding:14px 16px;">';
@@ -129,7 +130,7 @@ var Paso3 = {
         html += '</div>';
 
         // CTA
-        html += '<button class="vk-btn vk-btn--primary" id="vk-paso3-confirmar" disabled style="font-size:16px;font-weight:800;letter-spacing:0.5px;">' +
+        html += '<button class="vk-btn vk-btn--primary" id="vk-paso3-confirmar" style="font-size:16px;font-weight:800;letter-spacing:0.5px;">' +
             'CONFIRMAR ENTREGA OFICIAL' +
             '</button>';
 
@@ -146,6 +147,7 @@ var Paso3 = {
         $(document).on('input', '#vk-cp-input', function() {
             var val = $(this).val().replace(/\D/g, '');
             $(this).val(val);
+            $('#vk-cp-error').hide();
 
             if (val.length === 5) {
                 self.buscarCP(val);
@@ -169,12 +171,14 @@ var Paso3 = {
         $(document).on('click', '#vk-paso3-confirmar', function() {
             var cp = $('#vk-cp-input').val();
             if (VkValidacion.codigoPostal(cp) && self.app.state.ciudad) {
+                $('#vk-cp-error').hide();
                 self.app.state.codigoPostal = cp;
                 self.app.irAPaso('resumen');
             } else {
+                $('#vk-cp-error').show();
                 $('#vk-cp-input').focus();
-                $('#vk-cp-input').css('border-color', 'red');
-                setTimeout(function() { $('#vk-cp-input').css('border-color', ''); }, 2000);
+                $('#vk-cp-input').css('border-color', '#D32F2F');
+                setTimeout(function() { $('#vk-cp-input').css('border-color', ''); }, 3000);
             }
         });
     },
