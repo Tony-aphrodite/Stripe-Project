@@ -197,7 +197,7 @@ var Paso4B = {
         html += '<div id="vk-enganche-big" style="font-size:32px;font-weight:800;color:var(--vk-text-primary);margin-bottom:8px;">' +
             VkUI.formatPrecio(modelo.precioContado * this._enganchePct) + '</div>';
         html += '<input type="range" id="vk-enganche-slider" min="25" max="80" value="' + Math.round(this._enganchePct * 100) + '" step="5" ' +
-            'style="width:100%;accent-color:#2563EB;">';
+            'style="width:100%;height:8px;accent-color:#2563EB;-webkit-appearance:none;appearance:none;background:#2563EB;border-radius:4px;outline:none;cursor:pointer;">';
         html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--vk-text-muted);margin-top:4px;">' +
             '<span>25%</span><span>80%</span></div>';
         html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-top:6px;">M\u00e1s enganche = menor pago semanal</div>';
