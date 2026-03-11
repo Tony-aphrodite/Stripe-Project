@@ -92,10 +92,21 @@ var Paso3 = {
         // Entrega Garantizada section
         html += '<div style="background:#E0F4FD;border-radius:10px;padding:16px;margin-bottom:14px;border-left:4px solid #039fe1;">';
         html += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">';
-        html += '<span style="font-size:24px;color:#039fe1;">&#9889;</span>';
+        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/delivery_icon.jpg" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">';
         html += '<div>';
         html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Entrega Garantizada</div>';
         html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega garantizada a m\u00e1s tardar el <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+
+        // Tu Asesor Voltika section
+        html += '<div style="background:var(--vk-bg-light);border-radius:10px;padding:16px;margin-bottom:14px;">';
+        html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
+        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/asesor_icon.jpg" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">';
+        html += '<div>';
+        html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Tu Asesor Voltika</div>';
+        html += '<div style="font-size:14px;color:var(--vk-text-secondary);">Estar\u00e1 contigo desde la entrega. M\u00e1x. <strong>48 horas</strong> para confirmarte el punto autorizado.</div>';
         html += '</div>';
         html += '</div>';
         html += '</div>';
