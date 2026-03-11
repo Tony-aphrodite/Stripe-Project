@@ -210,7 +210,7 @@ var VkUI = {
         };
         var galeria = {
             'm03':        ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
-            'm05':        ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
+            'm05':        ['black_side.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
             'mc10':       ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
             'mino':       ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
             'pesgo-plus': ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
