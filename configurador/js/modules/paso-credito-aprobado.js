@@ -28,22 +28,21 @@ var PasoCreditoAprobado = {
         html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/aprobado.png" alt="" style="width:100px;height:100px;object-fit:contain;">';
         html += '</div>';
         html += '<h2 class="vk-aprobado-header__title" style="color:#ffffff;">\u00a1Felicidades!</h2>';
-        html += '<p class="vk-aprobado-header__subtitle">Tu cr\u00e9dito Voltika<br>ya fue aprobado.</p>';
+        html += '<p class="vk-aprobado-header__subtitle">Tu cr\u00e9dito Voltika ya est\u00e1 aprobado</p>';
+        html += '<p style="color:rgba(255,255,255,0.85);font-size:13px;margin-top:8px;">Tu plan de pagos ya est\u00e1 listo y tu moto qued\u00f3 reservada para ti.</p>';
         html += '</div>';
 
         // White card area
         html += '<div class="vk-aprobado-body">';
 
-        html += '<p style="text-align:center;font-size:14px;color:var(--vk-text-secondary);margin-bottom:16px;">Tu plan de pagos ya est\u00e1 listo.</p>';
-
         // Delivery info
         if (cpEntrega) {
             html += '<div class="vk-aprobado-info">';
             html += '<div class="vk-aprobado-info__row">';
-            html += '<span class="vk-check"></span>';
-            html += '<div>';
-            html += '<strong>Tu moto ya est\u00e1 apartada</strong> para entrega en:';
-            html += '<div style="font-weight:700;">' + ciudadEntrega + ' (CP ' + cpEntrega + ')</div>';
+            html += '<span style="font-size:18px;flex-shrink:0;">&#128205;</span>';
+            html += '<div style="font-size:14px;line-height:1.5;">';
+            html += 'Tu moto se entregar\u00e1 en un <strong>punto Voltika autorizado</strong> cerca de ti';
+            html += '<div style="font-weight:700;margin-top:2px;">' + ciudadEntrega + ' (CP ' + cpEntrega + ')</div>';
             html += '</div>';
             html += '</div>';
             html += '</div>';
@@ -53,22 +52,29 @@ var PasoCreditoAprobado = {
         html += '<div class="vk-aprobado-steps">';
         html += '<div class="vk-aprobado-steps__header">';
         html += '<span style="font-size:16px;">&#9201;</span>';
-        html += '<strong>Solo toma menos de 30 segundos</strong>';
+        html += '<strong>Solo faltan 30 segundos para terminar</strong>';
         html += '</div>';
-        html += '<div class="vk-aprobado-steps__item"><span class="vk-check vk-check--sm"></span> Toma una foto de tu INE</div>';
+        html += '<p style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Para proteger tu cr\u00e9dito y evitar fraudes necesitamos confirmar tu identidad.</p>';
+        html += '<div class="vk-aprobado-steps__item"><span class="vk-check vk-check--sm"></span> Foto de tu INE</div>';
         html += '<div class="vk-aprobado-steps__item"><span class="vk-check vk-check--sm"></span> Selfie r\u00e1pida</div>';
+        html += '<div class="vk-aprobado-steps__item">&#128274; Tu informaci\u00f3n est\u00e1 protegida y cifrada</div>';
         html += '</div>';
 
         // CTA
-        html += '<button class="vk-btn vk-btn--primary" id="vk-aprobado-continuar" style="margin-top:16px;text-transform:uppercase;letter-spacing:0.5px;">Continuar y confirmar mi identidad &rsaquo;</button>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-aprobado-continuar" style="margin-top:16px;text-transform:uppercase;letter-spacing:0.5px;">CONTINUAR Y CONFIRMAR MI IDENTIDAD &rsaquo;</button>';
         html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:6px;">Tu plan de pagos se mostrar\u00e1 en el siguiente paso.</p>';
 
-        // Trust badges
-        html += '<div class="vk-aprobado-trust">';
-        html += '<div class="vk-aprobado-trust__item">&#128274; Proceso 100% seguro y encriptado</div>';
-        html += '<div class="vk-aprobado-trust__item">&#9989; Consulta en Bur\u00f3 de Cr\u00e9dito</div>';
-        html += '<div class="vk-aprobado-trust__item">&#128172; Un asesor Voltika estar\u00e1 disponible si necesitas ayuda.</div>';
+        // Trust badges — horizontal
+        html += '<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--vk-border-light);font-size:12px;color:var(--vk-text-secondary);">';
+        html += '<span>&#10003; Sin aval</span>';
+        html += '<span>&#10003; Sin papeleo</span>';
+        html += '<span>&#10003; Proceso 100% digital</span>';
         html += '</div>';
+
+        // Advisor note
+        html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:14px;line-height:1.5;">';
+        html += 'Un asesor Voltika te contactar\u00e1 dentro de las pr\u00f3ximas <strong>48 horas</strong> para acompa\u00f1arte en la entrega de tu moto y resolver cualquier duda.';
+        html += '</p>';
 
         html += '</div>'; // end body
 

@@ -1412,7 +1412,7 @@ html {
    Credit Approved Screen (Felicidades)
    -------------------------------------------------------------------------- */
 .vk-aprobado-header {
-    background: linear-gradient(160deg, #039fe1 0%, #0288cc 50%, #0176b5 100%);
+    background: linear-gradient(160deg, #1a52cc 0%, #1565C0 50%, #0d47a1 100%);
     border-radius: var(--vk-radius-lg) var(--vk-radius-lg) 0 0;
     padding: 28px 20px 36px;
     text-align: center;
