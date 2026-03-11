@@ -314,8 +314,11 @@ var Paso4B = {
 
         // "CONFIRMAR COMPRA" — save enganche/plazo and go to color selection
         $(document).on('click', '#vk-confirmar-credito', function() {
+            var modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
+            var credito = self._calcularCredito(modelo);
             self.app.state.enganchePorcentaje = self._enganchePct;
             self.app.state.plazoMeses = self._plazoMeses;
+            self.app.state.cuotaSemanal = credito.pagoSemanal;
             self.app.irAPaso(2); // Go to color selector
         });
 

@@ -121,8 +121,9 @@ var Paso2 = {
         var html = '';
 
         if (metodo === 'credito') {
+            var cuota = (this.app && this.app.state && this.app.state.cuotaSemanal) ? this.app.state.cuotaSemanal : modelo.precioSemanal;
             html += '<div class="vk-card__credito-logo">' + VkUI.renderCreditoLogo(24) + ' seleccionado</div>';
-            html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioSemanal) + '</strong> semanales</div>';
+            html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(cuota) + '</strong> semanales</div>';
             html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
             html += VkUI.renderTabBullet('Aprobaci\u00f3n en 2 minutos solo con INE');
             html += VkUI.renderTabBullet('En cr\u00e9dito Voltika se incluye flete a tu ciudad');
