@@ -89,15 +89,15 @@ var Paso3 = {
         html += '</div>';
 
         // Entrega Garantizada + Asesor section (combined)
-        html += '<div style="background:var(--vk-green-soft);border-radius:10px;padding:16px;margin-bottom:14px;">';
+        html += '<div style="background:#E0F4FD;border-radius:10px;padding:16px;margin-bottom:14px;border-left:4px solid #039fe1;">';
         html += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">';
-        html += '<span style="font-size:24px;color:var(--vk-green-primary);">&#9889;</span>';
+        html += '<span style="font-size:24px;color:#039fe1;">&#9889;</span>';
         html += '<div>';
         html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Entrega Garantizada</div>';
-        html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega garantizada a m\u00e1s tardar el <strong style="color:var(--vk-green-primary);">' + fechaEntrega + '</strong></div>';
+        html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega garantizada a m\u00e1s tardar el <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
         html += '</div>';
         html += '</div>';
-        html += '<div style="display:flex;align-items:flex-start;gap:12px;border-top:1px solid rgba(0,0,0,0.08);padding-top:12px;">';
+        html += '<div style="display:flex;align-items:flex-start;gap:12px;border-top:1px solid rgba(3,159,225,0.2);padding-top:12px;">';
         html += '<span style="font-size:20px;">&#128100;</span>';
         html += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);line-height:1.5;">';
         html += 'Tu <strong>Asesor Personal Voltika</strong> confirmar\u00e1 contigo el punto exacto de entrega en m\u00e1x. <strong>48 horas</strong>.';
@@ -125,7 +125,7 @@ var Paso3 = {
         html += '<input type="checkbox" id="vk-check-seguro" class="vk-checkbox" style="margin-top:3px;"' +
             (state.seguro ? ' checked' : '') + '>';
         html += '<div>';
-        html += '<div style="font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">Quiero cotizar y activar el seguro con <img src="' + (window.VK_BASE_PATH || '') + 'img/Qualitas.png" alt="Qu\u00e1litas" style="height:32px;vertical-align:middle;"> desde la entrega</div>';
+        html += '<div style="font-weight:800;font-size:15px;">Quiero cotizar y activar el seguro con <img src="' + (window.VK_BASE_PATH || '') + 'img/Qualitas.png" alt="Qu\u00e1litas" style="height:28px;vertical-align:middle;display:inline-block;"> desde la entrega</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Cotizamos y enviamos tu p\u00f3liza. Pago directo a la aseguradora.</div>';
         html += '</div>';
         html += '</label>';
