@@ -55,8 +55,9 @@ var PasoCreditoAprobado = {
         html += '<strong>Solo faltan 30 segundos para terminar</strong>';
         html += '</div>';
         html += '<p style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Para proteger tu cr\u00e9dito y evitar fraudes necesitamos confirmar tu identidad.</p>';
-        html += '<div class="vk-aprobado-steps__item"><span class="vk-check vk-check--sm"></span> Foto de tu INE</div>';
-        html += '<div class="vk-aprobado-steps__item"><span class="vk-check vk-check--sm"></span> Selfie r\u00e1pida</div>';
+        var chk = '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#039fe1;color:#fff;font-size:10px;flex-shrink:0;">&#10003;</span>';
+        html += '<div class="vk-aprobado-steps__item">' + chk + ' Foto de tu INE</div>';
+        html += '<div class="vk-aprobado-steps__item">' + chk + ' Selfie r\u00e1pida</div>';
         html += '<div class="vk-aprobado-steps__item">&#128274; Tu informaci\u00f3n est\u00e1 protegida y cifrada</div>';
         html += '</div>';
 
@@ -64,11 +65,16 @@ var PasoCreditoAprobado = {
         html += '<button class="vk-btn vk-btn--primary" id="vk-aprobado-continuar" style="margin-top:16px;text-transform:uppercase;letter-spacing:0.5px;">CONTINUAR Y CONFIRMAR MI IDENTIDAD &rsaquo;</button>';
         html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:6px;">Tu plan de pagos se mostrar\u00e1 en el siguiente paso.</p>';
 
-        // Trust badges — horizontal
-        html += '<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--vk-border-light);font-size:12px;color:var(--vk-text-secondary);">';
-        html += '<span>&#10003; Sin aval</span>';
-        html += '<span>&#10003; Sin papeleo</span>';
-        html += '<span>&#10003; Proceso 100% digital</span>';
+        // Trust badges — pill buttons
+        html += '<div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--vk-border-light);">';
+        var badges = ['Sin aval', 'Sin papeleo', 'Proceso 100% digital'];
+        for (var i = 0; i < badges.length; i++) {
+            html += '<span style="display:inline-flex;align-items:center;gap:4px;background:#e8f7ff;color:#0288cc;' +
+                'border:1px solid #b3e0f7;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:600;">' +
+                '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;' +
+                'border-radius:50%;background:#039fe1;color:#fff;font-size:9px;flex-shrink:0;">&#10003;</span>' +
+                badges[i] + '</span>';
+        }
         html += '</div>';
 
         // Advisor note
