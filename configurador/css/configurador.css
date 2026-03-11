@@ -493,7 +493,8 @@ html {
     display: inline-block;
     vertical-align: middle;
 }
-.vk-hero__metodo-tab--active .vk-credito-logo img {
+.vk-hero__metodo-tab--active .vk-credito-logo img,
+.vk-tab--active .vk-credito-logo img {
     filter: brightness(0) invert(1);
 }
 
