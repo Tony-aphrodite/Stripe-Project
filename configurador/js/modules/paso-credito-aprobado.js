@@ -24,16 +24,22 @@ var PasoCreditoAprobado = {
 
         // Blue gradient header
         html += '<div class="vk-aprobado-header">';
-        html += '<div class="vk-aprobado-header__logo">';
-        html += '<img src="img/voltika_logo_h.svg" alt="Voltika">';
-        html += '</div>';
         html += '<div class="vk-aprobado-header__check">';
-        html += '<svg viewBox="0 0 80 80" width="80" height="80">';
-        html += '<circle cx="40" cy="40" r="36" fill="#4CAF50" />';
-        html += '<path d="M24 40 L35 52 L56 28" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />';
+        html += '<div class="vk-aprobado-check3d">';
+        html += '<svg viewBox="0 0 80 80" width="90" height="90">';
+        html += '<defs>';
+        html += '<radialGradient id="cg" cx="38%" cy="35%" r="60%">';
+        html += '<stop offset="0%" stop-color="#7EE55A"/>';
+        html += '<stop offset="60%" stop-color="#3CB828"/>';
+        html += '<stop offset="100%" stop-color="#1A8A10"/>';
+        html += '</radialGradient>';
+        html += '</defs>';
+        html += '<circle cx="40" cy="40" r="38" fill="url(#cg)" />';
+        html += '<path d="M22 40 L34 53 L58 26" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />';
         html += '</svg>';
         html += '</div>';
-        html += '<h2 class="vk-aprobado-header__title">\u00a1Felicidades!</h2>';
+        html += '</div>';
+        html += '<h2 class="vk-aprobado-header__title" style="color:#ffffff;">\u00a1Felicidades!</h2>';
         html += '<p class="vk-aprobado-header__subtitle">Tu cr\u00e9dito Voltika<br>ya fue aprobado.</p>';
         html += '</div>';
 
