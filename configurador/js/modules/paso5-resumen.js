@@ -144,12 +144,12 @@ var PasoResumen = {
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">Color: ' + color + '</div>';
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Pago semanal desde</div>';
         html += '<div style="font-size:32px;font-weight:900;color:var(--vk-text-primary);line-height:1.1;">' + VkUI.formatPrecio(credito.pagoSemanal) + '</div>';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">';
-        html += '<div style="font-size:12px;font-weight:700;">Enganche<br><span style="color:var(--vk-green-primary);">' + VkUI.formatPrecio(credito.enganche) + '</span></div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);">menos de <strong>' + VkUI.formatPrecio(pagoDiario) + '</strong> al d\u00eda</div>';
+        html += '<div style="font-size:12px;font-weight:700;margin-top:4px;">Enganche<br><span style="color:var(--vk-green-primary);">' + VkUI.formatPrecio(credito.enganche) + '</span></div>';
         html += '</div>';
+        html += '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">';
+        html += '<img src="' + img + '" alt="' + modelo.nombre + '" style="width:100px;height:auto;object-fit:contain;">';
+        html += '<div style="font-size:11px;color:var(--vk-text-secondary);text-align:center;margin-top:4px;">menos de <strong>' + VkUI.formatPrecio(pagoDiario) + '</strong> al d\u00eda</div>';
         html += '</div>';
-        html += '<img src="' + img + '" alt="' + modelo.nombre + '" style="width:100px;height:auto;object-fit:contain;flex-shrink:0;">';
         html += '</div>';
         html += '<div style="display:flex;align-items:center;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--vk-border);">';
         html += '<span style="color:var(--vk-green-primary);font-size:16px;">&#10003;</span>';
@@ -181,16 +181,13 @@ var PasoResumen = {
         html += '</div>';
 
         // 4. CTA button
-        html += '<button id="vk-resumen-iniciar-credito" style="display:block;width:100%;padding:16px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:17px;font-weight:900;cursor:pointer;letter-spacing:0.5px;margin-bottom:10px;">&#9889; VER SI CALIFICO</button>';
+        html += '<button id="vk-resumen-iniciar-credito" style="display:block;width:100%;padding:16px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:17px;font-weight:900;cursor:pointer;letter-spacing:0.5px;margin-bottom:10px;">VER SI CALIFICO</button>';
 
         // 5. Trust badges
         html += '<div style="display:flex;justify-content:center;gap:16px;margin-bottom:14px;font-size:12px;color:var(--vk-text-secondary);">';
         html += '<span><span style="color:var(--vk-green-primary);">&#10003;</span> En menos de 2 minutos</span>';
         html += '<span><span style="color:var(--vk-green-primary);">&#10003;</span> Solo necesitas tu INE</span>';
         html += '</div>';
-
-        // 6. Orange banner
-        html += '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:8px;padding:10px 14px;text-align:center;font-size:13px;font-weight:600;color:#e65100;margin-bottom:16px;">&#11088; M\u00e1s de 3,000 clientes ya se movieron con Voltika</div>';
 
         // 7. Bottom text links
         html += '<div style="display:flex;justify-content:center;gap:0;border-top:1px solid var(--vk-border);padding-top:14px;">';
