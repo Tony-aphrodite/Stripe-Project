@@ -34,69 +34,87 @@ var Paso4A = {
 
         var total   = modelo.precioContado + state.costoLogistico;
         var msiPago = modelo.tieneMSI ? Math.round(modelo.precioMSI) : Math.round(total / 9);
+        var ciudad  = (state.ciudad && state.estado) ? state.ciudad + ', ' + state.estado : (state.ciudad || '--');
+        var diasEntrega = VOLTIKA_PRODUCTOS.config.entregaDiasHabiles || '7 a 10';
+        var color   = state.colorSeleccionado || modelo.colorDefault || '';
 
         var html = '';
 
         // Back button
         html += VkUI.renderBackButton(3);
 
-        // Card logos + header — matches mockup page 13
-        html += '<div style="text-align:center;padding:10px 0 6px;">' +
-            VkUI.renderCardLogos() +
-            '</div>';
+        // Card logos
+        html += '<div style="text-align:center;padding:10px 0 4px;">' + VkUI.renderCardLogos() + '</div>';
 
-        var esMSI = state.metodoPago === 'msi';
-
-        html += '<div style="text-align:center;margin-bottom:4px;">';
-        if (esMSI) {
-            html += '<div style="font-size:22px;font-weight:800;color:var(--vk-text-primary);">9 MSI de ' + VkUI.formatPrecio(msiPago) + ' /mes</div>';
-            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:4px;">Sin intereses \u00b7 Total: ' + VkUI.formatPrecio(total) + ' MXN ' + VkUI.renderCardLogos() + '</div>';
-        } else {
-            html += '<div style="font-size:22px;font-weight:800;color:var(--vk-text-primary);">Total hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
-            if (modelo.tieneMSI) {
-                html += '<div style="font-size:13px;color:var(--vk-green-primary);font-weight:600;margin-top:4px;">&#10003; 9 MSI tambi\u00e9n disponibles ' + VkUI.renderCardLogos() + '</div>';
-            }
-        }
+        // Header
+        html += '<div style="text-align:center;margin-bottom:16px;">';
+        html += '<div style="font-size:13px;color:var(--vk-text-muted);margin-bottom:4px;">\u00b7 PASO 4 \u00b7</div>';
+        html += '<h2 class="vk-paso__titulo" style="margin-bottom:0;">Confirma tu forma de pago segura</h2>';
         html += '</div>';
 
-        // ── Order summary ─────────────────────────────────────────────────
-        html += '<div class="vk-summary" style="margin-top:14px;">';
+        // ── Order summary ──────────────────────────────────────────────────
+        html += '<div class="vk-summary" style="margin-bottom:16px;">';
+        html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">Resumen de tu compra</div>';
 
-        html += '<div class="vk-summary__row">';
-        html += '<span class="vk-summary__label">Modelo:</span>';
-        html += '<span class="vk-summary__value">' + modelo.nombre + ' &middot; ' + (state.colorSeleccionado || modelo.colorDefault) + '</span>';
-        html += '</div>';
-
-        html += '<div class="vk-summary__row">';
-        html += '<span class="vk-summary__label">Entrega:</span>';
-        html += '<span class="vk-summary__value">' + VOLTIKA_PRODUCTOS.config.entregaDiasHabiles + ' d\u00edas h\u00e1biles &middot; ' + (state.ciudad || '--') + '</span>';
-        html += '</div>';
-
-        html += '<div style="font-size:11px;color:var(--vk-text-muted);padding:2px 0 6px;">' +
-            'Un asesor Voltika confirmar\u00e1 el centro de entrega en 24-48 hrs.' +
-            '</div>';
-
+        html += '<div style="font-size:14px;line-height:1.9;">';
+        html += '<div>\u2022 Modelo: <strong>' + modelo.nombre + '</strong></div>';
+        html += '<div>\u2022 Color: <strong>' + color + '</strong></div>';
+        html += '<div>\u2022 Entrega en: <strong>' + ciudad + '</strong></div>';
+        html += '<div>\u2022 Entrega estimada: <strong>' + diasEntrega + ' d\u00edas h\u00e1biles</strong> en tu ciudad</div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);">\u2022 Asesor Voltika confirma la ubicaci\u00f3n exacta del centro autorizado entre 24 a 48 horas, h\u00e1biles despu\u00e9s del pago</div>';
         if (state.costoLogistico > 0) {
-            html += '<div class="vk-summary__row">';
-            html += '<span class="vk-summary__label">Costo log\u00edstico:</span>';
-            html += '<span class="vk-summary__value">' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</span>';
-            html += '</div>';
+            html += '<div>\u2022 Costo log\u00edstico: <strong>' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</strong></div>';
         }
+        html += '</div>';
 
-        if (esMSI) {
-            html += '<div style="font-size:12px;color:var(--vk-text-secondary);padding:4px 0 2px;">' +
-                '9 pagos de ' + VkUI.formatPrecio(msiPago) + ' MXN (sin intereses)' +
-                '</div>';
-        } else if (modelo.tieneMSI) {
-            html += '<div style="font-size:12px;color:var(--vk-text-secondary);padding:4px 0 2px;">' +
-                'o 9 pagos de ' + VkUI.formatPrecio(msiPago) + ' MXN (9 MSI sin intereses)' +
-                '</div>';
+        html += '<div style="border-top:1.5px solid var(--vk-border);margin:12px 0 10px;"></div>';
+
+        html += '<div style="font-size:22px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Total a pagar hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
+        if (modelo.tieneMSI) {
+            html += '<div style="font-size:14px;color:var(--vk-text-secondary);">\u2022 o 9 pagos de <strong>' + VkUI.formatPrecio(msiPago) + ' MXN</strong> (9 MSI sin intereses)</div>';
         }
 
         html += '</div>'; // end summary
 
+        // ── Two payment option cards ───────────────────────────────────────
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+
+        // Left: Pago único
+        html += '<div style="border:1.5px solid var(--vk-border);border-radius:10px;padding:14px;display:flex;flex-direction:column;">';
+        html += '<div style="font-weight:800;font-size:14px;text-align:center;margin-bottom:8px;line-height:1.3;">Pago \u00fanico<br>100% seguro</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);flex:1;">';
+        html += '<div>\u2022 Pago protegido y encriptado</div>';
+        html += '<div>\u2022 Confirmaci\u00f3n bancaria al instante</div>';
+        html += '<div>\u2022 Atenci\u00f3n personalizada post-venta</div>';
+        html += '</div>';
+        html += '<button class="vk-btn vk-btn--primary vk-pay-btn" id="vk-pay-unico" data-tipo="unico" style="margin:10px 0 0;width:100%;font-size:12px;padding:10px 6px;">';
+        html += '<span class="vk-pay-btn__label">PAGAR ' + VkUI.formatPrecio(total) + ' MXN</span>';
+        html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + '</span>';
+        html += '</button>';
+        html += '</div>';
+
+        // Right: 9 MSI (only if model supports MSI)
+        if (modelo.tieneMSI) {
+            html += '<div style="border:1.5px solid var(--vk-border);border-radius:10px;padding:14px;display:flex;flex-direction:column;">';
+            html += '<div style="font-weight:800;font-size:14px;text-align:center;margin-bottom:8px;line-height:1.3;">9 MSI sin intereses</div>';
+            html += '<div style="font-size:12px;color:var(--vk-text-secondary);flex:1;">';
+            html += '<div>Tu moto hoy, sin pagar todo de golpe</div>';
+            html += '<div>&#10003; 9 pagos fijos de ' + VkUI.formatPrecio(msiPago) + ' MXN</div>';
+            html += '<div>&#10003; Sin intereses ni cargos ocultos</div>';
+            html += '<div>&#10003; Cargo autom\u00e1tico seguro cada mes</div>';
+            html += '<div>&#10003; Sin tr\u00e1mites ni validaciones adicionales</div>';
+            html += '</div>';
+            html += '<button class="vk-btn vk-btn--primary vk-pay-btn" id="vk-pay-msi" data-tipo="msi" style="margin:10px 0 0;width:100%;font-size:12px;padding:10px 6px;">';
+            html += '<span class="vk-pay-btn__label">PAGAR PRIMER CARGO</span>';
+            html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + '</span>';
+            html += '</button>';
+            html += '</div>';
+        }
+
+        html += '</div>'; // end grid
+
         // ── Contact + Card form ────────────────────────────────────────────
-        html += '<div id="vk-checkout-form" style="border-top:2px solid var(--vk-border);margin-top:14px;padding-top:18px;">';
+        html += '<div id="vk-checkout-form" style="border-top:2px solid var(--vk-border);padding-top:18px;">';
 
         // Terms
         html += '<div class="vk-checkbox-group" style="margin-bottom:16px;">';
@@ -132,24 +150,8 @@ var Paso4A = {
         html += '<div id="vk-stripe-card-errors" style="color:#C62828;font-size:12px;margin-top:6px;display:none;"></div>';
         html += '</div>';
 
-        // ── Single pay button (based on PASO 1 selection) ─────────────────
-        if (esMSI) {
-            html += '<button class="vk-btn vk-btn--primary vk-pay-btn" id="vk-pay-msi" data-tipo="msi">';
-            html += '<span class="vk-pay-btn__label">&#128274; 9 MSI de ' + VkUI.formatPrecio(msiPago) + ' /mes</span>';
-            html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + ' Procesando...</span>';
-            html += '</button>';
-        } else {
-            html += '<button class="vk-btn vk-btn--primary vk-pay-btn" id="vk-pay-unico" data-tipo="unico">';
-            html += '<span class="vk-pay-btn__label">&#128274; PAGAR ' + VkUI.formatPrecio(total) + ' MXN</span>';
-            html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + ' Procesando...</span>';
-            html += '</button>';
-        }
-
-        html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:12px;">' +
+        html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:4px;margin-bottom:8px;">' +
             '&#128274; Pago cifrado SSL &middot; ' + VkUI.renderCardLogos() +
-            '</div>';
-        html += '<div style="text-align:center;font-size:11px;color:var(--vk-text-muted);margin-top:4px;">' +
-            'Los datos para facturar se te pedir\u00e1n posteriormente.' +
             '</div>';
 
         html += '</div>'; // end checkout-form
