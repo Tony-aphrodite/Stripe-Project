@@ -196,10 +196,10 @@ var VkUI = {
     renderCreditoStepBar: function(activeStep) {
         var steps = [
             {num:1, label:'Datos'},
-            {num:2, label:'Tel'},
-            {num:3, label:'ID'},
-            {num:4, label:'Entrega'},
-            {num:5, label:'Pago'}
+            {num:2, label:'Direcci\u00f3n'},
+            {num:3, label:'Ingresos'},
+            {num:4, label:'Tel\u00e9fono'},
+            {num:5, label:'Resultado'}
         ];
         var html = '<div style="margin-bottom:16px;overflow:hidden;">';
         html += '<div style="font-size:12px;color:#999;margin-bottom:6px;">Paso ' + activeStep + ' de 5</div>';

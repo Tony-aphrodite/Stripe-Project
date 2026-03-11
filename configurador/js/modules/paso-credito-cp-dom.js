@@ -16,7 +16,7 @@ var PasoCreditoCPDom = {
         var html = '';
 
         html += VkUI.renderBackButton('credito-nacimiento');
-        html += VkUI.renderCreditoStepBar(1);
+        html += VkUI.renderCreditoStepBar(2);
 
         html += '<h2 class="vk-paso__titulo">C\u00f3digo postal de tu domicilio</h2>';
 

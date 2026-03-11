@@ -18,7 +18,7 @@ var PasoCreditoDatos = {
 
         var html = '';
         html += VkUI.renderBackButton(4);
-        html += VkUI.renderCreditoStepBar(1);
+        html += VkUI.renderCreditoStepBar(3);
 
         html += '<h2 class="vk-paso__titulo">Informaci\u00f3n personal</h2>';
         html += '<p class="vk-paso__subtitulo">Necesitamos tus datos para tu solicitud de cr\u00e9dito</p>';

@@ -18,7 +18,7 @@ var PasoCreditoConsentimiento = {
         var html = '';
 
         html += VkUI.renderBackButton('credito-ingresos');
-        html += VkUI.renderCreditoStepBar(2);
+        html += VkUI.renderCreditoStepBar(4);
 
         html += '<h2 class="vk-paso__titulo">Aceptaci\u00f3n de acuerdos</h2>';
         html += '<p class="vk-paso__subtitulo">Verifica tu c\u00f3digo y autoriza la consulta</p>';

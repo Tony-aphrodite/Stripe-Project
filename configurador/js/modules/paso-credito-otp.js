@@ -16,7 +16,7 @@ var PasoCreditoOTP = {
 
         var html = '';
         html += VkUI.renderBackButton('credito-datos');
-        html += VkUI.renderCreditoStepBar(2);
+        html += VkUI.renderCreditoStepBar(4);
 
         html += '<h2 class="vk-paso__titulo">Verificaci\u00f3n por SMS</h2>';
 

@@ -16,7 +16,7 @@ var PasoCreditoDomicilio = {
         var html = '';
 
         html += VkUI.renderBackButton('credito-cp-dom');
-        html += VkUI.renderCreditoStepBar(1);
+        html += VkUI.renderCreditoStepBar(2);
 
         html += '<h2 class="vk-paso__titulo">Direcci\u00f3n de tu domicilio</h2>';
         html += '<p class="vk-paso__subtitulo">Para continuar con tu solicitud de cr\u00e9dito (como aparece en tu INE o comprobante)</p>';
