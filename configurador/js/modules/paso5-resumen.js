@@ -60,38 +60,38 @@ var PasoResumen = {
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Ll\u00e9vatela por solo</div>';
         html += '<div style="font-size:38px;font-weight:900;color:var(--vk-text-primary);line-height:1;">' + VkUI.formatPrecio(msiPago) + ' <span style="font-size:18px;font-weight:700;">/ mes</span></div>';
         if (modelo.tieneMSI) {
-            html += '<div style="font-size:12px;font-weight:700;color:#2563EB;margin:6px 0 2px;">9 MSI SIN INTERESES</div>';
+            html += '<div style="font-size:12px;font-weight:700;color:#039fe1;margin:6px 0 2px;">9 MSI SIN INTERESES</div>';
         }
         html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-bottom:14px;">Primer cargo hoy.</div>';
-        html += '<button id="vk-resumen-pagar-msi" style="display:block;width:100%;padding:14px;background:#2563EB;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">PAGAR ' + VkUI.formatPrecio(msiPago) + ' HOY</button>';
+        html += '<button id="vk-resumen-pagar-msi" style="display:block;width:100%;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">PAGAR ' + VkUI.formatPrecio(msiPago) + ' HOY</button>';
         html += '<div style="margin-top:10px;font-size:12px;color:var(--vk-text-muted);">&#128274; Pago seguro con ' + VkUI.renderCardLogos() + '</div>';
         html += '</div>';
 
-        // 4. Opciones de pago — radio style (vertical)
+        // 4. Opciones de pago — radio style interactivo (vertical)
         // Opción MSI
         if (modelo.tieneMSI) {
-            html += '<div style="border:2px solid #2563EB;border-radius:10px;padding:14px;margin-bottom:10px;background:#f0f5ff;">';
+            html += '<div id="vk-opcion-msi" class="vk-opcion-pago" data-tipo="msi" style="border:2px solid #039fe1;border-radius:10px;padding:14px;margin-bottom:10px;background:#f0faff;cursor:pointer;">';
             html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
-            html += '<span style="width:18px;height:18px;border-radius:50%;background:#2563EB;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#fff;display:block;"></span></span>';
+            html += '<span id="vk-radio-msi" style="width:18px;height:18px;border-radius:50%;background:#039fe1;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#fff;display:block;"></span></span>';
             html += '<span style="font-size:14px;font-weight:700;">Pagar a 9 meses sin intereses</span>';
             html += '</div>';
             html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">';
             html += '<span style="font-size:15px;font-weight:800;">' + VkUI.formatPrecio(msiPago) + ' MXN <span style="font-size:13px;font-weight:500;">/ mes</span></span>';
-            html += '<button id="vk-resumen-pagar-msi-2" style="padding:8px 14px;background:#2563EB;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">PAGAR ' + VkUI.formatPrecio(msiPago) + ' HOY</button>';
+            html += '<button id="vk-resumen-pagar-msi-2" style="padding:8px 14px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">PAGAR ' + VkUI.formatPrecio(msiPago) + ' HOY</button>';
             html += '</div>';
             html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-top:6px;">Primer pago hoy y luego 8 pagos mensuales.</div>';
             html += '</div>';
         }
 
         // Opción contado
-        html += '<div style="border:1.5px solid var(--vk-border);border-radius:10px;padding:14px;margin-bottom:16px;">';
+        html += '<div id="vk-opcion-contado" class="vk-opcion-pago" data-tipo="contado" style="border:1.5px solid var(--vk-border);border-radius:10px;padding:14px;margin-bottom:16px;cursor:pointer;">';
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
-        html += '<span style="width:18px;height:18px;border-radius:50%;border:2px solid #ccc;display:inline-block;flex-shrink:0;"></span>';
+        html += '<span id="vk-radio-contado" style="width:18px;height:18px;border-radius:50%;border:2px solid #ccc;display:inline-block;flex-shrink:0;"></span>';
         html += '<span style="font-size:14px;font-weight:700;">O pagar al contado</span>';
         html += '</div>';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">';
         html += '<span style="font-size:15px;font-weight:800;">' + VkUI.formatPrecio(total) + ' MXN</span>';
-        html += '<button id="vk-resumen-pagar-contado" style="padding:8px 14px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">PAGAR ' + VkUI.formatPrecio(total) + '</button>';
+        html += '<button id="vk-resumen-pagar-contado" style="padding:8px 14px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">PAGAR ' + VkUI.formatPrecio(total) + '</button>';
         html += '</div>';
         html += '</div>';
 
@@ -206,7 +206,22 @@ var PasoResumen = {
         jQuery(document).off('click', '#vk-resumen-pagar-msi, #vk-resumen-pagar-msi-2');
         jQuery(document).on('click', '#vk-resumen-pagar-msi, #vk-resumen-pagar-msi-2', function() {
             self.app.state.metodoPago = 'msi';
-            self.app.irAPaso(4); // Goes to Paso4A (Stripe)
+            self.app.irAPaso(4);
+        });
+
+        // Radio selection: clicking opcion area toggles active style
+        jQuery(document).off('click', '.vk-opcion-pago');
+        jQuery(document).on('click', '.vk-opcion-pago', function(e) {
+            if (jQuery(e.target).is('button')) return; // let button handle navigation
+            var tipo = jQuery(this).data('tipo');
+            // Reset both
+            jQuery('#vk-opcion-msi').css({'border': '1.5px solid var(--vk-border)', 'background': '#fff'});
+            jQuery('#vk-radio-msi').css({'background': '#ccc'}).html('');
+            jQuery('#vk-opcion-contado').css({'border': '1.5px solid var(--vk-border)', 'background': '#fff'});
+            jQuery('#vk-radio-contado').css({'background': '', 'border': '2px solid #ccc'}).html('');
+            // Activate selected
+            jQuery('#vk-opcion-' + tipo).css({'border': '2px solid #039fe1', 'background': '#f0faff'});
+            jQuery('#vk-radio-' + tipo).css({'background': '#039fe1', 'border': 'none'}).html('<span style="width:8px;height:8px;border-radius:50%;background:#fff;display:block;margin:auto;"></span>');
         });
 
         // Crédito: Iniciar proceso
