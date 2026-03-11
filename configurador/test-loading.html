@@ -85,8 +85,8 @@ body { background: #f0f0f0; display: flex; justify-content: center; padding: 20p
 }
 
 .vk-loading-screen__text { color: white; margin-bottom: 16px; position: relative; z-index: 1; }
-.vk-loading-screen__text h2 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
-.vk-loading-screen__text p { font-size: 18px; font-weight: 500; opacity: 0.85; line-height: 1.4; }
+.vk-loading-screen__text h2 { font-size: 26px; font-weight: 700; margin-bottom: 8px; color: #ffffff; }
+.vk-loading-screen__text p { font-size: 18px; font-weight: 500; opacity: 0.85; line-height: 1.4; color: #ffffff; }
 .vk-loading-screen__hint { color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 24px; position: relative; z-index: 1; }
 .vk-loading-screen__dots { display: flex; gap: 10px; justify-content: center; position: relative; z-index: 1; }
 
@@ -108,17 +108,10 @@ body { background: #f0f0f0; display: flex; justify-content: center; padding: 20p
 <div class="container">
 <div class="vk-loading-screen">
 
-    <!-- Logo -->
-    <div class="vk-loading-screen__logo">
-        <img src="img/voltika_shield.svg" alt="" style="height:28px;margin-right:6px;vertical-align:middle;" onerror="this.style.display='none'">
-        <span style="font-size:22px;font-weight:700;color:white;vertical-align:middle;letter-spacing:0.5px;">voltika</span>
-    </div>
-
-    <!-- Motorcycle with wheel overlays -->
-    <div class="vk-loading-screen__moto">
-        <img src="img/loding.png" alt="" class="vk-loading-moto__img">
-        <div class="vk-loading-wheel vk-loading-wheel--rear"></div>
-        <div class="vk-loading-wheel vk-loading-wheel--front"></div>
+    <!-- Voltika logo (white) -->
+    <div class="vk-loading-screen__moto" style="display:flex;align-items:center;justify-content:center;">
+        <img src="img/voltika_logo.svg" alt="Voltika"
+             style="width:220px;max-width:80%;filter:brightness(0) invert(1);">
     </div>
 
     <div class="vk-loading-screen__text">

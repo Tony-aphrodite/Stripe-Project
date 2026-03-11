@@ -20,12 +20,6 @@ var PasoCreditoLoading = {
 
         html += '<div class="vk-loading-screen">';
 
-        // Voltika shield + logo
-        html += '<div class="vk-loading-screen__logo">';
-        html += '<img src="' + base + 'img/voltika_shield.svg" alt="" style="height:28px;margin-right:6px;vertical-align:middle;" onerror="this.style.display=\'none\'">';
-        html += '<span style="font-size:22px;font-weight:700;color:white;vertical-align:middle;letter-spacing:0.5px;">voltika</span>';
-        html += '</div>';
-
         // Voltika logo (white)
         html += '<div class="vk-loading-screen__moto" style="display:flex;align-items:center;justify-content:center;">';
         html += '<img src="' + base + 'img/voltika_logo.svg" alt="Voltika" ' +
