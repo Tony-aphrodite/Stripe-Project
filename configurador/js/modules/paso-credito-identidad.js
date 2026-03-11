@@ -67,7 +67,7 @@ var PasoCreditoIdentidad = {
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
         // 7. CTA button — always active, validates on click
-        html += '<button class="vk-btn vk-btn--primary" id="vk-identidad-continuar" style="text-transform:uppercase;letter-spacing:0.5px;">' +
+        html += '<button id="vk-identidad-continuar" style="display:block;width:100%;padding:16px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">' +
             '<span id="vk-identidad-label">Continuar y confirmar mi identidad &rsaquo;</span>' +
             '<span id="vk-identidad-spinner" style="display:none;">' + VkUI.renderSpinner() + ' Verificando...</span>' +
             '</button>';
@@ -89,35 +89,58 @@ var PasoCreditoIdentidad = {
     },
 
     _svgINE: function(isBack) {
-        // SVG illustration of Mexican INE card
-        var bg = isBack ? '#E8F0FE' : '#E3F2FD';
-        var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 52" width="56" height="36" style="display:block;">';
-        // Card body
-        svg += '<rect width="80" height="52" rx="4" fill="' + bg + '" stroke="#90CAF9" stroke-width="1.5"/>';
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 58" width="90" height="58" style="display:block;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,0.15);">';
         if (!isBack) {
-            // Front: eagle emblem placeholder + photo + text lines
-            svg += '<rect x="5" y="5" width="14" height="14" rx="2" fill="#1565C0" opacity="0.3"/>'; // emblem
-            svg += '<text x="12" y="15" font-size="7" text-anchor="middle" fill="#1565C0" font-weight="bold">INE</text>';
-            svg += '<rect x="5" y="22" width="18" height="22" rx="2" fill="#BBDEFB"/>'; // photo box
-            svg += '<circle cx="14" cy="28" r="5" fill="#90CAF9"/>'; // head
-            svg += '<ellipse cx="14" cy="38" rx="7" ry="4" fill="#90CAF9"/>'; // body
-            // Text lines on right
-            svg += '<rect x="27" y="22" width="30" height="3" rx="1.5" fill="#1976D2" opacity="0.5"/>';
-            svg += '<rect x="27" y="29" width="22" height="2.5" rx="1.25" fill="#90CAF9"/>';
-            svg += '<rect x="27" y="34" width="26" height="2.5" rx="1.25" fill="#90CAF9"/>';
-            svg += '<rect x="27" y="39" width="18" height="2.5" rx="1.25" fill="#90CAF9"/>';
-            // Chip
-            svg += '<rect x="60" y="5" width="14" height="10" rx="2" fill="#FDD835" opacity="0.8"/>';
+            // Card background: cream/beige like real INE
+            svg += '<rect width="90" height="58" rx="4" fill="#f5f0e8"/>';
+            // Top color band: green | white | red (Mexican flag colors)
+            svg += '<rect x="0" y="0" width="90" height="6" rx="0" fill="#006847"/>';
+            svg += '<rect x="30" y="0" width="30" height="6" fill="#ffffff"/>';
+            svg += '<rect x="60" y="0" width="30" height="6" rx="0" fill="#ce1126"/>';
+            // Header bar (dark blue)
+            svg += '<rect x="0" y="6" width="90" height="10" fill="#003580"/>';
+            svg += '<text x="45" y="13.5" font-size="4.5" text-anchor="middle" fill="white" font-weight="bold" font-family="Arial,sans-serif">INSTITUTO NACIONAL ELECTORAL</text>';
+            // Sub-header
+            svg += '<rect x="0" y="16" width="90" height="6" fill="#004ea8"/>';
+            svg += '<text x="45" y="20.5" font-size="3.5" text-anchor="middle" fill="white" font-family="Arial,sans-serif">CREDENCIAL PARA VOTAR</text>';
+            // Photo area
+            svg += '<rect x="4" y="24" width="20" height="26" rx="1" fill="#c8d8e8" stroke="#aaa" stroke-width="0.5"/>';
+            svg += '<circle cx="14" cy="32" r="5" fill="#8aabcc"/>';
+            svg += '<ellipse cx="14" cy="44" rx="8" ry="5" fill="#8aabcc"/>';
+            // Eagle emblem (simplified) center-top
+            svg += '<circle cx="45" cy="27" r="4" fill="#006847" opacity="0.15"/>';
+            svg += '<text x="45" y="29" font-size="5" text-anchor="middle" fill="#006847" opacity="0.5">&#9812;</text>';
+            // Text lines (name, address, DOB)
+            svg += '<text x="28" y="29" font-size="3" fill="#333" font-weight="bold" font-family="Arial,sans-serif">NOMBRE</text>';
+            svg += '<rect x="28" y="30.5" width="34" height="2.5" rx="1" fill="#555" opacity="0.4"/>';
+            svg += '<text x="28" y="37" font-size="3" fill="#333" font-family="Arial,sans-serif">DOMICILIO</text>';
+            svg += '<rect x="28" y="38.5" width="32" height="2" rx="1" fill="#555" opacity="0.3"/>';
+            svg += '<rect x="28" y="42" width="28" height="2" rx="1" fill="#555" opacity="0.3"/>';
+            svg += '<text x="28" y="48" font-size="2.8" fill="#333" font-family="Arial,sans-serif">FECHA NAC.</text>';
+            svg += '<rect x="28" y="49.5" width="22" height="2" rx="1" fill="#555" opacity="0.3"/>';
+            // Bottom strip
+            svg += '<rect x="0" y="52" width="90" height="6" fill="#003580"/>';
         } else {
-            // Back: magnetic strip + barcode + text lines
-            svg += '<rect x="0" y="8" width="80" height="10" fill="#455A64" opacity="0.7"/>'; // mag strip
-            svg += '<rect x="5" y="24" width="50" height="20" rx="2" fill="white" opacity="0.6"/>'; // white area
-            // Barcode lines
-            for (var i = 0; i < 18; i++) {
-                svg += '<rect x="' + (7 + i * 2.5) + '" y="27" width="' + (i % 3 === 0 ? 2 : 1) + '" height="10" fill="#212121" opacity="0.7"/>';
+            // Back of INE
+            svg += '<rect width="90" height="58" rx="4" fill="#f5f0e8"/>';
+            // Top color band
+            svg += '<rect x="0" y="0" width="90" height="6" rx="0" fill="#006847"/>';
+            svg += '<rect x="30" y="0" width="30" height="6" fill="#ffffff"/>';
+            svg += '<rect x="60" y="0" width="30" height="6" rx="0" fill="#ce1126"/>';
+            // Magnetic strip
+            svg += '<rect x="0" y="8" width="90" height="9" fill="#222" opacity="0.85"/>';
+            // Signature area
+            svg += '<rect x="4" y="20" width="40" height="10" rx="1" fill="white" stroke="#ccc" stroke-width="0.5"/>';
+            svg += '<text x="24" y="27" font-size="4" text-anchor="middle" fill="#555" font-family="cursive,Arial">Firma</text>';
+            // PDF417 barcode simulation
+            svg += '<rect x="4" y="33" width="82" height="16" rx="1" fill="white" stroke="#ccc" stroke-width="0.5"/>';
+            for (var i = 0; i < 36; i++) {
+                var bw = (i % 4 === 0 || i % 7 === 0) ? 2.5 : 1;
+                svg += '<rect x="' + (6 + i * 2.1) + '" y="35" width="' + bw + '" height="12" fill="#111" opacity="0.8"/>';
             }
-            svg += '<rect x="5" y="39" width="40" height="2" rx="1" fill="#90CAF9"/>';
-            svg += '<rect x="5" y="43" width="30" height="2" rx="1" fill="#90CAF9"/>';
+            // MRZ text lines
+            svg += '<rect x="4" y="51" width="82" height="2.5" rx="0.5" fill="#444" opacity="0.4"/>';
+            svg += '<rect x="4" y="55" width="70" height="2.5" rx="0.5" fill="#444" opacity="0.3"/>';
         }
         svg += '</svg>';
         return svg;

@@ -1730,7 +1730,7 @@ html {
     color: var(--vk-text-muted);
 }
 .vk-identidad-progress__step--done { color: var(--vk-green-primary); }
-.vk-identidad-progress__step--active { color: #1976D2; }
+.vk-identidad-progress__step--active { color: #039fe1; }
 .vk-identidad-progress__num {
     width: 22px;
     height: 22px;
@@ -1748,7 +1748,7 @@ html {
     color: white;
 }
 .vk-identidad-progress__step--active .vk-identidad-progress__num {
-    background: #1976D2;
+    background: #039fe1;
     color: white;
 }
 .vk-identidad-progress__line {
@@ -1778,15 +1778,15 @@ html {
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    background: #E3F2FD;
-    border: 1px solid #90CAF9;
+    background: #e8f7ff;
+    border: 1px solid #b3e0f7;
     border-radius: 10px;
     padding: 12px 14px;
     margin-bottom: 16px;
 }
 .vk-identidad-security__icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
-.vk-identidad-security__title { font-size: 13px; font-weight: 700; color: #0D47A1; margin-bottom: 3px; }
-.vk-identidad-security__text { font-size: 12px; color: #1565C0; line-height: 1.4; }
+.vk-identidad-security__title { font-size: 13px; font-weight: 700; color: #039fe1; margin-bottom: 3px; }
+.vk-identidad-security__text { font-size: 12px; color: #039fe1; line-height: 1.4; }
 
 .vk-identidad-step {
     display: grid;
@@ -1800,13 +1800,13 @@ html {
     cursor: pointer;
     transition: border-color .2s, background .2s;
 }
-.vk-identidad-step:hover { border-color: #1976D2; background: #F8FBFF; }
+.vk-identidad-step:hover { border-color: #039fe1; background: #f0faff; }
 .vk-identidad-step--done { border-color: var(--vk-green-primary) !important; background: var(--vk-green-soft) !important; }
 .vk-identidad-step__num {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: #1976D2;
+    background: #039fe1;
     color: white;
     font-size: 15px;
     font-weight: 700;
@@ -1815,15 +1815,15 @@ html {
     justify-content: center;
     flex-shrink: 0;
 }
-.vk-identidad-step__title { font-size: 14px; font-weight: 700; color: #1976D2; margin-bottom: 2px; }
+.vk-identidad-step__title { font-size: 14px; font-weight: 700; color: #039fe1; margin-bottom: 2px; }
 .vk-identidad-step__desc { font-size: 12px; color: var(--vk-text-secondary); line-height: 1.4; }
-.vk-identidad-step__status { font-size: 20px; color: var(--vk-border); text-align: center; }
+.vk-identidad-step__status { font-size: 20px; color: #77cbe8; text-align: center; }
 .vk-identidad-step__icon { margin-top: 8px; }
 
 .vk-identidad-timer {
     text-align: center;
     font-size: 13px;
-    color: #1976D2;
+    color: #039fe1;
     margin: 4px 0 16px;
     display: flex;
     align-items: center;
