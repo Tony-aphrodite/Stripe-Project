@@ -18,7 +18,7 @@ var PasoCreditoIngresos = {
         html += VkUI.renderBackButton('credito-domicilio');
         html += VkUI.renderCreditoStepBar(3);
 
-        html += '<h2 class="vk-paso__titulo">Un paso m\u00e1s para tu moto</h2>';
+        html += '<h2 class="vk-paso__titulo" style="white-space:nowrap;">Un paso m\u00e1s para tu moto</h2>';
         html += '<p class="vk-paso__subtitulo">Completa estos datos para ver tu plan de pago</p>';
 
         html += '<div class="vk-card" style="padding:20px;">';
@@ -58,7 +58,7 @@ var PasoCreditoIngresos = {
         html += '<div class="vk-form-group" style="margin-top:16px;">';
         html += '<label class="vk-form-label">Tel\u00e9fono celular</label>';
         html += '<div class="vk-phone-group">';
-        html += '<div class="vk-phone-prefix">&#127474;&#127485; +52</div>';
+        html += '<div class="vk-phone-prefix">\uD83C\uDDF2\uD83C\uDDFD +52</div>';
         html += '<input type="tel" class="vk-form-input" id="vk-cing-telefono" ' +
             'placeholder="55 1234 5678" maxlength="15" autocomplete="tel" ' +
             'value="' + (state.telefono || '') + '">';
@@ -77,7 +77,7 @@ var PasoCreditoIngresos = {
         html += '<div id="vk-cing-error" style="display:none;color:#C62828;font-size:13px;' +
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
-        html += '<button class="vk-btn vk-btn--primary" id="vk-cing-continuar">CONTINUAR \u2192</button>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-cing-continuar">CONTINUAR</button>';
 
         // Trust badges
         html += '<div class="vk-trust" style="margin-top:12px;">';
@@ -174,7 +174,7 @@ var PasoCreditoIngresos = {
                     self.app.irAPaso('credito-consentimiento');
                 },
                 complete: function() {
-                    $btn.data('sending', false).prop('disabled', false).text('CONTINUAR \u2192');
+                    $btn.data('sending', false).prop('disabled', false).text('CONTINUAR');
                 }
             });
         });
