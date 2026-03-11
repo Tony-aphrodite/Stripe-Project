@@ -97,8 +97,9 @@ var Paso3 = {
         html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega garantizada a m\u00e1s tardar el <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
         html += '</div>';
         html += '</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-muted);padding-left:36px;">Recibir\u00e1s confirmaci\u00f3n por WhatsApp y correo electr\u00f3nico.</div>';
         html += '</div>';
+
+        html += '<p style="font-size:12px;color:var(--vk-text-muted);margin:4px 0 14px;text-align:center;">Recibir\u00e1s confirmaci\u00f3n por WhatsApp y correo electr\u00f3nico.</p>';
 
         html += '</div>'; // end card
 
