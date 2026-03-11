@@ -238,16 +238,16 @@ var PasoResumen = {
             self.app.irAPaso('credito-nombre'); // Screen 6: name
         });
 
-        // Switch to contado/MSI from crédito view
+        // Switch to contado/MSI from crédito view → go to Stripe payment
         jQuery(document).off('click', '#vk-switch-contado');
         jQuery(document).on('click', '#vk-switch-contado', function() {
             self.app.state.metodoPago = 'contado';
-            self.app.irAPaso(3); // Recalculate logistics
+            self.app.irAPaso(4);
         });
         jQuery(document).off('click', '#vk-switch-msi');
         jQuery(document).on('click', '#vk-switch-msi', function() {
             self.app.state.metodoPago = 'msi';
-            self.app.irAPaso(3);
+            self.app.irAPaso(4);
         });
 
         // Legacy: keep old button working if somehow still present
