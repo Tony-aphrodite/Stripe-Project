@@ -90,13 +90,14 @@ var Paso3 = {
 
         // Entrega Garantizada section
         html += '<div style="background:#E0F4FD;border-radius:10px;padding:16px;margin-bottom:14px;border-left:4px solid #039fe1;">';
-        html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
+        html += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">';
         html += '<span style="font-size:24px;color:#039fe1;">&#9889;</span>';
         html += '<div>';
         html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Entrega Garantizada</div>';
         html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega garantizada a m\u00e1s tardar el <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
         html += '</div>';
         html += '</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-muted);padding-left:36px;">Recibir\u00e1s confirmaci\u00f3n por WhatsApp y correo electr\u00f3nico.</div>';
         html += '</div>';
 
         html += '</div>'; // end card
@@ -126,22 +127,10 @@ var Paso3 = {
 
         html += '</div>';
 
-        // Asesor section (below checkboxes)
-        html += '<div style="display:flex;align-items:flex-start;gap:12px;background:#E0F4FD;border-radius:10px;padding:14px 16px;margin-bottom:16px;border-left:4px solid #039fe1;">';
-        html += '<span style="font-size:20px;">&#128100;</span>';
-        html += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);line-height:1.5;">';
-        html += 'Tu <strong>Asesor Personal Voltika</strong> confirmar\u00e1 contigo el punto exacto de entrega en m\u00e1x. <strong>48 horas</strong>.';
-        html += '</div>';
-        html += '</div>';
-
         // CTA
         html += '<button class="vk-btn vk-btn--primary" id="vk-paso3-confirmar" disabled style="font-size:16px;font-weight:800;letter-spacing:0.5px;">' +
             'CONFIRMAR ENTREGA OFICIAL' +
             '</button>';
-
-        html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:8px;">' +
-            'Recibir\u00e1s confirmaci\u00f3n por WhatsApp y correo electr\u00f3nico.' +
-            '</p>';
 
         $('#vk-entrega-container').html(html);
     },
