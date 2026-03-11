@@ -16,6 +16,7 @@ var PasoCreditoIngresos = {
         var html = '';
 
         html += VkUI.renderBackButton('credito-domicilio');
+        html += VkUI.renderCreditoStepBar(1);
 
         html += '<h2 class="vk-paso__titulo">Ingresos y tel\u00e9fono</h2>';
         html += '<p class="vk-paso__subtitulo">Necesitamos estos datos para evaluar tu solicitud</p>';

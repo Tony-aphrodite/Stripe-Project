@@ -188,6 +188,43 @@ var VkUI = {
         return '<div class="vk-spinner"></div>';
     },
 
+    /**
+     * Render credito step progress bar (5 steps)
+     * @param {number} activeStep - Active step (1-5)
+     * Step 1=Datos, 2=Teléfono, 3=Identidad, 4=Entrega, 5=Pago
+     */
+    renderCreditoStepBar: function(activeStep) {
+        var steps = [
+            {num:1, label:'Datos'},
+            {num:2, label:'Tel'},
+            {num:3, label:'ID'},
+            {num:4, label:'Entrega'},
+            {num:5, label:'Pago'}
+        ];
+        var html = '<div style="margin-bottom:16px;overflow:hidden;">';
+        html += '<div style="font-size:12px;color:#999;margin-bottom:6px;">Paso ' + activeStep + ' de 5</div>';
+        html += '<div style="display:flex;align-items:center;gap:2px;">';
+        for (var i = 0; i < steps.length; i++) {
+            var s = steps[i];
+            var done = s.num < activeStep;
+            var active = s.num === activeStep;
+            html += '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">';
+            if (done) {
+                html += '<span style="width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;background:#039fe1;color:#fff;">&#10003;</span>';
+            } else {
+                html += '<span style="width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;' +
+                    (active ? 'background:#039fe1;color:#fff;' : 'background:#e5e7eb;color:#999;') + '">' + s.num + '</span>';
+            }
+            html += '<span style="font-size:10px;font-weight:' + (active ? '700' : '400') + ';color:' + (active ? '#039fe1' : (done ? '#039fe1' : '#999')) + ';">' + s.label + '</span>';
+            html += '</div>';
+            if (i < steps.length - 1) {
+                html += '<div style="flex:1;height:1px;background:' + (done ? '#039fe1' : '#e5e7eb') + ';min-width:4px;"></div>';
+            }
+        }
+        html += '</div></div>';
+        return html;
+    },
+
     renderGoElectricFooter: function() {
         return '<div class="vk-go-electric">' +
             '<div class="vk-go-electric__logo"><img src="img/goelectric.svg" alt="GO electric" class="vk-go-electric__svg"></div>' +

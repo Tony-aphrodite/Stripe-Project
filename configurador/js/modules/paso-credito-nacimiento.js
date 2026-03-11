@@ -17,31 +17,7 @@ var PasoCreditoNacimiento = {
 
         html += VkUI.renderBackButton('credito-nombre');
 
-        // Step progress bar (Paso 1 de 5)
-        html += '<div style="margin-bottom:16px;overflow:hidden;">';
-        html += '<div style="font-size:12px;color:#999;margin-bottom:6px;">Paso 1 de 5</div>';
-        html += '<div style="display:flex;align-items:center;gap:2px;">';
-        var steps = [
-            {num:1, label:'Datos'},
-            {num:2, label:'Tel'},
-            {num:3, label:'ID'},
-            {num:4, label:'Entrega'},
-            {num:5, label:'Pago'}
-        ];
-        for (var i = 0; i < steps.length; i++) {
-            var s = steps[i];
-            var isActive = s.num === 1;
-            html += '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">';
-            html += '<span style="width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;' +
-                (isActive ? 'background:#039fe1;color:#fff;' : 'background:#e5e7eb;color:#999;') + '">' + s.num + '</span>';
-            html += '<span style="font-size:10px;font-weight:' + (isActive ? '700' : '400') + ';color:' + (isActive ? '#039fe1' : '#999') + ';">' + s.label + '</span>';
-            html += '</div>';
-            if (i < steps.length - 1) {
-                html += '<div style="flex:1;height:1px;background:#e5e7eb;min-width:4px;"></div>';
-            }
-        }
-        html += '</div>';
-        html += '</div>';
+        html += VkUI.renderCreditoStepBar(1);
 
         html += '<h2 class="vk-paso__titulo">\u00bfCu\u00e1l es tu fecha de nacimiento?</h2>';
         html += '<p class="vk-paso__subtitulo">Nos ayuda a validar tu identidad para aprobar tu cr\u00e9dito Voltika.</p>';
