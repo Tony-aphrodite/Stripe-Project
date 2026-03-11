@@ -22,11 +22,6 @@ var PasoCreditoPago = {
 
         var html = '';
 
-        // Logo
-        html += '<div class="vk-cpago-logo">';
-        html += '<img src="img/voltika_logo_h.svg" alt="Voltika">';
-        html += '</div>';
-
         // Title
         html += '<h2 class="vk-cpago-title">Tu Voltika est\u00e1 lista</h2>';
 
@@ -35,32 +30,22 @@ var PasoCreditoPago = {
         html += 'Realiza el <strong>pago de tu enganche</strong> para preparar tu Voltika y programar la entrega.';
         html += '</p>';
 
-        // Info note
-        html += '<div class="vk-cpago-note">';
-        html += '&#128274; Este pago se aplica directamente a tu financiamiento.';
-        html += '</div>';
+        // Info note — plain text, no box
+        html += '<p style="text-align:center;font-size:13px;color:var(--vk-text-muted);margin-bottom:20px;">';
+        html += 'Este pago se aplica directamente a tu financiamiento.';
+        html += '</p>';
 
-        // Enganche amount summary
-        html += '<div class="vk-cpago-amount">';
-        html += '<div class="vk-cpago-amount__label">Enganche (' + Math.round(enganchePct * 100) + '%) &mdash; ' + modelo.nombre + '</div>';
-        html += '<div class="vk-cpago-amount__value">' + VkUI.formatPrecio(enganche) + ' <span>MXN</span></div>';
-        html += '<div class="vk-cpago-amount__detail">';
-        html += 'Plazo: ' + (state.plazoMeses || 12) + ' meses &middot; ';
-        html += 'Pago semanal: ' + VkUI.formatPrecio(credito.pagoSemanal);
-        html += '</div>';
-        html += '</div>';
-
-        // Checkboxes
+        // Checkboxes — pre-checked
         html += '<div class="vk-cpago-checks">';
 
         html += '<label class="vk-cpago-check">';
-        html += '<input type="checkbox" id="vk-cpago-check1">';
+        html += '<input type="checkbox" id="vk-cpago-check1" checked>';
         html += '<span class="vk-cpago-check__box"></span>';
         html += '<span class="vk-cpago-check__text">Confirmo que deseo <strong>continuar</strong> con mi cr\u00e9dito Voltika</span>';
         html += '</label>';
 
         html += '<label class="vk-cpago-check">';
-        html += '<input type="checkbox" id="vk-cpago-check2">';
+        html += '<input type="checkbox" id="vk-cpago-check2" checked>';
         html += '<span class="vk-cpago-check__box"></span>';
         html += '<span class="vk-cpago-check__text">Acepto los t\u00e9rminos del <strong>cr\u00e9dito</strong> y registro de m\u00e9todo de pago</span>';
         html += '</label>';
@@ -70,9 +55,9 @@ var PasoCreditoPago = {
         // Error
         html += '<div id="vk-cpago-error" style="display:none;color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
-        // CTA button (disabled until both checked)
-        html += '<button class="vk-btn vk-btn--primary vk-cpago-btn" id="vk-cpago-continuar" disabled>';
-        html += '&#128274; PAGAR ENGANCHE ' + VkUI.formatPrecio(enganche) + ' MXN &rsaquo;';
+        // CTA button — enabled by default (both pre-checked)
+        html += '<button id="vk-cpago-continuar" style="display:block;width:100%;padding:16px;background:#1b5e3b;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">';
+        html += 'PAGAR ENGANCHE &rsaquo;';
         html += '</button>';
 
         // Card logos footer
@@ -86,12 +71,13 @@ var PasoCreditoPago = {
     bindEvents: function() {
         var self = this;
 
-        // Enable/disable button based on both checkboxes
+        // Disable button if either checkbox is unchecked
         jQuery(document).off('change', '#vk-cpago-check1, #vk-cpago-check2');
         jQuery(document).on('change', '#vk-cpago-check1, #vk-cpago-check2', function() {
             var both = jQuery('#vk-cpago-check1').is(':checked') &&
                        jQuery('#vk-cpago-check2').is(':checked');
-            jQuery('#vk-cpago-continuar').prop('disabled', !both);
+            jQuery('#vk-cpago-continuar').prop('disabled', !both)
+                .css('opacity', both ? '1' : '0.5');
         });
 
         // Proceed to Stripe payment
