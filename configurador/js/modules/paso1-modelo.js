@@ -468,8 +468,8 @@ var Paso1 = {
             lastScrollY = currentY;
         });
 
-        // ── Gallery images: auto-play every 3 seconds ─────────
-        this._startGalleryAutoPlay();
+        // ── Gallery images: auto-play disabled (manual swipe only) ─────────
+        // this._startGalleryAutoPlay();
 
         // ── Mobile: touch swipe on model slider ───────────────
         var $track = $('#vk-modelo-slider-track');
@@ -501,7 +501,6 @@ var Paso1 = {
             var next   = isPrev ? (curr - 1 + $imgs.length) % $imgs.length : (curr + 1) % $imgs.length;
             $imgs.removeClass('vk-gal__img--active').eq(next).addClass('vk-gal__img--active');
             $dots.removeClass('vk-gal__dot--active').eq(next).addClass('vk-gal__dot--active');
-            self._startGalleryAutoPlay();
         });
 
         // ── Gallery dots ───────────────────────────────────────
@@ -514,6 +513,27 @@ var Paso1 = {
             var $dots = $('[data-gal="' + galId + '"].vk-gal__dot');
             $imgs.removeClass('vk-gal__img--active').eq(idx).addClass('vk-gal__img--active');
             $dots.removeClass('vk-gal__dot--active').eq(idx).addClass('vk-gal__dot--active');
+        });
+
+        // ── Gallery touch swipe on images ────────────────────
+        $(document).off('touchstart.galswipe touchend.galswipe', '.vk-gal__track');
+        var galTouchX = 0;
+        $(document).on('touchstart.galswipe', '.vk-gal__track', function(e) {
+            galTouchX = e.originalEvent.changedTouches[0].screenX;
+        });
+        $(document).on('touchend.galswipe', '.vk-gal__track', function(e) {
+            var dx = e.originalEvent.changedTouches[0].screenX - galTouchX;
+            if (Math.abs(dx) < 40) return;
+            var $track = $(this);
+            var $imgs = $track.find('.vk-gal__img');
+            var galId = $track.attr('id').replace('vk-gal-track-', '');
+            var $dots = $('[data-gal="' + galId + '"].vk-gal__dot');
+            var curr = $imgs.index($imgs.filter('.vk-gal__img--active'));
+            var next = dx < 0 ? Math.min(curr + 1, $imgs.length - 1) : Math.max(curr - 1, 0);
+            if (next !== curr) {
+                $imgs.removeClass('vk-gal__img--active').eq(next).addClass('vk-gal__img--active');
+                $dots.removeClass('vk-gal__dot--active').eq(next).addClass('vk-gal__dot--active');
+            }
         });
     },
 

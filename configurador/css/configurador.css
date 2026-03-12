@@ -2147,7 +2147,7 @@ html {
     }
     .vk-hero__galeria .vk-gal__img--active {
         object-fit: contain;
-        background: var(--vk-bg-light);
+        background: #ffffff;
     }
 
     /*  PASO 2+  card goes full-width on desktop  */
@@ -2501,7 +2501,7 @@ html {
     position: relative;
     overflow: hidden;
     border-radius: 12px 12px 0 0;
-    background: #f0f0f0;
+    background: #ffffff;
     aspect-ratio: 4/3;
 }
 

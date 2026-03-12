@@ -246,12 +246,12 @@ var VkUI = {
             'ukko-s':     'ukko'
         };
         var galeria = {
-            'm03':        ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
-            'm05':        ['black_side.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
-            'mc10':       ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
-            'mino':       ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
-            'pesgo-plus': ['model.png','gal1.jpg','gal2.jpg','gal3.jpg','gal4.jpg'],
-            'ukko-s':     ['model.png','black_side.png','blue_side.png','grey_side.png']
+            'm03':        ['1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','gal4.jpg'],
+            'm05':        ['1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','gal3.jpg'],
+            'mc10':       ['1.jpg','2.jpg','3.jpg','gal1.jpg'],
+            'mino':       ['1.jpg','2.jpg','3.jpg','gal1.jpg'],
+            'pesgo-plus': ['1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','gal1.jpg'],
+            'ukko-s':     ['1.jpg','2.jpg','3.jpg','4.jpg']
         };
         var folder = folderMap[modeloId];
         var files  = galeria[modeloId];
