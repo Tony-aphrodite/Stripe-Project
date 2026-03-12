@@ -74,7 +74,7 @@ var Paso3 = {
         // Centro Voltika Autorizado section
         html += '<div style="background:var(--vk-bg-light);border-radius:10px;padding:16px;margin-bottom:14px;">';
         html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
-        html += '<span style="font-size:24px;">&#128737;</span>';
+        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/voltika_shield.svg" alt="Voltika" style="width:30px;height:30px;flex-shrink:0;">';
         html += '<div>';
         html += '<div style="font-weight:800;font-size:17px;margin-bottom:6px;">Centro Voltika Autorizado</div>';
         html += '<div style="font-size:14px;color:var(--vk-text-secondary);margin-bottom:4px;">&#10003; Revisi\u00f3n y activaci\u00f3n profesional</div>';
@@ -111,7 +111,7 @@ var Paso3 = {
         html += '</div>';
         html += '</div>';
 
-        html += '<p style="font-size:12px;color:var(--vk-text-muted);margin:4px 0 14px;text-align:center;">Recibir\u00e1s confirmaci\u00f3n por WhatsApp y correo electr\u00f3nico.</p>';
+        html += '<p style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin:4px 0 14px;text-align:center;">Recibir\u00e1s confirmaci\u00f3n por <strong>WhatsApp</strong> y <strong>correo electr\u00f3nico</strong>.</p>';
 
         html += '</div>'; // end card
 
@@ -133,7 +133,7 @@ var Paso3 = {
         html += '<input type="checkbox" id="vk-check-seguro" class="vk-checkbox" style="margin-top:3px;"' +
             (state.seguro ? ' checked' : '') + '>';
         html += '<div>';
-        html += '<div style="font-weight:800;font-size:15px;">Quiero cotizar y activar el seguro con <img src="' + (window.VK_BASE_PATH || '') + 'img/Qualitas.png" alt="Qu\u00e1litas" style="height:28px;vertical-align:middle;display:inline-block;"> desde la entrega</div>';
+        html += '<div style="font-weight:800;font-size:15px;">Quiero cotizar y activar el seguro con <span style="color:#6B2D8B;font-weight:900;font-style:italic;">Qu\u00e1litas</span> desde la entrega</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Cotizamos y enviamos tu p\u00f3liza. Pago directo a la aseguradora.</div>';
         html += '</div>';
         html += '</label>';
