@@ -58,17 +58,35 @@ var Paso3 = {
             'style="padding-right:40px;font-size:16px;">';
         html += '<span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--vk-text-muted);font-size:18px;">&#128269;</span>';
         html += '</div>';
-        html += '<div id="vk-cp-error" style="display:none;color:#D32F2F;font-size:13px;margin-bottom:10px;">&#9888; Por favor ingresa tu C\u00f3digo Postal para continuar.</div>';
+        html += '<div id="vk-cp-error" style="display:none;color:#D32F2F;font-size:13px;margin-bottom:10px;">&#9888; Ingresa tu C\u00f3digo Postal y colonia para continuar.</div>';
+        html += '<div id="vk-cp-not-found" style="display:none;color:#D32F2F;font-size:13px;margin-bottom:10px;background:#FFEBEE;border-radius:6px;padding:10px;">C\u00f3digo no encontrado. Verifica e intenta de nuevo.</div>';
 
-        // City/state display (filled dynamically)
-        html += '<div id="vk-cp-city" style="display:none;margin-bottom:16px;background:var(--vk-green-soft);border-radius:10px;padding:14px 16px;">';
-        html += '<div style="display:flex;align-items:center;gap:10px;">';
-        html += '<span style="font-size:24px;">&#128205;</span>';
-        html += '<div>';
-        html += '<div id="vk-cp-city-name" style="font-weight:800;font-size:20px;color:var(--vk-text-primary);"></div>';
-        html += '<div id="vk-cp-state-name" style="font-size:14px;color:var(--vk-text-secondary);margin-top:2px;"></div>';
+        // Estado / Ciudad / Colonia fields (filled dynamically after CP lookup)
+        html += '<div id="vk-cp-city" style="display:none;margin-bottom:16px;">';
+
+        // Estado (read-only, auto-filled)
+        html += '<div class="vk-form-group" style="margin-bottom:10px;">';
+        html += '<label style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);margin-bottom:4px;display:block;">Estado</label>';
+        html += '<input type="text" id="vk-cp-estado" class="vk-form-input" readonly ' +
+            'style="font-size:15px;padding:12px 14px;background:#f5f5f5;color:#111;">';
         html += '</div>';
+
+        // Ciudad (read-only, auto-filled)
+        html += '<div class="vk-form-group" style="margin-bottom:10px;">';
+        html += '<label style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);margin-bottom:4px;display:block;">Ciudad</label>';
+        html += '<input type="text" id="vk-cp-ciudad" class="vk-form-input" readonly ' +
+            'style="font-size:15px;padding:12px 14px;background:#f5f5f5;color:#111;">';
         html += '</div>';
+
+        // Colonia (user types)
+        html += '<div class="vk-form-group" style="margin-bottom:10px;">';
+        html += '<label style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);margin-bottom:4px;display:block;">Colonia</label>';
+        html += '<input type="text" id="vk-cp-colonia" class="vk-form-input" ' +
+            'placeholder="Escribe tu colonia" ' +
+            'value="' + (state.colonia || '') + '" ' +
+            'style="font-size:15px;padding:12px 14px;">';
+        html += '</div>';
+
         html += '</div>';
 
         // Centro Voltika Autorizado section
@@ -159,6 +177,7 @@ var Paso3 = {
             var val = $(this).val().replace(/\D/g, '');
             $(this).val(val);
             $('#vk-cp-error').hide();
+            $('#vk-cp-not-found').hide();
 
             if (val.length === 5) {
                 self.buscarCP(val);
@@ -181,9 +200,11 @@ var Paso3 = {
         // Confirm
         $(document).on('click', '#vk-paso3-confirmar', function() {
             var cp = $('#vk-cp-input').val();
-            if (VkValidacion.codigoPostal(cp) && self.app.state.ciudad) {
+            var colonia = $.trim($('#vk-cp-colonia').val());
+            if (VkValidacion.codigoPostal(cp) && self.app.state.ciudad && colonia) {
                 $('#vk-cp-error').hide();
                 self.app.state.codigoPostal = cp;
+                self.app.state.colonia = colonia;
                 self.app.irAPaso('resumen');
             } else {
                 $('#vk-cp-error').show();
@@ -206,10 +227,11 @@ var Paso3 = {
             state.estado = resultado.estado;
             state.costoLogistico = esCredito ? 0 : config.costoLogistico;
 
-            // Show city + state
-            $('#vk-cp-city-name').text(resultado.ciudad);
-            $('#vk-cp-state-name').text(resultado.estado + ' \u00b7 C.P. ' + cp);
-            $('#vk-cp-city').css('background', 'var(--vk-green-soft)').slideDown(200);
+            // Fill Estado, Ciudad fields
+            $('#vk-cp-estado').val(resultado.estado);
+            $('#vk-cp-ciudad').val(resultado.ciudad);
+            $('#vk-cp-colonia').val(state.colonia || '');
+            $('#vk-cp-city').slideDown(200);
 
             // Show logistics cost (contado/msi only)
             if (!esCredito) {
@@ -224,9 +246,8 @@ var Paso3 = {
             $('#vk-paso3-confirmar').prop('disabled', true);
             this.app.state.ciudad = null;
 
-            $('#vk-cp-city-name').text('C\u00f3digo no encontrado');
-            $('#vk-cp-state-name').text('Verifica el C.P. ' + cp + ' e intenta de nuevo.');
-            $('#vk-cp-city').css('background', '#FFEBEE').slideDown(200);
+            $('#vk-cp-city').hide();
+            $('#vk-cp-not-found').show();
         }
     }
 };
