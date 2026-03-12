@@ -97,37 +97,36 @@ var VkUI = {
      * Render trust badges footer
      */
     renderTrustBadges: function(metodo) {
-        var items = [];
+        var badges = [];
         if (metodo === 'credito') {
-            items = [
-                'P\u00e1gala con tu ahorro en gasolina',
-                'Documentos para placas incluidos',
-                'Garant\u00eda Voltika'
+            badges = [
+                { icon: '&#9981;',  text: 'P\u00e1gala con tu ahorro en gasolina' },
+                { icon: '&#128203;', text: 'Documentos para placas incluidos' },
+                { icon: '&#128737;', text: 'Garant\u00eda Voltika' }
             ];
         } else if (metodo === 'msi') {
-            items = [
-                'Sin gasolina desde hoy',
-                'Documentos para placas incluidos',
-                'Garant\u00eda Voltika'
+            badges = [
+                { icon: '&#128179;', text: 'Sin inter\u00e9s a 9 meses' },
+                { icon: '&#128203;', text: 'Documentos para placas incluidos' },
+                { icon: '&#128737;', text: 'Garant\u00eda Voltika' }
             ];
         } else if (metodo === 'contado') {
-            items = [
-                'Ahorra gasolina cada mes',
-                'Documentos para placas incluidos',
-                'Garant\u00eda Voltika'
+            badges = [
+                { icon: '&#10004;',  text: 'Mejor precio de contado' },
+                { icon: '&#128203;', text: 'Documentos para placas incluidos' },
+                { icon: '&#128737;', text: 'Garant\u00eda Voltika' }
             ];
         } else {
-            items = [
-                '100% Electrica',
-                'Garant\u00eda Voltika',
-                'Hasta 9 MSI'
+            badges = [
+                { icon: '&#9889;',   text: '100% El\u00e9ctrica' },
+                { icon: '&#128737;', text: 'Garant\u00eda Voltika' },
+                { icon: '&#128179;', text: 'Hasta 9 MSI' }
             ];
         }
-        var icons = ['&#9981;', '&#128196;', '&#128737;'];
         var html = '<div class="vk-trust-badges">';
-        for (var i = 0; i < items.length; i++) {
+        for (var i = 0; i < badges.length; i++) {
             html += '<div class="vk-trust-badge">' +
-                '<span class="vk-trust-badge__icon">' + icons[i] + '</span> ' + items[i] +
+                '<span class="vk-trust-badge__icon">' + badges[i].icon + '</span> ' + badges[i].text +
                 '</div>';
         }
         html += '</div>';
