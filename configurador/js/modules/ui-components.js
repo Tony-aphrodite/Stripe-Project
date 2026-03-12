@@ -123,7 +123,7 @@ var VkUI = {
                 'Hasta 9 MSI'
             ];
         }
-        var icons = ['&#9889;', '&#9745;', '&#128179;'];
+        var icons = ['&#9981;', '&#128196;', '&#128737;'];
         var html = '<div class="vk-trust-badges">';
         for (var i = 0; i < items.length; i++) {
             html += '<div class="vk-trust-badge">' +

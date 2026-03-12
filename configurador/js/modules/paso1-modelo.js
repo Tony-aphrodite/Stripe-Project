@@ -146,6 +146,7 @@ var Paso1 = {
 
         // Payment-method label + tabs
         html += '<div class="vk-hero__formas-label">&iquest;C&oacute;mo prefieres pagar tu Voltika?</div>';
+        html += '<div class="vk-card__formas-sub">Selecciona tu opci&oacute;n</div>';
         html += '<div class="vk-hero__metodo-tabs" id="vk-hero-metodo-tabs">';
         html += '<button class="vk-hero__metodo-tab vk-hero__metodo-tab--active" data-htab="credito">' + VkUI.renderCreditoLogo(16) + '</button>';
         html += '<button class="vk-hero__metodo-tab" data-htab="msi">MSI ' + VkUI.renderCardLogos() + '</button>';
@@ -310,6 +311,7 @@ var Paso1 = {
         html += VkUI.renderBanner();
 
         html += '<div class="vk-card__formas-label">&iquest;C&oacute;mo prefieres pagar tu Voltika?</div>';
+        html += '<div class="vk-card__formas-sub">Selecciona tu opci&oacute;n</div>';
         html += '<div class="vk-card__tabs">';
         html += '<button class="vk-tab vk-tab--active" data-tab="credito">' + VkUI.renderCreditoLogo(14) + '</button>';
         html += '<button class="vk-tab" data-tab="msi">MSI</button>';

@@ -2424,12 +2424,24 @@ html {
    -------------------------------------------------------------------------- */
 .vk-card__formas-label,
 .vk-hero__formas-label {
-    font-size: var(--vk-font-size-sm);
-    font-weight: var(--vk-font-semi);
+    font-size: 15px;
+    font-weight: 700;
     color: var(--vk-text-primary);
     text-align: center;
-    margin-bottom: var(--vk-space-sm);
+    margin-bottom: 4px;
     padding: 0 var(--vk-card-padding);
+}
+
+.vk-card__formas-label {
+    margin-top: 18px;
+}
+
+.vk-card__formas-sub {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--vk-text-secondary);
+    text-align: center;
+    margin-bottom: var(--vk-space-sm);
 }
 
 /* --------------------------------------------------------------------------
