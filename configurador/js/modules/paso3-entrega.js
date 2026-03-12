@@ -78,13 +78,14 @@ var Paso3 = {
             'style="font-size:15px;padding:12px 14px;background:#f5f5f5;color:#111;">';
         html += '</div>';
 
-        // Colonia (user types)
+        // Colonia (select dropdown, populated from API)
         html += '<div class="vk-form-group" style="margin-bottom:10px;">';
         html += '<label style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);margin-bottom:4px;display:block;">Colonia</label>';
-        html += '<input type="text" id="vk-cp-colonia" class="vk-form-input" ' +
-            'placeholder="Escribe tu colonia" ' +
-            'value="' + (state.colonia || '') + '" ' +
-            'style="font-size:15px;padding:12px 14px;">';
+        html += '<select id="vk-cp-colonia" class="vk-form-input" ' +
+            'style="font-size:15px;padding:12px 14px;appearance:auto;">';
+        html += '<option value="">Selecciona tu colonia</option>';
+        html += '</select>';
+        html += '<div id="vk-cp-colonia-loading" style="display:none;font-size:12px;color:var(--vk-text-muted);margin-top:4px;">Cargando colonias...</div>';
         html += '</div>';
 
         html += '</div>';
@@ -170,7 +171,8 @@ var Paso3 = {
         var self = this;
 
         $(document).off('input', '#vk-cp-input').off('click', '#vk-paso3-confirmar')
-            .off('change', '#vk-check-placas').off('change', '#vk-check-seguro');
+            .off('change', '#vk-check-placas').off('change', '#vk-check-seguro')
+            .off('change', '#vk-cp-colonia');
 
         // Postal code input
         $(document).on('input', '#vk-cp-input', function() {
@@ -189,6 +191,13 @@ var Paso3 = {
             }
         });
 
+        // Colonia select — enable confirm when selected
+        $(document).on('change', '#vk-cp-colonia', function() {
+            var val = $(this).val();
+            self.app.state.colonia = val;
+            $('#vk-paso3-confirmar').prop('disabled', !val);
+        });
+
         // Checkboxes
         $(document).on('change', '#vk-check-placas', function() {
             self.app.state.asesoriaPlacos = this.checked;
@@ -200,7 +209,7 @@ var Paso3 = {
         // Confirm
         $(document).on('click', '#vk-paso3-confirmar', function() {
             var cp = $('#vk-cp-input').val();
-            var colonia = $.trim($('#vk-cp-colonia').val());
+            var colonia = $('#vk-cp-colonia').val();
             if (VkValidacion.codigoPostal(cp) && self.app.state.ciudad && colonia) {
                 $('#vk-cp-error').hide();
                 self.app.state.codigoPostal = cp;
@@ -216,38 +225,99 @@ var Paso3 = {
     },
 
     buscarCP: function(cp) {
+        var self = this;
         var resultado = VOLTIKA_CP._buscar(cp);
 
-        if (resultado) {
-            var state = this.app.state;
-            var esCredito = state.metodoPago === 'credito';
-            var config = VOLTIKA_PRODUCTOS.config;
-
-            state.ciudad = resultado.ciudad;
-            state.estado = resultado.estado;
-            state.costoLogistico = esCredito ? 0 : config.costoLogistico;
-
-            // Fill Estado, Ciudad fields
-            $('#vk-cp-estado').val(resultado.estado);
-            $('#vk-cp-ciudad').val(resultado.ciudad);
-            $('#vk-cp-colonia').val(state.colonia || '');
-            $('#vk-cp-city').slideDown(200);
-
-            // Show logistics cost (contado/msi only)
-            if (!esCredito) {
-                $('#vk-cp-logistics-price').text(VkUI.formatPrecio(config.costoLogistico));
-                $('#vk-cp-logistics').show();
-            }
-
-            // Enable confirm button
-            $('#vk-paso3-confirmar').prop('disabled', false);
-        } else {
+        if (!resultado) {
             $('#vk-cp-logistics').hide();
             $('#vk-paso3-confirmar').prop('disabled', true);
-            this.app.state.ciudad = null;
-
+            self.app.state.ciudad = null;
             $('#vk-cp-city').hide();
             $('#vk-cp-not-found').show();
+            return;
         }
+
+        var state = self.app.state;
+        var esCredito = state.metodoPago === 'credito';
+        var config = VOLTIKA_PRODUCTOS.config;
+
+        state.ciudad = resultado.ciudad;
+        state.estado = resultado.estado;
+        state.costoLogistico = esCredito ? 0 : config.costoLogistico;
+
+        // Fill Estado, Ciudad
+        $('#vk-cp-estado').val(resultado.estado);
+        $('#vk-cp-ciudad').val(resultado.ciudad);
+        $('#vk-cp-city').slideDown(200);
+
+        // Show logistics cost (contado/msi only)
+        if (!esCredito) {
+            $('#vk-cp-logistics-price').text(VkUI.formatPrecio(config.costoLogistico));
+            $('#vk-cp-logistics').show();
+        }
+
+        // Fetch colonias from API
+        var $select = $('#vk-cp-colonia');
+        $select.html('<option value="">Cargando...</option>').prop('disabled', true);
+        $('#vk-cp-colonia-loading').show();
+        $('#vk-paso3-confirmar').prop('disabled', true);
+
+        $.ajax({
+            url: (window.VK_BASE_PATH || '') + 'php/buscar-colonias.php',
+            data: { cp: cp },
+            dataType: 'json',
+            timeout: 10000,
+            success: function(data) {
+                $('#vk-cp-colonia-loading').hide();
+                $select.prop('disabled', false);
+
+                if (data.ok && data.colonias && data.colonias.length > 0) {
+                    // Update estado/ciudad from API if available
+                    if (data.estado) {
+                        $('#vk-cp-estado').val(data.estado);
+                        state.estado = data.estado;
+                    }
+                    if (data.ciudad) {
+                        $('#vk-cp-ciudad').val(data.ciudad);
+                        state.ciudad = data.ciudad;
+                    }
+
+                    // Populate colonia select
+                    var opts = '<option value="">Selecciona tu colonia</option>';
+                    for (var i = 0; i < data.colonias.length; i++) {
+                        var sel = (state.colonia === data.colonias[i]) ? ' selected' : '';
+                        opts += '<option value="' + data.colonias[i] + '"' + sel + '>' + data.colonias[i] + '</option>';
+                    }
+                    $select.html(opts);
+
+                    // If previously selected colonia matches, enable button
+                    if (state.colonia && $select.val()) {
+                        $('#vk-paso3-confirmar').prop('disabled', false);
+                    }
+                } else {
+                    // API returned no colonias — show manual input fallback
+                    self._coloniaFallback(state);
+                }
+            },
+            error: function() {
+                $('#vk-cp-colonia-loading').hide();
+                // API failed — show manual input fallback
+                self._coloniaFallback(state);
+            }
+        });
+    },
+
+    _coloniaFallback: function(state) {
+        // Replace select with text input as fallback
+        var $container = $('#vk-cp-colonia').parent();
+        $('#vk-cp-colonia').remove();
+        $container.find('#vk-cp-colonia-loading').hide();
+        $container.append(
+            '<input type="text" id="vk-cp-colonia" class="vk-form-input" ' +
+            'placeholder="Escribe tu colonia" ' +
+            'value="' + (state.colonia || '') + '" ' +
+            'style="font-size:15px;padding:12px 14px;">'
+        );
+        $('#vk-paso3-confirmar').prop('disabled', false);
     }
 };
