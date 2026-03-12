@@ -170,9 +170,16 @@ var PasoResumen = {
         ];
 
         for (var s = 0; s < pasos.length; s++) {
-            html += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;">';
-            html += '<div style="width:28px;height:28px;border-radius:50%;background:#039fe1;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (s + 1) + '</div>';
-            html += '<div>';
+            var isLast = (s === pasos.length - 1);
+            html += '<div style="display:flex;align-items:stretch;gap:12px;">';
+            // Number circle + vertical connecting line
+            html += '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">';
+            html += '<div style="width:28px;height:28px;border-radius:50%;background:#039fe1;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + (s + 1) + '</div>';
+            if (!isLast) {
+                html += '<div style="width:2px;flex:1;min-height:10px;background:#b8ddf5;margin:2px 0;"></div>';
+            }
+            html += '</div>';
+            html += '<div style="padding-bottom:' + (isLast ? '0' : '10') + 'px;">';
             html += '<div style="font-size:14px;font-weight:700;">' + pasos[s][0] + '</div>';
             html += '<div style="font-size:12px;color:var(--vk-text-secondary);">' + pasos[s][1] + '</div>';
             html += '</div>';
@@ -190,9 +197,10 @@ var PasoResumen = {
         html += '</div>';
 
         // 7. Bottom text links
-        html += '<div style="display:flex;justify-content:center;gap:0;border-top:1px solid var(--vk-border);padding-top:14px;">';
+        html += '<div style="text-align:center;font-size:14px;font-weight:700;color:var(--vk-text-primary);margin-bottom:8px;border-top:1px solid var(--vk-border);padding-top:14px;">Otras opciones de pago</div>';
+        html += '<div style="display:flex;justify-content:center;gap:0;">';
         if (modelo.tieneMSI) {
-            html += '<button id="vk-switch-msi" style="flex:1;background:none;border:none;border-right:1px solid var(--vk-border);font-size:13px;font-weight:700;color:#039fe1;cursor:pointer;padding:8px 4px;">9 MSI SIN INTERESES</button>';
+            html += '<button id="vk-switch-msi" style="flex:1;background:none;border:none;border-right:1px solid var(--vk-border);font-size:13px;font-weight:700;color:#039fe1;cursor:pointer;padding:8px 4px;">9 MSI CON TC</button>';
         }
         html += '<button id="vk-switch-contado" style="flex:1;background:none;border:none;font-size:13px;font-weight:700;color:var(--vk-text-secondary);cursor:pointer;padding:8px 4px;">PAGO DE CONTADO</button>';
         html += '</div>';

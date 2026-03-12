@@ -23,17 +23,20 @@ var PasoCreditoNacimiento = {
         html += '<p class="vk-paso__subtitulo">Nos ayuda a validar tu identidad para aprobar tu cr\u00e9dito Voltika.</p>';
         html += '<p class="vk-trust-highlight"><span class="vk-check"></span> Tu aprobaci\u00f3n tarda <strong>menos de 2 minutos</strong></p>';
 
-        // Today's date as default
-        var today = new Date().toISOString().split('T')[0];
-        var defaultFecha = state.fechaNacimiento || today;
+        // Calculate max date (must be 18+ years old)
+        var hoy = new Date();
+        var maxDate = new Date(hoy.getFullYear() - 18, hoy.getMonth(), hoy.getDate());
+        var maxDateStr = maxDate.toISOString().split('T')[0];
+        var defaultFecha = state.fechaNacimiento || '';
 
         html += '<div class="vk-card" style="padding:20px;">';
 
         html += '<div class="vk-form-group">';
         html += '<label class="vk-form-label">Fecha de nacimiento</label>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Debes ser mayor de 18 a\u00f1os para solicitar un cr\u00e9dito.</div>';
         html += '<input type="date" class="vk-form-input" id="vk-cnac-fecha" ' +
             'value="' + defaultFecha + '" ' +
-            'max="2008-01-01" min="1940-01-01" ' +
+            'max="' + maxDateStr + '" min="1940-01-01" ' +
             'style="color:#111;font-size:15px;padding:12px 14px;cursor:pointer;">';
         html += '</div>';
 
@@ -62,6 +65,20 @@ var PasoCreditoNacimiento = {
                 jQuery('#vk-cnac-error').text('Ingresa tu fecha de nacimiento.').show();
                 return;
             }
+
+            // Validate age >= 18
+            var nacimiento = new Date(fecha + 'T00:00:00');
+            var hoy = new Date();
+            var edad = hoy.getFullYear() - nacimiento.getFullYear();
+            var mesDiff = hoy.getMonth() - nacimiento.getMonth();
+            if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < nacimiento.getDate())) {
+                edad--;
+            }
+            if (edad < 18) {
+                jQuery('#vk-cnac-error').text('Debes tener al menos 18 a\u00f1os para solicitar un cr\u00e9dito Voltika.').show();
+                return;
+            }
+
             jQuery('#vk-cnac-error').hide();
 
             self.app.state.fechaNacimiento = fecha;
