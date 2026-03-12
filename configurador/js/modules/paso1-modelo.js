@@ -343,10 +343,7 @@ var Paso1 = {
         html += '<div class="vk-card__credito-brand">' + VkUI.renderCreditoLogo(26) + '</div>';
         html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong> semanales</div>';
         html += '<div class="vk-card__precio-diario">Menos de <strong>$' + pagoDiario + '</strong> diarios</div>';
-        html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--vk-text-secondary);margin:6px 0 10px;">' +
-            '<span>Enganche: <strong style="color:var(--vk-text-primary);">' + VkUI.formatPrecio(credito.enganche) + '</strong></span>' +
-            '<span>Plazo: <strong style="color:var(--vk-text-primary);">36 meses</strong></span>' +
-            '</div>';
+        html += '<div style="margin:6px 0 10px;"></div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito">' +
             'CALCULAR MI CR\u00c9DITO &#8250;</button>';
         return html;
