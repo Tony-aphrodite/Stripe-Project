@@ -187,7 +187,7 @@ var Paso4B = {
         html += '<div class="vk-card" style="padding:20px;">';
 
         html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:nowrap;">' +
-            '<span style="font-size:13px;color:var(--vk-text-secondary);">Enganche recomendado</span>' +
+            '<span style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Elige tu Enganche</span>' +
             '<span style="font-size:14px;font-weight:700;white-space:nowrap;margin-left:8px;">' +
             '<span id="vk-enganche-pct-display">' + Math.round(this._enganchePct * 100) + '%</span>' +
             ' \u2014 ' +
@@ -206,7 +206,7 @@ var Paso4B = {
         html += '<div style="margin-top:20px;">';
         html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">Elige tu plazo</div>';
         html += '<div id="vk-plazo-btns" style="display:flex;gap:8px;">';
-        html += this._renderPlazoBtns([12, 18, 24, 36], this._plazoMeses, null);
+        html += this._renderPlazoBtns([12, 18, 24, 36], this._plazoMeses, null, modelo, this._enganchePct);
         html += '</div>';
         html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-top:8px;">Mayor plazo = menor pago semanal</div>';
         html += '</div>';
@@ -263,15 +263,14 @@ var Paso4B = {
         $('#vk-credito-container').html(html);
     },
 
-    _renderPlazoBtns: function(plazos, activo, maxPermitido) {
+    _renderPlazoBtns: function(plazos, activo, maxPermitido, modelo, enganchePct) {
         var html = '';
         for (var i = 0; i < plazos.length; i++) {
             var p = plazos[i];
             var isDisabled = (maxPermitido !== null && p > maxPermitido);
             var isActive = p === activo;
-            var star = (p === 24) ? ' &#11088;' : '';
             var cls = 'vk-plazo-btn';
-            var style = 'flex:1;min-width:60px;padding:10px 8px;font-size:13px;font-weight:600;border-radius:8px;border:1.5px solid var(--vk-border);cursor:pointer;';
+            var style = 'flex:1;min-width:60px;padding:8px 4px;font-size:13px;font-weight:600;border-radius:8px;border:1.5px solid var(--vk-border);cursor:pointer;text-align:center;line-height:1.3;';
             if (isActive) {
                 style += 'background:#039fe1;color:#fff;border-color:#039fe1;';
             } else {
@@ -280,9 +279,15 @@ var Paso4B = {
             if (isDisabled) {
                 style += 'opacity:0.4;cursor:not-allowed;';
             }
+            var pagoLine = '';
+            if (modelo && enganchePct !== undefined) {
+                var calc = VkCalculadora.calcular(modelo.precioContado, enganchePct, p);
+                var pagoColor = isActive ? '#fff' : '#039fe1';
+                pagoLine = '<br><span style="font-size:11px;font-weight:700;color:' + pagoColor + ';">' + VkUI.formatPrecio(calc.pagoSemanal) + '/sem</span>';
+            }
             html += '<button class="' + cls + '"' + (isDisabled ? ' disabled' : '') +
                 ' data-plazo="' + p + '" style="' + style + '">' +
-                p + ' meses' + star + '</button>';
+                p + ' meses' + pagoLine + '</button>';
         }
         return html;
     },
@@ -336,6 +341,7 @@ var Paso4B = {
             $('#vk-monto-summary').text(VkUI.formatPrecio(credito.montoFinanciado));
             $('#vk-plazo-summary').html(self._plazoMeses + ' meses &middot; ' + VkUI.formatPrecio(credito.pagoSemanal) + '/semana');
             $('#vk-calc-results').html(self._renderCalcResults(modelo, credito));
+            $('#vk-plazo-btns').html(self._renderPlazoBtns([12, 18, 24, 36], self._plazoMeses, null, modelo, self._enganchePct));
         });
 
         // Botones de plazo
@@ -344,18 +350,7 @@ var Paso4B = {
             var modelo  = self.app.getModelo(self.app.state.modeloSeleccionado);
             var credito = self._calcularCredito(modelo);
 
-            // Update active button style
-            $('.vk-plazo-btn').css({
-                'background': '#fff',
-                'color': 'var(--vk-text-primary)',
-                'border-color': 'var(--vk-border)'
-            });
-            $(this).css({
-                'background': '#039fe1',
-                'color': '#fff',
-                'border-color': '#039fe1'
-            });
-
+            $('#vk-plazo-btns').html(self._renderPlazoBtns([12, 18, 24, 36], self._plazoMeses, null, modelo, self._enganchePct));
             $('#vk-monto-summary').text(VkUI.formatPrecio(credito.montoFinanciado));
             $('#vk-plazo-summary').html(self._plazoMeses + ' meses &middot; ' + VkUI.formatPrecio(credito.pagoSemanal) + '/semana');
             $('#vk-calc-results').html(self._renderCalcResults(modelo, credito));
