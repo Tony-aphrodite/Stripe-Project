@@ -174,11 +174,11 @@ var PasoCreditoIdentidad = {
     },
 
     _renderUploadStep: function(num, id, title, description, iconType) {
-        var self = this;
+        var base = window.VK_BASE_PATH || '';
         var icon = '';
-        if (iconType === 'ine-front') icon = self._svgINE(false);
-        else if (iconType === 'ine-back') icon = self._svgINE(true);
-        else if (iconType === 'selfie') icon = self._svgSelfie();
+        if (iconType === 'ine-front') icon = '<img src="' + base + 'img/ine1.png" alt="INE Frente" style="max-width:120px;height:auto;border-radius:4px;">';
+        else if (iconType === 'ine-back') icon = '<img src="' + base + 'img/ine2.png" alt="INE Reverso" style="max-width:120px;height:auto;border-radius:4px;">';
+        else if (iconType === 'selfie') icon = '<img src="' + base + 'img/faceid.png" alt="Selfie" style="width:36px;height:36px;">';
 
         var html = '';
         html += '<div class="vk-identidad-step" id="vk-upload-' + id + '">';
