@@ -47,17 +47,6 @@ var PasoCreditoEnganche = {
         var mesesNombres = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
         var entregaStr = entrega.getDate() + ' ' + mesesNombres[entrega.getMonth()] + ' ' + entrega.getFullYear();
 
-        // OXXO references (limit $10,000 per operation)
-        var oxxoLimit = 10000;
-        var numRefs = Math.ceil(enganche / oxxoLimit);
-        var oxxoRefs = [];
-        var remaining = enganche;
-        for (var j = 0; j < numRefs; j++) {
-            var refAmount = Math.min(remaining, oxxoLimit);
-            oxxoRefs.push(refAmount);
-            remaining -= refAmount;
-        }
-
         var html = '';
 
         html += VkUI.renderBackButton('resumen');
@@ -100,7 +89,6 @@ var PasoCreditoEnganche = {
         // === 1. Tarjeta de crédito / débito ===
         html += '<div class="vk-card" style="padding:16px;margin-bottom:12px;">';
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
-        html += '<span style="font-size:18px;">&#128179;</span>';
         html += '<span style="font-size:14px;font-weight:600;">Tarjeta de cr\u00e9dito / d\u00e9bito</span>';
         html += '<span style="margin-left:auto;">' + VkUI.renderCardLogos() + '</span>';
         html += '</div>';
@@ -128,7 +116,6 @@ var PasoCreditoEnganche = {
         // === 2. Transferencia bancaria SPEI ===
         html += '<div class="vk-card" style="padding:16px;margin-bottom:12px;">';
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
-        html += '<span style="font-size:18px;">&#127974;</span>';
         html += '<span style="font-size:14px;font-weight:600;">Transferencia bancaria SPEI</span>';
         html += '</div>';
         html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-spei" style="background:#1a3a5c;">PAGAR POR TRANSFERENCIA SPEI</button>';
@@ -136,20 +123,14 @@ var PasoCreditoEnganche = {
 
         // === 3. Pago en efectivo en tiendas OXXO ===
         html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;">';
-        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
-        html += '<span style="font-size:18px;">&#127978;</span>';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
         html += '<span style="font-size:14px;font-weight:600;">Pago en efectivo en tiendas OXXO</span>';
         html += '</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;">';
-        html += 'Por el l\u00edmite de $10,000 por operaci\u00f3n en OXXO<br>se generar\u00e1n <strong>' + numRefs + ' referencias</strong> de pago:';
+        html += '<div style="text-align:center;margin-bottom:12px;">';
+        html += '<div style="font-size:28px;font-weight:800;color:var(--vk-green-primary);">' +
+            VkUI.formatPrecio(enganche) + ' MXN</div>';
         html += '</div>';
-        for (var k = 0; k < oxxoRefs.length; k++) {
-            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
-            html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:20px;" onerror="this.style.display=\'none\'">';
-            html += '<span style="font-size:13px;font-weight:600;">Referencia ' + (k + 1) + ': ' + VkUI.formatPrecio(oxxoRefs[k]) + '</span>';
-            html += '</div>';
-        }
-        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-oxxo" style="margin-top:10px;background:#1a3a5c;">' +
+        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-oxxo" style="background:#1a3a5c;">' +
             'PAGO EN EFECTIVO EN OXXO</button>';
         html += '</div>';
 
