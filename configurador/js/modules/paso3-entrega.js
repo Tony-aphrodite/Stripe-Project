@@ -90,7 +90,21 @@ var Paso3 = {
 
         html += '</div>';
 
-        // Centro Voltika Autorizado section
+        // Delivery points section (hidden until CP lookup)
+        html += '<div id="vk-centros-section" style="display:none;margin-top:16px;">';
+
+        // Recommended center (filled dynamically)
+        html += '<div id="vk-centro-recomendado"></div>';
+
+        // Other centers expandable
+        html += '<div id="vk-otros-centros-wrapper" style="display:none;margin-top:12px;">';
+        html += '<div id="vk-otros-centros-toggle" style="font-size:14px;font-weight:700;color:var(--vk-green-primary);cursor:pointer;margin-bottom:10px;">Otros centros cercanos &#9660;</div>';
+        html += '<div id="vk-otros-centros-list" style="display:none;"></div>';
+        html += '</div>';
+
+        html += '</div>';
+
+        // Centro Voltika Autorizado info section
         html += '<div style="background:var(--vk-bg-light);border-radius:10px;padding:16px;margin-bottom:14px;">';
         html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
         html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/voltika_shield.svg" alt="Voltika" style="width:30px;height:30px;flex-shrink:0;">';
@@ -172,7 +186,8 @@ var Paso3 = {
 
         $(document).off('input', '#vk-cp-input').off('click', '#vk-paso3-confirmar')
             .off('change', '#vk-check-placas').off('change', '#vk-check-seguro')
-            .off('change', '#vk-cp-colonia');
+            .off('change', '#vk-cp-colonia')
+            .off('click', '.vk-select-centro').off('click', '#vk-otros-centros-toggle');
 
         // Postal code input
         $(document).on('input', '#vk-cp-input', function() {
@@ -204,6 +219,25 @@ var Paso3 = {
         });
         $(document).on('change', '#vk-check-seguro', function() {
             self.app.state.seguro = this.checked;
+        });
+
+        // Select delivery center
+        $(document).on('click', '.vk-select-centro', function(e) {
+            e.preventDefault();
+            var centroId = $(this).data('centro-id');
+            self._selectCentro(centroId);
+        });
+
+        // Toggle other centers list
+        $(document).on('click', '#vk-otros-centros-toggle', function() {
+            var $list = $('#vk-otros-centros-list');
+            if ($list.is(':visible')) {
+                $list.slideUp(200);
+                $(this).html('Otros centros cercanos &#9660;');
+            } else {
+                $list.slideDown(200);
+                $(this).html('Otros centros cercanos &#9650;');
+            }
         });
 
         // Confirm
@@ -256,6 +290,9 @@ var Paso3 = {
             $('#vk-cp-logistics').show();
         }
 
+        // Search and render delivery centers
+        self._renderCentros(cp);
+
         // Fetch colonias from API
         var $select = $('#vk-cp-colonia');
         $select.html('<option value="">Cargando...</option>').prop('disabled', true);
@@ -305,6 +342,90 @@ var Paso3 = {
                 self._coloniaFallback(state);
             }
         });
+    },
+
+    _renderCentros: function(cp) {
+        var self = this;
+        var esCredito = self.app.state.metodoPago === 'credito';
+
+        // Check if VOLTIKA_CENTROS is available
+        if (typeof VOLTIKA_CENTROS === 'undefined' || !VOLTIKA_CENTROS.buscar) {
+            $('#vk-centros-section').hide();
+            return;
+        }
+
+        var centros = VOLTIKA_CENTROS.buscar(cp);
+        if (!centros || centros.length === 0) {
+            $('#vk-centros-section').hide();
+            return;
+        }
+
+        // Render recommended center (first result)
+        var rec = centros[0];
+        var recHtml = '';
+        recHtml += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin-bottom:8px;">Centro de entrega recomendado</div>';
+        recHtml += '<div class="vk-card" style="padding:16px;border:2px solid var(--vk-green-primary);border-radius:12px;">';
+        recHtml += '<div style="font-weight:800;font-size:16px;margin-bottom:6px;">' + rec.nombre + '</div>';
+        recHtml += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">' + rec.direccion + '</div>';
+        recHtml += '<div style="font-size:12px;color:var(--vk-text-muted);margin-bottom:10px;">' + rec.horarios + '</div>';
+
+        // Badges
+        recHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">';
+        recHtml += '<span style="display:inline-block;font-size:11px;font-weight:600;color:var(--vk-green-primary);background:var(--vk-green-light);padding:4px 10px;border-radius:20px;">&#10003; Centro Voltika autorizado</span>';
+        recHtml += '<span style="display:inline-block;font-size:11px;font-weight:600;color:var(--vk-green-primary);background:var(--vk-green-light);padding:4px 10px;border-radius:20px;">&#10003; Revisión y activación profesional</span>';
+        if (esCredito) {
+            recHtml += '<span style="display:inline-block;font-size:11px;font-weight:600;color:var(--vk-green-primary);background:var(--vk-green-light);padding:4px 10px;border-radius:20px;">&#10003; Flete incluido en Crédito Voltika</span>';
+        }
+        recHtml += '</div>';
+
+        recHtml += '<button class="vk-btn vk-btn--primary vk-select-centro" data-centro-id="' + rec.id + '" style="font-size:14px;font-weight:700;padding:12px;">CONTINUAR CON ESTE CENTRO</button>';
+        recHtml += '</div>';
+
+        $('#vk-centro-recomendado').html(recHtml);
+
+        // Other centers
+        if (centros.length > 1) {
+            var otrosHtml = '';
+            for (var i = 1; i < centros.length; i++) {
+                var c = centros[i];
+                otrosHtml += '<div class="vk-card" style="padding:14px;border-radius:10px;margin-bottom:8px;">';
+                otrosHtml += '<div style="display:flex;align-items:center;justify-content:space-between;">';
+                otrosHtml += '<div style="flex:1;min-width:0;">';
+                otrosHtml += '<div style="font-weight:700;font-size:14px;margin-bottom:4px;">' + c.nombre + '</div>';
+                otrosHtml += '<div style="font-size:12px;color:var(--vk-text-secondary);">' + c.direccion + '</div>';
+                otrosHtml += '<div style="font-size:11px;color:var(--vk-text-muted);margin-top:2px;">' + c.horarios + '</div>';
+                otrosHtml += '</div>';
+                otrosHtml += '<button class="vk-select-centro" data-centro-id="' + c.id + '" style="flex-shrink:0;margin-left:12px;padding:8px 16px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Seleccionar</button>';
+                otrosHtml += '</div>';
+                otrosHtml += '</div>';
+            }
+            $('#vk-otros-centros-list').html(otrosHtml);
+            $('#vk-otros-centros-wrapper').show();
+        } else {
+            $('#vk-otros-centros-wrapper').hide();
+        }
+
+        $('#vk-centros-section').slideDown(200);
+    },
+
+    _selectCentro: function(centroId) {
+        var centro = null;
+        if (typeof VOLTIKA_CENTROS !== 'undefined') {
+            for (var i = 0; i < VOLTIKA_CENTROS.length; i++) {
+                if (VOLTIKA_CENTROS[i].id === centroId) {
+                    centro = VOLTIKA_CENTROS[i];
+                    break;
+                }
+            }
+        }
+        if (centro) {
+            this.app.state.centroEntrega = centro;
+            // Visual feedback — highlight selected
+            $('.vk-select-centro').css({ 'opacity': '0.6' });
+            $('.vk-select-centro[data-centro-id="' + centroId + '"]')
+                .css({ 'opacity': '1', 'background': 'var(--vk-green-dark)' })
+                .text('✓ Seleccionado');
+        }
     },
 
     _coloniaFallback: function(state) {
