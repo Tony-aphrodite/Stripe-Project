@@ -32,7 +32,7 @@ var PasoCreditoCPDom = {
             html += '</div>';
         }
 
-        html += '<p class="vk-paso__subtitulo">Confirma el c\u00f3digo postal de tu domicilio (como aparece en tu INE o comprobante)</p>';
+        html += '<p class="vk-paso__subtitulo">Ahora, confirmar el c\u00f3digo postal de tu domicilio (Como aparece en tu INE o comprobante), este puede ser diferente al de la entrega.</p>';
 
         html += '<div class="vk-card" style="padding:20px;">';
 
