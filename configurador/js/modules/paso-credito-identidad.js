@@ -8,12 +8,14 @@ var PasoCreditoIdentidad = {
     _ineFrente: null,
     _ineReverso: null,
     _selfie: null,
+    _comprobante: null,
 
     init: function(app) {
         this.app = app;
         this._ineFrente = null;
         this._ineReverso = null;
         this._selfie = null;
+        this._comprobante = null;
         this.render();
         this.bindEvents();
     },
@@ -56,6 +58,19 @@ var PasoCreditoIdentidad = {
         html += this._renderUploadStep(1, 'ine-frente',  'INE \u2013 Frente',           'Toma una foto clara del <strong>frente</strong> de tu INE',  'ine-front');
         html += this._renderUploadStep(2, 'ine-reverso', 'INE \u2013 Reverso',          'Toma una foto clara del <strong>reverso</strong> de tu INE', 'ine-back');
         html += this._renderUploadStep(3, 'selfie',      'Selfie de verificaci\u00f3n', 'Toma una foto de tu rostro mirando a la c\u00e1mara',         'selfie');
+
+        // 5b. Checkbox: domicilio diferente
+        html += '<div style="margin:16px 0;padding:14px;background:#f8f9fa;border-radius:8px;border:1px solid var(--vk-border);">';
+        html += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;">';
+        html += '<input type="checkbox" id="vk-domicilio-diferente" style="width:20px;height:20px;accent-color:#039fe1;flex-shrink:0;">';
+        html += '\u00bfTu domicilio actual es diferente al de tu INE?';
+        html += '</label>';
+        html += '</div>';
+
+        // 5c. Comprobante de domicilio (hidden by default)
+        html += '<div id="vk-comprobante-wrapper" style="display:none;">';
+        html += this._renderUploadStep(4, 'comprobante', 'Comprobante de domicilio', 'Sube una foto de tu comprobante de domicilio reciente (luz, agua, tel\u00e9fono)', 'none');
+        html += '</div>';
 
         // 6. 30-second notice
         html += '<div class="vk-identidad-timer">';
@@ -187,7 +202,7 @@ var PasoCreditoIdentidad = {
     bindEvents: function() {
         var self = this;
 
-        var ids = ['ine-frente', 'ine-reverso', 'selfie'];
+        var ids = ['ine-frente', 'ine-reverso', 'selfie', 'comprobante'];
         ids.forEach(function(id) {
             jQuery(document).off('click', '#vk-upload-' + id);
             jQuery(document).on('click', '#vk-upload-' + id, function(e) {
@@ -205,12 +220,33 @@ var PasoCreditoIdentidad = {
 
         jQuery('#vk-file-selfie').attr('capture', 'user');
 
+        // Checkbox: show/hide comprobante
+        jQuery(document).off('change', '#vk-domicilio-diferente');
+        jQuery(document).on('change', '#vk-domicilio-diferente', function() {
+            if (jQuery(this).is(':checked')) {
+                jQuery('#vk-comprobante-wrapper').slideDown(200);
+            } else {
+                jQuery('#vk-comprobante-wrapper').slideUp(200);
+                self._comprobante = null;
+                jQuery('#vk-status-comprobante').html('&#9711;').css('color', '');
+                jQuery('#vk-preview-comprobante').hide();
+                jQuery('#vk-upload-comprobante').removeClass('vk-identidad-step--done');
+            }
+        });
+
         jQuery(document).off('click', '#vk-identidad-continuar');
         jQuery(document).on('click', '#vk-identidad-continuar', function() {
             // Validate all 3 uploaded before proceeding
             if (!self._ineFrente || !self._ineReverso || !self._selfie) {
                 jQuery('#vk-identidad-error')
                     .text('Por favor sube las 3 fotos antes de continuar (INE frente, reverso y selfie).')
+                    .show();
+                return;
+            }
+            // If checkbox checked, comprobante is required
+            if (jQuery('#vk-domicilio-diferente').is(':checked') && !self._comprobante) {
+                jQuery('#vk-identidad-error')
+                    .text('Por favor sube tu comprobante de domicilio.')
                     .show();
                 return;
             }
@@ -230,9 +266,10 @@ var PasoCreditoIdentidad = {
             return;
         }
 
-        if (id === 'ine-frente')  self._ineFrente = file;
-        if (id === 'ine-reverso') self._ineReverso = file;
-        if (id === 'selfie')      self._selfie = file;
+        if (id === 'ine-frente')   self._ineFrente = file;
+        if (id === 'ine-reverso')  self._ineReverso = file;
+        if (id === 'selfie')       self._selfie = file;
+        if (id === 'comprobante')  self._comprobante = file;
 
         var reader = new FileReader();
         reader.onload = function(e) {
@@ -258,6 +295,10 @@ var PasoCreditoIdentidad = {
         formData.append('ine_frente', self._ineFrente);
         formData.append('ine_reverso', self._ineReverso);
         formData.append('selfie', self._selfie);
+        if (self._comprobante) {
+            formData.append('comprobante_domicilio', self._comprobante);
+            formData.append('domicilio_diferente', '1');
+        }
 
         var partes    = (state.nombre || '').trim().split(/\s+/);
         var nombre    = partes.length > 0 ? partes[0] : '';
