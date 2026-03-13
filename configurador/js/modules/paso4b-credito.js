@@ -150,7 +150,7 @@ var Paso4B = {
     init: function(app) {
         this.app = app;
         this._enganchePct = 0.25;
-        this._plazoMeses  = 24;
+        this._plazoMeses  = 36;
         this._ingresoVal  = null;
         this._resultadoV3 = null;
         this.render();
