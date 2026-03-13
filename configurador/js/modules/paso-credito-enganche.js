@@ -47,6 +47,17 @@ var PasoCreditoEnganche = {
         var mesesNombres = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
         var entregaStr = entrega.getDate() + ' ' + mesesNombres[entrega.getMonth()] + ' ' + entrega.getFullYear();
 
+        // OXXO references (limit $10,000 per operation)
+        var oxxoLimit = 10000;
+        var numRefs = Math.ceil(enganche / oxxoLimit);
+        var oxxoRefs = [];
+        var oxxoRemaining = enganche;
+        for (var j = 0; j < numRefs; j++) {
+            var refAmount = Math.min(oxxoRemaining, oxxoLimit);
+            oxxoRefs.push(refAmount);
+            oxxoRemaining -= refAmount;
+        }
+
         var html = '';
 
         html += VkUI.renderBackButton('resumen');
@@ -123,10 +134,18 @@ var PasoCreditoEnganche = {
 
         // === 3. Pago en efectivo en tiendas OXXO ===
         html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;">';
-        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
         html += '<span style="font-size:14px;font-weight:600;">Pago en efectivo en tiendas OXXO</span>';
         html += '</div>';
-        html += '<div style="text-align:center;margin-bottom:12px;">';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;background:var(--vk-bg-light);border-radius:6px;padding:10px;">';
+        html += 'Por el l\u00edmite de <strong>$10,000</strong> por operaci\u00f3n en OXXO<br>se generar\u00e1n <strong>' + numRefs + ' referencias</strong> de pago:';
+        html += '</div>';
+        for (var k = 0; k < oxxoRefs.length; k++) {
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+            html += '<span style="font-size:13px;font-weight:600;">Referencia ' + (k + 1) + ': ' + VkUI.formatPrecio(oxxoRefs[k]) + '</span>';
+            html += '</div>';
+        }
+        html += '<div style="text-align:center;margin:12px 0 10px;">';
         html += '<div style="font-size:28px;font-weight:800;color:var(--vk-green-primary);">' +
             VkUI.formatPrecio(enganche) + ' MXN</div>';
         html += '</div>';
