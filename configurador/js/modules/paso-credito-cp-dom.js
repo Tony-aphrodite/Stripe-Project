@@ -28,7 +28,7 @@ var PasoCreditoCPDom = {
             html += '<div class="vk-info-box__value">' + state.codigoPostal;
             if (cpInfo) html += ' \u2014 ' + cpInfo.ciudad + ', ' + cpInfo.estado;
             html += '</div>';
-            html += '<div class="vk-info-box__note">(este fue para recibir tu Voltika)</div>';
+            html += '<div class="vk-info-box__note" style="font-weight:800;text-transform:uppercase;">(este es para recibir tu Voltika)</div>';
             html += '</div>';
         }
 
