@@ -25,7 +25,7 @@ var PasoCreditoIngresos = {
 
         // Income range selector
         html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">Ingreso mensual aproximado</label>';
+        html += '<label class="vk-form-label">\u00bfCu\u00e1l es tu ingreso mensual aproximado?</label>';
 
         var rangos = [
             { label: 'Menos de $8,000',     value: 7000  },
@@ -52,7 +52,7 @@ var PasoCreditoIngresos = {
                 '</div>';
         }
         html += '</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-top:8px;font-style:italic;">Podemos pedir comprobante de ingresos</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-top:8px;">En algunos casos podr\u00edamos pedir comprobante para confirmar tus datos</div>';
         html += '</div>';
 
         // Phone
