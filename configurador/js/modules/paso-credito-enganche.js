@@ -99,18 +99,6 @@ var PasoCreditoEnganche = {
         html += '<span style="margin-left:auto;">' + VkUI.renderCardLogos() + '</span>';
         html += '</div>';
 
-        // Stripe card element
-        html += '<div class="vk-form-group" style="margin-bottom:12px;">';
-        html += '<div id="vk-enganche-card-element" style="border:1.5px solid var(--vk-border);' +
-            'border-radius:6px;padding:14px;background:#FAFAFA;min-height:46px;"></div>';
-        html += '<div id="vk-enganche-card-errors" style="color:#C62828;font-size:12px;' +
-            'margin-top:6px;display:none;"></div>';
-        html += '</div>';
-
-        // Error
-        html += '<div id="vk-enganche-error" style="display:none;color:#C62828;background:#FFEBEE;' +
-            'border:1px solid #E53935;border-radius:6px;padding:12px;margin-bottom:12px;font-size:13px;"></div>';
-
         // CTA Tarjeta
         html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-pagar">';
         html += '<span class="vk-pay-btn__label">PAGAR CON TARJETA</span>';
