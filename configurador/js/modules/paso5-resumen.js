@@ -154,7 +154,7 @@ var PasoResumen = {
         html += '</div>';
         html += '<div style="display:flex;align-items:center;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--vk-border);">';
         html += '<span style="color:var(--vk-green-primary);font-size:16px;">&#10003;</span>';
-        html += '<span style="font-size:13px;"><strong>Entrega garantizada</strong> en tu ciudad<br><span style="font-size:12px;color:var(--vk-text-secondary);">Incluye documentos para tramitar placas</span></span>';
+        html += '<span style="font-size:13px;"><strong>Entrega garantizada</strong> en ' + (state.ciudad || 'tu ciudad') + '<br><span style="font-size:12px;color:var(--vk-text-secondary);">Incluye documentos para tramitar placas</span></span>';
         html += '</div>';
         html += '</div>';
 
