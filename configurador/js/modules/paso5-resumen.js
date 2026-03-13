@@ -145,6 +145,7 @@ var PasoResumen = {
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Pago semanal desde</div>';
         html += '<div style="font-size:32px;font-weight:900;color:var(--vk-text-primary);line-height:1.1;">' + VkUI.formatPrecio(credito.pagoSemanal) + '</div>';
         html += '<div style="font-size:12px;font-weight:700;margin-top:4px;">Enganche<br><span style="color:var(--vk-green-primary);">' + VkUI.formatPrecio(credito.enganche) + '</span></div>';
+        html += '<div style="font-size:12px;font-weight:700;margin-top:4px;">Plazo<br><span style="color:#039fe1;">' + (state.plazoMeses || 36) + ' meses</span></div>';
         html += '</div>';
         html += '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">';
         html += '<img src="' + img + '" alt="' + modelo.nombre + '" style="width:100px;height:auto;object-fit:contain;">';
