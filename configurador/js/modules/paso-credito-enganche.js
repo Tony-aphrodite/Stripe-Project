@@ -28,48 +28,60 @@ var PasoCreditoEnganche = {
         var modelo = this.app.getModelo(state.modeloSeleccionado);
         if (!modelo) return;
 
+        var base        = window.VK_BASE_PATH || '';
         var enganchePct = state.enganchePorcentaje || 0.30;
-        var credito     = VkCalculadora.calcular(modelo.precioContado, enganchePct, state.plazoMeses || 12);
+        var plazoMeses  = state.plazoMeses || 36;
+        var credito     = VkCalculadora.calcular(modelo.precioContado, enganchePct, plazoMeses);
         var enganche    = credito.enganche;
+        var colorId     = state.colorSeleccionado || modelo.colorDefault;
+        var colorNombre = '';
+        for (var i = 0; i < modelo.colores.length; i++) {
+            if (modelo.colores[i].id === colorId) { colorNombre = modelo.colores[i].nombre; break; }
+        }
+        var motoImg     = VkUI.getImagenMoto(modelo.id, colorId);
+        var plazoSemanas = Math.round(plazoMeses * 4.33);
+
+        // Estimated delivery date (3 weeks from now)
+        var entrega = new Date();
+        entrega.setDate(entrega.getDate() + 21);
+        var mesesNombres = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        var entregaStr = entrega.getDate() + ' ' + mesesNombres[entrega.getMonth()] + ' ' + entrega.getFullYear();
 
         var html = '';
 
         html += VkUI.renderBackButton('resumen');
 
-        html += '<h2 class="vk-paso__titulo">Pago de enganche</h2>';
+        // Header
+        html += '<div style="text-align:center;margin-bottom:20px;">';
+        html += '<h2 class="vk-paso__titulo" style="margin-bottom:4px;">Tu Voltika est\u00e1 lista</h2>';
+        html += '<p style="font-size:14px;color:var(--vk-text-secondary);margin:0;">Paga tu enganche para reservarla</p>';
+        html += '</div>';
 
-        html += '<div class="vk-card">';
-        html += '<div style="padding:20px;">';
+        // Model summary card
+        html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;">';
+        html += '<div style="display:flex;align-items:center;gap:14px;">';
+        html += '<img src="' + base + motoImg + '" alt="' + modelo.nombre + '" ' +
+            'style="width:110px;height:auto;flex-shrink:0;">';
+        html += '<div style="flex:1;min-width:0;">';
+        html += '<div style="font-size:18px;font-weight:800;">' + modelo.nombre + '</div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Color: ' + (colorNombre || colorId) + '</div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Pago semanal: <span style="font-weight:700;color:var(--vk-green-primary);">' +
+            VkUI.formatPrecio(credito.pagoSemanal) + '</span></div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Plazo: ' + plazoSemanas + ' semanas (' + plazoMeses + ' meses)</div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Entrega estimada: <span style="font-weight:600;">' + entregaStr + '</span></div>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
 
-        // Enganche summary
-        html += '<div style="text-align:center;margin-bottom:16px;">';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);">Enganche (' +
-            Math.round(enganchePct * 100) + '%) para tu</div>';
-        html += '<div style="font-size:18px;font-weight:700;margin:4px 0;">' + modelo.nombre + '</div>';
-        html += '<div style="font-size:28px;font-weight:800;color:var(--vk-green-primary);">' +
+        // Enganche amount
+        html += '<div style="text-align:center;margin-bottom:20px;">';
+        html += '<div style="font-size:12px;font-weight:700;color:var(--vk-text-secondary);letter-spacing:0.5px;text-transform:uppercase;">Enganche a pagar</div>';
+        html += '<div style="font-size:32px;font-weight:800;color:var(--vk-green-primary);margin-top:4px;">' +
             VkUI.formatPrecio(enganche) + ' MXN</div>';
         html += '</div>';
 
-        // Credit details box
-        html += '<div style="background:var(--vk-bg-light);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;">';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">';
-        html += '<span style="color:var(--vk-text-secondary);">Precio contado</span>';
-        html += '<span>' + VkUI.formatPrecio(modelo.precioContado) + '</span>';
-        html += '</div>';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">';
-        html += '<span style="color:var(--vk-text-secondary);">Monto financiado</span>';
-        html += '<span>' + VkUI.formatPrecio(credito.montoFinanciado) + '</span>';
-        html += '</div>';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">';
-        html += '<span style="color:var(--vk-text-secondary);">Plazo</span>';
-        html += '<span>' + (state.plazoMeses || 12) + ' meses</span>';
-        html += '</div>';
-        html += '<div style="display:flex;justify-content:space-between;">';
-        html += '<span style="color:var(--vk-text-secondary);">Pago semanal</span>';
-        html += '<span style="font-weight:700;color:var(--vk-green-primary);">' +
-            VkUI.formatPrecio(credito.pagoSemanal) + '</span>';
-        html += '</div>';
-        html += '</div>';
+        // Payment card
+        html += '<div class="vk-card" style="padding:20px;">';
 
         // Card logos
         html += '<div style="text-align:center;margin-bottom:12px;">' +
@@ -77,7 +89,7 @@ var PasoCreditoEnganche = {
 
         // Stripe card element
         html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">&#128179; Datos de tarjeta</label>';
+        html += '<label class="vk-form-label">Datos de tarjeta</label>';
         html += '<div id="vk-enganche-card-element" style="border:1.5px solid var(--vk-border);' +
             'border-radius:6px;padding:14px;background:#FAFAFA;min-height:46px;"></div>';
         html += '<div id="vk-enganche-card-errors" style="color:#C62828;font-size:12px;' +
@@ -90,7 +102,7 @@ var PasoCreditoEnganche = {
 
         // CTA
         html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-pagar">';
-        html += '<span class="vk-pay-btn__label">&#128274; PAGAR ENGANCHE ' +
+        html += '<span class="vk-pay-btn__label">PAGAR CON TARJETA ' +
             VkUI.formatPrecio(enganche) + ' MXN</span>';
         html += '<span class="vk-pay-btn__spinner" style="display:none;">' +
             VkUI.renderSpinner() + ' Procesando...</span>';
@@ -99,8 +111,7 @@ var PasoCreditoEnganche = {
         html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:10px;">' +
             '&#128274; Pago cifrado SSL &middot; ' + VkUI.renderCardLogos() + '</div>';
 
-        html += '</div>'; // end padding
-        html += '</div>'; // end card
+        html += '</div>'; // end payment card
 
         jQuery('#vk-credito-enganche-container').html(html);
     },
