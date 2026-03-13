@@ -41,11 +41,22 @@ var PasoCreditoEnganche = {
         var motoImg     = VkUI.getImagenMoto(modelo.id, colorId);
         var plazoSemanas = Math.round(plazoMeses * 4.33);
 
-        // Estimated delivery date (3 weeks from now)
+        // Estimated delivery date (~5 months from now)
         var entrega = new Date();
-        entrega.setDate(entrega.getDate() + 21);
-        var mesesNombres = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        entrega.setMonth(entrega.getMonth() + 5);
+        var mesesNombres = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
         var entregaStr = entrega.getDate() + ' ' + mesesNombres[entrega.getMonth()] + ' ' + entrega.getFullYear();
+
+        // OXXO references (limit $10,000 per operation)
+        var oxxoLimit = 10000;
+        var numRefs = Math.ceil(enganche / oxxoLimit);
+        var oxxoRefs = [];
+        var remaining = enganche;
+        for (var j = 0; j < numRefs; j++) {
+            var refAmount = Math.min(remaining, oxxoLimit);
+            oxxoRefs.push(refAmount);
+            remaining -= refAmount;
+        }
 
         var html = '';
 
@@ -54,42 +65,48 @@ var PasoCreditoEnganche = {
         // Header
         html += '<div style="text-align:center;margin-bottom:20px;">';
         html += '<h2 class="vk-paso__titulo" style="margin-bottom:4px;">Tu Voltika est\u00e1 lista</h2>';
-        html += '<p style="font-size:14px;color:var(--vk-text-secondary);margin:0;">Paga tu enganche para reservarla</p>';
+        html += '<p style="font-size:14px;color:var(--vk-text-secondary);margin:0;">Paga tu <strong>enganche</strong> para reservarla.</p>';
         html += '</div>';
 
-        // Model summary card
-        html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;">';
+        // Model summary card (dark background)
+        html += '<div style="background:#1e1e2f;border-radius:14px;padding:16px;margin-bottom:20px;color:#fff;">';
         html += '<div style="display:flex;align-items:center;gap:14px;">';
-        html += '<img src="' + base + motoImg + '" alt="' + modelo.nombre + '" ' +
+        html += '<img src="' + base + motoImg + '" alt="Voltika ' + modelo.nombre + '" ' +
             'style="width:110px;height:auto;flex-shrink:0;">';
         html += '<div style="flex:1;min-width:0;">';
-        html += '<div style="font-size:18px;font-weight:800;">' + modelo.nombre + '</div>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Color: ' + (colorNombre || colorId) + '</div>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Pago semanal: <span style="font-weight:700;color:var(--vk-green-primary);">' +
-            VkUI.formatPrecio(credito.pagoSemanal) + '</span></div>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Plazo: ' + plazoSemanas + ' semanas (' + plazoMeses + ' meses)</div>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">Entrega estimada: <span style="font-weight:600;">' + entregaStr + '</span></div>';
+        html += '<div style="font-size:16px;font-weight:800;margin-bottom:6px;">Voltika ' + modelo.nombre + '</div>';
+        html += '<div style="font-size:12px;color:#ccc;line-height:1.7;">';
+        html += 'Modelo: <strong style="color:#fff;">Voltika ' + modelo.nombre + '</strong><br>';
+        html += '&#8226; Color: <strong style="color:#fff;">' + (colorNombre || colorId) + '</strong><br>';
+        html += '&#8226; Pago semanal: <strong style="color:var(--vk-green-primary);">' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong> MXN<br>';
+        html += '&#8226; Plazo: <strong style="color:#fff;">' + plazoSemanas + ' semanas</strong><br>';
+        html += 'Entrega estimada<br><strong style="color:#fff;font-size:14px;">' + entregaStr + '</strong>';
+        html += '</div>';
+        html += '<div style="font-size:11px;color:#aaa;margin-top:6px;">En un punto autorizado <strong style="color:#fff;">Voltika</strong> cerca de ti</div>';
         html += '</div>';
         html += '</div>';
         html += '</div>';
 
         // Enganche amount
         html += '<div style="text-align:center;margin-bottom:20px;">';
-        html += '<div style="font-size:12px;font-weight:700;color:var(--vk-text-secondary);letter-spacing:0.5px;text-transform:uppercase;">Enganche a pagar</div>';
-        html += '<div style="font-size:32px;font-weight:800;color:var(--vk-green-primary);margin-top:4px;">' +
+        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);letter-spacing:0.5px;text-transform:uppercase;">Enganche a pagar</div>';
+        html += '<div style="font-size:34px;font-weight:800;color:var(--vk-green-primary);margin-top:4px;">' +
             VkUI.formatPrecio(enganche) + ' MXN</div>';
         html += '</div>';
 
-        // Payment card
-        html += '<div class="vk-card" style="padding:20px;">';
+        // Payment methods section
+        html += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin-bottom:12px;">Selecciona el m\u00e9todo de pago</div>';
 
-        // Card logos
-        html += '<div style="text-align:center;margin-bottom:12px;">' +
-            VkUI.renderCardLogos() + '</div>';
+        // === 1. Tarjeta de crédito / débito ===
+        html += '<div class="vk-card" style="padding:16px;margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+        html += '<span style="font-size:18px;">&#128179;</span>';
+        html += '<span style="font-size:14px;font-weight:600;">Tarjeta de cr\u00e9dito / d\u00e9bito</span>';
+        html += '<span style="margin-left:auto;">' + VkUI.renderCardLogos() + '</span>';
+        html += '</div>';
 
         // Stripe card element
-        html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">Datos de tarjeta</label>';
+        html += '<div class="vk-form-group" style="margin-bottom:12px;">';
         html += '<div id="vk-enganche-card-element" style="border:1.5px solid var(--vk-border);' +
             'border-radius:6px;padding:14px;background:#FAFAFA;min-height:46px;"></div>';
         html += '<div id="vk-enganche-card-errors" style="color:#C62828;font-size:12px;' +
@@ -98,20 +115,47 @@ var PasoCreditoEnganche = {
 
         // Error
         html += '<div id="vk-enganche-error" style="display:none;color:#C62828;background:#FFEBEE;' +
-            'border:1px solid #E53935;border-radius:6px;padding:12px;margin-top:12px;font-size:13px;"></div>';
+            'border:1px solid #E53935;border-radius:6px;padding:12px;margin-bottom:12px;font-size:13px;"></div>';
 
-        // CTA
+        // CTA Tarjeta
         html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-pagar">';
-        html += '<span class="vk-pay-btn__label">PAGAR CON TARJETA ' +
-            VkUI.formatPrecio(enganche) + ' MXN</span>';
+        html += '<span class="vk-pay-btn__label">PAGAR CON TARJETA</span>';
         html += '<span class="vk-pay-btn__spinner" style="display:none;">' +
             VkUI.renderSpinner() + ' Procesando...</span>';
         html += '</button>';
+        html += '</div>';
 
-        html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:10px;">' +
-            '&#128274; Pago cifrado SSL &middot; ' + VkUI.renderCardLogos() + '</div>';
+        // === 2. Transferencia bancaria SPEI ===
+        html += '<div class="vk-card" style="padding:16px;margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+        html += '<span style="font-size:18px;">&#127974;</span>';
+        html += '<span style="font-size:14px;font-weight:600;">Transferencia bancaria SPEI</span>';
+        html += '</div>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-spei" style="background:#1a3a5c;">PAGAR POR TRANSFERENCIA SPEI</button>';
+        html += '</div>';
 
-        html += '</div>'; // end payment card
+        // === 3. Pago en efectivo en tiendas OXXO ===
+        html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
+        html += '<span style="font-size:18px;">&#127978;</span>';
+        html += '<span style="font-size:14px;font-weight:600;">Pago en efectivo en tiendas OXXO</span>';
+        html += '</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;">';
+        html += 'Por el l\u00edmite de $10,000 por operaci\u00f3n en OXXO<br>se generar\u00e1n <strong>' + numRefs + ' referencias</strong> de pago:';
+        html += '</div>';
+        for (var k = 0; k < oxxoRefs.length; k++) {
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+            html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:20px;" onerror="this.style.display=\'none\'">';
+            html += '<span style="font-size:13px;font-weight:600;">Referencia ' + (k + 1) + ': ' + VkUI.formatPrecio(oxxoRefs[k]) + '</span>';
+            html += '</div>';
+        }
+        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-oxxo" style="margin-top:10px;background:#1a3a5c;">' +
+            'PAGO EN EFECTIVO EN OXXO</button>';
+        html += '</div>';
+
+        // Footer
+        html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-top:8px;">' +
+            '&#128274; Pago 100% seguro &middot; Confirmaci\u00f3n inmediata</div>';
 
         jQuery('#vk-credito-enganche-container').html(html);
     },
