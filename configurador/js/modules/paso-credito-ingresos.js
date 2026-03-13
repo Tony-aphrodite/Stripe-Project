@@ -52,6 +52,7 @@ var PasoCreditoIngresos = {
                 '</div>';
         }
         html += '</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-top:8px;font-style:italic;">Podemos pedir comprobante de ingresos</div>';
         html += '</div>';
 
         // Phone
