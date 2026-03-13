@@ -68,21 +68,21 @@ var PasoCreditoEnganche = {
         html += '<p style="font-size:14px;color:var(--vk-text-secondary);margin:0;">Paga tu <strong>enganche</strong> para reservarla.</p>';
         html += '</div>';
 
-        // Model summary card (dark background)
-        html += '<div style="background:#1e1e2f;border-radius:14px;padding:16px;margin-bottom:20px;color:#fff;">';
+        // Model summary card
+        html += '<div class="vk-card" style="border-radius:14px;padding:16px;margin-bottom:20px;">';
         html += '<div style="display:flex;align-items:center;gap:14px;">';
         html += '<img src="' + base + motoImg + '" alt="Voltika ' + modelo.nombre + '" ' +
             'style="width:110px;height:auto;flex-shrink:0;">';
         html += '<div style="flex:1;min-width:0;">';
         html += '<div style="font-size:16px;font-weight:800;margin-bottom:6px;">Voltika ' + modelo.nombre + '</div>';
-        html += '<div style="font-size:12px;color:#ccc;line-height:1.7;">';
-        html += 'Modelo: <strong style="color:#fff;">Voltika ' + modelo.nombre + '</strong><br>';
-        html += '&#8226; Color: <strong style="color:#fff;">' + (colorNombre || colorId) + '</strong><br>';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);line-height:1.7;">';
+        html += 'Modelo: <strong style="color:var(--vk-text-primary);">Voltika ' + modelo.nombre + '</strong><br>';
+        html += '&#8226; Color: <strong style="color:var(--vk-text-primary);">' + (colorNombre || colorId) + '</strong><br>';
         html += '&#8226; Pago semanal: <strong style="color:var(--vk-green-primary);">' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong> MXN<br>';
-        html += '&#8226; Plazo: <strong style="color:#fff;">' + plazoSemanas + ' semanas</strong><br>';
-        html += 'Entrega estimada<br><strong style="color:#fff;font-size:14px;">' + entregaStr + '</strong>';
+        html += '&#8226; Plazo: <strong style="color:var(--vk-text-primary);">' + plazoSemanas + ' semanas</strong><br>';
+        html += 'Entrega estimada<br><strong style="color:var(--vk-text-primary);font-size:14px;">' + entregaStr + '</strong>';
         html += '</div>';
-        html += '<div style="font-size:11px;color:#aaa;margin-top:6px;">En un punto autorizado <strong style="color:#fff;">Voltika</strong> cerca de ti</div>';
+        html += '<div style="font-size:11px;color:var(--vk-text-muted);margin-top:6px;">En un punto autorizado <strong style="color:var(--vk-text-primary);">Voltika</strong> cerca de ti</div>';
         html += '</div>';
         html += '</div>';
         html += '</div>';
@@ -90,8 +90,6 @@ var PasoCreditoEnganche = {
         // Enganche amount
         html += '<div style="text-align:center;margin-bottom:20px;">';
         html += '<div style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);letter-spacing:0.5px;text-transform:uppercase;">Enganche a pagar</div>';
-        html += '<div style="font-size:34px;font-weight:800;color:var(--vk-green-primary);margin-top:4px;">' +
-            VkUI.formatPrecio(enganche) + ' MXN</div>';
         html += '</div>';
 
         // Payment methods section
@@ -140,11 +138,6 @@ var PasoCreditoEnganche = {
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;background:var(--vk-bg-light);border-radius:6px;padding:10px;">';
         html += 'Por el l\u00edmite de <strong>$10,000</strong> por operaci\u00f3n en OXXO<br>se generar\u00e1n <strong>' + numRefs + ' referencias</strong> de pago:';
         html += '</div>';
-        for (var k = 0; k < oxxoRefs.length; k++) {
-            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
-            html += '<span style="font-size:13px;font-weight:600;">Referencia ' + (k + 1) + ': ' + VkUI.formatPrecio(oxxoRefs[k]) + '</span>';
-            html += '</div>';
-        }
         html += '<div style="text-align:center;margin:12px 0 10px;">';
         html += '<div style="font-size:28px;font-weight:800;color:var(--vk-green-primary);">' +
             VkUI.formatPrecio(enganche) + ' MXN</div>';
