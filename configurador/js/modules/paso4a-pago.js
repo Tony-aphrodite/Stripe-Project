@@ -95,7 +95,7 @@ var Paso4A = {
             html += '<div>&#10003; Sin tr\u00e1mites adicionales</div>';
             html += '</div>';
             html += '<button id="vk-pay-msi" class="vk-pay-btn" data-tipo="msi" style="display:block;width:100%;margin-top:10px;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
-            html += '<span class="vk-pay-btn__label">PAGAR PRIMER CARGO</span>';
+            html += '<span class="vk-pay-btn__label">PAGAR PRIMER CARGO ' + VkUI.formatPrecio(msiPago) + ' MXN</span>';
             html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + '</span>';
             html += '</button>';
             html += '</div>';
