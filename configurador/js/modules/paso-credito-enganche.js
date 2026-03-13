@@ -87,10 +87,7 @@ var PasoCreditoEnganche = {
         html += '</div>';
         html += '</div>';
 
-        // Enganche amount
-        html += '<div style="text-align:center;margin-bottom:20px;">';
-        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);letter-spacing:0.5px;text-transform:uppercase;">Enganche a pagar</div>';
-        html += '</div>';
+        // (enganche label moved to OXXO section)
 
         // Payment methods section
         html += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin-bottom:12px;">Selecciona el m\u00e9todo de pago</div>';
@@ -127,7 +124,7 @@ var PasoCreditoEnganche = {
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
         html += '<span style="font-size:14px;font-weight:600;">Transferencia bancaria SPEI</span>';
         html += '</div>';
-        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-spei" style="background:#1a3a5c;">PAGAR POR TRANSFERENCIA SPEI</button>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-spei">PAGAR POR TRANSFERENCIA SPEI</button>';
         html += '</div>';
 
         // === 3. Pago en efectivo en tiendas OXXO ===
@@ -139,10 +136,11 @@ var PasoCreditoEnganche = {
         html += 'Por el l\u00edmite de <strong>$10,000</strong> por operaci\u00f3n en OXXO<br>se generar\u00e1n <strong>' + numRefs + ' referencias</strong> de pago:';
         html += '</div>';
         html += '<div style="text-align:center;margin:12px 0 10px;">';
-        html += '<div style="font-size:28px;font-weight:800;color:var(--vk-green-primary);">' +
+        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);letter-spacing:0.5px;text-transform:uppercase;">Enganche a pagar</div>';
+        html += '<div style="font-size:28px;font-weight:800;color:var(--vk-green-primary);margin-top:4px;">' +
             VkUI.formatPrecio(enganche) + ' MXN</div>';
         html += '</div>';
-        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-oxxo" style="background:#1a3a5c;">' +
+        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-oxxo">' +
             'PAGO EN EFECTIVO EN OXXO</button>';
         html += '</div>';
 
