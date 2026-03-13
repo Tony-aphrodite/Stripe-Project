@@ -27,7 +27,8 @@ var Paso1 = {
             html += '</button>';
         }
         jQuery('#vk-modelo-tabs-fixed').html(html);
-        jQuery('#vk-modelo-nav-fixed').show();
+        // Nav starts hidden — scroll handler will show it when user scrolls down
+        jQuery('#vk-modelo-nav-fixed').hide();
     },
 
     render: function() {
@@ -455,12 +456,17 @@ var Paso1 = {
             self._goToSlide(idx);
         });
 
-        // ── Hide swipe hint on scroll down, show on scroll up ─
+        // ── Show nav bar only after scrolling past 200px ─
         var lastScrollY = window.scrollY || 0;
         $(window).off('scroll.paso1hint');
         $(window).on('scroll.paso1hint', function() {
             var currentY = window.scrollY || 0;
-            if (currentY > lastScrollY && currentY > 60) {
+            if (currentY > 200) {
+                $('#vk-modelo-nav-fixed').slideDown(200);
+            } else {
+                $('#vk-modelo-nav-fixed').slideUp(200);
+            }
+            if (currentY > lastScrollY && currentY > 260) {
                 $('#vk-modelo-nav-fixed').addClass('vk-modelo-nav-fixed--compact');
             } else {
                 $('#vk-modelo-nav-fixed').removeClass('vk-modelo-nav-fixed--compact');
