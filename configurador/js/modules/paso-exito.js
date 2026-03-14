@@ -9,122 +9,96 @@ var PasoExito = {
         this.app = app;
         this._enviarConfirmacion();
         this.render();
-    },
-
-    _calcFechaEntrega: function() {
-        var d = new Date();
-        d.setDate(d.getDate() + 15);
-        var m = ['enero','febrero','marzo','abril','mayo','junio',
-                 'julio','agosto','septiembre','octubre','noviembre','diciembre'];
-        return d.getDate() + ' de ' + m[d.getMonth()] + ' de ' + d.getFullYear();
-    },
-
-    _nPedido: function() {
-        return 'VK-' + Date.now().toString(36).toUpperCase().slice(-6);
+        this.bindEvents();
     },
 
     render: function() {
         var state  = this.app.state;
         var modelo = this.app.getModelo(state.modeloSeleccionado);
-        var metodo = state.metodoPago;
-        var fechaEntrega = this._calcFechaEntrega();
+        var base   = window.VK_BASE_PATH || '';
 
         var html = '';
 
-        // Success header
-        html += '<div style="text-align:center;padding:24px 0 16px;">';
-        html += '<div style="font-size:64px;">&#127881;</div>';
-        html += '<h2 style="font-size:24px;font-weight:800;color:var(--vk-green-primary);margin:12px 0 4px;">' +
-            '\u00a1Solicitud confirmada!</h2>';
-        if (metodo !== 'credito') {
-            html += '<p style="font-size:15px;color:var(--vk-text-secondary);">' +
-                '\u00a1Tu Voltika ya es tuya!</p>';
-        } else {
-            html += '<p style="font-size:15px;color:var(--vk-text-secondary);">' +
-                'Tu solicitud de cr\u00e9dito ha sido registrada.</p>';
-        }
+        // Header
+        html += '<div style="text-align:center;padding:20px 0 12px;">';
+        html += '<h2 style="font-size:26px;font-weight:800;color:#333;margin:0 0 4px;">\u00a1Listo!</h2>';
+        html += '<p style="font-size:17px;color:#333;margin:0;font-weight:600;">Tu Voltika fue apartada &#127881;</p>';
         html += '</div>';
 
-        html += '<div class="vk-card">';
-        html += '<div style="padding:16px 20px;">';
+        // Green check circle
+        html += '<div style="text-align:center;margin-bottom:16px;">';
+        html += '<div style="display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;' +
+            'border-radius:50%;background:#4CAF50;">';
+        html += '<span style="color:#fff;font-size:32px;">&#10003;</span>';
+        html += '</div>';
+        html += '</div>';
 
-        // Order summary
+        // Moto + Asesor images side by side
+        html += '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px;">';
         if (modelo) {
-            var img = VkUI.getImagenMoto(modelo.id, state.colorSeleccionado || modelo.colorDefault);
-            html += '<div class="vk-card__imagen" style="max-height:140px;">' +
-                '<img src="' + img + '" alt="' + modelo.nombre + '">' +
-                '</div>';
+            var motoImg = VkUI.getImagenMoto(modelo.id, state.colorSeleccionado || modelo.colorDefault);
+            html += '<img src="' + base + motoImg + '" alt="Voltika" style="width:45%;max-width:160px;height:auto;">';
         }
+        html += '<img src="' + base + 'img/asesor_icon.jpg" alt="Asesor Voltika" ' +
+            'style="width:45%;max-width:160px;height:auto;border-radius:12px;">';
+        html += '</div>';
 
-        html += '<table style="width:100%;font-size:14px;border-collapse:collapse;margin-top:12px;">';
+        // Info card
+        html += '<div class="vk-card" style="padding:20px;margin-bottom:16px;">';
 
-        if (modelo) {
-            html += '<tr><td style="padding:6px 0;color:var(--vk-text-secondary);">Modelo</td>' +
-                '<td style="text-align:right;font-weight:600;">' + modelo.nombre + '</td></tr>';
-            html += '<tr><td style="padding:6px 0;color:var(--vk-text-secondary);">Color</td>' +
-                '<td style="text-align:right;font-weight:600;">' +
-                (state.colorSeleccionado || modelo.colorDefault) + '</td></tr>';
-        }
+        html += '<p style="font-size:14px;color:#555;line-height:1.6;margin:0 0 14px;">';
+        html += 'En m\u00e1ximo <strong style="color:#333;">48 horas</strong>, un asesor <strong style="color:#333;">Voltika</strong> ';
+        html += 'te contactar\u00e1 para coordinar la entrega.';
+        html += '</p>';
 
-        html += '<tr><td style="padding:6px 0;color:var(--vk-text-secondary);">Forma de pago</td>' +
-            '<td style="text-align:right;font-weight:600;">' +
-            (metodo === 'credito' ? 'Cr\u00e9dito Voltika' :
-             metodo === 'msi'     ? '9 MSI sin intereses' : 'Contado') +
-            '</td></tr>';
+        html += '<p style="font-size:13px;color:#777;margin:0 0 16px;">';
+        html += 'Av\u00edsanos si cambias de n\u00famero o email.';
+        html += '</p>';
 
-        if (state.ciudad) {
-            html += '<tr><td style="padding:6px 0;color:var(--vk-text-secondary);">Entrega en</td>' +
-                '<td style="text-align:right;font-weight:600;">' +
-                state.ciudad + (state.estado ? ', ' + state.estado : '') + '</td></tr>';
-        }
+        html += '<div style="margin-bottom:10px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
+        html += '<span class="vk-check vk-check--sm"></span>';
+        html += '<span style="font-size:13px;color:#333;">Te contactaremos por <strong>WhatsApp o email</strong></span>';
+        html += '</div>';
+        html += '<div style="display:flex;align-items:center;gap:8px;">';
+        html += '<span style="font-size:18px;">&#128241;</span>';
+        html += '<span style="font-size:13px;color:#333;">Mantente pendiente de nuestros mensajes</span>';
+        html += '</div>';
+        html += '</div>';
 
-        html += '<tr><td style="padding:6px 0;color:var(--vk-text-secondary);">Fecha estimada</td>' +
-            '<td style="text-align:right;font-weight:600;">' + fechaEntrega + '</td></tr>';
+        html += '<div style="border-top:1px solid #eee;margin:14px 0;"></div>';
 
-        if (state.totalPagado && metodo !== 'credito') {
-            html += '<tr><td colspan="2">' +
-                '<div style="border-top:2px solid var(--vk-border);margin:8px 0;"></div></td></tr>';
-            html += '<tr><td style="font-weight:700;">Total pagado</td>' +
-                '<td style="text-align:right;font-weight:800;font-size:16px;color:var(--vk-green-primary);">' +
-                VkUI.formatPrecio(state.totalPagado) + ' MXN</td></tr>';
-        }
+        html += '<p style="font-size:14px;color:#333;margin:0;">';
+        html += '&#127881; <strong>Felicidades!</strong> Pr\u00f3ximamente recibir\u00e1s tu moto el\u00e9ctrica <strong>Voltika</strong>.';
+        html += '</p>';
+        html += '<p style="font-size:13px;color:#777;margin:8px 0 0;">Gracias por confiar en nosotros &#129309;</p>';
 
-        html += '</table>';
+        html += '</div>';
 
-        html += '<div style="border-top:1px solid var(--vk-border);margin:16px 0;"></div>';
+        // Entendido button
+        html += '<button class="vk-btn vk-btn--primary" id="vk-exito-entendido" ' +
+            'style="font-size:16px;font-weight:700;margin-bottom:16px;">Entendido</button>';
 
-        // Confirmation info
-        if (state.email) {
-            html += '<div style="background:var(--vk-green-soft);border-radius:8px;padding:12px;' +
-                'margin-bottom:12px;font-size:13px;">';
-            html += '<div style="font-weight:700;margin-bottom:4px;">&#9993; Confirmaci\u00f3n enviada a:</div>';
-            html += '<div>' + state.email + '</div>';
-            html += '</div>';
-        }
+        // Footer
+        html += '<div style="text-align:center;margin-bottom:12px;">';
+        html += '<p style="font-size:13px;color:var(--vk-green-primary);font-weight:600;margin:0 0 12px;">Voltika siempre contigo</p>';
 
-        if (metodo === 'credito') {
-            html += '<div style="background:#E3F2FD;border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;">';
-            html += '<div style="font-weight:700;color:#1565C0;margin-bottom:6px;">' +
-                '&#128241; Un asesor Voltika te contactar\u00e1 pronto</div>';
-            html += '<div style="color:#555;">Te contactaremos por WhatsApp al ' +
-                (state.telefono ? '+52 ' + state.telefono : 'n\u00famero registrado') +
-                ' dentro de las pr\u00f3ximas 24-48 horas para coordinar tu enganche y entrega.</div>';
-            html += '</div>';
-        } else {
-            html += '<div style="background:#E3F2FD;border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;">';
-            html += '<div style="font-weight:700;color:#1565C0;margin-bottom:6px;">' +
-                '&#128241; \u00bfQu\u00e9 sigue?</div>';
-            html += '<div style="color:#555;">Un asesor Voltika confirmar\u00e1 el Centro de entrega ' +
-                'm\u00e1s cercano a ti en 24-48 horas v\u00eda WhatsApp.</div>';
-            html += '</div>';
-        }
+        html += '<div style="font-size:13px;color:#555;line-height:1.8;">';
+        html += '<div>&#128222; <a href="tel:+525513416370" style="color:#333;text-decoration:none;">+52 55 1341 6370</a></div>';
+        html += '<div>&#9993; <a href="mailto:ventas@voltika.mx" style="color:#333;text-decoration:none;">ventas@voltika.mx</a></div>';
+        html += '</div>';
 
-        html += VkUI.renderTrustBadges();
-
-        html += '</div>'; // end padding
-        html += '</div>'; // end card
+        html += '<p style="font-size:11px;color:#999;margin:10px 0 0;">Si necesitas ayuda cont\u00e1ctanos al +52 55 1341 6370</p>';
+        html += '</div>';
 
         jQuery('#vk-exito-container').html(html);
+    },
+
+    bindEvents: function() {
+        jQuery(document).off('click', '#vk-exito-entendido');
+        jQuery(document).on('click', '#vk-exito-entendido', function() {
+            window.location.reload();
+        });
     },
 
     _enviarConfirmacion: function() {
@@ -154,7 +128,6 @@ var PasoExito = {
                     plazoMeses:  state.plazoMeses
                 } : null
             })
-            // Fire and forget — no need to await response
         });
     }
 };
