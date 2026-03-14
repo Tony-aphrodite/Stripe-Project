@@ -27,17 +27,46 @@ var VOLTIKA_CENTROS = [
     }
 ];
 
+/* Metro area groupings: CPs that share the same delivery zone */
+var _VOLTIKA_ZONAS = [
+    // CDMX + Zona Metropolitana (CP 01xxx-16xxx CDMX, 52xxx-57xxx EdoMex)
+    ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16',
+     '52','53','54','55','56','57']
+];
+
 /* Utility: find matching centers for a given CP */
 VOLTIKA_CENTROS.buscar = function(cp) {
     if (!cp || cp.length < 2) return [];
 
     var prefix2 = cp.substring(0, 2);
-    var results = [];
 
+    // Find which zone this CP belongs to
+    var zona = null;
+    for (var z = 0; z < _VOLTIKA_ZONAS.length; z++) {
+        for (var p = 0; p < _VOLTIKA_ZONAS[z].length; p++) {
+            if (_VOLTIKA_ZONAS[z][p] === prefix2) {
+                zona = _VOLTIKA_ZONAS[z];
+                break;
+            }
+        }
+        if (zona) break;
+    }
+
+    var results = [];
     for (var i = 0; i < this.length; i++) {
         var centro = this[i];
-        // Match by first 2 digits of CP (same state/metro area)
-        if (centro.cp.substring(0, 2) === prefix2) {
+        var centroPrefix = centro.cp.substring(0, 2);
+
+        if (zona) {
+            // Same metro zone: match any CP prefix in the zone
+            for (var j = 0; j < zona.length; j++) {
+                if (zona[j] === centroPrefix) {
+                    results.push(centro);
+                    break;
+                }
+            }
+        } else if (centroPrefix === prefix2) {
+            // Fallback: exact 2-digit prefix match
             results.push(centro);
         }
     }
