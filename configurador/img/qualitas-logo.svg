@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80">
+  <!-- Q icon in purple square -->
+  <rect x="2" y="2" width="76" height="76" rx="4" fill="none" stroke="#7B2D8E" stroke-width="4"/>
+  <!-- Dotted bottom border -->
+  <line x1="6" y1="78" x2="74" y2="78" stroke="#7B2D8E" stroke-width="3" stroke-dasharray="4,3"/>
+  <!-- Purple Q circle -->
+  <circle cx="40" cy="36" r="24" fill="none" stroke="#7B2D8E" stroke-width="7"/>
+  <!-- Q tail / checkmark swoosh -->
+  <path d="M28,52 Q34,60 42,58 Q54,54 64,66" fill="none" stroke="#7B2D8E" stroke-width="5" stroke-linecap="round"/>
+  <!-- "Quálitas" text -->
+  <text x="92" y="52" font-family="Georgia, 'Times New Roman', serif" font-size="48" font-weight="400" fill="#00838F" font-style="italic">Quálitas</text>
+</svg>
