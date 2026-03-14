@@ -37,7 +37,7 @@ var Paso3 = {
 
         // Back button: crédito → calculator (4B), contado/msi → color (2)
         var backTarget = esCredito ? 4 : 2;
-        if (esCredito && state.creditoAprobado) backTarget = 'credito-resultado';
+        if (esCredito && state.creditoAprobado) backTarget = 'credito-enganche';
         html += VkUI.renderBackButton(backTarget);
 
         // Header

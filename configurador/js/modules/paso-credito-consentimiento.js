@@ -316,7 +316,7 @@ var PasoCreditoConsentimiento = {
             state._resultadoFinal = resultado;
 
             if (resultado.status === 'NO_VIABLE') {
-                this.app.irAPaso('credito-resultado');
+                this.app.irAPaso('credito-enganche');
                 return;
             }
         }

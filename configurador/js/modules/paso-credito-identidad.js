@@ -319,12 +319,12 @@ var PasoCreditoIdentidad = {
             success: function(res) {
                 state._truoraResult = res;
                 state._identidadVerificada = true;
-                self.app.irAPaso('credito-resultado');
+                self.app.irAPaso('credito-enganche');
             },
             error: function() {
                 state._truoraResult = { status: 'approved', fallback: true };
                 state._identidadVerificada = true;
-                self.app.irAPaso('credito-resultado');
+                self.app.irAPaso('credito-enganche');
             }
         });
     }
