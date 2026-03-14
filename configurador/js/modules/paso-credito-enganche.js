@@ -102,6 +102,11 @@ var PasoCreditoEnganche = {
         html += '<div style="margin-bottom:12px;">';
         html += '<span style="font-size:14px;font-weight:600;">Tarjeta de cr\u00e9dito / d\u00e9bito</span>';
         html += '</div>';
+        // Stripe card element mount point
+        html += '<div id="vk-enganche-card-element" style="padding:12px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;background:#fff;"></div>';
+        html += '<div id="vk-enganche-card-errors" style="display:none;color:#C62828;font-size:12px;margin-bottom:8px;"></div>';
+        html += '<div id="vk-enganche-error" style="display:none;color:#C62828;font-size:13px;' +
+            'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:10px;"></div>';
         html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-pagar">';
         html += '<span class="vk-pay-btn__label">PAGAR CON TARJETA</span>';
         html += '<span class="vk-pay-btn__spinner" style="display:none;">' +
