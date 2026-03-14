@@ -344,11 +344,92 @@ var Paso3 = {
         });
     },
 
+    _renderCentroCard: function(centro, esCredito) {
+        var esCompleto = (centro.tipo === 'completo');
+        var h = '';
+
+        // Card container
+        h += '<div class="vk-card" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:1.5px solid var(--vk-border);">';
+
+        // Top banner
+        if (esCompleto) {
+            h += '<div style="background:var(--vk-green-primary);color:#fff;padding:8px 16px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;">';
+            h += '<span style="font-size:14px;">&#9733;</span> Centro Voltika verificado';
+            h += '</div>';
+        } else {
+            h += '<div style="background:#F5F5F5;color:#555;padding:8px 16px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;">';
+            h += '<span style="font-size:14px;">&#10003;</span> Punto autorizado';
+            h += '</div>';
+        }
+
+        // Card body
+        h += '<div style="padding:16px;">';
+
+        // Icon + title row
+        h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
+        if (esCompleto) {
+            h += '<div style="width:36px;height:36px;border-radius:50%;background:var(--vk-green-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
+            h += '<span style="color:#fff;font-size:18px;font-weight:700;">&#10003;</span>';
+            h += '</div>';
+        } else {
+            h += '<div style="width:36px;height:36px;border-radius:50%;border:2.5px solid #999;display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
+            h += '<span style="color:#999;font-size:14px;">&#9679;</span>';
+            h += '</div>';
+        }
+        h += '<div>';
+        h += '<div style="font-weight:800;font-size:16px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
+        if (esCompleto) {
+            h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;">Centro Voltika Autorizado</div>';
+        } else {
+            h += '<div style="font-size:12px;color:#777;font-weight:600;">Centro Voltika de Entrega</div>';
+        }
+        h += '</div>';
+        h += '</div>';
+
+        // Address
+        h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:6px;">' + centro.direccion + '</div>';
+        h += '<div style="font-size:12px;color:var(--vk-text-muted);margin-bottom:12px;">' + centro.horarios + '</div>';
+
+        // Tags
+        h += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">';
+        var tagStyle = 'display:inline-block;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;';
+        var greenTag = tagStyle + 'color:var(--vk-green-primary);background:var(--vk-green-light);';
+        var grayTag  = tagStyle + 'color:#555;background:#F0F0F0;';
+
+        if (esCompleto) {
+            h += '<span style="' + greenTag + '">&#10003; Entrega</span>';
+            h += '<span style="' + greenTag + '">&#10003; Activaci\u00f3n</span>';
+            h += '<span style="' + greenTag + '">&#10003; Servicio t\u00e9cnico</span>';
+            if (esCredito) {
+                h += '<span style="' + greenTag + '">&#10003; Flete incluido</span>';
+            }
+        } else {
+            h += '<span style="' + grayTag + '">&#10003; Entrega</span>';
+            h += '<span style="' + grayTag + '">&#10003; Activaci\u00f3n</span>';
+        }
+        h += '</div>';
+
+        // Ver ubicación link
+        h += '<div style="margin-bottom:14px;">';
+        h += '<a href="https://maps.google.com/?q=' + encodeURIComponent(centro.nombre + ' ' + centro.direccion + ' ' + centro.ciudad) + '" target="_blank" rel="noopener" ' +
+            'style="font-size:13px;font-weight:600;color:var(--vk-green-primary);text-decoration:none;">' +
+            '&#128205; Ver ubicaci\u00f3n</a>';
+        h += '</div>';
+
+        // Select button
+        h += '<button class="vk-btn vk-btn--primary vk-select-centro" data-centro-id="' + centro.id + '" ' +
+            'style="font-size:14px;font-weight:700;padding:12px;width:100%;">SELECCIONAR ESTE CENTRO</button>';
+
+        h += '</div>'; // end body
+        h += '</div>'; // end card
+
+        return h;
+    },
+
     _renderCentros: function(cp) {
         var self = this;
         var esCredito = self.app.state.metodoPago === 'credito';
 
-        // Check if VOLTIKA_CENTROS is available
         if (typeof VOLTIKA_CENTROS === 'undefined' || !VOLTIKA_CENTROS.buscar) {
             $('#vk-centros-section').hide();
             return;
@@ -360,44 +441,24 @@ var Paso3 = {
             return;
         }
 
-        // Render recommended center (first result)
-        var rec = centros[0];
+        // Sort: completo centers first
+        centros.sort(function(a, b) {
+            if (a.tipo === 'completo' && b.tipo !== 'completo') return -1;
+            if (a.tipo !== 'completo' && b.tipo === 'completo') return 1;
+            return 0;
+        });
+
+        // Render recommended (first)
         var recHtml = '';
         recHtml += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin-bottom:8px;">Centro de entrega recomendado</div>';
-        recHtml += '<div class="vk-card" style="padding:16px;border:2px solid var(--vk-green-primary);border-radius:12px;">';
-        recHtml += '<div style="font-weight:800;font-size:16px;margin-bottom:6px;">' + rec.nombre + '</div>';
-        recHtml += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">' + rec.direccion + '</div>';
-        recHtml += '<div style="font-size:12px;color:var(--vk-text-muted);margin-bottom:10px;">' + rec.horarios + '</div>';
-
-        // Badges
-        recHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">';
-        recHtml += '<span style="display:inline-block;font-size:11px;font-weight:600;color:var(--vk-green-primary);background:var(--vk-green-light);padding:4px 10px;border-radius:20px;">&#10003; Centro Voltika autorizado</span>';
-        recHtml += '<span style="display:inline-block;font-size:11px;font-weight:600;color:var(--vk-green-primary);background:var(--vk-green-light);padding:4px 10px;border-radius:20px;">&#10003; Revisión y activación profesional</span>';
-        if (esCredito) {
-            recHtml += '<span style="display:inline-block;font-size:11px;font-weight:600;color:var(--vk-green-primary);background:var(--vk-green-light);padding:4px 10px;border-radius:20px;">&#10003; Flete incluido en Crédito Voltika</span>';
-        }
-        recHtml += '</div>';
-
-        recHtml += '<button class="vk-btn vk-btn--primary vk-select-centro" data-centro-id="' + rec.id + '" style="font-size:14px;font-weight:700;padding:12px;">CONTINUAR CON ESTE CENTRO</button>';
-        recHtml += '</div>';
-
+        recHtml += self._renderCentroCard(centros[0], esCredito);
         $('#vk-centro-recomendado').html(recHtml);
 
         // Other centers
         if (centros.length > 1) {
             var otrosHtml = '';
             for (var i = 1; i < centros.length; i++) {
-                var c = centros[i];
-                otrosHtml += '<div class="vk-card" style="padding:14px;border-radius:10px;margin-bottom:8px;">';
-                otrosHtml += '<div style="display:flex;align-items:center;justify-content:space-between;">';
-                otrosHtml += '<div style="flex:1;min-width:0;">';
-                otrosHtml += '<div style="font-weight:700;font-size:14px;margin-bottom:4px;">' + c.nombre + '</div>';
-                otrosHtml += '<div style="font-size:12px;color:var(--vk-text-secondary);">' + c.direccion + '</div>';
-                otrosHtml += '<div style="font-size:11px;color:var(--vk-text-muted);margin-top:2px;">' + c.horarios + '</div>';
-                otrosHtml += '</div>';
-                otrosHtml += '<button class="vk-select-centro" data-centro-id="' + c.id + '" style="flex-shrink:0;margin-left:12px;padding:8px 16px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Seleccionar</button>';
-                otrosHtml += '</div>';
-                otrosHtml += '</div>';
+                otrosHtml += self._renderCentroCard(centros[i], esCredito);
             }
             $('#vk-otros-centros-list').html(otrosHtml);
             $('#vk-otros-centros-wrapper').show();

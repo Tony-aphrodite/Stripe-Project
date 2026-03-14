@@ -13,7 +13,8 @@ var VOLTIKA_CENTROS = [
         ciudad: 'Ecatepec de Morelos',
         estado: 'M\u00e9xico',
         horarios: 'Lunes a Viernes 10:00am a 18:00hrs',
-        autorizado: true
+        autorizado: true,
+        tipo: 'entrega'
     },
     {
         id: 'godike-motors',
@@ -23,7 +24,8 @@ var VOLTIKA_CENTROS = [
         ciudad: 'Ciudad de Mexico',
         estado: 'CDMX',
         horarios: 'Lunes a Viernes 10:00am a 18:30hrs, S\u00e1bado 11:00am a 14:00hrs, Domingo cerrado',
-        autorizado: true
+        autorizado: true,
+        tipo: 'completo'
     }
 ];
 
