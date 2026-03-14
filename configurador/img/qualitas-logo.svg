@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80">
-  <!-- Q icon in purple square -->
-  <rect x="2" y="2" width="76" height="76" rx="4" fill="none" stroke="#7B2D8E" stroke-width="4"/>
-  <!-- Dotted bottom border -->
-  <line x1="6" y1="78" x2="74" y2="78" stroke="#7B2D8E" stroke-width="3" stroke-dasharray="4,3"/>
-  <!-- Purple Q circle -->
-  <circle cx="40" cy="36" r="24" fill="none" stroke="#7B2D8E" stroke-width="7"/>
-  <!-- Q tail / checkmark swoosh -->
-  <path d="M28,52 Q34,60 42,58 Q54,54 64,66" fill="none" stroke="#7B2D8E" stroke-width="5" stroke-linecap="round"/>
-  <!-- "Quálitas" text -->
-  <text x="92" y="52" font-family="Georgia, 'Times New Roman', serif" font-size="48" font-weight="400" fill="#00838F" font-style="italic">Quálitas</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 90">
+  <defs>
+    <style>
+      .qp { fill: #8B2D8B; }
+      .qt { fill: #007D8A; }
+    </style>
+  </defs>
+  <!-- Purple square border -->
+  <rect x="3" y="3" width="80" height="80" rx="2" fill="none" stroke="#8B2D8B" stroke-width="4"/>
+  <!-- Dotted bottom edge -->
+  <line x1="7" y1="83" x2="79" y2="83" stroke="#8B2D8B" stroke-width="3.5" stroke-dasharray="5,3.5"/>
+  <!-- Q letter - circle part -->
+  <path class="qp" d="M43,12 C28,12 16,24 16,40 C16,56 28,66 43,66 C50,66 56,63 60,59 L52,52 C49,56 46,58 43,58 C33,58 26,50 26,40 C26,30 33,22 43,22 C53,22 60,30 60,40 C60,44 59,47 57,50 L65,57 C68,52 70,46 70,40 C70,24 58,12 43,12 Z"/>
+  <!-- Q tail / swoosh checkmark -->
+  <path class="qp" d="M30,62 C34,70 40,72 46,68 C52,64 58,64 66,72" fill="none" stroke="#8B2D8B" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- "Quálitas" text in teal -->
+  <text x="96" y="60" font-family="Georgia, 'Times New Roman', 'Palatino Linotype', serif" font-size="52" fill="#007D8A" font-style="italic" letter-spacing="-1">Quálitas</text>
 </svg>
