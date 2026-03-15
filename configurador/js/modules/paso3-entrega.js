@@ -406,16 +406,26 @@ var Paso3 = {
             '<span style="color:#fff;font-size:' + Math.round(size * 0.6) + 'px;line-height:1;">&#10003;</span></span>';
     },
 
+    _cssIcon: function(symbol, bg) {
+        bg = bg || 'var(--vk-green-primary)';
+        return '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:' + bg + ';flex-shrink:0;">' +
+            '<span style="color:#fff;font-size:9px;line-height:1;font-weight:700;">' + symbol + '</span></span>';
+    },
+
     _tagIcon: function(tag) {
-        // SVG icons for universal rendering
-        var sz = 14;
+        // CSS circle icons — universal rendering
         var icons = {
-            'Exhibici\u00f3n': '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
-            'Entrega': '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
-            'Servicio t\u00e9cnico': '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
-            'Activaci\u00f3n': '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
+            'Exhibici\u00f3n': this._cssIcon('E', '#1a3a5c'),
+            'Entrega': this._cssIcon('T', '#1a3a5c'),
+            'Servicio t\u00e9cnico': this._cssIcon('S', '#1a3a5c'),
+            'Activaci\u00f3n': this._cssIcon('A', '#1a3a5c')
         };
-        return icons[tag] || '&#10003;';
+        return icons[tag] || this._cssIcon('&#10003;');
+    },
+
+    _pinIcon: function() {
+        return '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#D32F2F;flex-shrink:0;">' +
+            '<span style="color:#fff;font-size:10px;line-height:1;font-weight:700;">&#9679;</span></span>';
     },
 
     _renderCentroCard: function(centro, esCredito) {
@@ -450,14 +460,14 @@ var Paso3 = {
         }
         h += '</div>';
         h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;">';
-        h += '&#128737; Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
+        h += '' + self._cssIcon('V', 'var(--vk-green-primary)') + ' Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
         h += '</div>';
         h += '</div>';
         h += '</div>';
 
         // Location + address
         if (centro.ubicacion) {
-            h += '<div style="font-size:14px;color:var(--vk-text-primary);margin-bottom:2px;"><strong>&#128205; ' + centro.ubicacion + '</strong></div>';
+            h += '<div style="font-size:14px;color:var(--vk-text-primary);margin-bottom:2px;display:flex;align-items:center;gap:6px;">' + self._pinIcon() + ' <strong>' + centro.ubicacion + '</strong></div>';
         }
         h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;padding-left:22px;">' + centro.direccion + '</div>';
 
