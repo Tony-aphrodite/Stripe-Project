@@ -397,9 +397,9 @@ var Paso3 = {
 
     _tagIcon: function(tag) {
         var icons = {
-            'Exhibici\u00f3n': '&#127978;',
-            'Entrega': '&#128666;',
-            'Servicio t\u00e9cnico': '&#128295;',
+            'Exhibici\u00f3n': '&#128722;',
+            'Entrega': '&#128665;',
+            'Servicio t\u00e9cnico': '&#128736;',
             'Activaci\u00f3n': '&#9881;'
         };
         return icons[tag] || '&#10003;';
@@ -450,7 +450,7 @@ var Paso3 = {
         if (centro.tags && centro.tags.length) {
             for (var t = 0; t < centro.tags.length; t++) {
                 var icon = self._tagIcon(centro.tags[t]);
-                h += '<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:6px 12px;border-radius:8px;background:#F5F5F5;color:#333;">';
+                h += '<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;background:var(--vk-green-light);color:var(--vk-green-primary);">';
                 h += icon + ' ' + centro.tags[t];
                 h += '</span>';
             }
