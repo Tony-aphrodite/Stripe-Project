@@ -244,17 +244,32 @@ var Paso3 = {
         $(document).on('click', '#vk-paso3-confirmar', function() {
             var cp = $('#vk-cp-input').val();
             var colonia = $('#vk-cp-colonia').val();
-            if (VkValidacion.codigoPostal(cp) && self.app.state.ciudad && colonia) {
-                $('#vk-cp-error').hide();
-                self.app.state.codigoPostal = cp;
-                self.app.state.colonia = colonia;
-                self.app.irAPaso('resumen');
-            } else {
+            if (!VkValidacion.codigoPostal(cp) || !self.app.state.ciudad || !colonia) {
                 $('#vk-cp-error').show();
                 $('#vk-cp-input').focus();
                 $('#vk-cp-input').css('border-color', '#D32F2F');
                 setTimeout(function() { $('#vk-cp-input').css('border-color', ''); }, 3000);
+                return;
             }
+            // Check if a delivery center was selected
+            if (!self.app.state.centroEntrega) {
+                var $section = $('#vk-centros-section');
+                if ($section.is(':visible')) {
+                    $('html, body').animate({ scrollTop: $section.offset().top - 80 }, 400);
+                    // Show centro error alert
+                    if (!$('#vk-centro-error').length) {
+                        $section.prepend('<div id="vk-centro-error" style="color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;font-weight:600;">Selecciona un punto de entrega para continuar.</div>');
+                    } else {
+                        $('#vk-centro-error').show();
+                    }
+                }
+                return;
+            }
+            $('#vk-cp-error').hide();
+            $('#vk-centro-error').hide();
+            self.app.state.codigoPostal = cp;
+            self.app.state.colonia = colonia;
+            self.app.irAPaso('resumen');
         });
     },
 
@@ -481,6 +496,7 @@ var Paso3 = {
         }
         if (centro) {
             this.app.state.centroEntrega = centro;
+            $('#vk-centro-error').hide();
             // Visual feedback — highlight selected
             $('.vk-select-centro').css({ 'opacity': '0.6' });
             $('.vk-select-centro[data-centro-id="' + centroId + '"]')
