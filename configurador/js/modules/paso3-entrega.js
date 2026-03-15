@@ -412,15 +412,18 @@ var Paso3 = {
             '<span style="color:#fff;font-size:9px;line-height:1;font-weight:700;">' + symbol + '</span></span>';
     },
 
-    _tagIcon: function(tag) {
-        // Pre-computed base64 SVG img tags — most reliable cross-device rendering
-        var icons = {
-            'Exhibici\u00f3n': '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMi41Ij48Y2lyY2xlIGN4PSI5IiBjeT0iMjEiIHI9IjEiLz48Y2lyY2xlIGN4PSIyMCIgY3k9IjIxIiByPSIxIi8+PHBhdGggZD0iTTEgMWg0bDIuNjggMTMuMzlhMiAyIDAgMCAwIDIgMS42MWg5LjcyYTIgMiAwIDAgMCAyLTEuNjFMMjMgNkg2Ii8+PC9zdmc+" alt="" style="width:16px;height:16px;vertical-align:middle;">',
-            'Entrega': '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMi41Ij48cmVjdCB4PSIxIiB5PSIzIiB3aWR0aD0iMTUiIGhlaWdodD0iMTMiLz48cG9seWdvbiBwb2ludHM9IjE2IDggMjAgOCAyMyAxMSAyMyAxNiAxNiAxNiAxNiA4Ii8+PGNpcmNsZSBjeD0iNS41IiBjeT0iMTguNSIgcj0iMi41Ii8+PGNpcmNsZSBjeD0iMTguNSIgY3k9IjE4LjUiIHI9IjIuNSIvPjwvc3ZnPg==" alt="" style="width:16px;height:16px;vertical-align:middle;">',
-            'Servicio t\u00e9cnico': '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMi41Ij48cGF0aCBkPSJNMTQuNyA2LjNhMSAxIDAgMCAwIDAgMS40bDEuNiAxLjZhMSAxIDAgMCAwIDEuNCAwbDMuNzctMy43N2E2IDYgMCAwIDEtNy45NCA3Ljk0bC02LjkxIDYuOTFhMi4xMiAyLjEyIDAgMCAxLTMtM2w2LjkxLTYuOTFhNiA2IDAgMCAxIDcuOTQtNy45NGwtMy43NiAzLjc2eiIvPjwvc3ZnPg==" alt="" style="width:16px;height:16px;vertical-align:middle;">',
-            'Activaci\u00f3n': '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMi41Ij48cG9seWdvbiBwb2ludHM9IjEzIDIgMyAxNCAxMiAxNCAxMSAyMiAyMSAxMCAxMiAxMCAxMyAyIi8+PC9zdmc+" alt="" style="width:16px;height:16px;vertical-align:middle;">'
+    _tagButton: function(tag) {
+        // Pure CSS button-style tags — no SVG/emoji/base64, just unicode symbols
+        var symbols = {
+            'Exhibici\u00f3n': '\u25A0',
+            'Entrega': '\u25B6',
+            'Servicio t\u00e9cnico': '\u2699',
+            'Activaci\u00f3n': '\u26A1'
         };
-        return icons[tag] || '';
+        var sym = symbols[tag] || '\u2022';
+        var iconCircle = '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:11px;flex-shrink:0;">' + sym + '</span>';
+        return '<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:8px 14px;border-radius:10px;background:#EDF2F7;color:#1a3a5c;border:1px solid #D0D8E0;">' +
+            iconCircle + tag + '</span>';
     },
 
     _pinIcon: function() {
@@ -486,10 +489,7 @@ var Paso3 = {
         h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">';
         if (centro.tags && centro.tags.length) {
             for (var t = 0; t < centro.tags.length; t++) {
-                var icon = self._tagIcon(centro.tags[t]);
-                h += '<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;background:var(--vk-green-light);color:var(--vk-green-primary);">';
-                h += icon + ' ' + centro.tags[t];
-                h += '</span>';
+                h += self._tagButton(centro.tags[t]);
             }
         }
         if (esCredito) {
