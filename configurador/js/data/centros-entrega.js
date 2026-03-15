@@ -8,24 +8,30 @@ var VOLTIKA_CENTROS = [
     {
         id: 'garage-mushu',
         nombre: 'Garage Mushu',
-        direccion: 'Av Ignacio Allende 114-58A, Fraccionamiento Las Americas, Las Am\u00e9ricas',
+        direccion: 'Av. Central 502',
+        ubicacion: 'Las Am\u00e9ricas, Ecatepec',
         cp: '55076',
         ciudad: 'Ecatepec de Morelos',
         estado: 'M\u00e9xico',
         horarios: 'Lunes a Viernes 10:00am a 18:00hrs',
         autorizado: true,
-        tipo: 'entrega'
+        tipo: 'entrega',
+        tags: ['Entrega', 'Activaci\u00f3n'],
+        descripcion: 'Aqu\u00ed recibir\u00e1s tu moto completamente armada y activada.'
     },
     {
         id: 'godike-motors',
         nombre: 'Godike Motors',
-        direccion: 'Capilla del Carmen #7, Col. El Santuario, Iztapalapa',
+        direccion: 'Av. Ermita Iztapalapa 2453',
+        ubicacion: 'Iztapalapa, Ciudad de M\u00e9xico',
         cp: '09820',
         ciudad: 'Ciudad de Mexico',
         estado: 'CDMX',
         horarios: 'Lunes a Viernes 10:00am a 18:30hrs, S\u00e1bado 11:00am a 14:00hrs, Domingo cerrado',
         autorizado: true,
-        tipo: 'completo'
+        tipo: 'completo',
+        tags: ['Exhibici\u00f3n', 'Entrega', 'Servicio t\u00e9cnico'],
+        descripcion: 'Entrega y soporte t\u00e9cnico autorizados por Voltika.'
     }
 ];
 
