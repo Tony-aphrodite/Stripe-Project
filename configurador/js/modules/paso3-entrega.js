@@ -540,9 +540,9 @@ var Paso3 = {
             'Confirmar centro cercano &#10095;</button>';
         h += '</div>';
 
-        // Confirmation note
-        h += '<div style="font-size:12px;color:var(--vk-text-muted);display:flex;align-items:center;gap:4px;">';
-        h += '&#128337; Confirmaci\u00f3n en m\u00e1ximo <strong>&nbsp;48 horas&nbsp;</strong> por WhatsApp o correo';
+        // Confirmation note — single line, light blue background
+        h += '<div style="font-size:13px;color:#1a3a5c;background:#E8F4FD;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:6px;">';
+        h += '&#128337; Confirmaci\u00f3n en m\u00e1ximo <strong>48 horas</strong> por WhatsApp o correo';
         h += '</div>';
 
         h += '</div>'; // end body
