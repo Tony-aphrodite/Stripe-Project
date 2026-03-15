@@ -216,9 +216,11 @@ var Paso3 = {
         // Checkboxes
         $(document).on('change', '#vk-check-placas', function() {
             self.app.state.asesoriaPlacos = this.checked;
+            if (this.checked) $('#vk-checkbox-error').hide();
         });
         $(document).on('change', '#vk-check-seguro', function() {
             self.app.state.seguro = this.checked;
+            if (this.checked) $('#vk-checkbox-error').hide();
         });
 
         // Select delivery center
@@ -265,8 +267,22 @@ var Paso3 = {
                 }
                 return;
             }
+            // Check if at least one checkbox is selected
+            var placas = $('#vk-check-placas').is(':checked');
+            var seguro = $('#vk-check-seguro').is(':checked');
+            if (!placas && !seguro) {
+                var $checkSection = $('#vk-check-placas').closest('label').parent();
+                $('html, body').animate({ scrollTop: $checkSection.offset().top - 80 }, 400);
+                if (!$('#vk-checkbox-error').length) {
+                    $checkSection.prepend('<div id="vk-checkbox-error" style="color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;font-weight:600;">Selecciona al menos una opci\u00f3n para continuar.</div>');
+                } else {
+                    $('#vk-checkbox-error').show();
+                }
+                return;
+            }
             $('#vk-cp-error').hide();
             $('#vk-centro-error').hide();
+            $('#vk-checkbox-error').hide();
             self.app.state.codigoPostal = cp;
             self.app.state.colonia = colonia;
             self.app.irAPaso('resumen');
