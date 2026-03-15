@@ -424,17 +424,17 @@ var Paso3 = {
         h += '<div style="padding:16px;">';
 
         // Icon + title row + badge
-        h += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">';
+        h += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:12px;">';
         if (esCompleto) {
-            h += '<div style="width:40px;height:40px;border-radius:50%;background:#1a3a5c;display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
-            h += '<span style="color:#fff;font-size:20px;font-weight:700;">&#10003;</span>';
+            h += '<div style="width:24px;height:24px;border-radius:50%;background:#1a3a5c;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">';
+            h += '<span style="color:#fff;font-size:13px;font-weight:700;">&#10003;</span>';
             h += '</div>';
         } else {
-            h += '<div style="width:40px;height:40px;border-radius:50%;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
+            h += '<div style="width:24px;height:24px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;margin-top:2px;">';
             h += '</div>';
         }
-        h += '<div style="flex:1;">';
-        h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
+        h += '<div style="flex:1;min-width:0;">';
+        h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);white-space:nowrap;">' + centro.nombre + '</div>';
         h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;">';
         h += '' + self._greenCheck() + ' Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
         h += '</div>';
@@ -504,11 +504,11 @@ var Paso3 = {
         h += '<div style="padding:16px;">';
 
         // Icon + title
-        h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
-        h += '<div style="width:40px;height:40px;border-radius:50%;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
+        h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+        h += '<div style="width:24px;height:24px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;">';
         h += '</div>';
-        h += '<div>';
-        h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);">Centro Voltika cercano</div>';
+        h += '<div style="min-width:0;">';
+        h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);white-space:nowrap;">Centro Voltika cercano</div>';
         h += '<div style="font-size:12px;color:#1a3a5c;font-weight:600;">M\u00e1s de 200 puntos aliados Voltika en expansi\u00f3n</div>';
         h += '</div>';
         h += '</div>';
