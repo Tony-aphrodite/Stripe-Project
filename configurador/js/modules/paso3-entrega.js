@@ -442,7 +442,7 @@ var Paso3 = {
         return '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMiI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48cGF0aCBkPSJNMTIgNnY2bDQgMiIvPjwvc3ZnPg==" alt="" style="width:14px;height:14px;vertical-align:middle;">';
     },
 
-    _renderCentroCard: function(centro, esCredito) {
+    _renderCentroCard: function(centro) {
         var esCompleto = (centro.tipo === 'completo');
         var self = this;
         var h = '';
@@ -491,10 +491,6 @@ var Paso3 = {
             for (var t = 0; t < centro.tags.length; t++) {
                 h += self._tagButton(centro.tags[t]);
             }
-        }
-        if (esCredito) {
-            h += '<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:6px 12px;border-radius:8px;background:var(--vk-green-light);color:var(--vk-green-primary);">';
-            h += '&#10003; Flete incluido</span>';
         }
         h += '</div>';
 
@@ -578,8 +574,6 @@ var Paso3 = {
 
     _renderCentros: function(cp) {
         var self = this;
-        var esCredito = self.app.state.metodoPago === 'credito';
-
         if (typeof VOLTIKA_CENTROS === 'undefined' || !VOLTIKA_CENTROS.buscar) {
             $('#vk-centros-section').hide();
             return;
@@ -601,13 +595,13 @@ var Paso3 = {
         // Render recommended (first)
         var recHtml = '';
         recHtml += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin-bottom:8px;">Centro de entrega recomendado</div>';
-        recHtml += self._renderCentroCard(centros[0], esCredito);
+        recHtml += self._renderCentroCard(centros[0]);
         $('#vk-centro-recomendado').html(recHtml);
 
         // Other centers + Centro Voltika cercano
         var otrosHtml = '';
         for (var i = 1; i < centros.length; i++) {
-            otrosHtml += self._renderCentroCard(centros[i], esCredito);
+            otrosHtml += self._renderCentroCard(centros[i]);
         }
         // Always add the "Centro Voltika cercano" option
         otrosHtml += self._renderCentroCercanoCard();
