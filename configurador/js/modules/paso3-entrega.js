@@ -532,16 +532,18 @@ var Paso3 = {
         h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' Soporte Voltika</div>';
         h += '</div>';
 
-        // Cobertura badge + CTA button row
-        h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
-        h += '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#1a3a5c;">&#127758; Cobertura nacional</span>';
-        h += '<button class="vk-btn vk-select-centro" id="vk-select-centro-cercano" ' +
-            'style="flex:1;font-size:14px;font-weight:700;padding:12px;background:#1a3a5c;color:#fff;border:none;border-radius:8px;cursor:pointer;">' +
-            'Confirmar centro cercano &#10095;</button>';
+        // Cobertura badge
+        h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">';
+        h += '<span style="font-size:12px;font-weight:600;color:#1a3a5c;">&#127758; Cobertura nacional</span>';
         h += '</div>';
 
+        // CTA button — full width
+        h += '<button class="vk-btn vk-select-centro" id="vk-select-centro-cercano" ' +
+            'style="width:100%;font-size:14px;font-weight:700;padding:14px;background:#1a3a5c;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">' +
+            'Confirmar centro cercano &#10095;</button>';
+
         // Confirmation note — single line, light blue background
-        h += '<div style="font-size:13px;color:#1a3a5c;background:#E8F4FD;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:6px;">';
+        h += '<div style="font-size:12px;color:#1a3a5c;background:#E8F4FD;border-radius:8px;padding:10px 14px;text-align:center;">';
         h += '&#128337; Confirmaci\u00f3n en m\u00e1ximo <strong>48 horas</strong> por WhatsApp o correo';
         h += '</div>';
 
