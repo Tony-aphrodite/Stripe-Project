@@ -413,19 +413,30 @@ var Paso3 = {
     },
 
     _tagIcon: function(tag) {
-        // CSS circle icons — universal rendering
+        // Pre-computed base64 SVG img tags — most reliable cross-device rendering
         var icons = {
-            'Exhibici\u00f3n': this._cssIcon('E', '#1a3a5c'),
-            'Entrega': this._cssIcon('T', '#1a3a5c'),
-            'Servicio t\u00e9cnico': this._cssIcon('S', '#1a3a5c'),
-            'Activaci\u00f3n': this._cssIcon('A', '#1a3a5c')
+            'Exhibici\u00f3n': '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMi41Ij48Y2lyY2xlIGN4PSI5IiBjeT0iMjEiIHI9IjEiLz48Y2lyY2xlIGN4PSIyMCIgY3k9IjIxIiByPSIxIi8+PHBhdGggZD0iTTEgMWg0bDIuNjggMTMuMzlhMiAyIDAgMCAwIDIgMS42MWg5LjcyYTIgMiAwIDAgMCAyLTEuNjFMMjMgNkg2Ii8+PC9zdmc+" alt="" style="width:16px;height:16px;vertical-align:middle;">',
+            'Entrega': '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMi41Ij48cmVjdCB4PSIxIiB5PSIzIiB3aWR0aD0iMTUiIGhlaWdodD0iMTMiLz48cG9seWdvbiBwb2ludHM9IjE2IDggMjAgOCAyMyAxMSAyMyAxNiAxNiAxNiAxNiA4Ii8+PGNpcmNsZSBjeD0iNS41IiBjeT0iMTguNSIgcj0iMi41Ii8+PGNpcmNsZSBjeD0iMTguNSIgY3k9IjE4LjUiIHI9IjIuNSIvPjwvc3ZnPg==" alt="" style="width:16px;height:16px;vertical-align:middle;">',
+            'Servicio t\u00e9cnico': '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMi41Ij48cGF0aCBkPSJNMTQuNyA2LjNhMSAxIDAgMCAwIDAgMS40bDEuNiAxLjZhMSAxIDAgMCAwIDEuNCAwbDMuNzctMy43N2E2IDYgMCAwIDEtNy45NCA3Ljk0bC02LjkxIDYuOTFhMi4xMiAyLjEyIDAgMCAxLTMtM2w2LjkxLTYuOTFhNiA2IDAgMCAxIDcuOTQtNy45NGwtMy43NiAzLjc2eiIvPjwvc3ZnPg==" alt="" style="width:16px;height:16px;vertical-align:middle;">',
+            'Activaci\u00f3n': '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMi41Ij48cG9seWdvbiBwb2ludHM9IjEzIDIgMyAxNCAxMiAxNCAxMSAyMiAyMSAxMCAxMiAxMCAxMyAyIi8+PC9zdmc+" alt="" style="width:16px;height:16px;vertical-align:middle;">'
         };
-        return icons[tag] || this._cssIcon('&#10003;');
+        return icons[tag] || '';
     },
 
     _pinIcon: function() {
-        return '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#D32F2F;flex-shrink:0;">' +
-            '<span style="color:#fff;font-size:10px;line-height:1;font-weight:700;">&#9679;</span></span>';
+        return '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjRDMyRjJGIiBzdHJva2U9Im5vbmUiPjxwYXRoIGQ9Ik0xMiAyQzguMTMgMiA1IDUuMTMgNSA5YzAgNS4yNSA3IDEzIDcgMTNzNy03Ljc1IDctMTNjMC0zLjg3LTMuMTMtNy03LTd6bTAgOS41YTIuNSAyLjUgMCAxIDEgMC01IDIuNSAyLjUgMCAwIDEgMCA1eiIvPjwvc3ZnPg==" alt="" style="width:18px;height:18px;vertical-align:middle;">';
+    },
+
+    _shieldIcon: function() {
+        return '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjMDA4QzQ1IiBzdHJva2U9Im5vbmUiPjxwYXRoIGQ9Ik0xMiAxbC05IDR2NmMwIDUuNTUgMy44NCAxMC43NCA5IDEyIDUuMTYtMS4yNiA5LTYuNDUgOS0xMlY1bC05LTR6bS0yIDE2bC00LTRMOSA5bC0uNzEuNzFMMTAgMTMuMTdsNy01LjA0TDE3LjcxIDcuNDIgMTAgMTd6Ii8+PC9zdmc+" alt="" style="width:16px;height:16px;vertical-align:middle;">';
+    },
+
+    _globeIcon: function() {
+        return '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMiI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48bGluZSB4MT0iMiIgeTE9IjEyIiB4Mj0iMjIiIHkyPSIxMiIvPjxwYXRoIGQ9Ik0xMiAyYTEzIDEzIDAgMCAxIDQgMTAgMTMgMTMgMCAwIDEtNCAxMCAxMyAxMyAwIDAgMS00LTEwIDEzIDEzIDAgMCAxIDQtMTAiLz48L3N2Zz4=" alt="" style="width:14px;height:14px;vertical-align:middle;">';
+    },
+
+    _clockIcon: function() {
+        return '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMiI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48cGF0aCBkPSJNMTIgNnY2bDQgMiIvPjwvc3ZnPg==" alt="" style="width:14px;height:14px;vertical-align:middle;">';
     },
 
     _renderCentroCard: function(centro, esCredito) {
@@ -460,7 +471,7 @@ var Paso3 = {
         }
         h += '</div>';
         h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;">';
-        h += '' + self._cssIcon('V', 'var(--vk-green-primary)') + ' Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
+        h += '' + self._shieldIcon() + ' Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
         h += '</div>';
         h += '</div>';
         h += '</div>';
@@ -546,7 +557,7 @@ var Paso3 = {
 
         // Cobertura badge
         h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">';
-        h += '<span style="font-size:12px;font-weight:600;color:#1a3a5c;">&#127758; Cobertura nacional</span>';
+        h += '<span style="font-size:12px;font-weight:600;color:#1a3a5c;">' + self._globeIcon() + ' Cobertura nacional</span>';
         h += '</div>';
 
         // CTA button — full width
@@ -556,7 +567,7 @@ var Paso3 = {
 
         // Confirmation note — single line, light blue background
         h += '<div style="font-size:12px;color:#1a3a5c;background:#E8F4FD;border-radius:8px;padding:10px 14px;text-align:center;">';
-        h += '&#128337; Confirmaci\u00f3n en m\u00e1ximo <strong>48 horas</strong> por WhatsApp o correo';
+        h += '' + self._clockIcon() + ' Confirmaci\u00f3n en m\u00e1ximo <strong>48 horas</strong> por WhatsApp o correo';
         h += '</div>';
 
         h += '</div>'; // end body
