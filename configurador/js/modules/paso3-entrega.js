@@ -436,7 +436,7 @@ var Paso3 = {
         // Title + subtitle
         h += '<div style="flex:1;min-width:0;">';
         h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">';
-        h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
+        h += '<div style="font-weight:800;font-size:15px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
         if (!esCompleto) {
             h += '<span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;background:#F5E6C8;color:#8B6914;white-space:nowrap;">M\u00e1s cercano a ti</span>';
         }
