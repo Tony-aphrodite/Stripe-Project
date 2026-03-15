@@ -9,6 +9,35 @@ var PasoCreditoConsentimiento = {
         this.app = app;
         this.render();
         this.bindEvents();
+        this._enviarOTPInicial();
+    },
+
+    _enviarOTPInicial: function() {
+        var self = this;
+        var tel = self.app.state.telefono;
+        if (!tel) return;
+
+        jQuery.ajax({
+            url: 'php/enviar-otp.php',
+            method: 'POST',
+            contentType: 'application/json',
+            xhrFields: { withCredentials: true },
+            data: JSON.stringify({ telefono: tel, nombre: self.app.state.nombre || '' }),
+            success: function(res) {
+                if (res && res.testCode) {
+                    self.app.state._otpTestCode = res.testCode;
+                    var $hint = jQuery('#vk-cons-test-hint');
+                    if ($hint.length) {
+                        $hint.html('&#128161; C\u00f3digo de prueba: <strong>' + res.testCode + '</strong>').show();
+                    } else {
+                        jQuery('.vk-otp-box').first().closest('div').before(
+                            '<div id="vk-cons-test-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
+                            '&#128161; C\u00f3digo de prueba: <strong>' + res.testCode + '</strong></div>'
+                        );
+                    }
+                }
+            }
+        });
     },
 
     render: function() {
