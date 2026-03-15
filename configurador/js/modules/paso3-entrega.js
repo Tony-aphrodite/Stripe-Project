@@ -423,26 +423,16 @@ var Paso3 = {
         // Card body
         h += '<div style="padding:16px;">';
 
-        // Icon + title row + badge
-        h += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:12px;">';
-        if (esCompleto) {
-            h += '<div style="width:24px;height:24px;border-radius:50%;background:#1a3a5c;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">';
-            h += '<span style="color:#fff;font-size:13px;font-weight:700;">&#10003;</span>';
-            h += '</div>';
-        } else {
-            h += '<div style="width:24px;height:24px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;margin-top:2px;">';
-            h += '</div>';
-        }
-        h += '<div style="flex:1;min-width:0;">';
-        h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);white-space:nowrap;">' + centro.nombre + '</div>';
-        h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;">';
-        h += '' + self._greenCheck() + ' Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
-        h += '</div>';
-        h += '</div>';
-        // "Más cercano a ti" badge for entrega type
+        // Title row with badge
+        h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+        h += '<div style="font-weight:800;font-size:18px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
         if (!esCompleto) {
-            h += '<span style="display:inline-block;font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;background:#F5E6C8;color:#8B6914;white-space:nowrap;">M\u00e1s cercano a ti</span>';
+            h += '<span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;background:#F5E6C8;color:#8B6914;white-space:nowrap;margin-left:8px;">M\u00e1s cercano a ti</span>';
         }
+        h += '</div>';
+        // Subtitle
+        h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;margin-bottom:12px;">';
+        h += '' + self._greenCheck() + ' Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
         h += '</div>';
 
         // Location + address
