@@ -541,7 +541,7 @@ var Paso3 = {
 
         // CTA button — full width
         h += '<button class="vk-btn vk-select-centro" id="vk-select-centro-cercano" ' +
-            'style="width:100%;font-size:14px;font-weight:700;padding:14px;background:#1a3a5c;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">' +
+            'style="width:100%;font-size:12px;font-weight:700;padding:14px;background:#1a3a5c;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">' +
             'Confirmar centro cercano &#10095;</button>';
 
         // Confirmation note — single line, light blue background
