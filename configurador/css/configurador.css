@@ -1278,7 +1278,7 @@ html {
    Credit Loading Screen (motorcycle image + animated wheel overlays)
    -------------------------------------------------------------------------- */
 .vk-loading-screen {
-    background: linear-gradient(180deg, #1c3eaf 0%, #2758ca 50%, #376ee3 100%);
+    background: linear-gradient(180deg, #028bca 0%, #039fe1 50%, #2db5ed 100%);
     border-radius: var(--vk-radius-lg);
     padding: 40px 20px;
     text-align: center;
@@ -1412,7 +1412,7 @@ html {
    Credit Approved Screen (Felicidades)
    -------------------------------------------------------------------------- */
 .vk-aprobado-header {
-    background: linear-gradient(160deg, #1a52cc 0%, #1565C0 50%, #0d47a1 100%);
+    background: linear-gradient(160deg, #028bca 0%, #039fe1 50%, #2db5ed 100%);
     border-radius: var(--vk-radius-lg) var(--vk-radius-lg) 0 0;
     padding: 28px 20px 36px;
     text-align: center;
