@@ -395,6 +395,12 @@ var Paso3 = {
         });
     },
 
+    _greenCheck: function(size) {
+        size = size || 16;
+        return '<span style="display:inline-flex;align-items:center;justify-content:center;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:var(--vk-green-primary);flex-shrink:0;">' +
+            '<span style="color:#fff;font-size:' + Math.round(size * 0.6) + 'px;line-height:1;">&#10003;</span></span>';
+    },
+
     _tagIcon: function(tag) {
         var icons = {
             'Exhibici\u00f3n': '&#128722;',
@@ -430,7 +436,7 @@ var Paso3 = {
         h += '<div style="flex:1;">';
         h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
         h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;">';
-        h += '&#9989; Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
+        h += '' + self._greenCheck() + ' Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
         h += '</div>';
         h += '</div>';
         // "Más cercano a ti" badge for entrega type
@@ -465,9 +471,9 @@ var Paso3 = {
         h += '<div style="background:#F7F7F7;border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">';
         h += '<div style="flex:1;">';
         if (esCompleto) {
-            h += '<div style="font-size:12px;font-weight:700;color:var(--vk-green-primary);margin-bottom:2px;">&#9989; Centro Voltika verificado</div>';
+            h += '<div style="font-size:12px;font-weight:700;color:var(--vk-green-primary);margin-bottom:2px;">' + self._greenCheck() + ' Centro Voltika verificado</div>';
         } else {
-            h += '<div style="font-size:12px;font-weight:700;color:var(--vk-green-primary);margin-bottom:2px;">&#9989; Punto autorizado para entrega Voltika</div>';
+            h += '<div style="font-size:12px;font-weight:700;color:var(--vk-green-primary);margin-bottom:2px;">' + self._greenCheck() + ' Punto autorizado para entrega Voltika</div>';
         }
         if (centro.descripcion) {
             h += '<div style="font-size:12px;color:var(--vk-text-secondary);">' + centro.descripcion + '</div>';
@@ -489,6 +495,7 @@ var Paso3 = {
     },
 
     _renderCentroCercanoCard: function() {
+        var self = this;
         var h = '';
 
         h += '<div class="vk-card" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:1.5px solid #ddd;">';
@@ -514,9 +521,9 @@ var Paso3 = {
         // Green checks
         h += '<div style="margin-bottom:14px;">';
         var checkStyle = 'font-size:13px;color:var(--vk-green-primary);font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px;';
-        h += '<div style="' + checkStyle + '">&#9989; Entrega y activaci\u00f3n</div>';
-        h += '<div style="' + checkStyle + '">&#9989; Servicio t\u00e9cnico autorizado</div>';
-        h += '<div style="' + checkStyle + '">&#9989; Soporte Voltika</div>';
+        h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' Entrega y activaci\u00f3n</div>';
+        h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' Servicio t\u00e9cnico autorizado</div>';
+        h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' Soporte Voltika</div>';
         h += '</div>';
 
         // Cobertura badge + CTA button row
