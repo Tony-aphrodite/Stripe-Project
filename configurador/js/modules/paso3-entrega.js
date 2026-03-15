@@ -430,9 +430,15 @@ var Paso3 = {
 
         // Header: radio circle + title + badge
         h += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">';
-        // Radio circle (empty by default, fills on selection)
-        h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
-        h += '</div>';
+        // Radio circle — completo type starts checked (navy filled)
+        if (esCompleto) {
+            h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;background:#1a3a5c;border:2px solid #1a3a5c;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
+            h += '<span style="color:#fff;font-size:12px;line-height:1;">&#10003;</span>';
+            h += '</div>';
+        } else {
+            h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
+            h += '</div>';
+        }
         // Title + subtitle
         h += '<div style="flex:1;min-width:0;">';
         h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">';
@@ -442,7 +448,7 @@ var Paso3 = {
         }
         h += '</div>';
         h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;">';
-        h += '' + self._greenCheck() + ' Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
+        h += '&#128737; Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
         h += '</div>';
         h += '</div>';
         h += '</div>';
@@ -469,20 +475,18 @@ var Paso3 = {
         }
         h += '</div>';
 
-        // Bottom section: description + ver ubicación side by side
-        h += '<div style="background:#F7F7F7;border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">';
-        h += '<div style="flex:1;">';
+        // Bottom section: description + ver ubicación button
+        h += '<div style="background:#F7F7F7;border-radius:10px;padding:14px;margin-bottom:4px;">';
         if (esCompleto) {
-            h += '<div style="font-size:12px;font-weight:700;color:var(--vk-green-primary);margin-bottom:2px;">' + self._greenCheck() + ' Centro Voltika verificado</div>';
+            h += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' + self._greenCheck() + ' Centro Voltika verificado</div>';
         } else {
-            h += '<div style="font-size:12px;font-weight:700;color:var(--vk-green-primary);margin-bottom:2px;">' + self._greenCheck() + ' Punto autorizado para entrega Voltika</div>';
+            h += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' + self._greenCheck() + ' Punto autorizado para entrega Voltika</div>';
         }
         if (centro.descripcion) {
-            h += '<div style="font-size:12px;color:var(--vk-text-secondary);">' + centro.descripcion + '</div>';
+            h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">' + centro.descripcion + '</div>';
         }
-        h += '</div>';
         h += '<a href="' + mapsUrl + '" target="_blank" rel="noopener" ' +
-            'style="font-size:13px;font-weight:700;color:var(--vk-text-primary);text-decoration:none;white-space:nowrap;">' +
+            'style="display:inline-block;font-size:13px;font-weight:700;color:var(--vk-text-primary);text-decoration:none;padding:8px 16px;border:1.5px solid #ccc;border-radius:8px;background:#fff;">' +
             '&#10095; Ver ubicaci\u00f3n</a>';
         h += '</div>';
 
