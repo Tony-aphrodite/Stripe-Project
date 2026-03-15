@@ -413,7 +413,6 @@ var Paso3 = {
     },
 
     _tagButton: function(tag) {
-        // Pure CSS button-style tags — no SVG/emoji/base64, just unicode symbols
         var symbols = {
             'Exhibici\u00f3n': '\u25A0',
             'Entrega': '\u25B6',
@@ -421,8 +420,8 @@ var Paso3 = {
             'Activaci\u00f3n': '\u26A1'
         };
         var sym = symbols[tag] || '\u2022';
-        var iconCircle = '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:11px;flex-shrink:0;">' + sym + '</span>';
-        return '<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:8px 14px;border-radius:10px;background:#EDF2F7;color:#1a3a5c;border:1px solid #D0D8E0;">' +
+        var iconCircle = '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:8px;flex-shrink:0;">' + sym + '</span>';
+        return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px;background:#EDF2F7;color:#1a3a5c;border:1px solid #D0D8E0;">' +
             iconCircle + tag + '</span>';
     },
 
@@ -458,7 +457,7 @@ var Paso3 = {
         h += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">';
         // Radio circle — completo type starts checked (navy filled)
         if (esCompleto) {
-            h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;background:#1a3a5c;border:2px solid #1a3a5c;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
+            h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;background:#039fe1;border:2px solid #039fe1;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
             h += '<span style="color:#fff;font-size:12px;line-height:1;">&#10003;</span>';
             h += '</div>';
         } else {
