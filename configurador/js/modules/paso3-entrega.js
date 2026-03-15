@@ -264,7 +264,7 @@ var Paso3 = {
             $('.vk-select-centro').css({ 'opacity': '0.6' }).each(function() {
                 if (this.id !== 'vk-select-centro-cercano') $(this).text('SELECCIONAR ESTE CENTRO');
             });
-            $(this).css({ 'opacity': '1', 'background': '#0f2a45' }).text('\u2713 Centro cercano seleccionado');
+            $(this).css({ 'opacity': '1', 'background': '#027ab8' }).text('\u2713 Centro cercano seleccionado');
         });
 
         // Confirm
@@ -541,7 +541,7 @@ var Paso3 = {
 
         // CTA button — full width
         h += '<button class="vk-btn vk-select-centro" id="vk-select-centro-cercano" ' +
-            'style="width:100%;font-size:12px;font-weight:700;padding:14px;background:#1a3a5c;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">' +
+            'style="width:100%;font-size:12px;font-weight:700;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">' +
             'Confirmar centro cercano &#10095;</button>';
 
         // Confirmation note — single line, light blue background
@@ -620,7 +620,7 @@ var Paso3 = {
             $('.vk-select-centro').css({ 'opacity': '0.6' }).each(function() {
                 if ($(this).data('centro-id')) $(this).text('SELECCIONAR ESTE CENTRO');
             });
-            $('#vk-select-centro-cercano').css({ 'opacity': '0.6', 'background': '#1a3a5c' }).text('Confirmar centro cercano \u203a');
+            $('#vk-select-centro-cercano').css({ 'opacity': '0.6', 'background': '#039fe1' }).text('Confirmar centro cercano \u203a');
             $('.vk-select-centro[data-centro-id="' + centroId + '"]')
                 .css({ 'opacity': '1', 'background': 'var(--vk-green-dark)' })
                 .text('\u2713 Seleccionado');
