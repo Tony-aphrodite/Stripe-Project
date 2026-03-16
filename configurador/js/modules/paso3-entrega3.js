@@ -518,9 +518,10 @@ var Paso3 = {
         return h;
     },
 
-    _renderCentroCercanoCard: function() {
+    _renderCentroCercanoCard: function(ciudad) {
         var self = this;
         var h = '';
+        var titleCiudad = ciudad ? ' en ' + ciudad : '';
 
         h += '<div class="vk-card" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:1.5px solid #ddd;">';
 
@@ -532,7 +533,7 @@ var Paso3 = {
         h += '<div class="vk-radio-circle" data-radio-id="centro-cercano" style="width:20px;height:20px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
         h += '</div>';
         h += '<div style="min-width:0;">';
-        h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);">Centro Voltika cercano</div>';
+        h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);">Centro Voltika cercano' + titleCiudad + '</div>';
         h += '<div style="font-size:12px;color:#1a3a5c;font-weight:600;">M\u00e1s de 200 puntos aliados Voltika en expansi\u00f3n</div>';
         h += '</div>';
         h += '</div>';
@@ -573,14 +574,24 @@ var Paso3 = {
 
     _renderCentros: function(cp) {
         var self = this;
+        var ciudad = self.app.state.ciudad || '';
+
         if (typeof VOLTIKA_CENTROS === 'undefined' || !VOLTIKA_CENTROS.buscar) {
-            $('#vk-centros-section').hide();
+            // No centers module — show cercano fallback
+            var recHtml = self._renderCentroCercanoCard(ciudad);
+            $('#vk-centro-recomendado').html(recHtml);
+            $('#vk-otros-centros-wrapper').hide();
+            $('#vk-centros-section').slideDown(200);
             return;
         }
 
         var centros = VOLTIKA_CENTROS.buscar(cp);
         if (!centros || centros.length === 0) {
-            $('#vk-centros-section').hide();
+            // No matching centers — show only cercano card
+            var recHtml = self._renderCentroCercanoCard(ciudad);
+            $('#vk-centro-recomendado').html(recHtml);
+            $('#vk-otros-centros-wrapper').hide();
+            $('#vk-centros-section').slideDown(200);
             return;
         }
 
@@ -597,16 +608,17 @@ var Paso3 = {
         recHtml += self._renderCentroCard(centros[0]);
         $('#vk-centro-recomendado').html(recHtml);
 
-        // Other centers + Centro Voltika cercano
-        var otrosHtml = '';
-        for (var i = 1; i < centros.length; i++) {
-            otrosHtml += self._renderCentroCard(centros[i]);
+        // Other centers (no cercano card when real centers exist)
+        if (centros.length > 1) {
+            var otrosHtml = '';
+            for (var i = 1; i < centros.length; i++) {
+                otrosHtml += self._renderCentroCard(centros[i]);
+            }
+            $('#vk-otros-centros-list').html(otrosHtml);
+            $('#vk-otros-centros-wrapper').show();
+        } else {
+            $('#vk-otros-centros-wrapper').hide();
         }
-        // Always add the "Centro Voltika cercano" option
-        otrosHtml += self._renderCentroCercanoCard();
-
-        $('#vk-otros-centros-list').html(otrosHtml);
-        $('#vk-otros-centros-wrapper').show();
 
         $('#vk-centros-section').slideDown(200);
     },
