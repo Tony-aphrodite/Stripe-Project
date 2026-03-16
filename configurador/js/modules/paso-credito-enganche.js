@@ -80,17 +80,27 @@ var PasoCreditoEnganche = {
         html += '&#8226; Color: <strong style="color:var(--vk-text-primary);">' + (colorNombre || colorId) + '</strong><br>';
         html += '&#8226; Pago semanal: <strong style="color:var(--vk-green-primary);">' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong> MXN<br>';
         html += '&#8226; Plazo: <strong style="color:var(--vk-text-primary);">' + plazoSemanas + ' semanas</strong><br>';
-        html += 'Entrega estimada<br><strong style="color:var(--vk-text-primary);font-size:14px;">' + entregaStr + '</strong>';
+        html += '<span style="font-weight:700;color:var(--vk-text-primary);">Fecha M\u00e1xima de entrega</span><br>';
+        html += '<strong style="color:#039fe1;font-size:16px;">' + entregaStr + '</strong>';
         html += '</div>';
-        html += '<div style="font-size:11px;color:var(--vk-text-muted);margin-top:6px;">En un punto autorizado <strong style="color:var(--vk-text-primary);">Voltika</strong> cerca de ti</div>';
+        // Show selected delivery center or city
+        var centroNombre = (state.centroEntrega && state.centroEntrega.nombre) ? state.centroEntrega.nombre : '';
+        var entregaUbicacion = centroNombre || ((state.ciudad || '') + (state.estado ? ', ' + state.estado : ''));
+        html += '<div style="font-size:11px;color:var(--vk-text-muted);margin-top:6px;">';
+        if (entregaUbicacion) {
+            html += 'Entrega en <strong style="color:var(--vk-text-primary);">' + entregaUbicacion + '</strong>';
+        } else {
+            html += 'En un punto autorizado <strong style="color:var(--vk-text-primary);">Voltika</strong> cerca de ti';
+        }
+        html += '</div>';
         html += '</div>';
         html += '</div>';
         html += '</div>';
 
         // Enganche amount
         html += '<div style="text-align:center;margin:12px 0 16px;">';
-        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);letter-spacing:0.5px;text-transform:uppercase;">Enganche a pagar</div>';
-        html += '<div style="font-size:28px;font-weight:800;color:var(--vk-green-primary);margin-top:4px;">' +
+        html += '<div style="font-size:16px;font-weight:800;color:var(--vk-text-primary);letter-spacing:0.5px;text-transform:uppercase;">ENGANCHE A PAGAR</div>';
+        html += '<div style="font-size:32px;font-weight:900;color:var(--vk-green-primary);margin-top:6px;">' +
             VkUI.formatPrecio(enganche) + ' MXN</div>';
         html += '</div>';
 
@@ -99,8 +109,9 @@ var PasoCreditoEnganche = {
 
         // === 1. Tarjeta de crédito / débito ===
         html += '<div class="vk-card" style="padding:16px;margin-bottom:12px;">';
-        html += '<div style="margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
         html += '<span style="font-size:14px;font-weight:600;">Tarjeta de cr\u00e9dito / d\u00e9bito</span>';
+        html += '<span>' + VkUI.renderCardLogos() + '</span>';
         html += '</div>';
         // Stripe card element mount point
         html += '<div id="vk-enganche-card-element" style="padding:12px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;background:#fff;"></div>';
@@ -114,9 +125,21 @@ var PasoCreditoEnganche = {
         html += '</button>';
         html += '</div>';
 
-        // === 2. Pago en efectivo en tiendas OXXO ===
+        // === 2. Transferencia bancaria SPEI ===
+        html += '<div class="vk-card" style="padding:16px;margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+        html += '<img src="' + base + 'img/tarjetas/spei.svg" alt="SPEI" style="height:32px;">';
+        html += '<span style="font-size:14px;font-weight:600;">Transferencia bancaria SPEI</span>';
+        html += '</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;">Recibir\u00e1s los datos de la cuenta para realizar tu transferencia. Confirmaci\u00f3n en minutos.</div>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-spei">' +
+            'PAGAR CON TRANSFERENCIA SPEI</button>';
+        html += '</div>';
+
+        // === 3. Pago en efectivo en tiendas OXXO ===
         html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;">';
-        html += '<div style="margin-bottom:8px;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
+        html += '<img src="' + base + 'img/tarjetas/oxxo.svg" alt="OXXO" style="height:36px;">';
         html += '<span style="font-size:14px;font-weight:600;">Pago en efectivo en tiendas OXXO</span>';
         html += '</div>';
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;background:var(--vk-bg-light);border-radius:6px;padding:10px;">';
