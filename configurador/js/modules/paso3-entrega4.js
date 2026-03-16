@@ -422,8 +422,8 @@ var Paso3 = {
             'Refacciones': '\u2699'
         };
         var sym = symbols[tag] || '\u2022';
-        var iconCircle = '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:8px;flex-shrink:0;">' + sym + '</span>';
-        return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px;background:#EDF2F7;color:#1a3a5c;border:1px solid #D0D8E0;">' +
+        var iconCircle = '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:7px;flex-shrink:0;">' + sym + '</span>';
+        return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:3px 6px;border-radius:5px;background:#EDF2F7;color:#1a3a5c;border:1px solid #D0D8E0;">' +
             iconCircle + tag + '</span>';
     },
 
@@ -550,7 +550,7 @@ var Paso3 = {
         h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;padding-left:22px;">' + centro.direccion + '</div>';
 
         // Tags
-        h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">';
+        h += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;">';
         if (centro.tags && centro.tags.length) {
             for (var t = 0; t < centro.tags.length; t++) {
                 h += self._tagButton(centro.tags[t]);
