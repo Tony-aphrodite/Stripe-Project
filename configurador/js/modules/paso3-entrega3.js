@@ -466,14 +466,9 @@ var Paso3 = {
         }
         // Title + subtitle
         h += '<div style="flex:1;min-width:0;">';
-        h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">';
         h += '<div style="font-weight:800;font-size:15px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
-        if (!esCompleto) {
-            h += '<span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;background:#F5E6C8;color:#8B6914;white-space:nowrap;">M\u00e1s cercano a ti</span>';
-        }
-        h += '</div>';
         h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;">';
-        h += '' + self._shieldIcon() + ' Centro Voltika ' + (esCompleto ? 'Autorizado' : 'de entrega y activaci\u00f3n');
+        h += '' + self._shieldIcon() + ' Centro Voltika Autorizado';
         h += '</div>';
         h += '</div>';
         h += '</div>';
@@ -495,11 +490,7 @@ var Paso3 = {
 
         // Bottom section: description + ver ubicación button
         h += '<div style="background:#F7F7F7;border-radius:10px;padding:14px;margin-bottom:4px;">';
-        if (esCompleto) {
-            h += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' + self._greenCheck() + ' Centro Voltika verificado</div>';
-        } else {
-            h += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' + self._greenCheck() + ' Punto autorizado para entrega Voltika</div>';
-        }
+        h += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' + self._greenCheck() + ' Centro Voltika verificado</div>';
         if (centro.descripcion) {
             h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">' + centro.descripcion + '</div>';
         }
@@ -528,42 +519,41 @@ var Paso3 = {
         // Card body
         h += '<div style="padding:16px;">';
 
-        // Radio circle + title
+        // Green check + title
         h += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">';
-        h += '<div class="vk-radio-circle" data-radio-id="centro-cercano" style="width:20px;height:20px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
-        h += '</div>';
+        h += self._greenCheck(24);
         h += '<div style="min-width:0;">';
         h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);">Centro Voltika cercano' + titleCiudad + '</div>';
-        h += '<div style="font-size:12px;color:#1a3a5c;font-weight:600;">M\u00e1s de 200 puntos aliados Voltika en expansi\u00f3n</div>';
+        h += '<div style="font-size:12px;color:#1a3a5c;font-weight:600;">Red nacional de centros autorizados Voltika</div>';
         h += '</div>';
         h += '</div>';
 
         // Description
         h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:14px;line-height:1.5;">';
-        h += 'Si ninguno de los centros mostrados queda cerca, <strong>un asesor Voltika</strong> confirmar\u00e1 el punto de entrega m\u00e1s conveniente en tu ciudad.';
+        h += 'Si no ves un centro cercano, <strong>Voltika coordinar\u00e1</strong> la entrega y servicio autorizado m\u00e1s cercano a ti.';
         h += '</div>';
 
         // Green checks
         h += '<div style="margin-bottom:14px;">';
         var checkStyle = 'font-size:13px;color:var(--vk-green-primary);font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px;';
-        h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' Entrega y activaci\u00f3n</div>';
+        h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' Entrega y activaci\u00f3n de tu moto</div>';
         h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' Servicio t\u00e9cnico autorizado</div>';
-        h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' Soporte Voltika</div>';
+        h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' Refacciones y soporte Voltika</div>';
         h += '</div>';
 
         // Cobertura badge
-        h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">';
-        h += '<span style="font-size:12px;font-weight:600;color:#1a3a5c;">' + self._globeIcon() + ' Cobertura nacional</span>';
+        h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">';
+        h += '<span style="font-size:13px;font-weight:700;color:#1a3a5c;">' + self._globeIcon() + ' Cobertura nacional Voltika</span>';
         h += '</div>';
 
         // CTA button — full width
         h += '<button class="vk-btn vk-select-centro" id="vk-select-centro-cercano" ' +
-            'style="width:100%;font-size:12px;font-weight:700;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">' +
-            'Confirmar centro cercano &#10095;</button>';
+            'style="width:100%;font-size:13px;font-weight:700;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">' +
+            '&#10003; ENTREGA DISPONIBLE CERCA DE TI</button>';
 
-        // Confirmation note — single line, light blue background
+        // Confirmation note
         h += '<div style="font-size:12px;color:#1a3a5c;background:#E8F4FD;border-radius:8px;padding:10px 14px;text-align:center;">';
-        h += '' + self._clockIcon() + ' Confirmaci\u00f3n en m\u00e1ximo <strong>48 horas</strong> por WhatsApp o correo';
+        h += '' + self._clockIcon() + ' Confirmaci\u00f3n en menos de <strong>24 horas</strong> por WhatsApp o correo';
         h += '</div>';
 
         h += '</div>'; // end body

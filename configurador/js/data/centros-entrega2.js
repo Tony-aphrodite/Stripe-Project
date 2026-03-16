@@ -15,9 +15,9 @@ var VOLTIKA_CENTROS = [
         estado: 'M\u00e9xico',
         horarios: 'Lunes a Viernes 10:00am a 18:00hrs',
         autorizado: true,
-        tipo: 'entrega',
-        tags: ['Entrega', 'Activaci\u00f3n'],
-        descripcion: 'Aqu\u00ed recibir\u00e1s tu moto completamente armada y activada.'
+        tipo: 'completo',
+        tags: ['Exhibici\u00f3n', 'Entrega', 'Servicio t\u00e9cnico'],
+        descripcion: 'Entrega y soporte t\u00e9cnico autorizados por Voltika.'
     },
     {
         id: 'godike-motors',
