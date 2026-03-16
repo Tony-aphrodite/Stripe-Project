@@ -46,6 +46,17 @@ var Paso3 = {
         html += '<h2 class="vk-paso__titulo" style="margin-bottom:0;">Entrega en tu ciudad</h2>';
         html += '</div>';
 
+        // Entrega Garantizada section (top priority)
+        html += '<div style="background:#E0F4FD;border-radius:10px;padding:16px;margin-bottom:14px;border-left:4px solid #039fe1;">';
+        html += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">';
+        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/delivery_icon.jpg" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">';
+        html += '<div>';
+        html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Entrega Garantizada</div>';
+        html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega garantizada a m\u00e1s tardar el <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+
         // Postal code input with search icon
         html += '<div class="vk-card" style="padding:20px;">';
 
@@ -118,17 +129,6 @@ var Paso3 = {
             html += '&#10003; Costo log\u00edstico: <strong id="vk-cp-logistics-price"></strong> MXN';
             html += '</div>';
         }
-        html += '</div>';
-        html += '</div>';
-        html += '</div>';
-
-        // Entrega Garantizada section
-        html += '<div style="background:#E0F4FD;border-radius:10px;padding:16px;margin-bottom:14px;border-left:4px solid #039fe1;">';
-        html += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">';
-        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/delivery_icon.jpg" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">';
-        html += '<div>';
-        html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Entrega Garantizada</div>';
-        html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega garantizada a m\u00e1s tardar el <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
         html += '</div>';
         html += '</div>';
         html += '</div>';
