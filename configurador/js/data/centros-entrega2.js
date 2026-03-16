@@ -5,20 +5,30 @@
    ========================================================================== */
 
 var VOLTIKA_CENTROS = [
+    // tipo 'center' = Voltika Center (exhibici\u00f3n, pruebas de manejo, entrega, servicio, refacciones)
     {
-        id: 'garage-mushu',
-        nombre: 'Garage Mushu',
-        direccion: 'Av. Central 502',
-        ubicacion: 'Las Am\u00e9ricas, Ecatepec',
-        cp: '55076',
-        ciudad: 'Ecatepec de Morelos',
-        estado: 'M\u00e9xico',
-        horarios: 'Lunes a Viernes 10:00am a 18:00hrs',
+        id: 'voltika-center-santa-fe',
+        nombre: 'Voltika Center Santa Fe',
+        direccion: 'Ernesto J. Piper 9',
+        ubicacion: 'Santa Fe \u2013 CDMX',
+        colonia: 'Paseos de las Lomas, \u00c1lvaro Obreg\u00f3n',
+        cp: '01330',
+        ciudad: 'Ciudad de M\u00e9xico',
+        estado: 'CDMX',
+        horarios: 'Atenci\u00f3n por WhatsApp o cita previa',
         autorizado: true,
-        tipo: 'completo',
-        tags: ['Exhibici\u00f3n', 'Entrega', 'Servicio t\u00e9cnico'],
-        descripcion: 'Entrega y soporte t\u00e9cnico autorizados por Voltika.'
+        tipo: 'center',
+        tags: ['Exhibici\u00f3n', 'Pruebas de manejo', 'Entrega', 'Servicio t\u00e9cnico', 'Refacciones'],
+        servicios: [
+            'Exhibici\u00f3n de motos Voltika',
+            'Pruebas de manejo disponibles',
+            'Entrega y activaci\u00f3n de tu moto',
+            'Servicio t\u00e9cnico especializado',
+            'Refacciones originales Voltika'
+        ],
+        descripcion: 'Entrega en CDMX y todo M\u00e9xico'
     },
+    // tipo 'certificado' = Punto Voltika certificado (exhibici\u00f3n, entrega, servicio)
     {
         id: 'godike-motors',
         nombre: 'Godike Motors',
@@ -29,7 +39,21 @@ var VOLTIKA_CENTROS = [
         estado: 'CDMX',
         horarios: 'Lunes a Viernes 10:00am a 18:30hrs, S\u00e1bado 11:00am a 14:00hrs, Domingo cerrado',
         autorizado: true,
-        tipo: 'completo',
+        tipo: 'certificado',
+        tags: ['Exhibici\u00f3n', 'Entrega', 'Servicio t\u00e9cnico'],
+        descripcion: 'Entrega y soporte t\u00e9cnico autorizados por Voltika.'
+    },
+    {
+        id: 'garage-mushu',
+        nombre: 'Garage Mushu',
+        direccion: 'Av. Central 502',
+        ubicacion: 'Las Am\u00e9ricas, Ecatepec',
+        cp: '55076',
+        ciudad: 'Ecatepec de Morelos',
+        estado: 'M\u00e9xico',
+        horarios: 'Lunes a Viernes 10:00am a 18:00hrs',
+        autorizado: true,
+        tipo: 'certificado',
         tags: ['Exhibici\u00f3n', 'Entrega', 'Servicio t\u00e9cnico'],
         descripcion: 'Entrega y soporte t\u00e9cnico autorizados por Voltika.'
     }

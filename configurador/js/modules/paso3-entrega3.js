@@ -417,7 +417,9 @@ var Paso3 = {
             'Exhibici\u00f3n': '\u25A0',
             'Entrega': '\u25B6',
             'Servicio t\u00e9cnico': '\u2699',
-            'Activaci\u00f3n': '\u26A1'
+            'Activaci\u00f3n': '\u26A1',
+            'Pruebas de manejo': '\u26F5',
+            'Refacciones': '\u2699'
         };
         var sym = symbols[tag] || '\u2022';
         var iconCircle = '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:8px;flex-shrink:0;">' + sym + '</span>';
@@ -442,33 +444,101 @@ var Paso3 = {
     },
 
     _renderCentroCard: function(centro) {
-        var esCompleto = (centro.tipo === 'completo');
+        var esCenter = (centro.tipo === 'center');
+        if (esCenter) return this._renderCenterCard(centro);
+        return this._renderCertificadoCard(centro);
+    },
+
+    // Voltika Center card (tipo 'center') — premium, star icon, checklist, 2 buttons
+    _renderCenterCard: function(centro) {
         var self = this;
         var h = '';
         var mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(centro.nombre + ' ' + centro.direccion + ' ' + centro.ciudad);
 
-        // Card container — completo uses navy border
-        h += '<div class="vk-card" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:1.5px solid ' + (esCompleto ? '#1a3a5c' : '#ddd') + ';">';
+        h += '<div class="vk-card" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:2px solid #1a3a5c;">';
+        h += '<div style="padding:20px;">';
 
-        // Card body
-        h += '<div style="padding:16px;">';
+        // Star + title
+        h += '<div style="text-align:center;margin-bottom:10px;">';
+        h += '<div style="font-weight:800;font-size:18px;color:var(--vk-text-primary);">&#11088; ' + centro.nombre + '</div>';
+        // Subtitle: tags as inline text
+        h += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-top:4px;">';
+        if (centro.tags && centro.tags.length) {
+            h += centro.tags.join(' \u00b7 ');
+        }
+        h += '</div>';
+        h += '</div>';
 
-        // Header: radio circle + title + badge
-        h += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">';
-        // Radio circle — completo type starts checked (navy filled)
-        if (esCompleto) {
-            h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;background:#039fe1;border:2px solid #039fe1;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
-            h += '<span style="color:#fff;font-size:12px;line-height:1;">&#10003;</span>';
-            h += '</div>';
+        // Location
+        if (centro.ubicacion) {
+            h += '<div style="font-size:14px;color:var(--vk-text-primary);margin-bottom:2px;display:flex;align-items:center;gap:6px;">' + self._pinIcon() + ' <strong>' + centro.ubicacion + '</strong></div>';
+        }
+        h += '<div style="font-size:13px;color:var(--vk-text-secondary);padding-left:22px;">' + centro.direccion + '</div>';
+        if (centro.colonia) {
+            h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:12px;padding-left:22px;">' + centro.colonia + '</div>';
         } else {
-            h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
+            h += '<div style="margin-bottom:12px;"></div>';
+        }
+
+        // Services checklist
+        if (centro.servicios && centro.servicios.length) {
+            h += '<div style="margin-bottom:14px;">';
+            var checkStyle = 'font-size:13px;color:var(--vk-text-primary);font-weight:400;margin-bottom:6px;display:flex;align-items:center;gap:6px;';
+            for (var s = 0; s < centro.servicios.length; s++) {
+                var parts = centro.servicios[s].split(' ');
+                var firstWord = '<strong>' + parts[0] + '</strong>';
+                var rest = parts.slice(1).join(' ');
+                h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' ' + firstWord + ' ' + rest + '</div>';
+            }
             h += '</div>';
         }
-        // Title + subtitle
+
+        // Delivery coverage
+        if (centro.descripcion) {
+            h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;font-size:13px;font-weight:700;color:#1a3a5c;">';
+            h += self._globeIcon() + ' ' + centro.descripcion;
+            h += '</div>';
+        }
+
+        // VER UBICACIÓN button
+        h += '<a href="' + mapsUrl + '" target="_blank" rel="noopener" ' +
+            'style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;text-decoration:none;padding:14px;border-radius:8px;background:#039fe1;margin-bottom:10px;">' +
+            self._pinIcon() + ' VER UBICACI\u00d3N DEL VOLTIKA CENTER</a>';
+
+        // AGENDAR PRUEBA DE MANEJO button
+        h += '<button class="vk-btn vk-select-centro" data-centro-id="' + centro.id + '" ' +
+            'style="width:100%;font-size:13px;font-weight:700;padding:14px;background:#E8F4FD;color:#1a3a5c;border:1.5px solid #039fe1;border-radius:8px;cursor:pointer;margin-bottom:10px;">' +
+            '&#9889; AGENDAR PRUEBA DE MANEJO</button>';
+
+        // Footer
+        h += '<div style="font-size:12px;color:#1a3a5c;text-align:center;">';
+        h += self._clockIcon() + ' ' + centro.horarios;
+        h += '</div>';
+
+        h += '</div>'; // end body
+        h += '</div>'; // end card
+
+        return h;
+    },
+
+    // Punto Voltika certificado card (tipo 'certificado') — shield icon, tags, select button
+    _renderCertificadoCard: function(centro) {
+        var self = this;
+        var h = '';
+        var mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(centro.nombre + ' ' + centro.direccion + ' ' + centro.ciudad);
+
+        h += '<div class="vk-card" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:1.5px solid #1a3a5c;">';
+        h += '<div style="padding:16px;">';
+
+        // Header: radio circle + title
+        h += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">';
+        h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;background:#039fe1;border:2px solid #039fe1;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
+        h += '<span style="color:#fff;font-size:12px;line-height:1;">&#10003;</span>';
+        h += '</div>';
         h += '<div style="flex:1;min-width:0;">';
         h += '<div style="font-weight:800;font-size:15px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
         h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;">';
-        h += '' + self._shieldIcon() + ' Centro Voltika Autorizado';
+        h += self._shieldIcon() + ' Punto Voltika certificado';
         h += '</div>';
         h += '</div>';
         h += '</div>';
@@ -479,7 +549,7 @@ var Paso3 = {
         }
         h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;padding-left:22px;">' + centro.direccion + '</div>';
 
-        // Tags with specific icons
+        // Tags
         h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">';
         if (centro.tags && centro.tags.length) {
             for (var t = 0; t < centro.tags.length; t++) {
@@ -488,9 +558,9 @@ var Paso3 = {
         }
         h += '</div>';
 
-        // Bottom section: description + ver ubicación button
+        // Bottom section
         h += '<div style="background:#F7F7F7;border-radius:10px;padding:14px;margin-bottom:4px;">';
-        h += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' + self._greenCheck() + ' Centro Voltika verificado</div>';
+        h += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' + self._greenCheck() + ' Punto Voltika verificado</div>';
         if (centro.descripcion) {
             h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">' + centro.descripcion + '</div>';
         }
@@ -585,11 +655,12 @@ var Paso3 = {
             return;
         }
 
-        // Sort: completo centers first
+        // Sort: center first, then certificado, then entrega
+        var tipoPriority = { 'center': 0, 'certificado': 1, 'entrega': 2 };
         centros.sort(function(a, b) {
-            if (a.tipo === 'completo' && b.tipo !== 'completo') return -1;
-            if (a.tipo !== 'completo' && b.tipo === 'completo') return 1;
-            return 0;
+            var pa = tipoPriority[a.tipo] !== undefined ? tipoPriority[a.tipo] : 3;
+            var pb = tipoPriority[b.tipo] !== undefined ? tipoPriority[b.tipo] : 3;
+            return pa - pb;
         });
 
         // Render recommended (first)
