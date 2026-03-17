@@ -271,13 +271,28 @@ var Paso3 = {
         $(document).on('click', '#vk-paso3-confirmar', function() {
             var cp = $('#vk-cp-input').val();
             var colonia = $('#vk-cp-colonia').val();
-            if (!VkValidacion.codigoPostal(cp) || !self.app.state.ciudad || !colonia) {
+            if (!VkValidacion.codigoPostal(cp) || !self.app.state.ciudad) {
                 $('#vk-cp-error').show();
                 $('#vk-cp-input').focus();
                 $('#vk-cp-input').css('border-color', '#D32F2F');
                 setTimeout(function() { $('#vk-cp-input').css('border-color', ''); }, 3000);
                 return;
             }
+            if (!colonia) {
+                // Show colonia-specific error
+                if (!$('#vk-colonia-error').length) {
+                    $('#vk-cp-colonia').closest('.vk-form-group').after(
+                        '<div id="vk-colonia-error" style="color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:10px;text-align:center;font-weight:600;">' +
+                        'Selecciona tu colonia para continuar.</div>'
+                    );
+                } else {
+                    $('#vk-colonia-error').show();
+                }
+                $('#vk-cp-colonia').css('border-color', '#D32F2F');
+                setTimeout(function() { $('#vk-cp-colonia').css('border-color', ''); }, 3000);
+                return;
+            }
+            $('#vk-colonia-error').hide();
             // Check if a delivery center was selected
             if (!self.app.state.centroEntrega) {
                 var $section = $('#vk-centros-section');
@@ -458,15 +473,9 @@ var Paso3 = {
         h += '<div class="vk-card" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:2px solid #1a3a5c;">';
         h += '<div style="padding:20px;">';
 
-        // Star + title
+        // Star + title (no subtitle tags — services shown below with icons)
         h += '<div style="text-align:center;margin-bottom:10px;">';
         h += '<div style="font-weight:800;font-size:18px;color:var(--vk-text-primary);">&#11088; ' + centro.nombre + '</div>';
-        // Subtitle: tags as inline text
-        h += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-top:4px;">';
-        if (centro.tags && centro.tags.length) {
-            h += centro.tags.join(' \u00b7 ');
-        }
-        h += '</div>';
         h += '</div>';
 
         // Location
@@ -480,15 +489,21 @@ var Paso3 = {
             h += '<div style="margin-bottom:12px;"></div>';
         }
 
-        // Services checklist
+        // Services list with icons (no green checks)
         if (centro.servicios && centro.servicios.length) {
+            var serviceIcons = {
+                'Exhibici\u00f3n': '\u25A0', 'Pruebas': '\u26F5', 'Entrega': '\u25B6',
+                'Servicio': '\u2699', 'Refacciones': '\u2699'
+            };
             h += '<div style="margin-bottom:14px;">';
-            var checkStyle = 'font-size:13px;color:var(--vk-text-primary);font-weight:400;margin-bottom:6px;display:flex;align-items:center;gap:6px;';
+            var svcStyle = 'font-size:13px;color:var(--vk-text-primary);font-weight:400;margin-bottom:6px;display:flex;align-items:center;gap:8px;';
             for (var s = 0; s < centro.servicios.length; s++) {
                 var parts = centro.servicios[s].split(' ');
-                var firstWord = '<strong>' + parts[0] + '</strong>';
+                var firstWord = parts[0];
                 var rest = parts.slice(1).join(' ');
-                h += '<div style="' + checkStyle + '">' + self._greenCheck() + ' ' + firstWord + ' ' + rest + '</div>';
+                var sym = serviceIcons[firstWord] || '\u2022';
+                var iconCircle = '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#039fe1;color:#fff;font-size:8px;flex-shrink:0;">' + sym + '</span>';
+                h += '<div style="' + svcStyle + '">' + iconCircle + ' <strong>' + firstWord + '</strong> ' + rest + '</div>';
             }
             h += '</div>';
         }
@@ -663,22 +678,28 @@ var Paso3 = {
             return pa - pb;
         });
 
-        // Render recommended (first)
+        // Show first 3 centers directly (no expand needed)
+        var maxVisible = 3;
         var recHtml = '';
         recHtml += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin-bottom:8px;">Centro de entrega recomendado</div>';
-        recHtml += self._renderCentroCard(centros[0]);
+        for (var v = 0; v < Math.min(centros.length, maxVisible); v++) {
+            recHtml += self._renderCentroCard(centros[v]);
+        }
+        // Always append cercano card
+        recHtml += self._renderCentroCercanoCard(ciudad);
         $('#vk-centro-recomendado').html(recHtml);
 
-        // Other centers + always show cercano card at the end
-        var otrosHtml = '';
-        for (var i = 1; i < centros.length; i++) {
-            otrosHtml += self._renderCentroCard(centros[i]);
+        // Remaining centers (4+) go in expandable section
+        if (centros.length > maxVisible) {
+            var otrosHtml = '';
+            for (var i = maxVisible; i < centros.length; i++) {
+                otrosHtml += self._renderCentroCard(centros[i]);
+            }
+            $('#vk-otros-centros-list').html(otrosHtml);
+            $('#vk-otros-centros-wrapper').show();
+        } else {
+            $('#vk-otros-centros-wrapper').hide();
         }
-        // Always append cercano card as fallback option
-        otrosHtml += self._renderCentroCercanoCard(ciudad);
-
-        $('#vk-otros-centros-list').html(otrosHtml);
-        $('#vk-otros-centros-wrapper').show();
 
         $('#vk-centros-section').slideDown(200);
     },
