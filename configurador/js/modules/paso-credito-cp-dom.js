@@ -20,15 +20,36 @@ var PasoCreditoCPDom = {
 
         html += '<h2 class="vk-paso__titulo">C\u00f3digo postal de tu domicilio</h2>';
 
-        // Show previously selected delivery point
-        if (state.codigoPostal) {
-            var cpInfo = VOLTIKA_CP._buscar(state.codigoPostal);
-            html += '<div class="vk-info-box">';
-            html += '<div class="vk-info-box__label">\ud83d\udce6 Punto de entrega seleccionado</div>';
-            html += '<div class="vk-info-box__value">' + state.codigoPostal;
-            if (cpInfo) html += ' \u2014 ' + cpInfo.ciudad + ', ' + cpInfo.estado;
-            html += '</div>';
-            html += '<div class="vk-info-box__note" style="font-weight:800;text-transform:uppercase;">(este es para recibir tu Voltika)</div>';
+        // Show previously selected delivery point with full detail
+        if (state.codigoPostal || state.centroEntrega) {
+            var centro = state.centroEntrega;
+            html += '<div style="background:#F0F7FF;border:1.5px solid #B3D4FC;border-radius:12px;padding:14px;margin-bottom:16px;">';
+            html += '<div style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">&#128230; Punto de entrega seleccionado</div>';
+
+            if (centro && centro.nombre) {
+                // Show centro name
+                html += '<div style="font-size:16px;font-weight:800;color:#333;margin-bottom:4px;">' + centro.nombre + '</div>';
+                // Show address if available
+                if (centro.direccion) {
+                    html += '<div style="font-size:13px;color:#555;margin-bottom:2px;">' + centro.direccion + '</div>';
+                }
+                if (centro.colonia) {
+                    html += '<div style="font-size:13px;color:#555;margin-bottom:2px;">' + centro.colonia + '</div>';
+                }
+                // CP + City
+                var ubicacion = '';
+                if (state.codigoPostal) ubicacion += state.codigoPostal + ' \u2014 ';
+                ubicacion += (centro.ciudad || state.ciudad || '') + ', ' + (centro.estado || state.estado || '');
+                html += '<div style="font-size:14px;font-weight:700;color:#333;">' + ubicacion + '</div>';
+            } else {
+                // Fallback: just CP + city
+                html += '<div style="font-size:16px;font-weight:800;color:#333;">' + state.codigoPostal;
+                var cpInfo = VOLTIKA_CP._buscar(state.codigoPostal);
+                if (cpInfo) html += ' \u2014 ' + cpInfo.ciudad + ', ' + cpInfo.estado;
+                html += '</div>';
+            }
+
+            html += '<div style="font-size:11px;font-weight:800;color:#039fe1;text-transform:uppercase;margin-top:6px;">(este es para recibir tu Voltika)</div>';
             html += '</div>';
         }
 
