@@ -669,17 +669,16 @@ var Paso3 = {
         recHtml += self._renderCentroCard(centros[0]);
         $('#vk-centro-recomendado').html(recHtml);
 
-        // Other centers (no cercano card when real centers exist)
-        if (centros.length > 1) {
-            var otrosHtml = '';
-            for (var i = 1; i < centros.length; i++) {
-                otrosHtml += self._renderCentroCard(centros[i]);
-            }
-            $('#vk-otros-centros-list').html(otrosHtml);
-            $('#vk-otros-centros-wrapper').show();
-        } else {
-            $('#vk-otros-centros-wrapper').hide();
+        // Other centers + always show cercano card at the end
+        var otrosHtml = '';
+        for (var i = 1; i < centros.length; i++) {
+            otrosHtml += self._renderCentroCard(centros[i]);
         }
+        // Always append cercano card as fallback option
+        otrosHtml += self._renderCentroCercanoCard(ciudad);
+
+        $('#vk-otros-centros-list').html(otrosHtml);
+        $('#vk-otros-centros-wrapper').show();
 
         $('#vk-centros-section').slideDown(200);
     },
