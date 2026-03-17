@@ -35,7 +35,9 @@ var Paso4A = {
         var total       = modelo.precioContado + state.costoLogistico;
         var msiPago     = modelo.tieneMSI ? Math.round(modelo.precioMSI) : Math.round(total / 9);
         var ciudad      = (state.ciudad && state.estado) ? state.ciudad + ', ' + state.estado : (state.ciudad || '--');
-        var diasEntrega = VOLTIKA_PRODUCTOS.config.entregaDiasHabiles || '7 a 10';
+        var _fd = new Date(); _fd.setDate(_fd.getDate() + 15);
+        var _meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        var fechaEntrega = _fd.getDate() + ' de ' + _meses[_fd.getMonth()] + ' de ' + _fd.getFullYear();
         var color       = state.colorSeleccionado || modelo.colorDefault || '';
         var base        = window.VK_BASE_PATH || '';
         var imgSrc      = base + 'img/' + modelo.id + '/model.png';
@@ -153,7 +155,7 @@ var Paso4A = {
         html += '<div>\u2022 Modelo: <strong>' + modelo.nombre + '</strong></div>';
         html += '<div>\u2022 Color: <strong>' + color + '</strong></div>';
         html += '<div>\u2022 Entrega en: <strong>' + ciudad + '</strong></div>';
-        html += '<div>\u2022 Entrega estimada: <strong>' + diasEntrega + ' d\u00edas h\u00e1biles</strong> en tu ciudad</div>';
+        html += '<div>\u2022 Fecha M\u00e1xima de entrega: <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);">\u2022 Asesor Voltika confirma la ubicaci\u00f3n exacta del centro autorizado entre 24 a 48 horas, h\u00e1biles despu\u00e9s del pago</div>';
         if (state.costoLogistico > 0) {
             html += '<div>\u2022 Costo log\u00edstico: <strong>' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</strong></div>';
