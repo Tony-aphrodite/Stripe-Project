@@ -188,7 +188,8 @@ var Paso3 = {
             .off('change', '#vk-check-placas').off('change', '#vk-check-seguro')
             .off('change', '#vk-cp-colonia')
             .off('click', '.vk-select-centro').off('click', '#vk-otros-centros-toggle')
-            .off('click', '#vk-select-centro-cercano');
+            .off('click', '#vk-select-centro-cercano')
+            .off('click', '.vk-centro-card');
 
         // Postal code input
         $(document).on('input', '#vk-cp-input', function() {
@@ -255,16 +256,23 @@ var Paso3 = {
                 tipo: 'cercano'
             };
             $('#vk-centro-error').hide();
-            // Reset all radio circles, then fill cercano
+            // Reset all radio circles + card glows
             $('.vk-radio-circle').css({ 'background': 'transparent', 'border-color': '#ccc' }).html('');
-            $('.vk-radio-circle[data-radio-id="centro-cercano"]')
-                .css({ 'background': 'var(--vk-green-primary)', 'border-color': 'var(--vk-green-primary)' })
-                .html('<span style="color:#fff;font-size:12px;line-height:1;">&#10003;</span>');
-            // Visual feedback
-            $('.vk-select-centro').css({ 'opacity': '0.6' }).each(function() {
-                if (this.id !== 'vk-select-centro-cercano') $(this).text('SELECCIONAR ESTE CENTRO');
-            });
+            $('.vk-centro-card').css({ 'box-shadow': 'none', 'border-color': '#1a3a5c' });
+            // Glow on cercano card
+            $(this).closest('.vk-card').css({ 'box-shadow': '0 0 14px rgba(3,159,225,0.45)', 'border-color': '#039fe1' });
+            // Update button
             $(this).css({ 'opacity': '1', 'background': '#027ab8' }).text('\u2713 Centro cercano seleccionado');
+        });
+
+        // Click on centro card to select it (glow effect)
+        $(document).on('click', '.vk-centro-card', function(e) {
+            // Don't trigger if clicking a link or button inside
+            if ($(e.target).is('a, button') || $(e.target).closest('a, button').length) return;
+            var centroId = $(this).data('centro-id');
+            if (centroId) {
+                self._selectCentro(centroId);
+            }
         });
 
         // Confirm
@@ -470,7 +478,7 @@ var Paso3 = {
         var h = '';
         var mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(centro.nombre + ' ' + centro.direccion + ' ' + centro.ciudad);
 
-        h += '<div class="vk-card" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:2px solid #1a3a5c;">';
+        h += '<div class="vk-card vk-centro-card" data-centro-id="' + centro.id + '" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:2px solid #1a3a5c;cursor:pointer;transition:box-shadow 0.3s,border-color 0.3s;">';
         h += '<div style="padding:20px;">';
 
         // Star + title (no subtitle tags — services shown below with icons)
@@ -537,13 +545,12 @@ var Paso3 = {
         var h = '';
         var mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(centro.nombre + ' ' + centro.direccion + ' ' + centro.ciudad);
 
-        h += '<div class="vk-card" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:1.5px solid #1a3a5c;">';
+        h += '<div class="vk-card vk-centro-card" data-centro-id="' + centro.id + '" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:1.5px solid #1a3a5c;cursor:pointer;transition:box-shadow 0.3s,border-color 0.3s;">';
         h += '<div style="padding:16px;">';
 
         // Header: radio circle + title
         h += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">';
-        h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;background:#039fe1;border:2px solid #039fe1;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
-        h += '<span style="color:#fff;font-size:12px;line-height:1;">&#10003;</span>';
+        h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;background:transparent;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
         h += '</div>';
         h += '<div style="flex:1;min-width:0;">';
         h += '<div style="font-weight:800;font-size:15px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
@@ -708,20 +715,19 @@ var Paso3 = {
         if (centro) {
             this.app.state.centroEntrega = centro;
             $('#vk-centro-error').hide();
-            // Reset all radio circles to empty
+            // Reset all radio circles
             $('.vk-radio-circle').css({ 'background': 'transparent', 'border-color': '#ccc' }).html('');
+            // Reset all card glow
+            $('.vk-centro-card').css({ 'box-shadow': 'none', 'border-color': '#1a3a5c' });
             // Fill selected radio circle
             $('.vk-radio-circle[data-radio-id="' + centroId + '"]')
-                .css({ 'background': 'var(--vk-green-primary)', 'border-color': 'var(--vk-green-primary)' })
+                .css({ 'background': '#039fe1', 'border-color': '#039fe1' })
                 .html('<span style="color:#fff;font-size:12px;line-height:1;">&#10003;</span>');
-            // Reset buttons
-            $('.vk-select-centro').css({ 'opacity': '0.6' }).each(function() {
-                if ($(this).data('centro-id')) $(this).text('SELECCIONAR ESTE CENTRO');
-            });
-            $('#vk-select-centro-cercano').css({ 'opacity': '0.6', 'background': '#039fe1' }).text('Confirmar centro cercano \u203a');
-            $('.vk-select-centro[data-centro-id="' + centroId + '"]')
-                .css({ 'opacity': '1', 'background': 'var(--vk-green-dark)' })
-                .text('\u2713 Seleccionado');
+            // Glow on selected card
+            $('.vk-centro-card[data-centro-id="' + centroId + '"]')
+                .css({ 'box-shadow': '0 0 14px rgba(3,159,225,0.45)', 'border-color': '#039fe1' });
+            // Reset cercano button
+            $('#vk-select-centro-cercano').css({ 'opacity': '0.6', 'background': '#039fe1' }).text('ENTREGA DISPONIBLE CERCA DE TI');
         }
     },
 
