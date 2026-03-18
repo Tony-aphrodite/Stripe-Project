@@ -66,8 +66,11 @@ var Paso2 = {
         }
         html += '</div>';
 
-        html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:6px 0 16px;">' +
+        html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:6px 0 4px;">' +
             'El color no afecta precio ni tiempo de entrega.' +
+            '</p>';
+        html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:0 0 16px;">' +
+            'Colores sujetos a disponibilidad.' +
             '</p>';
 
         html += '</div>'; // end left
