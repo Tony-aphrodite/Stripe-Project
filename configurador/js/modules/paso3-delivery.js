@@ -97,6 +97,7 @@ var Paso3 = {
         html += '<option value="">Selecciona tu colonia</option>';
         html += '</select>';
         html += '<div id="vk-cp-colonia-loading" style="display:none;font-size:12px;color:var(--vk-text-muted);margin-top:4px;">Cargando colonias...</div>';
+        html += '<div id="vk-colonia-error" style="display:none;color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-top:6px;text-align:center;font-weight:600;">Selecciona tu colonia para continuar.</div>';
         html += '</div>';
 
         html += '</div>';
@@ -213,6 +214,7 @@ var Paso3 = {
             var val = $(this).val();
             self.app.state.colonia = val;
             $('#vk-paso3-confirmar').prop('disabled', !val);
+            if (val) $('#vk-colonia-error').hide();
         });
 
         // Checkboxes
@@ -287,16 +289,9 @@ var Paso3 = {
                 return;
             }
             if (!colonia) {
-                // Show colonia-specific error
-                if (!$('#vk-colonia-error').length) {
-                    $('#vk-cp-colonia').closest('.vk-form-group').after(
-                        '<div id="vk-colonia-error" style="color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:10px;text-align:center;font-weight:600;">' +
-                        'Selecciona tu colonia para continuar.</div>'
-                    );
-                } else {
-                    $('#vk-colonia-error').show();
-                }
+                $('#vk-colonia-error').show();
                 $('#vk-cp-colonia').css('border-color', '#D32F2F');
+                $('html, body').animate({ scrollTop: $('#vk-cp-colonia').offset().top - 100 }, 400);
                 setTimeout(function() { $('#vk-cp-colonia').css('border-color', ''); }, 3000);
                 return;
             }
