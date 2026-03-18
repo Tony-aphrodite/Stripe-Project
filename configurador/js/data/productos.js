@@ -1,7 +1,7 @@
 /* ==========================================================================
    Voltika - Product Catalog
-   Fuente: voltika_precios.pdf (Feb 2026)
-   precioMSI = precio total MSI / 9 meses
+   Updated: Mar 2026 (boss-verified prices)
+   precioMSI = precioContado / 9 (sin intereses)
    ========================================================================== */
 
 var VOLTIKA_PRODUCTOS = {
@@ -11,12 +11,12 @@ var VOLTIKA_PRODUCTOS = {
             nombre: 'M05',
             subtitulo: 'Ideal para ciudad y carretera',
             badge: 'MAS VENDIDO',
-            autonomia: 100,
-            velocidad: 90,
+            autonomia: 90,
+            velocidad: 75,
             precioContado: 48260,
-            precioSemanal: 626,
-            precioMSI: Math.round(53500 / 9),   // $5,944/mes
-            precioMSITotal: 53500,
+            precioSemanal: 554,
+            precioMSI: Math.round(48260 / 9),
+            precioMSITotal: 48260,
             msiMeses: 9,
             tieneMSI: true,
             enganchePorcentaje: 0.25,
@@ -33,12 +33,12 @@ var VOLTIKA_PRODUCTOS = {
             nombre: 'M03',
             subtitulo: 'Alternativa accesible',
             badge: null,
-            autonomia: 80,
-            velocidad: 75,
-            precioContado: 36900,
-            precioSemanal: 490,
-            precioMSI: Math.round(46800 / 9),   // $5,200/mes
-            precioMSITotal: 46800,
+            autonomia: 90,
+            velocidad: 60,
+            precioContado: 39900,
+            precioSemanal: 458,
+            precioMSI: Math.round(39900 / 9),
+            precioMSITotal: 39900,
             msiMeses: 9,
             tieneMSI: true,
             enganchePorcentaje: 0.25,
@@ -55,12 +55,12 @@ var VOLTIKA_PRODUCTOS = {
             nombre: 'Ukko S+',
             subtitulo: 'Premium, mas potencia',
             badge: null,
-            autonomia: 150,
-            velocidad: 120,
+            autonomia: 130,
+            velocidad: 95,
             precioContado: 89900,
-            precioSemanal: 1200,
-            precioMSI: Math.round(105990 / 9),  // $11,777/mes
-            precioMSITotal: 105990,
+            precioSemanal: 1032,
+            precioMSI: Math.round(89900 / 9),
+            precioMSITotal: 89900,
             msiMeses: 9,
             tieneMSI: true,
             enganchePorcentaje: 0.25,
@@ -79,10 +79,10 @@ var VOLTIKA_PRODUCTOS = {
             subtitulo: 'Premium multiproposito',
             badge: null,
             autonomia: 130,
-            velocidad: 110,
-            precioContado: 142700,
-            precioSemanal: 1900,
-            precioMSI: Math.round(109900 / 9),  // $12,211/mes
+            velocidad: 95,
+            precioContado: 109900,
+            precioSemanal: 1261,
+            precioMSI: Math.round(109900 / 9),
             precioMSITotal: 109900,
             msiMeses: 9,
             tieneMSI: true,
@@ -99,14 +99,14 @@ var VOLTIKA_PRODUCTOS = {
             nombre: 'Pesgo Plus',
             subtitulo: 'Ciudad inteligente',
             badge: null,
-            autonomia: 60,
-            velocidad: 55,
+            autonomia: 80,
+            velocidad: 60,
             precioContado: 36600,
-            precioSemanal: 490,
-            precioMSI: null,          // Sin opcion MSI segun precios oficiales
-            precioMSITotal: null,
+            precioSemanal: 420,
+            precioMSI: Math.round(36600 / 9),
+            precioMSITotal: 36600,
             msiMeses: 9,
-            tieneMSI: false,
+            tieneMSI: true,
             enganchePorcentaje: 0.25,
             colores: [
                 { id: 'negro', nombre: 'Negro', hex: '#1A1A1A' },
@@ -122,12 +122,12 @@ var VOLTIKA_PRODUCTOS = {
             nombre: 'Mino-B',
             subtitulo: 'Compacta y versatil',
             badge: null,
-            autonomia: null,          // TODO: confirmar con cliente
-            velocidad: null,          // TODO: confirmar con cliente
-            precioContado: 36600,
-            precioSemanal: 490,
-            precioMSI: Math.round(39320 / 9),   // $4,369/mes
-            precioMSITotal: 39320,
+            autonomia: 90,
+            velocidad: 60,
+            precioContado: 41820,
+            precioSemanal: 480,
+            precioMSI: Math.round(41820 / 9),
+            precioMSITotal: 41820,
             msiMeses: 9,
             tieneMSI: true,
             enganchePorcentaje: 0.25,
@@ -153,7 +153,7 @@ var VOLTIKA_PRODUCTOS = {
             iva: 0.16,
             plazoDefaultMeses: 12,
             pagosDefault: 52,
-            engancheMinimo: 0.25          // V3: minimo 25%
+            engancheMinimo: 0.25
         }
     }
 };
