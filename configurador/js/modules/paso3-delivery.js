@@ -520,11 +520,6 @@ var Paso3 = {
             'style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;text-decoration:none;padding:14px;border-radius:8px;background:#039fe1;margin-bottom:10px;">' +
             self._pinIcon() + ' VER UBICACI\u00d3N DEL VOLTIKA CENTER</a>';
 
-        // AGENDAR PRUEBA DE MANEJO button
-        h += '<button class="vk-btn vk-select-centro" data-centro-id="' + centro.id + '" ' +
-            'style="width:100%;font-size:13px;font-weight:700;padding:14px;background:#E8F4FD;color:#1a3a5c;border:1.5px solid #039fe1;border-radius:8px;cursor:pointer;margin-bottom:10px;">' +
-            '&#9889; AGENDAR PRUEBA DE MANEJO</button>';
-
         // Footer
         h += '<div style="font-size:12px;color:#1a3a5c;text-align:center;">';
         h += self._clockIcon() + ' ' + centro.horarios;
