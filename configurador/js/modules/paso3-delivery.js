@@ -579,10 +579,6 @@ var Paso3 = {
             '&#10095; Ver ubicaci\u00f3n</a>';
         h += '</div>';
 
-        // Select button
-        h += '<button class="vk-btn vk-btn--primary vk-select-centro" data-centro-id="' + centro.id + '" ' +
-            'style="font-size:14px;font-weight:700;padding:12px;width:100%;margin-top:12px;">SELECCIONAR ESTE CENTRO</button>';
-
         h += '</div>'; // end body
         h += '</div>'; // end card
 
