@@ -319,7 +319,7 @@ var Paso1 = {
         html += '</div>';
 
         html += '<div class="vk-card__info-row">';
-        html += '<div class="vk-card__nombre">' + self._getModeloLogo(modelo.id, modelo.nombre) + '</div>';
+        html += '<div class="vk-card__nombre">' + Paso1._getModeloLogo(modelo.id, modelo.nombre) + '</div>';
         if (modelo.autonomia) {
             html += '<div class="vk-card__spec-item">Autonom\u00eda:<br><strong>' + modelo.autonomia + ' Km</strong></div>';
             html += '<div class="vk-card__spec-item">Velocidad:<br><strong>' + modelo.velocidad + ' Km/h</strong></div>';
