@@ -480,9 +480,12 @@ var Paso3 = {
 
         // Services list with icons (no green checks)
         if (centro.servicios && centro.servicios.length) {
-            var serviceIcons = {
-                'Exhibici\u00f3n': '\u25A0', 'Pruebas': '\u26F5', 'Entrega': '\u25B6',
-                'Servicio': '\u2699', 'Refacciones': '\u2699'
+            var serviceIconFiles = {
+                'Exhibici\u00f3n': 'iconos-01.svg', 'Entrega': 'iconos-03.svg',
+                'Servicio': 'iconos-02.svg'
+            };
+            var serviceSymbols = {
+                'Pruebas': '\u26F5', 'Refacciones': '\u2699'
             };
             h += '<div style="margin-bottom:14px;">';
             var svcStyle = 'font-size:13px;color:var(--vk-text-primary);font-weight:400;margin-bottom:6px;display:flex;align-items:center;gap:8px;';
@@ -490,9 +493,14 @@ var Paso3 = {
                 var parts = centro.servicios[s].split(' ');
                 var firstWord = parts[0];
                 var rest = parts.slice(1).join(' ');
-                var sym = serviceIcons[firstWord] || '\u2022';
-                var iconCircle = '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#039fe1;color:#fff;font-size:8px;flex-shrink:0;">' + sym + '</span>';
-                h += '<div style="' + svcStyle + '">' + iconCircle + ' <strong>' + firstWord + '</strong> ' + rest + '</div>';
+                var iconHtml;
+                if (serviceIconFiles[firstWord]) {
+                    iconHtml = '<img src="' + (window.VK_BASE_PATH || '') + 'img/' + serviceIconFiles[firstWord] + '" alt="" style="width:18px;height:18px;object-fit:contain;flex-shrink:0;">';
+                } else {
+                    var sym = serviceSymbols[firstWord] || '\u2022';
+                    iconHtml = '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#039fe1;color:#fff;font-size:8px;flex-shrink:0;">' + sym + '</span>';
+                }
+                h += '<div style="' + svcStyle + '">' + iconHtml + ' <strong>' + firstWord + '</strong> ' + rest + '</div>';
             }
             h += '</div>';
         }
