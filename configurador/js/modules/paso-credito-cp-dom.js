@@ -24,7 +24,7 @@ var PasoCreditoCPDom = {
         if (state.codigoPostal || state.centroEntrega) {
             var centro = state.centroEntrega;
             html += '<div style="background:#F0F7FF;border:1.5px solid #B3D4FC;border-radius:12px;padding:14px;margin-bottom:16px;">';
-            html += '<div style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">&#128230; Punto de entrega seleccionado</div>';
+            html += '<div style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:6px;display:flex;align-items:center;gap:6px;"><img src="' + (window.VK_BASE_PATH || '') + 'img/entrega.png" alt="" style="width:20px;height:20px;object-fit:contain;"> Punto de entrega seleccionado</div>';
 
             if (centro && centro.nombre) {
                 // Show centro name
