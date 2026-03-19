@@ -35,14 +35,22 @@ var PasoCreditoAprobado = {
         // White card area
         html += '<div class="vk-aprobado-body">';
 
-        // Delivery info
-        if (cpEntrega) {
+        // Delivery info — show selected centro details
+        var centro = state.centroEntrega;
+        if (cpEntrega || centro) {
             html += '<div class="vk-aprobado-info">';
             html += '<div class="vk-aprobado-info__row">';
             html += '<span style="font-size:18px;flex-shrink:0;">&#128205;</span>';
             html += '<div style="font-size:14px;line-height:1.5;">';
-            html += 'Tu moto se entregar\u00e1 en un <strong>punto Voltika autorizado</strong> cerca de ti';
-            html += '<div style="font-weight:700;margin-top:2px;">' + ciudadEntrega + ' (CP ' + cpEntrega + ')</div>';
+            if (centro && centro.nombre) {
+                html += 'Tu moto se entregar\u00e1 en <strong style="color:#039fe1;">' + centro.nombre + '</strong>';
+                if (centro.direccion && centro.tipo !== 'cercano') {
+                    html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">' + centro.direccion + '</div>';
+                }
+            } else {
+                html += 'Tu moto se entregar\u00e1 en un <strong>punto Voltika autorizado</strong> cerca de ti';
+            }
+            html += '<div style="font-weight:700;margin-top:2px;">' + ciudadEntrega + (cpEntrega ? ' (CP ' + cpEntrega + ')' : '') + '</div>';
             html += '</div>';
             html += '</div>';
             html += '</div>';
