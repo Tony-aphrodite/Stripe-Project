@@ -97,30 +97,35 @@ var VkUI = {
      * Render trust badges footer
      */
     renderTrustBadges: function(metodo) {
+        var base = window.VK_BASE_PATH || '';
+        var imgAhorro   = '<img src="' + base + 'img/ahorro_gasolina.png" alt="" style="width:28px;height:28px;object-fit:contain;">';
+        var imgPlacas   = '<img src="' + base + 'img/placas.png" alt="" style="width:28px;height:28px;object-fit:contain;">';
+        var imgGarantia = '<img src="' + base + 'img/garantia.png" alt="" style="width:28px;height:28px;object-fit:contain;">';
+
         var badges = [];
         if (metodo === 'credito') {
             badges = [
-                { icon: '&#9981;',  text: 'P\u00e1gala con tu ahorro en gasolina' },
-                { icon: '&#128203;', text: 'Documentos para placas incluidos' },
-                { icon: '&#128737;', text: 'Garant\u00eda Voltika' }
+                { icon: imgAhorro,   text: 'P\u00e1gala con tu ahorro en gasolina' },
+                { icon: imgPlacas,   text: 'Documentos para placas incluidos' },
+                { icon: imgGarantia, text: 'Garant\u00eda Voltika' }
             ];
         } else if (metodo === 'msi') {
             badges = [
-                { icon: '&#128179;', text: 'Sin inter\u00e9s a 9 meses' },
-                { icon: '&#128203;', text: 'Documentos para placas incluidos' },
-                { icon: '&#128737;', text: 'Garant\u00eda Voltika' }
+                { icon: imgAhorro,   text: 'Sin inter\u00e9s a 9 meses' },
+                { icon: imgPlacas,   text: 'Documentos para placas incluidos' },
+                { icon: imgGarantia, text: 'Garant\u00eda Voltika' }
             ];
         } else if (metodo === 'contado') {
             badges = [
-                { icon: '&#10004;',  text: 'Mejor precio de contado' },
-                { icon: '&#128203;', text: 'Documentos para placas incluidos' },
-                { icon: '&#128737;', text: 'Garant\u00eda Voltika' }
+                { icon: imgAhorro,   text: 'Mejor precio de contado' },
+                { icon: imgPlacas,   text: 'Documentos para placas incluidos' },
+                { icon: imgGarantia, text: 'Garant\u00eda Voltika' }
             ];
         } else {
             badges = [
-                { icon: '&#9889;',   text: '100% El\u00e9ctrica' },
-                { icon: '&#128737;', text: 'Garant\u00eda Voltika' },
-                { icon: '&#128179;', text: 'Hasta 9 MSI' }
+                { icon: imgAhorro,   text: '100% El\u00e9ctrica' },
+                { icon: imgGarantia, text: 'Garant\u00eda Voltika' },
+                { icon: imgPlacas,   text: 'Hasta 9 MSI' }
             ];
         }
         var html = '<div class="vk-trust-badges">';
