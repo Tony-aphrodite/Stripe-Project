@@ -98,9 +98,9 @@ var VkUI = {
      */
     renderTrustBadges: function(metodo) {
         var base = window.VK_BASE_PATH || '';
-        var imgAhorro   = '<img src="' + base + 'img/ahorro_gasolina.png" alt="" style="width:28px;height:28px;object-fit:contain;">';
-        var imgPlacas   = '<img src="' + base + 'img/placas.png" alt="" style="width:28px;height:28px;object-fit:contain;">';
-        var imgGarantia = '<img src="' + base + 'img/garantia.png" alt="" style="width:28px;height:28px;object-fit:contain;">';
+        var imgAhorro   = '<img src="' + base + 'img/ahorro_gasolina.png" alt="" style="width:42px;height:42px;object-fit:contain;">';
+        var imgPlacas   = '<img src="' + base + 'img/placas.png" alt="" style="width:42px;height:42px;object-fit:contain;">';
+        var imgGarantia = '<img src="' + base + 'img/garantia.png" alt="" style="width:42px;height:42px;object-fit:contain;">';
 
         var badges = [];
         if (metodo === 'credito') {
