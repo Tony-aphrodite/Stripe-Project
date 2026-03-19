@@ -165,7 +165,7 @@
 <body>
     <div class="preloader" id="pageLoad">
         <div class="holder">
-            <img src="/img/loader.svg" style="width:100%; max-width: 100px;">
+            <img src="img/loader.gif" style="width:100%; max-width: 100px;">
         </div>
     </div>
     <!--Side panel-->
@@ -595,6 +595,11 @@
                             <div class="vk-paso__content" id="vk-credito-contrato-container"></div>
                         </div>
 
+                        <!-- Crédito: Pago Automático (Stripe SetupIntent) -->
+                        <div class="vk-paso" id="vk-paso-credito-autopago">
+                            <div class="vk-paso__content" id="vk-credito-autopago-container"></div>
+                        </div>
+
                         <!-- Facturación -->
                         <div class="vk-paso" id="vk-paso-facturacion">
                             <div class="vk-paso__content" id="vk-facturacion-container"></div>
@@ -698,9 +703,10 @@
     <script src="js/modules/paso-credito-resultado.js?v=20260315"></script>
     <script src="js/modules/paso-credito-pago.js?v=20260315"></script>
     <script src="js/modules/paso-credito-enganche.js?v=20260315"></script>
-    <script src="js/modules/paso-credito-contrato.js?v=20260315"></script>
+    <script src="js/modules/paso-credito-contrato.js?v=20260317"></script>
+    <script src="js/modules/paso-credito-autopago.js?v=20260317"></script>
     <script src="js/modules/paso-facturacion.js?v=20260315"></script>
-    <script src="js/modules/paso-exito.js?v=20260315"></script>
+    <script src="js/modules/paso-exito.js?v=20260317"></script>
     <script src="js/configurador.js?v=20260315"></script>
 
     <!-- Model tabs fixed nav — body level to avoid CSS transform stacking context -->
