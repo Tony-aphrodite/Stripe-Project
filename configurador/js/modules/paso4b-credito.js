@@ -233,7 +233,7 @@ var Paso4B = {
             '<span style="color:var(--vk-green-primary);font-size:15px;">&#10004;</span>' +
             '<span style="font-size:14px;"><strong>Sin penalizaci\u00f3n por prepago</strong></span></div>';
         html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">' +
-            '<span style="color:#D4A017;font-size:15px;">&#128205;</span>' +
+            '<img src="' + (window.VK_BASE_PATH || '') + 'img/entrega.png" alt="" style="width:20px;height:20px;object-fit:contain;flex-shrink:0;">' +
             '<span style="font-size:14px;">Entrega sin costo en un punto Voltika autorizado en tu ciudad</span></div>';
         html += '</div>';
 
