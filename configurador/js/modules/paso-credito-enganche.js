@@ -482,7 +482,10 @@ var PasoCreditoEnganche = {
                     self._showOXXOFallback(data.enganche);
                 }
             },
-            error: function() {
+            error: function(xhr) {
+                var errMsg = '';
+                try { errMsg = JSON.parse(xhr.responseText).error || ''; } catch(e) {}
+                console.error('OXXO PaymentIntent error:', errMsg, xhr.status, xhr.responseText);
                 self._showOXXOFallback(data.enganche);
             }
         });
