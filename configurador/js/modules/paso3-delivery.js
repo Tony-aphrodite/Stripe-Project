@@ -203,7 +203,8 @@ var Paso3 = {
             } else {
                 $('#vk-cp-city').hide();
                 $('#vk-cp-logistics').hide();
-                $('#vk-paso3-confirmar').prop('disabled', true);
+                // Button always enabled — validation on click
+            // $('#vk-paso3-confirmar').prop('disabled', true);
                 self.app.state.ciudad = null;
             }
         });
@@ -212,7 +213,8 @@ var Paso3 = {
         $(document).on('change', '#vk-cp-colonia', function() {
             var val = $(this).val();
             self.app.state.colonia = val;
-            $('#vk-paso3-confirmar').prop('disabled', !val);
+            // Don't disable button — let validation show error messages
+            // $('#vk-paso3-confirmar').prop('disabled', !val);
             if (val) $('#vk-colonia-error').hide();
         });
 
@@ -314,7 +316,8 @@ var Paso3 = {
 
         if (!resultado) {
             $('#vk-cp-logistics').hide();
-            $('#vk-paso3-confirmar').prop('disabled', true);
+            // Button always enabled — validation on click
+            // $('#vk-paso3-confirmar').prop('disabled', true);
             self.app.state.ciudad = null;
             $('#vk-cp-city').hide();
             $('#vk-cp-not-found').show();
@@ -347,7 +350,8 @@ var Paso3 = {
         var $select = $('#vk-cp-colonia');
         $select.html('<option value="">Cargando...</option>').prop('disabled', true);
         $('#vk-cp-colonia-loading').show();
-        $('#vk-paso3-confirmar').prop('disabled', true);
+        // Button always enabled — validation on click
+            // $('#vk-paso3-confirmar').prop('disabled', true);
 
         $.ajax({
             url: (window.VK_BASE_PATH || '') + 'php/buscar-colonias.php',
@@ -379,7 +383,8 @@ var Paso3 = {
 
                     // If previously selected colonia matches, enable button
                     if (state.colonia && $select.val()) {
-                        $('#vk-paso3-confirmar').prop('disabled', false);
+                        // Button always enabled
+            // $('#vk-paso3-confirmar').prop('disabled', false);
                     }
                 } else {
                     // API returned no colonias — show manual input fallback
@@ -726,6 +731,7 @@ var Paso3 = {
             'value="' + (state.colonia || '') + '" ' +
             'style="font-size:15px;padding:12px 14px;">'
         );
-        $('#vk-paso3-confirmar').prop('disabled', false);
+        // Button always enabled
+            // $('#vk-paso3-confirmar').prop('disabled', false);
     }
 };
