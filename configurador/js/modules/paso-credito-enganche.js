@@ -139,7 +139,7 @@ var PasoCreditoEnganche = {
         // === 3. Pago en efectivo en tiendas OXXO ===
         html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;">';
         html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
-        html += '<img src="' + base + 'img/tarjetas/oxxo.svg" alt="OXXO" style="height:36px;">';
+        html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:36px;">';
         html += '<span style="font-size:14px;font-weight:600;">Pago en efectivo en tiendas OXXO</span>';
         html += '</div>';
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;background:var(--vk-bg-light);border-radius:6px;padding:10px;">';
