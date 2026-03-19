@@ -44,6 +44,7 @@ if (!$json) {
 }
 
 $amount           = intval($json['amount'] ?? 0);        // centavos MXN
+$method           = trim($json['method'] ?? 'card');      // card, oxxo, spei
 $installments     = !empty($json['installments']);
 $msiMeses         = intval($json['msiMeses'] ?? 9);
 $customer         = $json['customer'] ?? [];
@@ -54,18 +55,27 @@ if ($amount <= 0) {
     exit;
 }
 
+// ── Determinar payment_method_types segun metodo ─────────────────────────────
+$paymentMethodTypes = ['card'];
+if ($method === 'oxxo') {
+    $paymentMethodTypes = ['oxxo'];
+} elseif ($method === 'spei') {
+    $paymentMethodTypes = ['customer_balance'];
+}
+
 // ── Crear PaymentIntent ───────────────────────────────────────────────────────
 try {
     $intentData = [
         'amount'               => $amount,
         'currency'             => 'mxn',
-        'payment_method_types' => ['card'],
+        'payment_method_types' => $paymentMethodTypes,
         'description'          => 'Voltika - ' . ($customer['modelo'] ?? 'Moto electrica'),
         'metadata'             => [
             'modelo'   => $customer['modelo']   ?? '',
             'color'    => $customer['color']     ?? '',
             'ciudad'   => $customer['ciudad']    ?? '',
             'telefono' => $customer['telefono']  ?? '',
+            'method'   => $method,
         ],
     ];
 
@@ -80,8 +90,28 @@ try {
         $intentData['receipt_email'] = $customer['email'];
     }
 
-    // Habilitar MSI si aplica
-    if ($installments && $msiMeses > 0) {
+    // SPEI requiere customer obligatorio
+    if ($method === 'spei' && empty($intentData['customer'])) {
+        $stripeCustomer = \Stripe\Customer::create([
+            'name'  => $customer['nombre'] ?? 'Cliente Voltika',
+            'email' => $customer['email'] ?? '',
+        ]);
+        $intentData['customer'] = $stripeCustomer->id;
+        $intentData['payment_method_data'] = [
+            'type' => 'customer_balance'
+        ];
+        $intentData['payment_method_options'] = [
+            'customer_balance' => [
+                'funding_type' => 'bank_transfer',
+                'bank_transfer' => [
+                    'type' => 'mx_bank_transfer'
+                ]
+            ]
+        ];
+    }
+
+    // Habilitar MSI si aplica (solo para card)
+    if ($method === 'card' && $installments && $msiMeses > 0) {
         $intentData['payment_method_options'] = [
             'card' => [
                 'installments' => ['enabled' => true]
@@ -91,7 +121,20 @@ try {
 
     $intent = \Stripe\PaymentIntent::create($intentData);
 
-    echo json_encode(['clientSecret' => $intent->client_secret]);
+    $response = ['clientSecret' => $intent->client_secret];
+
+    // Para SPEI, incluir datos bancarios si disponibles
+    if ($method === 'spei' && $intent->next_action && isset($intent->next_action->display_bank_transfer_instructions)) {
+        $bankInfo = $intent->next_action->display_bank_transfer_instructions;
+        $response['speiData'] = [
+            'clabe'        => $bankInfo->financial_addresses[0]->clabe ?? '',
+            'banco'        => 'STP',
+            'beneficiario' => 'Voltika S.A. de C.V.',
+            'referencia'   => $bankInfo->reference ?? ''
+        ];
+    }
+
+    echo json_encode($response);
 
 } catch (\Stripe\Exception\CardException $e) {
     http_response_code(402);
