@@ -462,9 +462,12 @@ var Paso3 = {
         h += '<div class="vk-card vk-centro-card" data-centro-id="' + centro.id + '" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:2px solid #1a3a5c;cursor:pointer;transition:box-shadow 0.3s,border-color 0.3s;">';
         h += '<div style="padding:20px;">';
 
-        // Star + title (no subtitle tags — services shown below with icons)
-        h += '<div style="text-align:center;margin-bottom:10px;">';
+        // Radio circle + Star + title
+        h += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">';
+        h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;background:transparent;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;"></div>';
+        h += '<div style="flex:1;min-width:0;">';
         h += '<div style="font-weight:800;font-size:18px;color:var(--vk-text-primary);">&#11088; ' + centro.nombre + '</div>';
+        h += '</div>';
         h += '</div>';
 
         // Location
