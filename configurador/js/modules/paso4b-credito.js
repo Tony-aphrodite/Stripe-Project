@@ -221,7 +221,6 @@ var Paso4B = {
         // ── Benefit bullets ─────────────────────────────────────────────────
         html += '<div style="margin-top:16px;padding:0 4px;">';
         html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">' +
-            '<span style="font-size:16px;">&#9889;</span>' +
             '<span style="font-size:14px;"><strong>Usa lo que hoy gastas en gasolina para pagar tu Voltika</strong></span></div>';
         html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">' +
             '<span style="color:var(--vk-green-primary);font-size:15px;">&#10004;</span>' +
