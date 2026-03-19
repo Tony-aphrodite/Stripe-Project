@@ -128,7 +128,7 @@ var PasoCreditoEnganche = {
         // === 2. Transferencia bancaria SPEI ===
         html += '<div class="vk-card" style="padding:16px;margin-bottom:12px;">';
         html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
-        html += '<img src="' + base + 'img/tarjetas/spei.svg" alt="SPEI" style="height:32px;">';
+        html += '<img src="' + base + 'img/logo_spei.png" alt="SPEI" style="height:32px;">';
         html += '<span style="font-size:14px;font-weight:600;">Transferencia bancaria SPEI</span>';
         html += '</div>';
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;">Recibir\u00e1s los datos de la cuenta para realizar tu transferencia. Confirmaci\u00f3n en minutos.</div>';
