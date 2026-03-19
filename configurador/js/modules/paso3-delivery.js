@@ -431,18 +431,23 @@ var Paso3 = {
     },
 
     _tagButton: function(tag) {
-        var symbols = {
-            'Exhibici\u00f3n': '\u25A0',
-            'Entrega': '\u25B6',
-            'Servicio t\u00e9cnico': '\u2699',
-            'Activaci\u00f3n': '\u26A1',
-            'Pruebas de manejo': '\u26F5',
-            'Refacciones': '\u2699'
+        var base = window.VK_BASE_PATH || '';
+        var iconMap = {
+            'Exhibici\u00f3n': base + 'img/iconos-01.svg',
+            'Entrega': base + 'img/iconos-03.svg',
+            'Servicio t\u00e9cnico': base + 'img/iconos-02.svg'
         };
-        var sym = symbols[tag] || '\u2022';
-        var iconCircle = '<span style="display:inline-flex;align-items:center;justify-content:center;width:11px;height:11px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:6px;flex-shrink:0;">' + sym + '</span>';
-        return '<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;-webkit-text-size-adjust:none;text-size-adjust:none;font-weight:600;padding:2px 4px;border-radius:4px;background:#EDF2F7;color:#1a3a5c;border:1px solid #D0D8E0;white-space:nowrap;">' +
-            iconCircle + tag + '</span>';
+        var iconSrc = iconMap[tag];
+        var iconHtml;
+        if (iconSrc) {
+            iconHtml = '<img src="' + iconSrc + '" alt="" style="width:14px;height:14px;flex-shrink:0;">';
+        } else {
+            var symbols = { 'Activaci\u00f3n': '\u26A1', 'Pruebas de manejo': '\u26F5', 'Refacciones': '\u2699' };
+            var sym = symbols[tag] || '\u2022';
+            iconHtml = '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:7px;flex-shrink:0;">' + sym + '</span>';
+        }
+        return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;-webkit-text-size-adjust:none;text-size-adjust:none;font-weight:600;padding:3px 6px;border-radius:5px;background:#EDF2F7;color:#1a3a5c;border:1px solid #D0D8E0;white-space:nowrap;">' +
+            iconHtml + tag + '</span>';
     },
 
     _pinIcon: function() {
