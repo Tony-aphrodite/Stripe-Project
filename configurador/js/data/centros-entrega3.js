@@ -61,9 +61,10 @@ var VOLTIKA_CENTROS = [
 
 /* Metro area groupings: CPs that share the same delivery zone */
 var _VOLTIKA_ZONAS = [
-    // CDMX + Zona Metropolitana (CP 01xxx-16xxx CDMX, 52xxx-57xxx EdoMex)
-    ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16',
-     '52','53','54','55','56','57']
+    // CDMX (CP 01xxx-16xxx)
+    ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16'],
+    // Zona Metropolitana EdoMex (CP 52xxx-57xxx)
+    ['52','53','54','55','56','57']
 ];
 
 /* Utility: find matching centers for a given CP */
