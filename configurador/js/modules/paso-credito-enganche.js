@@ -199,10 +199,26 @@ var PasoCreditoEnganche = {
     bindEvents: function() {
         var self = this;
 
-        jQuery(document).off('click', '#vk-enganche-pagar');
+        jQuery(document).off('click', '#vk-enganche-pagar')
+            .off('click', '#vk-enganche-spei')
+            .off('click', '#vk-enganche-oxxo');
+
+        // Card payment
         jQuery(document).on('click', '#vk-enganche-pagar', function(e) {
             e.preventDefault();
             self._handlePayment();
+        });
+
+        // SPEI payment
+        jQuery(document).on('click', '#vk-enganche-spei', function(e) {
+            e.preventDefault();
+            self._handleSPEI();
+        });
+
+        // OXXO payment
+        jQuery(document).on('click', '#vk-enganche-oxxo', function(e) {
+            e.preventDefault();
+            self._handleOXXO();
         });
     },
 
@@ -310,6 +326,196 @@ var PasoCreditoEnganche = {
                 self.app.irAPaso('credito-contrato');
             }
         });
+    },
+
+    _getEngancheData: function() {
+        var state = this.app.state;
+        var modelo = this.app.getModelo(state.modeloSeleccionado);
+        var enganchePct = state.enganchePorcentaje || 0.30;
+        var credito = VkCalculadora.calcular(modelo.precioContado, enganchePct, state.plazoMeses || 12);
+        return {
+            enganche: credito.enganche,
+            amountCents: Math.round(credito.enganche * 100),
+            modelo: modelo,
+            customer: {
+                nombre:   state.nombre,
+                email:    state.email,
+                telefono: state.telefono,
+                modelo:   modelo.nombre,
+                color:    state.colorSeleccionado || modelo.colorDefault,
+                ciudad:   state.ciudad || '',
+                estado:   state.estado || '',
+                cp:       state.codigoPostal || ''
+            }
+        };
+    },
+
+    _handleSPEI: function() {
+        var self = this;
+        var data = self._getEngancheData();
+
+        jQuery('#vk-enganche-spei').prop('disabled', true).text('Procesando...');
+        jQuery('#vk-enganche-error').hide();
+
+        jQuery.ajax({
+            url: self.PAYMENT_INTENT_URL,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                amount:       data.amountCents,
+                method:       'spei',
+                installments: false,
+                msiMeses:     0,
+                customer:     data.customer,
+                tipo:         'enganche'
+            }),
+            success: function(response) {
+                if (response && response.clientSecret) {
+                    // Stripe SPEI: confirm with customer_balance or show bank details
+                    self._stripe.confirmPayment({
+                        clientSecret: response.clientSecret,
+                        payment_method: {
+                            type: 'customer_balance',
+                            customer_balance: {}
+                        },
+                        return_url: window.location.href
+                    }).then(function(result) {
+                        if (result.error) {
+                            self._showError(result.error.message);
+                            jQuery('#vk-enganche-spei').prop('disabled', false).text('PAGAR CON TRANSFERENCIA SPEI');
+                        }
+                    });
+                } else if (response && response.speiData) {
+                    // Backend returned SPEI bank details directly
+                    self._showSPEIDetails(response.speiData, data.enganche);
+                } else {
+                    // Fallback: show WhatsApp contact for SPEI
+                    self._showSPEIFallback(data.enganche);
+                }
+            },
+            error: function() {
+                // Backend not ready — show fallback
+                self._showSPEIFallback(data.enganche);
+            }
+        });
+    },
+
+    _showSPEIFallback: function(enganche) {
+        var tel = '525513416370';
+        var msg = encodeURIComponent('Hola, quiero pagar mi enganche de ' + VkUI.formatPrecio(enganche) + ' MXN por transferencia SPEI.');
+        var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin-top:12px;">';
+        html += '<div style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:8px;">&#128179; Datos para transferencia SPEI</div>';
+        html += '<p style="font-size:13px;color:#555;margin:0 0 12px;">Un asesor Voltika te enviar\u00e1 los datos bancarios para realizar tu transferencia por <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong>.</p>';
+        html += '<a href="https://wa.me/' + tel + '?text=' + msg + '" target="_blank" ' +
+            'style="display:block;text-align:center;padding:12px;background:#25D366;color:#fff;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;">' +
+            '&#128172; Solicitar datos por WhatsApp</a>';
+        html += '</div>';
+        jQuery('#vk-enganche-spei').replaceWith(html);
+    },
+
+    _showSPEIDetails: function(speiData, enganche) {
+        var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin-top:12px;">';
+        html += '<div style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:10px;">&#128179; Datos para transferencia SPEI</div>';
+        html += '<div style="font-size:13px;line-height:2;color:#333;">';
+        if (speiData.banco) html += 'Banco: <strong>' + speiData.banco + '</strong><br>';
+        if (speiData.clabe) html += 'CLABE: <strong>' + speiData.clabe + '</strong><br>';
+        if (speiData.beneficiario) html += 'Beneficiario: <strong>' + speiData.beneficiario + '</strong><br>';
+        if (speiData.referencia) html += 'Referencia: <strong>' + speiData.referencia + '</strong><br>';
+        html += 'Monto: <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong>';
+        html += '</div>';
+        html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Confirmaci\u00f3n autom\u00e1tica en minutos despu\u00e9s de recibir la transferencia.</p>';
+        html += '</div>';
+        jQuery('#vk-enganche-spei').replaceWith(html);
+    },
+
+    _handleOXXO: function() {
+        var self = this;
+        var data = self._getEngancheData();
+
+        jQuery('#vk-enganche-oxxo').prop('disabled', true).text('Generando referencias...');
+        jQuery('#vk-enganche-error').hide();
+
+        jQuery.ajax({
+            url: self.PAYMENT_INTENT_URL,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                amount:       data.amountCents,
+                method:       'oxxo',
+                installments: false,
+                msiMeses:     0,
+                customer:     data.customer,
+                tipo:         'enganche'
+            }),
+            success: function(response) {
+                if (response && response.clientSecret) {
+                    // Stripe OXXO: confirm and show voucher
+                    self._stripe.confirmOxxoPayment(response.clientSecret, {
+                        payment_method: {
+                            billing_details: {
+                                name:  data.customer.nombre,
+                                email: data.customer.email
+                            }
+                        }
+                    }).then(function(result) {
+                        if (result.error) {
+                            self._showError(result.error.message);
+                            jQuery('#vk-enganche-oxxo').prop('disabled', false).text('PAGO EN EFECTIVO EN OXXO');
+                        } else {
+                            // OXXO voucher generated — show reference
+                            var pi = result.paymentIntent;
+                            var oxxoDetails = pi.next_action && pi.next_action.oxxo_display_details;
+                            if (oxxoDetails) {
+                                self._showOXXOVoucher(oxxoDetails, data.enganche);
+                            } else {
+                                self._showOXXOFallback(data.enganche);
+                            }
+                        }
+                    });
+                } else {
+                    self._showOXXOFallback(data.enganche);
+                }
+            },
+            error: function() {
+                self._showOXXOFallback(data.enganche);
+            }
+        });
+    },
+
+    _showOXXOVoucher: function(oxxoDetails, enganche) {
+        var base = window.VK_BASE_PATH || '';
+        var html = '<div style="background:#FFF8E1;border-radius:10px;padding:16px;margin-top:12px;border:1px solid #FFE082;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+        html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:30px;">';
+        html += '<span style="font-size:14px;font-weight:700;color:#333;">Referencia de pago OXXO</span>';
+        html += '</div>';
+        html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
+        html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">N\u00famero de referencia:</div>';
+        html += '<div style="font-size:20px;font-weight:900;color:#333;letter-spacing:2px;">' + (oxxoDetails.number || '--') + '</div>';
+        html += '</div>';
+        html += '<div style="font-size:13px;color:#555;">';
+        html += 'Monto: <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong><br>';
+        if (oxxoDetails.expires_after) {
+            var exp = new Date(oxxoDetails.expires_after * 1000);
+            html += 'Vence: <strong>' + exp.toLocaleDateString('es-MX') + '</strong>';
+        }
+        html += '</div>';
+        html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Presenta esta referencia en cualquier tienda OXXO. Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
+        html += '</div>';
+        jQuery('#vk-enganche-oxxo').replaceWith(html);
+    },
+
+    _showOXXOFallback: function(enganche) {
+        var tel = '525513416370';
+        var msg = encodeURIComponent('Hola, quiero pagar mi enganche de ' + VkUI.formatPrecio(enganche) + ' MXN en OXXO.');
+        var html = '<div style="background:#FFF8E1;border-radius:10px;padding:16px;margin-top:12px;border:1px solid #FFE082;">';
+        html += '<div style="font-size:14px;font-weight:700;color:#333;margin-bottom:8px;">&#128179; Pago en OXXO</div>';
+        html += '<p style="font-size:13px;color:#555;margin:0 0 12px;">Un asesor Voltika te enviar\u00e1 las referencias de pago para OXXO por <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong>.</p>';
+        html += '<a href="https://wa.me/' + tel + '?text=' + msg + '" target="_blank" ' +
+            'style="display:block;text-align:center;padding:12px;background:#25D366;color:#fff;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;">' +
+            '&#128172; Solicitar referencias por WhatsApp</a>';
+        html += '</div>';
+        jQuery('#vk-enganche-oxxo').replaceWith(html);
     },
 
     _showError: function(msg) {
