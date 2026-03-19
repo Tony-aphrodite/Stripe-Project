@@ -270,7 +270,16 @@ var Paso3 = {
             if (!colonia) {
                 $('#vk-colonia-error').show();
                 $('#vk-cp-colonia').css('border-color', '#D32F2F');
-                $('html, body').animate({ scrollTop: $('#vk-cp-colonia').offset().top - 100 }, 400);
+                var $coloniaEl = $('#vk-cp-colonia');
+                if ($coloniaEl.length && $coloniaEl.is(':visible') && $coloniaEl.offset()) {
+                    $('html, body').animate({ scrollTop: $coloniaEl.offset().top - 100 }, 400);
+                } else {
+                    // Scroll to error message instead
+                    var $errEl = $('#vk-colonia-error');
+                    if ($errEl.length && $errEl.offset()) {
+                        $('html, body').animate({ scrollTop: $errEl.offset().top - 100 }, 400);
+                    }
+                }
                 setTimeout(function() { $('#vk-cp-colonia').css('border-color', ''); }, 3000);
                 return;
             }
