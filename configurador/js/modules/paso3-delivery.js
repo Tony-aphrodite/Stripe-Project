@@ -137,7 +137,7 @@ var Paso3 = {
         // Tu Asesor Voltika section
         html += '<div style="background:var(--vk-bg-light);border-radius:10px;padding:16px;margin-bottom:14px;">';
         html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
-        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/final.jpg" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">';
+        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/asesor_icon.jpg" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">';
         html += '<div>';
         html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Tu Asesor Voltika</div>';
         html += '<div style="font-size:14px;color:var(--vk-text-secondary);">Estar\u00e1 contigo desde la entrega. M\u00e1x. <strong>48 horas</strong> para confirmarte el punto autorizado.</div>';
