@@ -22,9 +22,10 @@ var Paso1 = {
         var base = window.VK_BASE_PATH || '';
         var src = this._modeloLogoMap[modeloId];
         if (src) {
-            return '<img src="' + base + src + '" alt="' + nombre + '" style="height:28px;width:auto;">';
+            return '<img src="' + base + src + '" alt="' + nombre + '" style="height:32px;width:auto;display:inline-block;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline\';">' +
+                '<span style="display:none;font-weight:800;font-size:18px;">' + nombre + '</span>';
         }
-        return nombre;
+        return '<span style="font-weight:800;font-size:18px;">' + nombre + '</span>';
     },
 
     init: function(app) {
