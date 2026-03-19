@@ -140,7 +140,7 @@ var PasoResumen = {
         html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">Tu Voltika seleccionada</div>';
         html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">';
         html += '<div style="flex:1;">';
-        html += '<div style="font-size:16px;font-weight:800;">' + modelo.nombre + '</div>';
+        html += '<div style="font-size:16px;font-weight:800;">' + Paso1._getModeloLogo(modelo.id, modelo.nombre) + '</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">Color: ' + color + '</div>';
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Pago semanal desde</div>';
         html += '<div style="font-size:32px;font-weight:900;color:var(--vk-text-primary);line-height:1.1;">' + VkUI.formatPrecio(credito.pagoSemanal) + '</div>';

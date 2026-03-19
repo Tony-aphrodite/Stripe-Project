@@ -178,7 +178,7 @@ var Paso4B = {
         // ── Model summary (compact) ─────────────────────────────────────────
         html += '<div style="background:#fff;border:1.5px solid var(--vk-border);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">';
         html += '<div>';
-        html += '<div style="font-size:16px;font-weight:800;">' + modelo.nombre + '</div>';
+        html += '<div style="font-size:16px;font-weight:800;">' + Paso1._getModeloLogo(modelo.id, modelo.nombre) + '</div>';
         html += '</div>';
         html += '<img src="' + img + '" alt="' + modelo.nombre + '" style="height:60px;width:auto;object-fit:contain;">';
         html += '</div>';

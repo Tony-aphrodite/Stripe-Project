@@ -61,7 +61,7 @@ var Paso4A = {
         html += '<img src="' + imgSrc + '" alt="' + modelo.nombre + '" style="width:110px;height:auto;object-fit:contain;flex-shrink:0;">';
         html += '<div>';
         html += '<div style="font-size:13px;color:var(--vk-green-primary);font-weight:700;margin-bottom:2px;">&#10003; Tu moto est\u00e1 lista</div>';
-        html += '<div style="font-weight:800;font-size:20px;line-height:1.1;">' + modelo.nombre + '</div>';
+        html += '<div style="font-weight:800;font-size:20px;line-height:1.1;">' + Paso1._getModeloLogo(modelo.id, modelo.nombre) + '</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:4px;">Color: ' + color + '</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);">Entrega: ' + ciudad + '</div>';
         html += '</div>';
