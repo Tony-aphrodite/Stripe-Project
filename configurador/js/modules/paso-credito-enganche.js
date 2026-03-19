@@ -367,6 +367,7 @@ var PasoCreditoEnganche = {
             url: self.PAYMENT_INTENT_URL,
             method: 'POST',
             contentType: 'application/json',
+            timeout: 15000,
             data: JSON.stringify({
                 amount:       data.amountCents,
                 method:       'spei',
@@ -376,31 +377,14 @@ var PasoCreditoEnganche = {
                 tipo:         'enganche'
             }),
             success: function(response) {
-                if (response && response.clientSecret) {
-                    // Stripe SPEI: confirm with customer_balance or show bank details
-                    self._stripe.confirmPayment({
-                        clientSecret: response.clientSecret,
-                        payment_method: {
-                            type: 'customer_balance',
-                            customer_balance: {}
-                        },
-                        return_url: window.location.href
-                    }).then(function(result) {
-                        if (result.error) {
-                            self._showError(result.error.message);
-                            jQuery('#vk-enganche-spei').prop('disabled', false).text('PAGAR CON TRANSFERENCIA SPEI');
-                        }
-                    });
-                } else if (response && response.speiData) {
-                    // Backend returned SPEI bank details directly
+                if (response && response.speiData) {
                     self._showSPEIDetails(response.speiData, data.enganche);
                 } else {
-                    // Fallback: show WhatsApp contact for SPEI
                     self._showSPEIFallback(data.enganche);
                 }
             },
-            error: function() {
-                // Backend not ready — show fallback
+            error: function(xhr) {
+                console.error('SPEI PaymentIntent error:', xhr.status, xhr.responseText);
                 self._showSPEIFallback(data.enganche);
             }
         });
