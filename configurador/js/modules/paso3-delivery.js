@@ -189,7 +189,6 @@ var Paso3 = {
             .off('change', '#vk-check-placas').off('change', '#vk-check-seguro')
             .off('change', '#vk-cp-colonia')
             .off('click', '.vk-select-centro').off('click', '#vk-otros-centros-toggle')
-            .off('click', '#vk-select-centro-cercano')
             .off('click', '.vk-centro-card');
 
         // Postal code input
@@ -246,26 +245,6 @@ var Paso3 = {
             }
         });
 
-        // Select "Centro Voltika cercano" (virtual/nearest)
-        $(document).on('click', '#vk-select-centro-cercano', function(e) {
-            e.preventDefault();
-            self.app.state.centroEntrega = {
-                id: 'centro-cercano',
-                nombre: 'Centro Voltika cercano',
-                direccion: 'Por confirmar por tu asesor Voltika',
-                ciudad: self.app.state.ciudad || '',
-                estado: self.app.state.estado || '',
-                tipo: 'cercano'
-            };
-            $('#vk-centro-error').hide();
-            // Reset all radio circles + card glows
-            $('.vk-radio-circle').css({ 'background': 'transparent', 'border-color': '#ccc' }).html('');
-            $('.vk-centro-card').css({ 'box-shadow': 'none', 'border-color': '#1a3a5c' });
-            // Glow on cercano card
-            $(this).closest('.vk-card').css({ 'box-shadow': '0 0 14px rgba(3,159,225,0.45)', 'border-color': '#039fe1' });
-            // Update button
-            $(this).css({ 'opacity': '1', 'background': '#027ab8' }).text('\u2713 Centro cercano seleccionado');
-        });
 
         // Click on centro card to select it (glow effect)
         $(document).on('click', '.vk-centro-card', function(e) {
@@ -597,14 +576,15 @@ var Paso3 = {
         var h = '';
         var titleCiudad = ciudad ? ' en ' + ciudad : '';
 
-        h += '<div class="vk-card" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:1.5px solid #ddd;">';
+        h += '<div class="vk-card vk-centro-card" data-centro-id="centro-cercano" style="padding:0;border-radius:14px;overflow:hidden;margin-bottom:14px;border:1.5px solid #ddd;cursor:pointer;transition:box-shadow 0.3s,border-color 0.3s;">';
 
         // Card body
         h += '<div style="padding:16px;">';
 
-        // Green check + title
+        // Radio circle + title (same as certificado cards)
         h += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">';
-        h += self._greenCheck(24);
+        h += '<div class="vk-radio-circle" data-radio-id="centro-cercano" style="width:20px;height:20px;border-radius:50%;background:transparent;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
+        h += '</div>';
         h += '<div style="min-width:0;">';
         h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);">Centro Voltika cercano' + titleCiudad + '</div>';
         h += '<div style="font-size:12px;color:#1a3a5c;font-weight:600;">Red nacional de centros autorizados Voltika</div>';
@@ -628,11 +608,6 @@ var Paso3 = {
         h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">';
         h += '<span style="font-size:13px;font-weight:700;color:#1a3a5c;">' + self._globeIcon() + ' Cobertura nacional Voltika</span>';
         h += '</div>';
-
-        // CTA button — full width
-        h += '<button class="vk-btn vk-select-centro" id="vk-select-centro-cercano" ' +
-            'style="width:100%;font-size:13px;font-weight:700;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:12px;">' +
-            '&#10003; ENTREGA DISPONIBLE CERCA DE TI</button>';
 
         // Confirmation note
         h += '<div style="font-size:12px;color:#1a3a5c;background:#E8F4FD;border-radius:8px;padding:10px 14px;text-align:center;">';
@@ -704,7 +679,18 @@ var Paso3 = {
 
     _selectCentro: function(centroId) {
         var centro = null;
-        if (typeof VOLTIKA_CENTROS !== 'undefined') {
+
+        // Handle cercano (virtual center)
+        if (centroId === 'centro-cercano') {
+            centro = {
+                id: 'centro-cercano',
+                nombre: 'Centro Voltika cercano',
+                direccion: 'Por confirmar por tu asesor Voltika',
+                ciudad: this.app.state.ciudad || '',
+                estado: this.app.state.estado || '',
+                tipo: 'cercano'
+            };
+        } else if (typeof VOLTIKA_CENTROS !== 'undefined') {
             for (var i = 0; i < VOLTIKA_CENTROS.length; i++) {
                 if (VOLTIKA_CENTROS[i].id === centroId) {
                     centro = VOLTIKA_CENTROS[i];
@@ -712,6 +698,7 @@ var Paso3 = {
                 }
             }
         }
+
         if (centro) {
             this.app.state.centroEntrega = centro;
             $('#vk-centro-error').hide();
@@ -719,6 +706,8 @@ var Paso3 = {
             $('.vk-radio-circle').css({ 'background': 'transparent', 'border-color': '#ccc' }).html('');
             // Reset all card glow
             $('.vk-centro-card').css({ 'box-shadow': 'none', 'border-color': '#1a3a5c' });
+            // Cercano card has different default border
+            $('.vk-centro-card[data-centro-id="centro-cercano"]').css('border-color', '#ddd');
             // Fill selected radio circle
             $('.vk-radio-circle[data-radio-id="' + centroId + '"]')
                 .css({ 'background': '#039fe1', 'border-color': '#039fe1' })
@@ -726,8 +715,6 @@ var Paso3 = {
             // Glow on selected card
             $('.vk-centro-card[data-centro-id="' + centroId + '"]')
                 .css({ 'box-shadow': '0 0 14px rgba(3,159,225,0.45)', 'border-color': '#039fe1' });
-            // Reset cercano button
-            $('#vk-select-centro-cercano').css({ 'opacity': '0.6', 'background': '#039fe1' }).text('ENTREGA DISPONIBLE CERCA DE TI');
         }
     },
 
