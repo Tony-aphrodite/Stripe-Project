@@ -61,7 +61,7 @@ var VkUI = {
     renderBanner: function() {
         return '<div class="vk-card__banner">' +
             '<div class="vk-card__banner-line1">&#10003; Entrega <strong>Garantizada</strong> en tu <strong>Ciudad</strong></div>' +
-            '<div class="vk-card__banner-line2"><span class="vk-card__banner-icon">&#x1F6E1;</span> Punto Voltika autorizado</div>' +
+            '<div class="vk-card__banner-line2"><img src="' + (window.VK_BASE_PATH || '') + 'img/punto_voltika_autorizado.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;"> Punto Voltika autorizado</div>' +
             '</div>';
     },
 
