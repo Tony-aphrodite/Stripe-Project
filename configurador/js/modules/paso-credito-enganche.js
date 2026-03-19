@@ -74,7 +74,13 @@ var PasoCreditoEnganche = {
         html += '<img src="' + base + motoImg + '" alt="Voltika ' + modelo.nombre + '" ' +
             'style="width:110px;height:auto;flex-shrink:0;">';
         html += '<div style="flex:1;min-width:0;">';
-        html += '<div style="font-size:16px;font-weight:800;margin-bottom:6px;">Voltika ' + modelo.nombre + '</div>';
+        var _logoMap = {'m05':'menu_m05_tx.svg','m03':'menu_m03_tx.svg','ukko-s':'menu_ukko_tx.svg','mc10':'menu_mc10_tx.svg','pesgo-plus':'menu_pesgo_tx.svg','mino':'menu_mino_tx.svg'};
+        var _logoFile = _logoMap[modelo.id];
+        if (_logoFile) {
+            html += '<div style="margin-bottom:6px;"><img src="' + base + 'img/' + _logoFile + '" alt="' + modelo.nombre + '" style="height:22px;width:auto;"></div>';
+        } else {
+            html += '<div style="font-size:16px;font-weight:800;margin-bottom:6px;">Voltika ' + modelo.nombre + '</div>';
+        }
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);line-height:1.7;">';
         html += 'Modelo: <strong style="color:var(--vk-text-primary);">Voltika ' + modelo.nombre + '</strong><br>';
         html += '&#8226; Color: <strong style="color:var(--vk-text-primary);">' + (colorNombre || colorId) + '</strong><br>';
