@@ -9,6 +9,24 @@ var Paso1 = {
     _activeModeloId: null,
     _activeMetodo: 'credito',
 
+    _modeloLogoMap: {
+        'm05': 'img/menu_m05_tx.svg',
+        'm03': 'img/menu_m03_tx.svg',
+        'ukko-s': 'img/menu_ukko_tx.svg',
+        'mc10': 'img/menu_mc10_tx.svg',
+        'pesgo-plus': 'img/menu_pesgo_tx.svg',
+        'mino': 'img/menu_mino_tx.svg'
+    },
+
+    _getModeloLogo: function(modeloId, nombre) {
+        var base = window.VK_BASE_PATH || '';
+        var src = this._modeloLogoMap[modeloId];
+        if (src) {
+            return '<img src="' + base + src + '" alt="' + nombre + '" style="height:28px;width:auto;">';
+        }
+        return nombre;
+    },
+
     init: function(app) {
         this.app = app;
         this.render();
@@ -196,7 +214,7 @@ var Paso1 = {
         }
 
         // Text info
-        $('#vk-hero-nombre').text(modelo.nombre);
+        $('#vk-hero-nombre').html(this._getModeloLogo(modelo.id, modelo.nombre));
         $('#vk-hero-subtitulo').text(modelo.subtitulo || '');
         $('#vk-hero-precio-base').html(
             'Precio contado: <strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong>'
@@ -301,7 +319,7 @@ var Paso1 = {
         html += '</div>';
 
         html += '<div class="vk-card__info-row">';
-        html += '<div class="vk-card__nombre">' + modelo.nombre + '</div>';
+        html += '<div class="vk-card__nombre">' + self._getModeloLogo(modelo.id, modelo.nombre) + '</div>';
         if (modelo.autonomia) {
             html += '<div class="vk-card__spec-item">Autonom\u00eda:<br><strong>' + modelo.autonomia + ' Km</strong></div>';
             html += '<div class="vk-card__spec-item">Velocidad:<br><strong>' + modelo.velocidad + ' Km/h</strong></div>';
