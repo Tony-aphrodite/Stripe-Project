@@ -218,7 +218,7 @@ var PasoCreditoContrato = {
             .off('click', '#vk-contrato-modal');
 
         // Init canvas signature after DOM render
-        setTimeout(function() { self._initCanvas(); }, 100);
+        setTimeout(function() { self._initCanvas(); }, 300);
 
         // Clear signature
         jQuery(document).on('click', '#vk-firma-limpiar', function() {
@@ -263,12 +263,18 @@ var PasoCreditoContrato = {
         var canvas = document.getElementById('vk-firma-canvas');
         if (!canvas) return;
 
+        // Use CSS computed size, fallback to 320x120 if not yet laid out
         var rect = canvas.getBoundingClientRect();
-        canvas.width  = rect.width * 2;
-        canvas.height = rect.height * 2;
+        var w = rect.width > 0 ? rect.width : (canvas.parentElement ? canvas.parentElement.clientWidth : 320);
+        var h = 120;
+
+        // Set canvas resolution to match display size (1:1, no scaling)
+        canvas.width  = w;
+        canvas.height = h;
+        canvas.style.width  = w + 'px';
+        canvas.style.height = h + 'px';
 
         var ctx = canvas.getContext('2d');
-        ctx.scale(2, 2);
         ctx.lineWidth   = 2;
         ctx.lineCap     = 'round';
         ctx.lineJoin    = 'round';
