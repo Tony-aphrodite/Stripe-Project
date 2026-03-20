@@ -380,7 +380,11 @@ var Paso1 = {
             html += '</div>';
             return html;
         }
-        html += '<div class="vk-card__precio-destacado" style="text-align:center;"><strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong> /mes durante 9 meses ' + VkUI.renderCardLogos() + '</div>';
+        html += '<div class="vk-card__precio-destacado" style="text-align:center;">';
+        html += '<div style="font-size:28px;font-weight:900;color:var(--vk-text-primary);">' + VkUI.formatPrecio(modelo.precioMSI) + '</div>';
+        html += '<div style="font-size:14px;color:var(--vk-text-secondary);margin-bottom:6px;">/mes durante 9 meses</div>';
+        html += '<div>' + VkUI.renderCardLogos() + '</div>';
+        html += '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="msi">' +
             'QUIERO MIS 9 MSI &#8250;</button>';
         return html;
