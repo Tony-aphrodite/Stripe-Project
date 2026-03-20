@@ -438,30 +438,9 @@ var PasoCreditoEnganche = {
                 tipo:         'enganche'
             }),
             success: function(response) {
-                if (response && response.clientSecret) {
-                    // Stripe OXXO: confirm and show voucher
-                    self._stripe.confirmOxxoPayment(response.clientSecret, {
-                        payment_method: {
-                            billing_details: {
-                                name:  data.customer.nombre,
-                                email: data.customer.email
-                            }
-                        }
-                    }).then(function(result) {
-                        if (result.error) {
-                            self._showError(result.error.message);
-                            jQuery('#vk-enganche-oxxo').prop('disabled', false).text('PAGO EN EFECTIVO EN OXXO');
-                        } else {
-                            // OXXO voucher generated — show reference
-                            var pi = result.paymentIntent;
-                            var oxxoDetails = pi.next_action && pi.next_action.oxxo_display_details;
-                            if (oxxoDetails) {
-                                self._showOXXOVoucher(oxxoDetails, data.enganche);
-                            } else {
-                                self._showOXXOFallback(data.enganche);
-                            }
-                        }
-                    });
+                if (response && response.oxxoData) {
+                    // Server confirmed OXXO — show reference directly
+                    self._showOXXOVoucher(response.oxxoData, data.enganche);
                 } else {
                     self._showOXXOFallback(data.enganche);
                 }

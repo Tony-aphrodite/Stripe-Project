@@ -123,6 +123,33 @@ try {
 
     $response = ['clientSecret' => $intent->client_secret];
 
+    // Para OXXO: confirmar server-side y devolver referencia directamente
+    if ($method === 'oxxo') {
+        // Crear PaymentMethod de tipo oxxo
+        $pm = \Stripe\PaymentMethod::create([
+            'type' => 'oxxo',
+            'billing_details' => [
+                'name'  => $customer['nombre'] ?? 'Cliente Voltika',
+                'email' => $customer['email'] ?? 'cliente@voltika.mx',
+            ],
+        ]);
+
+        // Confirmar el PaymentIntent con el PaymentMethod
+        $intent = \Stripe\PaymentIntent::retrieve($intent->id);
+        $intent->confirm(['payment_method' => $pm->id]);
+
+        // Obtener datos del voucher OXXO
+        $intent = \Stripe\PaymentIntent::retrieve($intent->id);
+        if ($intent->next_action && isset($intent->next_action->oxxo_display_details)) {
+            $oxxo = $intent->next_action->oxxo_display_details;
+            $response['oxxoData'] = [
+                'number'      => $oxxo->number ?? '',
+                'expires_after' => $oxxo->expires_after ?? 0,
+                'hosted_voucher_url' => $oxxo->hosted_voucher_url ?? ''
+            ];
+        }
+    }
+
     // Para SPEI, incluir datos bancarios si disponibles
     if ($method === 'spei' && $intent->next_action && isset($intent->next_action->display_bank_transfer_instructions)) {
         $bankInfo = $intent->next_action->display_bank_transfer_instructions;
