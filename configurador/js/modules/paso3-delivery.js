@@ -466,7 +466,7 @@ var Paso3 = {
         h += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">';
         h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;background:transparent;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;"></div>';
         h += '<div style="flex:1;min-width:0;">';
-        h += '<div style="font-weight:800;font-size:18px;color:var(--vk-text-primary);">&#11088; ' + centro.nombre + '</div>';
+        h += '<div style="font-weight:800;font-size:18px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
         h += '</div>';
         h += '</div>';
 
