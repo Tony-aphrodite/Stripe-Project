@@ -26,6 +26,7 @@ var VOLTIKA_CENTROS = [
             'Servicio t\u00e9cnico especializado',
             'Refacciones originales Voltika'
         ],
+        zonas: ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16'],
         descripcion: 'Entrega en CDMX y todo M\u00e9xico'
     },
     // tipo 'certificado' = Punto Voltika certificado (exhibici\u00f3n, entrega, servicio)
@@ -40,6 +41,7 @@ var VOLTIKA_CENTROS = [
         horarios: 'Lunes a Viernes 10:00am a 18:30hrs, S\u00e1bado 11:00am a 14:00hrs, Domingo cerrado',
         autorizado: true,
         tipo: 'certificado',
+        zonas: ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16'],
         tags: ['Exhibici\u00f3n', 'Entrega', 'Servicio t\u00e9cnico'],
         descripcion: 'Entrega y soporte t\u00e9cnico autorizados por Voltika.'
     },
@@ -54,53 +56,40 @@ var VOLTIKA_CENTROS = [
         horarios: 'Lunes a Viernes 10:00am a 18:00hrs',
         autorizado: true,
         tipo: 'certificado',
+        zonas: ['55'],
         tags: ['Exhibici\u00f3n', 'Entrega', 'Servicio t\u00e9cnico'],
         descripcion: 'Entrega y soporte t\u00e9cnico autorizados por Voltika.'
     }
 ];
 
-/* Metro area groupings: CPs that share the same delivery zone */
-var _VOLTIKA_ZONAS = [
-    // CDMX (CP 01xxx-16xxx)
-    ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16'],
-    // Zona Metropolitana EdoMex (CP 52xxx-57xxx)
-    ['52','53','54','55','56','57']
-];
+/* Metro area groupings: CPs that share the same delivery zone
+   Each centro has a 'zonas' array of CP prefixes (2 digits) it serves.
+   If not defined, only exact prefix match is used. */
 
 /* Utility: find matching centers for a given CP */
 VOLTIKA_CENTROS.buscar = function(cp) {
     if (!cp || cp.length < 2) return [];
 
     var prefix2 = cp.substring(0, 2);
-
-    // Find which zone this CP belongs to
-    var zona = null;
-    for (var z = 0; z < _VOLTIKA_ZONAS.length; z++) {
-        for (var p = 0; p < _VOLTIKA_ZONAS[z].length; p++) {
-            if (_VOLTIKA_ZONAS[z][p] === prefix2) {
-                zona = _VOLTIKA_ZONAS[z];
-                break;
-            }
-        }
-        if (zona) break;
-    }
-
     var results = [];
+
     for (var i = 0; i < this.length; i++) {
         var centro = this[i];
-        var centroPrefix = centro.cp.substring(0, 2);
 
-        if (zona) {
-            // Same metro zone: match any CP prefix in the zone
-            for (var j = 0; j < zona.length; j++) {
-                if (zona[j] === centroPrefix) {
+        if (centro.zonas && centro.zonas.length) {
+            // Check if user CP prefix is in this centro's service zones
+            for (var j = 0; j < centro.zonas.length; j++) {
+                if (centro.zonas[j] === prefix2) {
                     results.push(centro);
                     break;
                 }
             }
-        } else if (centroPrefix === prefix2) {
-            // Fallback: exact 2-digit prefix match
-            results.push(centro);
+        } else {
+            // Exact 2-digit prefix match
+            var centroPrefix = centro.cp.substring(0, 2);
+            if (centroPrefix === prefix2) {
+                results.push(centro);
+            }
         }
     }
 
