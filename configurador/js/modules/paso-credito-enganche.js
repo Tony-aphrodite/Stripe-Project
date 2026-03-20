@@ -383,28 +383,32 @@ var PasoCreditoEnganche = {
             success: function(response) {
                 if (response && response.speiData) {
                     self._showSPEIDetails(response.speiData, data.enganche);
+                } else if (response && response.error) {
+                    self._showSPEIError('Error: ' + response.error);
                 } else {
-                    self._showSPEIFallback(data.enganche);
+                    self._showSPEIError('No se pudieron obtener los datos bancarios. Intenta de nuevo.');
                 }
             },
             error: function(xhr) {
-                console.error('SPEI error:', xhr.status, xhr.responseText);
-                self._showSPEIFallback(data.enganche);
+                var errMsg = 'Error de conexi\u00f3n.';
+                try { errMsg = JSON.parse(xhr.responseText).error || errMsg; } catch(e) {}
+                console.error('SPEI error:', errMsg, xhr.status, xhr.responseText);
+                self._showSPEIError(errMsg);
             }
         });
     },
 
-    _showSPEIFallback: function(enganche) {
-        var tel = '525513416370';
-        var msg = encodeURIComponent('Hola, quiero pagar mi enganche de ' + VkUI.formatPrecio(enganche) + ' MXN por transferencia SPEI.');
-        var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;">';
-        html += '<div style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:8px;">&#128179; Datos para transferencia SPEI</div>';
-        html += '<p style="font-size:13px;color:#555;margin:0 0 12px;">Un asesor Voltika te enviar\u00e1 los datos bancarios para realizar tu transferencia por <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong>.</p>';
-        html += '<a href="https://wa.me/' + tel + '?text=' + msg + '" target="_blank" ' +
-            'style="display:block;text-align:center;padding:12px;background:#25D366;color:#fff;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;">' +
-            '&#128172; Solicitar datos por WhatsApp</a>';
+    _showSPEIError: function(msg) {
+        var html = '<div style="background:#FFEBEE;border-radius:10px;padding:16px;border:1px solid #E53935;">';
+        html += '<div style="font-size:14px;font-weight:700;color:#C62828;margin-bottom:8px;">&#9888; Error al obtener datos SPEI</div>';
+        html += '<p style="font-size:13px;color:#555;margin:0 0 12px;">' + msg + '</p>';
+        html += '<button id="vk-enganche-spei-retry" style="display:block;width:100%;padding:12px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Intentar de nuevo</button>';
         html += '</div>';
         jQuery('#vk-spei-section').html(html);
+        var self = this;
+        jQuery(document).off('click', '#vk-enganche-spei-retry').on('click', '#vk-enganche-spei-retry', function() {
+            self._handleSPEI();
+        });
     },
 
     _showSPEIDetails: function(speiData, enganche) {
@@ -433,6 +437,7 @@ var PasoCreditoEnganche = {
             url: self.PAYMENT_INTENT_URL,
             method: 'POST',
             contentType: 'application/json',
+            timeout: 30000,
             data: JSON.stringify({
                 amount:       data.amountCents,
                 method:       'oxxo',
@@ -442,18 +447,19 @@ var PasoCreditoEnganche = {
                 tipo:         'enganche'
             }),
             success: function(response) {
-                if (response && response.oxxoData) {
-                    // Server confirmed OXXO — show reference directly
+                if (response && response.oxxoData && response.oxxoData.length > 0) {
                     self._showOXXOVoucher(response.oxxoData, data.enganche);
+                } else if (response && response.error) {
+                    self._showOXXOError('Error: ' + response.error);
                 } else {
-                    self._showOXXOFallback(data.enganche);
+                    self._showOXXOError('No se pudo generar la referencia. Intenta de nuevo.');
                 }
             },
             error: function(xhr) {
-                var errMsg = '';
-                try { errMsg = JSON.parse(xhr.responseText).error || ''; } catch(e) {}
-                console.error('OXXO PaymentIntent error:', errMsg, xhr.status, xhr.responseText);
-                self._showOXXOFallback(data.enganche);
+                var errMsg = 'Error de conexi\u00f3n.';
+                try { errMsg = JSON.parse(xhr.responseText).error || errMsg; } catch(e) {}
+                console.error('OXXO error:', errMsg, xhr.status, xhr.responseText);
+                self._showOXXOError(errMsg);
             }
         });
     },
@@ -489,17 +495,17 @@ var PasoCreditoEnganche = {
         jQuery('#vk-oxxo-section').html(html);
     },
 
-    _showOXXOFallback: function(enganche) {
-        var tel = '525513416370';
-        var msg = encodeURIComponent('Hola, quiero pagar mi enganche de ' + VkUI.formatPrecio(enganche) + ' MXN en OXXO.');
-        var html = '<div style="background:#FFF8E1;border-radius:10px;padding:16px;margin-top:12px;border:1px solid #FFE082;">';
-        html += '<div style="font-size:14px;font-weight:700;color:#333;margin-bottom:8px;">&#128179; Pago en OXXO</div>';
-        html += '<p style="font-size:13px;color:#555;margin:0 0 12px;">Un asesor Voltika te enviar\u00e1 las referencias de pago para OXXO por <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong>.</p>';
-        html += '<a href="https://wa.me/' + tel + '?text=' + msg + '" target="_blank" ' +
-            'style="display:block;text-align:center;padding:12px;background:#25D366;color:#fff;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;">' +
-            '&#128172; Solicitar referencias por WhatsApp</a>';
+    _showOXXOError: function(msg) {
+        var html = '<div style="background:#FFEBEE;border-radius:10px;padding:16px;margin-top:12px;border:1px solid #E53935;">';
+        html += '<div style="font-size:14px;font-weight:700;color:#C62828;margin-bottom:8px;">&#9888; Error al generar referencia OXXO</div>';
+        html += '<p style="font-size:13px;color:#555;margin:0 0 12px;">' + msg + '</p>';
+        html += '<button id="vk-enganche-oxxo-retry" style="display:block;width:100%;padding:12px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Intentar de nuevo</button>';
         html += '</div>';
         jQuery('#vk-oxxo-section').html(html);
+        var self = this;
+        jQuery(document).off('click', '#vk-enganche-oxxo-retry').on('click', '#vk-enganche-oxxo-retry', function() {
+            self._handleOXXO();
+        });
     },
 
     _showError: function(msg) {
