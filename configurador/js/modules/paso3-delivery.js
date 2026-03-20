@@ -667,7 +667,7 @@ var Paso3 = {
         // Show first 3 centers directly (no expand needed)
         var maxVisible = 3;
         var recHtml = '';
-        recHtml += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin-bottom:8px;">Centro de entrega recomendado</div>';
+        recHtml += '<div style="font-size:17px;font-weight:800;color:#1a3a5c;margin-bottom:12px;">Selecciona donde quieres recibir tu Voltika:</div>';
         for (var v = 0; v < Math.min(centros.length, maxVisible); v++) {
             recHtml += self._renderCentroCard(centros[v]);
         }
