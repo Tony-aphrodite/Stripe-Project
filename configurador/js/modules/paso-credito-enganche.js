@@ -503,7 +503,8 @@ var PasoCreditoEnganche = {
     },
 
     _showError: function(msg) {
-        jQuery('#vk-enganche-error').text(msg).slideDown(200);
+        var friendlyMsg = 'Tu banco rechaz\u00f3 el cargo, por favor intenta con otra tarjeta.';
+        jQuery('#vk-enganche-error').text(friendlyMsg).slideDown(200);
     },
 
     _setLoading: function(isLoading) {

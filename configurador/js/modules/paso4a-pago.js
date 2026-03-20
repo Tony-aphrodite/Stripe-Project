@@ -353,7 +353,9 @@ var Paso4A = {
     },
 
     _showError: function(msg) {
-        $('#vk-pago-error').text(msg).slideDown(200);
+        // Replace Stripe error messages with friendlier text
+        var friendlyMsg = 'Tu banco rechaz\u00f3 el cargo, por favor intenta con otra tarjeta.';
+        $('#vk-pago-error').text(friendlyMsg).slideDown(200);
     },
 
     _setLoading: function(isLoading) {
