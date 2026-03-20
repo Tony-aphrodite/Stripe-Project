@@ -56,7 +56,7 @@ var PasoResumen = {
 
         // 3. "Tu moto está lista" card — MSI destacado
         html += '<div class="vk-card" style="padding:20px;margin-bottom:14px;text-align:center;">';
-        html += '<div style="font-size:14px;font-weight:700;margin-bottom:2px;">&#128230; Tu moto ' + modelo.nombre + ' est\u00e1 lista &#128640;</div>';
+        html += '<div style="font-size:14px;font-weight:700;margin-bottom:2px;">Tu moto ' + modelo.nombre + ' est\u00e1 lista</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Ll\u00e9vatela por solo</div>';
         html += '<div style="font-size:38px;font-weight:900;color:var(--vk-text-primary);line-height:1;">' + VkUI.formatPrecio(msiPago) + ' <span style="font-size:18px;font-weight:700;">/ mes</span></div>';
         if (modelo.tieneMSI) {
