@@ -82,6 +82,14 @@ var Paso2 = {
         html += this.renderPaymentInfo(modelo, state.metodoPago);
         html += '</div>';
 
+        // Código de referido
+        html += '<div style="padding:0 20px;margin-bottom:12px;">';
+        html += '<label style="font-size:13px;color:var(--vk-text-secondary);font-weight:600;display:block;margin-bottom:4px;">\u00bfTienes un c\u00f3digo de referido? Ingr\u00e9salo aqu\u00ed</label>';
+        html += '<input type="text" id="vk-referido-input" class="vk-form-input" placeholder="C\u00f3digo de referido" ' +
+            'value="' + (state.codigoReferido || '') + '" ' +
+            'style="font-size:15px;padding:12px 14px;text-transform:uppercase;">';
+        html += '</div>';
+
         html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">' + btnTexto + '</button>';
 
         html += '<p class="vk-card__footer-note">' +
@@ -163,6 +171,8 @@ var Paso2 = {
         // Credit flux: calculator already done before color selection
         jQuery(document).off('click', '#vk-paso2-continuar');
         jQuery(document).on('click', '#vk-paso2-continuar', function() {
+            var referido = jQuery('#vk-referido-input').val().trim();
+            if (referido) self.app.state.codigoReferido = referido;
             self.app.irAPaso(3);
         });
     }
