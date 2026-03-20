@@ -153,10 +153,9 @@ try {
 
     // Para OXXO: dividir si supera $10,000 MXN (1,000,000 centavos)
     if ($method === 'oxxo') {
-        $maxOxxoCents = 1000000; // $10,000 MXN en centavos
+        $maxOxxoCents = 999900; // $9,999 MXN en centavos (margen seguro)
         $oxxoAmounts = [];
         if ($amount > $maxOxxoCents) {
-            // Dividir en partes de max $10,000
             $remaining = $amount;
             while ($remaining > 0) {
                 $chunk = min($remaining, $maxOxxoCents);
@@ -168,13 +167,27 @@ try {
         }
 
         $oxxoRefs = [];
-        $billingName  = $customer['nombre'] ?? 'Cliente Voltika';
-        $billingEmail = $customer['email'] ?? 'cliente@voltika.mx';
+        $billingName  = !empty($customer['nombre']) ? $customer['nombre'] : 'Cliente Voltika';
+        $billingEmail = !empty($customer['email']) ? $customer['email'] : 'cliente@voltika.mx';
+
+        // Asegurar que hay customer para OXXO
+        if (empty($intentData['customer'])) {
+            $stripeCustomer = \Stripe\Customer::create([
+                'name'  => $billingName,
+                'email' => $billingEmail,
+            ]);
+            $intentData['customer'] = $stripeCustomer->id;
+        }
 
         foreach ($oxxoAmounts as $idx => $oxxoAmount) {
-            $oxxoIntentData = $intentData;
-            $oxxoIntentData['amount'] = $oxxoAmount;
-            $oxxoIntentData['description'] = 'Voltika - OXXO ' . ($idx + 1) . '/' . count($oxxoAmounts);
+            $oxxoIntentData = [
+                'amount'               => $oxxoAmount,
+                'currency'             => 'mxn',
+                'payment_method_types' => ['oxxo'],
+                'customer'             => $intentData['customer'],
+                'description'          => 'Voltika - OXXO ' . ($idx + 1) . '/' . count($oxxoAmounts),
+                'metadata'             => $intentData['metadata'] ?? [],
+            ];
 
             $intent = \Stripe\PaymentIntent::create($oxxoIntentData);
 
@@ -187,8 +200,7 @@ try {
                 ],
             ]);
 
-            $intent->confirm(['payment_method' => $pm->id]);
-            $intent = \Stripe\PaymentIntent::retrieve($intent->id);
+            $intent = $intent->confirm(['payment_method' => $pm->id]);
 
             if ($intent->next_action && isset($intent->next_action->oxxo_display_details)) {
                 $oxxo = $intent->next_action->oxxo_display_details;
