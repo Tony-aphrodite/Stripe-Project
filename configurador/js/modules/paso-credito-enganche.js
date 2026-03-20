@@ -138,8 +138,10 @@ var PasoCreditoEnganche = {
         html += '<span style="font-size:14px;font-weight:600;">Transferencia bancaria SPEI</span>';
         html += '</div>';
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;">Recibir\u00e1s los datos de la cuenta para realizar tu transferencia. Confirmaci\u00f3n en minutos.</div>';
+        html += '<div id="vk-spei-section">';
         html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-spei">' +
             'PAGAR CON TRANSFERENCIA SPEI</button>';
+        html += '</div>';
         html += '</div>';
 
         // === 3. Pago en efectivo en tiendas OXXO ===
@@ -151,8 +153,10 @@ var PasoCreditoEnganche = {
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;background:var(--vk-bg-light);border-radius:6px;padding:10px;">';
         html += 'Por el l\u00edmite de <strong>$10,000</strong> por operaci\u00f3n en OXXO<br>se generar\u00e1n <strong>' + numRefs + ' referencias</strong> de pago:';
         html += '</div>';
+        html += '<div id="vk-oxxo-section">';
         html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-oxxo">' +
             'PAGO EN EFECTIVO EN OXXO</button>';
+        html += '</div>';
         html += '</div>';
 
         // Footer
@@ -360,7 +364,7 @@ var PasoCreditoEnganche = {
         var self = this;
         var data = self._getEngancheData();
 
-        jQuery('#vk-enganche-spei').prop('disabled', true).text('Procesando...');
+        jQuery('#vk-enganche-spei').prop('disabled', true).text('PROCESANDO...');
         jQuery('#vk-enganche-error').hide();
 
         jQuery.ajax({
@@ -384,7 +388,7 @@ var PasoCreditoEnganche = {
                 }
             },
             error: function(xhr) {
-                console.error('SPEI PaymentIntent error:', xhr.status, xhr.responseText);
+                console.error('SPEI error:', xhr.status, xhr.responseText);
                 self._showSPEIFallback(data.enganche);
             }
         });
@@ -393,14 +397,14 @@ var PasoCreditoEnganche = {
     _showSPEIFallback: function(enganche) {
         var tel = '525513416370';
         var msg = encodeURIComponent('Hola, quiero pagar mi enganche de ' + VkUI.formatPrecio(enganche) + ' MXN por transferencia SPEI.');
-        var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin-top:12px;">';
+        var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;">';
         html += '<div style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:8px;">&#128179; Datos para transferencia SPEI</div>';
         html += '<p style="font-size:13px;color:#555;margin:0 0 12px;">Un asesor Voltika te enviar\u00e1 los datos bancarios para realizar tu transferencia por <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong>.</p>';
         html += '<a href="https://wa.me/' + tel + '?text=' + msg + '" target="_blank" ' +
             'style="display:block;text-align:center;padding:12px;background:#25D366;color:#fff;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;">' +
             '&#128172; Solicitar datos por WhatsApp</a>';
         html += '</div>';
-        jQuery('#vk-enganche-spei').replaceWith(html);
+        jQuery('#vk-spei-section').html(html);
     },
 
     _showSPEIDetails: function(speiData, enganche) {
@@ -415,7 +419,7 @@ var PasoCreditoEnganche = {
         html += '</div>';
         html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Confirmaci\u00f3n autom\u00e1tica en minutos despu\u00e9s de recibir la transferencia.</p>';
         html += '</div>';
-        jQuery('#vk-enganche-spei').replaceWith(html);
+        jQuery('#vk-spei-section').html(html);
     },
 
     _handleOXXO: function() {
@@ -474,7 +478,7 @@ var PasoCreditoEnganche = {
         html += '</div>';
         html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Presenta esta referencia en cualquier tienda OXXO. Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
         html += '</div>';
-        jQuery('#vk-enganche-oxxo').replaceWith(html);
+        jQuery('#vk-oxxo-section').html(html);
     },
 
     _showOXXOFallback: function(enganche) {
@@ -487,7 +491,7 @@ var PasoCreditoEnganche = {
             'style="display:block;text-align:center;padding:12px;background:#25D366;color:#fff;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;">' +
             '&#128172; Solicitar referencias por WhatsApp</a>';
         html += '</div>';
-        jQuery('#vk-enganche-oxxo').replaceWith(html);
+        jQuery('#vk-oxxo-section').html(html);
     },
 
     _showError: function(msg) {
