@@ -138,24 +138,13 @@ var PasoCreditoContrato = {
         html += '<span style="font-size:12px;color:#1a3a5c;">Tu firma ser\u00e1 certificada con <strong>NOM-151</strong> mediante Cincel Digital</span>';
         html += '</div>';
 
-        // Contract checkbox
-        html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:16px;">';
-        html += '<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#4CAF50;flex-shrink:0;margin-top:1px;">';
-        html += '<span style="color:#fff;font-size:13px;">&#10003;</span></span>';
-        html += '<div style="flex:1;">';
-        html += '<label style="cursor:pointer;">';
-        html += '<input type="checkbox" id="vk-contrato-acepto" style="margin-right:4px;width:16px;height:16px;vertical-align:middle;">';
-        html += '<span style="font-size:14px;font-weight:700;color:#333;">';
-        html += 'Acepto y firmo electr\u00f3nicamente el Contrato de Financiamiento <strong>Voltika</strong></span>';
-        html += '</label>';
-        html += ' <a href="#" id="vk-ver-contrato" style="color:#039fe1;font-size:13px;font-weight:600;text-decoration:none;">Ver contrato</a>';
-        html += '</div>';
-        html += '</div>';
-
-        // Terms checkbox
+        // Contract + Terms checkbox (single)
         html += '<label style="display:flex;align-items:flex-start;gap:10px;padding:14px;border:1.5px solid var(--vk-border);border-radius:10px;margin-bottom:14px;cursor:pointer;">';
-        html += '<input type="checkbox" id="vk-contrato-acepto" style="margin-top:3px;flex-shrink:0;">';
-        html += '<span style="font-size:13px;color:var(--vk-text-secondary);line-height:1.5;">He le\u00eddo y acepto de conformidad los t\u00e9rminos y cl\u00e1usulas establecidas en el contrato y en el <a href="https://www.voltika.mx/aviso-de-privacidad" target="_blank" style="color:#039fe1;text-decoration:underline;">aviso de privacidad</a>.</span>';
+        html += '<input type="checkbox" id="vk-contrato-acepto" style="margin-top:3px;flex-shrink:0;width:18px;height:18px;">';
+        html += '<span style="font-size:13px;color:var(--vk-text-secondary);line-height:1.5;">';
+        html += 'He le\u00eddo y acepto de conformidad los t\u00e9rminos y cl\u00e1usulas establecidas en el contrato y en el <a href="https://www.voltika.mx/aviso-de-privacidad" target="_blank" style="color:#039fe1;text-decoration:underline;">aviso de privacidad</a>.';
+        html += ' <a href="#" id="vk-ver-contrato" style="color:#039fe1;font-weight:600;text-decoration:none;">Ver contrato</a>';
+        html += '</span>';
         html += '</label>';
 
         // Error message
