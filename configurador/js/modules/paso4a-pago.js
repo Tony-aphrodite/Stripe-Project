@@ -105,7 +105,27 @@ var Paso4A = {
 
         html += '</div>'; // end flex row
 
-        // 6. Contact + Card form
+        // 6. Resumen de tu compra (moved up)
+        html += '<div class="vk-summary" style="margin-bottom:20px;">';
+        html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">Resumen de tu compra</div>';
+        html += '<div style="font-size:14px;line-height:1.9;">';
+        html += '<div>\u2022 Modelo: <strong>' + modelo.nombre + '</strong></div>';
+        html += '<div>\u2022 Color: <strong>' + color + '</strong></div>';
+        html += '<div>\u2022 Entrega en: <strong>' + ciudad + '</strong></div>';
+        html += '<div>\u2022 Fecha M\u00e1xima de entrega: <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);">\u2022 Asesor Voltika confirma la ubicaci\u00f3n exacta del centro autorizado entre 24 a 48 horas, h\u00e1biles despu\u00e9s del pago</div>';
+        if (state.costoLogistico > 0) {
+            html += '<div>\u2022 Costo log\u00edstico: <strong>' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</strong></div>';
+        }
+        html += '</div>';
+        html += '<div style="border-top:1.5px solid var(--vk-border);margin:12px 0 10px;"></div>';
+        html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Total a pagar hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
+        if (modelo.tieneMSI) {
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);">\u2022 o 9 pagos de <strong>' + VkUI.formatPrecio(msiPago) + ' MXN</strong> (9 MSI sin intereses)</div>';
+        }
+        html += '</div>';
+
+        // 7. Contact + Card form
         html += '<div id="vk-checkout-form" style="border-top:2px solid var(--vk-border);padding-top:18px;">';
 
         // Terms
@@ -147,26 +167,6 @@ var Paso4A = {
             '</div>';
 
         html += '</div>'; // end checkout-form
-
-        // 7. Resumen de tu compra (bottom)
-        html += '<div class="vk-summary" style="margin-top:20px;">';
-        html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">Resumen de tu compra</div>';
-        html += '<div style="font-size:14px;line-height:1.9;">';
-        html += '<div>\u2022 Modelo: <strong>' + modelo.nombre + '</strong></div>';
-        html += '<div>\u2022 Color: <strong>' + color + '</strong></div>';
-        html += '<div>\u2022 Entrega en: <strong>' + ciudad + '</strong></div>';
-        html += '<div>\u2022 Fecha M\u00e1xima de entrega: <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);">\u2022 Asesor Voltika confirma la ubicaci\u00f3n exacta del centro autorizado entre 24 a 48 horas, h\u00e1biles despu\u00e9s del pago</div>';
-        if (state.costoLogistico > 0) {
-            html += '<div>\u2022 Costo log\u00edstico: <strong>' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</strong></div>';
-        }
-        html += '</div>';
-        html += '<div style="border-top:1.5px solid var(--vk-border);margin:12px 0 10px;"></div>';
-        html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Total a pagar hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
-        if (modelo.tieneMSI) {
-            html += '<div style="font-size:13px;color:var(--vk-text-secondary);">\u2022 o 9 pagos de <strong>' + VkUI.formatPrecio(msiPago) + ' MXN</strong> (9 MSI sin intereses)</div>';
-        }
-        html += '</div>';
 
         // Error message
         html += '<div id="vk-pago-error" style="display:none;color:#C62828;background:#FFEBEE;border:1px solid #E53935;border-radius:6px;padding:12px;margin-top:12px;font-size:13px;"></div>';
