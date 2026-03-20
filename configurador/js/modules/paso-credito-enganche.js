@@ -458,25 +458,33 @@ var PasoCreditoEnganche = {
         });
     },
 
-    _showOXXOVoucher: function(oxxoDetails, enganche) {
+    _showOXXOVoucher: function(oxxoData, enganche) {
         var base = window.VK_BASE_PATH || '';
+        // oxxoData is an array of references
+        var refs = Array.isArray(oxxoData) ? oxxoData : [oxxoData];
         var html = '<div style="background:#FFF8E1;border-radius:10px;padding:16px;margin-top:12px;border:1px solid #FFE082;">';
         html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
         html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:30px;">';
-        html += '<span style="font-size:14px;font-weight:700;color:#333;">Referencia de pago OXXO</span>';
+        html += '<span style="font-size:14px;font-weight:700;color:#333;">Referencia' + (refs.length > 1 ? 's' : '') + ' de pago OXXO</span>';
         html += '</div>';
-        html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
-        html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">N\u00famero de referencia:</div>';
-        html += '<div style="font-size:20px;font-weight:900;color:#333;letter-spacing:2px;">' + (oxxoDetails.number || '--') + '</div>';
-        html += '</div>';
-        html += '<div style="font-size:13px;color:#555;">';
-        html += 'Monto: <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong><br>';
-        if (oxxoDetails.expires_after) {
-            var exp = new Date(oxxoDetails.expires_after * 1000);
-            html += 'Vence: <strong>' + exp.toLocaleDateString('es-MX') + '</strong>';
+        for (var i = 0; i < refs.length; i++) {
+            var ref = refs[i];
+            var refAmount = ref.amount ? Math.round(ref.amount / 100) : Math.round(enganche / refs.length);
+            html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
+            if (refs.length > 1) {
+                html += '<div style="font-size:11px;color:#039fe1;font-weight:700;margin-bottom:4px;">Referencia ' + (i + 1) + ' de ' + refs.length + '</div>';
+            }
+            html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">N\u00famero de referencia:</div>';
+            html += '<div style="font-size:20px;font-weight:900;color:#333;letter-spacing:2px;">' + (ref.number || '--') + '</div>';
+            html += '<div style="font-size:13px;color:#555;margin-top:6px;">Monto: <strong>' + VkUI.formatPrecio(refAmount) + ' MXN</strong></div>';
+            if (ref.expires_after) {
+                var exp = new Date(ref.expires_after * 1000);
+                html += '<div style="font-size:12px;color:#888;margin-top:2px;">Vence: <strong>' + exp.toLocaleDateString('es-MX') + '</strong></div>';
+            }
+            html += '</div>';
         }
-        html += '</div>';
-        html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Presenta esta referencia en cualquier tienda OXXO. Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
+        html += '<div style="font-size:13px;color:#555;font-weight:700;">Total: <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong></div>';
+        html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Presenta cada referencia en cualquier tienda OXXO. Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
         html += '</div>';
         jQuery('#vk-oxxo-section').html(html);
     },
