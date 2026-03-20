@@ -90,13 +90,17 @@ try {
         $intentData['receipt_email'] = $customer['email'];
     }
 
-    // SPEI requiere customer obligatorio
-    if ($method === 'spei' && empty($intentData['customer'])) {
-        $stripeCustomer = \Stripe\Customer::create([
-            'name'  => $customer['nombre'] ?? 'Cliente Voltika',
-            'email' => $customer['email'] ?? '',
-        ]);
-        $intentData['customer'] = $stripeCustomer->id;
+    // SPEI: handle server-side and return bank details directly
+    if ($method === 'spei') {
+        // SPEI requiere customer obligatorio
+        if (empty($intentData['customer'])) {
+            $stripeCustomer = \Stripe\Customer::create([
+                'name'  => $customer['nombre'] ?? 'Cliente Voltika',
+                'email' => $customer['email'] ?? 'cliente@voltika.mx',
+            ]);
+            $intentData['customer'] = $stripeCustomer->id;
+        }
+        $intentData['payment_method_types'] = ['customer_balance'];
         $intentData['payment_method_data'] = [
             'type' => 'customer_balance'
         ];
@@ -108,6 +112,34 @@ try {
                 ]
             ]
         ];
+        $intentData['confirm'] = true;
+
+        $intent = \Stripe\PaymentIntent::create($intentData);
+
+        $response = ['clientSecret' => $intent->client_secret];
+
+        // Extract bank transfer details
+        if ($intent->next_action && isset($intent->next_action->display_bank_transfer_instructions)) {
+            $bankInfo = $intent->next_action->display_bank_transfer_instructions;
+            $addresses = $bankInfo->financial_addresses ?? [];
+            $clabe = '';
+            foreach ($addresses as $addr) {
+                if (isset($addr->clabe)) {
+                    $clabe = $addr->clabe;
+                    break;
+                }
+            }
+            $response['speiData'] = [
+                'clabe'        => $clabe,
+                'banco'        => $bankInfo->hosted_instructions_url ? 'Stripe' : 'STP',
+                'beneficiario' => 'MTECH GEARS S.A. DE C.V.',
+                'referencia'   => $bankInfo->reference ?? '',
+                'amount'       => $amount
+            ];
+        }
+
+        echo json_encode($response);
+        exit;
     }
 
     // Habilitar MSI si aplica (solo para card)
@@ -181,17 +213,6 @@ try {
     $intent = \Stripe\PaymentIntent::create($intentData);
 
     $response = ['clientSecret' => $intent->client_secret];
-
-    // Para SPEI, incluir datos bancarios si disponibles
-    if ($method === 'spei' && $intent->next_action && isset($intent->next_action->display_bank_transfer_instructions)) {
-        $bankInfo = $intent->next_action->display_bank_transfer_instructions;
-        $response['speiData'] = [
-            'clabe'        => $bankInfo->financial_addresses[0]->clabe ?? '',
-            'banco'        => 'STP',
-            'beneficiario' => 'Voltika S.A. de C.V.',
-            'referencia'   => $bankInfo->reference ?? ''
-        ];
-    }
 
     echo json_encode($response);
 

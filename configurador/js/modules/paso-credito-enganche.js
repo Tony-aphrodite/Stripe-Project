@@ -412,14 +412,24 @@ var PasoCreditoEnganche = {
     },
 
     _showSPEIDetails: function(speiData, enganche) {
-        var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin-top:12px;">';
-        html += '<div style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:10px;">&#128179; Datos para transferencia SPEI</div>';
+        var base = window.VK_BASE_PATH || '';
+        var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;border:1px solid #B3D4FC;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+        html += '<img src="' + base + 'img/logo_spei.png" alt="SPEI" style="height:28px;">';
+        html += '<span style="font-size:14px;font-weight:700;color:#1a3a5c;">Datos para transferencia SPEI</span>';
+        html += '</div>';
+        // CLABE highlighted
+        if (speiData.clabe) {
+            html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
+            html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">CLABE Interbancaria:</div>';
+            html += '<div style="font-size:18px;font-weight:900;color:#333;letter-spacing:1px;">' + speiData.clabe + '</div>';
+            html += '</div>';
+        }
         html += '<div style="font-size:13px;line-height:2;color:#333;">';
-        if (speiData.banco) html += 'Banco: <strong>' + speiData.banco + '</strong><br>';
-        if (speiData.clabe) html += 'CLABE: <strong>' + speiData.clabe + '</strong><br>';
         if (speiData.beneficiario) html += 'Beneficiario: <strong>' + speiData.beneficiario + '</strong><br>';
         if (speiData.referencia) html += 'Referencia: <strong>' + speiData.referencia + '</strong><br>';
-        html += 'Monto: <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong>';
+        if (speiData.banco) html += 'Banco: <strong>' + speiData.banco + '</strong><br>';
+        html += 'Monto: <strong style="color:#039fe1;font-size:16px;">' + VkUI.formatPrecio(enganche) + ' MXN</strong>';
         html += '</div>';
         html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Confirmaci\u00f3n autom\u00e1tica en minutos despu\u00e9s de recibir la transferencia.</p>';
         html += '</div>';
