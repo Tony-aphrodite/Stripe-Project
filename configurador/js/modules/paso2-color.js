@@ -83,7 +83,7 @@ var Paso2 = {
         html += '</div>';
 
         // Código de referido
-        html += '<div style="padding:0 20px;margin-bottom:12px;">';
+        html += '<div style="padding:0 20px;margin-top:20px;margin-bottom:12px;">';
         html += '<label style="font-size:13px;color:var(--vk-text-secondary);font-weight:600;display:block;margin-bottom:4px;">\u00bfTienes un c\u00f3digo de referido? Ingr\u00e9salo aqu\u00ed</label>';
         html += '<input type="text" id="vk-referido-input" class="vk-form-input" placeholder="C\u00f3digo de referido" ' +
             'value="' + (state.codigoReferido || '') + '" ' +
