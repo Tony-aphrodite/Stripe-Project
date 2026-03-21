@@ -167,8 +167,12 @@ try {
         }
 
         $oxxoRefs = [];
-        $billingName  = !empty($customer['nombre']) ? $customer['nombre'] : 'Cliente Voltika';
-        $billingEmail = !empty($customer['email']) ? $customer['email'] : 'cliente@voltika.mx';
+        $billingName  = !empty($customer['nombre']) ? trim($customer['nombre']) : 'Cliente Voltika';
+        $billingEmail = !empty($customer['email']) ? trim($customer['email']) : 'cliente@voltika.mx';
+        // OXXO requires first + last name, each min 2 chars
+        if (strlen($billingName) < 5 || strpos($billingName, ' ') === false) {
+            $billingName = 'Cliente Voltika';
+        }
 
         // Asegurar que hay customer para OXXO
         if (empty($intentData['customer'])) {
