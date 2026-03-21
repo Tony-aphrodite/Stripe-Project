@@ -132,6 +132,7 @@
                 'credito-pago': 4,
                 'credito-enganche': 4,
                 'credito-contrato': 4,
+                'credito-autopago': 4,
                 'facturacion': 4,
                 'exito': 4
             };
@@ -202,6 +203,9 @@
                     break;
                 case 'credito-contrato':
                     PasoCreditoContrato.init(this);
+                    break;
+                case 'credito-autopago':
+                    PasoCreditoAutopago.init(this);
                     break;
                 case 'facturacion':
                     PasoFacturacion.init(this);

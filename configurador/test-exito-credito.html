@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Test - Exito Credito (Image 4)</title>
+    <style>
+        :root {
+            --vk-green-primary: #4CAF50;
+            --vk-green-dark: #2E7D32;
+            --vk-text-primary: #333;
+            --vk-text-secondary: #666;
+            --vk-text-muted: #999;
+            --vk-bg-light: #F5F5F5;
+            --vk-border: #E0E0E0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f0f0;
+            min-height: 100vh;
+        }
+        #voltika-configurador {
+            max-width: 420px;
+            margin: 0 auto;
+            background: #fff;
+            min-height: 100vh;
+            padding: 16px;
+        }
+        .vk-card {
+            background: #fff;
+            border-radius: 14px;
+            border: 1px solid #eee;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        .vk-btn {
+            display: block;
+            width: 100%;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .vk-btn--primary {
+            background: linear-gradient(135deg, #1a3a5c, #0d47a1);
+            color: #fff;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .vk-btn--primary:not(:disabled):hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(26,58,92,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="voltika-configurador">
+        <div class="vk-paso vk-paso--active">
+            <div class="vk-paso__content" id="vk-exito-container">
+                <p style="text-align:center;color:#999;padding:40px;">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="js/data/productos.js"></script>
+    <script src="js/modules/ui-components.js"></script>
+    <script src="js/modules/paso-exito.js?v=test"></script>
+    <script>
+    // Mock app for testing — CREDITO flow (Image 4)
+    var mockApp = {
+        state: {
+            modeloSeleccionado: 'm05',
+            metodoPago: 'credito',
+            colorSeleccionado: 'negro',
+            nombre: 'Juan Carlos Perez Lopez',
+            email: 'juan@email.com',
+            telefono: '5512346605',
+            ciudad: 'Ciudad de Mexico',
+            estado: 'CDMX',
+            totalPagado: 14478,
+            enganchePorcentaje: 0.30,
+            plazoMeses: 12,
+            autopagoActivado: true
+        },
+        getModelo: function(id) {
+            var modelos = VOLTIKA_PRODUCTOS.modelos;
+            for (var i = 0; i < modelos.length; i++) {
+                if (modelos[i].id === id) return modelos[i];
+            }
+            return null;
+        }
+    };
+
+    $(document).ready(function() {
+        PasoExito.init(mockApp);
+    });
+    </script>
+</body>
+</html>
