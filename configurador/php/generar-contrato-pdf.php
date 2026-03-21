@@ -89,7 +89,11 @@ function generateContractPDF($nombre, $email, $telefono, $modelo, $color,
 
     $uploadDir = __DIR__ . '/contratos/';
     if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
+        if (!mkdir($uploadDir, 0777, true)) {
+            // Fallback to temp dir
+            $uploadDir = sys_get_temp_dir() . '/voltika_contratos/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+        }
     }
 
     $filename = 'contrato_' . preg_replace('/[^a-zA-Z0-9]/', '_', $nombre) . '_' . date('Ymd_His') . '.pdf';
@@ -344,7 +348,17 @@ function generateMinimalPDF($filepath, $nombre, $email, $telefono, $modelo, $col
     $pdf .= "trailer<</Size 6/Root 1 0 R>>\n";
     $pdf .= "startxref\n{$xrefOff}\n%%EOF";
 
-    file_put_contents($filepath, $pdf);
+    $written = file_put_contents($filepath, $pdf);
+    if ($written === false || $written === 0) {
+        error_log("MinimalPDF: failed to write file. Path={$filepath} PDFlen=" . strlen($pdf) . " Dir writable=" . (is_writable(dirname($filepath)) ? 'yes' : 'no'));
+        // Try temp directory as fallback
+        $tmpPath = sys_get_temp_dir() . '/' . basename($filepath);
+        $written = file_put_contents($tmpPath, $pdf);
+        if ($written > 0) {
+            return $tmpPath;
+        }
+        throw new Exception('Cannot write PDF file to disk');
+    }
     return $filepath;
 }
 
