@@ -343,8 +343,7 @@ var Paso3 = {
             $('#vk-cp-logistics').show();
         }
 
-        // Search and render delivery centers
-        self._renderCentros(cp);
+        // Don't render centers yet — wait for colonia API to confirm city name
 
         // Fetch colonias from API
         var $select = $('#vk-cp-colonia');
@@ -363,7 +362,7 @@ var Paso3 = {
                 $select.prop('disabled', false);
 
                 if (data.ok && data.colonias && data.colonias.length > 0) {
-                    // Update estado/ciudad from API if available
+                    // Update estado/ciudad from API (more accurate than local DB)
                     if (data.estado) {
                         $('#vk-cp-estado').val(data.estado);
                         state.estado = data.estado;
@@ -371,8 +370,6 @@ var Paso3 = {
                     if (data.ciudad) {
                         $('#vk-cp-ciudad').val(data.ciudad);
                         state.ciudad = data.ciudad;
-                        // Update cercano card city name if visible
-                        self._renderCentros(cp);
                     }
 
                     // Populate colonia select
@@ -382,21 +379,20 @@ var Paso3 = {
                         opts += '<option value="' + data.colonias[i] + '"' + sel + '>' + data.colonias[i] + '</option>';
                     }
                     $select.html(opts);
-
-                    // If previously selected colonia matches, enable button
-                    if (state.colonia && $select.val()) {
-                        // Button always enabled
-            // $('#vk-paso3-confirmar').prop('disabled', false);
-                    }
                 } else {
                     // API returned no colonias — show manual input fallback
                     self._coloniaFallback(state);
                 }
+
+                // Always render centers after city name is confirmed
+                self._renderCentros(cp);
             },
             error: function() {
                 $('#vk-cp-colonia-loading').hide();
                 // API failed — show manual input fallback
                 self._coloniaFallback(state);
+                // Still render centers with local city name
+                self._renderCentros(cp);
             }
         });
     },
