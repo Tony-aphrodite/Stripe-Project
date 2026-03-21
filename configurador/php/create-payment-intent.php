@@ -167,11 +167,17 @@ try {
         }
 
         $oxxoRefs = [];
-        $billingName  = !empty($customer['nombre']) ? trim($customer['nombre']) : 'Cliente Voltika';
+        $rawName      = !empty($customer['nombre']) ? trim($customer['nombre']) : '';
         $billingEmail = !empty($customer['email']) ? trim($customer['email']) : 'cliente@voltika.mx';
-        // OXXO requires first + last name, each min 2 chars
-        if (strlen($billingName) < 5 || strpos($billingName, ' ') === false) {
-            $billingName = 'Cliente Voltika';
+        // OXXO requires first + last name, each min 2 chars — always ensure valid
+        $billingName = 'Cliente Voltika';
+        if (strlen($rawName) >= 4 && strpos($rawName, ' ') !== false) {
+            $parts = explode(' ', $rawName);
+            $valid = true;
+            foreach ($parts as $p) {
+                if (strlen(trim($p)) < 2) { $valid = false; break; }
+            }
+            if ($valid) $billingName = $rawName;
         }
 
         // Asegurar que hay customer para OXXO
