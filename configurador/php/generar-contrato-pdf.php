@@ -357,8 +357,15 @@ function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signer
     $authHeader = 'Authorization: Basic ' . base64_encode($email . ':' . $password);
 
     // ── Step 1: Compute SHA-256 hash of PDF ───────────────────────────────
+    if (!file_exists($pdfPath) || filesize($pdfPath) === 0) {
+        throw new Exception('PDF file not found or empty: ' . $pdfPath);
+    }
     $pdfContent = file_get_contents($pdfPath);
+    if ($pdfContent === false || strlen($pdfContent) === 0) {
+        throw new Exception('Failed to read PDF file: ' . $pdfPath);
+    }
     $hash = hash('sha256', $pdfContent);
+    error_log("Cincel: PDF size=" . strlen($pdfContent) . " hash={$hash} path={$pdfPath}");
 
     // ── Step 2: Request NOM-151 timestamp via hash ────────────────────────
     $ch = curl_init();
