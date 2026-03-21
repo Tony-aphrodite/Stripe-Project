@@ -44,7 +44,7 @@ var PasoExito = {
         html += '<div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#4CAF50,#2E7D32);display:inline-flex;align-items:center;justify-content:center;">';
         html += '<span style="color:#fff;font-size:36px;">&#10003;</span>';
         html += '</div>';
-        html += '<span style="position:absolute;top:-5px;right:-15px;font-size:28px;">&#128640;</span>';
+        html += '';
         html += '</div>';
         html += '<h2 style="font-size:26px;font-weight:800;color:#333;margin:0 0 4px;">\u00a1Listo!</h2>';
         html += '<p style="font-size:18px;color:#333;margin:0;font-weight:700;">Tu Voltika fue apartada &#127881;</p>';
@@ -137,7 +137,7 @@ var PasoExito = {
         html += '<div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#25D366,#128C7E);display:inline-flex;align-items:center;justify-content:center;">';
         html += '<span style="color:#fff;font-size:36px;">&#10003;</span>';
         html += '</div>';
-        html += '<span style="font-size:32px;">&#128640;</span>';
+        html += '';
         html += '</div>';
 
         html += '<h2 style="font-size:26px;font-weight:800;color:#333;margin:0 0 6px;">\u00a1Compra confirmada!</h2>';
