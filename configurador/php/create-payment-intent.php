@@ -124,14 +124,32 @@ try {
             $addresses = $bankInfo->financial_addresses ?? [];
             $clabe = '';
             foreach ($addresses as $addr) {
-                if (isset($addr->clabe)) {
+                // Try different CLABE property paths
+                if (isset($addr->spei_clabe->clabe)) {
+                    $clabe = $addr->spei_clabe->clabe;
+                    break;
+                } elseif (isset($addr->clabe)) {
                     $clabe = $addr->clabe;
+                    break;
+                } elseif (isset($addr->spei->clabe)) {
+                    $clabe = $addr->spei->clabe;
                     break;
                 }
             }
+            // If still no CLABE, try to get from the full object
+            if (empty($clabe) && !empty($addresses)) {
+                $firstAddr = json_decode(json_encode($addresses[0]), true);
+                error_log('SPEI address structure: ' . json_encode($firstAddr));
+                // Search recursively for any 18-digit number (CLABE format)
+                array_walk_recursive($firstAddr, function($value) use (&$clabe) {
+                    if (is_string($value) && preg_match('/^\d{18}$/', $value)) {
+                        $clabe = $value;
+                    }
+                });
+            }
             $response['speiData'] = [
                 'clabe'        => $clabe,
-                'banco'        => $bankInfo->hosted_instructions_url ? 'Stripe' : 'STP',
+                'banco'        => !empty($bankInfo->hosted_instructions_url) ? 'Stripe' : 'STP',
                 'beneficiario' => 'MTECH GEARS S.A. DE C.V.',
                 'referencia'   => $bankInfo->reference ?? '',
                 'amount'       => $amount
