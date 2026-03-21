@@ -371,6 +371,8 @@ var Paso3 = {
                     if (data.ciudad) {
                         $('#vk-cp-ciudad').val(data.ciudad);
                         state.ciudad = data.ciudad;
+                        // Update cercano card city name if visible
+                        self._renderCentros(cp);
                     }
 
                     // Populate colonia select
