@@ -350,78 +350,74 @@ function generateMinimalPDF($filepath, $nombre, $email, $telefono, $modelo, $col
 
 /**
  * Send PDF to Cincel API for NOM-151 timestamp
- *
- * Flow:
- * 1. Get JWT token via Basic Auth
- * 2. Compute SHA-256 hash of PDF
- * 3. Request NOM-151 timestamp via hash
+ * Uses Basic Auth directly (no JWT needed for timestamps)
  */
 function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signerEmail) {
 
-    // ── Step 1: Get JWT token ─────────────────────────────────────────────
     $authHeader = 'Authorization: Basic ' . base64_encode($email . ':' . $password);
 
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL            => $apiUrl . '/tokens/jwt',
-        CURLOPT_HTTPGET        => true,
-        CURLOPT_HTTPHEADER     => [$authHeader],
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 15
-    ]);
-
-    $jwtResponse = curl_exec($ch);
-    $jwtCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($jwtCode !== 200) {
-        throw new Exception("Cincel JWT auth failed (HTTP {$jwtCode}): " . $jwtResponse);
-    }
-
-    // JWT may be returned as plain string or JSON
-    $jwt = trim($jwtResponse, '"');
-    if (empty($jwt)) {
-        throw new Exception('Cincel: empty JWT token received');
-    }
-
-    $bearerHeader = 'Authorization: Bearer ' . $jwt;
-
-    // ── Step 2: Compute SHA-256 hash of PDF ───────────────────────────────
+    // ── Step 1: Compute SHA-256 hash of PDF ───────────────────────────────
     $pdfContent = file_get_contents($pdfPath);
     $hash = hash('sha256', $pdfContent);
 
-    // ── Step 3: Request NOM-151 timestamp ──────────────────────────────────
-    $ch2 = curl_init();
-    curl_setopt_array($ch2, [
+    // ── Step 2: Request NOM-151 timestamp via hash ────────────────────────
+    $ch = curl_init();
+    curl_setopt_array($ch, [
         CURLOPT_URL            => $apiUrl . '/timestamps/' . $hash,
         CURLOPT_HTTPGET        => true,
-        CURLOPT_HTTPHEADER     => [$bearerHeader],
+        CURLOPT_HTTPHEADER     => [$authHeader],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 30
     ]);
 
-    $tsResponse = curl_exec($ch2);
-    $tsCode     = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
-    curl_close($ch2);
+    $tsResponse = curl_exec($ch);
+    $tsCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError  = curl_error($ch);
+    curl_close($ch);
+
+    // Log for debugging
+    error_log("Cincel timestamp request: hash={$hash} code={$tsCode} response={$tsResponse} curl_error={$curlError}");
 
     if ($tsCode === 402) {
-        throw new Exception('Cincel: no timestamping credits available (402)');
+        throw new Exception('Cincel: no timestamping credits available');
     }
+
+    // If Basic Auth fails on individual hash, try without auth (sandbox may allow it)
+    if ($tsCode === 401) {
+        $ch2 = curl_init();
+        curl_setopt_array($ch2, [
+            CURLOPT_URL            => $apiUrl . '/timestamps/' . $hash,
+            CURLOPT_HTTPGET        => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30
+        ]);
+        $tsResponse = curl_exec($ch2);
+        $tsCode     = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+        curl_close($ch2);
+
+        error_log("Cincel timestamp retry (no auth): code={$tsCode} response={$tsResponse}");
+    }
+
     if ($tsCode !== 200 && $tsCode !== 202) {
-        throw new Exception("Cincel timestamp request failed (HTTP {$tsCode}): " . $tsResponse);
+        // Still save the hash for manual timestamp later
+        return [
+            'status'        => 'pending',
+            'hash'          => $hash,
+            'asn1Ready'     => false,
+            'message'       => "PDF generated. Timestamp pending (HTTP {$tsCode}).",
+            'timestampCode' => $tsCode
+        ];
     }
 
-    // ── Step 4: Try to download the .asn1 certificate ─────────────────────
-    // NOM-151 certificate may take ~60 seconds to generate
-    $asn1Url = $apiUrl . '/timestamps/' . $hash . '.asn1';
+    // ── Step 3: Try to download .asn1 certificate ─────────────────────────
     $asn1Path = null;
+    $asn1Url  = $apiUrl . '/timestamps/' . $hash . '.asn1';
 
-    // Try downloading immediately (may return 202 if still processing)
     $ch3 = curl_init();
     curl_setopt_array($ch3, [
         CURLOPT_URL            => $asn1Url,
         CURLOPT_HTTPGET        => true,
-        CURLOPT_HTTPHEADER     => [$bearerHeader],
+        CURLOPT_HTTPHEADER     => [$authHeader],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 15
     ]);
@@ -429,6 +425,20 @@ function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signer
     $asn1Response = curl_exec($ch3);
     $asn1Code     = curl_getinfo($ch3, CURLINFO_HTTP_CODE);
     curl_close($ch3);
+
+    // If auth fails on .asn1, try without
+    if ($asn1Code === 401) {
+        $ch4 = curl_init();
+        curl_setopt_array($ch4, [
+            CURLOPT_URL            => $asn1Url,
+            CURLOPT_HTTPGET        => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 15
+        ]);
+        $asn1Response = curl_exec($ch4);
+        $asn1Code     = curl_getinfo($ch4, CURLINFO_HTTP_CODE);
+        curl_close($ch4);
+    }
 
     if ($asn1Code === 200 && !empty($asn1Response)) {
         $asn1Dir = __DIR__ . '/contratos/';
@@ -444,6 +454,6 @@ function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signer
         'timestampCode' => $tsCode,
         'message'       => ($asn1Code === 202)
             ? 'NOM-151 timestamp is being generated. Certificate will be ready in ~60 seconds.'
-            : 'NOM-151 timestamp created successfully.'
+            : (($asn1Code === 200) ? 'NOM-151 timestamp created successfully.' : 'Timestamp requested.')
     ];
 }
