@@ -57,6 +57,11 @@ if (!defined('CDC_API_KEY')) {
     define('CDC_API_KEY', getenv('CDC_API_KEY') ?: '5WdpF9Eqw7925TFAosGKifwkZ7nDuNUN');
 }
 
+// Cincel (NOM-151 Digital Signature)
+if (!defined('CINCEL_API_URL'))  define('CINCEL_API_URL',  getenv('CINCEL_API_URL')  ?: 'https://sandbox.api.cincel.digital/v3');
+if (!defined('CINCEL_EMAIL'))    define('CINCEL_EMAIL',    getenv('CINCEL_EMAIL')    ?: 'test@riactor.com');
+if (!defined('CINCEL_PASSWORD')) define('CINCEL_PASSWORD', getenv('CINCEL_PASSWORD') ?: 'Prueba2026_');
+
 // ── Shared DB connection ────────────────────────────────────────────────────
 function getDB() {
     static $pdo = null;
