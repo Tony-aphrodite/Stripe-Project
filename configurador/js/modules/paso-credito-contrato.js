@@ -55,7 +55,7 @@ var PasoCreditoContrato = {
 
         // === Header: Tu Voltika esta apartada (icon + text on one line) ===
         html += '<div style="text-align:center;margin-bottom:16px;padding-top:4px;">';
-        html += '<h2 style="font-size:22px;font-weight:800;color:#333;margin:0 0 6px;display:flex;align-items:center;justify-content:center;gap:8px;">&#127878; \u00a1Tu Voltika est\u00e1 apartada!</h2>';
+        html += '<h2 style="font-size:22px;font-weight:800;color:#333;margin:0 0 6px;">\u00a1Tu Voltika est\u00e1 apartada!</h2>';
         html += '<p style="font-size:14px;color:#555;margin:0;">Tu enganche de <strong style="color:#333;">' +
             VkUI.formatPrecio(enganche) + ' MXN</strong> fue recibido <strong style="color:#4CAF50;">correctamente</strong>.</p>';
         html += '</div>';
@@ -65,7 +65,6 @@ var PasoCreditoContrato = {
 
         // Blue header: rocket + title only
         html += '<div style="background:#039fe1;padding:14px 20px;display:flex;align-items:center;gap:8px;">';
-        html += '<span style="font-size:22px;">&#128640;</span>';
         html += '<span style="font-size:18px;font-weight:800;color:#fff;">\u00a1Tu financiamiento fue aprobado!</span>';
         html += '</div>';
 
@@ -86,7 +85,6 @@ var PasoCreditoContrato = {
         // Info text
         html += '<div style="flex:1;min-width:0;">';
         html += '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:10px;">';
-        html += '<span style="font-size:14px;flex-shrink:0;">&#128205;</span>';
         html += '<span style="font-size:13px;color:#333;"><strong>Tu moto est\u00e1</strong> reservada y comenzaremos a preparar tu entrega.</span>';
         html += '</div>';
 
