@@ -476,9 +476,8 @@ var PasoCreditoEnganche = {
 
     _showOXXOVoucher: function(oxxoData, enganche) {
         var base = window.VK_BASE_PATH || '';
-        // oxxoData is an array of references
         var refs = Array.isArray(oxxoData) ? oxxoData : [oxxoData];
-        var html = '<div style="background:#FFF8E1;border-radius:10px;padding:16px;margin-top:12px;border:1px solid #FFE082;">';
+        var html = '<div id="vk-oxxo-voucher" style="background:#FFF8E1;border-radius:10px;padding:16px;margin-top:12px;border:1px solid #FFE082;">';
         html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
         html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:30px;">';
         html += '<span style="font-size:14px;font-weight:700;color:#333;">Referencia' + (refs.length > 1 ? 's' : '') + ' de pago OXXO</span>';
@@ -491,7 +490,7 @@ var PasoCreditoEnganche = {
                 html += '<div style="font-size:11px;color:#039fe1;font-weight:700;margin-bottom:4px;">Referencia ' + (i + 1) + ' de ' + refs.length + '</div>';
             }
             html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">N\u00famero de referencia:</div>';
-            html += '<div style="font-size:20px;font-weight:900;color:#333;letter-spacing:2px;">' + (ref.number || '--') + '</div>';
+            html += '<div style="font-size:14px;font-weight:900;color:#333;word-break:break-all;overflow-wrap:break-word;">' + (ref.number || '--') + '</div>';
             html += '<div style="font-size:13px;color:#555;margin-top:6px;">Monto: <strong>' + VkUI.formatPrecio(refAmount) + ' MXN</strong></div>';
             if (ref.expires_after) {
                 var exp = new Date(ref.expires_after * 1000);
@@ -501,8 +500,80 @@ var PasoCreditoEnganche = {
         }
         html += '<div style="font-size:13px;color:#555;font-weight:700;">Total: <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong></div>';
         html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Presenta cada referencia en cualquier tienda OXXO. Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
+
+        // Download button
+        html += '<button id="vk-oxxo-download" style="display:block;width:100%;margin-top:14px;padding:12px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">&#128229; Descargar referencias</button>';
         html += '</div>';
         jQuery('#vk-oxxo-section').html(html);
+
+        // Store refs for download
+        this._oxxoRefs = refs;
+        this._oxxoEnganche = enganche;
+
+        var self = this;
+        jQuery(document).off('click', '#vk-oxxo-download').on('click', '#vk-oxxo-download', function() {
+            self._downloadOXXOPDF(refs, enganche);
+        });
+    },
+
+    _downloadOXXOPDF: function(refs, enganche) {
+        // Build a printable HTML page and trigger print/save as PDF
+        var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Referencias OXXO - Voltika</title>';
+        html += '<style>body{font-family:Arial,sans-serif;padding:30px;max-width:500px;margin:0 auto;}';
+        html += '.ref-box{border:2px solid #FFE082;border-radius:10px;padding:20px;margin-bottom:16px;background:#FFF8E1;}';
+        html += '.ref-num{font-size:16px;font-weight:900;color:#333;word-break:break-all;letter-spacing:1px;margin:8px 0;}';
+        html += '.ref-label{font-size:12px;color:#888;}';
+        html += '.ref-amount{font-size:14px;color:#555;margin-top:6px;}';
+        html += '.header{text-align:center;margin-bottom:24px;}';
+        html += '.total{font-size:16px;font-weight:800;text-align:center;margin:16px 0;padding:12px;background:#FFF8E1;border-radius:8px;}';
+        html += '.footer{font-size:12px;color:#888;text-align:center;margin-top:20px;}';
+        html += '@media print{button{display:none!important;}}</style></head><body>';
+
+        html += '<div class="header">';
+        html += '<h2 style="margin:0;color:#333;">Referencias de Pago OXXO</h2>';
+        html += '<p style="color:#888;font-size:13px;">Voltika - Pago de enganche</p>';
+        html += '</div>';
+
+        for (var i = 0; i < refs.length; i++) {
+            var ref = refs[i];
+            var refAmount = ref.amount ? Math.round(ref.amount / 100) : Math.round(enganche / refs.length);
+            html += '<div class="ref-box">';
+            if (refs.length > 1) {
+                html += '<div style="font-size:12px;color:#039fe1;font-weight:700;">Referencia ' + (i + 1) + ' de ' + refs.length + '</div>';
+            }
+            html += '<div class="ref-label">N\u00famero de referencia:</div>';
+            html += '<div class="ref-num">' + (ref.number || '--') + '</div>';
+            html += '<div class="ref-amount">Monto: <strong>$' + refAmount.toLocaleString('es-MX') + ' MXN</strong></div>';
+            if (ref.expires_after) {
+                var exp = new Date(ref.expires_after * 1000);
+                html += '<div style="font-size:12px;color:#888;margin-top:4px;">Vence: <strong>' + exp.toLocaleDateString('es-MX') + '</strong></div>';
+            }
+            html += '</div>';
+        }
+
+        html += '<div class="total">Total a pagar: <strong>$' + Math.round(enganche).toLocaleString('es-MX') + ' MXN</strong></div>';
+        html += '<div class="footer">';
+        html += '<p>Presenta cada referencia en cualquier tienda OXXO.</p>';
+        html += '<p>Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
+        html += '<p style="margin-top:12px;color:#039fe1;font-weight:700;">voltika.mx</p>';
+        html += '</div>';
+        html += '<div style="text-align:center;margin-top:20px;"><button onclick="window.print()" style="padding:12px 30px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Imprimir / Guardar PDF</button></div>';
+        html += '</body></html>';
+
+        var blob = new Blob([html], { type: 'text/html' });
+        var url = URL.createObjectURL(blob);
+        var win = window.open(url, '_blank');
+        if (win) {
+            win.onload = function() {
+                setTimeout(function() { win.print(); }, 500);
+            };
+        } else {
+            // Popup blocked — download as file
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'Referencias_OXXO_Voltika.html';
+            a.click();
+        }
     },
 
     _showOXXOError: function(msg) {
