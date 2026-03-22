@@ -45,7 +45,7 @@ var Paso4A = {
         var _envioDestino = (state.centroEntrega && state.centroEntrega.nombre && state.centroEntrega.tipo !== 'cercano')
             ? state.centroEntrega.nombre
             : (state.ciudad || 'tu ciudad');
-        var _envioTexto = '<div style="font-weight:700;color:var(--vk-green-primary);margin-top:4px;font-size:11px;">&#10003; Env\u00edo incluido a ' + _envioDestino + '</div>';
+        // _envioDestino used in Resumen section
 
         var html = '';
 
@@ -60,59 +60,18 @@ var Paso4A = {
         html += VkUI.renderCardLogos();
         html += '</div>';
 
-        // 4. "Tu moto está lista" section
+        // 4. "Tu moto está lista" section (simplified — no color/entrega details)
         html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;">';
         html += '<div style="display:flex;align-items:center;gap:14px;">';
         html += '<img src="' + imgSrc + '" alt="' + modelo.nombre + '" style="width:110px;height:auto;object-fit:contain;flex-shrink:0;">';
         html += '<div>';
         html += '<div style="font-size:13px;color:var(--vk-green-primary);font-weight:700;margin-bottom:2px;">&#10003; Tu moto est\u00e1 lista</div>';
         html += '<div style="font-weight:800;font-size:20px;line-height:1.1;">' + Paso1._getModeloLogo(modelo.id, modelo.nombre) + '</div>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:4px;">Color: ' + color + '</div>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);">Entrega: ' + ciudad + '</div>';
         html += '</div>';
         html += '</div>';
         html += '</div>';
 
-        // 5. Two payment option cards — horizontal (flex row)
-        html += '<div style="display:flex;flex-direction:row;gap:10px;margin-bottom:16px;align-items:stretch;">';
-
-        // Left: Pago único / Contado
-        html += '<div style="flex:1;min-width:0;border:1.5px solid var(--vk-border);border-radius:10px;padding:12px;display:flex;flex-direction:column;">';
-        html += '<div style="font-weight:800;font-size:13px;text-align:center;margin-bottom:8px;line-height:1.3;">Pago \u00fanico<br>100% seguro</div>';
-        html += '<div style="font-size:11px;color:var(--vk-text-secondary);flex:1;line-height:1.6;">';
-        html += '<div>\u2022 Pago protegido y encriptado</div>';
-        html += '<div>\u2022 Confirmaci\u00f3n bancaria al instante</div>';
-        html += '<div>\u2022 Atenci\u00f3n personalizada post-venta</div>';
-        html += _envioTexto;
-        html += '</div>';
-        html += '<button id="vk-pay-unico" class="vk-pay-btn" data-tipo="unico" style="display:block;width:100%;margin-top:10px;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
-        html += '<span class="vk-pay-btn__label">PAGAR ' + VkUI.formatPrecio(total) + ' MXN</span>';
-        html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + '</span>';
-        html += '</button>';
-        html += '</div>';
-
-        // Right: 9 MSI
-        if (modelo.tieneMSI) {
-            html += '<div style="flex:1;min-width:0;border:1.5px solid var(--vk-border);border-radius:10px;padding:12px;display:flex;flex-direction:column;">';
-            html += '<div style="font-weight:800;font-size:13px;text-align:center;margin-bottom:8px;line-height:1.3;">9 MSI<br>sin intereses</div>';
-            html += '<div style="font-size:11px;color:var(--vk-text-secondary);flex:1;line-height:1.6;">';
-            html += '<div>Tu moto hoy, sin pagar todo de golpe</div>';
-            html += '<div>&#10003; 9 pagos de ' + VkUI.formatPrecio(msiPago) + ' MXN</div>';
-            html += '<div>&#10003; Sin intereses ni cargos ocultos</div>';
-            html += '<div>&#10003; Cargo autom\u00e1tico cada mes</div>';
-            html += '<div>&#10003; Sin tr\u00e1mites adicionales</div>';
-            html += _envioTexto;
-            html += '</div>';
-            html += '<button id="vk-pay-msi" class="vk-pay-btn" data-tipo="msi" style="display:block;width:100%;margin-top:10px;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
-            html += '<span class="vk-pay-btn__label">PAGAR PRIMER CARGO ' + VkUI.formatPrecio(msiPago) + ' MXN</span>';
-            html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + '</span>';
-            html += '</button>';
-            html += '</div>';
-        }
-
-        html += '</div>'; // end flex row
-
-        // 6. Resumen de tu compra (moved up, before form)
+        // 5. Resumen de tu compra (right below model card)
         html += '<div class="vk-summary" style="margin-bottom:20px;">';
         html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">Resumen de tu compra</div>';
         html += '<div style="font-size:14px;line-height:1.9;">';
@@ -127,6 +86,7 @@ var Paso4A = {
         html += '</div>';
         html += '<div style="border-top:1.5px solid var(--vk-border);margin:12px 0 10px;"></div>';
         html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Total a pagar hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
+        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
         if (modelo.tieneMSI) {
             html += '<div style="font-size:13px;color:var(--vk-text-secondary);">\u2022 o 9 pagos de <strong>' + VkUI.formatPrecio(msiPago) + ' MXN</strong> (9 MSI sin intereses)</div>';
         }
@@ -174,6 +134,33 @@ var Paso4A = {
             '</div>';
 
         html += '</div>'; // end checkout-form
+
+        // 8. Two payment option cards — below card form
+        html += '<div style="display:flex;flex-direction:row;gap:10px;margin:16px 0;align-items:stretch;">';
+
+        // Left: Pago único / Contado
+        html += '<div style="flex:1;min-width:0;border:1.5px solid var(--vk-border);border-radius:10px;padding:12px;display:flex;flex-direction:column;">';
+        html += '<div style="font-weight:800;font-size:13px;text-align:center;margin-bottom:8px;line-height:1.3;">Pago \u00fanico<br>100% seguro</div>';
+        html += '<div style="font-size:20px;font-weight:900;text-align:center;margin-bottom:8px;">' + VkUI.formatPrecio(total) + ' <span style="font-size:12px;font-weight:600;">MXN</span></div>';
+        html += '<button id="vk-pay-unico" class="vk-pay-btn" data-tipo="unico" style="display:block;width:100%;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
+        html += '<span class="vk-pay-btn__label">PAGAR ' + VkUI.formatPrecio(total) + '</span>';
+        html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + '</span>';
+        html += '</button>';
+        html += '</div>';
+
+        // Right: 9 MSI
+        if (modelo.tieneMSI) {
+            html += '<div style="flex:1;min-width:0;border:1.5px solid var(--vk-border);border-radius:10px;padding:12px;display:flex;flex-direction:column;">';
+            html += '<div style="font-weight:800;font-size:13px;text-align:center;margin-bottom:8px;line-height:1.3;">9 MSI<br>sin intereses</div>';
+            html += '<div style="font-size:20px;font-weight:900;text-align:center;margin-bottom:8px;">' + VkUI.formatPrecio(msiPago) + ' <span style="font-size:12px;font-weight:600;">/ mes</span></div>';
+            html += '<button id="vk-pay-msi" class="vk-pay-btn" data-tipo="msi" style="display:block;width:100%;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
+            html += '<span class="vk-pay-btn__label">PAGAR ' + VkUI.formatPrecio(msiPago) + ' / MES</span>';
+            html += '<span class="vk-pay-btn__spinner" style="display:none;">' + VkUI.renderSpinner() + '</span>';
+            html += '</button>';
+            html += '</div>';
+        }
+
+        html += '</div>'; // end flex row
 
         // Error message
         html += '<div id="vk-pago-error" style="display:none;color:#C62828;background:#FFEBEE;border:1px solid #E53935;border-radius:6px;padding:12px;margin-top:12px;font-size:13px;"></div>';
