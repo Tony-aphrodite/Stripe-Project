@@ -37,8 +37,9 @@ var PasoResumen = {
 
     /* ── CONTADO / MSI: Screen 4 ─────────────────────────────────────────── */
     _renderContadoMSI: function(modelo, state) {
-        var total   = modelo.precioContado + state.costoLogistico;
-        var msiPago = modelo.tieneMSI ? Math.round(modelo.precioMSI) : Math.round(total / 9);
+        var costoLog = state.costoLogistico || 0;
+        var total   = modelo.precioContado + costoLog;
+        var msiPago = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog) / 9) : Math.round(total / 9);
         var color   = state.colorSeleccionado || modelo.colorDefault || '';
         var ciudad  = (state.ciudad && state.estado) ? state.ciudad + ', ' + state.estado : (state.ciudad || '--');
 
@@ -62,7 +63,8 @@ var PasoResumen = {
         if (modelo.tieneMSI) {
             html += '<div style="font-size:12px;font-weight:700;color:#039fe1;margin:6px 0 2px;">9 MSI SIN INTERESES</div>';
         }
-        html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-bottom:14px;">Primer cargo hoy.</div>';
+        html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-bottom:4px;">Primer cargo hoy.</div>';
+        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:14px;">Env\u00edo incluido a tu punto Voltika</div>';
         html += '<button id="vk-resumen-pagar-msi" style="display:block;width:100%;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">PAGAR ' + VkUI.formatPrecio(msiPago) + ' HOY</button>';
         html += '<div style="margin-top:10px;font-size:12px;color:var(--vk-text-muted);">&#128274; Pago seguro con ' + VkUI.renderCardLogos() + '</div>';
         html += '</div>';

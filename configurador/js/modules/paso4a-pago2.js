@@ -32,8 +32,9 @@ var Paso4A = {
         var modelo = this.app.getModelo(state.modeloSeleccionado);
         if (!modelo) return;
 
-        var total       = modelo.precioContado + state.costoLogistico;
-        var msiPago     = modelo.tieneMSI ? Math.round(modelo.precioMSI) : Math.round(total / 9);
+        var costoLog    = state.costoLogistico || 0;
+        var total       = modelo.precioContado + costoLog;
+        var msiPago     = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog) / 9) : Math.round(total / 9);
         var ciudad      = (state.ciudad && state.estado) ? state.ciudad + ', ' + state.estado : (state.ciudad || '--');
         var _fd = new Date(); _fd.setDate(_fd.getDate() + 15);
         var _meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -95,6 +96,7 @@ var Paso4A = {
             html += '<div>&#10003; Sin intereses ni cargos ocultos</div>';
             html += '<div>&#10003; Cargo autom\u00e1tico cada mes</div>';
             html += '<div>&#10003; Sin tr\u00e1mites adicionales</div>';
+            html += '<div style="font-weight:700;color:var(--vk-green-primary);margin-top:4px;">&#10003; Env\u00edo incluido a tu punto Voltika</div>';
             html += '</div>';
             html += '<button id="vk-pay-msi" class="vk-pay-btn" data-tipo="msi" style="display:block;width:100%;margin-top:10px;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
             html += '<span class="vk-pay-btn__label">PAGAR PRIMER CARGO ' + VkUI.formatPrecio(msiPago) + ' MXN</span>';
@@ -258,8 +260,9 @@ var Paso4A = {
 
         var state   = self.app.state;
         var modelo  = self.app.getModelo(state.modeloSeleccionado);
-        var total   = modelo.precioContado + state.costoLogistico;
-        var msiPago = modelo.tieneMSI ? Math.round(modelo.precioMSI) : Math.round(total / 9);
+        var costoLog2 = state.costoLogistico || 0;
+        var total   = modelo.precioContado + costoLog2;
+        var msiPago = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog2) / 9) : Math.round(total / 9);
         var amountCents = (self._pagoTipo === 'msi' ? msiPago : total) * 100;
 
         var customerData = {
