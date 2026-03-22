@@ -711,7 +711,11 @@
 
     <!-- Model tabs fixed nav — body level to avoid CSS transform stacking context -->
     <div id="vk-modelo-nav-fixed" class="vk-modelo-nav-fixed" style="display:none;">
-        <div class="vk-modelo-tabs" id="vk-modelo-tabs-fixed"></div>
+        <div style="font-size:11px;font-weight:700;color:#999;text-align:center;padding:2px 0 0;">Ver otros modelos</div>
+        <div style="position:relative;">
+            <div class="vk-modelo-tabs" id="vk-modelo-tabs-fixed" style="overflow-x:auto;"></div>
+            <div style="position:absolute;right:0;top:0;bottom:0;width:28px;display:flex;align-items:center;justify-content:center;background:linear-gradient(to right,transparent,#fff 60%);pointer-events:none;font-size:18px;color:#039fe1;font-weight:700;">&#8250;</div>
+        </div>
     </div>
 
 </body>
