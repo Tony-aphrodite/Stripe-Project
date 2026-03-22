@@ -140,7 +140,7 @@ var PasoCreditoContrato = {
         html += '<label style="display:flex;align-items:flex-start;gap:10px;padding:14px;border:1.5px solid var(--vk-border);border-radius:10px;margin-bottom:14px;cursor:pointer;">';
         html += '<input type="checkbox" id="vk-contrato-acepto" style="margin-top:3px;flex-shrink:0;width:18px;height:18px;">';
         html += '<span style="font-size:13px;color:var(--vk-text-secondary);line-height:1.5;">';
-        html += 'He le\u00eddo y acepto de conformidad los t\u00e9rminos y cl\u00e1usulas establecidas en el contrato y en el <a href="https://www.voltika.mx/aviso-de-privacidad" target="_blank" style="color:#039fe1;text-decoration:underline;">aviso de privacidad</a>.';
+        html += 'He le\u00eddo y acepto de conformidad los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:#039fe1;text-decoration:underline;">t\u00e9rminos y cl\u00e1usulas</a> establecidas en el contrato y en el <a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" style="color:#039fe1;text-decoration:underline;">aviso de privacidad</a>.';
         html += ' <a href="#" id="vk-ver-contrato" style="color:#039fe1;font-weight:600;text-decoration:none;">Ver contrato</a>';
         html += '</span>';
         html += '</label>';

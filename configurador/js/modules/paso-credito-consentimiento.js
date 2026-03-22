@@ -106,7 +106,7 @@ var PasoCreditoConsentimiento = {
         html += '<div class="vk-checkbox-group" style="margin-bottom:16px;display:flex;gap:10px;align-items:flex-start;">';
         html += '<input type="checkbox" class="vk-checkbox" id="vk-cons-buro" style="margin-top:3px;flex-shrink:0;">';
         html += '<label class="vk-checkbox-label" for="vk-cons-buro" style="font-size:13px;">' +
-            'Estoy de acuerdo con el <a href="https://voltika.mx/docs/aviso_privacidad_2026.pdf" target="_blank" style="color:#039fe1;">aviso de privacidad</a>.' +
+            'Estoy de acuerdo con el <a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" style="color:#039fe1;">aviso de privacidad</a>.' +
             '</label>';
         html += '</div>';
 
