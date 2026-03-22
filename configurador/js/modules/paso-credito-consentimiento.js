@@ -98,7 +98,7 @@ var PasoCreditoConsentimiento = {
         html += '<label class="vk-checkbox-label" for="vk-cons-tyc" style="font-size:13px;">' +
             'Al continuar aceptas los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:#039fe1;">T\u00e9rminos y condiciones</a>, ' +
             'las <a href="https://voltika.mx/docs/clausulas_2026.pdf" target="_blank" style="color:#039fe1;">cl\u00e1usulas de medios electr\u00f3nicos</a> ' +
-            'y autorizas la consulta de tu <a href="https://voltika.mx/docs/buro_2026.pdf" target="_blank" style="color:#039fe1;">reporte de cr\u00e9dito</a>.' +
+            'y autorizas la consulta de tu reporte de cr\u00e9dito.' +
             '</label>';
         html += '</div>';
 
@@ -115,7 +115,7 @@ var PasoCreditoConsentimiento = {
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
         // CTA
-        html += '<button class="vk-btn vk-btn--primary" id="vk-cons-evaluar" disabled>' +
+        html += '<button class="vk-btn vk-btn--primary" id="vk-cons-evaluar">' +
             '<span id="vk-cons-label">VER MI RESULTADO \u2192</span>' +
             '<span id="vk-cons-spinner" style="display:none;">' + VkUI.renderSpinner() + ' Evaluando...</span>' +
             '</button>';
@@ -143,7 +143,8 @@ var PasoCreditoConsentimiento = {
         var otp  = this._getOTPValue();
         var tyc  = jQuery('#vk-cons-tyc').is(':checked');
         var buro = jQuery('#vk-cons-buro').is(':checked');
-        jQuery('#vk-cons-evaluar').prop('disabled', !(otp.length === 6 && tyc && buro));
+        var ready = otp.length === 6 && tyc && buro;
+        jQuery('#vk-cons-evaluar').css('opacity', ready ? '1' : '0.6');
     },
 
     bindEvents: function() {
@@ -217,9 +218,29 @@ var PasoCreditoConsentimiento = {
 
         jQuery(document).on('change', '#vk-cons-tyc, #vk-cons-buro', function() {
             self._updateCTA();
+            jQuery('#vk-cons-checkbox-error').hide();
         });
 
         jQuery(document).on('click', '#vk-cons-evaluar', function() {
+            var otp  = self._getOTPValue();
+            var tyc  = jQuery('#vk-cons-tyc').is(':checked');
+            var buro = jQuery('#vk-cons-buro').is(':checked');
+
+            if (otp.length !== 6) {
+                jQuery('#vk-cons-error').text('Ingresa el c\u00f3digo de 6 d\u00edgitos.').show();
+                return;
+            }
+            jQuery('#vk-cons-error').hide();
+
+            if (!tyc || !buro) {
+                if (!jQuery('#vk-cons-checkbox-error').length) {
+                    jQuery(this).before('<div id="vk-cons-checkbox-error" style="color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;font-weight:600;">Debes aceptar ambas casillas para continuar.</div>');
+                } else {
+                    jQuery('#vk-cons-checkbox-error').show();
+                }
+                return;
+            }
+            jQuery('#vk-cons-checkbox-error').hide();
             self._evaluar();
         });
 
