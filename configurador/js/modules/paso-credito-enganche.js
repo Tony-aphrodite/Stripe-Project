@@ -485,39 +485,36 @@ var PasoCreditoEnganche = {
         for (var i = 0; i < refs.length; i++) {
             var ref = refs[i];
             var refAmount = ref.amount ? Math.round(ref.amount / 100) : Math.round(enganche / refs.length);
-            html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
+            html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;overflow:hidden;">';
             if (refs.length > 1) {
                 html += '<div style="font-size:11px;color:#039fe1;font-weight:700;margin-bottom:4px;">Referencia ' + (i + 1) + ' de ' + refs.length + '</div>';
             }
             html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">N\u00famero de referencia:</div>';
-            html += '<div style="font-size:14px;font-weight:900;color:#333;word-break:break-all;overflow-wrap:break-word;">' + (ref.number || '--') + '</div>';
+            // Format number in groups of 4 for readability
+            var num = ref.number || '--';
+            var formatted = num.replace(/(.{4})/g, '$1 ').trim();
+            html += '<div style="font-size:12px;font-weight:900;color:#333;font-family:monospace;line-height:1.6;word-break:break-all;">' + formatted + '</div>';
             html += '<div style="font-size:13px;color:#555;margin-top:6px;">Monto: <strong>' + VkUI.formatPrecio(refAmount) + ' MXN</strong></div>';
             if (ref.expires_after) {
                 var exp = new Date(ref.expires_after * 1000);
                 html += '<div style="font-size:12px;color:#888;margin-top:2px;">Vence: <strong>' + exp.toLocaleDateString('es-MX') + '</strong></div>';
             }
+            // Stripe hosted voucher link (with barcode)
+            if (ref.hosted_voucher_url) {
+                html += '<a href="' + ref.hosted_voucher_url + '" target="_blank" rel="noopener" ' +
+                    'style="display:block;text-align:center;margin-top:10px;padding:10px;background:#E53935;color:#fff;border-radius:6px;font-size:13px;font-weight:700;text-decoration:none;">' +
+                    '&#128179; Ver voucher con c\u00f3digo de barras</a>';
+            }
             html += '</div>';
         }
         html += '<div style="font-size:13px;color:#555;font-weight:700;">Total: <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong></div>';
-        html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Presenta cada referencia en cualquier tienda OXXO. Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
-
-        // Download button
-        html += '<button id="vk-oxxo-download" style="display:block;width:100%;margin-top:14px;padding:12px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">&#128229; Descargar referencias</button>';
+        html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Presenta el voucher con c\u00f3digo de barras en cualquier tienda OXXO. Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
         html += '</div>';
         jQuery('#vk-oxxo-section').html(html);
-
-        // Store refs for download
-        this._oxxoRefs = refs;
-        this._oxxoEnganche = enganche;
-
-        var self = this;
-        jQuery(document).off('click', '#vk-oxxo-download').on('click', '#vk-oxxo-download', function() {
-            self._downloadOXXOPDF(refs, enganche);
-        });
     },
 
     _downloadOXXOPDF: function(refs, enganche) {
-        // Build a printable HTML page and trigger print/save as PDF
+        // Not used anymore — Stripe hosted voucher replaces custom PDF
         var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Referencias OXXO - Voltika</title>';
         html += '<style>body{font-family:Arial,sans-serif;padding:30px;max-width:500px;margin:0 auto;}';
         html += '.ref-box{border:2px solid #FFE082;border-radius:10px;padding:20px;margin-bottom:16px;background:#FFF8E1;}';
