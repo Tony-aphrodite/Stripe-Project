@@ -1869,14 +1869,15 @@ html {
 .vk-back-btn {
     display: inline-flex;
     align-items: center;
-    gap: var(--vk-space-xs);
+    gap: 6px;
     background: none;
     border: none;
     color: var(--vk-text-secondary);
     font-family: var(--vk-font-family);
-    font-size: var(--vk-font-size-sm);
+    font-size: 15px;
+    font-weight: 600;
     cursor: pointer;
-    padding: var(--vk-space-sm) 0;
+    padding: 10px 0;
     margin-bottom: var(--vk-space-sm);
     transition: color var(--vk-transition-fast);
 }
