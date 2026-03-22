@@ -75,10 +75,11 @@ var PasoCreditoContrato = {
         // Moto image + calendar
         html += '<div style="flex-shrink:0;width:120px;">';
         html += '<img src="' + base + motoImg + '" alt="Voltika" style="width:100%;height:auto;">';
-        html += '<div style="background:#F5F5F5;border-radius:8px;padding:6px;text-align:center;margin-top:6px;border:1px solid #eee;">';
-        html += '<div style="font-size:9px;color:#999;font-weight:600;text-transform:uppercase;">' + fechaEntrega.diaSemana + '</div>';
-        html += '<div style="font-size:24px;font-weight:900;color:#333;line-height:1;">' + fechaEntrega.dia + '</div>';
-        html += '<div style="font-size:9px;color:#039fe1;font-weight:700;">' + fechaEntrega.mes + '</div>';
+        html += '<div style="background:#E8F4FD;border-radius:8px;padding:8px;text-align:center;margin-top:6px;border:1.5px solid #039fe1;">';
+        html += '<div style="font-size:10px;color:#039fe1;font-weight:700;margin-bottom:2px;">Fecha de entrega:</div>';
+        html += '<div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;">' + fechaEntrega.diaSemana + '</div>';
+        html += '<div style="font-size:28px;font-weight:900;color:#039fe1;line-height:1;">' + fechaEntrega.dia + '</div>';
+        html += '<div style="font-size:11px;color:#039fe1;font-weight:700;">' + fechaEntrega.mes + '</div>';
         html += '</div>';
         html += '</div>';
 
@@ -107,12 +108,17 @@ var PasoCreditoContrato = {
 
         // === Contract signature section (Cincel NOM-151 flow) ===
 
-        // Title
-        html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;">';
-        html += '<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#4CAF50;flex-shrink:0;margin-top:1px;">';
-        html += '<span style="color:#fff;font-size:13px;">&#10003;</span></span>';
-        html += '<span style="font-size:16px;color:#333;"><strong>Para finalizar</strong> tu cr\u00e9dito, firma tu contrato:</span>';
-        html += '</div>';
+        // Contract + Terms checkbox FIRST (above signature)
+        html += '<label style="display:flex;align-items:flex-start;gap:10px;padding:14px;border:1.5px solid var(--vk-border);border-radius:10px;margin-bottom:14px;cursor:pointer;">';
+        html += '<input type="checkbox" id="vk-contrato-acepto" style="margin-top:3px;flex-shrink:0;width:18px;height:18px;">';
+        html += '<span style="font-size:13px;color:var(--vk-text-secondary);line-height:1.5;">';
+        html += 'He le\u00eddo y acepto de conformidad los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:#039fe1;text-decoration:underline;">t\u00e9rminos y cl\u00e1usulas</a> establecidas en el contrato y en el <a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" style="color:#039fe1;text-decoration:underline;">aviso de privacidad</a>.';
+        html += ' <a href="#" id="vk-ver-contrato" style="color:#039fe1;font-weight:600;text-decoration:none;">Ver contrato</a>';
+        html += '</span>';
+        html += '</label>';
+
+        // Checkbox error message
+        html += '<div id="vk-contrato-checkbox-error" style="display:none;color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;font-weight:600;">Debes aceptar los t\u00e9rminos para continuar.</div>';
 
         // Signature canvas area
         html += '<div style="margin-bottom:12px;">';
@@ -136,20 +142,11 @@ var PasoCreditoContrato = {
         html += '<span style="font-size:12px;color:#1a3a5c;">Tu firma ser\u00e1 certificada con <strong>NOM-151</strong> mediante Cincel Digital</span>';
         html += '</div>';
 
-        // Contract + Terms checkbox (single)
-        html += '<label style="display:flex;align-items:flex-start;gap:10px;padding:14px;border:1.5px solid var(--vk-border);border-radius:10px;margin-bottom:14px;cursor:pointer;">';
-        html += '<input type="checkbox" id="vk-contrato-acepto" style="margin-top:3px;flex-shrink:0;width:18px;height:18px;">';
-        html += '<span style="font-size:13px;color:var(--vk-text-secondary);line-height:1.5;">';
-        html += 'He le\u00eddo y acepto de conformidad los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:#039fe1;text-decoration:underline;">t\u00e9rminos y cl\u00e1usulas</a> establecidas en el contrato y en el <a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" style="color:#039fe1;text-decoration:underline;">aviso de privacidad</a>.';
-        html += ' <a href="#" id="vk-ver-contrato" style="color:#039fe1;font-weight:600;text-decoration:none;">Ver contrato</a>';
-        html += '</span>';
-        html += '</label>';
-
         // Error message
         html += '<div id="vk-contrato-error" style="display:none;color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;font-weight:600;"></div>';
 
         // CTA
-        html += '<button class="vk-btn vk-btn--primary" id="vk-contrato-confirmar" disabled ' +
+        html += '<button class="vk-btn vk-btn--primary" id="vk-contrato-confirmar" ' +
             'style="font-size:16px;font-weight:800;padding:16px;margin-bottom:10px;">';
         html += '<span id="vk-contrato-btn-label">Confirmar mi financiamiento</span>';
         html += '<span id="vk-contrato-btn-spinner" style="display:none;">' + VkUI.renderSpinner() + ' Procesando...</span>';
@@ -336,7 +333,9 @@ var PasoCreditoContrato = {
     _checkCanConfirm: function() {
         var signed = this._hasSigned;
         var accepted = jQuery('#vk-contrato-acepto').is(':checked');
-        jQuery('#vk-contrato-confirmar').prop('disabled', !(signed && accepted));
+        var ready = signed && accepted;
+        jQuery('#vk-contrato-confirmar').css('opacity', ready ? '1' : '0.6');
+        if (accepted) jQuery('#vk-contrato-checkbox-error').hide();
     },
 
     _showContrato: function() {
@@ -401,14 +400,16 @@ var PasoCreditoContrato = {
         var self  = this;
         var state = this.app.state;
 
+        // Validate checkbox first
+        if (!jQuery('#vk-contrato-acepto').is(':checked')) {
+            jQuery('#vk-contrato-checkbox-error').show();
+            jQuery('html, body').animate({ scrollTop: jQuery('#vk-contrato-acepto').closest('label').offset().top - 80 }, 400);
+            return;
+        }
         // Validate signature
         if (!this._hasSigned) {
             jQuery('#vk-contrato-error').text('Firma el contrato para continuar.').show();
-            return;
-        }
-        // Validate checkbox
-        if (!jQuery('#vk-contrato-acepto').is(':checked')) {
-            jQuery('#vk-contrato-error').text('Debes aceptar los t\u00e9rminos del contrato.').show();
+            jQuery('html, body').animate({ scrollTop: jQuery('#vk-firma-wrapper').offset().top - 80 }, 400);
             return;
         }
 
