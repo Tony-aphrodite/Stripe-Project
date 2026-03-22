@@ -25,11 +25,15 @@ var PasoCreditoAprobado = {
         // Blue gradient header
         html += '<div class="vk-aprobado-header">';
         html += '<div class="vk-aprobado-header__check">';
-        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/aprobado.png" alt="" style="width:100px;height:100px;object-fit:contain;">';
+        html += '<div style="width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto;">';
+        html += '<div style="width:70px;height:70px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.15);">';
+        html += '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
         html += '</div>';
-        html += '<h2 class="vk-aprobado-header__title" style="color:#ffffff;">\u00a1Felicidades!</h2>';
-        html += '<p class="vk-aprobado-header__subtitle">Tu cr\u00e9dito Voltika ya est\u00e1 aprobado</p>';
-        html += '<p style="color:rgba(255,255,255,0.85);font-size:13px;margin-top:8px;">Tu plan de pagos ya est\u00e1 listo y tu moto qued\u00f3 reservada para ti.</p>';
+        html += '</div>';
+        html += '</div>';
+        html += '<h2 class="vk-aprobado-header__title" style="color:#ffffff;font-size:32px;margin-top:16px;">\u00a1Felicidades!</h2>';
+        html += '<p class="vk-aprobado-header__subtitle" style="font-size:20px;">Tu cr\u00e9dito Voltika ya est\u00e1 aprobado</p>';
+        html += '<p style="color:rgba(255,255,255,0.9);font-size:15px;margin-top:8px;">Tu plan de pagos ya est\u00e1 listo y tu moto qued\u00f3 reservada para ti.</p>';
         html += '</div>';
 
         // White card area
@@ -59,14 +63,14 @@ var PasoCreditoAprobado = {
         // Truora steps preview
         html += '<div class="vk-aprobado-steps">';
         html += '<div class="vk-aprobado-steps__header">';
-        html += '<span style="font-size:16px;">&#9201;</span>';
-        html += '<strong>Solo faltan 30 segundos para terminar</strong>';
+        html += '<span style="font-size:20px;">&#9201;</span>';
+        html += '<strong style="font-size:16px;">Solo faltan 30 segundos para terminar</strong>';
         html += '</div>';
-        html += '<p style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Para proteger tu cr\u00e9dito y evitar fraudes necesitamos confirmar tu identidad.</p>';
-        var chk = '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#039fe1;color:#fff;font-size:10px;flex-shrink:0;">&#10003;</span>';
-        html += '<div class="vk-aprobado-steps__item">' + chk + ' Foto de tu INE</div>';
-        html += '<div class="vk-aprobado-steps__item">' + chk + ' Selfie r\u00e1pida</div>';
-        html += '<div class="vk-aprobado-steps__item">&#128274; Tu informaci\u00f3n est\u00e1 protegida y cifrada</div>';
+        html += '<p style="font-size:14px;color:var(--vk-text-secondary);margin-bottom:10px;">Para proteger tu cr\u00e9dito y evitar fraudes necesitamos confirmar tu identidad.</p>';
+        var chk = '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#039fe1;color:#fff;font-size:12px;flex-shrink:0;">&#10003;</span>';
+        html += '<div class="vk-aprobado-steps__item" style="font-size:15px;margin-bottom:8px;">' + chk + ' Foto de tu INE</div>';
+        html += '<div class="vk-aprobado-steps__item" style="font-size:15px;margin-bottom:8px;">' + chk + ' Selfie r\u00e1pida</div>';
+        html += '<div class="vk-aprobado-steps__item" style="font-size:14px;">&#128274; Tu informaci\u00f3n est\u00e1 protegida y cifrada</div>';
         html += '</div>';
 
         // CTA
