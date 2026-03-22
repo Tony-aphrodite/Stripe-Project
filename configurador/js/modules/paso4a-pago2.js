@@ -42,6 +42,10 @@ var Paso4A = {
         var color       = state.colorSeleccionado || modelo.colorDefault || '';
         var base        = window.VK_BASE_PATH || '';
         var imgSrc      = base + 'img/' + modelo.id + '/model.png';
+        var _envioDestino = (state.centroEntrega && state.centroEntrega.nombre && state.centroEntrega.tipo !== 'cercano')
+            ? state.centroEntrega.nombre
+            : (state.ciudad || 'tu ciudad');
+        var _envioTexto = '<div style="font-weight:700;color:var(--vk-green-primary);margin-top:4px;font-size:11px;">&#10003; Env\u00edo incluido a ' + _envioDestino + '</div>';
 
         var html = '';
 
@@ -79,6 +83,7 @@ var Paso4A = {
         html += '<div>\u2022 Pago protegido y encriptado</div>';
         html += '<div>\u2022 Confirmaci\u00f3n bancaria al instante</div>';
         html += '<div>\u2022 Atenci\u00f3n personalizada post-venta</div>';
+        html += _envioTexto;
         html += '</div>';
         html += '<button id="vk-pay-unico" class="vk-pay-btn" data-tipo="unico" style="display:block;width:100%;margin-top:10px;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
         html += '<span class="vk-pay-btn__label">PAGAR ' + VkUI.formatPrecio(total) + ' MXN</span>';
@@ -96,7 +101,7 @@ var Paso4A = {
             html += '<div>&#10003; Sin intereses ni cargos ocultos</div>';
             html += '<div>&#10003; Cargo autom\u00e1tico cada mes</div>';
             html += '<div>&#10003; Sin tr\u00e1mites adicionales</div>';
-            html += '<div style="font-weight:700;color:var(--vk-green-primary);margin-top:4px;">&#10003; Env\u00edo incluido a tu punto Voltika</div>';
+            html += _envioTexto;
             html += '</div>';
             html += '<button id="vk-pay-msi" class="vk-pay-btn" data-tipo="msi" style="display:block;width:100%;margin-top:10px;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
             html += '<span class="vk-pay-btn__label">PAGAR PRIMER CARGO ' + VkUI.formatPrecio(msiPago) + ' MXN</span>';
