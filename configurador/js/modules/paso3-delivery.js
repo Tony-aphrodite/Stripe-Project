@@ -126,8 +126,8 @@ var Paso3 = {
         if (esCredito) {
             html += '<div style="font-size:14px;color:var(--vk-green-primary);font-weight:600;">&#10003; Flete incluido en Cr\u00e9dito Voltika</div>';
         } else {
-            html += '<div id="vk-cp-logistics" style="display:none;font-size:14px;color:var(--vk-text-secondary);">';
-            html += '&#10003; Costo log\u00edstico: <strong id="vk-cp-logistics-price"></strong> MXN';
+            html += '<div id="vk-cp-logistics" style="display:none;font-size:16px;color:var(--vk-text-primary);font-weight:700;">';
+            html += '&#10003; Costo log\u00edstico: <strong style="color:#039fe1;font-size:18px;" id="vk-cp-logistics-price"></strong> <span style="color:#039fe1;font-size:18px;font-weight:700;">MXN</span>';
             html += '</div>';
         }
         html += '</div>';
