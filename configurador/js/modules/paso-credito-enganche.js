@@ -425,11 +425,16 @@ var PasoCreditoEnganche = {
             html += '<div style="font-size:18px;font-weight:900;color:#333;letter-spacing:1px;">' + speiData.clabe + '</div>';
             html += '</div>';
         }
-        html += '<div style="font-size:13px;line-height:2;color:#333;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">';
+        html += '<div style="font-size:13px;line-height:2;color:#333;flex:1;">';
         if (speiData.beneficiario) html += 'Beneficiario: <strong>' + speiData.beneficiario + '</strong><br>';
         if (speiData.referencia) html += 'Referencia: <strong>' + speiData.referencia + '</strong><br>';
         if (speiData.banco) html += 'Banco: <strong>' + speiData.banco + '</strong><br>';
         html += 'Monto: <strong style="color:#039fe1;font-size:16px;">' + VkUI.formatPrecio(enganche) + ' MXN</strong>';
+        html += '</div>';
+        html += '<div style="flex-shrink:0;text-align:center;">';
+        html += '<img src="' + base + 'img/voltika_logo.svg" alt="Voltika" style="width:60px;height:auto;opacity:0.9;">';
+        html += '</div>';
         html += '</div>';
         html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Confirmaci\u00f3n autom\u00e1tica en minutos despu\u00e9s de recibir la transferencia.</p>';
         html += '</div>';
