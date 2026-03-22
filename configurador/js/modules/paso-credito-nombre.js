@@ -21,7 +21,7 @@ var PasoCreditoNombre = {
         html += VkUI.renderCreditoStepBar(1);
 
         html += '<h2 class="vk-paso__titulo">Verifica tu identidad</h2>';
-        html += '<p class="vk-paso__subtitulo">Tal como aparece en tu INE</p>';
+        html += '<p class="vk-paso__subtitulo">Tal como aparece en tu INE o comprobante de domicilio</p>';
 
         html += '<div class="vk-card" style="padding:20px;">';
 
