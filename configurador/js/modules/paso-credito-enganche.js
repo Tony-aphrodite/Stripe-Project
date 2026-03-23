@@ -114,18 +114,34 @@ var PasoCreditoEnganche = {
         html += '<div style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin-bottom:12px;">Selecciona el m\u00e9todo de pago</div>';
 
         // === 1. Tarjeta de crédito / débito ===
-        html += '<div class="vk-card" style="padding:16px;margin-bottom:12px;">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
-        html += '<span style="font-size:14px;font-weight:600;">Tarjeta de cr\u00e9dito / d\u00e9bito</span>';
+        html += '<div style="padding:18px;margin-bottom:12px;border:2.5px solid #1a3a5c;border-radius:14px;background:#f8fafd;">';
+        // Header
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;">';
+        html += '<span style="font-size:22px;">&#128179;</span>';
+        html += '<span style="font-size:15px;font-weight:700;color:#1a3a5c;">Tarjeta de cr\u00e9dito / d\u00e9bito</span>';
+        html += '</div>';
         html += '<span>' + VkUI.renderCardLogos() + '</span>';
+        html += '</div>';
+        // Benefits
+        html += '<div style="margin-bottom:14px;">';
+        html += '<div style="font-size:15px;margin-bottom:10px;">&#128293; <strong style="color:#1a3a5c;">Forma m\u00e1s r\u00e1pida</strong> de asegurar tu Voltika</div>';
+        html += '<div style="font-size:14px;margin-bottom:6px;">&#9889; Aparta tu Voltika <strong>en segundos</strong></div>';
+        html += '<div style="font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span style="color:#00C851;font-size:16px;">&#10004;</span> Pago <strong>inmediato y seguro</strong></div>';
+        html += '<div style="font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span style="color:#00C851;font-size:16px;">&#10004;</span> Confirmaci\u00f3n <strong>al instante</strong></div>';
         html += '</div>';
         // Stripe card element mount point
         html += '<div id="vk-enganche-card-element" style="padding:12px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;background:#fff;"></div>';
         html += '<div id="vk-enganche-card-errors" style="display:none;color:#C62828;font-size:12px;margin-bottom:8px;"></div>';
         html += '<div id="vk-enganche-error" style="display:none;color:#C62828;font-size:13px;' +
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:10px;"></div>';
-        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-pagar">';
-        html += '<span class="vk-pay-btn__label">PAGAR CON TARJETA</span>';
+        // Protected badge
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:12px;">';
+        html += '<span style="font-size:16px;">&#128274;</span> <span style="font-size:13px;font-weight:600;color:#1a3a5c;">Pago <strong>100% protegido</strong></span>';
+        html += '</div>';
+        // Pay button
+        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-pagar" style="font-size:16px;font-weight:800;padding:16px;border-radius:10px;">';
+        html += '<span class="vk-pay-btn__label">Pagar en segundos</span>';
         html += '<span class="vk-pay-btn__spinner" style="display:none;">' +
             VkUI.renderSpinner() + ' Procesando...</span>';
         html += '</button>';
