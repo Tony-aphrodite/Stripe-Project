@@ -320,6 +320,7 @@ var Paso4A = {
         self.app.state.telefono     = customerData.telefono;
         self.app.state.totalPagado  = total;
         self.app.state.pagoCompletado = true;
+        self.app.state._pagoTipo = self._pagoTipo;
 
         $.ajax({
             url: self.ORDER_CONFIRM_URL,
