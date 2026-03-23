@@ -1,15 +1,9 @@
 <?php
 /**
- * Voltika - Generar Contrato PDF + Cincel NOM-151 Timestamp
+ * Voltika - Generar Contrato PDF (Carátula de Crédito) + Cincel NOM-151
  *
- * Flow:
- * 1. Receive contract data + signature (base64 PNG) from frontend
- * 2. Generate PDF with FPDF (contract cover + terms + signature)
- * 3. Compute SHA-256 hash of the PDF
- * 4. Get JWT from Cincel API
- * 5. Upload PDF to Cincel as a document
- * 6. Request NOM-151 timestamp via hash
- * 7. Return result to frontend
+ * Template: "Carátula de contrato VF Marzo 22" from legal team
+ * Autofill fields from configurador state + Truora INE + Stripe
  */
 
 header('Content-Type: application/json');
@@ -39,8 +33,13 @@ $cp         = isset($input['cp'])         ? trim($input['cp'])         : '';
 $firma      = isset($input['firmaData'])  ? $input['firmaData']        : null;
 $credito    = isset($input['credito'])    ? $input['credito']          : [];
 
+// Additional fields from Truora/credit form
+$curp       = isset($input['curp'])       ? trim($input['curp'])       : '';
+$domicilio  = isset($input['domicilio'])  ? trim($input['domicilio'])  : '';
+$customerId = isset($input['customerId']) ? trim($input['customerId']) : '';
+
 // ── Cincel config ─────────────────────────────────────────────────────────
-$cincelApiUrl   = defined('CINCEL_API_URL')  ? CINCEL_API_URL  : 'https://sandbox.api.cincel.digital/v3';
+$cincelApiUrl   = defined('CINCEL_API_URL')  ? CINCEL_API_URL  : 'https://api.cincel.digital/v3';
 $cincelEmail    = defined('CINCEL_EMAIL')    ? CINCEL_EMAIL    : 'test@riactor.com';
 $cincelPassword = defined('CINCEL_PASSWORD') ? CINCEL_PASSWORD : 'Prueba2026_';
 
@@ -48,7 +47,8 @@ $cincelPassword = defined('CINCEL_PASSWORD') ? CINCEL_PASSWORD : 'Prueba2026_';
 $pdfPath = null;
 try {
     $pdfPath = generateContractPDF($nombre, $email, $telefono, $modelo, $color,
-                                    $ciudad, $estado, $cp, $credito, $firma);
+                                    $ciudad, $estado, $cp, $credito, $firma,
+                                    $curp, $domicilio, $customerId);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Error generando PDF: ' . $e->getMessage()]);
@@ -81,16 +81,13 @@ echo json_encode([
 // HELPER FUNCTIONS
 // ==========================================================================
 
-/**
- * Generate contract PDF using FPDF
- */
 function generateContractPDF($nombre, $email, $telefono, $modelo, $color,
-                              $ciudad, $estado, $cp, $credito, $firmaBase64) {
+                              $ciudad, $estado, $cp, $credito, $firmaBase64,
+                              $curp, $domicilio, $customerId) {
 
     $uploadDir = __DIR__ . '/contratos/';
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0777, true)) {
-            // Fallback to temp dir
             $uploadDir = sys_get_temp_dir() . '/voltika_contratos/';
             if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
         }
@@ -100,13 +97,27 @@ function generateContractPDF($nombre, $email, $telefono, $modelo, $color,
     $filepath = $uploadDir . $filename;
 
     // Extract credit details
-    $precioContado   = isset($credito['precioContado'])   ? $credito['precioContado']   : 0;
-    $enganche        = isset($credito['enganche'])        ? $credito['enganche']        : 0;
-    $enganchePct     = isset($credito['enganchePct'])     ? $credito['enganchePct']     : 0.25;
-    $plazoMeses      = isset($credito['plazoMeses'])      ? $credito['plazoMeses']      : 36;
-    $pagoSemanal     = isset($credito['pagoSemanal'])     ? $credito['pagoSemanal']     : 0;
-    $montoFinanciado = isset($credito['montoFinanciado']) ? $credito['montoFinanciado'] : 0;
-    $plazoSemanas    = $plazoMeses * 4.33;
+    $precioContado   = isset($credito['precioContado'])   ? floatval($credito['precioContado'])   : 0;
+    $enganche        = isset($credito['enganche'])        ? floatval($credito['enganche'])        : 0;
+    $plazoMeses      = isset($credito['plazoMeses'])      ? intval($credito['plazoMeses'])        : 36;
+    $pagoSemanal     = isset($credito['pagoSemanal'])     ? floatval($credito['pagoSemanal'])     : 0;
+    $montoFinanciado = isset($credito['montoFinanciado']) ? floatval($credito['montoFinanciado']) : 0;
+    $numPagos        = round($plazoMeses * 4.33);
+
+    // Calculated fields
+    $precioSinIVA    = round($precioContado / 1.16, 2);
+    $ivaVehiculo     = round($precioContado - $precioSinIVA, 2);
+    $totalIntereses  = round(($pagoSemanal * $numPagos) - $montoFinanciado, 2);
+    $montoTotalPagar = round($enganche + ($pagoSemanal * $numPagos), 2);
+
+    // Folio
+    $folio = $customerId ?: ('VK-' . date('Ymd') . '-' . substr(md5($nombre . $email), 0, 6));
+    $fechaFirma = date('d/m/Y');
+
+    // Domicilio fallback
+    if (empty($domicilio)) {
+        $domicilio = $ciudad . ', ' . $estado . ' C.P. ' . $cp;
+    }
 
     // Save signature image
     $firmaImgPath = null;
@@ -119,167 +130,238 @@ function generateContractPDF($nombre, $email, $telefono, $modelo, $color,
     // Check if FPDF is available
     $fpdfPath = __DIR__ . '/vendor/fpdf/fpdf.php';
     if (!file_exists($fpdfPath)) {
-        // Try composer autoload
         $fpdfPath = __DIR__ . '/vendor/setasign/fpdf/fpdf.php';
     }
-
-    if (file_exists($fpdfPath)) {
-        require_once $fpdfPath;
-        return generateWithFPDF($filepath, $nombre, $email, $telefono, $modelo, $color,
-                                 $ciudad, $estado, $cp, $precioContado, $enganche, $enganchePct,
-                                 $plazoMeses, $plazoSemanas, $pagoSemanal, $montoFinanciado,
-                                 $firmaImgPath);
+    if (!file_exists($fpdfPath)) {
+        // Try autoload
+        $autoload = __DIR__ . '/vendor/autoload.php';
+        if (file_exists($autoload)) require_once $autoload;
+        if (class_exists('FPDF')) {
+            $fpdfPath = true; // already loaded
+        }
     }
 
-    // Fallback: generate minimal text PDF
+    if ($fpdfPath && (class_exists('FPDF') || (is_string($fpdfPath) && file_exists($fpdfPath)))) {
+        if (is_string($fpdfPath)) require_once $fpdfPath;
+        return generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $color,
+                                     $ciudad, $estado, $cp, $precioContado, $precioSinIVA,
+                                     $ivaVehiculo, $enganche, $montoFinanciado, $numPagos,
+                                     $pagoSemanal, $totalIntereses, $montoTotalPagar,
+                                     $folio, $fechaFirma, $curp, $domicilio, $firmaImgPath);
+    }
+
+    // Fallback: minimal text PDF
     return generateMinimalPDF($filepath, $nombre, $email, $telefono, $modelo, $color,
-                               $ciudad, $estado, $cp, $precioContado, $enganche, $enganchePct,
-                               $plazoMeses, $pagoSemanal, $montoFinanciado, $firmaBase64);
+                               $ciudad, $estado, $cp, $precioContado, $enganche,
+                               $montoFinanciado, $numPagos, $pagoSemanal,
+                               $totalIntereses, $montoTotalPagar, $folio, $fechaFirma,
+                               $curp, $domicilio, $firmaBase64);
 }
 
 /**
- * Generate PDF with FPDF library
+ * Generate Carátula de Crédito PDF with FPDF
  */
-function generateWithFPDF($filepath, $nombre, $email, $telefono, $modelo, $color,
-                           $ciudad, $estado, $cp, $precioContado, $enganche, $enganchePct,
-                           $plazoMeses, $plazoSemanas, $pagoSemanal, $montoFinanciado,
-                           $firmaImgPath) {
+function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $color,
+                               $ciudad, $estado, $cp, $precioContado, $precioSinIVA,
+                               $ivaVehiculo, $enganche, $montoFinanciado, $numPagos,
+                               $pagoSemanal, $totalIntereses, $montoTotalPagar,
+                               $folio, $fechaFirma, $curp, $domicilio, $firmaImgPath) {
 
     $pdf = new FPDF();
-    $fecha = date('d/m/Y');
+    $pdf->SetAutoPageBreak(true, 20);
+
+    // Helper: safe encoding
+    $enc = function($s) { return iconv('UTF-8', 'ISO-8859-1//TRANSLIT//IGNORE', $s); };
+    $fmt = function($n) { return '$' . number_format($n, 2) . ' MXN'; };
 
     // ── Page 1: Carátula ──────────────────────────────────────────────────
     $pdf->AddPage();
-    $pdf->SetFont('Arial', 'B', 18);
-    $pdf->Cell(0, 15, iconv('UTF-8', 'ISO-8859-1', 'CARÁTULA DE CRÉDITO'), 0, 1, 'C');
-    $pdf->SetFont('Arial', 'B', 14);
-    $pdf->Cell(0, 10, 'VOLTIKA S.A. DE C.V.', 0, 1, 'C');
-    $pdf->Ln(10);
 
-    // Contract data table
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, 'Acreditado:', 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, iconv('UTF-8', 'ISO-8859-1', $nombre), 1, 1);
-
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, 'Email:', 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, $email, 1, 1);
-
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, iconv('UTF-8', 'ISO-8859-1', 'Teléfono:'), 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, '+52 ' . $telefono, 1, 1);
-
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, 'Modelo:', 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, 'Voltika ' . $modelo, 1, 1);
-
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, 'Color:', 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, iconv('UTF-8', 'ISO-8859-1', $color), 1, 1);
-
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, 'Ciudad / Estado:', 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, iconv('UTF-8', 'ISO-8859-1', $ciudad . ', ' . $estado), 1, 1);
-
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, iconv('UTF-8', 'ISO-8859-1', 'Código Postal:'), 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, $cp, 1, 1);
-
-    $pdf->Ln(5);
-    $pdf->SetFont('Arial', 'B', 14);
-    $pdf->Cell(0, 10, iconv('UTF-8', 'ISO-8859-1', 'CONDICIONES DEL CRÉDITO'), 0, 1, 'C');
+    // Title
+    $pdf->SetFont('Arial', 'B', 16);
+    $pdf->Cell(0, 10, $enc('CARÁTULA DE CRÉDITO'), 0, 1, 'C');
     $pdf->Ln(3);
 
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, 'Precio contado:', 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, '$' . number_format($precioContado, 2) . ' MXN', 1, 1);
+    // Company info table
+    $pdf->SetFont('Arial', 'B', 9);
+    $w1 = 45; $w2 = 145;
+    $h = 6;
 
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, 'Enganche:', 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, '$' . number_format($enganche, 2) . ' MXN (' . round($enganchePct * 100) . '%)', 1, 1);
+    $companyRows = [
+        ['Denominacion', 'MTECH GEARS S.A. DE C.V.'],
+        ['RFC', 'MGE230316KA2'],
+        ['Domicilio', 'Jaime Balmes 71 Int 101, Despacho C, Colonia Polanco, Miguel Hidalgo, Ciudad de Mexico, CDMX C.P. 11510, Mexico'],
+        ['Telefonos', '(55) 55579619 y WhatsApp +52 (55) 79440982'],
+        ['Correo electronico', 'legal@voltika.mx'],
+        ['Folio de contrato', $folio],
+        ['Fecha', $fechaFirma],
+        ['Localidad', 'Ciudad de Mexico, CDMX'],
+    ];
+    foreach ($companyRows as $row) {
+        $pdf->SetFont('Arial', 'B', 8);
+        $pdf->Cell($w1, $h, $enc($row[0] . ':'), 1);
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->Cell($w2, $h, $enc($row[1]), 1, 1);
+    }
 
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, 'Monto financiado:', 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, '$' . number_format($montoFinanciado, 2) . ' MXN', 1, 1);
+    $pdf->Ln(4);
 
+    // DATOS DEL CLIENTE
     $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, 'Plazo:', 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, $plazoMeses . ' meses (' . round($plazoSemanas) . ' pagos semanales)', 1, 1);
+    $pdf->Cell(0, 8, $enc('DATOS DEL CLIENTE CONSUMIDOR'), 0, 1);
+    $pdf->SetFont('Arial', '', 8);
 
+    $clientRows = [
+        ['Nombre', $nombre],
+        ['Domicilio', $domicilio],
+        ['CURP', $curp ?: 'Por confirmar'],
+        ['Correo electronico', $email],
+        ['Telefono (validado mediante OTP)', '+52 ' . $telefono],
+    ];
+    foreach ($clientRows as $row) {
+        $pdf->SetFont('Arial', 'B', 8);
+        $pdf->Cell($w1, $h, $enc($row[0] . ':'), 1);
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->Cell($w2, $h, $enc($row[1]), 1, 1);
+    }
+
+    $pdf->Ln(2);
+    $pdf->SetFont('Arial', 'I', 7);
+    $pdf->MultiCell(0, 4, $enc('El numero telefonico senalado sera el medio de identificacion de EL CLIENTE para efectos de validacion, autorizacion y entrega.'));
+    $pdf->Ln(2);
+
+    // CARACTERISTICAS DE LA MOTOCICLETA
     $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(60, 8, 'Pago semanal:', 1);
-    $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(0, 8, '$' . number_format($pagoSemanal, 2) . ' MXN', 1, 1);
+    $pdf->Cell(0, 8, $enc('CARACTERÍSTICAS DE LA MOTOCICLETA'), 0, 1);
 
-    $pdf->Ln(5);
-    $pdf->SetFont('Arial', '', 9);
-    $pdf->Cell(0, 6, 'Fecha: ' . $fecha, 0, 1);
+    $motoRows = [
+        ['Marca', 'VOLTIKA'],
+        ['Submarca', 'TROMOX'],
+        ['Tipo o version', $modelo],
+        ['Color', $color],
+        ['Ano-modelo', '2026'],
+    ];
+    foreach ($motoRows as $row) {
+        $pdf->SetFont('Arial', 'B', 8);
+        $pdf->Cell($w1, $h, $enc($row[0] . ':'), 1);
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->Cell($w2, $h, $enc($row[1]), 1, 1);
+    }
+
+    $pdf->Ln(2);
+    $pdf->SetFont('Arial', 'I', 7);
+    $pdf->MultiCell(0, 4, $enc('El numero de serie (VIN/NIV) sera asignado y confirmado en el acta de entrega correspondiente.'));
+
+    // DETALLE DEL VEHICULO Y PRECIO
+    $pdf->Ln(3);
+    $pdf->SetFont('Arial', 'B', 11);
+    $pdf->Cell(0, 8, $enc('DETALLE DEL VEHÍCULO Y PRECIO'), 0, 1);
+
+    $precioRows = [
+        ['Precio del vehiculo (Sin IVA)', $fmt($precioSinIVA)],
+        ['IVA del vehiculo (16%)', $fmt($ivaVehiculo)],
+        ['Precio total del vehiculo', $fmt($precioContado)],
+    ];
+    foreach ($precioRows as $row) {
+        $pdf->SetFont('Arial', 'B', 8);
+        $pdf->Cell(80, $h, $enc($row[0] . ':'), 1);
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->Cell(110, $h, $enc($row[1]), 1, 1, 'R');
+    }
+    $pdf->SetFont('Arial', 'I', 7);
+    $pdf->Cell(0, 5, $enc('El precio incluye costos logisticos, traslado y entrega'), 0, 1);
+
+    // TOTAL DEL VEHICULO Y ACCESORIOS
+    $pdf->Ln(2);
+    $pdf->SetFont('Arial', 'B', 11);
+    $pdf->Cell(0, 8, $enc('TOTAL DEL VEHÍCULO Y ACCESORIOS'), 0, 1);
+
+    $totalRows = [
+        ['Total del vehiculo', $fmt($precioContado)],
+        ['Total de accesorios', '$0.00'],
+        ['Total del vehiculo y accesorios', $fmt($precioContado)],
+    ];
+    foreach ($totalRows as $row) {
+        $pdf->SetFont('Arial', 'B', 8);
+        $pdf->Cell(80, $h, $enc($row[0] . ':'), 1);
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->Cell(110, $h, $enc($row[1]), 1, 1, 'R');
+    }
+
+    // ── Page 2: Condiciones + Legal ───────────────────────────────────────
+    $pdf->AddPage();
+
+    // CONDICIONES DE PAGO
+    $pdf->SetFont('Arial', 'B', 11);
+    $pdf->Cell(0, 8, $enc('CONDICIONES DE PAGO Y FINANCIAMIENTO'), 0, 1);
+
+    $condRows = [
+        ['Enganche', $fmt($enganche)],
+        ['Monto Financiado', $fmt($montoFinanciado)],
+        ['Numero total de Pagos', $numPagos],
+        ['Periodicidad', 'Semanal'],
+        ['Monto por pago semanal', $fmt($pagoSemanal)],
+        ['Total de Intereses y cargos', $fmt($totalIntereses)],
+        ['MONTO TOTAL A PAGAR', $fmt($montoTotalPagar)],
+    ];
+    foreach ($condRows as $i => $row) {
+        $isLast = ($i === count($condRows) - 1);
+        $pdf->SetFont('Arial', $isLast ? 'B' : 'B', $isLast ? 9 : 8);
+        $pdf->Cell(80, $h, $enc($row[0] . ':'), 1);
+        $pdf->SetFont('Arial', $isLast ? 'B' : '', $isLast ? 9 : 8);
+        $pdf->Cell(110, $h, $enc(is_numeric($row[1]) ? strval($row[1]) : $row[1]), 1, 1, 'R');
+    }
+
+    $pdf->Ln(3);
+    $pdf->SetFont('Arial', 'B', 8);
+    $pdf->Cell(0, 5, $enc('ACTIVACIÓN DE PAGOS:'), 0, 1);
+    $pdf->SetFont('Arial', '', 7);
+    $pdf->Cell(0, 4, $enc('Fecha Estimada primer pago: A partir de la fecha de entrega del vehiculo'), 0, 1);
+    $pdf->Cell(0, 4, $enc('El pago se activara unicamente al momento de la entrega del vehiculo.'), 0, 1);
+
+    // LEGAL SECTIONS
+    $pdf->Ln(4);
+    $legalSections = [
+        'VALIDACIÓN ELECTRÓNICA, PAGO Y ENTREGA' => 'EL CLIENTE reconoce que su identidad sera validada mediante mecanismos electronicos, incluyendo codigos de seguridad (OTP) enviados a su numero telefonico registrado. Asimismo, acepta que la confirmacion de sus datos personales y de la compra, incluyendo apellido y modelo adquirido, junto con la validacion del codigo OTP, constituira: (i) confirmacion de identidad, (ii) manifestacion expresa de voluntad, (iii) autorizacion para la entrega de la motocicleta, y (iv) aceptacion plena de la recepcion del producto. La entrega se considerara realizada en el momento en que el sistema registre dicha validacion electronica, constituyendo cumplimiento de la obligacion de entrega por parte de VOLTIKA. EL CLIENTE reconoce que dicha validacion tendra efectos legales equivalentes a una firma autografa conforme al Codigo de Comercio y podra ser utilizada como prueba en procesos de aclaracion, contracargos o disputas ante instituciones financieras o emisores de tarjetas.',
+
+        'NATURALEZA DEL FINANCIAMIENTO' => 'El financiamiento otorgado forma parte de una operacion comercial de compraventa a plazo. VOLTIKA no es una institucion de credito ni entidad financiera y no esta sujeta a supervision de la Comision Nacional Bancaria y de Valores (CNBV). EL CLIENTE reconoce que el credito tiene caracter mercantil y privado.',
+
+        'RESERVA DE DOMINIO Y RECUPERACIÓN' => 'La propiedad de la motocicleta permanecera en favor de VOLTIKA hasta el pago total del credito. En caso de incumplimiento, VOLTIKA podra ejercer acciones legales para la recuperacion del vehiculo. EL CLIENTE autoriza el uso de tecnologias de geolocalizacion y control remoto para fines de seguridad y recuperacion del bien.',
+    ];
+
+    foreach ($legalSections as $title => $text) {
+        $pdf->SetFont('Arial', 'B', 9);
+        $pdf->Cell(0, 6, $enc($title), 0, 1);
+        $pdf->SetFont('Arial', '', 7);
+        $pdf->MultiCell(0, 4, $enc($text));
+        $pdf->Ln(2);
+    }
+
+    // Privacy notice
+    $pdf->SetFont('Arial', 'I', 7);
+    $pdf->MultiCell(0, 4, $enc('Previo a la celebracion del presente contrato, el Distribuidor dio a conocer a EL CLIENTE el aviso de privacidad para el tratamiento de sus datos personales.'));
 
     // Signature area
-    $pdf->Ln(10);
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(0, 8, iconv('UTF-8', 'ISO-8859-1', 'FIRMA DEL ACREDITADO:'), 0, 1);
+    $pdf->Ln(6);
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(0, 6, $enc('FIRMA DEL CLIENTE:'), 0, 1);
 
     if ($firmaImgPath && file_exists($firmaImgPath)) {
         $pdf->Image($firmaImgPath, $pdf->GetX() + 10, $pdf->GetY(), 60, 30);
         $pdf->Ln(35);
     } else {
         $pdf->Ln(5);
-        $pdf->Cell(80, 0.3, '', 1, 1); // signature line
+        $pdf->Cell(80, 0.3, '', 1, 1);
         $pdf->Ln(3);
     }
 
-    $pdf->SetFont('Arial', '', 10);
-    $pdf->Cell(0, 6, iconv('UTF-8', 'ISO-8859-1', 'Nombre y firma: ' . $nombre), 0, 1);
+    $pdf->SetFont('Arial', '', 8);
+    $pdf->Cell(0, 5, $enc('Nombre: ' . $nombre), 0, 1);
+    $pdf->Cell(0, 5, $enc('Fecha: ' . $fechaFirma), 0, 1);
 
-    // ── Page 2+: Contract terms ───────────────────────────────────────────
-    $pdf->AddPage();
-    $pdf->SetFont('Arial', 'B', 14);
-    $pdf->Cell(0, 10, iconv('UTF-8', 'ISO-8859-1', 'CONTRATO DE CRÉDITO SIMPLE'), 0, 1, 'C');
-    $pdf->Ln(5);
-
-    $clauses = [
-        'PRIMERA. OBJETO' => 'El Acreditante otorga al Acreditado una linea de credito para la adquisicion del vehiculo electrico descrito en la caratula de este contrato.',
-        'SEGUNDA. DISPOSICION' => 'El Acreditado dispone del credito al momento de recibir el vehiculo, quedando obligado al pago del monto financiado mas los intereses correspondientes.',
-        'TERCERA. PLAZO' => 'El plazo del credito sera el estipulado en la caratula. El Acreditado realizara pagos semanales mediante domiciliacion bancaria o el metodo acordado.',
-        'CUARTA. TASA DE INTERES' => 'La tasa de interes ordinaria sera calculada sobre saldos insolutos. El Costo Anual Total (CAT) sera informado al Acreditado antes de la firma.',
-        'QUINTA. PAGOS' => 'Los pagos semanales incluyen capital e intereses. El Acreditado puede realizar pagos anticipados sin penalizacion alguna.',
-        'SEXTA. GARANTIA' => 'El vehiculo adquirido servira como garantia prendaria del presente credito hasta la liquidacion total del adeudo.',
-        'SEPTIMA. MORA' => 'En caso de incumplimiento, se aplicara una tasa moratoria sobre el saldo vencido. El Acreditante podra iniciar el proceso de recuperacion del vehiculo.',
-        'OCTAVA. SEGUROS' => 'El Acreditado se compromete a mantener el vehiculo asegurado durante la vigencia del credito.',
-        'NOVENA. JURISDICCION' => 'Para la interpretacion y cumplimiento del presente contrato, las partes se someten a la jurisdiccion de los tribunales de la Ciudad de Mexico.',
-    ];
-
-    $pdf->SetFont('Arial', '', 10);
-    foreach ($clauses as $title => $text) {
-        $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(0, 7, iconv('UTF-8', 'ISO-8859-1', $title . '.'), 0, 1);
-        $pdf->SetFont('Arial', '', 10);
-        $pdf->MultiCell(0, 6, iconv('UTF-8', 'ISO-8859-1', $text));
-        $pdf->Ln(3);
-    }
-
-    // Footer signature
-    $pdf->Ln(10);
-    $pdf->SetFont('Arial', 'B', 10);
-    $pdf->Cell(90, 8, '________________________', 0, 0, 'C');
-    $pdf->Cell(90, 8, '________________________', 0, 1, 'C');
-    $pdf->SetFont('Arial', '', 9);
-    $pdf->Cell(90, 6, 'EL ACREDITANTE', 0, 0, 'C');
-    $pdf->Cell(90, 6, 'EL ACREDITADO', 0, 1, 'C');
-    $pdf->Cell(90, 6, 'VOLTIKA S.A. DE C.V.', 0, 0, 'C');
-    $pdf->Cell(90, 6, iconv('UTF-8', 'ISO-8859-1', $nombre), 0, 1, 'C');
+    $pdf->Ln(6);
+    $pdf->SetFont('Arial', 'B', 7);
+    $pdf->MultiCell(0, 4, $enc('La presente caratula forma parte integral del contrato de credito, terminos y condiciones, pagare y acta de entrega. Su firma, ya sea autografa o electronica, implica aceptacion total de los mismos.'));
 
     $pdf->Output('F', $filepath);
 
@@ -292,26 +374,30 @@ function generateWithFPDF($filepath, $nombre, $email, $telefono, $modelo, $color
 }
 
 /**
- * Fallback: minimal text PDF (no external library needed)
+ * Fallback: minimal text PDF (no FPDF library)
  */
 function generateMinimalPDF($filepath, $nombre, $email, $telefono, $modelo, $color,
-                             $ciudad, $estado, $cp, $precioContado, $enganche, $enganchePct,
-                             $plazoMeses, $pagoSemanal, $montoFinanciado, $firmaBase64) {
+                             $ciudad, $estado, $cp, $precioContado, $enganche,
+                             $montoFinanciado, $numPagos, $pagoSemanal,
+                             $totalIntereses, $montoTotalPagar, $folio, $fechaFirma,
+                             $curp, $domicilio, $firmaBase64) {
 
-    $fecha = date('d/m/Y H:i:s');
+    $fmt = function($n) { return '$' . number_format($n, 2) . ' MXN'; };
 
-    $content  = "CONTRATO DE CREDITO SIMPLE - VOLTIKA S.A. DE C.V.\n";
-    $content .= "Fecha: {$fecha}\n\n";
-    $content .= "ACREDITADO: {$nombre}\n";
-    $content .= "Email: {$email} | Tel: +52 {$telefono}\n";
-    $content .= "Ciudad: {$ciudad}, {$estado} (CP {$cp})\n\n";
-    $content .= "VEHICULO: Voltika {$modelo} - Color: {$color}\n";
-    $content .= "Precio contado: \$" . number_format($precioContado, 2) . " MXN\n";
-    $content .= "Enganche: \$" . number_format($enganche, 2) . " MXN (" . round($enganchePct * 100) . "%)\n";
-    $content .= "Monto financiado: \$" . number_format($montoFinanciado, 2) . " MXN\n";
-    $content .= "Plazo: {$plazoMeses} meses | Pago semanal: \${$pagoSemanal} MXN\n\n";
-    $content .= "FIRMA ELECTRONICA: " . ($firmaBase64 ? "[CAPTURADA]" : "[PENDIENTE]") . "\n";
-    $content .= "Fecha firma: {$fecha}\n";
+    $content  = "CARATULA DE CREDITO - MTECH GEARS S.A. DE C.V.\n";
+    $content .= "Folio: {$folio} | Fecha: {$fechaFirma}\n\n";
+    $content .= "CLIENTE: {$nombre}\n";
+    $content .= "Domicilio: {$domicilio}\n";
+    $content .= "CURP: " . ($curp ?: 'Por confirmar') . "\n";
+    $content .= "Email: {$email} | Tel: +52 {$telefono}\n\n";
+    $content .= "MOTOCICLETA: VOLTIKA {$modelo} - Color: {$color} - 2026\n\n";
+    $content .= "PRECIO: " . $fmt($precioContado) . "\n";
+    $content .= "Enganche: " . $fmt($enganche) . "\n";
+    $content .= "Monto Financiado: " . $fmt($montoFinanciado) . "\n";
+    $content .= "Pagos: {$numPagos} semanales de " . $fmt($pagoSemanal) . "\n";
+    $content .= "Total Intereses: " . $fmt($totalIntereses) . "\n";
+    $content .= "MONTO TOTAL A PAGAR: " . $fmt($montoTotalPagar) . "\n\n";
+    $content .= "FIRMA: " . ($firmaBase64 ? "[CAPTURADA]" : "[PENDIENTE]") . "\n";
 
     // Minimal valid PDF
     $lines = explode("\n", $content);
@@ -350,27 +436,21 @@ function generateMinimalPDF($filepath, $nombre, $email, $telefono, $modelo, $col
 
     $written = file_put_contents($filepath, $pdf);
     if ($written === false || $written === 0) {
-        error_log("MinimalPDF: failed to write file. Path={$filepath} PDFlen=" . strlen($pdf) . " Dir writable=" . (is_writable(dirname($filepath)) ? 'yes' : 'no'));
-        // Try temp directory as fallback
         $tmpPath = sys_get_temp_dir() . '/' . basename($filepath);
         $written = file_put_contents($tmpPath, $pdf);
-        if ($written > 0) {
-            return $tmpPath;
-        }
-        throw new Exception('Cannot write PDF file to disk');
+        if ($written > 0) return $tmpPath;
+        throw new Exception('Cannot write PDF file');
     }
     return $filepath;
 }
 
 /**
  * Send PDF to Cincel API for NOM-151 timestamp
- * Uses Basic Auth directly (no JWT needed for timestamps)
  */
 function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signerEmail) {
 
     $authHeader = 'Authorization: Basic ' . base64_encode($email . ':' . $password);
 
-    // ── Step 1: Compute SHA-256 hash of PDF ───────────────────────────────
     if (!file_exists($pdfPath) || filesize($pdfPath) === 0) {
         throw new Exception('PDF file not found or empty: ' . $pdfPath);
     }
@@ -381,7 +461,6 @@ function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signer
     $hash = hash('sha256', $pdfContent);
     error_log("Cincel: PDF size=" . strlen($pdfContent) . " hash={$hash} path={$pdfPath}");
 
-    // ── Step 2: Request NOM-151 timestamp via hash ────────────────────────
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL            => $apiUrl . '/timestamps/' . $hash,
@@ -393,17 +472,8 @@ function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signer
 
     $tsResponse = curl_exec($ch);
     $tsCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError  = curl_error($ch);
     curl_close($ch);
 
-    // Log for debugging
-    error_log("Cincel timestamp request: hash={$hash} code={$tsCode} response={$tsResponse} curl_error={$curlError}");
-
-    if ($tsCode === 402) {
-        throw new Exception('Cincel: no timestamping credits available');
-    }
-
-    // If Basic Auth fails on individual hash, try without auth (sandbox may allow it)
     if ($tsCode === 401) {
         $ch2 = curl_init();
         curl_setopt_array($ch2, [
@@ -415,25 +485,19 @@ function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signer
         $tsResponse = curl_exec($ch2);
         $tsCode     = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
         curl_close($ch2);
-
-        error_log("Cincel timestamp retry (no auth): code={$tsCode} response={$tsResponse}");
     }
 
     if ($tsCode !== 200 && $tsCode !== 202) {
-        // Still save the hash for manual timestamp later
         return [
-            'status'        => 'pending',
-            'hash'          => $hash,
-            'asn1Ready'     => false,
-            'message'       => "PDF generated. Timestamp pending (HTTP {$tsCode}).",
-            'timestampCode' => $tsCode
+            'status'   => 'pending',
+            'hash'     => $hash,
+            'message'  => "PDF generated. Timestamp pending (HTTP {$tsCode}).",
         ];
     }
 
-    // ── Step 3: Try to download .asn1 certificate ─────────────────────────
+    // Try to download .asn1
     $asn1Path = null;
     $asn1Url  = $apiUrl . '/timestamps/' . $hash . '.asn1';
-
     $ch3 = curl_init();
     curl_setopt_array($ch3, [
         CURLOPT_URL            => $asn1Url,
@@ -442,12 +506,10 @@ function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signer
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 15
     ]);
-
     $asn1Response = curl_exec($ch3);
     $asn1Code     = curl_getinfo($ch3, CURLINFO_HTTP_CODE);
     curl_close($ch3);
 
-    // If auth fails on .asn1, try without
     if ($asn1Code === 401) {
         $ch4 = curl_init();
         curl_setopt_array($ch4, [
@@ -462,19 +524,17 @@ function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signer
     }
 
     if ($asn1Code === 200 && !empty($asn1Response)) {
-        $asn1Dir = __DIR__ . '/contratos/';
-        $asn1Path = $asn1Dir . $hash . '.asn1';
+        $asn1Path = dirname($pdfPath) . '/' . $hash . '.asn1';
         file_put_contents($asn1Path, $asn1Response);
     }
 
     return [
-        'status'        => ($asn1Code === 200) ? 'timestamped' : 'processing',
-        'hash'          => $hash,
-        'asn1Ready'     => ($asn1Code === 200),
-        'asn1File'      => $asn1Path ? basename($asn1Path) : null,
-        'timestampCode' => $tsCode,
-        'message'       => ($asn1Code === 202)
-            ? 'NOM-151 timestamp is being generated. Certificate will be ready in ~60 seconds.'
-            : (($asn1Code === 200) ? 'NOM-151 timestamp created successfully.' : 'Timestamp requested.')
+        'status'   => ($asn1Code === 200) ? 'timestamped' : 'processing',
+        'hash'     => $hash,
+        'asn1Ready'=> ($asn1Code === 200),
+        'asn1File' => $asn1Path ? basename($asn1Path) : null,
+        'message'  => ($asn1Code === 200)
+            ? 'NOM-151 timestamp created successfully.'
+            : 'Timestamp requested, certificate pending.'
     ];
 }
