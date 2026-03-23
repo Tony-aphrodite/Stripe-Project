@@ -374,6 +374,11 @@ function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $co
     $pdf->SetFont('Arial', 'B', 7);
     $pdf->MultiCell(0, 4, $enc('La presente caratula forma parte integral del contrato de credito, terminos y condiciones, pagare y acta de entrega. Su firma, ya sea autografa o electronica, implica aceptacion total de los mismos.'));
 
+    // ══════════════════════════════════════════════════════════════════════
+    // CONTRATO DE FINANCIAMIENTO (pages 3+)
+    // ══════════════════════════════════════════════════════════════════════
+    generateContratoPages($pdf, $enc, $folio, $nombre, $firmaImgPath, $fechaFirma);
+
     $pdf->Output('F', $filepath);
 
     // Clean up temp signature file
@@ -382,6 +387,138 @@ function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $co
     }
 
     return $filepath;
+}
+
+/**
+ * Generate Contrato de Financiamiento pages (appended to Carátula PDF)
+ */
+function generateContratoPages($pdf, $enc, $folio, $nombre, $firmaImgPath, $fechaFirma) {
+
+    $pdf->AddPage();
+
+    // Header with Folio
+    $pdf->SetFont('Arial', 'B', 12);
+    $pdf->Cell(0, 8, $enc('CONTRATO DE APERTURA DE CRÉDITO'), 0, 1, 'C');
+    $pdf->SetFont('Arial', '', 7);
+    $pdf->Cell(0, 5, $enc('Folio: ' . $folio), 0, 1, 'R');
+    $pdf->Ln(3);
+
+    // Opening paragraph
+    $pdf->SetFont('Arial', '', 7);
+    $pdf->MultiCell(0, 3.5, $enc('QUE CELEBRAN POR UNA PARTE MTECH GEARS, S.A. DE C.V. (EN LO SUCESIVO VOLTIKA); Y POR LA OTRA PARTE POR PROPIO DERECHO LA PERSONA FISICA CUYOS DATOS GENERALES SE ENCONTRARAN EN LA CARATULA DEL PRESENTE CONTRATO, MISMA QUE FORMA PARTE INTEGRAL DEL MISMO (EN LO SUCESIVO CLIENTE); Y EN CONJUNTO CON VOLTIKA SE LES DENOMINARA LAS PARTES AL TENOR DE LAS SIGUIENTES DECLARACIONES, DEFINICIONES Y CLAUSULAS:'));
+    $pdf->Ln(3);
+
+    // DECLARACIONES
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(0, 6, 'DECLARACIONES', 0, 1);
+    $pdf->SetFont('Arial', '', 7);
+    $decls = [
+        'Declara EL CLIENTE que es una persona fisica con capacidad juridica y economica para obligarse.',
+        'Domicilio y medios de comunicacion senalados en la caratula del Contrato.',
+        'EL CLIENTE reconoce que el numero telefonico registrado sera considerado como medio de autenticacion valido.',
+        'Documentos requeridos: identificacion oficial vigente y comprobante de domicilio (no mayor a 3 meses).',
+        'Aviso de Privacidad disponible en: https://www.voltika.mx/docs/privacidad_2026',
+        'EL CLIENTE ha recibido, revisado y aceptado la caratula del contrato de credito.',
+        'VOLTIKA es una sociedad mexicana constituida bajo legislacion aplicable, con domicilio en Jaime Balmes 71, despacho 101 C, Polanco I Seccion, Miguel Hidalgo, C.P. 11510, Ciudad de Mexico.',
+    ];
+    foreach ($decls as $d) {
+        $pdf->MultiCell(0, 3.5, $enc('- ' . $d));
+        $pdf->Ln(1);
+    }
+
+    // DEFINICIONES
+    $pdf->Ln(2);
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(0, 6, 'DEFINICIONES', 0, 1);
+    $pdf->SetFont('Arial', '', 7);
+    $defs = [
+        'Solicitud: Documento con datos generales de EL CLIENTE.',
+        'Caratula: Documento con elementos esenciales de la operacion (producto, precio, enganche, monto financiado, pagos, monto total).',
+        'Monto de Credito: Limite de credito autorizado por VOLTIKA.',
+        'Saldo Insoluto: Monto pendiente de pago conforme al plan de pagos.',
+        'Tabla de Pagos: Documento con numero total de pagos, periodicidad, monto de cada pago, fecha estimada de primer pago.',
+        'Autorizacion para consulta de Informacion Crediticia: Autorizacion irrevocable vigente por tres anos o mientras exista relacion juridica.',
+        'Validacion electronica: Autenticacion mediante codigos OTP, confirmaciones digitales, registros electronicos, evidencia fotografica y mensajes de datos.',
+    ];
+    foreach ($defs as $d) {
+        $pdf->MultiCell(0, 3.5, $enc('- ' . $d));
+        $pdf->Ln(1);
+    }
+
+    // CLAUSULAS
+    $pdf->Ln(2);
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(0, 6, 'CLAUSULAS', 0, 1);
+
+    $clausulas = [
+        ['PRIMERA. OBJETO', 'Otorgamiento de un credito simple. EL CLIENTE reconoce que la entrega del vehiculo podra realizarse mediante validacion electronica (OTP, registros digitales, evidencia fotografica).'],
+        ['SEGUNDA. DESTINO', 'El credito se destinara exclusivamente a la adquisicion del producto descrito en la Caratula.'],
+        ['TERCERA. PLAZO DEL CONTRATO', 'Segun numero total de pagos y periodicidad en la Caratula/Tabla de Pagos.'],
+        ['CUARTA. DOMICILIACION', 'EL CLIENTE autoriza cargos recurrentes a tarjeta bancaria o cuenta registrada. La cancelacion o rechazo de cargo no extingue la obligacion de pago.'],
+        ['QUINTA. DISPOSICIONES DEL CREDITO', 'Sujeta a asignacion de unidad especifica conforme a disponibilidad.'],
+        ['SEXTA. PAGO DE ENGANCHE', 'El pago inicial constituye deposito en garantia para reserva del vehiculo. Si EL CLIENTE no continua tras aprobacion, VOLTIKA podra retener gastos administrativos. El pago del enganche por medios electronicos constituye aceptacion expresa.'],
+        ['SEXTA BIS. PAGOS DEL CREDITO', 'Pagos conforme a la Caratula y Tabla de Pagos. Si fecha de pago cae en dia inhabil, el pago sera el dia habil inmediato anterior.'],
+        ['SEPTIMA. CARGOS DEL FINANCIAMIENTO', 'El monto total a pagar incluye precio del vehiculo y cargos de financiamiento. VOLTIKA no se obliga a desglosar tasa de interes o CAT distinto al contenido en la Caratula.'],
+        ['OCTAVA. INCUMPLIMIENTO DE PAGO', 'VOLTIKA podra ejercer acciones de cobro, incluyendo vencimiento anticipado. Cargos por atraso conforme a politicas vigentes de cobranza.'],
+        ['NOVENA. MEDIOS DE ACREDITACION Y REGISTRO', 'VOLTIKA conservara registros fisicos y electronicos (mensajes de datos, IPs, OTP, evidencia fotografica, firma electronica). Constituiran evidencia suficiente.'],
+        ['DECIMA. LUGAR Y FORMA DE PAGO', 'Medios autorizados: cargos automaticos, transferencias electronicas, pagos referenciados, tiendas de conveniencia. EL CLIENTE debe mantener forma de pago vigente.'],
+        ['DECIMA PRIMERA. INFORMACION DE PAGOS', 'VOLTIKA pondra a disposicion informacion de pagos por medios electronicos o portal de cliente.'],
+        ['DECIMA SEGUNDA. PAGOS ANTICIPADOS', 'Sin penalizacion, conforme a medios autorizados.'],
+        ['DECIMA TERCERA. OBLIGACIONES', 'Mantener vehiculo en condiciones adecuadas; permitir inspecciones previo aviso; en caso de incumplimiento, aceptar devolucion voluntaria.'],
+        ['DECIMA TERCERA BIS. VALIDACION DE INFORMACION', 'VOLTIKA podra solicitar documentacion adicional. Informacion falsa podra dar lugar a cancelacion o restriccion del credito.'],
+        ['DECIMA CUARTA. RESERVA DE DOMINIO', 'VOLTIKA mantiene la propiedad de la motocicleta hasta liquidacion total. El vehiculo podra contar con dispositivos de geolocalizacion y monitoreo. En caso de incumplimiento, VOLTIKA podra implementar restricciones operativas y recuperar el vehiculo.'],
+        ['DECIMA CUARTA BIS. GARANTIA PRENDARIA', 'EL CLIENTE constituye prenda en primer lugar a favor de VOLTIKA sobre el bien adquirido.'],
+        ['DECIMA QUINTA. TIEMPOS DE ENTREGA', 'Plazo estimado de hasta 28 dias naturales a partir de firma del Contrato. La validacion mediante OTP, firma electronica y evidencia digital constituira constancia de entrega.'],
+        ['DECIMA SEXTA. POSESION DEL VEHICULO', 'EL CLIENTE conserva posesion como depositario.'],
+        ['DECIMA SEPTIMA. OBLIGADO SOLIDARIO', 'Se constituye obligado solidario conforme a los datos en el Contrato y la Caratula.'],
+        ['DECIMA OCTAVA. OPCIONES DE PROTECCION', 'VOLTIKA podra ofrecer seguros o mecanismos de proteccion opcionales.'],
+        ['DECIMA NOVENA. RESPONSABILIDAD SOBRE EL VEHICULO', 'EL CLIENTE es responsable del uso, resguardo y conservacion. Dano, perdida, robo o siniestro no libera de obligaciones de pago.'],
+        ['VIGESIMA. IMPUESTOS', 'EL CLIENTE pagara impuestos, derechos u obligaciones fiscales generados por el Contrato.'],
+        ['VIGESIMA PRIMERA. CAUSAS DE VENCIMIENTO ANTICIPADO', 'Falta de pago, incumplimiento, informacion falsa, venta no autorizada del vehiculo, siniestro no notificado, incumplimiento de otros contratos con VOLTIKA. Cancelacion sin responsabilidad dentro de 5 dias habiles si no ha recibido vehiculo.'],
+        ['VIGESIMA SEGUNDA. COMPENSACION', 'VOLTIKA autorizada para cargar contra cuenta de EL CLIENTE el monto de pagos sin necesidad de requerimiento.'],
+        ['VIGESIMA TERCERA. CESION DEL CREDITO', 'EL CLIENTE no puede ceder sin consentimiento. VOLTIKA puede transmitir, ceder o titularizar el credito.'],
+        ['VIGESIMA CUARTA. RESTRICCION Y DENUNCIA', 'VOLTIKA se reserva el derecho de denunciar o restringir el Contrato (art. 294 LGTOC).'],
+        ['VIGESIMA QUINTA. DOMICILIOS', 'EL CLIENTE acepta notificaciones por correo electronico, SMS o WhatsApp. Cambio de domicilio con 10 dias habiles de anticipacion.'],
+        ['VIGESIMA SEXTA. TERMINACION DEL CONTRATO', 'VOLTIKA: 15 dias de anticipacion. EL CLIENTE: surte efectos al dia habil siguiente si no hay adeudos. Constancia de terminacion dentro de 10 dias habiles tras pago.'],
+        ['VIGESIMA SEPTIMA. JURISDICCION Y COMPETENCIA', 'Tribunales en la Ciudad de Mexico o del domicilio de EL CLIENTE, a eleccion de la parte actora.'],
+        ['VIGESIMA OCTAVA. FIRMA ELECTRONICA', 'Firma electronica simple o avanzada mediante plataforma designada por VOLTIKA. Validaciones OTP, registros digitales y confirmaciones tienen validez juridica. EL CLIENTE tuvo acceso previo al documento.'],
+    ];
+
+    foreach ($clausulas as $cl) {
+        $pdf->SetFont('Arial', 'B', 7);
+        $pdf->Cell(0, 4, $enc($cl[0] . '.'), 0, 1);
+        $pdf->SetFont('Arial', '', 7);
+        $pdf->MultiCell(0, 3.5, $enc($cl[1]));
+        $pdf->Ln(1.5);
+    }
+
+    // ── Signature section at the end ──────────────────────────────────────
+    $pdf->Ln(6);
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(0, 6, $enc('FIRMA ELECTRÓNICA DEL CLIENTE'), 0, 1, 'C');
+    $pdf->Ln(2);
+
+    // Signature image
+    if ($firmaImgPath && file_exists($firmaImgPath)) {
+        $pdf->Image($firmaImgPath, $pdf->GetX() + 50, $pdf->GetY(), 60, 30);
+        $pdf->Ln(35);
+    } else {
+        $pdf->Cell(0, 15, '', 0, 1);
+        $x = $pdf->GetX();
+        $pdf->Line($x + 40, $pdf->GetY(), $x + 150, $pdf->GetY());
+        $pdf->Ln(3);
+    }
+
+    // Name and Folio below signature
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(0, 5, $enc('Nombre: ' . $nombre), 0, 1, 'C');
+    $pdf->SetFont('Arial', '', 8);
+    $pdf->Cell(0, 5, $enc('Folio del Contrato: ' . $folio), 0, 1, 'C');
+    $pdf->Cell(0, 5, $enc('Fecha: ' . $fechaFirma), 0, 1, 'C');
+
+    $pdf->Ln(6);
+    $pdf->SetFont('Arial', 'I', 7);
+    $pdf->MultiCell(0, 3.5, $enc('Este documento ha sido firmado electronicamente y sera certificado con NOM-151 mediante Cincel Digital. La firma electronica tiene la misma validez juridica que una firma autografa conforme al Codigo de Comercio.'));
 }
 
 /**
