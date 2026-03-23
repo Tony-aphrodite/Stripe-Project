@@ -76,7 +76,7 @@ var PasoCreditoContrato = {
         html += '<div style="flex-shrink:0;width:120px;">';
         html += '<img src="' + base + motoImg + '" alt="Voltika" style="width:100%;height:auto;">';
         html += '<div style="background:#E8F4FD;border-radius:8px;padding:8px;text-align:center;margin-top:6px;border:1.5px solid #039fe1;">';
-        html += '<div style="font-size:10px;color:#039fe1;font-weight:700;margin-bottom:2px;">Fecha de entrega:</div>';
+        html += '<div style="font-size:10px;color:#039fe1;font-weight:700;margin-bottom:2px;">Fecha de entrega m\u00e1xima:</div>';
         html += '<div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;">' + fechaEntrega.diaSemana + '</div>';
         html += '<div style="font-size:28px;font-weight:900;color:#039fe1;line-height:1;">' + fechaEntrega.dia + '</div>';
         html += '<div style="font-size:11px;color:#039fe1;font-weight:700;">' + fechaEntrega.mes + '</div>';
