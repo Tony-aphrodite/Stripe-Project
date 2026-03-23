@@ -330,7 +330,14 @@ var Paso3 = {
 
         state.ciudad = resultado.ciudad;
         state.estado = resultado.estado;
-        state.costoLogistico = esCredito ? 0 : config.costoLogistico;
+
+        // Calculate shipping cost by estado + modelo
+        var envioData = config.envio || {};
+        var modelo = self.app.getModelo(state.modeloSeleccionado);
+        var esMC10 = modelo && (modelo.id === 'mc10');
+        var envioArr = envioData[resultado.estado];
+        var costoEnvio = envioArr ? (esMC10 ? envioArr[1] : envioArr[0]) : config.costoLogistico;
+        state.costoLogistico = esCredito ? 0 : costoEnvio;
 
         // Fill Estado, Ciudad
         $('#vk-cp-estado').val(resultado.estado);
@@ -339,7 +346,7 @@ var Paso3 = {
 
         // Show logistics cost (contado/msi only)
         if (!esCredito) {
-            $('#vk-cp-logistics-price').text(VkUI.formatPrecio(config.costoLogistico));
+            $('#vk-cp-logistics-price').text(VkUI.formatPrecio(costoEnvio));
             $('#vk-cp-logistics').show();
         }
 
@@ -366,6 +373,15 @@ var Paso3 = {
                     if (data.estado) {
                         $('#vk-cp-estado').val(data.estado);
                         state.estado = data.estado;
+                        // Recalculate shipping with updated estado
+                        if (!esCredito) {
+                            var _envArr = (config.envio || {})[data.estado];
+                            var _modelo = self.app.getModelo(state.modeloSeleccionado);
+                            var _esMC10 = _modelo && (_modelo.id === 'mc10');
+                            var _costo = _envArr ? (_esMC10 ? _envArr[1] : _envArr[0]) : config.costoLogistico;
+                            state.costoLogistico = _costo;
+                            $('#vk-cp-logistics-price').text(VkUI.formatPrecio(_costo));
+                        }
                     }
                     if (data.ciudad) {
                         $('#vk-cp-ciudad').val(data.ciudad);
