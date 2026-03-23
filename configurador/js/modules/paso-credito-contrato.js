@@ -112,7 +112,7 @@ var PasoCreditoContrato = {
         html += '<label style="display:flex;align-items:flex-start;gap:10px;padding:14px;border:1.5px solid var(--vk-border);border-radius:10px;margin-bottom:14px;cursor:pointer;">';
         html += '<input type="checkbox" id="vk-contrato-acepto" style="margin-top:3px;flex-shrink:0;width:18px;height:18px;">';
         html += '<span style="font-size:13px;color:var(--vk-text-secondary);line-height:1.5;">';
-        html += 'He le\u00eddo y acepto de conformidad los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:#039fe1;text-decoration:underline;">t\u00e9rminos y cl\u00e1usulas</a> establecidas en el contrato y en el <a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" style="color:#039fe1;text-decoration:underline;">aviso de privacidad</a>.';
+        html += 'He le\u00eddo y acepto de conformidad los <a href="#" id="vk-ver-contrato-completo" style="color:#039fe1;text-decoration:underline;">t\u00e9rminos y cl\u00e1usulas del contrato</a> y en el <a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" rel="noopener" style="color:#039fe1;text-decoration:underline;">aviso de privacidad</a>.';
         html += ' <a href="#" id="vk-ver-contrato" style="color:#039fe1;font-weight:600;text-decoration:none;">Ver contrato</a>';
         html += '</span>';
         html += '</label>';
@@ -197,6 +197,7 @@ var PasoCreditoContrato = {
         jQuery(document).off('change', '#vk-contrato-acepto')
             .off('click', '#vk-contrato-confirmar')
             .off('click', '#vk-ver-contrato')
+            .off('click', '#vk-ver-contrato-completo')
             .off('click', '#vk-firma-limpiar')
             .off('click', '#vk-contrato-modal-close, #vk-contrato-modal-ok')
             .off('click', '#vk-contrato-modal');
@@ -215,10 +216,16 @@ var PasoCreditoContrato = {
             self._checkCanConfirm();
         });
 
-        // Ver contrato
+        // Ver contrato (Carátula summary only)
         jQuery(document).on('click', '#vk-ver-contrato', function(e) {
             e.preventDefault();
-            self._showContrato();
+            self._showCaratula();
+        });
+
+        // Términos y cláusulas (full contract: Carátula + Contrato de crédito)
+        jQuery(document).on('click', '#vk-ver-contrato-completo', function(e) {
+            e.preventDefault();
+            self._showContratoCompleto();
         });
 
         // Confirm button
@@ -338,10 +345,7 @@ var PasoCreditoContrato = {
         if (accepted) jQuery('#vk-contrato-checkbox-error').hide();
     },
 
-    _showContrato: function() {
-        // Remove existing modal if any
-        jQuery('#vk-contrato-modal').remove();
-
+    _getContractData: function() {
         var state  = this.app.state;
         var modelo = this.app.getModelo(state.modeloSeleccionado);
         var credito = VkCalculadora.calcular(
@@ -349,50 +353,146 @@ var PasoCreditoContrato = {
             state.enganchePorcentaje || 0.30,
             state.plazoMeses || 12
         );
+        var numPagos = Math.round((state.plazoMeses || 36) * 4.33);
+        var precioSinIVA = Math.round(modelo.precioContado / 1.16 * 100) / 100;
+        var ivaVehiculo = Math.round((modelo.precioContado - precioSinIVA) * 100) / 100;
+        var totalIntereses = Math.round((credito.pagoSemanal * numPagos) - credito.montoFinanciado);
+        var montoTotalPagar = Math.round(credito.enganche + (credito.pagoSemanal * numPagos));
+        return { state: state, modelo: modelo, credito: credito, numPagos: numPagos,
+                 precioSinIVA: precioSinIVA, ivaVehiculo: ivaVehiculo,
+                 totalIntereses: totalIntereses, montoTotalPagar: montoTotalPagar };
+    },
 
-        var html = '';
-        html += '<div id="vk-contrato-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">';
-        html += '<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto;padding:24px;">';
+    // "Ver contrato" — shows Carátula summary only
+    _showCaratula: function() {
+        jQuery('#vk-contrato-modal').remove();
+        var d = this._getContractData();
+        var s = d.state, m = d.modelo, c = d.credito;
+        var f = VkUI.formatPrecio;
 
-        // Close button
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">';
-        html += '<span style="font-size:18px;font-weight:800;color:#333;">Contrato de Cr\u00e9dito</span>';
+        var html = '<div id="vk-contrato-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">';
+        html += '<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;">';
+
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+        html += '<span style="font-size:16px;font-weight:800;color:#333;">Car\u00e1tula de Cr\u00e9dito</span>';
         html += '<button id="vk-contrato-modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>';
         html += '</div>';
 
-        // Contract summary — using state data
-        html += '<div style="background:#F5F5F5;border-radius:8px;padding:14px;margin-bottom:16px;font-size:13px;">';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#888;">Acreditado</span><strong>' + (state.nombre || '--') + '</strong></div>';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#888;">Modelo</span><strong>' + modelo.nombre + '</strong></div>';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#888;">Precio contado</span><span>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</span></div>';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#888;">Enganche pagado</span><strong style="color:#4CAF50;">' + VkUI.formatPrecio(credito.enganche) + ' MXN &#10004;</strong></div>';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#888;">Monto financiado</span><strong>' + VkUI.formatPrecio(credito.montoFinanciado) + ' MXN</strong></div>';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#888;">Plazo</span><strong>' + (state.plazoMeses || 12) + ' meses (' + credito.numeroPagos + ' pagos)</strong></div>';
-        html += '<div style="border-top:1px solid #ddd;margin:8px 0;"></div>';
-        html += '<div style="display:flex;justify-content:space-between;"><strong>Pago semanal</strong><strong style="font-size:16px;color:#4CAF50;">' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong></div>';
+        html += '<div style="font-size:10px;color:#888;margin-bottom:12px;">MTECH GEARS S.A. DE C.V. | RFC: MGE230316KA2</div>';
+
+        // Client data
+        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">DATOS DEL CLIENTE</div>';
+        html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
+        html += 'Nombre: <strong>' + (s.nombre || '--') + '</strong><br>';
+        html += 'Email: <strong>' + (s.email || '--') + '</strong><br>';
+        html += 'Tel: <strong>+52 ' + (s.telefono || '--') + '</strong>';
         html += '</div>';
 
-        // Contract text
-        html += '<div style="font-size:11px;color:#666;line-height:1.7;">';
-        html += '<p style="font-weight:700;margin-bottom:8px;">CONTRATO DE CR\u00c9DITO SIMPLE \u2014 VOLTIKA S.A. DE C.V.</p>';
-        html += '<p>El presente contrato establece las condiciones del cr\u00e9dito otorgado por Voltika S.A. de C.V. ';
-        html += '(en adelante "EL ACREDITANTE") al solicitante (en adelante "EL ACREDITADO") para la adquisici\u00f3n de ';
-        html += 'un veh\u00edculo el\u00e9ctrico marca Voltika.</p>';
-        html += '<p><strong>CL\u00c1USULA 1. OBJETO.</strong> El Acreditante otorga al Acreditado una l\u00ednea de cr\u00e9dito ';
-        html += 'por el monto financiado indicado en el resumen anterior, pagadero en exhibiciones semanales.</p>';
-        html += '<p><strong>CL\u00c1USULA 2. TASA DE INTER\u00c9S.</strong> La tasa de inter\u00e9s ordinaria ser\u00e1 la indicada en ';
-        html += 'el resumen del contrato, calculada sobre saldos insolutos, m\u00e1s IVA correspondiente.</p>';
-        html += '<p><strong>CL\u00c1USULA 3. FORMA DE PAGO.</strong> El Acreditado se obliga a realizar pagos semanales ';
-        html += 'mediante domiciliaci\u00f3n bancaria, transferencia electr\u00f3nica o pago en efectivo en los puntos autorizados.</p>';
-        html += '<p><strong>CL\u00c1USULA 4. GARANT\u00cdA.</strong> El veh\u00edculo adquirido servir\u00e1 como garant\u00eda prendaria ';
-        html += 'hasta la liquidaci\u00f3n total del cr\u00e9dito.</p>';
-        html += '<p><strong>CL\u00c1USULA 5. MORA.</strong> En caso de incumplimiento, se aplicar\u00e1 una tasa moratoria ';
-        html += 'del 50% anual sobre el saldo vencido, m\u00e1s gastos de cobranza.</p>';
+        // Vehicle
+        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">MOTOCICLETA</div>';
+        html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
+        html += 'Modelo: <strong>VOLTIKA ' + m.nombre + '</strong><br>';
+        html += 'Color: <strong>' + (s.colorSeleccionado || m.colorDefault || '--') + '</strong><br>';
+        html += 'A\u00f1o: <strong>2026</strong>';
         html += '</div>';
 
-        html += '<button id="vk-contrato-modal-ok" class="vk-btn vk-btn--primary" style="margin-top:16px;font-size:14px;font-weight:700;">Cerrar</button>';
+        // Price
+        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">PRECIO</div>';
+        html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
+        html += 'Precio (sin IVA): ' + f(d.precioSinIVA) + '<br>';
+        html += 'IVA (16%): ' + f(d.ivaVehiculo) + '<br>';
+        html += '<strong>Precio total: ' + f(m.precioContado) + ' MXN</strong>';
+        html += '</div>';
+
+        // Credit conditions
+        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">CONDICIONES DE PAGO</div>';
+        html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
+        html += 'Enganche: <strong>' + f(c.enganche) + '</strong><br>';
+        html += 'Monto financiado: <strong>' + f(c.montoFinanciado) + '</strong><br>';
+        html += 'Pagos: <strong>' + d.numPagos + ' semanales</strong><br>';
+        html += 'Pago semanal: <strong style="color:#039fe1;">' + f(c.pagoSemanal) + '</strong><br>';
+        html += 'Total intereses: ' + f(d.totalIntereses) + '<br>';
+        html += '<strong style="font-size:14px;">MONTO TOTAL: ' + f(d.montoTotalPagar) + ' MXN</strong>';
+        html += '</div>';
+
+        html += '<button id="vk-contrato-modal-ok" class="vk-btn vk-btn--primary" style="margin-top:8px;font-size:14px;font-weight:700;">Cerrar</button>';
         html += '</div></div>';
+        jQuery('body').append(html);
+    },
 
+    // "Términos y cláusulas" — shows Carátula + full contract text
+    _showContratoCompleto: function() {
+        jQuery('#vk-contrato-modal').remove();
+        var d = this._getContractData();
+        var s = d.state, m = d.modelo, c = d.credito;
+        var f = VkUI.formatPrecio;
+
+        var html = '<div id="vk-contrato-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">';
+        html += '<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;">';
+
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+        html += '<span style="font-size:16px;font-weight:800;color:#333;">Contrato de Cr\u00e9dito Completo</span>';
+        html += '<button id="vk-contrato-modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>';
+        html += '</div>';
+
+        // Company header
+        html += '<div style="text-align:center;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #1a3a5c;">';
+        html += '<div style="font-size:14px;font-weight:800;color:#1a3a5c;">CAR\u00c1TULA DE CR\u00c9DITO</div>';
+        html += '<div style="font-size:10px;color:#888;">MTECH GEARS S.A. DE C.V. | RFC: MGE230316KA2</div>';
+        html += '</div>';
+
+        // Summary table
+        var rows = [
+            ['Acreditado', s.nombre || '--'],
+            ['Email', s.email || '--'],
+            ['Tel\u00e9fono', '+52 ' + (s.telefono || '--')],
+            ['Modelo', 'VOLTIKA ' + m.nombre],
+            ['Color', s.colorSeleccionado || m.colorDefault || '--'],
+            ['Precio contado', f(m.precioContado) + ' MXN'],
+            ['Precio sin IVA', f(d.precioSinIVA)],
+            ['IVA 16%', f(d.ivaVehiculo)],
+            ['Enganche', f(c.enganche)],
+            ['Monto financiado', f(c.montoFinanciado)],
+            ['N\u00fam. pagos', d.numPagos + ' semanales'],
+            ['Pago semanal', f(c.pagoSemanal)],
+            ['Total intereses', f(d.totalIntereses)],
+            ['MONTO TOTAL', f(d.montoTotalPagar) + ' MXN'],
+        ];
+        html += '<div style="margin-bottom:16px;">';
+        for (var i = 0; i < rows.length; i++) {
+            var isLast = (i === rows.length - 1);
+            html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:' + (isLast ? '13' : '11') + 'px;' + (isLast ? 'border-top:1.5px solid #1a3a5c;margin-top:6px;padding-top:8px;font-weight:800;' : '') + '">';
+            html += '<span style="color:#888;">' + rows[i][0] + '</span><strong>' + rows[i][1] + '</strong></div>';
+        }
+        html += '</div>';
+
+        // Full contract clauses
+        html += '<div style="font-size:10px;color:#555;line-height:1.7;">';
+        var clauses = [
+            ['PRIMERA. OBJETO', 'El Acreditante otorga al Acreditado una linea de credito para la adquisicion del vehiculo electrico descrito en la caratula de este contrato.'],
+            ['SEGUNDA. DISPOSICI\u00d3N', 'El Acreditado dispone del credito al momento de recibir el vehiculo, quedando obligado al pago del monto financiado mas los intereses correspondientes.'],
+            ['TERCERA. PLAZO', 'El plazo del credito sera el estipulado en la caratula. El Acreditado realizara pagos semanales mediante domiciliacion bancaria o el metodo acordado.'],
+            ['CUARTA. TASA DE INTER\u00c9S', 'La tasa de interes ordinaria sera calculada sobre saldos insolutos. El Costo Anual Total (CAT) sera informado al Acreditado antes de la firma.'],
+            ['QUINTA. PAGOS', 'Los pagos semanales incluyen capital e intereses. El Acreditado puede realizar pagos anticipados sin penalizacion alguna.'],
+            ['SEXTA. GARANT\u00cdA', 'El vehiculo adquirido servira como garantia prendaria del presente credito hasta la liquidacion total del adeudo.'],
+            ['S\u00c9PTIMA. MORA', 'En caso de incumplimiento, se aplicara una tasa moratoria sobre el saldo vencido. El Acreditante podra iniciar el proceso de recuperacion del vehiculo.'],
+            ['OCTAVA. SEGUROS', 'El Acreditado se compromete a mantener el vehiculo asegurado durante la vigencia del credito.'],
+            ['NOVENA. JURISDICCI\u00d3N', 'Para la interpretacion y cumplimiento del presente contrato, las partes se someten a la jurisdiccion de los tribunales de la Ciudad de Mexico.'],
+        ];
+        for (var j = 0; j < clauses.length; j++) {
+            html += '<p><strong>' + clauses[j][0] + '.</strong> ' + clauses[j][1] + '</p>';
+        }
+
+        // Legal sections
+        html += '<p style="margin-top:10px;"><strong>VALIDACI\u00d3N ELECTR\u00d3NICA.</strong> EL CLIENTE reconoce que su identidad sera validada mediante mecanismos electronicos, incluyendo codigos de seguridad (OTP). La validacion tendra efectos legales equivalentes a una firma autografa conforme al Codigo de Comercio.</p>';
+        html += '<p><strong>NATURALEZA DEL FINANCIAMIENTO.</strong> VOLTIKA no es una institucion de credito. El credito tiene caracter mercantil y privado.</p>';
+        html += '<p><strong>RESERVA DE DOMINIO.</strong> La propiedad de la motocicleta permanecera en favor de VOLTIKA hasta el pago total del credito.</p>';
+        html += '</div>';
+
+        html += '<div style="font-size:9px;color:#999;margin-top:12px;text-align:center;font-style:italic;">La presente caratula forma parte integral del contrato de credito, terminos y condiciones, pagare y acta de entrega.</div>';
+
+        html += '<button id="vk-contrato-modal-ok" class="vk-btn vk-btn--primary" style="margin-top:12px;font-size:14px;font-weight:700;">Cerrar</button>';
+        html += '</div></div>';
         jQuery('body').append(html);
     },
 
