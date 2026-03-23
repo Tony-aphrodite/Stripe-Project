@@ -131,31 +131,31 @@ var PasoCreditoEnganche = {
         html += '</button>';
         html += '</div>';
 
-        // === 2. Transferencia bancaria SPEI ===
-        html += '<div class="vk-card" style="padding:16px;margin-bottom:12px;">';
-        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
-        html += '<img src="' + base + 'img/logo_spei.png" alt="SPEI" style="height:32px;">';
-        html += '<span style="font-size:14px;font-weight:600;">Transferencia bancaria SPEI</span>';
+        // === 2. Alternative payment methods (SPEI + OXXO) ===
+        html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;background:#f8f9fa;border:1.5px solid #e2e8f0;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+        html += '<span style="font-size:20px;">&#128161;</span>';
+        html += '<span style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">\u00bfNo quieres usar tarjeta?</span>';
         html += '</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;">Recibir\u00e1s los datos de la cuenta para realizar tu transferencia. Confirmaci\u00f3n en minutos.</div>';
-        html += '<div id="vk-spei-section">';
-        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-spei">' +
-            'PAGAR CON TRANSFERENCIA SPEI</button>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:14px;">Puedes pagar sin tarjeta de forma segura</div>';
+        html += '<div style="display:flex;gap:10px;">';
+        // SPEI button
+        html += '<button id="vk-enganche-spei" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 8px;border-radius:10px;border:1.5px solid #ccc;background:#fff;cursor:pointer;transition:all 0.2s;">';
+        html += '<img src="' + base + 'img/logo_spei.png" alt="SPEI" style="height:28px;">';
+        html += '<span style="font-size:13px;font-weight:700;color:#1a3a5c;">SPEI<br><span style="font-weight:400;font-size:11px;color:#666;">Transferencia</span></span>';
+        html += '</button>';
+        // OXXO button
+        html += '<button id="vk-enganche-oxxo" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 8px;border-radius:10px;border:1.5px solid #ccc;background:#fff;cursor:pointer;transition:all 0.2s;">';
+        html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:28px;">';
+        html += '<span style="font-size:13px;font-weight:700;color:#1a3a5c;">OXXO<br><span style="font-weight:400;font-size:11px;color:#666;">Efectivo</span></span>';
+        html += '</button>';
         html += '</div>';
-        html += '</div>';
-
-        // === 3. Pago en efectivo en tiendas OXXO ===
-        html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;">';
-        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
-        html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:36px;">';
-        html += '<span style="font-size:14px;font-weight:600;">Pago en efectivo en tiendas OXXO</span>';
-        html += '</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-bottom:10px;background:var(--vk-bg-light);border-radius:6px;padding:10px;">';
+        // Hidden sections for SPEI/OXXO results
+        html += '<div id="vk-spei-section" style="display:none;margin-top:14px;"></div>';
+        html += '<div id="vk-oxxo-section" style="display:none;margin-top:14px;">';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);background:var(--vk-bg-light);border-radius:6px;padding:10px;margin-bottom:10px;">';
         html += 'Por el l\u00edmite de <strong>$10,000</strong> por operaci\u00f3n en OXXO<br>se generar\u00e1n <strong>' + numRefs + ' referencias</strong> de pago:';
         html += '</div>';
-        html += '<div id="vk-oxxo-section">';
-        html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-oxxo">' +
-            'PAGO EN EFECTIVO EN OXXO</button>';
         html += '</div>';
         html += '</div>';
 
@@ -222,12 +222,16 @@ var PasoCreditoEnganche = {
         // SPEI payment
         jQuery(document).on('click', '#vk-enganche-spei', function(e) {
             e.preventDefault();
+            jQuery('#vk-enganche-spei').css({ 'border-color': '#039fe1', 'background': '#E8F4FD' });
+            jQuery('#vk-enganche-oxxo').css({ 'border-color': '#ccc', 'background': '#fff' });
             self._handleSPEI();
         });
 
         // OXXO payment
         jQuery(document).on('click', '#vk-enganche-oxxo', function(e) {
             e.preventDefault();
+            jQuery('#vk-enganche-oxxo').css({ 'border-color': '#039fe1', 'background': '#E8F4FD' });
+            jQuery('#vk-enganche-spei').css({ 'border-color': '#ccc', 'background': '#fff' });
             self._handleOXXO();
         });
     },
@@ -404,7 +408,7 @@ var PasoCreditoEnganche = {
         html += '<p style="font-size:13px;color:#555;margin:0 0 12px;">' + msg + '</p>';
         html += '<button id="vk-enganche-spei-retry" style="display:block;width:100%;padding:12px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Intentar de nuevo</button>';
         html += '</div>';
-        jQuery('#vk-spei-section').html(html);
+        jQuery('#vk-spei-section').html(html).show();
         var self = this;
         jQuery(document).off('click', '#vk-enganche-spei-retry').on('click', '#vk-enganche-spei-retry', function() {
             self._handleSPEI();
@@ -438,7 +442,7 @@ var PasoCreditoEnganche = {
         html += '</div>';
         html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Confirmaci\u00f3n autom\u00e1tica en minutos despu\u00e9s de recibir la transferencia.</p>';
         html += '</div>';
-        jQuery('#vk-spei-section').html(html);
+        jQuery('#vk-spei-section').html(html).show();
     },
 
     _handleOXXO: function() {
@@ -515,7 +519,7 @@ var PasoCreditoEnganche = {
         html += '<div style="font-size:13px;color:#555;font-weight:700;">Total: <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong></div>';
         html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Presenta el voucher con c\u00f3digo de barras en cualquier tienda OXXO. Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
         html += '</div>';
-        jQuery('#vk-oxxo-section').html(html);
+        jQuery('#vk-oxxo-section').html(html).show();
     },
 
     _downloadOXXOPDF: function(refs, enganche) {
@@ -584,7 +588,7 @@ var PasoCreditoEnganche = {
         html += '<p style="font-size:13px;color:#555;margin:0 0 12px;">' + msg + '</p>';
         html += '<button id="vk-enganche-oxxo-retry" style="display:block;width:100%;padding:12px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Intentar de nuevo</button>';
         html += '</div>';
-        jQuery('#vk-oxxo-section').html(html);
+        jQuery('#vk-oxxo-section').html(html).show();
         var self = this;
         jQuery(document).off('click', '#vk-enganche-oxxo-retry').on('click', '#vk-enganche-oxxo-retry', function() {
             self._handleOXXO();
