@@ -864,6 +864,43 @@ html {
     margin-top: 2px;
 }
 
+/* Custom checkbox & radio: green bg + white check */
+.vk-configurador input[type="checkbox"],
+.vk-configurador input[type="radio"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+.vk-configurador input[type="radio"] {
+    border-radius: 50%;
+}
+.vk-configurador input[type="checkbox"]:checked,
+.vk-configurador input[type="radio"]:checked {
+    background: #4CAF50;
+    border-color: #4CAF50;
+}
+.vk-configurador input[type="checkbox"]:checked::after,
+.vk-configurador input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 6px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg);
+}
+
 .vk-checkbox-label {
     font-size: var(--vk-font-size-sm);
     color: var(--vk-text-secondary);
@@ -2659,7 +2696,7 @@ html {
 }
 /* Give the whole mobile section room so go-electric isn't hidden behind fixed nav */
 .vk-paso1-mobile {
-    padding-bottom: 80px;
+    padding-bottom: 40px;
 }
 
 /* ── Swipe hint animation ───────────────────────────────────────────────── */
