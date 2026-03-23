@@ -438,11 +438,14 @@ var PasoCreditoEnganche = {
         html += '<img src="' + base + 'img/logo_spei.png" alt="SPEI" style="height:28px;">';
         html += '<span style="font-size:14px;font-weight:700;color:#1a3a5c;">Datos para transferencia SPEI</span>';
         html += '</div>';
-        // CLABE highlighted
+        // CLABE highlighted with copy button
         if (speiData.clabe) {
             html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
             html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">CLABE Interbancaria:</div>';
-            html += '<div style="font-size:18px;font-weight:900;color:#333;letter-spacing:1px;">' + speiData.clabe + '</div>';
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">';
+            html += '<div id="vk-spei-clabe-text" style="font-size:18px;font-weight:900;color:#333;letter-spacing:1px;">' + speiData.clabe + '</div>';
+            html += '<button id="vk-spei-copy-clabe" data-clabe="' + speiData.clabe + '" style="flex-shrink:0;padding:6px 12px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Copiar</button>';
+            html += '</div>';
             html += '</div>';
         }
         html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">';
@@ -457,8 +460,36 @@ var PasoCreditoEnganche = {
         html += '</div>';
         html += '</div>';
         html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Confirmaci\u00f3n autom\u00e1tica en minutos despu\u00e9s de recibir la transferencia.</p>';
+        // Checkmarks
+        html += '<div style="margin-top:12px;">';
+        html += '<div style="font-size:13px;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><span style="color:#00C851;">&#10004;</span> Env\u00eda exactamente <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong> desde cualquier banco</div>';
+        html += '<div style="font-size:13px;display:flex;align-items:center;gap:6px;"><span style="color:#00C851;">&#10004;</span> Guarda el comprobante y espera la confirmaci\u00f3n autom\u00e1tica.</div>';
         html += '</div>';
+        html += '</div>';
+        // Continue button
+        html += '<button id="vk-spei-continuar" style="display:block;width:100%;padding:16px;margin-top:14px;background:#1a3a5c;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Continuar mientras realizo mi pago</button>';
         jQuery('#vk-spei-section').html(html).show();
+        var self = this;
+        // Copy CLABE to clipboard
+        jQuery(document).off('click', '#vk-spei-copy-clabe').on('click', '#vk-spei-copy-clabe', function() {
+            var clabe = jQuery(this).data('clabe');
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(clabe).then(function() {
+                    jQuery('#vk-spei-copy-clabe').text('\u2713 Copiado').css('background', '#00C851');
+                    setTimeout(function() { jQuery('#vk-spei-copy-clabe').text('Copiar').css('background', '#039fe1'); }, 2000);
+                });
+            } else {
+                // Fallback for older browsers
+                var ta = document.createElement('textarea');
+                ta.value = clabe; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                jQuery('#vk-spei-copy-clabe').text('\u2713 Copiado').css('background', '#00C851');
+                setTimeout(function() { jQuery('#vk-spei-copy-clabe').text('Copiar').css('background', '#039fe1'); }, 2000);
+            }
+        });
+        // Continue to next step
+        jQuery(document).off('click', '#vk-spei-continuar').on('click', '#vk-spei-continuar', function() {
+            self.app.irAPaso('credito-contrato');
+        });
     },
 
     _handleOXXO: function() {
@@ -535,7 +566,20 @@ var PasoCreditoEnganche = {
         html += '<div style="font-size:13px;color:#555;font-weight:700;">Total: <strong>' + VkUI.formatPrecio(enganche) + ' MXN</strong></div>';
         html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Presenta el voucher con c\u00f3digo de barras en cualquier tienda OXXO. Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
         html += '</div>';
+        // Download PDF button
+        html += '<button id="vk-oxxo-download-pdf" style="display:block;width:100%;padding:14px;margin-top:12px;background:#E53935;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">&#128196; Descargar referencias PDF</button>';
+        // Continue button
+        html += '<button id="vk-oxxo-continuar" style="display:block;width:100%;padding:16px;margin-top:10px;background:#1a3a5c;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Continuar mientras realizo mi pago</button>';
         jQuery('#vk-oxxo-section').html(html).show();
+        var self = this;
+        // Download PDF
+        jQuery(document).off('click', '#vk-oxxo-download-pdf').on('click', '#vk-oxxo-download-pdf', function() {
+            self._downloadOXXOPDF(refs, enganche);
+        });
+        // Continue to next step
+        jQuery(document).off('click', '#vk-oxxo-continuar').on('click', '#vk-oxxo-continuar', function() {
+            self.app.irAPaso('credito-contrato');
+        });
     },
 
     _downloadOXXOPDF: function(refs, enganche) {
