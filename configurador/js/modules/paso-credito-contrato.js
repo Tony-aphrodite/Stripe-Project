@@ -363,12 +363,22 @@ var PasoCreditoContrato = {
                  totalIntereses: totalIntereses, montoTotalPagar: montoTotalPagar };
     },
 
+    _capitalize: function(str) {
+        if (!str) return '--';
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    },
+
     // "Ver contrato" — shows Carátula summary only
     _showCaratula: function() {
         jQuery('#vk-contrato-modal').remove();
         var d = this._getContractData();
         var s = d.state, m = d.modelo, c = d.credito;
         var f = VkUI.formatPrecio;
+        var colorCap = this._capitalize(s.colorSeleccionado || m.colorDefault || '');
+        var folio = s._customerId || ('VK-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (s.nombre || '').substring(0,3).toUpperCase());
+        var nombreCompleto = s.nombre || '--';
+        if (s.apellidoPaterno) nombreCompleto += ' ' + s.apellidoPaterno;
+        if (s.apellidoMaterno) nombreCompleto += ' ' + s.apellidoMaterno;
 
         var html = '<div id="vk-contrato-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">';
         html += '<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;">';
@@ -378,12 +388,15 @@ var PasoCreditoContrato = {
         html += '<button id="vk-contrato-modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>';
         html += '</div>';
 
-        html += '<div style="font-size:10px;color:#888;margin-bottom:12px;">MTECH GEARS S.A. DE C.V. | RFC: MGE230316KA2</div>';
+        html += '<div style="font-size:10px;color:#888;margin-bottom:6px;">MTECH GEARS S.A. DE C.V. | RFC: MGE230316KA2</div>';
+
+        // Customer ID highlighted
+        html += '<div style="background:#039fe1;color:#fff;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;font-weight:700;">Folio: ' + folio + '</div>';
 
         // Client data
         html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">DATOS DEL CLIENTE</div>';
         html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
-        html += 'Nombre: <strong>' + (s.nombre || '--') + '</strong><br>';
+        html += 'Nombre completo: <strong>' + nombreCompleto + '</strong><br>';
         html += 'Email: <strong>' + (s.email || '--') + '</strong><br>';
         html += 'Tel: <strong>+52 ' + (s.telefono || '--') + '</strong>';
         html += '</div>';
@@ -392,7 +405,7 @@ var PasoCreditoContrato = {
         html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">MOTOCICLETA</div>';
         html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
         html += 'Modelo: <strong>VOLTIKA ' + m.nombre + '</strong><br>';
-        html += 'Color: <strong>' + (s.colorSeleccionado || m.colorDefault || '--') + '</strong><br>';
+        html += 'Color: <strong>' + colorCap + '</strong><br>';
         html += 'A\u00f1o: <strong>2026</strong>';
         html += '</div>';
 
@@ -407,12 +420,12 @@ var PasoCreditoContrato = {
         // Credit conditions
         html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">CONDICIONES DE PAGO</div>';
         html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
-        html += 'Enganche: <strong>' + f(c.enganche) + '</strong><br>';
+        html += 'Enganche pagado: <strong>' + f(c.enganche) + '</strong><br>';
         html += 'Monto financiado: <strong>' + f(c.montoFinanciado) + '</strong><br>';
-        html += 'Pagos: <strong>' + d.numPagos + ' semanales</strong><br>';
+        html += 'Pagos: <strong>' + d.numPagos + ' Pagos semanales</strong><br>';
         html += 'Pago semanal: <strong style="color:#039fe1;">' + f(c.pagoSemanal) + '</strong><br>';
-        html += 'Total intereses: ' + f(d.totalIntereses) + '<br>';
-        html += '<strong style="font-size:14px;">MONTO TOTAL: ' + f(d.montoTotalPagar) + ' MXN</strong>';
+        html += 'Costo del financiamiento: ' + f(d.totalIntereses) + '<br>';
+        html += '<strong style="font-size:14px;">Total a Pagar: ' + f(d.montoTotalPagar) + ' MXN</strong>';
         html += '</div>';
 
         html += '<button id="vk-contrato-modal-ok" class="vk-btn vk-btn--primary" style="margin-top:8px;font-size:14px;font-weight:700;">Cerrar</button>';
@@ -426,6 +439,11 @@ var PasoCreditoContrato = {
         var d = this._getContractData();
         var s = d.state, m = d.modelo, c = d.credito;
         var f = VkUI.formatPrecio;
+        var colorCap = this._capitalize(s.colorSeleccionado || m.colorDefault || '');
+        var folio = s._customerId || ('VK-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (s.nombre || '').substring(0,3).toUpperCase());
+        var nombreCompleto = s.nombre || '--';
+        if (s.apellidoPaterno) nombreCompleto += ' ' + s.apellidoPaterno;
+        if (s.apellidoMaterno) nombreCompleto += ' ' + s.apellidoMaterno;
 
         var html = '<div id="vk-contrato-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">';
         html += '<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;">';
@@ -441,22 +459,25 @@ var PasoCreditoContrato = {
         html += '<div style="font-size:10px;color:#888;">MTECH GEARS S.A. DE C.V. | RFC: MGE230316KA2</div>';
         html += '</div>';
 
+        // Customer ID
+        html += '<div style="background:#039fe1;color:#fff;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;font-weight:700;">Folio: ' + folio + '</div>';
+
         // Summary table
         var rows = [
-            ['Acreditado', s.nombre || '--'],
+            ['Nombre completo', nombreCompleto],
             ['Email', s.email || '--'],
             ['Tel\u00e9fono', '+52 ' + (s.telefono || '--')],
             ['Modelo', 'VOLTIKA ' + m.nombre],
-            ['Color', s.colorSeleccionado || m.colorDefault || '--'],
+            ['Color', colorCap],
             ['Precio contado', f(m.precioContado) + ' MXN'],
             ['Precio sin IVA', f(d.precioSinIVA)],
             ['IVA 16%', f(d.ivaVehiculo)],
-            ['Enganche', f(c.enganche)],
+            ['Enganche pagado', f(c.enganche)],
             ['Monto financiado', f(c.montoFinanciado)],
-            ['N\u00fam. pagos', d.numPagos + ' semanales'],
+            ['Pagos', d.numPagos + ' Pagos semanales'],
             ['Pago semanal', f(c.pagoSemanal)],
-            ['Total intereses', f(d.totalIntereses)],
-            ['MONTO TOTAL', f(d.montoTotalPagar) + ' MXN'],
+            ['Costo del financiamiento', f(d.totalIntereses)],
+            ['Total a Pagar', f(d.montoTotalPagar) + ' MXN'],
         ];
         html += '<div style="margin-bottom:16px;">';
         for (var i = 0; i < rows.length; i++) {
