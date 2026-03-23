@@ -96,8 +96,8 @@ var PasoCreditoConsentimiento = {
         html += '<div class="vk-checkbox-group" style="margin-bottom:12px;display:flex;gap:10px;align-items:flex-start;">';
         html += '<input type="checkbox" class="vk-checkbox" id="vk-cons-tyc" style="margin-top:3px;flex-shrink:0;">';
         html += '<label class="vk-checkbox-label" for="vk-cons-tyc" style="font-size:13px;">' +
-            'Al continuar aceptas los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:#039fe1;">T\u00e9rminos y condiciones</a>, ' +
-            'las <a href="https://voltika.mx/docs/clausulas_2026.pdf" target="_blank" style="color:#039fe1;">cl\u00e1usulas de medios electr\u00f3nicos</a> ' +
+            'Al continuar aceptas los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" rel="noopener" style="color:#039fe1;">T\u00e9rminos y condiciones</a>, ' +
+            'las <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" rel="noopener" style="color:#039fe1;">cl\u00e1usulas de medios electr\u00f3nicos</a> ' +
             'y autorizas la consulta de tu reporte de cr\u00e9dito.' +
             '</label>';
         html += '</div>';
