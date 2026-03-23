@@ -68,11 +68,22 @@ if ($cincelEmail && $cincelPassword) {
     $cincelResult = ['status' => 'skipped', 'reason' => 'Cincel credentials not configured'];
 }
 
+// ── Step 3: Send contract PDF to customer email ──────────────────────────
+$emailSent = false;
+if ($email && $pdfPath && file_exists($pdfPath)) {
+    try {
+        $emailSent = sendContractEmail($email, $nombre, $modelo, $pdfPath);
+    } catch (Exception $e) {
+        error_log('Contract email error: ' . $e->getMessage());
+    }
+}
+
 // ── Response ──────────────────────────────────────────────────────────────
 echo json_encode([
     'ok'        => true,
     'pdf'       => $pdfPath ? basename($pdfPath) : null,
     'cincel'    => $cincelResult,
+    'emailSent' => $emailSent,
     'timestamp' => date('c')
 ]);
 
@@ -537,4 +548,92 @@ function sendToCincel($apiUrl, $email, $password, $pdfPath, $signerName, $signer
             ? 'NOM-151 timestamp created successfully.'
             : 'Timestamp requested, certificate pending.'
     ];
+}
+
+/**
+ * Send contract PDF to customer via email
+ */
+function sendContractEmail($toEmail, $nombre, $modelo, $pdfPath) {
+    $subject = 'Tu contrato Voltika - ' . $modelo;
+
+    $htmlBody = '
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+        <div style="text-align:center;margin-bottom:20px;">
+            <h1 style="color:#1a3a5c;margin:0;">Voltika</h1>
+            <p style="color:#039fe1;font-size:14px;margin:4px 0;">Movilidad electrica inteligente</p>
+        </div>
+
+        <h2 style="color:#333;">Hola ' . htmlspecialchars($nombre) . ',</h2>
+
+        <p style="font-size:15px;color:#555;line-height:1.6;">
+            Adjunto encontraras tu <strong>Caratula de Credito</strong> para tu motocicleta
+            <strong>Voltika ' . htmlspecialchars($modelo) . '</strong>.
+        </p>
+
+        <div style="background:#E8F4FD;border-radius:10px;padding:16px;margin:20px 0;border-left:4px solid #039fe1;">
+            <p style="margin:0;font-size:14px;color:#1a3a5c;">
+                <strong>Importante:</strong> Este documento forma parte integral de tu contrato de credito.
+                Conservalo para tu referencia.
+            </p>
+        </div>
+
+        <p style="font-size:14px;color:#555;line-height:1.6;">
+            Tu firma ha sido registrada y sera certificada con <strong>NOM-151</strong> mediante Cincel Digital
+            para garantizar su validez legal.
+        </p>
+
+        <div style="background:#F5F5F5;border-radius:8px;padding:14px;margin:20px 0;">
+            <p style="margin:0 0 8px;font-size:13px;color:#888;">Proximos pasos:</p>
+            <p style="margin:0 0 4px;font-size:14px;color:#333;">&#10003; Un asesor Voltika te contactara en maximo <strong>48 horas</strong></p>
+            <p style="margin:0 0 4px;font-size:14px;color:#333;">&#10003; Confirmaremos tu punto de entrega</p>
+            <p style="margin:0;font-size:14px;color:#333;">&#10003; Coordinaremos fecha y horario de entrega</p>
+        </div>
+
+        <p style="font-size:13px;color:#888;margin-top:30px;text-align:center;">
+            Si tienes alguna duda, contactanos por WhatsApp al +52 (55) 79440982<br>
+            o escribe a <a href="mailto:legal@voltika.mx" style="color:#039fe1;">legal@voltika.mx</a>
+        </p>
+
+        <div style="text-align:center;margin-top:20px;padding-top:20px;border-top:1px solid #eee;">
+            <p style="font-size:12px;color:#999;">MTECH GEARS S.A. DE C.V. | voltika.mx</p>
+        </div>
+    </div>';
+
+    // Use sendMail from config.php (PHPMailer with attachment)
+    $autoload = __DIR__ . '/vendor/autoload.php';
+    if (file_exists($autoload)) require_once $autoload;
+
+    if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+        try {
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            $mail->isSMTP();
+            $mail->SMTPAuth   = true;
+            $mail->Host       = SMTP_HOST;
+            $mail->Port       = SMTP_PORT;
+            $mail->Username   = SMTP_USER;
+            $mail->Password   = SMTP_PASS;
+            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+            $mail->setFrom(SMTP_USER, 'Voltika Mexico');
+            $mail->addAddress($toEmail, $nombre);
+            $mail->addBCC('redes@voltika.com.mx');
+            $mail->CharSet    = 'UTF-8';
+            $mail->Encoding   = 'base64';
+            $mail->isHTML(true);
+            $mail->Subject    = $subject;
+            $mail->Body       = $htmlBody;
+            $mail->AltBody    = strip_tags($htmlBody);
+            $mail->addAttachment($pdfPath, 'Contrato_Voltika_' . preg_replace('/[^a-zA-Z0-9]/', '_', $nombre) . '.pdf');
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            error_log('Contract email PHPMailer error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Fallback: PHP mail() without attachment
+    $headers  = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $headers .= "From: Voltika Mexico <" . SMTP_USER . ">\r\n";
+    return @mail($toEmail, $subject, $htmlBody, $headers);
 }
