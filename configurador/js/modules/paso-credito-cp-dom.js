@@ -18,8 +18,6 @@ var PasoCreditoCPDom = {
         html += VkUI.renderBackButton('credito-nacimiento');
         html += VkUI.renderCreditoStepBar(2);
 
-        html += '<h2 class="vk-paso__titulo">C\u00f3digo postal de tu domicilio</h2>';
-
         // Show previously selected delivery point with full detail
         if (state.codigoPostal || state.centroEntrega) {
             var centro = state.centroEntrega;
@@ -56,6 +54,8 @@ var PasoCreditoCPDom = {
             html += '<div style="font-size:11px;font-weight:800;color:#039fe1;text-transform:uppercase;margin-top:6px;">(este es para recibir tu Voltika)</div>';
             html += '</div>';
         }
+
+        html += '<h2 class="vk-paso__titulo">C\u00f3digo postal de tu domicilio</h2>';
 
         html += '<p class="vk-paso__subtitulo">Ahora, confirmar el c\u00f3digo postal de tu domicilio (Como aparece en tu INE o comprobante), este puede ser diferente al de la entrega.</p>';
 
