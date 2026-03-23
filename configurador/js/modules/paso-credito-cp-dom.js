@@ -42,10 +42,14 @@ var PasoCreditoCPDom = {
                 ubicacion += (centro.ciudad || state.ciudad || '') + ', ' + (centro.estado || state.estado || '');
                 html += '<div style="font-size:14px;font-weight:700;color:#333;">' + ubicacion + '</div>';
             } else {
-                // Fallback: just CP + city
+                // Fallback: just CP + city — prefer state values from API
                 html += '<div style="font-size:16px;font-weight:800;color:#333;">' + state.codigoPostal;
-                var cpInfo = VOLTIKA_CP._buscar(state.codigoPostal);
-                if (cpInfo) html += ' \u2014 ' + cpInfo.ciudad + ', ' + cpInfo.estado;
+                if (state.ciudad && state.estado) {
+                    html += ' \u2014 ' + state.ciudad + ', ' + state.estado;
+                } else {
+                    var cpInfo = VOLTIKA_CP._buscar(state.codigoPostal);
+                    if (cpInfo) html += ' \u2014 ' + cpInfo.ciudad + ', ' + cpInfo.estado;
+                }
                 html += '</div>';
             }
 

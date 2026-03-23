@@ -15,10 +15,15 @@ var PasoCreditoAprobado = {
     render: function() {
         var state = this.app.state;
 
-        // Get delivery info
+        // Get delivery info — prefer state values from CP API (more accurate)
         var cpEntrega = state.codigoPostal || '';
-        var cpInfo = cpEntrega && typeof VOLTIKA_CP !== 'undefined' ? VOLTIKA_CP._buscar(cpEntrega) : null;
-        var ciudadEntrega = cpInfo ? (cpInfo.ciudad + ', ' + cpInfo.estado) : '';
+        var ciudadEntrega = '';
+        if (state.ciudad && state.estado) {
+            ciudadEntrega = state.ciudad + ', ' + state.estado;
+        } else {
+            var cpInfo = cpEntrega && typeof VOLTIKA_CP !== 'undefined' ? VOLTIKA_CP._buscar(cpEntrega) : null;
+            ciudadEntrega = cpInfo ? (cpInfo.ciudad + ', ' + cpInfo.estado) : '';
+        }
 
         var html = '';
 
