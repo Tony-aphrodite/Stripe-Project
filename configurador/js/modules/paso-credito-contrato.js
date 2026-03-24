@@ -487,30 +487,69 @@ var PasoCreditoContrato = {
         }
         html += '</div>';
 
-        // Full contract clauses
-        html += '<div style="font-size:10px;color:#555;line-height:1.7;">';
-        var clauses = [
-            ['PRIMERA. OBJETO', 'El Acreditante otorga al Acreditado una linea de credito para la adquisicion del vehiculo electrico descrito en la caratula de este contrato.'],
-            ['SEGUNDA. DISPOSICI\u00d3N', 'El Acreditado dispone del credito al momento de recibir el vehiculo, quedando obligado al pago del monto financiado mas los intereses correspondientes.'],
-            ['TERCERA. PLAZO', 'El plazo del credito sera el estipulado en la caratula. El Acreditado realizara pagos semanales mediante domiciliacion bancaria o el metodo acordado.'],
-            ['CUARTA. TASA DE INTER\u00c9S', 'La tasa de interes ordinaria sera calculada sobre saldos insolutos. El Costo Anual Total (CAT) sera informado al Acreditado antes de la firma.'],
-            ['QUINTA. PAGOS', 'Los pagos semanales incluyen capital e intereses. El Acreditado puede realizar pagos anticipados sin penalizacion alguna.'],
-            ['SEXTA. GARANT\u00cdA', 'El vehiculo adquirido servira como garantia prendaria del presente credito hasta la liquidacion total del adeudo.'],
-            ['S\u00c9PTIMA. MORA', 'En caso de incumplimiento, se aplicara una tasa moratoria sobre el saldo vencido. El Acreditante podra iniciar el proceso de recuperacion del vehiculo.'],
-            ['OCTAVA. SEGUROS', 'El Acreditado se compromete a mantener el vehiculo asegurado durante la vigencia del credito.'],
-            ['NOVENA. JURISDICCI\u00d3N', 'Para la interpretacion y cumplimiento del presente contrato, las partes se someten a la jurisdiccion de los tribunales de la Ciudad de Mexico.'],
-        ];
-        for (var j = 0; j < clauses.length; j++) {
-            html += '<p><strong>' + clauses[j][0] + '.</strong> ' + clauses[j][1] + '</p>';
-        }
-
-        // Legal sections
-        html += '<p style="margin-top:10px;"><strong>VALIDACI\u00d3N ELECTR\u00d3NICA.</strong> EL CLIENTE reconoce que su identidad sera validada mediante mecanismos electronicos, incluyendo codigos de seguridad (OTP). La validacion tendra efectos legales equivalentes a una firma autografa conforme al Codigo de Comercio.</p>';
-        html += '<p><strong>NATURALEZA DEL FINANCIAMIENTO.</strong> VOLTIKA no es una institucion de credito. El credito tiene caracter mercantil y privado.</p>';
-        html += '<p><strong>RESERVA DE DOMINIO.</strong> La propiedad de la motocicleta permanecera en favor de VOLTIKA hasta el pago total del credito.</p>';
+        // Full contract header
+        html += '<div style="border-top:2px solid #1a3a5c;margin-top:16px;padding-top:14px;">';
+        html += '<div style="text-align:center;font-size:12px;font-weight:800;color:#1a3a5c;margin-bottom:6px;">CONTRATO DE APERTURA DE CR\u00c9DITO</div>';
+        html += '<div style="text-align:center;font-size:9px;color:#888;margin-bottom:12px;">CONTRATO ASOCIADO AL FOLIO: <strong>' + folio + '</strong></div>';
         html += '</div>';
 
-        html += '<div style="font-size:9px;color:#999;margin-top:12px;text-align:center;font-style:italic;">La presente caratula forma parte integral del contrato de credito, terminos y condiciones, pagare y acta de entrega.</div>';
+        // Scrollable contract text
+        html += '<div style="font-size:9px;color:#555;line-height:1.7;max-height:400px;overflow-y:auto;padding:12px;background:#fafafa;border:1px solid #eee;border-radius:8px;">';
+
+        html += '<p><strong>CONTRATO DE APERTURA DE CR\u00c9DITO</strong> QUE CELEBRAN POR UNA PARTE MTECH GEARS, S.A. DE C.V. (EN LO SUCESIVO VOLTIKA); Y POR LA OTRA ' + nombreCompleto.toUpperCase() + ' (EN LO SUCESIVO EL CLIENTE).</p>';
+
+        html += '<p><strong>DECLARACIONES</strong></p>';
+        html += '<p>Declara EL CLIENTE, por su propio derecho y para todos los efectos legales a que haya lugar, que:</p>';
+        html += '<p>Es una persona f\u00edsica con la capacidad jur\u00eddica y econ\u00f3mica para obligarse bajo los t\u00e9rminos y condiciones del presente contrato.</p>';
+        html += '<p>Para los efectos del presente contrato se se\u00f1ala como domicilio y medios de comunicaci\u00f3n los se\u00f1alados en la car\u00e1tula de este contrato.</p>';
+        html += '<p>EL CLIENTE reconoce que el n\u00famero telef\u00f3nico registrado ser\u00e1 considerado como medio de autenticaci\u00f3n v\u00e1lido para efectos de la validaci\u00f3n electr\u00f3nica del presente contrato.</p>';
+
+        html += '<p>Declara VOLTIKA, a trav\u00e9s de su representante legal que es una sociedad mexicana debidamente constituida bajo la legislaci\u00f3n mexicana.</p>';
+
+        html += '<p><strong>CL\u00c1USULAS</strong></p>';
+
+        html += '<p><strong>PRIMERA. OBJETO.</strong> El objeto del presente Contrato es el otorgamiento de un cr\u00e9dito por lo que VOLTIKA otorga a EL CLIENTE un cr\u00e9dito para la adquisici\u00f3n del veh\u00edculo el\u00e9ctrico descrito en la Car\u00e1tula.</p>';
+        html += '<p><strong>SEGUNDA. DESTINO.</strong> EL CLIENTE se obliga a destinar el importe de EL CR\u00c9DITO exclusivamente a la adquisici\u00f3n del producto descrito en la Car\u00e1tula del presente Contrato.</p>';
+        html += '<p><strong>TERCERA. PLAZO DEL CONTRATO.</strong> El plazo del Contrato ser\u00e1 el que resulte del n\u00famero total de pagos y su periodicidad establecidos en la Car\u00e1tula.</p>';
+        html += '<p><strong>CUARTA. DOMICILIACI\u00d3N.</strong> EL CLIENTE autoriza expresamente a VOLTIKA para realizar cargos recurrentes a la tarjeta bancaria o cuenta registrada durante toda la vigencia del cr\u00e9dito.</p>';
+        html += '<p><strong>QUINTA. DISPOSICIONES DEL CR\u00c9DITO.</strong> La disposici\u00f3n del cr\u00e9dito estar\u00e1 sujeta a la asignaci\u00f3n de la unidad espec\u00edfica conforme a disponibilidad.</p>';
+        html += '<p><strong>SEXTA. PAGO DE ENGANCHE.</strong> EL CLIENTE reconoce que el pago inicial referido como ENGANCHE realizado a VOLTIKA constituye el pago parcial del precio del veh\u00edculo. En caso de que EL CLIENTE decida no continuar con la contrataci\u00f3n, VOLTIKA podr\u00e1 retener hasta el 20% del enganche como penalizaci\u00f3n.</p>';
+        html += '<p><strong>SEXTA BIS. PAGOS DEL CR\u00c9DITO.</strong> EL CLIENTE pagar\u00e1 a VOLTIKA el monto financiado y los cargos derivados del financiamiento en pagos peri\u00f3dicos conforme a la Car\u00e1tula y Tabla de Pagos.</p>';
+        html += '<p><strong>S\u00c9PTIMA. CARGOS DEL FINANCIAMIENTO.</strong> EL CLIENTE reconoce que el monto total a pagar incluye el principal m\u00e1s los cargos por financiamiento. EL CLIENTE manifiesta que conoce y acepta el monto total a pagar.</p>';
+        html += '<p><strong>OCTAVA. INCUMPLIMIENTO DE PAGO.</strong> En caso de que EL CLIENTE no pague puntualmente, VOLTIKA podr\u00e1 aplicar cargos por atraso conforme a las condiciones de la Car\u00e1tula.</p>';
+        html += '<p><strong>NOVENA. MEDIOS DE ACREDITACI\u00d3N Y REGISTRO.</strong> EL CLIENTE reconoce y acepta que VOLTIKA podr\u00e1 conservar registros f\u00edsicos y electr\u00f3nicos de todas las operaciones realizadas.</p>';
+        html += '<p><strong>D\u00c9CIMA. LUGAR Y FORMA DE PAGO.</strong> Los pagos se efectuar\u00e1n mediante los medios autorizados por VOLTIKA, incluyendo cargos autom\u00e1ticos a tarjeta bancaria.</p>';
+        html += '<p><strong>D\u00c9CIMA PRIMERA. INFORMACI\u00d3N DE PAGOS.</strong> VOLTIKA pondr\u00e1 a disposici\u00f3n de EL CLIENTE por medios electr\u00f3nicos el estado de cuenta.</p>';
+        html += '<p><strong>D\u00c9CIMA SEGUNDA. PAGOS ANTICIPADOS.</strong> EL CLIENTE podr\u00e1 realizar pagos anticipados en cualquier momento, sin penalizaci\u00f3n alguna.</p>';
+        html += '<p><strong>D\u00c9CIMA TERCERA. OBLIGACIONES.</strong> EL CLIENTE est\u00e1 obligado a mantener y conservar en condiciones adecuadas el veh\u00edculo objeto del presente Contrato.</p>';
+        html += '<p><strong>D\u00c9CIMA CUARTA. RESERVA DE DOMINIO.</strong> VOLTIKA tiene la propiedad de la motocicleta hasta que EL CLIENTE haya liquidado en su totalidad el cr\u00e9dito.</p>';
+        html += '<p><strong>D\u00c9CIMA CUARTA BIS. GARANT\u00cdA PRENDARIA.</strong> En garant\u00eda del pago, EL CLIENTE constituye garant\u00eda prendaria sobre el veh\u00edculo objeto del presente Contrato.</p>';
+        html += '<p><strong>D\u00c9CIMA QUINTA. TIEMPOS DE ENTREGA.</strong> VOLTIKA se compromete a realizar la entrega en un plazo estimado de hasta 28 d\u00edas naturales a partir de la confirmaci\u00f3n del pago del enganche.</p>';
+        html += '<p><strong>D\u00c9CIMA SEXTA. POSESI\u00d3N DEL VEH\u00cdCULO.</strong> EL CLIENTE conservar\u00e1 la posesi\u00f3n del veh\u00edculo en su car\u00e1cter de depositario.</p>';
+        html += '<p><strong>D\u00c9CIMA S\u00c9PTIMA. OBLIGADO SOLIDARIO.</strong> La persona cuyos datos aparecen en la Car\u00e1tula responder\u00e1 solidariamente de las obligaciones.</p>';
+        html += '<p><strong>D\u00c9CIMA OCTAVA. OPCIONES DE PROTECCI\u00d3N.</strong> VOLTIKA podr\u00e1 ofrecer seguros o mecanismos de protecci\u00f3n opcionales.</p>';
+        html += '<p><strong>D\u00c9CIMA NOVENA. RESPONSABILIDAD SOBRE EL VEH\u00cdCULO.</strong> EL CLIENTE es responsable del uso, resguardo y conservaci\u00f3n del veh\u00edculo.</p>';
+        html += '<p><strong>VIG\u00c9SIMA. IMPUESTOS.</strong> EL CLIENTE pagar\u00e1 los impuestos y obligaciones fiscales que se generen con motivo del presente Contrato.</p>';
+        html += '<p><strong>VIG\u00c9SIMA PRIMERA. CAUSAS DE VENCIMIENTO ANTICIPADO.</strong> VOLTIKA tendr\u00e1 derecho a declarar el vencimiento anticipado si EL CLIENTE no paga puntualmente, proporciona informaci\u00f3n falsa, o dispone del veh\u00edculo sin autorizaci\u00f3n.</p>';
+        html += '<p><strong>VIG\u00c9SIMA SEGUNDA. COMPENSACI\u00d3N.</strong> VOLTIKA notificar\u00e1 a EL CLIENTE en el estado de cuenta de cualquier cargo o compensaci\u00f3n.</p>';
+        html += '<p><strong>VIG\u00c9SIMA TERCERA. CESI\u00d3N DEL CR\u00c9DITO.</strong> Este contrato surtir\u00e1 efectos una vez suscrito por ambas partes.</p>';
+        html += '<p><strong>VIG\u00c9SIMA CUARTA. RESTRICCI\u00d3N Y DENUNCIA.</strong> Se conviene que VOLTIKA ser\u00e1 la \u00fanica con facultades de exigir el pago del cr\u00e9dito.</p>';
+        html += '<p><strong>VIG\u00c9SIMA QUINTA. DOMICILIOS.</strong> Las partes se\u00f1alan como domicilios los proporcionados en los respectivos registros.</p>';
+        html += '<p><strong>VIG\u00c9SIMA SEXTA. TERMINACI\u00d3N DEL CONTRATO.</strong> Cualquiera de las partes podr\u00e1 solicitar la terminaci\u00f3n conforme a las condiciones establecidas.</p>';
+        html += '<p><strong>VIG\u00c9SIMA S\u00c9PTIMA. JURISDICCI\u00d3N Y COMPETENCIA.</strong> Para la soluci\u00f3n de cualquier controversia, las partes se someten a la jurisdicci\u00f3n de los tribunales de la Ciudad de M\u00e9xico.</p>';
+        html += '<p><strong>VIG\u00c9SIMA OCTAVA. FIRMA ELECTR\u00d3NICA.</strong> Las Partes convienen que la firma electr\u00f3nica tiene la misma validez legal que una firma aut\u00f3grafa conforme al C\u00f3digo de Comercio. EL CLIENTE manifiesta que ha tenido acceso previo al presente documento y que acepta su contenido de forma libre e informada.</p>';
+
+        // Signature section
+        html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #ddd;">';
+        html += '<p><strong>EL CLIENTE</strong></p>';
+        html += '<p>Nombre: <strong>' + nombreCompleto + '</strong></p>';
+        html += '<p>Firma electr\u00f3nica de EL CLIENTE</p>';
+        html += '<p>Folio del Contrato: <strong>' + folio + '</strong></p>';
+        html += '</div>';
+
+        html += '</div>'; // end scrollable
+
+        html += '<div style="font-size:9px;color:#999;margin-top:12px;text-align:center;font-style:italic;">La presente car\u00e1tula y contrato de cr\u00e9dito forman un solo documento legal.</div>';
 
         html += '<button id="vk-contrato-modal-ok" class="vk-btn vk-btn--primary" style="margin-top:12px;font-size:14px;font-weight:700;">Cerrar</button>';
         html += '</div></div>';
