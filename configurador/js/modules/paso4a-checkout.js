@@ -199,6 +199,8 @@ var Paso4A = {
         html += '<div style="font-size:20px;font-weight:900;text-align:center;margin-bottom:4px;">' + VkUI.formatPrecio(total) + ' <span style="font-size:12px;font-weight:600;">MXN</span></div>';
         if (costoLog > 0) {
             html += '<div style="font-size:10px;text-align:center;margin-bottom:8px;color:#555;">Costo log\u00edstico: <span style="text-decoration:line-through;color:#999;">' + VkUI.formatPrecio(costoLog) + '</span> <strong style="color:#00C851;">Sin costo</strong></div>';
+        } else {
+            html += '<div style="font-size:10px;text-align:center;margin-bottom:8px;color:#555;">Costo log\u00edstico: <strong style="color:#00C851;">Sin costo</strong></div>';
         }
         html += '<button id="vk-pay-unico" class="vk-pay-btn" data-tipo="unico" style="display:block;width:100%;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
         html += '<span class="vk-pay-btn__label">PAGAR ' + VkUI.formatPrecio(total) + '</span>';
@@ -213,6 +215,8 @@ var Paso4A = {
             html += '<div style="font-size:20px;font-weight:900;text-align:center;margin-bottom:4px;">' + VkUI.formatPrecio(msiPago) + ' <span style="font-size:12px;font-weight:600;">/ mes</span></div>';
             if (costoLog > 0) {
                 html += '<div style="font-size:10px;text-align:center;margin-bottom:8px;color:#555;">Costo log\u00edstico: <strong style="color:#039fe1;">' + VkUI.formatPrecio(costoLog) + '</strong></div>';
+            } else {
+                html += '<div style="font-size:10px;text-align:center;margin-bottom:8px;color:#555;">Costo log\u00edstico: <strong style="color:#00C851;">Sin costo</strong></div>';
             }
             html += '<button id="vk-pay-msi" class="vk-pay-btn" data-tipo="msi" style="display:block;width:100%;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
             html += '<span class="vk-pay-btn__label">PAGAR ' + VkUI.formatPrecio(msiPago) + ' / MES</span>';
