@@ -98,12 +98,28 @@ var Paso4A = {
         html += '<div style="font-size:15px;font-weight:800;text-align:center;margin-bottom:4px;">Confirma tu n\u00famero para continuar</div>';
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);text-align:center;margin-bottom:12px;">Te enviamos un c\u00f3digo por SMS para confirmar tu identidad.</div>';
 
-        // Phone display
+        // Phone input (if no phone in state)
         var _tel = state.telefono || '';
+        if (!_tel) {
+            html += '<div id="vk-pago-phone-input" style="margin-bottom:14px;">';
+            html += '<label style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);display:block;margin-bottom:6px;">Tu n\u00famero de tel\u00e9fono</label>';
+            html += '<div style="display:flex;gap:8px;align-items:center;">';
+            html += '<div style="background:#f5f5f5;border:1.5px solid var(--vk-border);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;color:#333;flex-shrink:0;">&#127474;&#127485; +52</div>';
+            html += '<input type="tel" id="vk-pago-telefono" class="vk-form-input" placeholder="55 1234 5678" maxlength="15" inputmode="numeric" style="font-size:16px;padding:10px 14px;flex:1;">';
+            html += '</div>';
+            html += '<button id="vk-pago-enviar-codigo" style="display:block;width:100%;margin-top:10px;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Enviar c\u00f3digo</button>';
+            html += '</div>';
+            // OTP section hidden until phone submitted
+            html += '<div id="vk-pago-otp-area" style="display:none;">';
+        } else {
+            html += '<div id="vk-pago-otp-area">';
+        }
+
+        // Phone display
         var _telDisplay = _tel ? ('+52 ' + _tel.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3')) : '+52 --';
-        html += '<div style="text-align:center;margin-bottom:12px;">';
+        html += '<div id="vk-pago-phone-display" style="text-align:center;margin-bottom:12px;">';
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);">C\u00f3digo enviado a</div>';
-        html += '<div style="font-size:15px;font-weight:700;">' + _telDisplay + '</div>';
+        html += '<div style="font-size:15px;font-weight:700;" id="vk-pago-tel-display">' + _telDisplay + '</div>';
         html += '</div>';
 
         // OTP test hint
@@ -128,6 +144,7 @@ var Paso4A = {
         html += '<div id="vk-pago-otp-error" style="display:none;color:#C62828;font-size:12px;background:#FFEBEE;border-radius:6px;padding:8px;text-align:center;margin-bottom:10px;"></div>';
         // OTP success
         html += '<div id="vk-pago-otp-success" style="display:none;color:#4CAF50;font-size:12px;background:#E8F5E9;border-radius:6px;padding:8px;text-align:center;margin-bottom:10px;">&#10003; N\u00famero verificado correctamente</div>';
+        html += '</div>'; // end otp-area
         html += '</div>';
 
         // 8. Contact + Card form (hidden until OTP verified)
@@ -283,6 +300,27 @@ var Paso4A = {
         });
         $(document).on('focus', '.vk-pago-otp-box', function() { $(this).css('border-color', '#039fe1'); });
         $(document).on('blur', '.vk-pago-otp-box', function() { $(this).css('border-color', $(this).val() ? '#039fe1' : '#e5e7eb'); });
+
+        // Send OTP (phone input for contado/MSI)
+        $(document).off('click', '#vk-pago-enviar-codigo');
+        $(document).on('click', '#vk-pago-enviar-codigo', function(e) {
+            e.preventDefault();
+            var tel = $('#vk-pago-telefono').val().replace(/\D/g, '');
+            if (tel.length < 10) {
+                $('#vk-pago-telefono').css('border-color', '#C62828');
+                setTimeout(function() { $('#vk-pago-telefono').css('border-color', ''); }, 3000);
+                return;
+            }
+            self.app.state.telefono = tel;
+            // Update phone display
+            var telFormatted = '+52 ' + tel.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
+            $('#vk-pago-tel-display').text(telFormatted);
+            // Hide phone input, show OTP area
+            $('#vk-pago-phone-input').slideUp(200);
+            $('#vk-pago-otp-area').slideDown(200);
+            // Send OTP
+            self._sendOTP();
+        });
 
         // Resend OTP
         $(document).off('click', '#vk-pago-otp-reenviar');
