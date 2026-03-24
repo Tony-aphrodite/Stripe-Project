@@ -62,44 +62,58 @@ var VOLTIKA_CENTROS = [
     }
 ];
 
-/* Metro area groupings: CPs that share the same delivery zone
-   Each centro has a 'zonas' array of CP prefixes (2 digits) it serves.
-   If not defined, only exact prefix match is used. */
+/* Estado name normalization map for matching */
+var _ESTADO_ALIAS = {
+    'Ciudad de M\u00e9xico': 'CDMX',
+    'Ciudad de Mexico': 'CDMX',
+    'Distrito Federal': 'CDMX',
+    'Estado de M\u00e9xico': 'M\u00e9xico',
+    'Estado de Mexico': 'M\u00e9xico',
+    'Mexico': 'M\u00e9xico'
+};
 
-/* Utility: find matching centers for a given CP */
-VOLTIKA_CENTROS.buscar = function(cp) {
-    if (!cp || cp.length < 2) return [];
+function _normEstado(e) {
+    if (!e) return '';
+    return _ESTADO_ALIAS[e] || e;
+}
 
-    var prefix2 = cp.substring(0, 2);
-    var results = [];
+/* Utility: find matching centers by estado (state) */
+VOLTIKA_CENTROS.buscar = function(cp, estado) {
+    if (!estado && (!cp || cp.length < 2)) return [];
 
-    for (var i = 0; i < this.length; i++) {
-        var centro = this[i];
-
-        if (centro.zonas && centro.zonas.length) {
-            // Check if user CP prefix is in this centro's service zones
-            for (var j = 0; j < centro.zonas.length; j++) {
-                if (centro.zonas[j] === prefix2) {
-                    results.push(centro);
-                    break;
-                }
-            }
-        } else {
-            // Exact 2-digit prefix match
-            var centroPrefix = centro.cp.substring(0, 2);
-            if (centroPrefix === prefix2) {
+    // If estado provided, match by estado
+    if (estado) {
+        var normEst = _normEstado(estado);
+        var results = [];
+        for (var i = 0; i < this.length; i++) {
+            var centro = this[i];
+            var centroEst = _normEstado(centro.estado);
+            if (centroEst === normEst) {
                 results.push(centro);
             }
         }
+        // Sort by tipo priority: center > certificado > entrega
+        var tipoPriority = { 'center': 0, 'certificado': 1, 'entrega': 2 };
+        results.sort(function(a, b) {
+            var pa = tipoPriority[a.tipo] !== undefined ? tipoPriority[a.tipo] : 3;
+            var pb = tipoPriority[b.tipo] !== undefined ? tipoPriority[b.tipo] : 3;
+            return pa - pb;
+        });
+        return results;
     }
 
-    // Sort: exact CP match first, then by CP proximity
-    var cpNum = parseInt(cp);
-    results.sort(function(a, b) {
-        var distA = Math.abs(parseInt(a.cp) - cpNum);
-        var distB = Math.abs(parseInt(b.cp) - cpNum);
-        return distA - distB;
-    });
-
-    return results;
+    // Fallback: CP prefix match (legacy)
+    var prefix2 = cp.substring(0, 2);
+    var results2 = [];
+    for (var k = 0; k < this.length; k++) {
+        var c = this[k];
+        if (c.zonas && c.zonas.length) {
+            for (var j = 0; j < c.zonas.length; j++) {
+                if (c.zonas[j] === prefix2) { results2.push(c); break; }
+            }
+        } else {
+            if (c.cp.substring(0, 2) === prefix2) results2.push(c);
+        }
+    }
+    return results2;
 };

@@ -684,7 +684,8 @@ var Paso3 = {
             return;
         }
 
-        var centros = VOLTIKA_CENTROS.buscar(cp);
+        var estado = self.app.state.estado || '';
+        var centros = VOLTIKA_CENTROS.buscar(cp, estado);
         if (!centros || centros.length === 0) {
             // No matching centers — show only cercano card
             var recHtml = self._renderCentroCercanoCard(ciudad);
