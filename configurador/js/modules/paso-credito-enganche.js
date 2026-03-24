@@ -125,8 +125,8 @@ var PasoCreditoEnganche = {
         html += '</div>';
         // Benefits
         html += '<div style="margin-bottom:14px;">';
-        html += '<div style="font-size:15px;margin-bottom:10px;">&#128293; <strong style="color:#1a3a5c;">Forma m\u00e1s r\u00e1pida</strong> de asegurar tu Voltika</div>';
-        html += '<div style="font-size:14px;margin-bottom:6px;">&#9889; Aparta tu Voltika <strong>en segundos</strong></div>';
+        html += '<div style="font-size:15px;margin-bottom:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#E53935;color:#fff;font-size:11px;font-weight:700;">!</span> <strong style="color:#1a3a5c;">Forma m\u00e1s r\u00e1pida</strong> de asegurar tu Voltika</div>';
+        html += '<div style="font-size:14px;margin-bottom:6px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#039fe1;color:#fff;font-size:11px;font-weight:700;">&#10148;</span> Aparta tu Voltika <strong>en segundos</strong></div>';
         html += '<div style="font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span style="color:#00C851;font-size:16px;">&#10004;</span> Pago <strong>inmediato y seguro</strong></div>';
         html += '<div style="font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span style="color:#00C851;font-size:16px;">&#10004;</span> Confirmaci\u00f3n <strong>al instante</strong></div>';
         html += '</div>';
