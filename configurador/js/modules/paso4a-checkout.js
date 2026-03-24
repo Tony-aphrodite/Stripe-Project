@@ -188,9 +188,8 @@ var Paso4A = {
             '&#128274; Pago cifrado SSL &middot; ' + VkUI.renderCardLogos() +
             '</div>';
 
-        html += '</div>'; // end checkout-form
+        // 8. Two payment option cards — inside checkout form (after OTP)
 
-        // 8. Two payment option cards — below card form
         html += '<div style="display:flex;flex-direction:row;gap:10px;margin:16px 0;align-items:stretch;">';
 
         // Left: Pago único / Contado
@@ -254,6 +253,8 @@ var Paso4A = {
 
         // Error message
         html += '<div id="vk-pago-error" style="display:none;color:#C62828;background:#FFEBEE;border:1px solid #E53935;border-radius:6px;padding:12px;margin-top:12px;font-size:13px;"></div>';
+
+        html += '</div>'; // end checkout-form (payment buttons + SPEI/OXXO inside)
 
         $('#vk-pago-container').html(html);
     },
