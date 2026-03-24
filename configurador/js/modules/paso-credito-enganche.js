@@ -538,6 +538,9 @@ var PasoCreditoEnganche = {
         html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:30px;">';
         html += '<span style="font-size:14px;font-weight:700;color:#333;">Referencia' + (refs.length > 1 ? 's' : '') + ' de pago OXXO</span>';
         html += '</div>';
+        if (refs.length > 1) {
+            html += '<div style="font-size:12px;color:#555;background:#fff;border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;font-style:italic;">Dividimos tu pago por l\u00edmites de OXXO para que puedas completarlo f\u00e1cilmente</div>';
+        }
         for (var i = 0; i < refs.length; i++) {
             var ref = refs[i];
             var refAmount = ref.amount ? Math.round(ref.amount / 100) : Math.round(enganche / refs.length);
@@ -557,7 +560,7 @@ var PasoCreditoEnganche = {
             }
             // Stripe hosted voucher link (with barcode)
             if (ref.hosted_voucher_url) {
-                html += '<a href="' + ref.hosted_voucher_url + '" target="_blank" rel="noopener" ' +
+                html += '<a href="' + ref.hosted_voucher_url + '" ' +
                     'style="display:block;text-align:center;margin-top:10px;padding:10px;background:#E53935;color:#fff;border-radius:6px;font-size:13px;font-weight:700;text-decoration:none;">' +
                     '&#128179; Ver voucher con c\u00f3digo de barras</a>';
             }
