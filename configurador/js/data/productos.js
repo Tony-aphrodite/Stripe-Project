@@ -26,6 +26,7 @@ var VOLTIKA_PRODUCTOS = {
                 { id: 'plata', nombre: 'Plata', hex: '#C0C0C0' }
             ],
             colorDefault: 'gris',
+            enInventario: true,
             orden: 1
         },
         {
@@ -48,6 +49,7 @@ var VOLTIKA_PRODUCTOS = {
                 { id: 'plata', nombre: 'Plata', hex: '#C0C0C0' }
             ],
             colorDefault: 'negro',
+            enInventario: true,
             orden: 2
         },
         {
@@ -71,6 +73,7 @@ var VOLTIKA_PRODUCTOS = {
                 { id: 'naranja', nombre: 'Naranja', hex: '#E87722' }
             ],
             colorDefault: 'gris',
+            enInventario: true,
             orden: 3
         },
         {
@@ -92,6 +95,7 @@ var VOLTIKA_PRODUCTOS = {
                 { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' }
             ],
             colorDefault: 'negro',
+            enInventario: true,
             orden: 4
         },
         {
@@ -115,6 +119,7 @@ var VOLTIKA_PRODUCTOS = {
                 { id: 'plata', nombre: 'Plata', hex: '#C0C0C0' }
             ],
             colorDefault: 'negro',
+            enInventario: true,
             orden: 5
         },
         {
@@ -137,6 +142,7 @@ var VOLTIKA_PRODUCTOS = {
                 { id: 'verde', nombre: 'Verde', hex: '#2E8B57' }
             ],
             colorDefault: 'gris',
+            enInventario: true,
             orden: 6
         }
     ],
@@ -195,6 +201,8 @@ var VOLTIKA_PRODUCTOS = {
             'Zacatecas':                    [2400, 4200]
         },
         entregaDiasHabiles: '7-10',
+        entregaDiasInventario: 15,    // days when in stock
+        entregaDiasSinInventario: 70, // days when out of stock
         contactoHoras: '24-48',
 
         credito: {

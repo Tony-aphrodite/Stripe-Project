@@ -21,18 +21,27 @@ var Paso3 = {
         }
     },
 
-    _calcFechaEntrega: function() {
+    _calcFechaEntrega: function(modelo) {
+        var config = VOLTIKA_PRODUCTOS.config;
+        var enInventario = modelo ? (modelo.enInventario !== false) : true;
+        var dias = enInventario ? (config.entregaDiasInventario || 15) : (config.entregaDiasSinInventario || 70);
         var d = new Date();
-        d.setDate(d.getDate() + 15);
+        d.setDate(d.getDate() + dias);
         var m = ['enero','febrero','marzo','abril','mayo','junio',
                  'julio','agosto','septiembre','octubre','noviembre','diciembre'];
         return d.getDate() + ' de ' + m[d.getMonth()] + ' de ' + d.getFullYear();
     },
 
+    _isEnInventario: function(modelo) {
+        return modelo ? (modelo.enInventario !== false) : true;
+    },
+
     render: function() {
         var state = this.app.state;
         var esCredito = state.metodoPago === 'credito';
-        var fechaEntrega = this._calcFechaEntrega();
+        var modelo = this.app.getModelo(state.modeloSeleccionado);
+        var enInventario = this._isEnInventario(modelo);
+        var fechaEntrega = this._calcFechaEntrega(modelo);
         var html = '';
 
         // Back button: crédito → calculator (4B), contado/msi → color (2)
@@ -46,16 +55,31 @@ var Paso3 = {
         html += '<h2 class="vk-paso__titulo" style="margin-bottom:0;">Entrega en tu ciudad</h2>';
         html += '</div>';
 
-        // Entrega Garantizada section (top priority)
-        html += '<div style="background:#E0F4FD;border-radius:10px;padding:16px;margin-bottom:14px;border-left:4px solid #039fe1;">';
-        html += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">';
-        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/entrega.png" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">';
-        html += '<div>';
-        html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Entrega Garantizada</div>';
-        html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega garantizada a m\u00e1s tardar el <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
-        html += '</div>';
-        html += '</div>';
-        html += '</div>';
+        if (!enInventario) {
+            // Alta demanda card (out of stock)
+            html += '<div style="background:#FFF3E0;border-radius:10px;padding:16px;margin-bottom:14px;border-left:4px solid #FF9800;">';
+            html += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">';
+            html += '<span style="font-size:28px;">&#128293;</span>';
+            html += '<div>';
+            html += '<div style="font-weight:800;font-size:17px;color:#E65100;margin-bottom:4px;">Alta demanda</div>';
+            html += '<div style="font-size:16px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Asegura tu Voltika hoy</div>';
+            html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega: antes del <strong style="color:#E65100;">' + fechaEntrega + '</strong></div>';
+            html += '<div style="font-size:13px;font-weight:700;color:#C62828;margin-top:4px;">Unidades limitadas</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+        } else {
+            // Entrega Garantizada section (in stock)
+            html += '<div style="background:#E0F4FD;border-radius:10px;padding:16px;margin-bottom:14px;border-left:4px solid #039fe1;">';
+            html += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">';
+            html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/entrega.png" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">';
+            html += '<div>';
+            html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Entrega Garantizada</div>';
+            html += '<div style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">Entrega garantizada a m\u00e1s tardar el <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+        } // end if/else enInventario
 
         // Postal code input with search icon
         html += '<div class="vk-card" style="padding:20px;">';
