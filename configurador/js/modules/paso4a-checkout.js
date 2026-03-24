@@ -227,6 +227,31 @@ var Paso4A = {
 
         html += '</div>'; // end flex row
 
+        // 9. Alternative payment methods (SPEI + OXXO)
+        var numRefs = Math.ceil(total / 9999);
+        html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;background:#f8f9fa;border:1.5px solid #e2e8f0;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+        html += '<span style="font-size:20px;">&#128161;</span>';
+        html += '<span style="font-size:15px;font-weight:700;color:var(--vk-text-primary);">\u00bfNo quieres usar tarjeta?</span>';
+        html += '</div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:14px;">Puedes pagar sin tarjeta de forma segura</div>';
+        html += '<div style="display:flex;gap:10px;">';
+        // SPEI button
+        html += '<button id="vk-contado-spei" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 8px;border-radius:10px;border:1.5px solid #ccc;background:#fff;cursor:pointer;transition:all 0.2s;">';
+        html += '<img src="' + base + 'img/logo_spei.png" alt="SPEI" style="height:28px;">';
+        html += '<span style="font-size:13px;font-weight:700;color:#1a3a5c;">SPEI<br><span style="font-weight:400;font-size:11px;color:#666;">Transferencia</span></span>';
+        html += '</button>';
+        // OXXO button
+        html += '<button id="vk-contado-oxxo" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 8px;border-radius:10px;border:1.5px solid #ccc;background:#fff;cursor:pointer;transition:all 0.2s;">';
+        html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:28px;">';
+        html += '<span style="font-size:13px;font-weight:700;color:#1a3a5c;">OXXO<br><span style="font-weight:400;font-size:11px;color:#666;">Efectivo</span></span>';
+        html += '</button>';
+        html += '</div>';
+        // Hidden sections for results
+        html += '<div id="vk-contado-spei-section" style="display:none;margin-top:14px;"></div>';
+        html += '<div id="vk-contado-oxxo-section" style="display:none;margin-top:14px;"></div>';
+        html += '</div>';
+
         // Error message
         html += '<div id="vk-pago-error" style="display:none;color:#C62828;background:#FFEBEE;border:1px solid #E53935;border-radius:6px;padding:12px;margin-top:12px;font-size:13px;"></div>';
 
@@ -344,6 +369,49 @@ var Paso4A = {
             e.preventDefault();
             self._pagoTipo = 'msi';
             self._handleSubmit();
+        });
+
+        // Copy CLABE
+        $(document).off('click', '.vk-copy-clabe');
+        $(document).on('click', '.vk-copy-clabe', function() {
+            var clabe = $(this).data('clabe');
+            var $btn = $(this);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(clabe).then(function() {
+                    $btn.text('\u2713 Copiado').css('background', '#00C851');
+                    setTimeout(function() { $btn.text('Copiar').css('background', '#039fe1'); }, 2000);
+                });
+            } else {
+                var ta = document.createElement('textarea');
+                ta.value = clabe; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                $btn.text('\u2713 Copiado').css('background', '#00C851');
+                setTimeout(function() { $btn.text('Copiar').css('background', '#039fe1'); }, 2000);
+            }
+        });
+
+        // Continuar buttons (SPEI/OXXO)
+        $(document).off('click', '.vk-contado-continuar');
+        $(document).on('click', '.vk-contado-continuar', function() {
+            self.app.state.pagoCompletado = true;
+            self.app.irAPaso('facturacion');
+        });
+
+        // SPEI contado
+        $(document).off('click', '#vk-contado-spei');
+        $(document).on('click', '#vk-contado-spei', function(e) {
+            e.preventDefault();
+            $('#vk-contado-spei').css({ 'border-color': '#039fe1', 'background': '#E8F4FD' });
+            $('#vk-contado-oxxo').css({ 'border-color': '#ccc', 'background': '#fff' });
+            self._handleContadoSPEI();
+        });
+
+        // OXXO contado
+        $(document).off('click', '#vk-contado-oxxo');
+        $(document).on('click', '#vk-contado-oxxo', function(e) {
+            e.preventDefault();
+            $('#vk-contado-oxxo').css({ 'border-color': '#039fe1', 'background': '#E8F4FD' });
+            $('#vk-contado-spei').css({ 'border-color': '#ccc', 'background': '#fff' });
+            self._handleContadoOXXO();
         });
     },
 
@@ -536,5 +604,127 @@ var Paso4A = {
             $btn.find('.vk-pay-btn__label').show();
             $btn.find('.vk-pay-btn__spinner').hide();
         }
+    },
+
+    _handleContadoSPEI: function() {
+        var self = this;
+        var state = self.app.state;
+        var modelo = self.app.getModelo(state.modeloSeleccionado);
+        var costoLog2 = state.costoLogistico || 0;
+        var total = modelo.precioContado + costoLog2;
+        var base = window.VK_BASE_PATH || '';
+        var nombre = state.nombre || $('#vk-nombre').val() || 'Cliente';
+        var email = state.email || $('#vk-email').val() || '';
+
+        $('#vk-contado-spei').prop('disabled', true).css('opacity', '0.6');
+
+        $.ajax({
+            url: self.PAYMENT_INTENT_URL,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                amount: total * 100,
+                method: 'spei',
+                customer: { nombre: nombre, email: email, telefono: state.telefono || '', modelo: modelo.nombre, color: state.colorSeleccionado || '' }
+            }),
+            success: function(response) {
+                $('#vk-contado-spei').prop('disabled', false).css('opacity', '1');
+                if (response && response.speiData) {
+                    var sd = response.speiData;
+                    var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;border:1px solid #B3D4FC;">';
+                    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+                    html += '<img src="' + base + 'img/logo_spei.png" alt="SPEI" style="height:28px;">';
+                    html += '<span style="font-size:14px;font-weight:700;color:#1a3a5c;">Datos para transferencia SPEI</span>';
+                    html += '</div>';
+                    if (sd.clabe) {
+                        html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
+                        html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">CLABE Interbancaria:</div>';
+                        html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">';
+                        html += '<div style="font-size:18px;font-weight:900;color:#333;letter-spacing:1px;">' + sd.clabe + '</div>';
+                        html += '<button class="vk-copy-clabe" data-clabe="' + sd.clabe + '" style="flex-shrink:0;padding:6px 12px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Copiar</button>';
+                        html += '</div></div>';
+                    }
+                    html += '<div style="font-size:13px;line-height:2;color:#333;">';
+                    if (sd.beneficiario) html += 'Beneficiario: <strong>' + sd.beneficiario + '</strong><br>';
+                    if (sd.referencia) html += 'Referencia: <strong>' + sd.referencia + '</strong><br>';
+                    if (sd.banco) html += 'Banco: <strong>' + sd.banco + '</strong><br>';
+                    html += 'Monto: <strong style="color:#039fe1;font-size:16px;">' + VkUI.formatPrecio(total) + ' MXN</strong>';
+                    html += '</div>';
+                    html += '<div style="margin-top:10px;"><span style="color:#00C851;">&#10004;</span> Env\u00eda exactamente <strong>' + VkUI.formatPrecio(total) + ' MXN</strong></div>';
+                    html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Confirmaci\u00f3n autom\u00e1tica en minutos.</p>';
+                    html += '</div>';
+                    html += '<button class="vk-contado-continuar" style="display:block;width:100%;padding:16px;margin-top:12px;background:#1a3a5c;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Continuar mientras realizo mi pago</button>';
+                    $('#vk-contado-spei-section').html(html).slideDown(200);
+                    $('#vk-contado-oxxo-section').slideUp(200);
+                } else {
+                    $('#vk-contado-spei-section').html('<div style="color:#C62828;padding:10px;">Error: ' + (response.error || 'No se pudieron obtener datos') + '</div>').slideDown(200);
+                }
+            },
+            error: function() {
+                $('#vk-contado-spei').prop('disabled', false).css('opacity', '1');
+                $('#vk-contado-spei-section').html('<div style="color:#C62828;padding:10px;">Error de conexi\u00f3n. Intenta de nuevo.</div>').slideDown(200);
+            }
+        });
+    },
+
+    _handleContadoOXXO: function() {
+        var self = this;
+        var state = self.app.state;
+        var modelo = self.app.getModelo(state.modeloSeleccionado);
+        var costoLog2 = state.costoLogistico || 0;
+        var total = modelo.precioContado + costoLog2;
+        var base = window.VK_BASE_PATH || '';
+        var nombre = state.nombre || $('#vk-nombre').val() || 'Cliente Voltika';
+        var email = state.email || $('#vk-email').val() || 'cliente@voltika.mx';
+
+        $('#vk-contado-oxxo').prop('disabled', true).css('opacity', '0.6');
+
+        $.ajax({
+            url: self.PAYMENT_INTENT_URL,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                amount: total * 100,
+                method: 'oxxo',
+                customer: { nombre: nombre, email: email, telefono: state.telefono || '', modelo: modelo.nombre, color: state.colorSeleccionado || '' }
+            }),
+            success: function(response) {
+                $('#vk-contado-oxxo').prop('disabled', false).css('opacity', '1');
+                if (response && response.oxxoData) {
+                    var refs = Array.isArray(response.oxxoData) ? response.oxxoData : [response.oxxoData];
+                    var html = '<div style="background:#FFF8E1;border-radius:10px;padding:16px;border:1px solid #FFE082;">';
+                    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+                    html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:30px;">';
+                    html += '<span style="font-size:14px;font-weight:700;color:#333;">Referencias de pago OXXO</span>';
+                    html += '</div>';
+                    for (var i = 0; i < refs.length; i++) {
+                        var ref = refs[i];
+                        var refAmount = ref.amount ? Math.round(ref.amount / 100) : Math.round(total / refs.length);
+                        html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
+                        if (refs.length > 1) html += '<div style="font-size:11px;color:#039fe1;font-weight:700;margin-bottom:4px;">Referencia ' + (i+1) + ' de ' + refs.length + '</div>';
+                        html += '<div style="font-size:12px;color:#888;">N\u00famero de referencia:</div>';
+                        var num = ref.number || '--';
+                        html += '<div style="font-size:12px;font-weight:900;color:#333;font-family:monospace;word-break:break-all;">' + num.replace(/(.{4})/g, '$1 ').trim() + '</div>';
+                        html += '<div style="font-size:13px;color:#555;margin-top:6px;">Monto: <strong>' + VkUI.formatPrecio(refAmount) + ' MXN</strong></div>';
+                        if (ref.hosted_voucher_url) {
+                            html += '<a href="' + ref.hosted_voucher_url + '" target="_blank" style="display:block;text-align:center;margin-top:8px;padding:8px;background:#E53935;color:#fff;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">Ver voucher con c\u00f3digo de barras</a>';
+                        }
+                        html += '</div>';
+                    }
+                    html += '<div style="font-size:13px;font-weight:700;">Total: ' + VkUI.formatPrecio(total) + ' MXN</div>';
+                    html += '<p style="font-size:12px;color:#888;margin:8px 0 0;">Presenta en cualquier tienda OXXO.</p>';
+                    html += '</div>';
+                    html += '<button class="vk-contado-continuar" style="display:block;width:100%;padding:16px;margin-top:12px;background:#1a3a5c;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Continuar mientras realizo mi pago</button>';
+                    $('#vk-contado-oxxo-section').html(html).slideDown(200);
+                    $('#vk-contado-spei-section').slideUp(200);
+                } else {
+                    $('#vk-contado-oxxo-section').html('<div style="color:#C62828;padding:10px;">Error: ' + (response.error || 'No se pudieron generar referencias') + '</div>').slideDown(200);
+                }
+            },
+            error: function() {
+                $('#vk-contado-oxxo').prop('disabled', false).css('opacity', '1');
+                $('#vk-contado-oxxo-section').html('<div style="color:#C62828;padding:10px;">Error de conexi\u00f3n. Intenta de nuevo.</div>').slideDown(200);
+            }
+        });
     }
 };
