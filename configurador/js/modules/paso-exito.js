@@ -71,6 +71,13 @@ var PasoExito = {
         // === Contact info card ===
         html += '<div class="vk-card" style="padding:20px;margin-bottom:16px;">';
 
+        // Show registered phone
+        var _tel = state.telefono || '';
+        if (_tel) {
+            var _telFmt = '+52 ' + _tel.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
+            html += '<div style="text-align:center;margin-bottom:12px;font-size:14px;color:#333;">Registrado con: <strong>' + _telFmt + '</strong></div>';
+        }
+
         html += '<p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 12px;">';
         html += 'En m\u00e1ximo <strong style="color:#333;">48 horas</strong>, un asesor <strong style="color:#333;">Voltika</strong> ';
         html += 'te contactar\u00e1 para coordinar la entrega.<br>';
@@ -146,6 +153,13 @@ var PasoExito = {
 
         // === Asesor contact card ===
         html += '<div class="vk-card" style="padding:20px;margin-bottom:16px;">';
+
+        // Show registered phone
+        var _tel2 = state.telefono || '';
+        if (_tel2) {
+            var _telFmt2 = '+52 ' + _tel2.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
+            html += '<div style="text-align:center;margin-bottom:12px;font-size:14px;color:#333;">Registrado con: <strong>' + _telFmt2 + '</strong></div>';
+        }
 
         html += '<p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 14px;">';
         html += 'En m\u00e1ximo <strong style="color:#333;">48 horas</strong>, un asesor <strong style="color:#333;">Voltika</strong> ';
