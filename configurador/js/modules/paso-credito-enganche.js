@@ -586,62 +586,56 @@ var PasoCreditoEnganche = {
     },
 
     _downloadOXXOPDF: function(refs, enganche) {
-        // Not used anymore — Stripe hosted voucher replaces custom PDF
-        var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Referencias OXXO - Voltika</title>';
-        html += '<style>body{font-family:Arial,sans-serif;padding:30px;max-width:500px;margin:0 auto;}';
-        html += '.ref-box{border:2px solid #FFE082;border-radius:10px;padding:20px;margin-bottom:16px;background:#FFF8E1;}';
-        html += '.ref-num{font-size:16px;font-weight:900;color:#333;word-break:break-all;letter-spacing:1px;margin:8px 0;}';
-        html += '.ref-label{font-size:12px;color:#888;}';
-        html += '.ref-amount{font-size:14px;color:#555;margin-top:6px;}';
-        html += '.header{text-align:center;margin-bottom:24px;}';
-        html += '.total{font-size:16px;font-weight:800;text-align:center;margin:16px 0;padding:12px;background:#FFF8E1;border-radius:8px;}';
-        html += '.footer{font-size:12px;color:#888;text-align:center;margin-top:20px;}';
-        html += '@media print{button{display:none!important;}}</style></head><body>';
-
-        html += '<div class="header">';
-        html += '<h2 style="margin:0;color:#333;">Referencias de Pago OXXO</h2>';
-        html += '<p style="color:#888;font-size:13px;">Voltika - Pago de enganche</p>';
-        html += '</div>';
-
+        // Collect all hosted voucher URLs
+        var voucherUrls = [];
         for (var i = 0; i < refs.length; i++) {
-            var ref = refs[i];
-            var refAmount = ref.amount ? Math.round(ref.amount / 100) : Math.round(enganche / refs.length);
-            html += '<div class="ref-box">';
-            if (refs.length > 1) {
-                html += '<div style="font-size:12px;color:#039fe1;font-weight:700;">Referencia ' + (i + 1) + ' de ' + refs.length + '</div>';
-            }
-            html += '<div class="ref-label">N\u00famero de referencia:</div>';
-            html += '<div class="ref-num">' + (ref.number || '--') + '</div>';
-            html += '<div class="ref-amount">Monto: <strong>$' + refAmount.toLocaleString('es-MX') + ' MXN</strong></div>';
-            if (ref.expires_after) {
-                var exp = new Date(ref.expires_after * 1000);
-                html += '<div style="font-size:12px;color:#888;margin-top:4px;">Vence: <strong>' + exp.toLocaleDateString('es-MX') + '</strong></div>';
-            }
-            html += '</div>';
+            if (refs[i].hosted_voucher_url) voucherUrls.push(refs[i].hosted_voucher_url);
         }
 
-        html += '<div class="total">Total a pagar: <strong>$' + Math.round(enganche).toLocaleString('es-MX') + ' MXN</strong></div>';
-        html += '<div class="footer">';
-        html += '<p>Presenta cada referencia en cualquier tienda OXXO.</p>';
-        html += '<p>Confirmaci\u00f3n autom\u00e1tica al pagar.</p>';
-        html += '<p style="margin-top:12px;color:#039fe1;font-weight:700;">voltika.mx</p>';
+        if (voucherUrls.length === 0) {
+            // No hosted vouchers — show error
+            alert('No se encontraron vouchers con c\u00f3digo de barras. Usa los n\u00fameros de referencia directamente.');
+            return;
+        }
+
+        // If only 1 voucher, open directly
+        if (voucherUrls.length === 1) {
+            window.location.href = voucherUrls[0];
+            return;
+        }
+
+        // Multiple vouchers — create a page with all iframes for printing
+        var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vouchers OXXO - Voltika</title>';
+        html += '<style>';
+        html += 'body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5;}';
+        html += '.header{text-align:center;margin-bottom:20px;padding:16px;background:#fff;border-radius:10px;}';
+        html += '.voucher-frame{width:100%;min-height:600px;border:none;margin-bottom:20px;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}';
+        html += '.actions{text-align:center;margin:20px 0;}';
+        html += '.actions button{padding:14px 30px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;margin:0 8px;}';
+        html += '@media print{.actions{display:none!important;}.header{break-after:avoid;}.voucher-frame{break-after:page;min-height:90vh;}}';
+        html += '</style></head><body>';
+
+        html += '<div class="header">';
+        html += '<h2 style="margin:0 0 4px;color:#333;">Vouchers de Pago OXXO</h2>';
+        html += '<p style="margin:0;color:#888;font-size:13px;">Voltika - Total: $' + Math.round(enganche).toLocaleString('es-MX') + ' MXN (' + voucherUrls.length + ' referencias)</p>';
+        html += '<p style="margin:4px 0 0;font-size:12px;color:#555;">Dividimos tu pago por l\u00edmites de OXXO para que puedas completarlo f\u00e1cilmente</p>';
         html += '</div>';
-        html += '<div style="text-align:center;margin-top:20px;"><button onclick="window.print()" style="padding:12px 30px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Imprimir / Guardar PDF</button></div>';
+
+        for (var j = 0; j < voucherUrls.length; j++) {
+            html += '<iframe class="voucher-frame" src="' + voucherUrls[j] + '"></iframe>';
+        }
+
+        html += '<div class="actions">';
+        html += '<button onclick="window.print()">Imprimir / Guardar PDF</button>';
+        html += '</div>';
         html += '</body></html>';
 
         var blob = new Blob([html], { type: 'text/html' });
         var url = URL.createObjectURL(blob);
         var win = window.open(url, '_blank');
-        if (win) {
-            win.onload = function() {
-                setTimeout(function() { win.print(); }, 500);
-            };
-        } else {
-            // Popup blocked — download as file
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = 'Referencias_OXXO_Voltika.html';
-            a.click();
+        if (!win) {
+            // Popup blocked — open first voucher directly
+            window.location.href = voucherUrls[0];
         }
     },
 
