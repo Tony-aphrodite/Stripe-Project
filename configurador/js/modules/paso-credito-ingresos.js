@@ -69,7 +69,7 @@ var PasoCreditoIngresos = {
 
         // Email (optional)
         html += '<div class="vk-form-group" style="margin-top:16px;">';
-        html += '<label class="vk-form-label">Correo electr\u00f3nico <span style="font-weight:400;color:#999;font-size:11px;">(opcional)</span></label>';
+        html += '<label class="vk-form-label">Correo electr\u00f3nico</label>';
         html += '<input type="email" class="vk-form-input" id="vk-cing-email" ' +
             'placeholder="correo@ejemplo.com" autocomplete="email" ' +
             'value="' + (state.email || '') + '">';
@@ -134,7 +134,8 @@ var PasoCreditoIngresos = {
             var errores = [];
             if (!ingreso) errores.push('Selecciona tu rango de ingreso mensual.');
             if (!telefono || telefono.length < 10) errores.push('Ingresa tu tel\u00e9fono de 10 d\u00edgitos.');
-            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errores.push('Ingresa un correo v\u00e1lido.');
+            if (!email) errores.push('Ingresa tu correo electr\u00f3nico.');
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errores.push('Ingresa un correo v\u00e1lido.');
 
             if (errores.length) {
                 jQuery('#vk-cing-error').html(errores.join('<br>')).show();
