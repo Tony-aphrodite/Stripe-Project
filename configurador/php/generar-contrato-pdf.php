@@ -68,15 +68,17 @@ if ($cincelEmail && $cincelPassword) {
     $cincelResult = ['status' => 'skipped', 'reason' => 'Cincel credentials not configured'];
 }
 
-// ── Step 3: Send contract PDF to customer email ──────────────────────────
+// ── Step 3: Contract email — DISABLED at purchase time per client request ──
+// Contract confirmation email will be sent AFTER motorcycle delivery (Stage 2)
+// Only purchase order confirmation is sent at this stage
 $emailSent = false;
-if ($email && $pdfPath && file_exists($pdfPath)) {
-    try {
-        $emailSent = sendContractEmail($email, $nombre, $modelo, $pdfPath);
-    } catch (Exception $e) {
-        error_log('Contract email error: ' . $e->getMessage());
-    }
-}
+// if ($email && $pdfPath && file_exists($pdfPath)) {
+//     try {
+//         $emailSent = sendContractEmail($email, $nombre, $modelo, $pdfPath);
+//     } catch (Exception $e) {
+//         error_log('Contract email error: ' . $e->getMessage());
+//     }
+// }
 
 // ── Response ──────────────────────────────────────────────────────────────
 echo json_encode([
