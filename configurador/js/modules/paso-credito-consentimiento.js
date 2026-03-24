@@ -5,8 +5,11 @@
 
 var PasoCreditoConsentimiento = {
 
+    _otpCooldown: false,
+
     init: function(app) {
         this.app = app;
+        this._otpCooldown = false;
         this.render();
         this.bindEvents();
         this._enviarOTPInicial();
@@ -16,6 +19,25 @@ var PasoCreditoConsentimiento = {
         var self = this;
         var tel = self.app.state.telefono;
         if (!tel) return;
+        if (self._otpCooldown) return;
+        self._otpCooldown = true;
+        // Start cooldown timer on resend button
+        var $resend = jQuery('#vk-cons-reenviar');
+        var sec = 60;
+        if ($resend.length) {
+            $resend.prop('disabled', true);
+            var tmr = setInterval(function() {
+                sec--;
+                $resend.text('Reenviar en ' + sec + 's');
+                if (sec <= 0) {
+                    clearInterval(tmr);
+                    self._otpCooldown = false;
+                    $resend.prop('disabled', false).text('Reenviar');
+                }
+            }, 1000);
+        } else {
+            setTimeout(function() { self._otpCooldown = false; }, 60000);
+        }
 
         jQuery.ajax({
             url: 'php/enviar-otp.php',
@@ -246,8 +268,21 @@ var PasoCreditoConsentimiento = {
 
         // Resend OTP
         jQuery(document).on('click', '#vk-cons-reenviar', function() {
+            if (self._otpCooldown) return;
+            self._otpCooldown = true;
             var tel = self.app.state.telefono;
-            jQuery(this).prop('disabled', true).text('Enviando...');
+            var $btn = jQuery(this);
+            $btn.prop('disabled', true);
+            var sec = 60;
+            var tmr = setInterval(function() {
+                sec--;
+                $btn.text('Reenviar en ' + sec + 's');
+                if (sec <= 0) {
+                    clearInterval(tmr);
+                    self._otpCooldown = false;
+                    $btn.prop('disabled', false).text('Reenviar');
+                }
+            }, 1000);
             jQuery.ajax({
                 url: 'php/enviar-otp.php',
                 method: 'POST',
@@ -273,7 +308,7 @@ var PasoCreditoConsentimiento = {
                     jQuery('#vk-cons-error').html('Error al reenviar. Intenta de nuevo.').css({'color':'#C62828','background':'#FFEBEE'}).show();
                 },
                 complete: function() {
-                    jQuery('#vk-cons-reenviar').prop('disabled', false).text('Reenviar');
+                    // Cooldown timer handles re-enabling the button
                 }
             });
         });

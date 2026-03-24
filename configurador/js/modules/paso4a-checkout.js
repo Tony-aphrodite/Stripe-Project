@@ -415,10 +415,29 @@ var Paso4A = {
         });
     },
 
+    _otpCooldown: false,
+
     _sendOTP: function() {
         var tel = this.app.state.telefono;
         if (!tel) return;
+        if (this._otpCooldown) return; // prevent duplicate sends
         var self = this;
+        self._otpCooldown = true;
+
+        // Disable resend link + show cooldown timer
+        var $resend = $('#vk-pago-otp-reenviar');
+        var cooldownSec = 60;
+        $resend.css({ 'pointer-events': 'none', 'color': '#999' });
+        var timer = setInterval(function() {
+            cooldownSec--;
+            $resend.text('Reenviar en ' + cooldownSec + 's');
+            if (cooldownSec <= 0) {
+                clearInterval(timer);
+                self._otpCooldown = false;
+                $resend.text('Reenviar').css({ 'pointer-events': 'auto', 'color': '#039fe1' });
+            }
+        }, 1000);
+
         $.ajax({
             url: (window.VK_BASE_PATH || '') + 'php/enviar-otp.php',
             method: 'POST',
