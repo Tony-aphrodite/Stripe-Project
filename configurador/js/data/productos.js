@@ -10,7 +10,7 @@ var VOLTIKA_PRODUCTOS = {
             id: 'm05',
             nombre: 'M05',
             subtitulo: 'Ideal para ciudad y carretera',
-            badge: 'MAS VENDIDO',
+            badge: 'Modelo m\u00e1s vendido',
             autonomia: 90,
             velocidad: 75,
             precioContado: 48260,

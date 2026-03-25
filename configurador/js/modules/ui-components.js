@@ -59,9 +59,21 @@ var VkUI = {
      * Render the green "Punto Voltika" banner
      */
     renderBanner: function() {
-        return '<div class="vk-card__banner">' +
-            '<div class="vk-card__banner-line1">&#10003; Entrega <strong>Garantizada</strong> en tu <strong>Ciudad</strong></div>' +
-            '<div class="vk-card__banner-line2"><img src="' + (window.VK_BASE_PATH || '') + 'img/punto_voltika_autorizado.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;"> Punto Voltika autorizado</div>' +
+        var base = (window.VK_BASE_PATH || '');
+        return '<div style="background:linear-gradient(135deg,#1a3a5c 0%,#039fe1 100%);border-radius:10px;padding:14px 16px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;">' +
+            '<div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);opacity:0.15;font-size:60px;">\ud83d\uddfa</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+            '<span style="font-size:18px;">\ud83d\udccd</span>' +
+            '<span style="font-size:16px;font-weight:800;">Entrega en tu ciudad</span>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
+            '<img src="' + base + 'img/punto_voltika_autorizado.png" style="width:18px;height:18px;">' +
+            '<span style="font-size:13px;">Punto <strong>Voltika</strong> autorizado</span>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:6px;">' +
+            '<span style="color:#4CAF50;font-size:14px;">\u2714</span>' +
+            '<span style="font-size:12px;">Disponible en todo M\u00e9xico</span>' +
+            '</div>' +
             '</div>';
     },
 
@@ -105,8 +117,9 @@ var VkUI = {
         var badges = [];
         if (metodo === 'credito') {
             badges = [
-                { icon: imgAhorro,   text: 'P\u00e1gala con tu ahorro en gasolina' },
+                { icon: '\u26a1', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
                 { icon: imgPlacas,   text: 'Documentos para placas incluidos' },
+                { icon: imgAhorro,   text: 'P\u00e1gala con lo que hoy gastas en gasolina' },
                 { icon: imgGarantia, text: 'Garant\u00eda Voltika' }
             ];
         } else if (metodo === 'msi') {

@@ -107,7 +107,7 @@ var Paso1 = {
             var m = modelos[i];
             var cls = m.id === defaultModelo.id ? ' vk-dtab--active' : '';
             html += '<button class="vk-dtab' + cls + '" data-mid="' + m.id + '">';
-            if (m.badge) html += '<span class="vk-dtab__star">&#11088;</span> ';
+            if (m.badge) html += '';
             html += m.nombre;
             html += '</button>';
         }
@@ -143,7 +143,7 @@ var Paso1 = {
         html += '</div>'; // end galeria
 
         if (defaultModelo.badge) {
-            html += '<div class="vk-hero__badge"><span>&#11088;</span> ' + defaultModelo.badge + '</div>';
+            html += '<div class="vk-hero__badge">' + defaultModelo.badge + '</div>';
         } else {
             html += '<div class="vk-hero__badge" id="vk-hero-badge" style="display:none;"></div>';
         }
@@ -165,7 +165,7 @@ var Paso1 = {
             '</div>';
 
         // Payment-method label + tabs
-        html += '<div class="vk-hero__formas-label">&iquest;C&oacute;mo prefieres pagar tu Voltika?</div>';
+        html += '<div class="vk-hero__formas-label">&iquest;C&oacute;mo quieres tu Voltika?</div>';
         html += '<div class="vk-card__formas-sub">Selecciona tu opci&oacute;n</div>';
         html += '<div class="vk-hero__metodo-tabs" id="vk-hero-metodo-tabs">';
         html += '<button class="vk-hero__metodo-tab vk-hero__metodo-tab--active" data-htab="credito">' + VkUI.renderCreditoLogo(16) + '</button>';
@@ -178,8 +178,8 @@ var Paso1 = {
         html += this.renderTabCredito(defaultModelo);
         html += '</div>';
 
-        html += '<button class="vk-btn vk-btn--primary vk-hero__cta" id="vk-hero-cta">' +
-            'CALCULAR MI CR&Eacute;DITO &#8250;</button>';
+        html += '<button class="vk-btn vk-btn--primary vk-hero__cta" id="vk-hero-cta" style="background:linear-gradient(90deg,#1a3a5c,#039fe1);border:none;">' +
+            'QUIERO MI VOLTIKA &#8250;</button>';
 
         html += '<div id="vk-hero-trust-badges">' + VkUI.renderTrustBadges('credito') + '</div>';
 
@@ -232,7 +232,7 @@ var Paso1 = {
         var $badge = $('#vk-hero-badge');
         if ($badge.length) {
             if (modelo.badge) {
-                $badge.html('<span>&#11088;</span> ' + modelo.badge).show();
+                $badge.html(modelo.badge).show();
             } else {
                 $badge.hide();
             }
@@ -242,7 +242,7 @@ var Paso1 = {
         this._updateHeroTabContent(modelo, metodo);
 
         // CTA text based on active method
-        var ctaText = 'CALCULAR MI CR&Eacute;DITO &#8250;';
+        var ctaText = 'QUIERO MI VOLTIKA &#8250;';
         if (this._activeMetodo === 'msi') ctaText = 'QUIERO MIS 9 MSI &#8250;';
         if (this._activeMetodo === 'contado') ctaText = 'PAGAR DE CONTADO';
         $('#vk-hero-cta').html(ctaText);
@@ -298,7 +298,7 @@ var Paso1 = {
         // Gallery slider
         html += '<div class="vk-card__galeria" id="vk-galeria-' + modelo.id + '">';
         if (modelo.badge) {
-            html += '<div class="vk-card__badge"><span class="vk-card__badge-star">&#11088;</span> ' + modelo.badge + '</div>';
+            html += '<div class="vk-card__badge">' + modelo.badge + '</div>';
         }
         if (galeria.length > 1) {
             html += '<button class="vk-gal__arrow vk-gal__arrow--prev" data-gal="' + modelo.id + '" aria-label="anterior">&#8249;</button>';
@@ -330,7 +330,7 @@ var Paso1 = {
 
         html += VkUI.renderBanner();
 
-        html += '<div class="vk-card__formas-label">&iquest;C&oacute;mo prefieres pagar tu Voltika?</div>';
+        html += '<div class="vk-card__formas-label">&iquest;C&oacute;mo quieres tu Voltika?</div>';
         html += '<div class="vk-card__formas-sub">Selecciona tu opci&oacute;n</div>';
         html += '<div class="vk-card__tabs">';
         html += '<button class="vk-tab vk-tab--active" data-tab="credito">' + VkUI.renderCreditoLogo(14) + '</button>';
@@ -362,12 +362,17 @@ var Paso1 = {
         var credito    = VkCalculadora.calcular(modelo.precioContado, 0.25, 36);
         var pagoDiario = Math.ceil(credito.pagoSemanal / 7);
         var html = '';
-        html += '<div class="vk-card__credito-brand">' + VkUI.renderCreditoLogo(26) + '</div>';
-        html += '<div class="vk-card__precio-destacado">Desde <strong>' + VkUI.formatPrecio(credito.pagoSemanal) + '</strong> semanales</div>';
-        html += '<div class="vk-card__precio-diario">Menos de <strong>$' + pagoDiario + '</strong> diarios</div>';
-        html += '<div style="margin:6px 0 10px;"></div>';
-        html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito">' +
-            'CALCULAR MI CR\u00c9DITO &#8250;</button>';
+        html += '<div style="background:linear-gradient(135deg,#e8f4fd 0%,#d0ebfa 100%);border-radius:12px;padding:16px 12px;text-align:center;margin-bottom:10px;">';
+        html += '<div style="font-size:14px;color:#555;margin-bottom:4px;">Ll\u00e9vatela desde</div>';
+        html += '<div style="display:flex;align-items:baseline;justify-content:center;gap:6px;">';
+        html += '<span style="font-size:32px;font-weight:900;color:#1a3a5c;">' + VkUI.formatPrecio(credito.pagoSemanal) + '</span>';
+        html += '<span style="font-size:15px;color:#1a3a5c;font-weight:600;">por semana</span>';
+        html += '</div>';
+        html += '<div style="font-size:13px;color:#039fe1;font-weight:600;margin-top:4px;">Menos de $' + pagoDiario + ' al d\u00eda</div>';
+        html += '</div>';
+        html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito" ' +
+            'style="background:linear-gradient(90deg,#1a3a5c,#039fe1);border:none;">' +
+            'QUIERO MI VOLTIKA &#8250;</button>';
         return html;
     },
 
@@ -432,7 +437,7 @@ var Paso1 = {
             if (modelo) {
                 self._updateHeroTabContent(modelo, metodo);
                 // Update CTA text based on method
-                var ctaText = 'CALCULAR MI CR&Eacute;DITO &#8250;';
+                var ctaText = 'QUIERO MI VOLTIKA &#8250;';
                 if (metodo === 'msi') ctaText = 'QUIERO MIS 9 MSI &#8250;';
                 if (metodo === 'contado') ctaText = 'PAGAR DE CONTADO';
                 $('#vk-hero-cta').html(ctaText);
