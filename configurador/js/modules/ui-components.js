@@ -60,8 +60,8 @@ var VkUI = {
      */
     renderBanner: function() {
         var base = (window.VK_BASE_PATH || '');
-        return '<div style="background:linear-gradient(135deg,#1a3a5c 0%,#039fe1 100%);border-radius:10px;padding:14px 16px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;">' +
-            '<div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);opacity:0.15;font-size:60px;">\ud83d\uddfa</div>' +
+        return '<div class="vk-card__banner" style="position:relative;overflow:hidden;">' +
+            '<div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);opacity:0.08;font-size:60px;">\ud83d\uddfa</div>' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
             '<span style="font-size:18px;">\ud83d\udccd</span>' +
             '<span style="font-size:16px;font-weight:800;">Entrega en tu ciudad</span>' +

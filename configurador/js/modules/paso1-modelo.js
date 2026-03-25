@@ -178,7 +178,7 @@ var Paso1 = {
         html += this.renderTabCredito(defaultModelo);
         html += '</div>';
 
-        html += '<button class="vk-btn vk-btn--primary vk-hero__cta" id="vk-hero-cta" style="background:linear-gradient(90deg,#1a3a5c,#039fe1);border:none;">' +
+        html += '<button class="vk-btn vk-btn--primary vk-hero__cta" id="vk-hero-cta" style="">' +
             'QUIERO MI VOLTIKA &#8250;</button>';
 
         html += '<div id="vk-hero-trust-badges">' + VkUI.renderTrustBadges('credito') + '</div>';
@@ -362,7 +362,7 @@ var Paso1 = {
         var credito    = VkCalculadora.calcular(modelo.precioContado, 0.25, 36);
         var pagoDiario = Math.ceil(credito.pagoSemanal / 7);
         var html = '';
-        html += '<div style="background:linear-gradient(135deg,#e8f4fd 0%,#d0ebfa 100%);border-radius:12px;padding:16px 12px;text-align:center;margin-bottom:10px;">';
+        html += '<div style="background:#fff;border-radius:12px;padding:16px 12px;text-align:center;margin-bottom:10px;border:1px solid #eee;">';
         html += '<div style="font-size:14px;color:#555;margin-bottom:4px;">Ll\u00e9vatela desde</div>';
         html += '<div style="display:flex;align-items:baseline;justify-content:center;gap:6px;">';
         html += '<span style="font-size:32px;font-weight:900;color:#1a3a5c;">' + VkUI.formatPrecio(credito.pagoSemanal) + '</span>';
@@ -371,7 +371,7 @@ var Paso1 = {
         html += '<div style="font-size:13px;color:#039fe1;font-weight:600;margin-top:4px;">Menos de $' + pagoDiario + ' al d\u00eda</div>';
         html += '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="credito" ' +
-            'style="background:linear-gradient(90deg,#1a3a5c,#039fe1);border:none;">' +
+            'style="">' +
             'QUIERO MI VOLTIKA &#8250;</button>';
         return html;
     },
