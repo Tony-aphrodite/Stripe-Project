@@ -615,6 +615,8 @@ var PasoCreditoEnganche = {
     },
 
     _downloadOXXOPDF: function(refs, enganche) {
+        // Save current URL for Volver button
+        window._vkReturnUrl = window.location.href;
         // Collect all hosted voucher URLs
         var voucherUrls = [];
         for (var i = 0; i < refs.length; i++) {
@@ -663,7 +665,7 @@ var PasoCreditoEnganche = {
 
         // Top actions
         html += '<div class="actions">';
-        html += '<button class="btn-back" onclick="history.back()">\u2190 Volver</button>';
+        html += '<button class="btn-back" onclick="window.location.href=window._vkReturnUrl||\u0027\u0027">\u2190 Volver</button>';
         html += '<button class="btn-print" onclick="window.print()">Imprimir / Guardar PDF</button>';
         html += '</div>';
 
@@ -689,7 +691,7 @@ var PasoCreditoEnganche = {
 
         // Bottom actions
         html += '<div class="actions">';
-        html += '<button class="btn-back" onclick="history.back()">\u2190 Volver</button>';
+        html += '<button class="btn-back" onclick="window.location.href=window._vkReturnUrl||\u0027\u0027">\u2190 Volver</button>';
         html += '<button class="btn-print" onclick="window.print()">Imprimir / Guardar PDF</button>';
         html += '</div>';
 
