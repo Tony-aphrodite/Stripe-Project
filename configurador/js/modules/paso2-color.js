@@ -72,7 +72,9 @@ var Paso2 = {
         html += '<div class="vk-desktop-split__right">';
 
         html += '<div style="padding:16px 20px 0;text-align:center;">';
+        html += '<div style="background:#fff;border-radius:12px;padding:16px;border:1px solid #eee;box-shadow:0 1px 4px rgba(0,0,0,0.05);">';
         html += this.renderPaymentInfo(modelo, state.metodoPago);
+        html += '</div>';
         html += '</div>';
 
         // Código de referido (collapsible toggle for all flows)
