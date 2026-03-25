@@ -356,7 +356,7 @@ var Paso4A = {
             url: (window.VK_BASE_PATH || '') + 'php/verificar-otp.php',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ telefono: self.app.state.telefono, code: code }),
+            data: JSON.stringify({ telefono: self.app.state.telefono, codigo: code }),
             success: function(res) {
                 if (res && (res.ok || res.valido)) {
                     $('#vk-post-otp-success').show();
@@ -364,11 +364,8 @@ var Paso4A = {
                     $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
                     setTimeout(function() { self.app.irAPaso('facturacion'); }, 800);
                 } else {
-                    // Allow pass-through for testing (server may not validate properly)
-                    $('#vk-post-otp-success').show();
-                    $('#vk-post-otp-error').hide();
-                    $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
-                    setTimeout(function() { self.app.irAPaso('facturacion'); }, 800);
+                    $('#vk-post-otp-error').text(res.error || 'C\u00f3digo incorrecto. Intenta de nuevo.').show();
+                    $('#vk-post-otp-success').hide();
                 }
             },
             error: function() {
