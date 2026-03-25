@@ -497,7 +497,7 @@ var PasoCreditoEnganche = {
         html += '</div>';
         html += '</div>';
         // Continue button
-        html += '<button id="vk-spei-continuar" style="display:block;width:100%;padding:16px;margin-top:14px;background:#1a3a5c;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Continuar mientras realizo mi pago</button>';
+        html += '<button id="vk-spei-continuar" style="display:block;width:100%;padding:16px;margin-top:14px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">CONTINUAR CON COMPRA</button>';
         jQuery('#vk-spei-section').html(html).show();
         var self = this;
         // Copy CLABE to clipboard
@@ -609,7 +609,7 @@ var PasoCreditoEnganche = {
         // Download PDF button
         html += '<button id="vk-oxxo-download-pdf" style="display:block;width:100%;padding:14px;margin-top:12px;background:#E53935;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">&#128196; Descargar referencias PDF</button>';
         // Continue button
-        html += '<button id="vk-oxxo-continuar" style="display:block;width:100%;padding:16px;margin-top:10px;background:#1a3a5c;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Continuar mientras realizo mi pago</button>';
+        html += '<button id="vk-oxxo-continuar" style="display:block;width:100%;padding:16px;margin-top:10px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">CONTINUAR CON COMPRA</button>';
         jQuery('#vk-oxxo-section').html(html).show();
         var self = this;
         // Download PDF
