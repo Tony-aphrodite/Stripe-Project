@@ -679,15 +679,28 @@ var PasoCreditoEnganche = {
             html += '</div>';
         }
 
-        // Navigation links between vouchers
+        // Navigation links between vouchers — open in wrapper page with back/print buttons
         if (voucherUrls.length > 1) {
             html += '<div class="nav-section" style="margin:20px 0;">';
             html += '<div style="font-size:14px;font-weight:700;color:#333;text-align:center;margin-bottom:10px;">Abrir cada referencia por separado:</div>';
             for (var k = 0; k < voucherUrls.length; k++) {
-                html += '<a href="' + voucherUrls[k].url + '" class="btn-nav">Referencia ' + voucherUrls[k].num + ' de ' + voucherUrls.length + ' \u203a</a>';
+                html += '<a href="#" onclick="window._vkOpenSingleRef(\u0027' + voucherUrls[k].url + '\u0027,' + voucherUrls[k].num + ',' + voucherUrls.length + ');return false;" class="btn-nav">Referencia ' + voucherUrls[k].num + ' de ' + voucherUrls.length + ' \u203a</a>';
             }
             html += '</div>';
         }
+
+        // Script for opening individual reference in wrapper
+        html += '<script>';
+        html += 'window._vkOpenSingleRef=function(url,num,total){';
+        html += 'var h="<!DOCTYPE html><html><head><meta charset=utf-8><meta name=viewport content=\\"width=device-width,initial-scale=1\\"><title>Referencia "+num+" de "+total+"</title>';
+        html += '<style>body{margin:0;font-family:Inter,Arial,sans-serif}.top-bar{position:sticky;top:0;z-index:10;background:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #eee;box-shadow:0 2px 8px rgba(0,0,0,0.08)}.top-bar .title{font-size:15px;font-weight:700;color:#1a3a5c}.btn-back2{background:#f5f5f5;border:1.5px solid #ccc;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;color:#333}.btn-print2{background:#039fe1;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer}iframe{width:100%;height:calc(100vh - 60px);border:none}@media print{.top-bar{display:none}iframe{height:auto}}</style>';
+        html += '</head><body>";';
+        html += 'h+="<div class=top-bar><button class=btn-back2 onclick=\\"history.back()\\">\\u2190 Volver</button><span class=title>Referencia "+num+" de "+total+"</span><button class=btn-print2 onclick=\\"window.print()\\">Imprimir</button></div>";';
+        html += 'h+="<iframe src=\\""+url+"\\" allowfullscreen></iframe>";';
+        html += 'h+="</body></html>";';
+        html += 'document.open();document.write(h);document.close();';
+        html += '};';
+        html += '<\/script>';
 
         // Bottom actions
         html += '<div class="actions">';
