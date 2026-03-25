@@ -112,7 +112,7 @@ var VkUI = {
         var base = window.VK_BASE_PATH || '';
         var imgAhorro   = '<img src="' + base + 'img/ahorro_gasolina.png" alt="" style="width:56px;height:56px;object-fit:contain;">';
         var imgPlacas   = '<img src="' + base + 'img/placas.png" alt="" style="width:56px;height:56px;object-fit:contain;">';
-        var imgGarantia = '<img src="' + base + 'img/garantia.png" alt="" style="width:56px;height:56px;object-fit:contain;">';
+        var imgGarantia = '<img src="' + base + 'img/garantia.png" alt="" style="width:56px;height:56px;object-fit:contain;transform:scale(1.4);">';
 
         var badges = [];
         if (metodo === 'credito') {
