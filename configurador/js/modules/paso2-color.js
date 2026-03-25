@@ -29,12 +29,8 @@ var Paso2 = {
         html += VkUI.renderBackButton(backPaso);
 
         // Step header
-        if (state.metodoPago === 'credito') {
-            html += '<h2 class="vk-paso__titulo">Ya casi es tu Voltika <strong>' + modelo.nombre + '</strong></h2>';
-            html += '<p style="font-size:14px;color:var(--vk-text-secondary);text-align:center;margin:-4px 0 8px;">Selecciona tu color para apartarla</p>';
-        } else {
-            html += '<h2 class="vk-paso__titulo">Elige el color de tu Voltika <strong>' + modelo.nombre + '</strong></h2>';
-        }
+        html += '<h2 class="vk-paso__titulo">Ya casi es tu Voltika <strong>' + modelo.nombre + '</strong></h2>';
+        html += '<p style="font-size:14px;color:var(--vk-text-secondary);text-align:center;margin:-4px 0 8px;">Selecciona tu color para apartarla</p>';
 
         var btnTexto = state.metodoPago === 'contado' ? 'PAGAR DE CONTADO' :
                       state.metodoPago === 'msi'     ? 'QUIERO MIS 9 MSI \u203a' :
@@ -43,14 +39,7 @@ var Paso2 = {
         // Card
         html += '<div class="vk-card">';
 
-        // Subtitle bullets (hidden for credit flow)
-        if (state.metodoPago !== 'credito') {
-            html += '<div class="vk-card__subtitle-bullets" style="padding:12px 16px 8px;">';
-            html += '<div class="vk-card__bullet"><span class="vk-icon-check">&#10003;</span> Moto se entrega lista para circular en tu ciudad</div>';
-            html += '<div class="vk-card__bullet"><span class="vk-icon-check">&#10003;</span> Garant\u00eda incluida</div>';
-            html += '<div class="vk-card__bullet"><span class="vk-icon-check">&#10003;</span> Documentos para tr\u00e1mites de placas incluidos</div>';
-            html += '</div>';
-        }
+        // Subtitle bullets removed for all flows
 
         // Desktop 2-col split (stacks on mobile)
         html += '<div class="vk-desktop-split">';
@@ -73,18 +62,9 @@ var Paso2 = {
         }
         html += '</div>';
 
-        if (state.metodoPago === 'credito') {
-            html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:6px 0 16px;">' +
-                'Colores sujetos a inventario' +
-                '</p>';
-        } else {
-            html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:6px 0 4px;">' +
-                'El color no afecta precio ni tiempo de entrega.' +
-                '</p>';
-            html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:0 0 16px;">' +
-                'Colores sujetos a disponibilidad.' +
-                '</p>';
-        }
+        html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:6px 0 16px;">' +
+            'Colores sujetos a inventario' +
+            '</p>';
 
         html += '</div>'; // end left
 
@@ -95,23 +75,18 @@ var Paso2 = {
         html += this.renderPaymentInfo(modelo, state.metodoPago);
         html += '</div>';
 
-        // Código de referido
+        // Código de referido (collapsible toggle for all flows)
         html += '<div style="padding:0 20px;margin-top:20px;margin-bottom:12px;">';
         if (state.metodoPago === 'credito') {
             html += '<div style="font-size:13px;color:#2e7d32;margin-bottom:10px;"><span style="color:#2e7d32;">&#10003;</span> Entrega en tu ciudad</div>';
-            html += '<div id="vk-referido-toggle" style="font-size:13px;color:var(--vk-text-secondary);font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;margin-bottom:4px;">' +
-                '\u00bfTienes c\u00f3digo de referido? (opcional) <span style="font-size:10px;">&#9660;</span></div>';
-            html += '<div id="vk-referido-field" style="display:none;">';
-            html += '<input type="text" id="vk-referido-input" class="vk-form-input" placeholder="C\u00f3digo de referido" ' +
-                'value="' + (state.codigoReferido || '') + '" ' +
-                'style="font-size:15px;padding:12px 14px;text-transform:uppercase;margin-top:6px;">';
-            html += '</div>';
-        } else {
-            html += '<label style="font-size:13px;color:var(--vk-text-secondary);font-weight:600;display:block;margin-bottom:4px;">\u00bfTienes un c\u00f3digo de referido? Ingr\u00e9salo aqu\u00ed</label>';
-            html += '<input type="text" id="vk-referido-input" class="vk-form-input" placeholder="C\u00f3digo de referido" ' +
-                'value="' + (state.codigoReferido || '') + '" ' +
-                'style="font-size:15px;padding:12px 14px;text-transform:uppercase;">';
         }
+        html += '<div id="vk-referido-toggle" style="font-size:13px;color:var(--vk-text-secondary);font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;margin-bottom:4px;">' +
+            '\u00bfTienes c\u00f3digo de referido? (opcional) <span style="font-size:10px;">&#9660;</span></div>';
+        html += '<div id="vk-referido-field" style="display:none;">';
+        html += '<input type="text" id="vk-referido-input" class="vk-form-input" placeholder="C\u00f3digo de referido" ' +
+            'value="' + (state.codigoReferido || '') + '" ' +
+            'style="font-size:15px;padding:12px 14px;text-transform:uppercase;margin-top:6px;">';
+        html += '</div>';
         html += '</div>';
 
         html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">' + btnTexto + '</button>';
@@ -168,22 +143,29 @@ var Paso2 = {
             html += '<div style="font-size:13px;color:#2e7d32;"><span style="color:#2e7d32;">&#10003;</span> Aprobaci\u00f3n en menos de 2 minutos</div>';
             html += '</div>';
         } else if (metodo === 'msi') {
-            html += '<div style="font-size:18px;font-weight:700;margin-bottom:6px;">' +
-                '<strong>' + VkUI.formatPrecio(modelo.precioMSI) + '</strong>' +
-                ' <span style="font-weight:400;">/mes</span>' +
-                '</div>';
-            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">Sin intereses &middot; 9 MSI ' + VkUI.renderCardLogos() + '</div>';
-            html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
-            html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
-            html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
+            html += '<div style="font-size:16px;font-weight:700;color:#039fe1;margin-bottom:8px;">As\u00ed pagas tu Voltika</div>';
+            html += '<div style="display:flex;align-items:baseline;justify-content:center;gap:6px;margin-bottom:4px;">';
+            html += '<span style="font-size:32px;font-weight:700;color:#1a3a5c;">' + VkUI.formatPrecio(modelo.precioMSI) + '</span>';
+            html += '<span style="font-size:16px;color:#1a3a5c;">al mes</span>';
+            html += '</div>';
+            html += '<div style="font-size:14px;color:#039fe1;margin-bottom:4px;">9 meses sin intereses</div>';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">MSI con todas las tarjetas</div>';
+            html += '<div style="margin-bottom:10px;">' + VkUI.renderCardLogos() + '</div>';
+            html += '<div style="text-align:left;">';
+            html += '<div style="font-size:13px;color:#2e7d32;margin-bottom:2px;"><span style="color:#2e7d32;">&#10003;</span> Sin intereses</div>';
+            html += '<div style="font-size:13px;color:#2e7d32;margin-bottom:2px;"><span style="color:#2e7d32;">&#10003;</span> Pago 100% seguro</div>';
+            html += '<div style="font-size:13px;color:#2e7d32;"><span style="color:#2e7d32;">&#10003;</span> Entrega en tu ciudad</div>';
             html += '</div>';
         } else { // contado
-            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:4px;">Precio contado</div>';
-            html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
-            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">IVA incluido &middot; ' + VkUI.renderCardLogos() + '</div>';
-            html += '<div class="vk-card__tab-bullets" style="text-align:left;">';
-            html += VkUI.renderTabBullet('Entrega en Punto Voltika autorizado en tu ciudad');
-            html += VkUI.renderTabBullet('Confirmas tu punto en el siguiente paso');
+            html += '<div style="font-size:16px;font-weight:700;color:#039fe1;margin-bottom:8px;">Ll\u00e9vate tu Voltika hoy</div>';
+            html += '<div style="font-size:32px;font-weight:700;color:#1a3a5c;margin-bottom:4px;">' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</div>';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:4px;">IVA incluido</div>';
+            html += '<div style="font-size:14px;color:#039fe1;margin-bottom:8px;">Compra hoy &middot; recibe en tu ciudad</div>';
+            html += '<div style="margin-bottom:10px;">' + VkUI.renderCardLogos() + '</div>';
+            html += '<div style="text-align:left;">';
+            html += '<div style="font-size:13px;color:#2e7d32;margin-bottom:2px;"><span style="color:#2e7d32;">&#10003;</span> Pago 100% seguro</div>';
+            html += '<div style="font-size:13px;color:#2e7d32;margin-bottom:2px;"><span style="color:#2e7d32;">&#10003;</span> Entrega en tu ciudad</div>';
+            html += '<div style="font-size:13px;color:#2e7d32;"><span style="color:#2e7d32;">&#10003;</span> Documentos incluidos</div>';
             html += '</div>';
         }
 

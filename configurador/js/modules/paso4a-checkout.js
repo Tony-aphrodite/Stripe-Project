@@ -22,10 +22,9 @@ var Paso4A = {
         this._pagoTipo = (app.state.metodoPago === 'msi') ? 'msi' : 'unico';
         this.render();
         this.bindEvents();
-        this._otpVerified = false;
-        // Send OTP and mount Stripe
+        // Mount Stripe (OTP moved to post-payment)
         var self = this;
-        setTimeout(function() { self._mountStripe(); self._sendOTP(); }, 300);
+        setTimeout(function() { self._mountStripe(); }, 300);
     },
 
     render: function() {
@@ -93,62 +92,8 @@ var Paso4A = {
         }
         html += '</div>';
 
-        // 7. OTP verification section
-        html += '<div style="border-top:2px solid var(--vk-border);padding-top:18px;margin-bottom:18px;">';
-        html += '<div style="font-size:15px;font-weight:800;text-align:center;margin-bottom:4px;">Confirma tu n\u00famero para continuar</div>';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);text-align:center;margin-bottom:12px;">Te enviamos un c\u00f3digo por SMS para confirmar tu identidad.</div>';
-
-        // Phone input (if no phone in state)
-        var _tel = state.telefono || '';
-        if (!_tel) {
-            html += '<div id="vk-pago-phone-input" style="margin-bottom:14px;">';
-            html += '<label style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);display:block;margin-bottom:6px;">Tu n\u00famero de tel\u00e9fono</label>';
-            html += '<div style="display:flex;gap:8px;align-items:center;">';
-            html += '<div style="background:#f5f5f5;border:1.5px solid var(--vk-border);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;color:#333;flex-shrink:0;">&#127474;&#127485; +52</div>';
-            html += '<input type="tel" id="vk-pago-telefono" class="vk-form-input" placeholder="55 1234 5678" maxlength="15" inputmode="numeric" style="font-size:16px;padding:10px 14px;flex:1;">';
-            html += '</div>';
-            html += '<button id="vk-pago-enviar-codigo" style="display:block;width:100%;margin-top:10px;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Enviar c\u00f3digo</button>';
-            html += '</div>';
-            // OTP section hidden until phone submitted
-            html += '<div id="vk-pago-otp-area" style="display:none;">';
-        } else {
-            html += '<div id="vk-pago-otp-area">';
-        }
-
-        // Phone display
-        var _telDisplay = _tel ? ('+52 ' + _tel.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3')) : '+52 --';
-        html += '<div id="vk-pago-phone-display" style="text-align:center;margin-bottom:12px;">';
-        html += '<div style="font-size:12px;color:var(--vk-text-secondary);">C\u00f3digo enviado a</div>';
-        html += '<div style="font-size:15px;font-weight:700;" id="vk-pago-tel-display">' + _telDisplay + '</div>';
-        html += '</div>';
-
-        // OTP test hint
-        if (state._otpTestCode) {
-            html += '<div id="vk-pago-otp-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:10px;text-align:center;font-size:12px;color:#1565C0;">&#128161; C\u00f3digo de prueba: <strong>' + state._otpTestCode + '</strong></div>';
-        }
-
-        // 6 OTP boxes
-        html += '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">';
-        for (var oi = 0; oi < 6; oi++) {
-            html += '<input type="text" class="vk-pago-otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" ' +
-                'style="width:42px;height:50px;text-align:center;font-size:22px;font-weight:700;' +
-                'border:2px solid #e5e7eb;border-radius:8px;outline:none;transition:border-color 0.15s;" ' +
-                'data-index="' + oi + '">';
-        }
-        html += '</div>';
-
-        html += '<div style="text-align:center;font-size:11px;color:var(--vk-text-muted);margin-bottom:4px;">&#9201; Esto toma menos de 10 segundos</div>';
-        html += '<div style="text-align:center;font-size:11px;color:var(--vk-text-muted);margin-bottom:12px;">\u00bfNo lleg\u00f3 el c\u00f3digo? <a href="#" id="vk-pago-otp-reenviar" style="color:#039fe1;font-weight:600;">Reenviar</a></div>';
-
-        // OTP error
-        html += '<div id="vk-pago-otp-error" style="display:none;color:#C62828;font-size:12px;background:#FFEBEE;border-radius:6px;padding:8px;text-align:center;margin-bottom:10px;"></div>';
-        // OTP success
-        html += '<div id="vk-pago-otp-success" style="display:none;color:#4CAF50;font-size:12px;background:#E8F5E9;border-radius:6px;padding:8px;text-align:center;margin-bottom:10px;">&#10003; N\u00famero verificado correctamente</div>';
-        html += '</div>'; // end otp-area
-        html += '</div>';
-
-        // 8. Contact + Card form (hidden until OTP verified)
-        html += '<div id="vk-checkout-form" style="display:none;border-top:2px solid var(--vk-border);padding-top:18px;">';
+        // 8. Contact + Card form (shown immediately — OTP moved to post-payment)
+        html += '<div id="vk-checkout-form" style="border-top:2px solid var(--vk-border);padding-top:18px;">';
 
         // Terms
         html += '<div class="vk-checkbox-group" style="margin-bottom:16px;">';
@@ -302,60 +247,6 @@ var Paso4A = {
     bindEvents: function() {
         var self = this;
 
-        // OTP box input
-        $(document).off('keydown keyup paste focus blur', '.vk-pago-otp-box');
-        $(document).on('keydown', '.vk-pago-otp-box', function(e) {
-            var $this = $(this), idx = parseInt($this.data('index'));
-            if (e.key === 'Backspace') {
-                if ($this.val() === '' && idx > 0) $('.vk-pago-otp-box[data-index="' + (idx - 1) + '"]').val('').focus();
-                else $this.val('');
-                e.preventDefault(); return;
-            }
-            if (!/^[0-9]$/.test(e.key) && !['Tab','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-        });
-        $(document).on('keyup', '.vk-pago-otp-box', function() {
-            var $this = $(this), idx = parseInt($this.data('index'));
-            var val = $this.val().replace(/\D/g, '');
-            $this.val(val.slice(-1));
-            if (val && idx < 5) $('.vk-pago-otp-box[data-index="' + (idx + 1) + '"]').focus();
-            var code = ''; $('.vk-pago-otp-box').each(function() { code += $(this).val(); });
-            if (code.length === 6) self._verifyOTP(code);
-        });
-        $(document).on('paste', '.vk-pago-otp-box', function(e) {
-            e.preventDefault();
-            var clip = e.originalEvent.clipboardData || e.originalEvent['clipboardData'];
-            var pasted = clip ? clip.getData('text').replace(/\D/g, '').slice(0, 6) : '';
-            $('.vk-pago-otp-box').each(function(i) { $(this).val(pasted[i] || ''); });
-            if (pasted.length === 6) self._verifyOTP(pasted);
-        });
-        $(document).on('focus', '.vk-pago-otp-box', function() { $(this).css('border-color', '#039fe1'); });
-        $(document).on('blur', '.vk-pago-otp-box', function() { $(this).css('border-color', $(this).val() ? '#039fe1' : '#e5e7eb'); });
-
-        // Send OTP (phone input for contado/MSI)
-        $(document).off('click', '#vk-pago-enviar-codigo');
-        $(document).on('click', '#vk-pago-enviar-codigo', function(e) {
-            e.preventDefault();
-            var tel = $('#vk-pago-telefono').val().replace(/\D/g, '');
-            if (tel.length < 10) {
-                $('#vk-pago-telefono').css('border-color', '#C62828');
-                setTimeout(function() { $('#vk-pago-telefono').css('border-color', ''); }, 3000);
-                return;
-            }
-            self.app.state.telefono = tel;
-            // Update phone display
-            var telFormatted = '+52 ' + tel.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
-            $('#vk-pago-tel-display').text(telFormatted);
-            // Hide phone input, show OTP area
-            $('#vk-pago-phone-input').slideUp(200);
-            $('#vk-pago-otp-area').slideDown(200);
-            // Send OTP
-            self._sendOTP();
-        });
-
-        // Resend OTP
-        $(document).off('click', '#vk-pago-otp-reenviar');
-        $(document).on('click', '#vk-pago-otp-reenviar', function(e) { e.preventDefault(); self._sendOTP(); });
-
         // Button 1: Pago unico
         $(document).off('click', '#vk-pay-unico');
         $(document).on('click', '#vk-pay-unico', function(e) {
@@ -390,11 +281,11 @@ var Paso4A = {
             }
         });
 
-        // Continuar buttons (SPEI/OXXO)
+        // Continuar buttons (SPEI/OXXO) — go to post-payment OTP
         $(document).off('click', '.vk-contado-continuar');
         $(document).on('click', '.vk-contado-continuar', function() {
             self.app.state.pagoCompletado = true;
-            self.app.irAPaso('facturacion');
+            self._showPostPaymentOTP();
         });
 
         // SPEI contado
@@ -468,23 +359,21 @@ var Paso4A = {
             data: JSON.stringify({ telefono: self.app.state.telefono, code: code }),
             success: function(res) {
                 if (res && res.ok) {
-                    self._otpVerified = true;
-                    $('#vk-pago-otp-success').show();
-                    $('#vk-pago-otp-error').hide();
-                    $('#vk-checkout-form').slideDown(200);
+                    $('#vk-post-otp-success').show();
+                    $('#vk-post-otp-error').hide();
                     $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
+                    setTimeout(function() { self.app.irAPaso('facturacion'); }, 800);
                 } else {
-                    $('#vk-pago-otp-error').text('C\u00f3digo incorrecto. Intenta de nuevo.').show();
-                    $('#vk-pago-otp-success').hide();
+                    $('#vk-post-otp-error').text('C\u00f3digo incorrecto. Intenta de nuevo.').show();
+                    $('#vk-post-otp-success').hide();
                 }
             },
             error: function() {
                 // Testing fallback: accept any 6-digit code
-                self._otpVerified = true;
-                $('#vk-pago-otp-success').show();
-                $('#vk-pago-otp-error').hide();
-                $('#vk-checkout-form').slideDown(200);
+                $('#vk-post-otp-success').show();
+                $('#vk-post-otp-error').hide();
                 $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
+                setTimeout(function() { self.app.irAPaso('facturacion'); }, 800);
             }
         });
     },
@@ -604,7 +493,7 @@ var Paso4A = {
             }),
             complete: function() {
                 self._setLoading(false);
-                self.app.irAPaso('facturacion');
+                self._showPostPaymentOTP();
             }
         });
     },
@@ -624,6 +513,124 @@ var Paso4A = {
             $btn.find('.vk-pay-btn__label').show();
             $btn.find('.vk-pay-btn__spinner').hide();
         }
+    },
+
+    _showPostPaymentOTP: function() {
+        var self = this;
+        var state = self.app.state;
+        var _tel = state.telefono || '';
+
+        var html = '';
+        html += '<div style="text-align:center;margin-bottom:20px;">';
+        html += '<div style="font-size:48px;margin-bottom:8px;">&#128274;</div>';
+        html += '<div style="font-size:18px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Tu tel\u00e9fono ser\u00e1 tu llave de seguridad</div>';
+        html += '<div style="font-size:13px;color:var(--vk-text-secondary);">Te enviamos un c\u00f3digo por SMS para verificar tu n\u00famero.</div>';
+        html += '</div>';
+
+        // Phone input (if no phone in state)
+        if (!_tel) {
+            html += '<div id="vk-post-phone-input" style="margin-bottom:14px;">';
+            html += '<label style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);display:block;margin-bottom:6px;">Tu n\u00famero de tel\u00e9fono</label>';
+            html += '<div style="display:flex;gap:8px;align-items:center;">';
+            html += '<div style="background:#f5f5f5;border:1.5px solid var(--vk-border);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;color:#333;flex-shrink:0;">&#127474;&#127485; +52</div>';
+            html += '<input type="tel" id="vk-post-telefono" class="vk-form-input" placeholder="55 1234 5678" maxlength="15" inputmode="numeric" style="font-size:16px;padding:10px 14px;flex:1;">';
+            html += '</div>';
+            html += '<button id="vk-post-enviar-codigo" style="display:block;width:100%;margin-top:10px;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Enviar c\u00f3digo</button>';
+            html += '</div>';
+            html += '<div id="vk-post-otp-area" style="display:none;">';
+        } else {
+            html += '<div id="vk-post-otp-area">';
+        }
+
+        // Phone display
+        var _telDisplay = _tel ? ('+52 ' + _tel.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3')) : '+52 --';
+        html += '<div style="text-align:center;margin-bottom:12px;">';
+        html += '<div style="font-size:12px;color:var(--vk-text-secondary);">C\u00f3digo enviado a</div>';
+        html += '<div style="font-size:15px;font-weight:700;" id="vk-post-tel-display">' + _telDisplay + '</div>';
+        html += '</div>';
+
+        // OTP test hint
+        if (state._otpTestCode) {
+            html += '<div id="vk-post-otp-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:10px;text-align:center;font-size:12px;color:#1565C0;">&#128161; C\u00f3digo de prueba: <strong>' + state._otpTestCode + '</strong></div>';
+        }
+
+        // 6 OTP boxes
+        html += '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">';
+        for (var oi = 0; oi < 6; oi++) {
+            html += '<input type="text" class="vk-pago-otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" ' +
+                'style="width:42px;height:50px;text-align:center;font-size:22px;font-weight:700;' +
+                'border:2px solid #e5e7eb;border-radius:8px;outline:none;transition:border-color 0.15s;" ' +
+                'data-index="' + oi + '">';
+        }
+        html += '</div>';
+
+        html += '<div style="text-align:center;font-size:11px;color:var(--vk-text-muted);margin-bottom:4px;">&#9201; Esto toma menos de 10 segundos</div>';
+        html += '<div style="text-align:center;font-size:11px;color:var(--vk-text-muted);margin-bottom:12px;">\u00bfNo lleg\u00f3 el c\u00f3digo? <a href="#" id="vk-post-otp-reenviar" style="color:#039fe1;font-weight:600;">Reenviar</a></div>';
+
+        // OTP error / success
+        html += '<div id="vk-post-otp-error" style="display:none;color:#C62828;font-size:12px;background:#FFEBEE;border-radius:6px;padding:8px;text-align:center;margin-bottom:10px;"></div>';
+        html += '<div id="vk-post-otp-success" style="display:none;color:#4CAF50;font-size:12px;background:#E8F5E9;border-radius:6px;padding:8px;text-align:center;margin-bottom:10px;">&#10003; N\u00famero verificado correctamente</div>';
+        html += '</div>'; // end otp-area
+
+        // Replace container content with OTP screen
+        $('#vk-pago-container').html(html);
+
+        // Send OTP automatically if we have a phone
+        if (_tel) {
+            self._sendOTP();
+        }
+
+        // Bind post-payment OTP events
+        // Phone submit
+        $(document).off('click', '#vk-post-enviar-codigo');
+        $(document).on('click', '#vk-post-enviar-codigo', function(e) {
+            e.preventDefault();
+            var tel = $('#vk-post-telefono').val().replace(/\D/g, '');
+            if (tel.length < 10) {
+                $('#vk-post-telefono').css('border-color', '#C62828');
+                setTimeout(function() { $('#vk-post-telefono').css('border-color', ''); }, 3000);
+                return;
+            }
+            self.app.state.telefono = tel;
+            var telFormatted = '+52 ' + tel.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
+            $('#vk-post-tel-display').text(telFormatted);
+            $('#vk-post-phone-input').slideUp(200);
+            $('#vk-post-otp-area').slideDown(200);
+            self._sendOTP();
+        });
+
+        // OTP box input
+        $(document).off('keydown keyup paste focus blur', '.vk-pago-otp-box');
+        $(document).on('keydown', '.vk-pago-otp-box', function(e) {
+            var $this = $(this), idx = parseInt($this.data('index'));
+            if (e.key === 'Backspace') {
+                if ($this.val() === '' && idx > 0) $('.vk-pago-otp-box[data-index="' + (idx - 1) + '"]').val('').focus();
+                else $this.val('');
+                e.preventDefault(); return;
+            }
+            if (!/^[0-9]$/.test(e.key) && !['Tab','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+        });
+        $(document).on('keyup', '.vk-pago-otp-box', function() {
+            var $this = $(this), idx = parseInt($this.data('index'));
+            var val = $this.val().replace(/\D/g, '');
+            $this.val(val.slice(-1));
+            if (val && idx < 5) $('.vk-pago-otp-box[data-index="' + (idx + 1) + '"]').focus();
+            var code = ''; $('.vk-pago-otp-box').each(function() { code += $(this).val(); });
+            if (code.length === 6) self._verifyOTP(code);
+        });
+        $(document).on('paste', '.vk-pago-otp-box', function(e) {
+            e.preventDefault();
+            var clip = e.originalEvent.clipboardData || e.originalEvent['clipboardData'];
+            var pasted = clip ? clip.getData('text').replace(/\D/g, '').slice(0, 6) : '';
+            $('.vk-pago-otp-box').each(function(i) { $(this).val(pasted[i] || ''); });
+            if (pasted.length === 6) self._verifyOTP(pasted);
+        });
+        $(document).on('focus', '.vk-pago-otp-box', function() { $(this).css('border-color', '#039fe1'); });
+        $(document).on('blur', '.vk-pago-otp-box', function() { $(this).css('border-color', $(this).val() ? '#039fe1' : '#e5e7eb'); });
+
+        // Resend OTP
+        $(document).off('click', '#vk-post-otp-reenviar');
+        $(document).on('click', '#vk-post-otp-reenviar', function(e) { e.preventDefault(); self._sendOTP(); });
     },
 
     _handleContadoSPEI: function() {
