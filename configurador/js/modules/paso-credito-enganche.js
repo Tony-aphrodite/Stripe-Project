@@ -60,7 +60,7 @@ var PasoCreditoEnganche = {
 
         var html = '';
 
-        html += VkUI.renderBackButton('resumen');
+        html += VkUI.renderBackButton('credito-aprobado');
 
         // Header
         html += '<div style="text-align:center;margin-bottom:20px;">';
