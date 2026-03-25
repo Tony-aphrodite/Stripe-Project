@@ -385,7 +385,7 @@ var Paso1 = {
             html += '</div>';
             return html;
         }
-        html += '<div class="vk-card__precio-destacado" style="text-align:center;">';
+        html += '<div style="background:#fff;border-radius:12px;padding:16px 12px;text-align:center;margin-bottom:10px;border:1px solid #eee;">';
         html += '<div style="font-size:28px;font-weight:900;color:var(--vk-text-primary);">' + VkUI.formatPrecio(modelo.precioMSI) + '</div>';
         html += '<div style="font-size:14px;color:var(--vk-text-secondary);margin-bottom:6px;">Al mes durante 9 meses</div>';
         html += '<div>' + VkUI.renderCardLogos() + '</div>';
@@ -397,9 +397,11 @@ var Paso1 = {
 
     renderTabContado: function(modelo) {
         var html = '';
-        html += '<div class="vk-card__contado-label">Precio contado</div>';
-        html += '<div class="vk-card__precio-destacado"><strong>' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</strong></div>';
-        html += '<div class="vk-card__tab-logos">' + VkUI.renderCardLogos() + '</div>';
+        html += '<div style="background:#fff;border-radius:12px;padding:16px 12px;text-align:center;margin-bottom:10px;border:1px solid #eee;">';
+        html += '<div style="font-size:14px;color:#555;margin-bottom:4px;">Precio contado</div>';
+        html += '<div style="font-size:32px;font-weight:900;color:#1a3a5c;">' + VkUI.formatPrecio(modelo.precioContado) + ' MXN</div>';
+        html += '<div style="margin-top:6px;">' + VkUI.renderCardLogos() + '</div>';
+        html += '</div>';
         html += '<button class="vk-btn vk-btn--primary vk-card__tab-cta" data-modelo="' + modelo.id + '" data-metodo="contado">' +
             'PAGAR DE CONTADO</button>';
         return html;
