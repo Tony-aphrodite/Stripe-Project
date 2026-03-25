@@ -110,14 +110,14 @@ var VkUI = {
      */
     renderTrustBadges: function(metodo) {
         var base = window.VK_BASE_PATH || '';
-        var imgAhorro   = '<img src="' + base + 'img/ahorro_gasolina.png" alt="" style="width:56px;height:56px;object-fit:contain;">';
-        var imgPlacas   = '<img src="' + base + 'img/placas.png" alt="" style="width:56px;height:56px;object-fit:contain;">';
-        var imgGarantia = '<img src="' + base + 'img/garantia.png" alt="" style="width:56px;height:56px;object-fit:contain;transform:scale(1.4);">';
+        var imgAhorro   = '<img src="' + base + 'img/ahorro_gasolina.png" alt="" style="width:35px;height:35px;object-fit:contain;">';
+        var imgPlacas   = '<img src="' + base + 'img/placas.png" alt="" style="width:35px;height:35px;object-fit:contain;">';
+        var imgGarantia = '<img src="' + base + 'img/garantia.png" alt="" style="width:30px;height:30px;object-fit:contain;">';
 
         var badges = [];
         if (metodo === 'credito') {
             badges = [
-                { icon: '<img src="' + base + 'img/punto_voltika_autorizado.png" alt="" style="width:56px;height:56px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
+                { icon: '<img src="' + base + 'img/punto_voltika_autorizado.png" alt="" style="width:35px;height:35px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
                 { icon: imgPlacas,   text: 'Documentos para placas incluidos' },
                 { icon: imgAhorro,   text: 'P\u00e1gala con lo que hoy gastas en gasolina' },
                 { icon: imgGarantia, text: 'Garant\u00eda Voltika' }
@@ -144,7 +144,7 @@ var VkUI = {
         var html = '<div class="vk-trust-badges" style="display:flex;justify-content:space-around;gap:8px;padding:14px 8px;">';
         for (var i = 0; i < badges.length; i++) {
             html += '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;flex:1;min-width:0;">' +
-                '<div style="margin-bottom:6px;height:56px;display:flex;align-items:center;justify-content:center;">' + badges[i].icon + '</div>' +
+                '<div style="margin-bottom:6px;height:38px;display:flex;align-items:center;justify-content:center;">' + badges[i].icon + '</div>' +
                 '<div style="font-size:10px;font-weight:600;color:#1a3a5c;line-height:1.3;">' + badges[i].text + '</div>' +
                 '</div>';
         }
