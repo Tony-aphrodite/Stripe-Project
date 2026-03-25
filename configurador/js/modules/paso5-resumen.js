@@ -107,7 +107,7 @@ var PasoResumen = {
         html += '<div>Modelo: <strong>' + modelo.nombre + '</strong></div>';
         html += '<div style="color:var(--vk-green-primary);">&#10003; Sin intereses</div>';
         html += '<div>Color: <strong>' + color + '</strong></div>';
-        html += '<div style="color:var(--vk-green-primary);">&#10003; Sin cargos ocultos</div>';
+        html += '<div style="color:var(--vk-green-primary);">&#10003; Sin cargos adicionales</div>';
         html += '<div>Entrega: <strong>' + ciudad + '</strong></div>';
         html += '<div></div>';
         if (state.costoLogistico > 0) {
