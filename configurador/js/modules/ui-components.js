@@ -61,7 +61,7 @@ var VkUI = {
     renderBanner: function() {
         var base = (window.VK_BASE_PATH || '');
         return '<div class="vk-card__banner" style="position:relative;overflow:hidden;">' +
-            '<div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);opacity:0.08;font-size:60px;">\ud83d\uddfa</div>' +
+            '<img src="' + base + 'img/mexico_map.svg" alt="" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:80px;height:auto;opacity:0.2;">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
             '<span style="font-size:18px;">\ud83d\udccd</span>' +
             '<span style="font-size:16px;font-weight:800;">Entrega en tu ciudad</span>' +
@@ -117,7 +117,7 @@ var VkUI = {
         var badges = [];
         if (metodo === 'credito') {
             badges = [
-                { icon: '\u26a1', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
+                { icon: '<img src="' + base + 'img/punto_voltika_autorizado.png" alt="" style="width:56px;height:56px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
                 { icon: imgPlacas,   text: 'Documentos para placas incluidos' },
                 { icon: imgAhorro,   text: 'P\u00e1gala con lo que hoy gastas en gasolina' },
                 { icon: imgGarantia, text: 'Garant\u00eda Voltika' }
@@ -141,10 +141,11 @@ var VkUI = {
                 { icon: imgPlacas,   text: 'Hasta 9 MSI' }
             ];
         }
-        var html = '<div class="vk-trust-badges">';
+        var html = '<div class="vk-trust-badges" style="display:flex;justify-content:space-around;gap:8px;padding:14px 8px;">';
         for (var i = 0; i < badges.length; i++) {
-            html += '<div class="vk-trust-badge">' +
-                '<span class="vk-trust-badge__icon">' + badges[i].icon + '</span> ' + badges[i].text +
+            html += '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;flex:1;min-width:0;">' +
+                '<div style="margin-bottom:6px;height:56px;display:flex;align-items:center;justify-content:center;">' + badges[i].icon + '</div>' +
+                '<div style="font-size:10px;font-weight:600;color:#1a3a5c;line-height:1.3;">' + badges[i].text + '</div>' +
                 '</div>';
         }
         html += '</div>';
