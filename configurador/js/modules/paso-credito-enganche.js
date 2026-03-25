@@ -455,6 +455,10 @@ var PasoCreditoEnganche = {
     },
 
     _showSPEIDetails: function(speiData, enganche) {
+        // Update SPEI button to selected state
+        jQuery('#vk-enganche-spei').prop('disabled', false)
+            .html('&#10003; SPEI Transferencia')
+            .css({ 'background': '#00C851', 'color': '#fff', 'border-color': '#00C851', 'opacity': '1' });
         var base = window.VK_BASE_PATH || '';
         var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;border:1px solid #B3D4FC;">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
@@ -557,6 +561,10 @@ var PasoCreditoEnganche = {
     },
 
     _showOXXOVoucher: function(oxxoData, enganche) {
+        // Update OXXO button to selected state
+        jQuery('#vk-enganche-oxxo').prop('disabled', false)
+            .html('&#10003; OXXO Efectivo')
+            .css({ 'background': '#00C851', 'color': '#fff', 'border-color': '#00C851', 'opacity': '1' });
         var base = window.VK_BASE_PATH || '';
         var refs = Array.isArray(oxxoData) ? oxxoData : [oxxoData];
         var html = '<div id="vk-oxxo-voucher" style="background:#FFF8E1;border-radius:10px;padding:16px;margin-top:12px;border:1px solid #FFE082;">';
