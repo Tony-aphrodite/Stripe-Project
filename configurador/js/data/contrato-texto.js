@@ -123,8 +123,5 @@ var VOLTIKA_CONTRATO_TEXTO = [
   "Las Partes convienen en que son aplicables los términos del Código de Comercio y cualquier otra disposición aplicable, respecto de la identidad y expresión de consentimiento de las mismas por medios electrónicos, ópticos o de cualquier otra tecnología mediante el uso de la firma electrónica, a fin de que los Mensajes de Datos sean comunicados entre las Partes de manera segura en su identificación, auténticos e íntegros en su contenido y no repudiables respecto del emisor y receptor.",
   "Las Partes reconocen que los mecanismos de validación electrónica utilizados por VOLTIKA, incluyendo códigos de verificación (OTP), registros digitales, confirmación de datos y cualquier interacción realizada a través de sus plataformas, forman parte del proceso de contratación, ejecución y cumplimiento del presente Contrato, teniendo validez jurídica y efectos probatorios conforme a la legislación aplicable.",
   "EL CLIENTE manifiesta que ha tenido acceso previo al presente documento, incluyendo la Carátula y el Contrato de Crédito, y que acepta su contenido de manera libre y voluntaria.",
-  "EL CLIENTE reconoce que el documento fue puesto a su disposición para su consulta antes de la firma, a través de medios electrónicos.",
-  "EL CLIENTE",
-  "Firma electrónica de EL CLIENTE",
-  "Folio del Contrato: XXXXXXXXXX"
+  "EL CLIENTE reconoce que el documento fue puesto a su disposición para su consulta antes de la firma, a través de medios electrónicos."
 ];
