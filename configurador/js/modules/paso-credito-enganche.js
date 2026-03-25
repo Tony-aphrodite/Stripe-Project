@@ -235,20 +235,43 @@ var PasoCreditoEnganche = {
             self._handlePayment();
         });
 
-        // SPEI payment
+        // SPEI payment (toggle)
         jQuery(document).on('click', '#vk-enganche-spei', function(e) {
             e.preventDefault();
+            // If already showing SPEI, toggle off
+            if (jQuery('#vk-spei-section').is(':visible') && jQuery('#vk-spei-section').html().length > 10) {
+                jQuery('#vk-spei-section').slideUp(200);
+                jQuery('#vk-enganche-spei').css({ 'border-color': '#ccc', 'background': '#fff' });
+                return;
+            }
             jQuery('#vk-enganche-spei').css({ 'border-color': '#039fe1', 'background': '#E8F4FD' });
             jQuery('#vk-enganche-oxxo').css({ 'border-color': '#ccc', 'background': '#fff' });
+            jQuery('#vk-oxxo-section').slideUp(200);
             self._handleSPEI();
         });
 
-        // OXXO payment
+        // OXXO payment (toggle)
         jQuery(document).on('click', '#vk-enganche-oxxo', function(e) {
             e.preventDefault();
+            // If already showing OXXO, toggle off
+            if (jQuery('#vk-oxxo-section').is(':visible') && jQuery('#vk-oxxo-section').html().length > 10) {
+                jQuery('#vk-oxxo-section').slideUp(200);
+                jQuery('#vk-enganche-oxxo').css({ 'border-color': '#ccc', 'background': '#fff' });
+                return;
+            }
             jQuery('#vk-enganche-oxxo').css({ 'border-color': '#039fe1', 'background': '#E8F4FD' });
             jQuery('#vk-enganche-spei').css({ 'border-color': '#ccc', 'background': '#fff' });
+            jQuery('#vk-spei-section').slideUp(200);
             self._handleOXXO();
+        });
+
+        // Close buttons for SPEI/OXXO results
+        jQuery(document).off('click', '.vk-close-payment-result');
+        jQuery(document).on('click', '.vk-close-payment-result', function(e) {
+            e.preventDefault();
+            var target = jQuery(this).data('target');
+            jQuery('#' + target).slideUp(200);
+            jQuery('#vk-enganche-spei, #vk-enganche-oxxo').css({ 'border-color': '#ccc', 'background': '#fff' });
         });
     },
 
@@ -434,9 +457,12 @@ var PasoCreditoEnganche = {
     _showSPEIDetails: function(speiData, enganche) {
         var base = window.VK_BASE_PATH || '';
         var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;border:1px solid #B3D4FC;">';
-        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;">';
         html += '<img src="' + base + 'img/logo_spei.png" alt="SPEI" style="height:28px;">';
         html += '<span style="font-size:14px;font-weight:700;color:#1a3a5c;">Datos para transferencia SPEI</span>';
+        html += '</div>';
+        html += '<button class="vk-close-payment-result" data-target="vk-spei-section" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666;padding:0 4px;">&times;</button>';
         html += '</div>';
         // CLABE highlighted with copy button
         if (speiData.clabe) {
@@ -534,9 +560,12 @@ var PasoCreditoEnganche = {
         var base = window.VK_BASE_PATH || '';
         var refs = Array.isArray(oxxoData) ? oxxoData : [oxxoData];
         var html = '<div id="vk-oxxo-voucher" style="background:#FFF8E1;border-radius:10px;padding:16px;margin-top:12px;border:1px solid #FFE082;">';
-        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;">';
         html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:30px;">';
         html += '<span style="font-size:14px;font-weight:700;color:#333;">Referencia' + (refs.length > 1 ? 's' : '') + ' de pago OXXO</span>';
+        html += '</div>';
+        html += '<button class="vk-close-payment-result" data-target="vk-oxxo-section" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666;padding:0 4px;">&times;</button>';
         html += '</div>';
         if (refs.length > 1) {
             html += '<div style="font-size:12px;color:#555;background:#fff;border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;font-style:italic;">Dividimos tu pago por l\u00edmites de OXXO para que puedas completarlo f\u00e1cilmente</div>';
