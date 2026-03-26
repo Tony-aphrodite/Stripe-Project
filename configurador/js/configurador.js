@@ -111,6 +111,10 @@
 
                 VkUI.scrollToTop();
                 self.state.pasoActual = paso;
+                // Push browser history so back button goes to previous paso
+                try {
+                    history.pushState({ paso: paso }, '', '');
+                } catch(e) {}
             }, 280);
         },
 
@@ -228,6 +232,24 @@
                     self.irAPaso(String(raw));
                 }
             });
+
+            // Browser back button → go to previous paso instead of leaving page
+            window.addEventListener('popstate', function(e) {
+                if (e.state && e.state.paso !== undefined) {
+                    self.irAPaso(e.state.paso);
+                } else {
+                    // No previous state → go to paso 1 and push state to prevent exit
+                    if (self.state.pasoActual !== 1) {
+                        self.irAPaso(1);
+                        history.pushState({ paso: 1 }, '', '');
+                    }
+                }
+            });
+
+            // Set initial state
+            try {
+                history.replaceState({ paso: 1 }, '', '');
+            } catch(e) {}
         }
     };
 
