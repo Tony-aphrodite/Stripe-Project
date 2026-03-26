@@ -241,7 +241,6 @@ var Paso4B = {
         var summaryRows = [
             { label: 'Precio de la moto',   id: '',                    val: VkUI.formatPrecio(modelo.precioContado),              color: '' },
             { label: 'Enganche',            id: 'vk-enganche-summary', val: VkUI.formatPrecio(credito.enganche),                  color: 'color:var(--vk-green-primary);' },
-            { label: 'Monto a financiar',   id: 'vk-monto-summary',    val: VkUI.formatPrecio(credito.montoFinanciado),           color: '' },
             { label: 'Plazo y pago',        id: 'vk-plazo-summary',    val: this._plazoMeses + ' meses &middot; ' + VkUI.formatPrecio(credito.pagoSemanal) + '/semana', color: 'color:#039fe1;' }
         ];
         for (var si = 0; si < summaryRows.length; si++) {
