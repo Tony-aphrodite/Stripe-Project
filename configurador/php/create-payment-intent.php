@@ -17,6 +17,126 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
+// ── Reminder email for OXXO/SPEI ─────────────────────────────────────────────
+function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPago) {
+    $pedidoNum = time();
+    $n = htmlspecialchars($nombre);
+    $m = htmlspecialchars($customer['modelo'] ?? '');
+    $c = htmlspecialchars($customer['color'] ?? '');
+    $montoFmt = '$' . number_format($monto, 0, '.', ',') . ' MXN';
+    $whatsapp = '+52 55 1341 6370';
+
+    $td = 'style="padding:10px 16px;border-bottom:1px solid #E5E7EB;font-size:14px;"';
+    $tdl = 'style="padding:10px 16px;border-bottom:1px solid #E5E7EB;font-size:14px;color:#6B7280;"';
+    $section = 'style="margin:0 0 8px;padding:12px 0 6px;font-size:16px;font-weight:800;color:#1a3a5c;border-bottom:2px solid #039fe1;"';
+
+    $linkHtml = '';
+    if (filter_var($linkPago, FILTER_VALIDATE_URL)) {
+        $linkHtml = '<a href="' . htmlspecialchars($linkPago) . '" style="display:block;text-align:center;padding:16px;background:#039fe1;color:#fff;border-radius:10px;font-size:16px;font-weight:800;text-decoration:none;margin:12px 0;">COMPLETAR MI PAGO &rarr;</a>';
+    } else {
+        $linkHtml = '<div style="background:#E8F4FD;border-radius:8px;padding:14px;text-align:center;margin:12px 0;font-size:14px;font-weight:700;color:#1a3a5c;">' . htmlspecialchars($linkPago) . '</div>';
+    }
+
+    $body = '<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Completa tu pago Voltika</title></head>
+<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;">
+<tr><td align="center" style="padding:24px 12px;">
+<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+
+<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:28px;text-align:center;">
+<h1 style="margin:0;font-size:26px;font-weight:900;color:#fff;">Voltika</h1>
+<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.8);">Movilidad el&eacute;ctrica inteligente</p>
+</td></tr>
+
+<tr><td style="padding:28px;">
+
+<h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Tu Voltika te est&aacute; esperando.</h2>
+<p style="margin:0 0 12px;font-size:14px;color:#555;line-height:1.7;">Ya elegiste tu modelo, tu color y tu forma de pago.<br>Tu moto est&aacute; lista para ti.</p>
+<p style="margin:0 0 24px;font-size:15px;color:#E53935;font-weight:700;">Solo falta completar tu pago para asegurarla.</p>
+
+<div ' . $section . '>TU VOLTIKA</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+<tr><td ' . $tdl . '>Orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
+<tr><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Monto pendiente</td><td ' . $td . '><strong style="color:#E53935;">' . $montoFmt . '</strong></td></tr>
+<tr><td ' . $tdl . '>M&eacute;todo de pago</td><td ' . $td . '>' . htmlspecialchars($metodo) . '</td></tr>
+</table>
+
+<div ' . $section . '>TERMINA TU COMPRA AHORA</div>
+<p style="font-size:14px;color:#555;margin:12px 0 8px;">Tu referencia de pago ya est&aacute; generada.</p>
+' . $linkHtml . '
+
+<div ' . $section . '>PAGO AUTOM&Aacute;TICO (IMPORTANTE)</div>
+<p style="font-size:14px;color:#555;margin:12px 0 8px;">No necesitas enviar comprobantes.</p>
+<div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:24px;">
+&#10004; Tu pago se acredita autom&aacute;ticamente<br>
+&#10004; Tu orden se activa en cuanto se confirma<br>
+&#10004; Recibir&aacute;s la confirmaci&oacute;n por correo y WhatsApp
+</div>
+
+<div ' . $section . '>LO QUE PASA AL PAGAR</div>
+<div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:24px;">
+&#10004; Aseguras tu Voltika<br>
+&#10004; Activamos tu proceso de entrega<br>
+&#10004; Te asignamos punto autorizado en menos de 48 horas
+</div>
+
+<div style="background:#FFF8E1;border-radius:8px;padding:16px;margin-bottom:24px;border-left:4px solid #FFB300;">
+<p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#E65100;">&#9888; IMPORTANTE</p>
+<p style="margin:0 0 6px;font-size:13px;color:#555;">Debido a la demanda, las unidades se asignan conforme se completan los pagos.</p>
+<p style="margin:0;font-size:13px;color:#E53935;font-weight:700;">Tu reserva puede liberarse si no se confirma el pago.</p>
+</div>
+
+<div ' . $section . '>ACREDITACI&Oacute;N</div>
+<div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:24px;">
+&bull; SPEI: hasta 24 horas<br>
+&bull; OXXO: hasta 24 horas
+</div>
+
+<div ' . $section . '>ENTREGA SEGURA</div>
+<p style="font-size:14px;color:#333;font-weight:700;margin:12px 0 8px;">&#128274; Tu n&uacute;mero celular es tu llave de entrega.</p>
+<div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:24px;">
+Se te pedir&aacute;:<br>
+&bull; C&oacute;digo de seguridad (OTP)<br>
+&bull; Identificaci&oacute;n oficial<br>
+&bull; Confirmaci&oacute;n de datos de tu compra
+</div>
+
+<div ' . $section . '>&iquest;TIENES DUDAS?</div>
+<p style="font-size:14px;color:#555;margin:12px 0 8px;">Te ayudamos en este momento.</p>
+<p style="font-size:14px;margin:0 0 4px;">&#128241; WhatsApp: <a href="https://wa.me/5213416370" style="color:#039fe1;font-weight:700;">' . $whatsapp . '</a></p>
+<p style="font-size:14px;margin:0 0 24px;">&#128231; Correo: <a href="mailto:redes@voltika.mx" style="color:#039fe1;font-weight:700;">redes@voltika.mx</a></p>
+
+<div style="background:#F5F5F5;border-radius:8px;padding:16px;">
+<p style="font-size:12px;margin:0 0 4px;"><a href="https://voltika.mx/docs/tyc_2026.pdf" style="color:#039fe1;">T&eacute;rminos y Condiciones</a></p>
+<p style="font-size:12px;margin:0 0 8px;"><a href="https://voltika.mx/docs/privacidad_2026.pdf" style="color:#039fe1;">Aviso de Privacidad</a></p>
+<p style="font-size:11px;color:#aaa;margin:0;">Al iniciar tu compra aceptaste estas condiciones.</p>
+</div>
+
+</td></tr>
+
+<tr><td style="background:#1a3a5c;padding:20px 28px;text-align:center;">
+<p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#fff;">Voltika M&eacute;xico</p>
+<p style="margin:0;font-size:12px;color:rgba(255,255,255,0.6);">Mu&eacute;vete a el&eacute;ctrico &middot; Mtech Gears, S.A. de C.V.</p>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>';
+
+    $asunto = 'Tu Voltika te está esperando! Completa tu pago Orden #' . $pedidoNum;
+    try {
+        sendMail($email, $nombre, $asunto, $body);
+    } catch (Exception $e) {
+        error_log('Voltika reminder email error: ' . $e->getMessage());
+    }
+}
+
 // ── Stripe SDK ────────────────────────────────────────────────────────────────
 $stripePhpPath = __DIR__ . '/vendor/autoload.php';
 if (!file_exists($stripePhpPath)) {
@@ -156,6 +276,14 @@ try {
             ];
         }
 
+        // Send SPEI reminder email
+        $custEmail = $customer['email'] ?? '';
+        $custNombre = $customer['nombre'] ?? '';
+        if ($custEmail) {
+            $linkPago = 'CLABE: ' . ($clabe ?: 'Ver en la plataforma');
+            _sendReminderEmail($custEmail, $custNombre, $customer, $amount / 100, 'Transferencia SPEI', $linkPago);
+        }
+
         echo json_encode($response);
         exit;
     }
@@ -245,6 +373,14 @@ try {
             'oxxoData' => $oxxoRefs,
             'totalRefs' => count($oxxoRefs)
         ];
+
+        // Send OXXO reminder email
+        $custEmail = $customer['email'] ?? '';
+        $custNombre = $customer['nombre'] ?? '';
+        if ($custEmail) {
+            $firstVoucher = !empty($oxxoRefs[0]['hosted_voucher_url']) ? $oxxoRefs[0]['hosted_voucher_url'] : '';
+            _sendReminderEmail($custEmail, $custNombre, $customer, $amount / 100, 'Pago en OXXO', $firstVoucher);
+        }
 
         echo json_encode($response);
         exit;
