@@ -85,6 +85,11 @@ var PasoResumen = {
             html += '<button id="vk-resumen-pagar-msi-2" style="padding:8px 14px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">PAGAR ' + VkUI.formatPrecio(msiPago) + ' HOY</button>';
             html += '</div>';
             html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-top:6px;">Primer pago hoy y luego 8 pagos mensuales.</div>';
+            if (costoLog > 0) {
+                html += '<div style="font-size:11px;margin-top:6px;"><strong style="color:#039fe1;">Costo log\u00edstico a tu ciudad: ' + VkUI.formatPrecio(costoLog) + ' MXN</strong></div>';
+            } else {
+                html += '<div style="font-size:11px;margin-top:6px;"><strong style="color:#039fe1;">Costo log\u00edstico a tu ciudad:</strong> <strong style="color:#00C851;">Sin costo</strong></div>';
+            }
             html += '</div>';
         }
 
@@ -98,6 +103,11 @@ var PasoResumen = {
         html += '<span style="font-size:15px;font-weight:800;">' + VkUI.formatPrecio(total) + ' MXN</span>';
         html += '<button id="vk-resumen-pagar-contado" style="padding:8px 14px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">PAGAR ' + VkUI.formatPrecio(total) + '</button>';
         html += '</div>';
+        if (costoLog > 0) {
+            html += '<div style="font-size:11px;margin-top:6px;"><strong style="color:#039fe1;">Costo log\u00edstico a tu ciudad: <span style="text-decoration:line-through;color:#999;">' + VkUI.formatPrecio(costoLog) + '</span></strong> <strong style="color:#00C851;">Sin costo en pago de contado</strong></div>';
+        } else {
+            html += '<div style="font-size:11px;margin-top:6px;"><strong style="color:#039fe1;">Costo log\u00edstico a tu ciudad:</strong> <strong style="color:#00C851;">Sin costo</strong></div>';
+        }
         html += '</div>';
 
         // 5. Resumen al fondo — 2 columnas
