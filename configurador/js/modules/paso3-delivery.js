@@ -151,7 +151,7 @@ var Paso3 = {
             html += '<div style="font-size:14px;color:var(--vk-green-primary);font-weight:600;">&#10003; Flete incluido en Cr\u00e9dito Voltika</div>';
         } else {
             html += '<div id="vk-cp-logistics" style="display:none;font-size:16px;color:var(--vk-text-primary);font-weight:700;">';
-            html += '&#10003; Costo log\u00edstico: <strong style="color:#039fe1;font-size:18px;" id="vk-cp-logistics-price"></strong> <span style="color:#039fe1;font-size:18px;font-weight:700;">MXN</span>';
+            html += '&#10003; Costo log\u00edstico: <span id="vk-cp-logistics-content"></span>';
             html += '</div>';
         }
         html += '</div>';
@@ -370,7 +370,7 @@ var Paso3 = {
 
         // Show logistics cost (contado/msi only)
         if (!esCredito) {
-            $('#vk-cp-logistics-price').text(VkUI.formatPrecio(costoEnvio));
+            self._updateLogisticsDisplay(costoEnvio, state.metodoPago);
             $('#vk-cp-logistics').show();
         }
 
@@ -404,7 +404,7 @@ var Paso3 = {
                             var _esMC10 = _modelo && (_modelo.id === 'mc10');
                             var _costo = _envArr ? (_esMC10 ? _envArr[1] : _envArr[0]) : config.costoLogistico;
                             state.costoLogistico = _costo;
-                            $('#vk-cp-logistics-price').text(VkUI.formatPrecio(_costo));
+                            self._updateLogisticsDisplay(_costo, state.metodoPago);
                         }
                     }
                     if (data.ciudad) {
@@ -767,6 +767,21 @@ var Paso3 = {
             // Glow on selected card
             $('.vk-centro-card[data-centro-id="' + centroId + '"]')
                 .css({ 'box-shadow': '0 0 14px rgba(3,159,225,0.45)', 'border-color': '#039fe1' });
+        }
+    },
+
+    _updateLogisticsDisplay: function(costo, metodoPago) {
+        var $el = $('#vk-cp-logistics-content');
+        if (!$el.length) return;
+        if (metodoPago === 'contado') {
+            if (costo > 0) {
+                $el.html('<span style="text-decoration:line-through;color:#999;font-size:16px;">' + VkUI.formatPrecio(costo) + ' MXN</span> <strong style="color:#00C851;font-size:16px;">Sin costo</strong>');
+            } else {
+                $el.html('<strong style="color:#00C851;font-size:16px;">Sin costo</strong>');
+            }
+        } else {
+            // MSI
+            $el.html('<strong style="color:#039fe1;font-size:18px;">' + VkUI.formatPrecio(costo) + '</strong> <span style="color:#039fe1;font-size:18px;font-weight:700;">MXN</span>');
         }
     },
 
