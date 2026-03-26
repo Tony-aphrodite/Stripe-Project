@@ -46,7 +46,7 @@ function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPa
 <table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
 
 <tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:28px;text-align:center;">
-<h1 style="margin:0;font-size:26px;font-weight:900;color:#fff;">Voltika</h1>
+<img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo.svg" alt="Voltika" style="height:36px;width:auto;">
 <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.8);">Movilidad el&eacute;ctrica inteligente</p>
 </td></tr>
 
@@ -119,6 +119,7 @@ Se te pedir&aacute;:<br>
 </td></tr>
 
 <tr><td style="background:#1a3a5c;padding:20px 28px;text-align:center;">
+<img src="https://www.voltika.mx/configurador_prueba/img/goelectric.svg" alt="GO electric" style="height:28px;width:auto;margin-bottom:8px;">
 <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#fff;">Voltika M&eacute;xico</p>
 <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.6);">Mu&eacute;vete a el&eacute;ctrico &middot; Mtech Gears, S.A. de C.V.</p>
 </td></tr>
