@@ -638,6 +638,10 @@ var PasoCreditoEnganche = {
         // Remove existing modal
         jQuery('#vk-oxxo-modal').remove();
 
+        // Add print-only CSS to hide everything except modal
+        if (!jQuery('#vk-oxxo-print-style').length) {
+            jQuery('head').append('<style id="vk-oxxo-print-style">@media print{body>*:not(#vk-oxxo-modal){display:none!important;}#vk-oxxo-modal{position:static!important;background:#fff!important;overflow:visible!important;}#vk-oxxo-modal button{display:none!important;}}</style>');
+        }
         var html = '<div id="vk-oxxo-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.6);overflow-y:auto;-webkit-overflow-scrolling:touch;">';
         html += '<div style="max-width:600px;margin:0 auto;padding:16px;min-height:100vh;">';
 
@@ -680,6 +684,7 @@ var PasoCreditoEnganche = {
         jQuery(document).off('click', '#vk-oxxo-modal-close, #vk-oxxo-modal-close2');
         jQuery(document).on('click', '#vk-oxxo-modal-close, #vk-oxxo-modal-close2', function() {
             jQuery('#vk-oxxo-modal').remove();
+            jQuery('#vk-oxxo-print-style').remove();
         });
     },
 

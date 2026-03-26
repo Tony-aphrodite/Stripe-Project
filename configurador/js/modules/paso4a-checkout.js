@@ -778,6 +778,10 @@ var Paso4A = {
 
     _showContadoVoucherModal: function(refs, total) {
         jQuery('#vk-contado-oxxo-modal').remove();
+        // Print-only CSS: hide everything except modal
+        if (!jQuery('#vk-contado-print-style').length) {
+            jQuery('head').append('<style id="vk-contado-print-style">@media print{body>*:not(#vk-contado-oxxo-modal){display:none!important;}#vk-contado-oxxo-modal{position:static!important;background:#fff!important;overflow:visible!important;}#vk-contado-oxxo-modal button{display:none!important;}}</style>');
+        }
         var voucherUrls = [];
         for (var i = 0; i < refs.length; i++) {
             if (refs[i].hosted_voucher_url) voucherUrls.push({ url: refs[i].hosted_voucher_url, num: i + 1 });
@@ -811,6 +815,7 @@ var Paso4A = {
         jQuery('body').append(html);
         jQuery(document).off('click', '.vk-contado-modal-close').on('click', '.vk-contado-modal-close', function() {
             jQuery('#vk-contado-oxxo-modal').remove();
+            jQuery('#vk-contado-print-style').remove();
         });
     }
 };
