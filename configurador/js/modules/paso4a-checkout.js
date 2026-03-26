@@ -142,9 +142,9 @@ var Paso4A = {
         html += '<div style="font-weight:800;font-size:13px;text-align:center;margin-bottom:8px;line-height:1.3;">Pago \u00fanico<br>100% seguro</div>';
         html += '<div style="font-size:20px;font-weight:900;text-align:center;margin-bottom:4px;">' + VkUI.formatPrecio(total) + ' <span style="font-size:12px;font-weight:600;">MXN</span></div>';
         if (costoLog > 0) {
-            html += '<div style="font-size:10px;text-align:center;margin-bottom:8px;color:#555;">Costo log\u00edstico: <span style="text-decoration:line-through;color:#999;">' + VkUI.formatPrecio(costoLog) + '</span> <strong style="color:#00C851;">Sin costo</strong></div>';
+            html += '<div style="font-size:11px;text-align:center;margin-bottom:8px;"><strong style="color:#039fe1;">Costo log\u00edstico a tu ciudad: <span style="text-decoration:line-through;color:#999;">' + VkUI.formatPrecio(costoLog) + '</span></strong> <strong style="color:#00C851;">Sin costo en pago de contado</strong></div>';
         } else {
-            html += '<div style="font-size:10px;text-align:center;margin-bottom:8px;color:#555;">Costo log\u00edstico: <strong style="color:#00C851;">Sin costo</strong></div>';
+            html += '<div style="font-size:11px;text-align:center;margin-bottom:8px;"><strong style="color:#039fe1;">Costo log\u00edstico a tu ciudad:</strong> <strong style="color:#00C851;">Sin costo</strong></div>';
         }
         html += '<button id="vk-pay-unico" class="vk-pay-btn" data-tipo="unico" style="display:block;width:100%;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
         html += '<span class="vk-pay-btn__label">PAGAR ' + VkUI.formatPrecio(total) + '</span>';
@@ -157,10 +157,11 @@ var Paso4A = {
             html += '<div style="flex:1;min-width:0;border:1.5px solid var(--vk-border);border-radius:10px;padding:12px;display:flex;flex-direction:column;">';
             html += '<div style="font-weight:800;font-size:13px;text-align:center;margin-bottom:8px;line-height:1.3;">9 MSI<br>sin intereses</div>';
             html += '<div style="font-size:20px;font-weight:900;text-align:center;margin-bottom:4px;">' + VkUI.formatPrecio(msiPago) + ' <span style="font-size:12px;font-weight:600;">/ mes</span></div>';
+            html += '<div style="font-size:10px;text-align:center;margin-bottom:4px;color:#888;">Primer pago hoy y luego 8 pagos mensuales.</div>';
             if (costoLog > 0) {
-                html += '<div style="font-size:10px;text-align:center;margin-bottom:8px;color:#555;">Costo log\u00edstico: <strong style="color:#039fe1;">' + VkUI.formatPrecio(costoLog) + '</strong></div>';
+                html += '<div style="font-size:11px;text-align:center;margin-bottom:8px;"><strong style="color:#039fe1;">Costo log\u00edstico a tu ciudad: ' + VkUI.formatPrecio(costoLog) + ' MXN</strong></div>';
             } else {
-                html += '<div style="font-size:10px;text-align:center;margin-bottom:8px;color:#555;">Costo log\u00edstico: <strong style="color:#00C851;">Sin costo</strong></div>';
+                html += '<div style="font-size:11px;text-align:center;margin-bottom:8px;"><strong style="color:#039fe1;">Costo log\u00edstico a tu ciudad:</strong> <strong style="color:#00C851;">Sin costo</strong></div>';
             }
             html += '<button id="vk-pay-msi" class="vk-pay-btn" data-tipo="msi" style="display:block;width:100%;padding:10px 4px;background:var(--vk-green-primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">';
             html += '<span class="vk-pay-btn__label">PAGAR ' + VkUI.formatPrecio(msiPago) + ' / MES</span>';
