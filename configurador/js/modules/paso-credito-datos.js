@@ -17,7 +17,7 @@ var PasoCreditoDatos = {
         if (!modelo) return;
 
         var html = '';
-        html += VkUI.renderBackButton(4);
+        html += VkUI.renderBackButton(3);
         html += VkUI.renderCreditoStepBar(3);
 
         html += '<h2 class="vk-paso__titulo">Informaci\u00f3n personal</h2>';

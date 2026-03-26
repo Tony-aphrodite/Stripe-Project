@@ -15,7 +15,7 @@ var PasoCreditoOTP = {
         var tel   = state.telefono ? ('+52 ' + state.telefono) : 'tu celular';
 
         var html = '';
-        html += VkUI.renderBackButton('credito-datos');
+        html += VkUI.renderBackButton('credito-consentimiento');
         html += VkUI.renderCreditoStepBar(4);
 
         html += '<h2 class="vk-paso__titulo">Verificaci\u00f3n por SMS</h2>';
