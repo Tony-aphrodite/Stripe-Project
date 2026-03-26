@@ -745,9 +745,26 @@ var Paso4A = {
                     html += '<div style="font-size:13px;font-weight:700;">Total: ' + VkUI.formatPrecio(total) + ' MXN</div>';
                     html += '<p style="font-size:12px;color:#888;margin:8px 0 0;">Presenta en cualquier tienda OXXO.</p>';
                     html += '</div>';
-                    html += '<button class="vk-contado-continuar" style="display:block;width:100%;padding:16px;margin-top:12px;background:#1a3a5c;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Continuar mientras realizo mi pago</button>';
+                    // Volver + Print + Download buttons
+                    html += '<div style="display:flex;gap:8px;margin-top:12px;">';
+                    html += '<button id="vk-contado-oxxo-back" style="flex:1;padding:12px;background:#666;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">\u2190 Volver</button>';
+                    html += '<button id="vk-contado-oxxo-print" style="flex:1;padding:12px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Imprimir / PDF</button>';
+                    html += '</div>';
+                    html += '<button class="vk-contado-continuar" style="display:block;width:100%;padding:16px;margin-top:10px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">CONTINUAR CON COMPRA</button>';
                     $('#vk-contado-oxxo-section').html(html).slideDown(200);
                     $('#vk-contado-spei-section').slideUp(200);
+                    // Store refs for download
+                    self._contadoOxxoRefs = refs;
+                    self._contadoOxxoTotal = total;
+                    // Bind Volver (close section)
+                    $(document).off('click', '#vk-contado-oxxo-back').on('click', '#vk-contado-oxxo-back', function() {
+                        $('#vk-contado-oxxo-section').slideUp(200);
+                        $('#vk-contado-oxxo').css({ 'border-color': '#ccc', 'background': '#fff' });
+                    });
+                    // Bind Print (open vouchers in modal)
+                    $(document).off('click', '#vk-contado-oxxo-print').on('click', '#vk-contado-oxxo-print', function() {
+                        self._showContadoVoucherModal(self._contadoOxxoRefs, self._contadoOxxoTotal);
+                    });
                 } else {
                     $('#vk-contado-oxxo-section').html('<div style="color:#C62828;padding:10px;">Error: ' + (response.error || 'No se pudieron generar referencias') + '</div>').slideDown(200);
                 }
@@ -756,6 +773,44 @@ var Paso4A = {
                 $('#vk-contado-oxxo').prop('disabled', false).css('opacity', '1');
                 $('#vk-contado-oxxo-section').html('<div style="color:#C62828;padding:10px;">Error de conexi\u00f3n. Intenta de nuevo.</div>').slideDown(200);
             }
+        });
+    },
+
+    _showContadoVoucherModal: function(refs, total) {
+        jQuery('#vk-contado-oxxo-modal').remove();
+        var voucherUrls = [];
+        for (var i = 0; i < refs.length; i++) {
+            if (refs[i].hosted_voucher_url) voucherUrls.push({ url: refs[i].hosted_voucher_url, num: i + 1 });
+        }
+        if (voucherUrls.length === 0) { alert('No vouchers disponibles.'); return; }
+
+        var html = '<div id="vk-contado-oxxo-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.6);overflow-y:auto;-webkit-overflow-scrolling:touch;">';
+        html += '<div style="max-width:600px;margin:0 auto;padding:16px;min-height:100vh;">';
+        html += '<div style="background:#fff;border-radius:10px;padding:16px;margin-bottom:12px;text-align:center;">';
+        html += '<h2 style="margin:0 0 4px;font-size:18px;">Vouchers de Pago OXXO</h2>';
+        html += '<p style="margin:0;color:#888;font-size:13px;">Voltika - Total: ' + VkUI.formatPrecio(total) + ' MXN (' + voucherUrls.length + ' referencia' + (voucherUrls.length > 1 ? 's' : '') + ')</p>';
+        html += '</div>';
+        html += '<div style="display:flex;gap:10px;margin-bottom:12px;">';
+        html += '<button class="vk-contado-modal-close" style="flex:1;padding:14px;background:#666;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">\u2190 Volver</button>';
+        html += '<button onclick="window.print()" style="flex:1;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">Imprimir / Guardar PDF</button>';
+        html += '</div>';
+        for (var j = 0; j < voucherUrls.length; j++) {
+            html += '<div style="margin-bottom:16px;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">';
+            if (voucherUrls.length > 1) {
+                html += '<div style="font-size:14px;font-weight:700;color:#039fe1;padding:10px 16px;text-align:center;">Referencia ' + voucherUrls[j].num + ' de ' + voucherUrls.length + '</div>';
+            }
+            html += '<iframe src="' + voucherUrls[j].url + '" style="width:100%;min-height:700px;border:none;" loading="eager"></iframe>';
+            html += '</div>';
+        }
+        html += '<div style="display:flex;gap:10px;margin:12px 0 20px;">';
+        html += '<button class="vk-contado-modal-close" style="flex:1;padding:14px;background:#666;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">\u2190 Volver</button>';
+        html += '<button onclick="window.print()" style="flex:1;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">Imprimir / Guardar PDF</button>';
+        html += '</div>';
+        html += '</div></div>';
+
+        jQuery('body').append(html);
+        jQuery(document).off('click', '.vk-contado-modal-close').on('click', '.vk-contado-modal-close', function() {
+            jQuery('#vk-contado-oxxo-modal').remove();
         });
     }
 };
