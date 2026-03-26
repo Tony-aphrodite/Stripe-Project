@@ -167,8 +167,8 @@ var Paso4B = {
 
         var html = '';
 
-        // Back button — back to model selection (paso 1)
-        html += VkUI.renderBackButton(1);
+        // Back button — back to color selection (paso 2)
+        html += VkUI.renderBackButton(2);
 
         // ── Title ───────────────────────────────────────────────────────────
         html += '<div style="text-align:left;margin-bottom:16px;">';

@@ -16,7 +16,7 @@ var PasoCreditoNombre = {
         var state = this.app.state;
         var html = '';
 
-        html += VkUI.renderBackButton('resumen');
+        html += VkUI.renderBackButton('credito-datos');
 
         html += VkUI.renderCreditoStepBar(1);
 
