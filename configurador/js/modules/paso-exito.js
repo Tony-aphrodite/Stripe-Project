@@ -222,16 +222,6 @@ var PasoExito = {
         html += '</div>';
         html += '</div>';
 
-        // Security key section (before Felicidades)
-        html += '<div style="background:#F3E8FD;border-radius:12px;padding:18px;margin-bottom:16px;border:1px solid #E0D0F0;">';
-        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">';
-        html += '<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#4CAF50;"><span style="color:#fff;font-size:13px;">&#128274;</span></span>';
-        html += '<span style="font-size:15px;font-weight:800;color:#333;">Tu tel\u00e9fono ser\u00e1 tu llave de seguridad</span>';
-        html += '</div>';
-        html += '<p style="font-size:14px;color:#555;line-height:1.6;margin:0 0 10px;">Para proteger tu compra, la entrega de tu Voltika se autoriza <strong>\u00fanicamente</strong> con un c\u00f3digo <strong>SMS</strong> enviado a tu tel\u00e9fono.</p>';
-        html += '<p style="font-size:14px;color:#555;line-height:1.6;margin:0;">El d\u00eda de la entrega recibir\u00e1s un <strong>c\u00f3digo de confirmaci\u00f3n</strong> que deber\u00e1s mostrar para recibir tu moto.</p>';
-        html += '</div>';
-
         // === Felicidades ===
         html += '<div style="margin-bottom:16px;padding:0 4px;">';
         html += '<p style="font-size:15px;color:#333;margin:0;">';
