@@ -100,7 +100,7 @@ var Paso4A = {
         html += '<div class="vk-checkbox-group" style="margin-bottom:16px;">';
         html += '<input type="checkbox" class="vk-checkbox" id="vk-terms-check">';
         html += '<label class="vk-checkbox-label" for="vk-terms-check">' +
-            'Acepto los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:var(--vk-green-primary);">t\u00e9rminos y condiciones</a> y el aviso de privacidad' +
+            'Acepto los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:var(--vk-green-primary);">T\u00e9rminos y Condiciones</a>, el <a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" style="color:var(--vk-green-primary);">Aviso de Privacidad</a> y autorizo expresamente el cargo a mi tarjeta por el monto total indicado, as\u00ed como las condiciones de entrega.' +
             '</label>';
         html += '</div>';
 
