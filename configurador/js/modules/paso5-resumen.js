@@ -38,8 +38,10 @@ var PasoResumen = {
     /* ── CONTADO / MSI: Screen 4 ─────────────────────────────────────────── */
     _renderContadoMSI: function(modelo, state) {
         var costoLog = state.costoLogistico || 0;
-        var total   = modelo.precioContado + costoLog;
-        var msiPago = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog) / 9) : Math.round(total / 9);
+        var totalContado = modelo.precioContado; // Contado: freight is free, original price
+        var totalMSI = modelo.precioContado + costoLog; // MSI: includes freight
+        var total = totalContado; // Default to contado price
+        var msiPago = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog) / 9) : Math.round(totalMSI / 9);
         var color   = state.colorSeleccionado || modelo.colorDefault || '';
         var ciudad  = (state.ciudad && state.estado) ? state.ciudad + ', ' + state.estado : (state.ciudad || '--');
         var _envioDestino = (state.centroEntrega && state.centroEntrega.nombre && state.centroEntrega.tipo !== 'cercano')

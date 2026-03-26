@@ -33,8 +33,9 @@ var Paso4A = {
         if (!modelo) return;
 
         var costoLog    = state.costoLogistico || 0;
-        var total       = modelo.precioContado + costoLog;
-        var msiPago     = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog) / 9) : Math.round(total / 9);
+        var total       = modelo.precioContado; // Contado: freight free, original price
+        var totalMSI    = modelo.precioContado + costoLog; // MSI includes freight
+        var msiPago     = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog) / 9) : Math.round(totalMSI / 9);
         var ciudad      = (state.ciudad && state.estado) ? state.ciudad + ', ' + state.estado : (state.ciudad || '--');
         var _fd = new Date(); _fd.setDate(_fd.getDate() + 15);
         var _meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -404,8 +405,9 @@ var Paso4A = {
         var state   = self.app.state;
         var modelo  = self.app.getModelo(state.modeloSeleccionado);
         var costoLog2 = state.costoLogistico || 0;
-        var total   = modelo.precioContado + costoLog2;
-        var msiPago = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog2) / 9) : Math.round(total / 9);
+        var total   = modelo.precioContado; // Contado: freight free
+        var totalMSI = modelo.precioContado + costoLog2;
+        var msiPago = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog2) / 9) : Math.round(totalMSI / 9);
         var amountCents = (self._pagoTipo === 'msi' ? msiPago : total) * 100;
 
         var customerData = {
@@ -638,8 +640,7 @@ var Paso4A = {
         var self = this;
         var state = self.app.state;
         var modelo = self.app.getModelo(state.modeloSeleccionado);
-        var costoLog2 = state.costoLogistico || 0;
-        var total = modelo.precioContado + costoLog2;
+        var total = modelo.precioContado; // Contado: freight free
         var base = window.VK_BASE_PATH || '';
         var nombre = state.nombre || $('#vk-nombre').val() || 'Cliente';
         var email = state.email || $('#vk-email').val() || '';
@@ -699,8 +700,7 @@ var Paso4A = {
         var self = this;
         var state = self.app.state;
         var modelo = self.app.getModelo(state.modeloSeleccionado);
-        var costoLog2 = state.costoLogistico || 0;
-        var total = modelo.precioContado + costoLog2;
+        var total = modelo.precioContado; // Contado: freight free
         var base = window.VK_BASE_PATH || '';
         var nombre = state.nombre || $('#vk-nombre').val() || 'Cliente Voltika';
         var email = state.email || $('#vk-email').val() || 'cliente@voltika.mx';
