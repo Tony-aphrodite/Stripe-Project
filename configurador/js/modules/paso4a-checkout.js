@@ -682,7 +682,7 @@ var Paso4A = {
                     html += '<div style="margin-top:10px;"><span style="color:#00C851;">&#10004;</span> Env\u00eda exactamente <strong>' + VkUI.formatPrecio(total) + ' MXN</strong></div>';
                     html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Confirmaci\u00f3n autom\u00e1tica en minutos.</p>';
                     html += '</div>';
-                    html += '<button class="vk-contado-continuar" style="display:block;width:100%;padding:16px;margin-top:12px;background:#1a3a5c;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Continuar mientras realizo mi pago</button>';
+                    html += '<button class="vk-contado-continuar" style="display:block;width:100%;padding:16px;margin-top:12px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Continuar mientras realizo mi pago</button>';
                     $('#vk-contado-spei-section').html(html).slideDown(200);
                     $('#vk-contado-oxxo-section').slideUp(200);
                 } else {
