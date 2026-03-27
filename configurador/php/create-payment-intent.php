@@ -31,7 +31,22 @@ function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPa
     $section = 'style="margin:0 0 8px;padding:12px 0 6px;font-size:16px;font-weight:800;color:#1a3a5c;border-bottom:2px solid #039fe1;"';
 
     $linkHtml = '';
-    if (is_array($linkPago) && count($linkPago) > 0) {
+    if (is_array($linkPago) && !empty($linkPago['clabe'])) {
+        // SPEI bank transfer details
+        $linkHtml .= '<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin:12px 0;border:1px solid #B3D4FC;">';
+        $linkHtml .= '<div style="font-size:12px;color:#888;margin-bottom:4px;">CLABE Interbancaria:</div>';
+        $linkHtml .= '<div style="font-size:18px;font-weight:900;color:#333;letter-spacing:1px;margin-bottom:10px;">' . htmlspecialchars($linkPago['clabe']) . '</div>';
+        if (!empty($linkPago['referencia'])) {
+            $linkHtml .= '<div style="font-size:14px;color:#333;margin-bottom:4px;">Referencia: <strong>' . htmlspecialchars($linkPago['referencia']) . '</strong></div>';
+        }
+        if (!empty($linkPago['beneficiario'])) {
+            $linkHtml .= '<div style="font-size:14px;color:#333;margin-bottom:4px;">Beneficiario: <strong>' . htmlspecialchars($linkPago['beneficiario']) . '</strong></div>';
+        }
+        if (!empty($linkPago['banco'])) {
+            $linkHtml .= '<div style="font-size:14px;color:#333;">Banco: <strong>' . htmlspecialchars($linkPago['banco']) . '</strong></div>';
+        }
+        $linkHtml .= '</div>';
+    } elseif (is_array($linkPago) && count($linkPago) > 0) {
         // Multiple OXXO voucher URLs
         $totalRefs = count($linkPago);
         if ($totalRefs > 1) {
@@ -291,8 +306,13 @@ try {
         $custEmail = $customer['email'] ?? '';
         $custNombre = $customer['nombre'] ?? '';
         if ($custEmail) {
-            $linkPago = 'CLABE: ' . ($clabe ?: 'Ver en la plataforma');
-            _sendReminderEmail($custEmail, $custNombre, $customer, $amount / 100, 'Transferencia SPEI', $linkPago);
+            $speiInfo = [
+                'clabe'        => $clabe ?: '',
+                'referencia'   => $bankInfo->reference ?? '',
+                'beneficiario' => 'MTECH GEARS S.A. DE C.V.',
+                'banco'        => !empty($bankInfo->hosted_instructions_url) ? 'Stripe' : 'STP'
+            ];
+            _sendReminderEmail($custEmail, $custNombre, $customer, $amount / 100, 'Transferencia SPEI', $speiInfo);
         }
 
         echo json_encode($response);
