@@ -372,7 +372,8 @@ var PasoCreditoEnganche = {
                 total:     enganche,
                 metodoPago: 'credito',
                 enganchePct: self.app.state.enganchePorcentaje,
-                plazoMeses:  self.app.state.plazoMeses
+                plazoMeses:  self.app.state.plazoMeses,
+                pagoSemanal: VkCalculadora.calcular(modelo.precioContado, self.app.state.enganchePorcentaje || 0.30, self.app.state.plazoMeses || 36).pagoSemanal
             }),
             complete: function() {
                 self._setLoading(false);
