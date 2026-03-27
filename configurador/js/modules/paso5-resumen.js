@@ -41,7 +41,9 @@ var PasoResumen = {
         var totalContado = modelo.precioContado; // Contado: freight is free, original price
         var totalMSI = modelo.precioContado + costoLog; // MSI: includes freight
         var total = totalContado; // Default to contado price
-        var msiPago = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog) / 9) : Math.round(totalMSI / 9);
+        var msiPagoExact = modelo.tieneMSI ? (modelo.precioMSI * 9 + costoLog) / 9 : totalMSI / 9;
+        var msiPago = Math.round(msiPagoExact);
+        var _fmtMsi2 = '$' + msiPagoExact.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         var color   = state.colorSeleccionado || modelo.colorDefault || '';
         var ciudad  = (state.ciudad && state.estado) ? state.ciudad + ', ' + state.estado : (state.ciudad || '--');
         var _envioDestino = (state.centroEntrega && state.centroEntrega.nombre && state.centroEntrega.tipo !== 'cercano')
@@ -65,11 +67,12 @@ var PasoResumen = {
         html += '<div style="font-size:14px;font-weight:700;margin-bottom:2px;">Tu moto ' + modelo.nombre + ' est\u00e1 lista</div>';
         if (state.metodoPago === 'msi' && modelo.tieneMSI) {
             html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Ll\u00e9vatela por solo</div>';
-            html += '<div style="font-size:38px;font-weight:900;color:var(--vk-text-primary);line-height:1;">' + VkUI.formatPrecio(msiPago) + ' <span style="font-size:18px;font-weight:700;">/ mes</span></div>';
+            html += '<div style="font-size:38px;font-weight:900;color:var(--vk-text-primary);line-height:1;">' + _fmtMsi2 + ' <span style="font-size:18px;font-weight:700;">/ mes</span></div>';
             html += '<div style="font-size:12px;font-weight:700;color:#039fe1;margin:6px 0 2px;">9 MSI SIN INTERESES</div>';
             html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-bottom:4px;">Primer cargo hoy.</div>';
-            html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:14px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
-            html += '<button id="vk-resumen-pagar-msi" style="display:block;width:100%;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">PAGAR ' + VkUI.formatPrecio(msiPago) + ' HOY</button>';
+            html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:14px;">9 meses de ' + _fmtMsi2 + '</div>';
+            html += '<button id="vk-resumen-pagar-msi" style="display:block;width:100%;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">PAGAR ' + _fmtMsi2 + ' HOY</button>';
         } else {
             html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Pago \u00fanico</div>';
             html += '<div style="font-size:38px;font-weight:900;color:var(--vk-text-primary);line-height:1;">' + VkUI.formatPrecio(total) + ' <span style="font-size:16px;font-weight:700;">MXN</span></div>';
@@ -89,8 +92,8 @@ var PasoResumen = {
             html += '<span style="font-size:14px;font-weight:700;">Pagar a 9 meses sin intereses</span>';
             html += '</div>';
             html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">';
-            html += '<span style="font-size:15px;font-weight:800;">' + VkUI.formatPrecio(msiPago) + ' MXN <span style="font-size:13px;font-weight:500;">/ mes</span></span>';
-            html += '<button id="vk-resumen-pagar-msi-2" style="padding:8px 14px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">PAGAR ' + VkUI.formatPrecio(msiPago) + ' HOY</button>';
+            html += '<span style="font-size:15px;font-weight:800;">' + _fmtMsi2 + ' MXN <span style="font-size:13px;font-weight:500;">/ mes</span></span>';
+            html += '<button id="vk-resumen-pagar-msi-2" style="padding:8px 14px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">PAGAR ' + _fmtMsi2 + ' HOY</button>';
             html += '</div>';
             html += '<div style="font-size:12px;color:var(--vk-text-secondary);margin-top:6px;">Primer pago hoy y luego 8 pagos mensuales.</div>';
             if (costoLog > 0) {

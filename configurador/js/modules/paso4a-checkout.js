@@ -35,7 +35,8 @@ var Paso4A = {
         var costoLog    = state.costoLogistico || 0;
         var total       = modelo.precioContado; // Contado: freight free, original price
         var totalMSI    = modelo.precioContado + costoLog; // MSI includes freight
-        var msiPago     = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog) / 9) : Math.round(totalMSI / 9);
+        var msiPagoExact = modelo.tieneMSI ? (modelo.precioMSI * 9 + costoLog) / 9 : totalMSI / 9;
+        var msiPago     = Math.round(msiPagoExact);
         var ciudad      = (state.ciudad && state.estado) ? state.ciudad + ', ' + state.estado : (state.ciudad || '--');
         var _fd = new Date(); _fd.setDate(_fd.getDate() + 15);
         var _meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -90,13 +91,15 @@ var Paso4A = {
         }
         html += '</div>';
         html += '<div style="border-top:1.5px solid var(--vk-border);margin:12px 0 10px;"></div>';
+        var _fmtMsi2 = '$' + msiPagoExact.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         if (self._pagoTipo === 'msi' && modelo.tieneMSI) {
-            html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Pago mensual: ' + VkUI.formatPrecio(msiPago) + ' MXN <span style="font-size:14px;font-weight:600;">/ mes</span></div>';
-            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:4px;">9 MSI sin intereses</div>';
+            html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Total a pagar hoy: ' + _fmtMsi2 + ' MXN</div>';
+            html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:4px;">9 meses de ' + _fmtMsi2 + '</div>';
         } else {
             html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Total a pagar hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
+            html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
         }
-        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
         html += '</div>';
 
         // 8. Contact + Card form (shown immediately — OTP moved to post-payment)
