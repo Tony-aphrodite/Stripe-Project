@@ -292,7 +292,14 @@ var Paso4A = {
         // Continuar buttons (SPEI/OXXO) — go to post-payment OTP
         $(document).off('click', '.vk-contado-continuar');
         $(document).on('click', '.vk-contado-continuar', function() {
+            var _modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
+            var _costoLog = self.app.state.costoLogistico || 0;
+            self.app.state.totalPagado = _modelo ? _modelo.precioContado : 0;
             self.app.state.pagoCompletado = true;
+            self.app.state._pagoTipo = self._pagoTipo || 'unico';
+            self.app.state.nombre = self.app.state.nombre || $('#vk-nombre').val() || '';
+            self.app.state.email = self.app.state.email || $('#vk-email').val() || '';
+            self.app.state.telefono = self.app.state.telefono || $('#vk-telefono').val() || '';
             self._showPostPaymentOTP();
         });
 
