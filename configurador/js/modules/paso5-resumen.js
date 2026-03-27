@@ -85,10 +85,15 @@ var PasoResumen = {
 
         // 4. Opciones de pago — radio style interactivo (vertical)
         // Opción MSI
+        var _esMSI = (state.metodoPago === 'msi');
         if (modelo.tieneMSI) {
-            html += '<div id="vk-opcion-msi" class="vk-opcion-pago" data-tipo="msi" style="border:2px solid #039fe1;border-radius:10px;padding:14px;margin-bottom:10px;background:#f0faff;cursor:pointer;">';
+            var _msiBorder = _esMSI ? 'border:2px solid #039fe1;background:#f0faff;' : 'border:1.5px solid var(--vk-border);';
+            var _msiRadio = _esMSI
+                ? '<span id="vk-radio-msi" style="width:18px;height:18px;border-radius:50%;background:#039fe1;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#fff;display:block;"></span></span>'
+                : '<span id="vk-radio-msi" style="width:18px;height:18px;border-radius:50%;border:2px solid #ccc;display:inline-block;flex-shrink:0;"></span>';
+            html += '<div id="vk-opcion-msi" class="vk-opcion-pago" data-tipo="msi" style="' + _msiBorder + 'border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;">';
             html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
-            html += '<span id="vk-radio-msi" style="width:18px;height:18px;border-radius:50%;background:#039fe1;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#fff;display:block;"></span></span>';
+            html += _msiRadio;
             html += '<span style="font-size:14px;font-weight:700;">Pagar a 9 meses sin intereses</span>';
             html += '</div>';
             html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">';
@@ -105,9 +110,13 @@ var PasoResumen = {
         }
 
         // Opción contado
-        html += '<div id="vk-opcion-contado" class="vk-opcion-pago" data-tipo="contado" style="border:1.5px solid var(--vk-border);border-radius:10px;padding:14px;margin-bottom:16px;cursor:pointer;">';
+        var _contBorder = !_esMSI ? 'border:2px solid #039fe1;background:#f0faff;' : 'border:1.5px solid var(--vk-border);';
+        var _contRadio = !_esMSI
+            ? '<span id="vk-radio-contado" style="width:18px;height:18px;border-radius:50%;background:#039fe1;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#fff;display:block;"></span></span>'
+            : '<span id="vk-radio-contado" style="width:18px;height:18px;border-radius:50%;border:2px solid #ccc;display:inline-block;flex-shrink:0;"></span>';
+        html += '<div id="vk-opcion-contado" class="vk-opcion-pago" data-tipo="contado" style="' + _contBorder + 'border-radius:10px;padding:14px;margin-bottom:16px;cursor:pointer;">';
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
-        html += '<span id="vk-radio-contado" style="width:18px;height:18px;border-radius:50%;border:2px solid #ccc;display:inline-block;flex-shrink:0;"></span>';
+        html += _contRadio;
         html += '<span style="font-size:14px;font-weight:700;">O pagar al contado</span>';
         html += '</div>';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">';
