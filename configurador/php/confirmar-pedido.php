@@ -180,8 +180,13 @@ $cuerpo = '<!DOCTYPE html>
 </body>
 </html>';
 
-$asunto    = 'Confirmación de tu pedido Voltika ' . $pedidoNum;
-$emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
+// Credit flow emails are handled by confirmar-orden.php — skip here to avoid duplicates
+if ($metodoPago === 'credito') {
+    $emailSent = false;
+} else {
+    $asunto    = 'Confirmación de tu pedido Voltika ' . $pedidoNum;
+    $emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
+}
 
 echo json_encode([
     'status'    => 'ok',
