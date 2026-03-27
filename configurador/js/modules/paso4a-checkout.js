@@ -82,7 +82,11 @@ var Paso4A = {
         html += '<div>\u2022 Fecha M\u00e1xima de entrega: <strong style="color:#039fe1;">' + fechaEntrega + '</strong></div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);">\u2022 Asesor Voltika confirma la ubicaci\u00f3n exacta del centro autorizado entre 24 a 48 horas, h\u00e1biles despu\u00e9s del pago</div>';
         if (state.costoLogistico > 0) {
-            html += '<div>\u2022 Costo log\u00edstico: <strong>' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</strong></div>';
+            if (self._pagoTipo === 'unico' || state.metodoPago === 'contado') {
+                html += '<div>\u2022 Costo log\u00edstico: <span style="text-decoration:line-through;color:#999;">' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</span> <strong style="color:#00C851;">Sin costo</strong></div>';
+            } else {
+                html += '<div>\u2022 Costo log\u00edstico: <strong>' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</strong></div>';
+            }
         }
         html += '</div>';
         html += '<div style="border-top:1.5px solid var(--vk-border);margin:12px 0 10px;"></div>';
