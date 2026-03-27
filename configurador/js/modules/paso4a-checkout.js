@@ -86,11 +86,13 @@ var Paso4A = {
         }
         html += '</div>';
         html += '<div style="border-top:1.5px solid var(--vk-border);margin:12px 0 10px;"></div>';
-        html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Total a pagar hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
-        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
-        if (modelo.tieneMSI) {
-            html += '<div style="font-size:13px;color:var(--vk-text-secondary);">\u2022 o 9 pagos de <strong>' + VkUI.formatPrecio(msiPago) + ' MXN</strong> (9 MSI sin intereses)</div>';
+        if (self._pagoTipo === 'msi' && modelo.tieneMSI) {
+            html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Pago mensual: ' + VkUI.formatPrecio(msiPago) + ' MXN <span style="font-size:14px;font-weight:600;">/ mes</span></div>';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:4px;">9 MSI sin intereses</div>';
+        } else {
+            html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Total a pagar hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
         }
+        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
         html += '</div>';
 
         // 8. Contact + Card form (shown immediately — OTP moved to post-payment)
