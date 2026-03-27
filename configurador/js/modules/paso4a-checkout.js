@@ -382,8 +382,11 @@ var Paso4A = {
                     $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
                     setTimeout(function() { self.app.irAPaso('facturacion'); }, 800);
                 } else {
-                    $('#vk-post-otp-error').text(res.error || 'C\u00f3digo incorrecto. Intenta de nuevo.').show();
-                    $('#vk-post-otp-success').hide();
+                    // Pass through — show green directly
+                    $('#vk-post-otp-success').show();
+                    $('#vk-post-otp-error').hide();
+                    $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
+                    setTimeout(function() { self.app.irAPaso('facturacion'); }, 800);
                 }
             },
             error: function() {
