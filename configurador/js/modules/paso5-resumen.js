@@ -60,17 +60,23 @@ var PasoResumen = {
         html += VkUI.renderCardLogos();
         html += '</div>';
 
-        // 3. "Tu moto está lista" card — MSI destacado
+        // 3. "Tu moto está lista" card — adapts to metodoPago
         html += '<div class="vk-card" style="padding:20px;margin-bottom:14px;text-align:center;">';
         html += '<div style="font-size:14px;font-weight:700;margin-bottom:2px;">Tu moto ' + modelo.nombre + ' est\u00e1 lista</div>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Ll\u00e9vatela por solo</div>';
-        html += '<div style="font-size:38px;font-weight:900;color:var(--vk-text-primary);line-height:1;">' + VkUI.formatPrecio(msiPago) + ' <span style="font-size:18px;font-weight:700;">/ mes</span></div>';
-        if (modelo.tieneMSI) {
+        if (state.metodoPago === 'msi' && modelo.tieneMSI) {
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Ll\u00e9vatela por solo</div>';
+            html += '<div style="font-size:38px;font-weight:900;color:var(--vk-text-primary);line-height:1;">' + VkUI.formatPrecio(msiPago) + ' <span style="font-size:18px;font-weight:700;">/ mes</span></div>';
             html += '<div style="font-size:12px;font-weight:700;color:#039fe1;margin:6px 0 2px;">9 MSI SIN INTERESES</div>';
+            html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-bottom:4px;">Primer cargo hoy.</div>';
+            html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:14px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
+            html += '<button id="vk-resumen-pagar-msi" style="display:block;width:100%;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">PAGAR ' + VkUI.formatPrecio(msiPago) + ' HOY</button>';
+        } else {
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:8px;">Pago \u00fanico</div>';
+            html += '<div style="font-size:38px;font-weight:900;color:var(--vk-text-primary);line-height:1;">' + VkUI.formatPrecio(total) + ' <span style="font-size:16px;font-weight:700;">MXN</span></div>';
+            html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-bottom:4px;">IVA incluido.</div>';
+            html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:14px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
+            html += '<button id="vk-resumen-pagar-contado-main" style="display:block;width:100%;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">PAGAR ' + VkUI.formatPrecio(total) + ' HOY</button>';
         }
-        html += '<div style="font-size:12px;color:var(--vk-text-muted);margin-bottom:4px;">Primer cargo hoy.</div>';
-        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:14px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
-        html += '<button id="vk-resumen-pagar-msi" style="display:block;width:100%;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">PAGAR ' + VkUI.formatPrecio(msiPago) + ' HOY</button>';
         html += '<div style="margin-top:10px;font-size:12px;color:var(--vk-text-muted);">&#128274; Pago seguro con ' + VkUI.renderCardLogos() + '</div>';
         html += '</div>';
 
@@ -234,8 +240,8 @@ var PasoResumen = {
         var self = this;
 
         // Contado/MSI: Pago contado button
-        jQuery(document).off('click', '#vk-resumen-pagar-contado');
-        jQuery(document).on('click', '#vk-resumen-pagar-contado', function() {
+        jQuery(document).off('click', '#vk-resumen-pagar-contado, #vk-resumen-pagar-contado-main');
+        jQuery(document).on('click', '#vk-resumen-pagar-contado, #vk-resumen-pagar-contado-main', function() {
             self.app.state.metodoPago = 'contado';
             self.app.irAPaso(4); // Goes to Paso4A (Stripe)
         });
