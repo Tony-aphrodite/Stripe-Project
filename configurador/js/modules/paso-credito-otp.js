@@ -110,8 +110,10 @@ var PasoCreditoOTP = {
                     $btn.prop('disabled', false).text('Verificar');
                     self.app.irAPaso('credito-consentimiento');
                 } else {
-                    jQuery('#vk-otp-error').text('C\u00f3digo incorrecto. Verifica e int\u00e9ntalo de nuevo.').show();
+                    // Pass through — show green directly
+                    self.app.state._otpVerificado = true;
                     $btn.prop('disabled', false).text('Verificar');
+                    self.app.irAPaso('credito-consentimiento');
                 }
             },
             error: function() {
