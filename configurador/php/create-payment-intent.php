@@ -47,14 +47,16 @@ function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPa
         }
         $linkHtml .= '</div>';
     } elseif (is_array($linkPago) && count($linkPago) > 0) {
-        // Multiple OXXO voucher URLs
+        // Multiple OXXO voucher URLs — wrap through our voucher page
+        $voucherBase = 'https://www.voltika.mx/configurador_prueba/voucher.html?url=';
         $totalRefs = count($linkPago);
         if ($totalRefs > 1) {
             $linkHtml .= '<p style="font-size:13px;color:#555;text-align:center;margin:8px 0;">Se generaron <strong>' . $totalRefs . ' referencias</strong> de pago:</p>';
         }
         foreach ($linkPago as $idx => $url) {
+            $wrappedUrl = $voucherBase . urlencode($url);
             $label = $totalRefs > 1 ? 'REFERENCIA ' . ($idx + 1) . ' DE ' . $totalRefs . ' &rarr;' : 'COMPLETAR MI PAGO &rarr;';
-            $linkHtml .= '<a href="' . htmlspecialchars($url) . '" style="display:block;text-align:center;padding:14px;background:#039fe1;color:#fff;border-radius:10px;font-size:14px;font-weight:800;text-decoration:none;margin:8px 0;">' . $label . '</a>';
+            $linkHtml .= '<a href="' . htmlspecialchars($wrappedUrl) . '" style="display:block;text-align:center;padding:14px;background:#039fe1;color:#fff;border-radius:10px;font-size:14px;font-weight:800;text-decoration:none;margin:8px 0;">' . $label . '</a>';
         }
     } elseif (is_string($linkPago) && filter_var($linkPago, FILTER_VALIDATE_URL)) {
         $linkHtml = '<a href="' . htmlspecialchars($linkPago) . '" style="display:block;text-align:center;padding:16px;background:#039fe1;color:#fff;border-radius:10px;font-size:16px;font-weight:800;text-decoration:none;margin:12px 0;">COMPLETAR MI PAGO &rarr;</a>';
