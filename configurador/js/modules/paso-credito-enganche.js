@@ -373,7 +373,9 @@ var PasoCreditoEnganche = {
                 metodoPago: 'credito',
                 enganchePct: self.app.state.enganchePorcentaje,
                 plazoMeses:  self.app.state.plazoMeses,
-                pagoSemanal: VkCalculadora.calcular(modelo.precioContado, self.app.state.enganchePorcentaje || 0.30, self.app.state.plazoMeses || 36).pagoSemanal
+                pagoSemanal: VkCalculadora.calcular(modelo.precioContado, self.app.state.enganchePorcentaje || 0.30, self.app.state.plazoMeses || 36).pagoSemanal,
+                asesoriaPlacas: self.app.state.asesoria_placas || false,
+                seguroQualitas: self.app.state.seguro_qualitas || false
             }),
             complete: function() {
                 self._setLoading(false);

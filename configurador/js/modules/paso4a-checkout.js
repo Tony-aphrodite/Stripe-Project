@@ -511,7 +511,9 @@ var Paso4A = {
                 cp:        customerData.cp,
                 total:     total,
                 msiPago:   msiPago,
-                msiMeses:  modelo.msiMeses
+                msiMeses:  modelo.msiMeses,
+                asesoriaPlacas: state.asesoria_placas || false,
+                seguroQualitas: state.seguro_qualitas || false
             }),
             complete: function() {
                 self._setLoading(false);

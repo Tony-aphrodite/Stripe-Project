@@ -39,6 +39,8 @@ $cp              = $json['cp']              ?? '';
 $total           = floatval($json['total']  ?? 0);
 $msiPago         = floatval($json['msiPago'] ?? 0);
 $msiMeses        = intval($json['msiMeses'] ?? 9);
+$asesoriaPlacas  = !empty($json['asesoriaPlacas']) ? 'Sí' : 'No';
+$seguroQualitas  = !empty($json['seguroQualitas']) ? 'Sí' : 'No';
 
 $pedidoNum = time();
 $fecha     = date('Y-m-d H:i');
@@ -138,6 +140,8 @@ $cuerpo = '<!DOCTYPE html>
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Ciudad de entrega</td><td ' . $td . '>' . $cd . '</td></tr>
 <tr><td ' . $tdl . '>Monto pagado</td><td ' . $td . '><strong style="color:#039fe1;">' . $montoFormateado . '</strong></td></tr>
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Método de pago</td><td ' . $td . '>' . htmlspecialchars($pagoDescripcion) . '</td></tr>
+<tr><td ' . $tdl . '>Asesoría para placas</td><td ' . $td . '>' . $asesoriaPlacas . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Seguro Qualitas</td><td ' . $td . '>' . $seguroQualitas . '</td></tr>
 </table>
 
 <!-- QUÉ SIGUE -->
@@ -240,6 +244,8 @@ if ($esCredito) {
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Pago semanal</td><td ' . $td . '><strong style="color:#039fe1;">' . $pagoSemanalFormateado . '</strong></td></tr>
 <tr><td ' . $tdl . '>Plazo</td><td ' . $td . '>' . $plazoTexto . '</td></tr>
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Folio de Contrato</td><td ' . $td . '><strong>' . htmlspecialchars($folioContrato) . '</strong></td></tr>
+<tr><td ' . $tdl . '>Asesoría para placas</td><td ' . $td . '>' . $asesoriaPlacas . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Seguro Qualitas</td><td ' . $td . '>' . $seguroQualitas . '</td></tr>
 </table>
 
 <div ' . $section . '>¿QUÉ SIGUE?</div>
