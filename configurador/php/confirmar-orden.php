@@ -92,11 +92,13 @@ $folioContrato  = $json['folioContrato'] ?? ('VK-' . date('Ymd') . '-' . strtoup
 $metodoPago     = $json['metodoPago'] ?? $pagoTipo;
 $esCredito      = ($pagoTipo === 'enganche' || $metodoPago === 'credito');
 
-$pagoDescripcion = $pagoTipo === 'msi'
-    ? $msiMeses . ' MSI de $' . number_format($msiPago, 0, '.', ',') . ' MXN/mes'
-    : 'Pago único de $' . number_format($total, 0, '.', ',') . ' MXN';
-
-$montoFormateado = '$' . number_format($total, 0, '.', ',') . ' MXN';
+if ($pagoTipo === 'msi') {
+    $pagoDescripcion = $msiMeses . ' pagos de $' . number_format($msiPago, 0, '.', ',') . ' MXN sin intereses';
+    $montoFormateado = '$' . number_format($msiPago, 0, '.', ',') . ' MXN';
+} else {
+    $pagoDescripcion = 'Pago de Contado';
+    $montoFormateado = '$' . number_format($total, 0, '.', ',') . ' MXN';
+}
 $engancheFormateado = '$' . number_format($total, 0, '.', ',') . ' MXN';
 $pagoSemanalFormateado = '$' . number_format($pagoSemanal, 0, '.', ',') . ' MXN';
 $plazoTexto = $plazoMeses . ' meses (' . round($plazoMeses * 4.33) . ' semanas)';
