@@ -687,8 +687,8 @@ var Paso4A = {
                     if (sd.clabe) {
                         html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
                         html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">CLABE Interbancaria:</div>';
-                        html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">';
-                        html += '<div style="font-size:18px;font-weight:900;color:#333;letter-spacing:1px;">' + sd.clabe + '</div>';
+                        html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
+                        html += '<div style="font-size:15px;font-weight:900;color:#333;letter-spacing:0.5px;word-break:break-all;flex:1;min-width:0;">' + sd.clabe + '</div>';
                         html += '<button class="vk-copy-clabe" data-clabe="' + sd.clabe + '" style="flex-shrink:0;padding:6px 12px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Copiar</button>';
                         html += '</div></div>';
                     }
