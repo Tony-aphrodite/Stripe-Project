@@ -164,7 +164,7 @@ var Paso3 = {
         html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/asesor_icon.jpg" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">';
         html += '<div>';
         html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Tu Asesor Voltika</div>';
-        html += '<div style="font-size:14px;color:var(--vk-text-secondary);">Estar\u00e1 contigo desde la entrega. M\u00e1x. <strong>48 horas</strong> para confirmarte el punto autorizado.</div>';
+        html += '<div style="font-size:14px;color:var(--vk-text-secondary);">Tu asesor Voltika te acompa\u00f1ar\u00e1 en todo momento. En menos de <strong style="font-size:15px;">48 horas</strong> te confirmamos tu punto de entrega autorizado.</div>';
         html += '</div>';
         html += '</div>';
         html += '</div>';
@@ -662,7 +662,7 @@ var Paso3 = {
 
         // Confirmation note
         h += '<div style="font-size:12px;color:#1a3a5c;background:#E8F4FD;border-radius:8px;padding:10px 14px;text-align:center;">';
-        h += '' + self._clockIcon() + ' Confirmaci\u00f3n en menos de <strong>24 horas</strong> por WhatsApp o correo';
+        h += '' + self._clockIcon() + ' Confirmaci\u00f3n en menos de <strong style="font-size:15px;">48 horas</strong> por WhatsApp o correo';
         h += '</div>';
 
         h += '</div>'; // end body
