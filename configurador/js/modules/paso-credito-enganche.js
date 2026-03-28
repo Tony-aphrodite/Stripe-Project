@@ -574,7 +574,10 @@ var PasoCreditoEnganche = {
         html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:30px;">';
         html += '<span style="font-size:14px;font-weight:700;color:#333;">Referencia' + (refs.length > 1 ? 's' : '') + ' de pago OXXO</span>';
         html += '</div>';
+        html += '<div style="display:flex;align-items:center;gap:8px;">';
+        html += '<img src="' + base + 'img/voltika_logo.svg" alt="Voltika" style="width:50px;height:auto;opacity:0.9;">';
         html += '<button class="vk-close-payment-result" data-target="vk-oxxo-section" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666;padding:0 4px;">&times;</button>';
+        html += '</div>';
         html += '</div>';
         if (refs.length > 1) {
             html += '<div style="font-size:12px;color:#555;background:#fff;border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;font-style:italic;">Dividimos tu pago por l\u00edmites de OXXO para que puedas completarlo f\u00e1cilmente</div>';

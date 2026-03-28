@@ -692,11 +692,16 @@ var Paso4A = {
                         html += '<button class="vk-copy-clabe" data-clabe="' + sd.clabe + '" style="flex-shrink:0;padding:6px 12px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Copiar</button>';
                         html += '</div></div>';
                     }
-                    html += '<div style="font-size:13px;line-height:2;color:#333;">';
+                    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">';
+                    html += '<div style="font-size:13px;line-height:2;color:#333;flex:1;">';
                     if (sd.beneficiario) html += 'Beneficiario: <strong>' + sd.beneficiario + '</strong><br>';
                     if (sd.referencia) html += 'Referencia: <strong>' + sd.referencia + '</strong><br>';
                     if (sd.banco) html += 'Banco: <strong>' + sd.banco + '</strong><br>';
                     html += 'Monto: <strong style="color:#039fe1;font-size:16px;">' + VkUI.formatPrecio(total) + ' MXN</strong>';
+                    html += '</div>';
+                    html += '<div style="flex-shrink:0;text-align:center;">';
+                    html += '<img src="' + base + 'img/voltika_logo.svg" alt="Voltika" style="width:60px;height:auto;opacity:0.9;">';
+                    html += '</div>';
                     html += '</div>';
                     html += '<div style="margin-top:10px;"><span style="color:#00C851;">&#10004;</span> Env\u00eda exactamente <strong>' + VkUI.formatPrecio(total) + ' MXN</strong></div>';
                     html += '<p style="font-size:12px;color:#888;margin:10px 0 0;">Confirmaci\u00f3n autom\u00e1tica en minutos.</p>';
@@ -740,9 +745,12 @@ var Paso4A = {
                 if (response && response.oxxoData) {
                     var refs = Array.isArray(response.oxxoData) ? response.oxxoData : [response.oxxoData];
                     var html = '<div style="background:#FFF8E1;border-radius:10px;padding:16px;border:1px solid #FFE082;">';
-                    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+                    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
+                    html += '<div style="display:flex;align-items:center;gap:10px;">';
                     html += '<img src="' + base + 'img/oxxo_logo.png" alt="OXXO" style="height:30px;">';
                     html += '<span style="font-size:14px;font-weight:700;color:#333;">Referencias de pago OXXO</span>';
+                    html += '</div>';
+                    html += '<img src="' + base + 'img/voltika_logo.svg" alt="Voltika" style="width:60px;height:auto;opacity:0.9;">';
                     html += '</div>';
                     if (refs.length > 1) {
                         html += '<div style="font-size:12px;color:#555;background:#fff;border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;font-style:italic;">Dividimos tu pago por l\u00edmites de OXXO para que puedas completarlo f\u00e1cilmente</div>';
