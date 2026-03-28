@@ -687,9 +687,9 @@ var Paso4A = {
                     if (sd.clabe) {
                         html += '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
                         html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">CLABE Interbancaria:</div>';
-                        html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
-                        html += '<div style="font-size:15px;font-weight:900;color:#333;letter-spacing:0.5px;word-break:break-all;flex:1;min-width:0;">' + sd.clabe + '</div>';
-                        html += '<button class="vk-copy-clabe" data-clabe="' + sd.clabe + '" style="flex-shrink:0;padding:6px 12px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Copiar</button>';
+                        html += '<div style="display:flex;align-items:center;gap:6px;">';
+                        html += '<div style="font-size:13px;font-weight:900;color:#333;letter-spacing:0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;">' + sd.clabe + '</div>';
+                        html += '<button class="vk-copy-clabe" data-clabe="' + sd.clabe + '" style="flex-shrink:0;padding:5px 10px;background:#039fe1;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Copiar</button>';
                         html += '</div></div>';
                     }
                     html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">';
