@@ -93,7 +93,9 @@ function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPa
 </table>
 
 <div ' . $section . '>TERMINA TU COMPRA AHORA</div>
-<p style="font-size:14px;color:#555;margin:12px 0 8px;">Tu referencia de pago ya est&aacute; generada.</p>
+' . (strpos($metodo, 'SPEI') !== false || strpos($metodo, 'Transferencia') !== false
+    ? '<p style="font-size:14px;color:#555;margin:12px 0 8px;">Se gener&oacute; tu referencia para transferencia bancaria. Realiza tu transferencia desde cualquier banco a:</p>'
+    : '<p style="font-size:14px;color:#555;margin:12px 0 8px;">Tu referencia de pago ya est&aacute; generada.</p>') . '
 ' . $linkHtml . '
 
 <div ' . $section . '>PAGO AUTOM&Aacute;TICO (IMPORTANTE)</div>
