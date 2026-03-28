@@ -92,10 +92,11 @@ var Paso4A = {
         html += '</div>';
         html += '<div style="border-top:1.5px solid var(--vk-border);margin:12px 0 10px;"></div>';
         var _fmtMsi2 = '$' + msiPagoExact.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        if (self._pagoTipo === 'msi' && modelo.tieneMSI) {
+        var _esMSICheckout = (self._pagoTipo === 'msi' || state.metodoPago === 'msi') && modelo.tieneMSI;
+        if (_esMSICheckout) {
             html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Total a pagar hoy: ' + _fmtMsi2 + ' MXN</div>';
-            html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
-            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:4px;">9 meses de ' + _fmtMsi2 + '</div>';
+            html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;">Entrega incluida en ' + _envioDestino + '</div>';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:4px;">9 Meses sin intereses</div>';
         } else {
             html += '<div style="font-size:20px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Total a pagar hoy: ' + VkUI.formatPrecio(total) + ' MXN</div>';
             html += '<div style="font-size:13px;font-weight:700;color:var(--vk-green-primary);margin-bottom:4px;">Env\u00edo incluido a ' + _envioDestino + '</div>';
