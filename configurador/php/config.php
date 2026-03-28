@@ -29,6 +29,9 @@ if (file_exists($envFile)) {
 if (!defined('STRIPE_SECRET_KEY')) {
     define('STRIPE_SECRET_KEY', getenv('STRIPE_SECRET_KEY') ?: '');
 }
+if (!defined('STRIPE_WEBHOOK_SECRET')) {
+    define('STRIPE_WEBHOOK_SECRET', getenv('STRIPE_WEBHOOK_SECRET') ?: 'whsec_PLACEHOLDER');
+}
 
 // Database
 if (!defined('DB_HOST')) define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
