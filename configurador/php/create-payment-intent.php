@@ -71,7 +71,7 @@ function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPa
 <table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
 
 <tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:28px;text-align:center;">
-<img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" style="height:44px;width:auto;display:block;margin:0 auto;">
+<img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" style="height:44px;width:auto;display:block;margin:0 auto;">
 <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.8);">Movilidad el&eacute;ctrica inteligente</p>
 </td></tr>
 
