@@ -545,7 +545,7 @@ var Paso4A = {
         var html = '';
         html += '<div style="text-align:center;margin-bottom:20px;">';
         html += '<div style="font-size:48px;margin-bottom:8px;">&#128274;</div>';
-        html += '<div style="font-size:18px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Tu tel\u00e9fono ser\u00e1 tu llave de seguridad</div>';
+        html += '<div style="font-size:18px;font-weight:800;color:var(--vk-text-primary);margin-bottom:4px;">Tu tel\u00e9fono ser\u00e1 tu llave de seguridad para recoger tu Voltika</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);">Te enviamos un c\u00f3digo por SMS para verificar tu n\u00famero.</div>';
         html += '</div>';
 
