@@ -46,13 +46,41 @@ function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPa
             $linkHtml .= '<div style="font-size:14px;color:#333;">Banco: <strong>' . htmlspecialchars($linkPago['banco']) . '</strong></div>';
         }
         $linkHtml .= '</div>';
+    } elseif (is_array($linkPago) && !empty($linkPago['oxxoRefs'])) {
+        // OXXO references with full details
+        $refs = $linkPago['oxxoRefs'];
+        $totalRefs = count($refs);
+        $voucherBase = 'https://www.voltika.mx/configurador_prueba/voucher.html?url=';
+        if ($totalRefs > 1) {
+            $linkHtml .= '<p style="font-size:13px;color:#555;text-align:center;margin:8px 0;">Se generaron <strong>' . $totalRefs . ' referencias</strong> de pago. Presenta cualquiera en OXXO:</p>';
+        }
+        foreach ($refs as $idx => $ref) {
+            $refNum = $ref['number'] ?? '--';
+            $refAmount = $ref['amount'] ? '$' . number_format($ref['amount'] / 100, 0, '.', ',') . ' MXN' : '';
+            $refExpires = !empty($ref['expires_after']) ? date('d/m/Y', $ref['expires_after']) : '';
+            $formatted = implode(' ', str_split($refNum, 4));
+
+            $linkHtml .= '<div style="background:#FFF8E1;border-radius:10px;padding:14px;margin:10px 0;border:1px solid #FFE082;">';
+            if ($totalRefs > 1) {
+                $linkHtml .= '<div style="font-size:12px;color:#039fe1;font-weight:700;margin-bottom:6px;">Referencia ' . ($idx + 1) . ' de ' . $totalRefs . '</div>';
+            }
+            $linkHtml .= '<div style="font-size:12px;color:#888;margin-bottom:2px;">N&uacute;mero de referencia:</div>';
+            $linkHtml .= '<div style="font-size:16px;font-weight:900;color:#333;letter-spacing:0.5px;font-family:monospace;margin-bottom:8px;">' . htmlspecialchars($formatted) . '</div>';
+            $linkHtml .= '<div style="font-size:13px;color:#333;">Monto: <strong>' . $refAmount . '</strong></div>';
+            if ($refExpires) {
+                $linkHtml .= '<div style="font-size:12px;color:#888;margin-top:2px;">Vence: <strong>' . $refExpires . '</strong></div>';
+            }
+            if (!empty($ref['hosted_voucher_url'])) {
+                $wrappedUrl = $voucherBase . urlencode($ref['hosted_voucher_url']);
+                $linkHtml .= '<a href="' . htmlspecialchars($wrappedUrl) . '" style="display:block;text-align:center;margin-top:10px;padding:10px;background:#E53935;color:#fff;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">Ver voucher con c&oacute;digo de barras</a>';
+            }
+            $linkHtml .= '</div>';
+        }
+        $linkHtml .= '<p style="font-size:12px;color:#888;text-align:center;margin:10px 0 0;">Presenta en cualquier tienda OXXO. Confirmaci&oacute;n autom&aacute;tica al pagar.</p>';
     } elseif (is_array($linkPago) && count($linkPago) > 0) {
-        // Multiple OXXO voucher URLs — wrap through our voucher page
+        // Fallback: array of URLs
         $voucherBase = 'https://www.voltika.mx/configurador_prueba/voucher.html?url=';
         $totalRefs = count($linkPago);
-        if ($totalRefs > 1) {
-            $linkHtml .= '<p style="font-size:13px;color:#555;text-align:center;margin:8px 0;">Se generaron <strong>' . $totalRefs . ' referencias</strong> de pago:</p>';
-        }
         foreach ($linkPago as $idx => $url) {
             $wrappedUrl = $voucherBase . urlencode($url);
             $label = $totalRefs > 1 ? 'REFERENCIA ' . ($idx + 1) . ' DE ' . $totalRefs . ' &rarr;' : 'COMPLETAR MI PAGO &rarr;';
@@ -409,15 +437,11 @@ try {
             'totalRefs' => count($oxxoRefs)
         ];
 
-        // Send OXXO reminder email
+        // Send OXXO reminder email with full reference data
         $custEmail = $customer['email'] ?? '';
         $custNombre = $customer['nombre'] ?? '';
         if ($custEmail) {
-            $allVoucherUrls = [];
-            foreach ($oxxoRefs as $ref) {
-                if (!empty($ref['hosted_voucher_url'])) $allVoucherUrls[] = $ref['hosted_voucher_url'];
-            }
-            _sendReminderEmail($custEmail, $custNombre, $customer, $amount / 100, 'Pago en OXXO', $allVoucherUrls);
+            _sendReminderEmail($custEmail, $custNombre, $customer, $amount / 100, 'Pago en OXXO', ['oxxoRefs' => $oxxoRefs]);
         }
 
         echo json_encode($response);
