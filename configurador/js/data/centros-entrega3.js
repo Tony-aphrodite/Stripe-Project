@@ -59,6 +59,38 @@ var VOLTIKA_CENTROS = [
         zonas: ['55'],
         tags: ['Exhibici\u00f3n', 'Entrega', 'Servicio t\u00e9cnico'],
         descripcion: 'Entrega y soporte t\u00e9cnico autorizados por Voltika.'
+    },
+    {
+        id: 'race-moto-taller-tlalpan',
+        nombre: 'Race Moto Taller',
+        direccion: 'Carretera Federal a Cuernavaca #5595',
+        ubicacion: 'Tlalpan \u2013 CDMX',
+        colonia: 'Col. San Pedro M\u00e1rtir, Alcald\u00eda Tlalpan',
+        cp: '14650',
+        ciudad: 'Ciudad de M\u00e9xico',
+        estado: 'Distrito Federal',
+        horarios: 'L-V: 10am a 6pm \u00b7 S\u00e1bado: 10am a 2pm \u00b7 Domingo: Cerrado',
+        autorizado: true,
+        tipo: 'certificado',
+        zonas: ['14','16','10','12'],
+        tags: ['Entrega', 'Servicio t\u00e9cnico'],
+        descripcion: 'Entrega y soporte t\u00e9cnico autorizados por Voltika.'
+    },
+    {
+        id: 'moto-centro-chihuahua',
+        nombre: 'Moto Centro',
+        direccion: 'Tecnol\u00f3gico 1103',
+        ubicacion: 'Chihuahua',
+        colonia: 'Col. Santo Ni\u00f1o',
+        cp: '31200',
+        ciudad: 'Chihuahua',
+        estado: 'Chihuahua',
+        horarios: 'L-V: 9am a 1pm y 3pm a 6pm \u00b7 S\u00e1bado: 9am a 1pm \u00b7 Domingo: Cerrado',
+        autorizado: true,
+        tipo: 'certificado',
+        zonas: ['31','32','33'],
+        tags: ['Entrega', 'Servicio t\u00e9cnico'],
+        descripcion: 'Entrega y soporte t\u00e9cnico autorizados por Voltika.'
     }
 ];
 
