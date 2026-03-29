@@ -33,9 +33,21 @@ function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPa
     $linkHtml = '';
     if (is_array($linkPago) && !empty($linkPago['clabe'])) {
         // SPEI bank transfer details
+        $clabeValue = htmlspecialchars($linkPago['clabe']);
         $linkHtml .= '<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin:12px 0;border:1px solid #B3D4FC;">';
+        // Header with logo
+        $linkHtml .= '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
+        $linkHtml .= '<span style="font-size:14px;font-weight:700;color:#1a3a5c;">Datos para transferencia SPEI</span>';
+        $linkHtml .= '<img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" style="height:28px;width:auto;background:#1a3a5c;border-radius:6px;padding:4px 8px;">';
+        $linkHtml .= '</div>';
+        // CLABE with copy link
+        $linkHtml .= '<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #eee;margin-bottom:10px;">';
         $linkHtml .= '<div style="font-size:12px;color:#888;margin-bottom:4px;">CLABE Interbancaria:</div>';
-        $linkHtml .= '<div style="font-size:18px;font-weight:900;color:#333;letter-spacing:1px;margin-bottom:10px;">' . htmlspecialchars($linkPago['clabe']) . '</div>';
+        $linkHtml .= '<div style="display:flex;align-items:center;justify-content:space-between;">';
+        $linkHtml .= '<div style="font-size:16px;font-weight:900;color:#333;letter-spacing:0.5px;">' . $clabeValue . '</div>';
+        $linkHtml .= '<a href="https://www.voltika.mx/configurador_prueba/voucher.html?clabe=' . $clabeValue . '" style="flex-shrink:0;padding:6px 12px;background:#039fe1;color:#fff;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">Copiar</a>';
+        $linkHtml .= '</div>';
+        $linkHtml .= '</div>';
         if (!empty($linkPago['referencia'])) {
             $linkHtml .= '<div style="font-size:14px;color:#333;margin-bottom:4px;">Referencia: <strong>' . htmlspecialchars($linkPago['referencia']) . '</strong></div>';
         }
