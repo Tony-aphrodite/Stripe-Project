@@ -528,15 +528,19 @@ var Paso4A = {
     },
 
     _setLoading: function(isLoading) {
-        var $btn = $('.vk-pay-btn');
+        var activeId = this._pagoTipo === 'msi' ? '#vk-pay-msi' : '#vk-pay-unico';
+        var $active = $(activeId);
+        var $other = $('.vk-pay-btn').not(activeId);
         if (isLoading) {
-            $btn.prop('disabled', true);
-            $btn.find('.vk-pay-btn__label').hide();
-            $btn.find('.vk-pay-btn__spinner').show();
+            $active.prop('disabled', true);
+            $active.find('.vk-pay-btn__label').hide();
+            $active.find('.vk-pay-btn__spinner').show();
+            $other.prop('disabled', true).css('opacity', '0.5');
         } else {
-            $btn.prop('disabled', false);
-            $btn.find('.vk-pay-btn__label').show();
-            $btn.find('.vk-pay-btn__spinner').hide();
+            $active.prop('disabled', false);
+            $active.find('.vk-pay-btn__label').show();
+            $active.find('.vk-pay-btn__spinner').hide();
+            $other.prop('disabled', false).css('opacity', '1');
         }
     },
 
