@@ -301,6 +301,7 @@ var Paso4A = {
             self.app.state.totalPagado = _modelo ? _modelo.precioContado : 0;
             self.app.state.pagoCompletado = true;
             self.app.state._pagoTipo = self._pagoTipo || 'unico';
+            self.app.state._pagoPendiente = true; // SPEI/OXXO: payment not yet confirmed
             self.app.state.nombre = self.app.state.nombre || $('#vk-nombre').val() || '';
             self.app.state.email = self.app.state.email || $('#vk-email').val() || '';
             self.app.state.telefono = self.app.state.telefono || $('#vk-telefono').val() || '';

@@ -157,8 +157,13 @@ var PasoExito = {
         html += '';
         html += '</div>';
 
-        html += '<h2 style="font-size:26px;font-weight:800;color:#333;margin:0 0 6px;">\u00a1Compra confirmada!</h2>';
-        html += '<p style="font-size:14px;color:#555;margin:0;">Tu <strong>Voltika</strong> ya est\u00e1 en preparaci\u00f3n para entrega.</p>';
+        if (state._pagoPendiente) {
+            html += '<h2 style="font-size:26px;font-weight:800;color:#333;margin:0 0 6px;">Tu Voltika te est\u00e1 esperando.</h2>';
+            html += '<p style="font-size:14px;color:#555;margin:0;">Completa tu pago para asegurar tu <strong>Voltika</strong>.</p>';
+        } else {
+            html += '<h2 style="font-size:26px;font-weight:800;color:#333;margin:0 0 6px;">\u00a1Compra confirmada!</h2>';
+            html += '<p style="font-size:14px;color:#555;margin:0;">Tu <strong>Voltika</strong> ya est\u00e1 en preparaci\u00f3n para entrega.</p>';
+        }
         html += '</div>';
 
         // === Asesor contact card ===
