@@ -13,7 +13,7 @@ var PasoExito = {
 
     init: function(app) {
         this.app = app;
-        this._enviarConfirmacion();
+        // Email already sent by confirmar-orden.php — no duplicate
         this.render();
         this.bindEvents();
     },
