@@ -513,8 +513,8 @@ var Paso4A = {
                 total:     total,
                 msiPago:   msiPago,
                 msiMeses:  modelo.msiMeses,
-                asesoriaPlacas: state.asesoria_placas || false,
-                seguroQualitas: state.seguro_qualitas || false
+                asesoriaPlacas: self.app.state.asesoria_placas || false,
+                seguroQualitas: self.app.state.seguro_qualitas || false
             }),
             complete: function() {
                 self._setLoading(false);
