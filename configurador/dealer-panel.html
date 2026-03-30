@@ -247,13 +247,13 @@ const ESTADOS_LABEL = {
 };
 
 const PASOS_TRACKER = [
-  { key: 'por_llegar',          label: 'Por Llegar',            icon: '🚚' },
-  { key: 'recibida',            label: 'Recibida',              icon: '✓' },
-  { key: 'por_ensamblar',       label: 'Por Ensamblar',         icon: '🔧' },
-  { key: 'en_ensamble',         label: 'En Ensamble',           icon: '⚙️' },
-  { key: 'lista_para_entrega',  label: 'Lista para Entrega',    icon: '⚡' },
-  { key: 'por_validar_entrega', label: 'Por Validar Entrega',   icon: '🔒' },
-  { key: 'entregada',           label: 'Entregada',             icon: '🏍️' },
+  { key: 'por_llegar',          label: 'Por Llegar',            short: 'Por llegar',  icon: '🚚' },
+  { key: 'recibida',            label: 'Recibida',              short: 'Recibida',    icon: '✓'  },
+  { key: 'por_ensamblar',       label: 'Por Ensamblar',         short: 'P.Ensamblar', icon: '🔧' },
+  { key: 'en_ensamble',         label: 'En Ensamble',           short: 'Ensamble',    icon: '⚙️' },
+  { key: 'lista_para_entrega',  label: 'Lista para Entrega',    short: 'Lista',       icon: '⚡' },
+  { key: 'por_validar_entrega', label: 'Por Validar Entrega',   short: 'Validar',     icon: '🔒' },
+  { key: 'entregada',           label: 'Entregada',             short: 'Entregada',   icon: '🏍️' },
 ];
 
 const PASO_IDX = Object.fromEntries(PASOS_TRACKER.map((p, i) => [p.key, i]));
@@ -507,18 +507,20 @@ function renderMotoCard(m) {
     </div>`;
 
   // ── Right tracker ──────────────────────────────────────────────────────────
+  const isMobile = window.innerWidth <= 480;
   let trackerHtml = '';
   PASOS_TRACKER.forEach((p, i) => {
     let cls = 'tracker-step';
     if (i < estadoIdx)        cls += ' done';
     else if (i === estadoIdx) cls += ' active';
     const dotIcon = i < estadoIdx ? '✓' : '';
+    const lbl = isMobile ? p.short : p.label;
+    const ico = isMobile ? '' : `<span class="tracker-step-icon">${p.icon}</span>`;
     trackerHtml += `
       <div class="${cls}">
         <div class="tracker-dot">${dotIcon}</div>
         <div class="tracker-info">
-          <span class="tracker-label">${p.label}</span>
-          <span class="tracker-step-icon">${p.icon}</span>
+          <span class="tracker-label">${lbl}</span>${ico}
         </div>
       </div>`;
   });

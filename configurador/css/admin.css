@@ -1052,7 +1052,10 @@ body.admin-body {
   /* Right tracker: narrower on mobile, ALWAYS vertical */
   .card-right {
     width: 110px;
-    padding: 12px 8px 12px 8px;
+    min-width: 110px;
+    max-width: 110px;
+    padding: 12px 6px 12px 8px;
+    overflow: hidden;
   }
 
   /* Tracker step — stays vertical, smaller */
@@ -1071,9 +1074,18 @@ body.admin-body {
     width: 15px;
     height: 15px;
   }
-  .tracker-label { font-size: 9px; }
-  .tracker-info  { padding-bottom: 8px; gap: 2px; }
-  .tracker-step-icon { font-size: 9px; }
+  .tracker-label {
+    font-size: 9px;
+    text-transform: none;
+    letter-spacing: 0;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .tracker-step.active .tracker-label {
+    font-size: 9.5px;
+  }
+  .tracker-info  { padding-bottom: 8px; gap: 0; }
+  .tracker-step-icon { display: none; }
 }
 
 /* ── Other responsive fixes ── */
