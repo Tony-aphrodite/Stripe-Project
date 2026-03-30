@@ -328,6 +328,15 @@ var Paso4A = {
     },
 
     _otpCooldown: false,
+    _otpTimer: null,
+
+    _resetOtpCooldown: function() {
+        if (this._otpTimer) {
+            clearInterval(this._otpTimer);
+            this._otpTimer = null;
+        }
+        this._otpCooldown = false;
+    },
 
     _sendOTP: function() {
         var tel = this.app.state.telefono;
@@ -337,14 +346,16 @@ var Paso4A = {
         self._otpCooldown = true;
 
         // Disable resend link + show cooldown timer
-        var $resend = $('#vk-pago-otp-reenviar');
+        var $resend = $('#vk-pago-otp-reenviar, #vk-post-otp-reenviar');
         var cooldownSec = 60;
         $resend.css({ 'pointer-events': 'none', 'color': '#999' });
-        var timer = setInterval(function() {
+        if (self._otpTimer) clearInterval(self._otpTimer);
+        self._otpTimer = setInterval(function() {
             cooldownSec--;
             $resend.text('Reenviar en ' + cooldownSec + 's');
             if (cooldownSec <= 0) {
-                clearInterval(timer);
+                clearInterval(self._otpTimer);
+                self._otpTimer = null;
                 self._otpCooldown = false;
                 $resend.text('Reenviar').css({ 'pointer-events': 'auto', 'color': '#039fe1' });
             }
@@ -547,6 +558,9 @@ var Paso4A = {
 
     _showPostPaymentOTP: function() {
         var self = this;
+        // Reset OTP cooldown so SMS is always sent fresh on this screen,
+        // regardless of whether SPEI/OXXO was tried first.
+        self._resetOtpCooldown();
         var state = self.app.state;
         var _tel = state.telefono || '';
 
