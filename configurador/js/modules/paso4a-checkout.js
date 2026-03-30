@@ -43,7 +43,8 @@ var Paso4A = {
         var fechaEntrega = _fd.getDate() + ' de ' + _meses[_fd.getMonth()] + ' de ' + _fd.getFullYear();
         var color       = state.colorSeleccionado || modelo.colorDefault || '';
         var base        = window.VK_BASE_PATH || '';
-        var imgSrc      = base + 'img/' + modelo.id + '/model.png';
+        var _imgFolder  = { 'ukko-s': 'ukko', 'pesgo-plus': 'pesgo' };
+        var imgSrc      = base + 'img/' + (_imgFolder[modelo.id] || modelo.id) + '/model.png';
         var _envioDestino = (state.centroEntrega && state.centroEntrega.nombre && state.centroEntrega.tipo !== 'cercano')
             ? state.centroEntrega.nombre
             : (state.ciudad || 'tu ciudad');
