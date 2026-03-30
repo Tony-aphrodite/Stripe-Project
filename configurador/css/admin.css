@@ -231,7 +231,7 @@ body.admin-body {
   display: flex;
   overflow: hidden;
   transition: box-shadow .2s, transform .15s;
-  min-height: 210px;
+  min-height: 200px;
 }
 .moto-card:hover { box-shadow: var(--vka-shadow-lg); transform: translateY(-1px); }
 
@@ -982,27 +982,102 @@ body.admin-body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ─── RESPONSIVE ────────────────────────────────────────────────────────────── */
-@media (max-width: 700px) {
-  .admin-main { padding: 12px; }
+
+/* ── Mobile header ── */
+@media (max-width: 480px) {
+  .admin-header { padding: 0 12px; height: 50px; }
+  .header-logo  { height: 22px; }
+  .header-sep   { display: none; }
+  .header-punto {
+    font-size: 12px;
+    max-width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .btn-soporte { padding: 5px 10px; font-size: 11px; }
+  .btn-logout  { font-size: 11px; }
+}
+
+/* ── Mobile stats bar — horizontal scroll ── */
+@media (max-width: 480px) {
+  .stats-bar {
+    padding: 8px 12px;
+    gap: 12px;
+    overflow-x: auto;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    font-size: 12px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .stats-bar::-webkit-scrollbar { display: none; }
+  .stats-bar strong { color: var(--vka-blue-dark); }
+}
+
+/* ── Nav tabs ── */
+@media (max-width: 480px) {
+  .nav-tabs-top { padding: 0 8px; gap: 2px; }
+  .nav-tab { padding: 11px 10px; font-size: 12px; }
+}
+
+/* ── Cards grid — always 1 column on mobile ── */
+@media (max-width: 900px) {
   .cards-grid { grid-template-columns: 1fr; }
-  .moto-card  { flex-direction: column; }
+}
+
+/* ── Moto card — keep left/right side by side always ── */
+@media (max-width: 480px) {
+  .admin-main { padding: 10px; }
+
+  /* Card stays horizontal — NEVER column */
+  .moto-card { min-height: 0; }
+
+  /* Left side: shrink padding */
+  .card-left { padding: 12px 12px; gap: 4px; }
+  .card-cliente { font-size: 15px; }
+  .card-modelo  { font-size: 12px; }
+  .card-vin     { font-size: 11px; }
+  .card-dias    { font-size: 11px; }
+  .card-status-label { font-size: 13px; }
+  .card-pago    { font-size: 10px; padding: 2px 7px; }
+
+  /* Mini track stays the same */
+  .card-mini-track { margin: 8px 0 6px; }
+
+  /* Action buttons compact */
+  .btn-accion     { padding: 8px 10px; font-size: 11px; }
+  .btn-accion-sec { padding: 5px 10px; font-size: 10px; }
+
+  /* Right tracker: narrower on mobile, ALWAYS vertical */
   .card-right {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    border-top: 1.5px solid var(--vka-border);
-    border-left: none;
-    padding: 10px 14px;
-    gap: 4px 12px;
-    background: #fafbfc;
+    width: 110px;
+    padding: 12px 8px 12px 8px;
   }
-  .tracker-step {
-    width: calc(50% - 6px);
-    flex-direction: row;
-    align-items: center;
+
+  /* Tracker step — stays vertical, smaller */
+  .tracker-step::after {
+    left: 6px;
+    top: 14px;
+    width: 1.5px;
   }
-  .tracker-step::after { display: none; }
-  .tracker-info { padding-bottom: 4px; }
+  .tracker-dot {
+    width: 13px;
+    height: 13px;
+    font-size: 7px;
+    margin-top: 1px;
+  }
+  .tracker-step.active .tracker-dot {
+    width: 15px;
+    height: 15px;
+  }
+  .tracker-label { font-size: 9px; }
+  .tracker-info  { padding-bottom: 8px; gap: 2px; }
+  .tracker-step-icon { font-size: 9px; }
+}
+
+/* ── Other responsive fixes ── */
+@media (max-width: 700px) {
   .form-grid { grid-template-columns: 1fr; }
   .detail-drawer { width: 100%; }
   .inv-table { display: block; overflow-x: auto; }
