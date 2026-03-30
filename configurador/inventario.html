@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventario — Voltika</title>
+<link rel="icon" href="img/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="css/admin.css">
+<style>
+.page-header {
+  background: linear-gradient(135deg,#1a3a5c,#039fe1);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.page-header img { height: 32px; }
+.page-header h1 { color:#fff; font-size:18px; font-weight:800; margin:0; }
+.page-header-right { margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.back-link {
+  color:rgba(255,255,255,.8); font-size:13px; text-decoration:none;
+  display:flex; align-items:center; gap:6px;
+}
+.back-link:hover { color:#fff; }
+.detail-row { display:flex; flex-wrap:wrap; gap:24px; }
+.detail-main { flex:1; min-width:0; }
+.detail-side { width:280px; flex-shrink:0; }
+.info-card {
+  background:#fff; border-radius:12px; border:1.5px solid var(--vka-border);
+  box-shadow:var(--vka-shadow); padding:16px 20px; margin-bottom:16px;
+}
+.info-card-title {
+  font-size:12px; font-weight:700; color:var(--vka-blue);
+  text-transform:uppercase; letter-spacing:.5px;
+  border-bottom:1px solid var(--vka-blue-light); padding-bottom:8px; margin-bottom:12px;
+}
+.info-row {
+  display:flex; justify-content:space-between;
+  padding:5px 0; border-bottom:1px solid var(--vka-grey-light);
+  font-size:13px;
+}
+.info-row:last-child { border-bottom:none; }
+.info-label { color:var(--vka-grey); }
+.info-value { font-weight:600; color:#1a1a1a; text-align:right; }
+.tracker-vertical { display:flex; flex-direction:column; gap:0; padding:4px 0; }
+.empty-inv { text-align:center; padding:60px 20px; color:var(--vka-grey); }
+</style>
+</head>
+<body class="admin-body">
+
+<!-- Redirect if not logged in (handled by JS) -->
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
+<div class="page-header">
+  <a href="dealer-panel.html" class="back-link">← Panel</a>
+  <img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika"
+       onerror="this.style.display='none'">
+  <h1>Inventario de Motocicletas</h1>
+  <div class="page-header-right">
+    <span id="header-punto" style="color:rgba(255,255,255,.8);font-size:13px;"></span>
+    <button class="btn btn-sm" onclick="openModalAdd()"
+      style="background:#fff;color:var(--vka-blue-dark);border:none;font-weight:700;">
+      + Agregar moto
+    </button>
+    <button class="btn-logout" style="color:rgba(255,255,255,.7)" onclick="doLogout()">⏻ Salir</button>
+  </div>
+</div>
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════════════════════ -->
+<div class="admin-main">
+
+  <!-- Stat cards -->
+  <div class="stat-cards" id="stat-cards">
+    <div class="stat-card"><div class="stat-card-value">—</div><div class="stat-card-label">Total motos</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchInvTab('lista')">📋 Lista</div>
+    <div class="tab" onclick="switchInvTab('ventas')">💰 Ventas</div>
+    <div class="tab" onclick="switchInvTab('referidos')">🤝 Referidos</div>
+  </div>
+
+  <!-- ── LISTA TAB ─────────────────────────────────────────────────────────── -->
+  <div id="invtab-lista" class="tab-content active">
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <input type="text" id="filter-q" placeholder="Buscar por VIN, cliente, pedido..." style="width:220px;" oninput="filtrarMotos()">
+      <select id="filter-estado" onchange="filtrarMotos()">
+        <option value="todos">Todos los estados</option>
+        <option value="por_llegar">Por Llegar</option>
+        <option value="recibida">Recibida</option>
+        <option value="por_ensamblar">Por Ensamblar</option>
+        <option value="en_ensamble">En Ensamble</option>
+        <option value="lista_para_entrega">Lista para Entrega</option>
+        <option value="por_validar_entrega">Por Validar Entrega</option>
+        <option value="entregada">Entregada</option>
+        <option value="retenida">Retenida</option>
+      </select>
+      <select id="filter-tipo" onchange="filtrarMotos()">
+        <option value="">Todos los tipos</option>
+        <option value="voltika_entrega">Voltika Entrega</option>
+        <option value="consignacion">Consignación</option>
+      </select>
+      <select id="filter-modelo" onchange="filtrarMotos()">
+        <option value="">Todos los modelos</option>
+        <option value="MO3">MO3</option>
+        <option value="MO5">MO5</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="loadInventario()">🔄 Actualizar</button>
+    </div>
+
+    <!-- Table -->
+    <div id="inv-table-wrap">
+      <div class="empty-inv"><div class="loader dark" style="width:32px;height:32px;border-width:3px;"></div><p style="margin-top:12px;">Cargando inventario...</p></div>
+    </div>
+  </div>
+
+  <!-- ── VENTAS TAB ────────────────────────────────────────────────────────── -->
+  <div id="invtab-ventas" class="tab-content">
+    <div class="filter-bar">
+      <input type="text" id="ventas-q" placeholder="Buscar..." oninput="loadVentas()">
+      <select id="ventas-tipo" onchange="loadVentas()">
+        <option value="">Todos los tipos</option>
+        <option value="entrega_voltika">Entrega Voltika</option>
+        <option value="venta_punto">Venta en punto</option>
+        <option value="devolucion">Devolución</option>
+        <option value="ajuste">Ajuste</option>
+        <option value="reserva">Reserva</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="loadVentas()">🔄 Actualizar</button>
+    </div>
+    <div id="ventas-summary" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;"></div>
+    <div id="ventas-table-wrap">
+      <div class="empty-inv"><p>Cargando registro de ventas...</p></div>
+    </div>
+  </div>
+
+  <!-- ── REFERIDOS TAB ─────────────────────────────────────────────────────── -->
+  <div id="invtab-referidos" class="tab-content">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn btn-primary btn-sm" onclick="openModalReferido()">+ Agregar referido</button>
+    </div>
+    <div id="referidos-wrap">
+      <div class="empty-inv"><p>Cargando referidos...</p></div>
+    </div>
+  </div>
+
+</div><!-- /admin-main -->
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<!-- ═══ MODAL: DETALLE MOTO ═══════════════════════════════════════════════════ -->
+<div id="modal-detalle" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-detalle')">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-detalle-title">Detalle de moto</span>
+      <button class="modal-close" onclick="closeModal('modal-detalle')">×</button>
+    </div>
+    <div class="modal-body" id="modal-detalle-body">Cargando...</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-detalle')">Cerrar</button>
+      <button class="btn btn-primary btn-sm" id="btn-editar-moto" onclick="editarMoto()">✏️ Editar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: AGREGAR / EDITAR MOTO ═════════════════════════════════════════ -->
+<div id="modal-add" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-add')">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-add-title">Agregar motocicleta</span>
+      <button class="modal-close" onclick="closeModal('modal-add')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-add" onsubmit="submitMoto(event)">
+        <div class="form-grid">
+          <div class="field">
+            <label>VIN *</label>
+            <input type="text" id="f-vin" placeholder="VK2024MO3XXXXX" required maxlength="50">
+          </div>
+          <div class="field">
+            <label>Modelo *</label>
+            <select id="f-modelo" required>
+              <option value="">Seleccionar</option>
+              <option value="MO3">MO3</option>
+              <option value="MO5">MO5</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Color *</label>
+            <input type="text" id="f-color" placeholder="Negro, Blanco, Azul..." required>
+          </div>
+          <div class="field">
+            <label>Tipo de asignación</label>
+            <select id="f-tipo">
+              <option value="voltika_entrega">Voltika Entrega</option>
+              <option value="consignacion">Consignación</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Estado inicial</label>
+            <select id="f-estado">
+              <option value="por_llegar">Por Llegar</option>
+              <option value="recibida">Recibida</option>
+              <option value="en_ensamble">En Ensamble</option>
+              <option value="lista_para_entrega">Lista para Entrega</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Fecha de llegada</label>
+            <input type="date" id="f-fecha-llegada">
+          </div>
+          <div class="field form-col-2">
+            <label>Nombre del cliente</label>
+            <input type="text" id="f-cliente-nombre" placeholder="Juan Pérez">
+          </div>
+          <div class="field">
+            <label>Email del cliente</label>
+            <input type="email" id="f-cliente-email" placeholder="juan@mail.com">
+          </div>
+          <div class="field">
+            <label>Teléfono del cliente</label>
+            <input type="text" id="f-cliente-tel" placeholder="5512345678">
+          </div>
+          <div class="field">
+            <label>Número de pedido</label>
+            <input type="text" id="f-pedido-num" placeholder="VK-ABC123">
+          </div>
+          <div class="field">
+            <label>Estado de pago</label>
+            <select id="f-pago-estado">
+              <option value="pagada">Pagada</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="parcial">Parcial</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Precio de venta (MXN)</label>
+            <input type="number" id="f-precio" placeholder="45000" min="0">
+          </div>
+          <div class="field form-col-2">
+            <label>Notas</label>
+            <textarea id="f-notas" rows="3" placeholder="Notas internas..."></textarea>
+          </div>
+        </div>
+        <input type="hidden" id="f-moto-id">
+        <div style="display:none;" id="form-add-error" class="login-error visible"></div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add')">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitMoto(null)" id="btn-save-moto">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: REFERIDO ═══════════════════════════════════════════════════════ -->
+<div id="modal-referido" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-referido')">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <span class="modal-title">Agregar Referido</span>
+      <button class="modal-close" onclick="closeModal('modal-referido')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid single">
+        <div class="field"><label>Nombre *</label><input type="text" id="ref-nombre" placeholder="Juan Pérez"></div>
+        <div class="field"><label>Email</label><input type="email" id="ref-email" placeholder="juan@mail.com"></div>
+        <div class="field"><label>Teléfono</label><input type="text" id="ref-tel" placeholder="5512345678"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-referido')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarReferido()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let dealer = null;
+let allMotos = [];
+let currentDetalleId = null;
+
+const ESTADOS_LABEL = {
+  por_llegar:'Por Llegar', recibida:'Recibida', por_ensamblar:'Por Ensamblar',
+  en_ensamble:'En Ensamble', lista_para_entrega:'Lista para Entrega',
+  por_validar_entrega:'Por Validar Entrega', entregada:'Entregada', retenida:'Retenida'
+};
+const ESTADOS_BADGE = {
+  por_llegar:'badge-por-llegar', recibida:'badge-recibida', por_ensamblar:'badge-por-ensamblar',
+  en_ensamble:'badge-en-ensamble', lista_para_entrega:'badge-lista',
+  por_validar_entrega:'badge-por-validar', entregada:'badge-entregada', retenida:'badge-retenida'
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('php/admin-login.php', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'check'})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      dealer = d.dealer;
+      document.getElementById('header-punto').textContent = dealer.punto_nombre || '';
+      loadInventario();
+    } else {
+      window.location.href = 'dealer-panel.html';
+    }
+  })
+  .catch(() => window.location.href = 'dealer-panel.html');
+});
+
+async function doLogout() {
+  await fetch('php/admin-login.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});
+  window.location.href = 'dealer-panel.html';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INVENTARIO
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadInventario() {
+  document.getElementById('inv-table-wrap').innerHTML =
+    '<div class="empty-inv"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
+  try {
+    const r = await fetch('php/admin-inventario.php');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    allMotos = d.motos || [];
+    renderStats(d.stats || {});
+    filtrarMotos();
+  } catch(e) {
+    document.getElementById('inv-table-wrap').innerHTML =
+      `<div class="empty-inv" style="color:var(--vka-red)">Error al cargar inventario. <a href="#" onclick="loadInventario()">Reintentar</a></div>`;
+  }
+}
+
+function renderStats(stats) {
+  const total = Object.values(stats).reduce((a,b) => a+b, 0);
+  const entregadas = stats.entregada || 0;
+  const activas    = total - entregadas;
+  const ensamble   = stats.en_ensamble || 0;
+  const listas     = (stats.lista_para_entrega || 0) + (stats.por_validar_entrega || 0);
+
+  document.getElementById('stat-cards').innerHTML = `
+    <div class="stat-card blue"><div class="stat-card-value">${total}</div><div class="stat-card-label">Total motos</div></div>
+    <div class="stat-card"><div class="stat-card-value">${activas}</div><div class="stat-card-label">Activas</div></div>
+    <div class="stat-card orange"><div class="stat-card-value">${ensamble}</div><div class="stat-card-label">En ensamble</div></div>
+    <div class="stat-card green"><div class="stat-card-value">${listas}</div><div class="stat-card-label">Listas para entrega</div></div>
+    <div class="stat-card"><div class="stat-card-value">${entregadas}</div><div class="stat-card-label">Entregadas</div></div>
+  `;
+}
+
+function filtrarMotos() {
+  const q      = document.getElementById('filter-q').value.toLowerCase();
+  const estado = document.getElementById('filter-estado').value;
+  const tipo   = document.getElementById('filter-tipo').value;
+  const modelo = document.getElementById('filter-modelo').value;
+
+  let motos = allMotos.filter(m => {
+    if (estado !== 'todos' && m.estado !== estado) return false;
+    if (tipo && m.tipo_asignacion !== tipo) return false;
+    if (modelo && !m.modelo.includes(modelo)) return false;
+    if (q) {
+      const hay = (m.vin||'').toLowerCase().includes(q) ||
+                  (m.cliente_nombre||'').toLowerCase().includes(q) ||
+                  (m.pedido_num||'').toLowerCase().includes(q) ||
+                  (m.modelo||'').toLowerCase().includes(q);
+      if (!hay) return false;
+    }
+    return true;
+  });
+
+  renderTable(motos);
+}
+
+function renderTable(motos) {
+  const wrap = document.getElementById('inv-table-wrap');
+  if (!motos.length) {
+    wrap.innerHTML = '<div class="empty-inv"><div class="empty-state-icon">🏍️</div><p>No se encontraron motos con los filtros seleccionados.</p></div>';
+    return;
+  }
+
+  let html = `<table class="inv-table">
+    <thead><tr>
+      <th>VIN</th><th>Modelo / Color</th><th>Tipo</th><th>Estado</th>
+      <th>Cliente</th><th>Pedido</th><th>Pago</th><th>Días</th><th>Punto</th>
+    </tr></thead><tbody>`;
+
+  motos.forEach(m => {
+    const badgeCls   = ESTADOS_BADGE[m.estado] || '';
+    const tipoCls    = m.tipo_asignacion === 'consignacion' ? 'badge-consignacion' : 'badge-voltika';
+    const diasAlert  = m.dias_en_paso > 1;
+    html += `<tr onclick="openDetalle(${m.id})">
+      <td><strong>${esc(m.vin_display || m.vin)}</strong></td>
+      <td>${esc(m.modelo)} <span style="color:var(--vka-grey)">${esc(m.color)}</span></td>
+      <td><span class="badge ${tipoCls}">${m.tipo_asignacion === 'consignacion' ? 'Consig.' : 'Voltika'}</span></td>
+      <td><span class="badge ${badgeCls}">${ESTADOS_LABEL[m.estado]||m.estado}</span></td>
+      <td>${esc(m.cliente_nombre || '—')}</td>
+      <td style="font-size:12px">${esc(m.pedido_num || '—')}</td>
+      <td><span class="badge ${m.pago_estado==='pagada'?'badge-lista':'badge-por-llegar'}">${m.pago_estado||'—'}</span></td>
+      <td style="${diasAlert?'color:var(--vka-orange);font-weight:700':''}">${m.dias_en_paso}d${diasAlert?' ⚠️':''}</td>
+      <td style="font-size:11px">${esc(m.punto_nombre || '—')}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DETALLE
+// ═══════════════════════════════════════════════════════════════════════════════
+function openDetalle(motoId) {
+  currentDetalleId = motoId;
+  const m = allMotos.find(m => m.id === motoId);
+  if (!m) return;
+
+  document.getElementById('modal-detalle-title').textContent = `${m.modelo} ${m.color} — ${m.vin_display}`;
+  document.getElementById('modal-detalle-body').innerHTML = buildDetalleHtml(m);
+  openModal('modal-detalle');
+}
+
+function buildDetalleHtml(m) {
+  const log = m.log_estados || [];
+  const logHtml = log.length
+    ? log.slice().reverse().map(e =>
+        `<div class="log-entry">
+          <div class="log-dot"></div>
+          <div>
+            <div class="log-text"><strong>${esc(ESTADOS_LABEL[e.estado]||e.estado)}</strong> — ${esc(e.accion||'')}</div>
+            <div class="log-time">${esc(e.timestamp||'')} · ${esc(e.dealer||'')}</div>
+            ${e.notas ? `<div class="log-text" style="color:var(--vka-grey)">${esc(e.notas)}</div>` : ''}
+          </div>
+        </div>`).join('')
+    : '<p style="color:var(--vka-grey);font-size:13px;">Sin historial registrado</p>';
+
+  return `<div class="detail-row">
+    <div class="detail-main">
+      <div class="info-card">
+        <div class="info-card-title">Información de la moto</div>
+        ${infoRow('VIN completo', m.vin)}
+        ${infoRow('Modelo', m.modelo)}
+        ${infoRow('Color', m.color)}
+        ${infoRow('Tipo', m.tipo_asignacion === 'consignacion' ? 'Consignación' : 'Voltika Entrega')}
+        ${infoRow('Estado', ESTADOS_LABEL[m.estado] || m.estado)}
+        ${infoRow('Días en paso', m.dias_en_paso + (m.dias_en_paso > 1 ? ' días ⚠️' : ' día'))}
+        ${infoRow('Pago', m.pago_estado || '—')}
+        ${m.precio_venta ? infoRow('Precio venta', '$' + Number(m.precio_venta).toLocaleString('es-MX') + ' MXN') : ''}
+        ${m.fecha_llegada ? infoRow('Fecha llegada', m.fecha_llegada) : ''}
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">Información del cliente</div>
+        ${infoRow('Nombre', m.cliente_nombre || '—')}
+        ${infoRow('Email', m.cliente_email || '—')}
+        ${infoRow('Teléfono', m.cliente_telefono || '—')}
+        ${infoRow('Pedido', m.pedido_num || '—')}
+        ${infoRow('Punto', m.punto_nombre || '—')}
+      </div>
+    </div>
+    <div class="detail-side">
+      <div class="info-card">
+        <div class="info-card-title">Historial de estados</div>
+        ${logHtml}
+      </div>
+      ${m.notas ? `<div class="info-card">
+        <div class="info-card-title">Notas</div>
+        <p style="font-size:13px;color:#555;">${esc(m.notas)}</p>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function infoRow(label, value) {
+  return `<div class="info-row"><span class="info-label">${label}</span><span class="info-value">${esc(value)}</span></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGREGAR / EDITAR MOTO
+// ═══════════════════════════════════════════════════════════════════════════════
+function openModalAdd() {
+  document.getElementById('modal-add-title').textContent = 'Agregar motocicleta';
+  document.getElementById('form-add').reset();
+  document.getElementById('f-moto-id').value = '';
+  document.getElementById('btn-save-moto').textContent = 'Guardar';
+  document.getElementById('form-add-error').style.display = 'none';
+  openModal('modal-add');
+}
+
+function editarMoto() {
+  const m = allMotos.find(m => m.id === currentDetalleId);
+  if (!m) return;
+  closeModal('modal-detalle');
+  document.getElementById('modal-add-title').textContent = 'Editar moto: ' + m.vin_display;
+  document.getElementById('f-vin').value          = m.vin;
+  document.getElementById('f-modelo').value       = m.modelo;
+  document.getElementById('f-color').value        = m.color;
+  document.getElementById('f-tipo').value         = m.tipo_asignacion;
+  document.getElementById('f-estado').value       = m.estado;
+  document.getElementById('f-cliente-nombre').value = m.cliente_nombre || '';
+  document.getElementById('f-cliente-email').value  = m.cliente_email || '';
+  document.getElementById('f-cliente-tel').value    = m.cliente_telefono || '';
+  document.getElementById('f-pedido-num').value     = m.pedido_num || '';
+  document.getElementById('f-pago-estado').value    = m.pago_estado || 'pagada';
+  document.getElementById('f-precio').value         = m.precio_venta || '';
+  document.getElementById('f-notas').value          = m.notas || '';
+  document.getElementById('f-fecha-llegada').value  = m.fecha_llegada || '';
+  document.getElementById('f-moto-id').value        = m.id;
+  document.getElementById('btn-save-moto').textContent = 'Guardar cambios';
+  openModal('modal-add');
+}
+
+async function submitMoto(e) {
+  if (e) e.preventDefault();
+  const btn = document.getElementById('btn-save-moto');
+  const errEl = document.getElementById('form-add-error');
+  errEl.style.display = 'none';
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span> Guardando...';
+
+  const motoId = document.getElementById('f-moto-id').value;
+  const isEdit = !!motoId;
+
+  const payload = {
+    accion:           isEdit ? 'actualizar' : 'agregar',
+    vin:              document.getElementById('f-vin').value.trim(),
+    modelo:           document.getElementById('f-modelo').value,
+    color:            document.getElementById('f-color').value.trim(),
+    tipo_asignacion:  document.getElementById('f-tipo').value,
+    estado:           document.getElementById('f-estado').value,
+    cliente_nombre:   document.getElementById('f-cliente-nombre').value.trim(),
+    cliente_email:    document.getElementById('f-cliente-email').value.trim(),
+    cliente_telefono: document.getElementById('f-cliente-tel').value.trim(),
+    pedido_num:       document.getElementById('f-pedido-num').value.trim(),
+    pago_estado:      document.getElementById('f-pago-estado').value,
+    precio_venta:     parseFloat(document.getElementById('f-precio').value) || 0,
+    notas:            document.getElementById('f-notas').value.trim(),
+    fecha_llegada:    document.getElementById('f-fecha-llegada').value || null,
+  };
+  if (isEdit) payload.moto_id = parseInt(motoId);
+
+  try {
+    const r = await fetch('php/admin-inventario.php', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      closeModal('modal-add');
+      showToast(isEdit ? '✅ Moto actualizada' : '✅ Moto agregada al inventario', 'success');
+      await loadInventario();
+    } else {
+      errEl.textContent = d.error || 'Error al guardar';
+      errEl.style.display = 'block';
+    }
+  } catch {
+    errEl.textContent = 'Error de conexión';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = isEdit ? 'Guardar cambios' : 'Guardar';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VENTAS LOG
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadVentas() {
+  const q    = document.getElementById('ventas-q').value;
+  const tipo = document.getElementById('ventas-tipo').value;
+  const url  = 'php/admin-ventas-log.php?' + new URLSearchParams({ q, tipo, limit:'100' });
+
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    renderVentasSummary(d.summary || {});
+    renderVentasTable(d.ventas || []);
+  } catch {
+    document.getElementById('ventas-table-wrap').innerHTML = '<div class="empty-inv" style="color:var(--vka-red)">Error al cargar ventas.</div>';
+  }
+}
+
+function renderVentasSummary(s) {
+  const el = document.getElementById('ventas-summary');
+  if (!Object.keys(s).length) { el.innerHTML = ''; return; }
+  el.innerHTML = Object.entries(s).map(([tipo, v]) =>
+    `<div class="stat-card" style="padding:10px 14px;">
+      <div class="stat-card-value" style="font-size:20px;">${v.count}</div>
+      <div class="stat-card-label">${tipo.replace(/_/g,' ')}</div>
+      ${v.total ? `<div style="font-size:11px;color:var(--vka-blue)">$${Number(v.total).toLocaleString('es-MX')}</div>` : ''}
+    </div>`
+  ).join('');
+}
+
+function renderVentasTable(ventas) {
+  const el = document.getElementById('ventas-table-wrap');
+  if (!ventas.length) {
+    el.innerHTML = '<div class="empty-inv"><p>Sin registros de ventas</p></div>'; return;
+  }
+  let html = `<table class="inv-table"><thead><tr>
+    <th>Tipo</th><th>Cliente</th><th>Moto</th><th>Pedido</th>
+    <th>Monto</th><th>Referido</th><th>Dealer</th><th>Fecha</th>
+  </tr></thead><tbody>`;
+  ventas.forEach(v => {
+    html += `<tr>
+      <td><span class="tipo-badge tipo-${v.tipo}">${v.tipo.replace(/_/g,' ')}</span></td>
+      <td>${esc(v.cliente_nombre||'—')}</td>
+      <td>${esc(v.modelo||'—')} ${esc(v.color||'')}</td>
+      <td style="font-size:11px">${esc(v.pedido_num||'—')}</td>
+      <td>${v.monto ? '$'+Number(v.monto).toLocaleString('es-MX') : '—'}</td>
+      <td>${esc(v.referido_nombre||'—')}</td>
+      <td style="font-size:11px">${esc(v.dealer_nombre||'—')}</td>
+      <td style="font-size:11px">${esc(v.freg||'—')}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REFERIDOS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadReferidos() {
+  try {
+    const r = await fetch('php/admin-referidos.php');
+    const d = await r.json();
+    renderReferidos(d.referidos || []);
+  } catch {
+    document.getElementById('referidos-wrap').innerHTML = '<div class="empty-inv" style="color:var(--vka-red)">Error al cargar referidos.</div>';
+  }
+}
+
+function renderReferidos(refs) {
+  const el = document.getElementById('referidos-wrap');
+  if (!refs.length) {
+    el.innerHTML = `<div class="empty-inv">
+      <div class="empty-state-icon">🤝</div>
+      <p>No hay referidos registrados.</p>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="openModalReferido()">+ Agregar referido</button>
+    </div>`;
+    return;
+  }
+  let html = `<table class="inv-table"><thead><tr>
+    <th>Nombre</th><th>Código</th><th>Email</th><th>Teléfono</th>
+    <th>Ventas</th><th>Comisión total</th><th>Registro</th>
+  </tr></thead><tbody>`;
+  refs.forEach(r => {
+    html += `<tr>
+      <td><strong>${esc(r.nombre)}</strong></td>
+      <td><span style="font-family:monospace;background:var(--vka-blue-soft);padding:2px 8px;border-radius:4px;">${esc(r.codigo_referido||'—')}</span></td>
+      <td>${esc(r.email||'—')}</td>
+      <td>${esc(r.telefono||'—')}</td>
+      <td>${r.ventas_count || 0}</td>
+      <td>${r.comision_total ? '$'+Number(r.comision_total).toLocaleString('es-MX') : '—'}</td>
+      <td style="font-size:11px">${esc(r.freg||'—')}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function openModalReferido() { openModal('modal-referido'); }
+async function guardarReferido() {
+  const nombre = document.getElementById('ref-nombre').value.trim();
+  if (!nombre) { showToast('Nombre requerido', 'warning'); return; }
+  try {
+    const r = await fetch('php/admin-referidos.php', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ accion:'agregar', nombre, email: document.getElementById('ref-email').value.trim(), telefono: document.getElementById('ref-tel').value.trim() })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      closeModal('modal-referido');
+      showToast(`✅ Referido agregado. Código: ${d.codigo}`, 'success');
+      loadReferidos();
+    } else {
+      showToast('❌ ' + (d.error || 'Error'), 'error');
+    }
+  } catch { showToast('Error de conexión', 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════════════════════════
+function switchInvTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const tabs = ['lista','ventas','referidos'];
+    t.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('invtab-' + tab)?.classList.add('active');
+  if (tab === 'ventas') loadVentas();
+  if (tab === 'referidos') loadReferidos();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+function closeModalOnOverlay(e, id) { if (e.target.id === id) closeModal(id); }
+
+function showToast(msg, type='') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>
