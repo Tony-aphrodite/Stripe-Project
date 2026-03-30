@@ -145,6 +145,7 @@ $cuerpo = '<!DOCTYPE html>
 <tr><td ' . $tdl . '>Asesoría para placas</td><td ' . $td . '>' . $asesoriaPlacas . '</td></tr>
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Seguro Qualitas</td><td ' . $td . '>' . $seguroQualitas . '</td></tr>
 </table>
+<p style="font-size:10px;color:#999;line-height:1.5;margin:6px 0 16px;">Voltika solo sugiere gestores y seguros de terceros. No es responsable por su servicio, tiempos, costos ni cobertura. La contratación es responsabilidad del cliente.</p>
 
 <!-- QUÉ SIGUE -->
 <div ' . $section . '>¿QUÉ SIGUE?</div>
@@ -249,6 +250,7 @@ if ($esCredito) {
 <tr><td ' . $tdl . '>Asesoría para placas</td><td ' . $td . '>' . $asesoriaPlacas . '</td></tr>
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Seguro Qualitas</td><td ' . $td . '>' . $seguroQualitas . '</td></tr>
 </table>
+<p style="font-size:10px;color:#999;line-height:1.5;margin:6px 0 16px;">Voltika solo sugiere gestores y seguros de terceros. No es responsable por su servicio, tiempos, costos ni cobertura. La contratación es responsabilidad del cliente.</p>
 
 <div ' . $section . '>¿QUÉ SIGUE?</div>
 <div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
