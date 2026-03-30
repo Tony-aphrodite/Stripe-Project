@@ -48,6 +48,26 @@
 .tracker-vertical { display:flex; flex-direction:column; gap:0; padding:4px 0; }
 .empty-inv { text-align:center; padding:60px 20px; color:var(--vka-grey); }
 
+/* ── Mobile inventory card list ── */
+.inv-card-list { display:flex; flex-direction:column; gap:8px; }
+.inv-list-card {
+  background:#fff;
+  border-radius:10px;
+  border:1.5px solid var(--vka-border);
+  padding:12px 14px;
+  cursor:pointer;
+  box-shadow:var(--vka-shadow);
+  transition:box-shadow .15s, transform .1s;
+}
+.inv-list-card:active { box-shadow:var(--vka-shadow-lg); transform:scale(.99); }
+.inv-card-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.inv-card-top { margin-bottom:2px; }
+.inv-card-bottom { margin-top:6px; padding-top:6px; border-top:1px solid var(--vka-border); }
+.inv-card-modelo { font-size:15px; font-weight:700; color:var(--vka-blue-dark); }
+.inv-card-color  { font-size:13px; font-weight:400; color:var(--vka-grey); }
+.inv-card-vin    { font-size:12px; color:var(--vka-grey); }
+.inv-card-cliente{ font-size:12px; color:#444; }
+
 @media (max-width: 480px) {
   /* ── Header ── */
   .page-header {
@@ -84,7 +104,11 @@
 
   /* ── Filter bar ── */
   .filter-bar { gap: 8px; }
-  .filter-bar input { width: 100% !important; font-size: 13px; }
+  .filter-bar input {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    font-size: 13px;
+  }
   .filter-bar select {
     flex: 1 1 calc(50% - 4px);
     min-width: 0;
@@ -96,6 +120,10 @@
   /* ── Tabs ── */
   .tabs { gap: 0; }
   .tab { padding: 10px 12px; font-size: 12px; flex: 1; text-align: center; }
+
+  /* ── Ventas summary pills ── */
+  #ventas-summary { gap: 8px; }
+  #ventas-summary > div { font-size: 11px !important; padding: 6px 10px !important; }
 
   /* ── Table ── */
   .admin-main { padding: 12px 10px !important; }
@@ -443,31 +471,64 @@ function renderTable(motos) {
     return;
   }
 
-  let html = `<table class="inv-table">
-    <thead><tr>
-      <th>VIN</th><th>Modelo / Color</th><th>Tipo</th><th>Estado</th>
-      <th>Cliente</th><th>Pedido</th><th>Pago</th><th>Días</th><th>Punto</th>
-    </tr></thead><tbody>`;
+  const isMobile = window.innerWidth <= 680;
 
-  motos.forEach(m => {
-    const badgeCls   = ESTADOS_BADGE[m.estado] || '';
-    const tipoCls    = m.tipo_asignacion === 'consignacion' ? 'badge-consignacion' : 'badge-voltika';
-    const diasAlert  = m.dias_en_paso > 1;
-    html += `<tr onclick="openDetalle(${m.id})">
-      <td><strong>${esc(m.vin_display || m.vin)}</strong></td>
-      <td>${esc(m.modelo)} <span style="color:var(--vka-grey)">${esc(m.color)}</span></td>
-      <td><span class="badge ${tipoCls}">${m.tipo_asignacion === 'consignacion' ? 'Consig.' : 'Voltika'}</span></td>
-      <td><span class="badge ${badgeCls}">${ESTADOS_LABEL[m.estado]||m.estado}</span></td>
-      <td>${esc(m.cliente_nombre || '—')}</td>
-      <td style="font-size:12px">${esc(m.pedido_num || '—')}</td>
-      <td><span class="badge ${m.pago_estado==='pagada'?'badge-lista':'badge-por-llegar'}">${m.pago_estado||'—'}</span></td>
-      <td style="${diasAlert?'color:var(--vka-orange);font-weight:700':''}">${m.dias_en_paso}d${diasAlert?' ⚠️':''}</td>
-      <td style="font-size:11px">${esc(m.punto_nombre || '—')}</td>
-    </tr>`;
-  });
+  if (isMobile) {
+    // ── Mobile: card list ──────────────────────────────────────────────────────
+    let html = '<div class="inv-card-list">';
+    motos.forEach(m => {
+      const badgeCls  = ESTADOS_BADGE[m.estado] || '';
+      const tipoCls   = m.tipo_asignacion === 'consignacion' ? 'badge-consignacion' : 'badge-voltika';
+      const tipoLabel = m.tipo_asignacion === 'consignacion' ? 'Consig.' : 'Voltika';
+      const diasAlert = m.dias_en_paso > 1;
+      const pagoColor = m.pago_estado === 'pagada' ? 'color:#059669;' : 'color:var(--vka-orange);';
+      html += `
+        <div class="inv-list-card" onclick="openDetalle(${m.id})">
+          <div class="inv-card-row inv-card-top">
+            <span class="inv-card-modelo">${esc(m.modelo)} <span class="inv-card-color">${esc(m.color)}</span></span>
+            <span class="badge ${badgeCls}">${ESTADOS_LABEL[m.estado]||m.estado}</span>
+          </div>
+          <div class="inv-card-row" style="margin-top:4px;">
+            <span class="inv-card-vin">VIN: <strong>${esc(m.vin_display || m.vin)}</strong></span>
+            <span class="badge ${tipoCls}">${tipoLabel}</span>
+          </div>
+          <div class="inv-card-row inv-card-bottom">
+            <span class="inv-card-cliente">${esc(m.cliente_nombre || '—')}</span>
+            <span style="${diasAlert?'color:var(--vka-orange);font-weight:700;':'color:var(--vka-grey);'}font-size:12px;">${m.dias_en_paso}d${diasAlert?' ⚠️':''}</span>
+          </div>
+          ${m.pedido_num ? `<div style="font-size:11px;color:var(--vka-grey);margin-top:3px;">Pedido: ${esc(m.pedido_num)} · <span style="${pagoColor}font-weight:600;">${m.pago_estado||'—'}</span></div>` : ''}
+        </div>`;
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
 
-  html += '</tbody></table>';
-  wrap.innerHTML = html;
+  } else {
+    // ── Desktop: table ─────────────────────────────────────────────────────────
+    let html = `<table class="inv-table">
+      <thead><tr>
+        <th>VIN</th><th>Modelo / Color</th><th>Tipo</th><th>Estado</th>
+        <th>Cliente</th><th>Pedido</th><th>Pago</th><th>Días</th><th>Punto</th>
+      </tr></thead><tbody>`;
+
+    motos.forEach(m => {
+      const badgeCls  = ESTADOS_BADGE[m.estado] || '';
+      const tipoCls   = m.tipo_asignacion === 'consignacion' ? 'badge-consignacion' : 'badge-voltika';
+      const diasAlert = m.dias_en_paso > 1;
+      html += `<tr onclick="openDetalle(${m.id})">
+        <td><strong>${esc(m.vin_display || m.vin)}</strong></td>
+        <td>${esc(m.modelo)} <span style="color:var(--vka-grey)">${esc(m.color)}</span></td>
+        <td><span class="badge ${tipoCls}">${m.tipo_asignacion === 'consignacion' ? 'Consig.' : 'Voltika'}</span></td>
+        <td><span class="badge ${badgeCls}">${ESTADOS_LABEL[m.estado]||m.estado}</span></td>
+        <td>${esc(m.cliente_nombre || '—')}</td>
+        <td style="font-size:12px">${esc(m.pedido_num || '—')}</td>
+        <td><span class="badge ${m.pago_estado==='pagada'?'badge-lista':'badge-por-llegar'}">${m.pago_estado||'—'}</span></td>
+        <td style="${diasAlert?'color:var(--vka-orange);font-weight:700':''}">${m.dias_en_paso}d${diasAlert?' ⚠️':''}</td>
+        <td style="font-size:11px">${esc(m.punto_nombre || '—')}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -660,24 +721,52 @@ function renderVentasTable(ventas) {
   if (!ventas.length) {
     el.innerHTML = '<div class="empty-inv"><p>Sin registros de ventas</p></div>'; return;
   }
-  let html = `<table class="inv-table"><thead><tr>
-    <th>Tipo</th><th>Cliente</th><th>Moto</th><th>Pedido</th>
-    <th>Monto</th><th>Referido</th><th>Dealer</th><th>Fecha</th>
-  </tr></thead><tbody>`;
-  ventas.forEach(v => {
-    html += `<tr>
-      <td><span class="tipo-badge tipo-${v.tipo}">${v.tipo.replace(/_/g,' ')}</span></td>
-      <td>${esc(v.cliente_nombre||'—')}</td>
-      <td>${esc(v.modelo||'—')} ${esc(v.color||'')}</td>
-      <td style="font-size:11px">${esc(v.pedido_num||'—')}</td>
-      <td>${v.monto ? '$'+Number(v.monto).toLocaleString('es-MX') : '—'}</td>
-      <td>${esc(v.referido_nombre||'—')}</td>
-      <td style="font-size:11px">${esc(v.dealer_nombre||'—')}</td>
-      <td style="font-size:11px">${esc(v.freg||'—')}</td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  el.innerHTML = html;
+
+  const isMobile = window.innerWidth <= 680;
+
+  if (isMobile) {
+    let html = '<div class="inv-card-list">';
+    ventas.forEach(v => {
+      const monto = v.monto ? '$' + Number(v.monto).toLocaleString('es-MX') : '—';
+      html += `
+        <div class="inv-list-card" style="cursor:default;">
+          <div class="inv-card-row inv-card-top">
+            <span class="tipo-badge tipo-${v.tipo}">${v.tipo.replace(/_/g,' ')}</span>
+            <span style="font-size:11px;color:var(--vka-grey);">${esc(v.freg||'')}</span>
+          </div>
+          <div class="inv-card-row" style="margin-top:6px;">
+            <span style="font-size:14px;font-weight:700;color:var(--vka-blue-dark);">${esc(v.cliente_nombre||'—')}</span>
+            <span style="font-size:14px;font-weight:800;color:var(--vka-green);">${monto}</span>
+          </div>
+          <div class="inv-card-row inv-card-bottom">
+            <span style="font-size:12px;color:#555;">${esc(v.modelo||'—')} ${esc(v.color||'')}</span>
+            <span style="font-size:11px;color:var(--vka-grey);">${esc(v.pedido_num||'—')}</span>
+          </div>
+          ${v.referido_nombre ? `<div style="font-size:11px;color:var(--vka-grey);margin-top:3px;">Ref: ${esc(v.referido_nombre)}</div>` : ''}
+        </div>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  } else {
+    let html = `<table class="inv-table"><thead><tr>
+      <th>Tipo</th><th>Cliente</th><th>Moto</th><th>Pedido</th>
+      <th>Monto</th><th>Referido</th><th>Dealer</th><th>Fecha</th>
+    </tr></thead><tbody>`;
+    ventas.forEach(v => {
+      html += `<tr>
+        <td><span class="tipo-badge tipo-${v.tipo}">${v.tipo.replace(/_/g,' ')}</span></td>
+        <td>${esc(v.cliente_nombre||'—')}</td>
+        <td>${esc(v.modelo||'—')} ${esc(v.color||'')}</td>
+        <td style="font-size:11px">${esc(v.pedido_num||'—')}</td>
+        <td>${v.monto ? '$'+Number(v.monto).toLocaleString('es-MX') : '—'}</td>
+        <td>${esc(v.referido_nombre||'—')}</td>
+        <td style="font-size:11px">${esc(v.dealer_nombre||'—')}</td>
+        <td style="font-size:11px">${esc(v.freg||'—')}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -703,23 +792,48 @@ function renderReferidos(refs) {
     </div>`;
     return;
   }
-  let html = `<table class="inv-table"><thead><tr>
-    <th>Nombre</th><th>Código</th><th>Email</th><th>Teléfono</th>
-    <th>Ventas</th><th>Comisión total</th><th>Registro</th>
-  </tr></thead><tbody>`;
-  refs.forEach(r => {
-    html += `<tr>
-      <td><strong>${esc(r.nombre)}</strong></td>
-      <td><span style="font-family:monospace;background:var(--vka-blue-soft);padding:2px 8px;border-radius:4px;">${esc(r.codigo_referido||'—')}</span></td>
-      <td>${esc(r.email||'—')}</td>
-      <td>${esc(r.telefono||'—')}</td>
-      <td>${r.ventas_count || 0}</td>
-      <td>${r.comision_total ? '$'+Number(r.comision_total).toLocaleString('es-MX') : '—'}</td>
-      <td style="font-size:11px">${esc(r.freg||'—')}</td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  el.innerHTML = html;
+  const isMobile = window.innerWidth <= 680;
+
+  if (isMobile) {
+    let html = '<div class="inv-card-list">';
+    refs.forEach(r => {
+      html += `
+        <div class="inv-list-card" style="cursor:default;">
+          <div class="inv-card-row inv-card-top">
+            <span style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);">${esc(r.nombre)}</span>
+            <span style="font-family:monospace;background:var(--vka-blue-soft);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;color:var(--vka-blue-dark);">${esc(r.codigo_referido||'—')}</span>
+          </div>
+          <div class="inv-card-row" style="margin-top:5px;">
+            <span style="font-size:12px;color:var(--vka-grey);">${esc(r.email||'—')}</span>
+            <span style="font-size:12px;color:var(--vka-grey);">${esc(r.telefono||'—')}</span>
+          </div>
+          <div class="inv-card-row inv-card-bottom">
+            <span style="font-size:12px;color:#444;">${r.ventas_count||0} venta${(r.ventas_count||0)!==1?'s':''}</span>
+            <span style="font-size:13px;font-weight:700;color:var(--vka-green);">${r.comision_total ? '$'+Number(r.comision_total).toLocaleString('es-MX') : '—'}</span>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  } else {
+    let html = `<table class="inv-table"><thead><tr>
+      <th>Nombre</th><th>Código</th><th>Email</th><th>Teléfono</th>
+      <th>Ventas</th><th>Comisión total</th><th>Registro</th>
+    </tr></thead><tbody>`;
+    refs.forEach(r => {
+      html += `<tr>
+        <td><strong>${esc(r.nombre)}</strong></td>
+        <td><span style="font-family:monospace;background:var(--vka-blue-soft);padding:2px 8px;border-radius:4px;">${esc(r.codigo_referido||'—')}</span></td>
+        <td>${esc(r.email||'—')}</td>
+        <td>${esc(r.telefono||'—')}</td>
+        <td>${r.ventas_count || 0}</td>
+        <td>${r.comision_total ? '$'+Number(r.comision_total).toLocaleString('es-MX') : '—'}</td>
+        <td style="font-size:11px">${esc(r.freg||'—')}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
 }
 
 function openModalReferido() { openModal('modal-referido'); }
