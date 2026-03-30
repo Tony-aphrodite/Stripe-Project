@@ -999,26 +999,75 @@ body.admin-body {
   .btn-logout  { font-size: 11px; }
 }
 
-/* ── Mobile stats bar — horizontal scroll ── */
-@media (max-width: 480px) {
-  .stats-bar {
-    padding: 8px 12px;
-    gap: 12px;
-    overflow-x: auto;
-    white-space: nowrap;
-    flex-wrap: nowrap;
-    font-size: 12px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .stats-bar::-webkit-scrollbar { display: none; }
-  .stats-bar strong { color: var(--vka-blue-dark); }
+/* ── Stats bar — mobile 3-column grid (no scroll) ── */
+.stats-bar-mobile {
+  display: flex !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+}
+.stat-pill {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 4px;
+  border-right: 1px solid var(--vka-border);
+  gap: 1px;
+}
+.stat-pill:last-of-type { border-right: none; }
+.stat-pill-num {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--vka-blue-dark);
+  line-height: 1;
+}
+.stat-pill-lbl {
+  font-size: 9px;
+  color: var(--vka-grey);
+  white-space: nowrap;
+}
+.stat-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  font-size: 16px;
+  cursor: pointer;
+  border-left: 1px solid var(--vka-border);
+  color: var(--vka-grey);
 }
 
-/* ── Nav tabs ── */
+/* ── Nav tabs — equal width, NO scroll ── */
 @media (max-width: 480px) {
-  .nav-tabs-top { padding: 0 8px; gap: 2px; }
-  .nav-tab { padding: 11px 10px; font-size: 12px; }
+  .nav-tabs-top {
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+  }
+  .nav-tab {
+    flex: 1 !important;
+    text-align: center;
+    padding: 10px 2px;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .tab-ico { font-size: 13px; }
+  .btn-qr-header {
+    flex: 0 0 44px !important;
+    margin-left: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    height: 100% !important;
+    justify-content: center;
+  }
 }
 
 /* ── Cards grid — always 1 column on mobile ── */
