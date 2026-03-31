@@ -202,6 +202,22 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: IDENTIDAD DEL CLIENTE ══════════════════════════════════════════ -->
+<div id="modal-identidad" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-identidad')">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <span class="modal-title">📸 Verificación de Identidad</span>
+      <button class="modal-close" onclick="closeModal('modal-identidad')">×</button>
+    </div>
+    <div class="modal-body" id="identidad-body">
+      <p>Cargando...</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-identidad')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL: CONFIRMAR ACCIÓN ══════════════════════════════════════════════ -->
 <div id="modal-accion" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-accion')">
   <div class="modal" style="max-width:400px;">
@@ -560,6 +576,12 @@ function renderMotoCard(m) {
          onclick="openChecklist(${m.id})">✅ Checklist pre-entrega</button>`
     : '';
 
+  // Identity verification button — show on delivery states
+  const identidadBtn = ['lista_para_entrega','por_validar_entrega'].includes(m.estado)
+    ? `<button class="btn-accion-sec" style="border-color:#7c3aed;color:#7c3aed;"
+         onclick="openIdentidad(${m.id})">📸 Verificar identidad</button>`
+    : '';
+
   // Retener / Liberar
   const secBtn = m.estado === 'retenida'
     ? `<button class="btn-accion-sec" onclick="prepareAccion(${m.id},'liberar','Liberar moto','¿Confirmas liberar esta unidad?')">🔓 Liberar</button>`
@@ -585,6 +607,7 @@ function renderMotoCard(m) {
       <div class="card-actions">
         ${mainBtn}
         ${checklistBtn}
+        ${identidadBtn}
         ${secBtn}
       </div>
     </div>
@@ -615,6 +638,89 @@ function getCardAccion(m) {
 
   const info = map[m.estado] || { label: '—', cls: '', accion: null, msg: '' };
   return { btnLabel: info.label, btnClass: info.cls, accion: info.accion, btnMsg: info.msg };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IDENTIDAD — show customer verification photos for delivery comparison
+// ═══════════════════════════════════════════════════════════════════════════════
+async function openIdentidad(motoId) {
+  const body = document.getElementById('identidad-body');
+  body.innerHTML = '<div style="text-align:center;padding:20px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:10px;">Buscando verificación...</p></div>';
+  openModal('modal-identidad');
+
+  try {
+    const r = await fetch('php/admin-identidad.php?moto_id=' + motoId);
+    const d = await r.json();
+
+    if (!d.ok || !d.found) {
+      body.innerHTML = `<div style="text-align:center;padding:20px;">
+        <div style="font-size:36px;margin-bottom:10px;">🔍</div>
+        <p style="color:var(--vka-grey);">No se encontró verificación de identidad para este cliente.</p>
+        <p style="font-size:12px;color:var(--vka-grey);margin-top:8px;">El cliente puede no haber completado el proceso de crédito con verificación Truora.</p>
+      </div>`;
+      return;
+    }
+
+    const v = d.verificacion;
+    const statusColor = v.approved ? '#10b981' : '#ef4444';
+    const statusText  = v.approved ? 'Identidad verificada' : 'Verificación rechazada';
+    const statusIcon  = v.approved ? '✅' : '❌';
+
+    let html = '';
+
+    // Status header
+    html += `<div style="text-align:center;padding:12px;border-radius:8px;margin-bottom:16px;
+      background:${v.approved ? '#d1fae5' : '#fee2e2'};">
+      <div style="font-size:16px;font-weight:800;color:${statusColor};">${statusIcon} ${statusText}</div>
+      ${v.truora_score ? `<div style="font-size:12px;color:var(--vka-grey);margin-top:4px;">Score: ${v.truora_score}</div>` : ''}
+    </div>`;
+
+    // Customer info
+    html += `<div style="font-size:13px;color:var(--vka-grey);margin-bottom:12px;">
+      <strong>${esc(v.nombre)}</strong><br>
+      ${esc(v.email || '')} ${v.telefono ? '· ' + esc(v.telefono) : ''}<br>
+      <span style="font-size:11px;">Verificado: ${esc(v.fecha || '')}</span>
+    </div>`;
+
+    // Selfie — main photo for face comparison
+    if (v.selfie_url) {
+      html += `<div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--vka-blue-dark);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
+          Selfie del cliente — comparar con quien recoge</div>
+        <div style="border:3px solid ${statusColor};border-radius:12px;overflow:hidden;text-align:center;background:#f9fafb;">
+          <img src="${esc(v.selfie_url)}" alt="Selfie"
+            style="width:100%;max-width:300px;height:auto;display:block;margin:0 auto;">
+        </div>
+      </div>`;
+    }
+
+    // INE photos
+    if (v.ine_frente_url || v.ine_reverso_url) {
+      html += `<div style="font-size:12px;font-weight:700;color:var(--vka-blue-dark);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">INE</div>`;
+      html += `<div style="display:flex;gap:8px;margin-bottom:12px;">`;
+      if (v.ine_frente_url) {
+        html += `<div style="flex:1;border:1.5px solid var(--vka-border);border-radius:8px;overflow:hidden;">
+          <img src="${esc(v.ine_frente_url)}" alt="INE Frente" style="width:100%;height:auto;display:block;">
+          <div style="text-align:center;font-size:10px;color:var(--vka-grey);padding:4px;">Frente</div>
+        </div>`;
+      }
+      if (v.ine_reverso_url) {
+        html += `<div style="flex:1;border:1.5px solid var(--vka-border);border-radius:8px;overflow:hidden;">
+          <img src="${esc(v.ine_reverso_url)}" alt="INE Reverso" style="width:100%;height:auto;display:block;">
+          <div style="text-align:center;font-size:10px;color:var(--vka-grey);padding:4px;">Reverso</div>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+
+    if (!v.selfie_url && !v.ine_frente_url) {
+      html += `<p style="color:var(--vka-grey);text-align:center;">No se encontraron fotos almacenadas.</p>`;
+    }
+
+    body.innerHTML = html;
+  } catch (e) {
+    body.innerHTML = `<div style="text-align:center;padding:20px;color:var(--vka-red);">Error al consultar verificación.</div>`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
