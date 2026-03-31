@@ -171,6 +171,13 @@ var Paso3 = {
 
         html += '<p style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin:4px 0 14px;text-align:center;">Recibir\u00e1s confirmaci\u00f3n por <strong>WhatsApp</strong> y <strong>correo electr\u00f3nico</strong>.</p>';
 
+        if (state.metodoPago === 'credito') {
+            html += '<div style="background:#FFF8E1;border:1.5px solid #FFD54F;border-radius:10px;padding:12px 14px;margin-bottom:14px;">';
+            html += '<p style="font-size:12px;color:#5D4037;line-height:1.6;margin:0;text-align:center;">';
+            html += '&#9888; Para recoger tu Voltika es necesario llevar tu <strong>identificaci\u00f3n oficial</strong>, el <strong>n\u00famero de tel\u00e9fono</strong> con el que hiciste este proceso y que la recoja <strong>la misma persona</strong> que hizo la solicitud de cr\u00e9dito.';
+            html += '</p></div>';
+        }
+
         html += '</div>'; // end card
 
         // ── 2 Interactive Checkboxes (always visible) ──
