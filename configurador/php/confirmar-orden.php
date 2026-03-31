@@ -79,6 +79,40 @@ try {
         $pagoTipo === 'msi' ? $msiPago : $total,
         $total, $fecha, $pedidoNum, $paymentIntentId
     ]);
+    // ── Auto-crear registro en inventario_motos para el dealer panel ────────
+    $vinAuto = 'VK-' . strtoupper(substr($modelo, 0, 3)) . '-' . $pedidoNum;
+    $vinDisplay = '****' . substr($pedidoNum, -4);
+    $logEstados = json_encode([[
+        'estado'    => 'por_llegar',
+        'accion'    => 'pedido_confirmado',
+        'timestamp' => $fecha,
+        'dealer'    => 'sistema',
+        'notas'     => 'Creado automáticamente al confirmar orden #' . $pedidoNum
+    ]]);
+
+    try {
+        $stmtMoto = $pdo->prepare("
+            INSERT INTO inventario_motos
+                (vin, vin_display, modelo, color, tipo_asignacion, estado,
+                 cliente_nombre, cliente_email, cliente_telefono,
+                 pedido_num, pago_estado, fecha_estado, log_estados, precio_venta, notas)
+            VALUES
+                (?, ?, ?, ?, 'voltika_entrega', 'por_llegar',
+                 ?, ?, ?,
+                 ?, ?, NOW(), ?, ?, ?)
+        ");
+        $stmtMoto->execute([
+            $vinAuto, $vinDisplay, $modelo, $color,
+            $nombre, $email, $telefono,
+            'VK-' . $pedidoNum,
+            $pagoTipo === 'enganche' ? 'parcial' : 'pagada',
+            $logEstados, $total,
+            'Pedido confirmado vía configurador. Tipo: ' . $pagoTipo
+        ]);
+    } catch (PDOException $e) {
+        error_log('Voltika inventario_motos auto-insert error: ' . $e->getMessage());
+    }
+
 } catch (PDOException $e) {
     // Log pero no fallar — el pago ya fue capturado
     error_log('Voltika DB error: ' . $e->getMessage());
