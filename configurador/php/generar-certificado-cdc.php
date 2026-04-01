@@ -25,11 +25,47 @@ if ($secret !== 'voltika_cdc_cert_2026') {
 // ── Direct download mode ─────────────────────────────────────────────────────
 $download = $_GET['download'] ?? '';
 if ($download === 'cert') {
+    // Try reading from certs dir
     $file = __DIR__ . '/certs/cdc_certificate.pem';
-    if (!file_exists($file)) { http_response_code(404); exit('Certificate not found. Generate it first.'); }
+    if (!file_exists($file)) {
+        // Fallback: regenerate certificate in memory and serve it
+        $keyFile = __DIR__ . '/certs/cdc_private.key';
+        if (file_exists($keyFile)) {
+            $pk = openssl_pkey_get_private('file://' . $keyFile);
+            if ($pk) {
+                $dn = [
+                    'countryName' => 'MX', 'stateOrProvinceName' => 'Ciudad de Mexico',
+                    'localityName' => 'CDMX', 'organizationName' => 'Voltika MX',
+                    'organizationalUnitName' => 'Tecnologia', 'commonName' => 'voltika.mx',
+                    'emailAddress' => 'ivan.clavel@voltika.mx',
+                ];
+                $csr = openssl_csr_new($dn, $pk, ['digest_alg' => 'sha256']);
+                $cert = openssl_csr_sign($csr, null, $pk, 365, ['digest_alg' => 'sha256']);
+                openssl_x509_export($cert, $certPem);
+                @file_put_contents($file, $certPem);
+                header('Content-Type: application/x-pem-file');
+                header('Content-Disposition: attachment; filename="cdc_certificate.pem"');
+                echo $certPem;
+                exit;
+            }
+        }
+        http_response_code(404);
+        exit('Certificate not found. Please open the generation page first (without &download=cert).');
+    }
+    $content = file_get_contents($file);
     header('Content-Type: application/x-pem-file');
     header('Content-Disposition: attachment; filename="cdc_certificate.pem"');
-    header('Content-Length: ' . filesize($file));
+    header('Content-Length: ' . strlen($content));
+    echo $content;
+    exit;
+}
+
+// ── Show certificate content directly (copy/paste fallback) ──────────────────
+$showCert = $_GET['show'] ?? '';
+if ($showCert === 'cert') {
+    $file = __DIR__ . '/certs/cdc_certificate.pem';
+    if (!file_exists($file)) { exit('Certificate not found.'); }
+    header('Content-Type: text/plain');
     readfile($file);
     exit;
 }
@@ -56,6 +92,8 @@ if (file_exists($privateKeyFile) && file_exists($certificateFile)) {
     echo '<hr>';
     echo '<h3>Descargar</h3>';
     echo '<p><a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&download=cert">📥 Descargar certificado (.pem)</a></p>';
+    echo '<p style="font-size:12px;color:#666;">Si el botón no funciona, copia el contenido del certificado aquí abajo y guárdalo como archivo <code>cdc_certificate.pem</code>:</p>';
+    echo '<textarea style="width:100%;height:200px;font-family:monospace;font-size:11px;" readonly onclick="this.select();">' . htmlspecialchars(file_get_contents($certificateFile)) . '</textarea>';
     echo '<p style="color:#C62828;">⚠️ La llave privada NO debe descargarse ni compartirse. Se queda en el servidor.</p>';
     exit;
 }
@@ -123,7 +161,10 @@ echo '</table>';
 echo '<hr>';
 echo '<h3>📋 Siguientes pasos:</h3>';
 echo '<ol>';
-echo '<li><strong>Descargar el certificado:</strong> <a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&download=cert">📥 Descargar cdc_certificate.pem</a></li>';
+echo '<li><strong>Descargar el certificado:</strong> <a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&download=cert">📥 Descargar cdc_certificate.pem</a><br>';
+echo '<span style="font-size:12px;color:#666;">Si no funciona el botón, copia el contenido aquí abajo y guárdalo como <code>cdc_certificate.pem</code>:</span><br>';
+echo '<textarea style="width:100%;height:180px;font-family:monospace;font-size:11px;margin-top:6px;" readonly onclick="this.select();">' . htmlspecialchars(file_get_contents($certificateFile)) . '</textarea>';
+echo '</li>';
 echo '<li><strong>Ir al portal de Círculo de Crédito:</strong> <a href="https://developer.circulodecredito.com.mx" target="_blank">developer.circulodecredito.com.mx</a></li>';
 echo '<li><strong>Iniciar sesión</strong> con las credenciales de Voltika</li>';
 echo '<li><strong>Subir el certificado</strong> (cdc_certificate.pem) en la sección de certificados del API Hub</li>';
