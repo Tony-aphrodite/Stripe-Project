@@ -1,19 +1,12 @@
 <?php
 /**
  * Voltika — Generador de certificados para Círculo de Crédito
- * Ejecutar UNA SOLA VEZ para generar la llave privada y el certificado.
+ * Genera llave privada + certificado en memoria y los muestra directamente.
+ * No depende de escribir archivos en disco (evita problemas de permisos).
  *
  * Acceso: ?key=voltika_cdc_cert_2026
- *
- * Genera:
- *   - cdc_private.key  (llave privada RSA 2048)
- *   - cdc_certificate.pem (certificado autofirmado, válido 365 días)
- *
- * Después de generar:
- *   1. Descargar ambos archivos
- *   2. Subir cdc_certificate.pem al API Hub de Círculo de Crédito
- *   3. Descargar el certificado de Círculo de Crédito desde el portal
- *   4. Guardar todos los archivos en /configurador/php/certs/
+ * Descarga: ?key=voltika_cdc_cert_2026&download=cert
+ *           ?key=voltika_cdc_cert_2026&download=key
  */
 
 $secret = $_GET['key'] ?? '';
@@ -22,101 +15,9 @@ if ($secret !== 'voltika_cdc_cert_2026') {
     exit('Forbidden');
 }
 
-// ── Direct download mode ─────────────────────────────────────────────────────
-$download = $_GET['download'] ?? '';
-if ($download === 'cert') {
-    // Try reading from certs dir
-    $file = __DIR__ . '/certs/cdc_certificate.pem';
-    if (!file_exists($file)) {
-        // Fallback: regenerate certificate in memory and serve it
-        $keyFile = __DIR__ . '/certs/cdc_private.key';
-        if (file_exists($keyFile)) {
-            $pk = openssl_pkey_get_private('file://' . $keyFile);
-            if ($pk) {
-                $dn = [
-                    'countryName' => 'MX', 'stateOrProvinceName' => 'Ciudad de Mexico',
-                    'localityName' => 'CDMX', 'organizationName' => 'Voltika MX',
-                    'organizationalUnitName' => 'Tecnologia', 'commonName' => 'voltika.mx',
-                    'emailAddress' => 'ivan.clavel@voltika.mx',
-                ];
-                $csr = openssl_csr_new($dn, $pk, ['digest_alg' => 'sha256']);
-                $cert = openssl_csr_sign($csr, null, $pk, 365, ['digest_alg' => 'sha256']);
-                openssl_x509_export($cert, $certPem);
-                @file_put_contents($file, $certPem);
-                header('Content-Type: application/x-pem-file');
-                header('Content-Disposition: attachment; filename="cdc_certificate.pem"');
-                echo $certPem;
-                exit;
-            }
-        }
-        http_response_code(404);
-        exit('Certificate not found. Please open the generation page first (without &download=cert).');
-    }
-    $content = file_get_contents($file);
-    header('Content-Type: application/x-pem-file');
-    header('Content-Disposition: attachment; filename="cdc_certificate.pem"');
-    header('Content-Length: ' . strlen($content));
-    echo $content;
-    exit;
-}
+session_start();
 
-// ── Show certificate content directly (copy/paste fallback) ──────────────────
-$showCert = $_GET['show'] ?? '';
-if ($showCert === 'cert') {
-    $file = __DIR__ . '/certs/cdc_certificate.pem';
-    if (!file_exists($file)) { exit('Certificate not found.'); }
-    header('Content-Type: text/plain');
-    readfile($file);
-    exit;
-}
-
-header('Content-Type: text/html; charset=UTF-8');
-
-$certsDir = __DIR__ . '/certs';
-if (!is_dir($certsDir)) {
-    mkdir($certsDir, 0700, true);
-}
-
-$privateKeyFile  = $certsDir . '/cdc_private.key';
-$certificateFile = $certsDir . '/cdc_certificate.pem';
-
-// Check if already generated
-if (file_exists($privateKeyFile) && file_exists($certificateFile)) {
-    echo '<h2>⚠️ Certificados ya existen</h2>';
-    echo '<p>Los archivos ya fueron generados anteriormente:</p>';
-    echo '<ul>';
-    echo '<li><strong>Llave privada:</strong> ' . $privateKeyFile . ' (' . filesize($privateKeyFile) . ' bytes)</li>';
-    echo '<li><strong>Certificado:</strong> ' . $certificateFile . ' (' . filesize($certificateFile) . ' bytes)</li>';
-    echo '</ul>';
-    echo '<p>Si necesitas regenerar, elimina los archivos existentes primero.</p>';
-    echo '<hr>';
-    echo '<h3>Descargar</h3>';
-    echo '<p><a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&download=cert">📥 Descargar certificado (.pem)</a></p>';
-    echo '<p style="font-size:12px;color:#666;">Si el botón no funciona, copia el contenido del certificado aquí abajo y guárdalo como archivo <code>cdc_certificate.pem</code>:</p>';
-    echo '<textarea style="width:100%;height:200px;font-family:monospace;font-size:11px;" readonly onclick="this.select();">' . htmlspecialchars(file_get_contents($certificateFile)) . '</textarea>';
-    echo '<p style="color:#C62828;">⚠️ La llave privada NO debe descargarse ni compartirse. Se queda en el servidor.</p>';
-    exit;
-}
-
-// ── 1. Generate RSA 2048 private key ─────────────────────────────────────────
-$keyConfig = [
-    'private_key_bits' => 2048,
-    'private_key_type' => OPENSSL_KEYTYPE_RSA,
-];
-
-$privateKey = openssl_pkey_new($keyConfig);
-
-if (!$privateKey) {
-    echo '<h2 style="color:red;">❌ Error generando llave privada</h2>';
-    echo '<pre>' . openssl_error_string() . '</pre>';
-    exit;
-}
-
-// Export private key to file
-openssl_pkey_export_to_file($privateKey, $privateKeyFile);
-chmod($privateKeyFile, 0600); // Read only by owner
-
-// ── 2. Generate self-signed certificate (CSR + sign) ─────────────────────────
+// ── DN for certificate ───────────────────────────────────────────────────────
 $dn = [
     'countryName'            => 'MX',
     'stateOrProvinceName'    => 'Ciudad de Mexico',
@@ -127,63 +28,104 @@ $dn = [
     'emailAddress'           => 'ivan.clavel@voltika.mx',
 ];
 
-// Create CSR
-$csr = openssl_csr_new($dn, $privateKey, ['digest_alg' => 'sha256']);
+// ── Generate or retrieve from session ────────────────────────────────────────
+if (!empty($_SESSION['cdc_cert_pem']) && !empty($_SESSION['cdc_key_pem'])) {
+    $certPem = $_SESSION['cdc_cert_pem'];
+    $keyPem  = $_SESSION['cdc_key_pem'];
+} else {
+    // Generate RSA 2048 private key
+    $privateKey = openssl_pkey_new([
+        'private_key_bits' => 2048,
+        'private_key_type' => OPENSSL_KEYTYPE_RSA,
+    ]);
 
-if (!$csr) {
-    echo '<h2 style="color:red;">❌ Error generando CSR</h2>';
-    echo '<pre>' . openssl_error_string() . '</pre>';
+    if (!$privateKey) {
+        header('Content-Type: text/html; charset=UTF-8');
+        echo '<h2 style="color:red;">Error generando llave privada</h2>';
+        echo '<pre>' . openssl_error_string() . '</pre>';
+        exit;
+    }
+
+    // Export private key to string
+    openssl_pkey_export($privateKey, $keyPem);
+
+    // Generate CSR + self-sign for 365 days
+    $csr = openssl_csr_new($dn, $privateKey, ['digest_alg' => 'sha256']);
+    $cert = openssl_csr_sign($csr, null, $privateKey, 365, ['digest_alg' => 'sha256']);
+    openssl_x509_export($cert, $certPem);
+
+    // Store in session so we can download later
+    $_SESSION['cdc_cert_pem'] = $certPem;
+    $_SESSION['cdc_key_pem']  = $keyPem;
+
+    // Also try to save to disk (may fail due to permissions — that's OK)
+    $certsDir = __DIR__ . '/certs';
+    @mkdir($certsDir, 0700, true);
+    @file_put_contents($certsDir . '/cdc_private.key', $keyPem);
+    @file_put_contents($certsDir . '/cdc_certificate.pem', $certPem);
+}
+
+// ── Download mode ────────────────────────────────────────────────────────────
+$download = $_GET['download'] ?? '';
+if ($download === 'cert' && $certPem) {
+    header('Content-Type: application/x-pem-file');
+    header('Content-Disposition: attachment; filename="cdc_certificate.pem"');
+    header('Content-Length: ' . strlen($certPem));
+    echo $certPem;
+    exit;
+}
+if ($download === 'key' && $keyPem) {
+    header('Content-Type: application/x-pem-file');
+    header('Content-Disposition: attachment; filename="cdc_private.key"');
+    header('Content-Length: ' . strlen($keyPem));
+    echo $keyPem;
     exit;
 }
 
-// Self-sign for 365 days
-$certificate = openssl_csr_sign($csr, null, $privateKey, 365, ['digest_alg' => 'sha256']);
+// ── Display page ─────────────────────────────────────────────────────────────
+header('Content-Type: text/html; charset=UTF-8');
 
-if (!$certificate) {
-    echo '<h2 style="color:red;">❌ Error firmando certificado</h2>';
-    echo '<pre>' . openssl_error_string() . '</pre>';
-    exit;
-}
+echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Voltika — Certificado CDC</title>';
+echo '<style>body{font-family:Arial,sans-serif;max-width:800px;margin:20px auto;padding:0 20px;color:#333;}';
+echo 'h1{color:#10b981;} textarea{width:100%;font-family:monospace;font-size:11px;background:#f5f5f5;border:1px solid #ddd;border-radius:6px;padding:10px;}';
+echo '.btn{display:inline-block;padding:12px 24px;background:#039fe1;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;margin:5px 0;}';
+echo '.btn:hover{background:#027db0;} .warn{color:#C62828;font-weight:700;}</style></head><body>';
 
-// Export certificate to file
-openssl_x509_export_to_file($certificate, $certificateFile);
+echo '<h1>✅ Certificados generados exitosamente</h1>';
 
-// ── 3. Show results ──────────────────────────────────────────────────────────
-echo '<h1 style="color:#10b981;">✅ Certificados generados exitosamente</h1>';
-
-echo '<h3>Archivos creados:</h3>';
-echo '<table border="1" cellpadding="8" style="border-collapse:collapse;">';
-echo '<tr><th>Archivo</th><th>Ubicación</th><th>Tamaño</th></tr>';
-echo '<tr><td>🔑 Llave privada</td><td>' . $privateKeyFile . '</td><td>' . filesize($privateKeyFile) . ' bytes</td></tr>';
-echo '<tr><td>📜 Certificado</td><td>' . $certificateFile . '</td><td>' . filesize($certificateFile) . ' bytes</td></tr>';
+// Certificate details
+$certData = openssl_x509_parse($certPem);
+echo '<table border="1" cellpadding="8" style="border-collapse:collapse;margin-bottom:20px;">';
+echo '<tr><th>Campo</th><th>Valor</th></tr>';
+echo '<tr><td>Organización</td><td>' . ($certData['subject']['O'] ?? '') . '</td></tr>';
+echo '<tr><td>Common Name</td><td>' . ($certData['subject']['CN'] ?? '') . '</td></tr>';
+echo '<tr><td>Email</td><td>' . ($certData['subject']['emailAddress'] ?? '') . '</td></tr>';
+echo '<tr><td>País</td><td>' . ($certData['subject']['C'] ?? '') . '</td></tr>';
+echo '<tr><td>Válido desde</td><td>' . date('Y-m-d', $certData['validFrom_time_t']) . '</td></tr>';
+echo '<tr><td>Válido hasta</td><td>' . date('Y-m-d', $certData['validTo_time_t']) . '</td></tr>';
 echo '</table>';
 
-echo '<hr>';
-echo '<h3>📋 Siguientes pasos:</h3>';
-echo '<ol>';
-echo '<li><strong>Descargar el certificado:</strong> <a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&download=cert">📥 Descargar cdc_certificate.pem</a><br>';
-echo '<span style="font-size:12px;color:#666;">Si no funciona el botón, copia el contenido aquí abajo y guárdalo como <code>cdc_certificate.pem</code>:</span><br>';
-echo '<textarea style="width:100%;height:180px;font-family:monospace;font-size:11px;margin-top:6px;" readonly onclick="this.select();">' . htmlspecialchars(file_get_contents($certificateFile)) . '</textarea>';
-echo '</li>';
-echo '<li><strong>Ir al portal de Círculo de Crédito:</strong> <a href="https://developer.circulodecredito.com.mx" target="_blank">developer.circulodecredito.com.mx</a></li>';
-echo '<li><strong>Iniciar sesión</strong> con las credenciales de Voltika</li>';
-echo '<li><strong>Subir el certificado</strong> (cdc_certificate.pem) en la sección de certificados del API Hub</li>';
-echo '<li><strong>Descargar el certificado de Círculo de Crédito</strong> desde el portal y guardarlo en el servidor</li>';
-echo '<li><strong>Ejecutar la prueba de seguridad:</strong> <a href="https://developer.circulodecredito.com.mx/prueba_de_seguridad" target="_blank">prueba_de_seguridad</a></li>';
-echo '<li><strong>Solicitar pase a producción:</strong> <a href="https://developer.circulodecredito.com.mx/pase_a_produccion" target="_blank">pase_a_produccion</a></li>';
+// Download buttons
+echo '<h3>Paso 1: Descargar el certificado</h3>';
+echo '<p><a class="btn" href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&download=cert">📥 Descargar cdc_certificate.pem</a></p>';
+
+// Copy/paste fallback
+echo '<p style="margin-top:16px;font-size:13px;color:#666;">Si el botón no funciona, copia <strong>TODO</strong> el contenido del cuadro y guárdalo en un archivo llamado <code>cdc_certificate.pem</code>:</p>';
+echo '<textarea rows="12" readonly onclick="this.select();document.execCommand(\'copy\');alert(\'Copiado!\');">' . htmlspecialchars($certPem) . '</textarea>';
+
+// Next steps
+echo '<hr style="margin:24px 0;">';
+echo '<h3>📋 Siguientes pasos</h3>';
+echo '<ol style="line-height:2.2;">';
+echo '<li><strong>Ir al portal:</strong> <a href="https://developer.circulodecredito.com.mx" target="_blank">developer.circulodecredito.com.mx</a></li>';
+echo '<li><strong>Iniciar sesión</strong> con credenciales de Voltika</li>';
+echo '<li><strong>Subir el certificado</strong> (<code>cdc_certificate.pem</code>) en la sección de certificados del API Hub</li>';
+echo '<li><strong>Descargar el certificado de Círculo de Crédito</strong> desde el portal</li>';
+echo '<li><strong>Prueba de seguridad:</strong> <a href="https://developer.circulodecredito.com.mx/prueba_de_seguridad" target="_blank">Ejecutar prueba</a></li>';
+echo '<li><strong>Pase a producción:</strong> <a href="https://developer.circulodecredito.com.mx/pase_a_produccion" target="_blank">Solicitar</a></li>';
 echo '</ol>';
 
-echo '<hr>';
-echo '<p style="color:#C62828;font-weight:bold;">⚠️ IMPORTANTE: La llave privada (cdc_private.key) NUNCA debe compartirse ni descargarse. Se queda en el servidor.</p>';
-echo '<p style="color:#C62828;">⚠️ Eliminar este script (generar-certificado-cdc.php) después de completar el proceso.</p>';
+echo '<hr style="margin:24px 0;">';
+echo '<p class="warn">⚠️ IMPORTANTE: Eliminar este script después de completar el proceso.</p>';
 
-// Show certificate details
-echo '<hr>';
-echo '<h3>Detalles del certificado:</h3>';
-echo '<pre>';
-$certData = openssl_x509_parse($certificate);
-echo 'Subject: ' . json_encode($certData['subject'], JSON_PRETTY_PRINT) . "\n";
-echo 'Valid from: ' . date('Y-m-d', $certData['validFrom_time_t']) . "\n";
-echo 'Valid to: ' . date('Y-m-d', $certData['validTo_time_t']) . "\n";
-echo 'Serial: ' . $certData['serialNumber'] . "\n";
-echo '</pre>';
+echo '</body></html>';
