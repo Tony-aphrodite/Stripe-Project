@@ -22,6 +22,18 @@ if ($secret !== 'voltika_cdc_cert_2026') {
     exit('Forbidden');
 }
 
+// ── Direct download mode ─────────────────────────────────────────────────────
+$download = $_GET['download'] ?? '';
+if ($download === 'cert') {
+    $file = __DIR__ . '/certs/cdc_certificate.pem';
+    if (!file_exists($file)) { http_response_code(404); exit('Certificate not found. Generate it first.'); }
+    header('Content-Type: application/x-pem-file');
+    header('Content-Disposition: attachment; filename="cdc_certificate.pem"');
+    header('Content-Length: ' . filesize($file));
+    readfile($file);
+    exit;
+}
+
 header('Content-Type: text/html; charset=UTF-8');
 
 $certsDir = __DIR__ . '/certs';
@@ -43,7 +55,7 @@ if (file_exists($privateKeyFile) && file_exists($certificateFile)) {
     echo '<p>Si necesitas regenerar, elimina los archivos existentes primero.</p>';
     echo '<hr>';
     echo '<h3>Descargar</h3>';
-    echo '<p><a href="certs/cdc_certificate.pem" download>📥 Descargar certificado (.pem)</a></p>';
+    echo '<p><a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&download=cert">📥 Descargar certificado (.pem)</a></p>';
     echo '<p style="color:#C62828;">⚠️ La llave privada NO debe descargarse ni compartirse. Se queda en el servidor.</p>';
     exit;
 }
@@ -111,7 +123,7 @@ echo '</table>';
 echo '<hr>';
 echo '<h3>📋 Siguientes pasos:</h3>';
 echo '<ol>';
-echo '<li><strong>Descargar el certificado:</strong> <a href="certs/cdc_certificate.pem" download>📥 Descargar cdc_certificate.pem</a></li>';
+echo '<li><strong>Descargar el certificado:</strong> <a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&download=cert">📥 Descargar cdc_certificate.pem</a></li>';
 echo '<li><strong>Ir al portal de Círculo de Crédito:</strong> <a href="https://developer.circulodecredito.com.mx" target="_blank">developer.circulodecredito.com.mx</a></li>';
 echo '<li><strong>Iniciar sesión</strong> con las credenciales de Voltika</li>';
 echo '<li><strong>Subir el certificado</strong> (cdc_certificate.pem) en la sección de certificados del API Hub</li>';
