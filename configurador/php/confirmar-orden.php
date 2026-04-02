@@ -79,6 +79,40 @@ try {
         $pagoTipo === 'msi' ? $msiPago : $total,
         $total, $fecha, $pedidoNum, $paymentIntentId
     ]);
+    // ── Auto-crear registro en inventario_motos para el dealer panel ────────
+    $vinAuto = 'VK-' . strtoupper(substr($modelo, 0, 3)) . '-' . $pedidoNum;
+    $vinDisplay = '****' . substr($pedidoNum, -4);
+    $logEstados = json_encode([[
+        'estado'    => 'por_llegar',
+        'accion'    => 'pedido_confirmado',
+        'timestamp' => $fecha,
+        'dealer'    => 'sistema',
+        'notas'     => 'Creado automáticamente al confirmar orden #' . $pedidoNum
+    ]]);
+
+    try {
+        $stmtMoto = $pdo->prepare("
+            INSERT INTO inventario_motos
+                (vin, vin_display, modelo, color, tipo_asignacion, estado,
+                 cliente_nombre, cliente_email, cliente_telefono,
+                 pedido_num, pago_estado, fecha_estado, log_estados, precio_venta, notas)
+            VALUES
+                (?, ?, ?, ?, 'voltika_entrega', 'por_llegar',
+                 ?, ?, ?,
+                 ?, ?, NOW(), ?, ?, ?)
+        ");
+        $stmtMoto->execute([
+            $vinAuto, $vinDisplay, $modelo, $color,
+            $nombre, $email, $telefono,
+            'VK-' . $pedidoNum,
+            $pagoTipo === 'enganche' ? 'parcial' : 'pagada',
+            $logEstados, $total,
+            'Pedido confirmado vía configurador. Tipo: ' . $pagoTipo
+        ]);
+    } catch (PDOException $e) {
+        error_log('Voltika inventario_motos auto-insert error: ' . $e->getMessage());
+    }
+
 } catch (PDOException $e) {
     // Log pero no fallar — el pago ya fue capturado
     error_log('Voltika DB error: ' . $e->getMessage());
@@ -145,6 +179,7 @@ $cuerpo = '<!DOCTYPE html>
 <tr><td ' . $tdl . '>Asesoría para placas</td><td ' . $td . '>' . $asesoriaPlacas . '</td></tr>
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Seguro Qualitas</td><td ' . $td . '>' . $seguroQualitas . '</td></tr>
 </table>
+<p style="font-size:10px;color:#999;line-height:1.5;margin:6px 0 16px;">Voltika solo sugiere gestores y seguros de terceros. No es responsable por su servicio, tiempos, costos ni cobertura. La contratación es responsabilidad del cliente.</p>
 
 <!-- QUÉ SIGUE -->
 <div ' . $section . '>¿QUÉ SIGUE?</div>
@@ -249,6 +284,7 @@ if ($esCredito) {
 <tr><td ' . $tdl . '>Asesoría para placas</td><td ' . $td . '>' . $asesoriaPlacas . '</td></tr>
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Seguro Qualitas</td><td ' . $td . '>' . $seguroQualitas . '</td></tr>
 </table>
+<p style="font-size:10px;color:#999;line-height:1.5;margin:6px 0 16px;">Voltika solo sugiere gestores y seguros de terceros. No es responsable por su servicio, tiempos, costos ni cobertura. La contratación es responsabilidad del cliente.</p>
 
 <div ' . $section . '>¿QUÉ SIGUE?</div>
 <div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">

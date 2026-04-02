@@ -39,6 +39,43 @@
         },
 
         init: function() {
+            var self = this;
+
+            // ── Test mode: ?test_credito=condicional|no_viable|truora_fail ──
+            var urlParams = new URLSearchParams(window.location.search);
+            var testMode  = urlParams.get('test_credito');
+
+            if (testMode) {
+                // Set minimum required state for the resultado screen
+                self.state.modeloSeleccionado = 'm05';
+                self.state.metodoPago = 'credito';
+                self.state.colorSeleccionado = 'negro';
+                self.state.enganchePorcentaje = 0.30;
+                self.state.plazoMeses = 12;
+                self.state._ingresoMensual = 10000;
+
+                if (testMode === 'condicional') {
+                    // Círculo de Crédito low score → enganche increase screen
+                    self.state._buroResult = { score: 430, pagoMensual: 5000, dpd90: false, dpdMax: 0 };
+                    self.state._truoraResult = { status: 'approved', fallback: true };
+                } else if (testMode === 'no_viable') {
+                    // Círculo de Crédito very low score → credit denied screen
+                    self.state._buroResult = { score: 350, pagoMensual: 8000, dpd90: true, dpdMax: 120 };
+                    self.state._truoraResult = { status: 'approved', fallback: true };
+                } else if (testMode === 'truora_fail') {
+                    // Truora identity verification failed
+                    self.state._buroResult = { score: 500, pagoMensual: 3000, dpd90: false, dpdMax: 0 };
+                    self.state._truoraResult = { status: 'rejected', fallback: false };
+                }
+
+                VkUI.renderProgressBar(4, 'credito');
+                setTimeout(function() {
+                    self.irAPaso('credito-resultado');
+                }, 500);
+                self.bindGlobalEvents();
+                return;
+            }
+
             VkUI.renderProgressBar(1, 'credito');
             Paso1.init(this);
             this.bindGlobalEvents();

@@ -43,7 +43,8 @@ var Paso4A = {
         var fechaEntrega = _fd.getDate() + ' de ' + _meses[_fd.getMonth()] + ' de ' + _fd.getFullYear();
         var color       = state.colorSeleccionado || modelo.colorDefault || '';
         var base        = window.VK_BASE_PATH || '';
-        var imgSrc      = base + 'img/' + modelo.id + '/model.png';
+        var _imgFolder  = { 'ukko-s': 'ukko', 'pesgo-plus': 'pesgo' };
+        var imgSrc      = base + 'img/' + (_imgFolder[modelo.id] || modelo.id) + '/model.png';
         var _envioDestino = (state.centroEntrega && state.centroEntrega.nombre && state.centroEntrega.tipo !== 'cercano')
             ? state.centroEntrega.nombre
             : (state.ciudad || 'tu ciudad');
@@ -328,6 +329,15 @@ var Paso4A = {
     },
 
     _otpCooldown: false,
+    _otpTimer: null,
+
+    _resetOtpCooldown: function() {
+        if (this._otpTimer) {
+            clearInterval(this._otpTimer);
+            this._otpTimer = null;
+        }
+        this._otpCooldown = false;
+    },
 
     _sendOTP: function() {
         var tel = this.app.state.telefono;
@@ -337,14 +347,16 @@ var Paso4A = {
         self._otpCooldown = true;
 
         // Disable resend link + show cooldown timer
-        var $resend = $('#vk-pago-otp-reenviar');
+        var $resend = $('#vk-pago-otp-reenviar, #vk-post-otp-reenviar');
         var cooldownSec = 60;
         $resend.css({ 'pointer-events': 'none', 'color': '#999' });
-        var timer = setInterval(function() {
+        if (self._otpTimer) clearInterval(self._otpTimer);
+        self._otpTimer = setInterval(function() {
             cooldownSec--;
             $resend.text('Reenviar en ' + cooldownSec + 's');
             if (cooldownSec <= 0) {
-                clearInterval(timer);
+                clearInterval(self._otpTimer);
+                self._otpTimer = null;
                 self._otpCooldown = false;
                 $resend.text('Reenviar').css({ 'pointer-events': 'auto', 'color': '#039fe1' });
             }
@@ -514,8 +526,8 @@ var Paso4A = {
                 total:     total,
                 msiPago:   msiPago,
                 msiMeses:  modelo.msiMeses,
-                asesoriaPlacas: self.app.state.asesoria_placas || false,
-                seguroQualitas: self.app.state.seguro_qualitas || false
+                asesoriaPlacas: self.app.state.asesoriaPlacos || false,
+                seguroQualitas: self.app.state.seguro || false
             }),
             complete: function() {
                 self._setLoading(false);
@@ -547,6 +559,9 @@ var Paso4A = {
 
     _showPostPaymentOTP: function() {
         var self = this;
+        // Reset OTP cooldown so SMS is always sent fresh on this screen,
+        // regardless of whether SPEI/OXXO was tried first.
+        self._resetOtpCooldown();
         var state = self.app.state;
         var _tel = state.telefono || '';
 

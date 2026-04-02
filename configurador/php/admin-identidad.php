@@ -1,6 +1,8 @@
 <?php
 /**
  * Voltika Admin - Consultar fotos de verificación de identidad
+ * Busca en verificaciones_identidad por email/telefono del cliente vinculado a la moto.
+ *
  * GET ?moto_id=N  → { ok, verificacion: { selfie_url, ine_frente_url, ine_reverso_url, ... } }
  */
 
@@ -48,17 +50,17 @@ if (!empty($conditions)) {
 
 if (!$verif) {
     echo json_encode([
-        'ok' => true,
+        'ok'    => true,
         'found' => false,
         'message' => 'No se encontró verificación de identidad para este cliente'
     ]);
     exit;
 }
 
-$files = json_decode($verif['files_saved'], true) ?: [];
+$files     = json_decode($verif['files_saved'], true) ?: [];
 $uploadUrl = 'php/uploads/';
 
-$selfieUrl = null;
+$selfieUrl    = null;
 $ineFrenteUrl = null;
 $ineReversoUrl = null;
 
@@ -73,18 +75,18 @@ foreach ($files as $filename) {
 }
 
 echo json_encode([
-    'ok' => true,
+    'ok'    => true,
     'found' => true,
     'verificacion' => [
-        'nombre' => trim(($verif['nombre'] ?? '') . ' ' . ($verif['apellidos'] ?? '')),
-        'email' => $verif['email'] ?? '',
-        'telefono' => $verif['telefono'] ?? '',
-        'truora_score' => $verif['truora_score'],
+        'nombre'          => trim(($verif['nombre'] ?? '') . ' ' . ($verif['apellidos'] ?? '')),
+        'email'           => $verif['email'] ?? '',
+        'telefono'        => $verif['telefono'] ?? '',
+        'truora_score'    => $verif['truora_score'],
         'identity_status' => $verif['identity_status'],
-        'approved' => (bool) $verif['approved'],
-        'fecha' => $verif['freg'],
-        'selfie_url' => $selfieUrl,
-        'ine_frente_url' => $ineFrenteUrl,
+        'approved'        => (bool) $verif['approved'],
+        'fecha'           => $verif['freg'],
+        'selfie_url'      => $selfieUrl,
+        'ine_frente_url'  => $ineFrenteUrl,
         'ine_reverso_url' => $ineReversoUrl,
     ]
 ]);

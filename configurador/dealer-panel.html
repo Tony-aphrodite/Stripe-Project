@@ -589,6 +589,12 @@ function renderMotoCard(m) {
          onclick="openFaceCompare(${m.id},'${esc(m.tipo_asignacion || 'voltika_entrega')}')">📸 Foto de entrega</button>`
     : '';
 
+  // Identity verification button — show on delivery states
+  const identidadBtn = ['lista_para_entrega','por_validar_entrega'].includes(m.estado)
+    ? `<button class="btn-accion-sec" style="border-color:#7c3aed;color:#7c3aed;"
+         onclick="openIdentidad(${m.id})">📸 Verificar identidad</button>`
+    : '';
+
   // Retener / Liberar
   const secBtn = m.estado === 'retenida'
     ? `<button class="btn-accion-sec" onclick="prepareAccion(${m.id},'liberar','Liberar moto','¿Confirmas liberar esta unidad?')">🔓 Liberar</button>`
