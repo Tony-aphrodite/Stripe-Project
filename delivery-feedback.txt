@@ -1,0 +1,637 @@
+VOLTIKA ⚡ CHECKLIST DE ORIGEN
+===============================
+
+[SYSTEM INSTRUCTIONS – ENGLISH]
+
+This checklist must be completed at origin before shipment.
+Each unit is identified by VIN and cannot be edited after completion.
+
+All fields are mandatory unless specified.
+Photos must be uploaded and linked to VIN.
+
+On submission:
+- lock checklist (immutable)
+- store timestamp, user_id, VIN
+- generate PDF snapshot
+- generate hash (recommended)
+
+====================================================
+
+IDENTIFICACIÓN DE UNIDAD
+
+VIN: {auto}
+Número de motor: {auto}
+Modelo: {auto}
+Color: {auto}
+Año modelo: {auto}
+Configuración de baterías: {1 / 2}
+
+====================================================
+
+1. ESTRUCTURA PRINCIPAL
+
+☐ Frame completo
+☐ Chasis sin deformaciones
+☐ Soportes estructurales completos
+☐ Charola trasera instalada
+
+====================================================
+
+2. SISTEMA DE RODAMIENTO
+
+☐ Llanta delantera
+☐ Llanta trasera
+☐ Rines sin daño
+☐ Ejes completos
+
+====================================================
+
+3. DIRECCIÓN Y CONTROL
+
+☐ Manubrio
+☐ Soportes completos
+☐ Dashboard incluido
+☐ Controles completos
+
+====================================================
+
+4. SISTEMA DE FRENADO
+
+☐ Freno delantero completo
+☐ Freno trasero completo
+☐ Discos sin daño
+☐ Calipers instalados
+☐ Líneas completas
+
+====================================================
+
+5. SISTEMA ELÉCTRICO
+
+☐ Cableado completo
+☐ Conectores correctos
+☐ Controlador instalado
+☐ Encendido operativo
+
+====================================================
+
+6. MOTOR
+
+☐ Motor instalado
+☐ Motor sin daño
+☐ Conexión correcta
+
+====================================================
+
+7. BATERÍAS
+
+☐ Batería 1
+☐ Batería 2 (si aplica)
+☐ Sin daño visible
+☐ Cargador incluido
+
+====================================================
+
+8. ACCESORIOS
+
+☐ Espejos (2)
+☐ Tornillería completa
+☐ Birlos completos
+☐ Kit herramientas
+
+====================================================
+
+9. COMPLEMENTOS
+
+☐ Llaves (2)
+☐ Manual usuario
+☐ Carnet garantía
+
+====================================================
+
+10. VALIDACIÓN ELÉCTRICA (SIN MOVIMIENTO)
+
+☐ Sistema enciende
+☐ Dashboard funcional
+☐ Indicador batería
+☐ Luces funcionando
+☐ Conectores firmes
+☐ Cableado sin daño
+
+NOTA:
+Validación sin rodaje
+
+====================================================
+
+11. ARTES DECORATIVOS Y ACABADOS
+
+☐ Calcomanías correctas
+☐ Alineación correcta
+☐ Sin burbujas
+☐ Sin desprendimientos
+☐ Sin rayones visibles
+☐ Acabados estéticos correctos
+
+====================================================
+
+12. EMPAQUE
+
+☐ Embalaje correcto
+☐ Protecciones colocadas
+☐ Caja sin daño
+☐ Sellos colocados
+
+Número de sellos: [__]
+
+====================================================
+
+13. EVIDENCIA FOTOGRÁFICA
+
+📸 Unidad completa
+📸 VIN
+📸 Tablero encendido
+📸 Batería
+📸 Contenido previo cierre
+📸 Caja cerrada
+📸 Sellos
+📸 Detalle calcomanías (NUEVO 🔥)
+
+====================================================
+
+14. DECLARACIÓN LEGAL
+
+La unidad fue revisada, validada y empacada conforme a estándares Voltika.
+
+Se confirma que:
+- contenido completo
+- sistema eléctrico funcional
+- estética en buen estado
+
+====================================================
+
+15. VALIDACIÓN FINAL
+
+☐ Confirmo información correcta
+
+====================================================
+
+GENERAR REGISTRO DE ORIGEN ⚡
+
+====================================================
+
+REGLA DE ORO:
+
+Lo que no está validado en origen, no existe.
+
+==================================================
+
+========================================
+VOLTIKA ⚡ ENSAMBLE DE UNIDAD
+========================================
+
+[SYSTEM INSTRUCTIONS – ENGLISH]
+
+This stage is divided into 3 phases:
+1. Assembly Start
+2. Assembly Process
+3. Final Inspection & Release
+
+Rules:
+- Cannot skip phases
+- All photos required
+- Torque confirmations mandatory
+- Lock record after completion
+- Save VIN + timestamp + user + media
+
+========================================
+FASE 1: INICIO DE ENSAMBLE
+========================================
+
+Confirmación previa:
+
+☐ Recepción validada (caja + sellos)
+☐ Primera apertura realizada en este punto
+☐ Área de trabajo segura
+☐ Herramientas disponibles
+☐ Equipo de protección utilizado
+
+Evidencia obligatoria:
+
+📸 Caja abierta por primera vez
+📸 Contenido general visible
+📸 Moto dentro de embalaje
+
+Declaración:
+
+Confirmo que la unidad fue abierta por primera vez en este punto
+y que el contenido corresponde a lo recibido en origen.
+
+BOTÓN:
+INICIAR ENSAMBLE ⚡
+
+========================================
+FASE 2: DURANTE ENSAMBLE
+========================================
+
+1. DESEMBALAJE
+
+☐ Componentes retirados sin daño
+☐ Accesorios separados correctamente
+☐ Llanta delantera identificada
+
+----------------------------------------
+
+2. BASE Y ASIENTO
+
+☐ Base instalada correctamente
+☐ Asiento instalado
+☐ Tornillería completa
+☐ Torque aplicado (25 N·m)
+
+📸 Base sin asiento
+📸 Asiento instalado
+
+----------------------------------------
+
+3. MANUBRIO
+
+☐ Manubrio instalado
+☐ Cableado sin tensión
+☐ Alineación correcta
+☐ Torque aplicado (25 N·m)
+
+📸 Cableado
+📸 Alineación
+📸 Montaje
+
+----------------------------------------
+
+4. LLANTA DELANTERA
+
+☐ Buje corto instalado
+☐ Buje largo instalado
+☐ Disco alineado en cáliper
+☐ Eje instalado
+☐ Torque aplicado (50 N·m)
+
+📸 Bujes
+📸 Disco
+📸 Montaje
+
+🎥 Video alineación (opcional recomendado)
+
+----------------------------------------
+
+5. ESPEJOS
+
+☐ Espejo izquierdo instalado
+☐ Espejo derecho instalado
+☐ Roscas en buen estado
+☐ Ajuste correcto
+
+📸 Antes
+📸 Después
+
+----------------------------------------
+
+========================================
+FASE 3: VALIDACIÓN FINAL (LIBERACIÓN)
+========================================
+
+🔴 CRÍTICO – SI FALLA, NO SE LIBERA
+
+----------------------------------------
+
+1. FRENOS
+
+☐ Freno delantero funcional
+☐ Freno trasero funcional
+☐ Luz de freno operativa
+
+----------------------------------------
+
+2. ILUMINACIÓN
+
+☐ Direccionales funcionando
+☐ Intermitentes funcionando
+☐ Luz alta
+☐ Luz baja
+
+----------------------------------------
+
+3. SISTEMA ELÉCTRICO
+
+☐ Claxon funcionando
+☐ Dashboard funcional
+☐ Batería cargando
+☐ Puerto de carga funcionando
+
+----------------------------------------
+
+4. MOTOR Y MODOS
+
+☐ Modo Eco
+☐ Modo Drive
+☐ Modo Sport
+☐ Reversa
+
+----------------------------------------
+
+5. ACCESO
+
+☐ NFC funcionando
+☐ Control remoto operativo
+☐ Llaves funcionales
+
+----------------------------------------
+
+6. VALIDACIÓN MECÁNICA
+
+☐ Sin ruidos anormales
+☐ Sin interferencias mecánicas
+☐ Torques verificados
+
+----------------------------------------
+
+📸 EVIDENCIA FINAL (OBLIGATORIA)
+
+📸 Lado derecho
+📸 Lado izquierdo
+📸 VIN
+📸 Tablero encendido
+📸 Odómetro
+📸 Unidad completa
+
+----------------------------------------
+
+DECLARACIÓN FINAL:
+
+Confirmo que la unidad fue ensamblada correctamente,
+utilizando los componentes originales enviados por Voltika.
+
+La motocicleta se encuentra completa, funcional
+y en condiciones óptimas para su venta.
+
+No se realizaron modificaciones, sustituciones ni ajustes no autorizados.
+
+----------------------------------------
+
+BOTÓN FINAL:
+
+LIBERAR UNIDAD A DISPONIBLE ⚡
+
+----------------------------------------
+
+[SYSTEM RULES – ENGLISH]
+
+Block release if:
+- any checklist missing
+- photos missing
+- torque not confirmed
+- validation incomplete
+
+On release:
+- lock record
+- update status = AVAILABLE
+- store VIN + timestamp + user
+
+----------------------------------------
+
+REGLA DE ORO VOLTIKA:
+
+Si no está documentado, no está ensamblado.
+========================================
+
+Following is the final stage: identity validation, payment validation and legal acceptance;
+
+======================================
+
+====================================================
+VOLTIKA ⚡ ENTREGA DE UNIDAD (VALIDACIÓN + ACTA)
+====================================================
+
+[SYSTEM INSTRUCTIONS – ENGLISH]
+
+This is the final and most critical stage.
+
+Objectives:
+- Verify customer identity
+- Validate payment
+- Confirm physical delivery
+- Generate legal delivery certificate
+
+STRICT RULE:
+Delivery cannot happen without identity + OTP + signed certificate.
+
+Store:
+- VIN
+- order_id
+- customer_id
+- timestamp
+- user_id
+- OTP logs
+- photos
+- signed document
+
+====================================================
+
+FASE 1: VALIDACIÓN DE IDENTIDAD DEL CLIENTE 🔐
+
+----------------------------------------------------
+
+Verificación obligatoria:
+
+☐ INE / identificación oficial presentada
+☐ Nombre coincide con pedido
+☐ Fotografía coincide con persona presente
+☐ Cliente confirma datos personales
+
+----------------------------------------------------
+
+VALIDACIÓN DOBLE (CRÍTICO)
+
+☐ Últimos 4 dígitos del teléfono coinciden
+☐ Cliente confirma modelo comprado
+☐ Cliente confirma forma de pago
+
+----------------------------------------------------
+
+📸 Evidencia:
+
+📸 Foto del cliente con la moto
+📸 Foto del INE (frontal)
+📸 Selfie cliente con moto (recomendado)
+
+----------------------------------------------------
+
+REGLA:
+
+Si no coincide identidad → NO ENTREGAR
+
+====================================================
+
+FASE 2: VALIDACIÓN DE PAGO 💳
+
+----------------------------------------------------
+
+☐ Pago confirmado en sistema
+☐ Enganche validado
+☐ Método de pago registrado
+☐ Domiciliación confirmada (si aplica)
+
+----------------------------------------------------
+
+REGLA:
+
+Si pago ≠ confirmado → BLOQUEAR ENTREGA
+
+====================================================
+
+FASE 3: VALIDACIÓN DE UNIDAD 🏍️
+
+----------------------------------------------------
+
+☐ VIN coincide con pedido
+☐ Unidad ensamblada y liberada
+☐ Estado físico correcto
+☐ Sin daños visibles
+☐ Unidad completa
+
+----------------------------------------------------
+
+📸 Evidencia:
+
+📸 Lado derecho
+📸 Lado izquierdo
+📸 VIN visible
+📸 Tablero encendido
+
+====================================================
+
+FASE 4: ACEPTACIÓN DEL CLIENTE 🔐
+
+----------------------------------------------------
+
+Enviar OTP:
+
+BOTÓN: ENVIAR CÓDIGO
+
+Campo:
+[__]
+
+BOTÓN:
+VALIDAR OTP
+
+----------------------------------------------------
+
+REGLA:
+
+Sin OTP validado → NO ENTREGA
+
+====================================================
+
+FASE 5: ACTA DE ENTREGA (LEGAL)
+
+----------------------------------------------------
+
+ACTA DE ENTREGA VOLTIKA
+
+Declaro que recibo la motocicleta en condiciones óptimas,
+completa y conforme a lo solicitado.
+
+Confirmo que:
+
+- El VIN coincide con mi pedido
+- Recibí todos los componentes
+- La unidad está en buen estado
+- Recibí explicación básica de uso
+
+----------------------------------------------------
+
+LIBERACIÓN LEGAL:
+
+Acepto la entrega a mi entera satisfacción.
+
+Libero a Mtech Gears, S.A. de C.V. (Voltika) de cualquier reclamación posterior por:
+
+- daños visibles
+- faltantes
+- condiciones físicas
+
+salvo garantía aplicable.
+
+----------------------------------------------------
+
+CLÁUSULA DE IDENTIDAD:
+
+Declaro que soy la persona titular del contrato de compra o crédito.
+
+En caso de representación, presenté autorización válida.
+
+----------------------------------------------------
+
+CLÁUSULA DE MEDIOS ELECTRÓNICOS:
+
+Acepto que esta entrega se valida mediante medios electrónicos,
+incluyendo OTP, registros digitales y evidencia fotográfica,
+con plena validez jurídica conforme a legislación mexicana.
+
+----------------------------------------------------
+
+CLÁUSULA DE USO DE INFORMACIÓN:
+
+Autorizo el uso de la información, imágenes y validaciones para:
+
+- validación de entrega
+- defensa legal
+- contracargos
+- cumplimiento ante autoridades
+
+(PROFECO, SAT, INAI)
+
+----------------------------------------------------
+
+DATOS:
+
+Nombre: ____
+Modelo: ____
+VIN: ____
+Fecha: ____
+
+----------------------------------------------------
+
+VALIDACIÓN:
+
+☐ Firma digital / aceptación
+☐ OTP validado
+
+====================================================
+
+BOTÓN FINAL:
+
+FINALIZAR ENTREGA ⚡
+
+====================================================
+
+[SYSTEM RULES – ENGLISH]
+
+Block completion if:
+- identity not verified
+- payment not confirmed
+- VIN mismatch
+- OTP not validated
+- certificate not accepted
+
+On completion:
+- generate PDF (delivery certificate)
+- link to contract
+- store logs for legal defense
+
+====================================================
+
+REGLA DE ORO VOLTIKA:
+
+Sin identidad + OTP + acta firmada = NO EXISTE ENTREGA
+
+====================================================
+
+this I a check list and internal process we need to do before shipment,
