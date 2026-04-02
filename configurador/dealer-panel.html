@@ -202,18 +202,18 @@
   </div>
 </div>
 
-<!-- ═══ MODAL: IDENTIDAD DEL CLIENTE ══════════════════════════════════════════ -->
-<div id="modal-identidad" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-identidad')">
-  <div class="modal" style="max-width:440px;">
+<!-- ═══ MODAL: FACE COMPARE / DELIVERY PHOTO ═════════════════════════════════ -->
+<div id="modal-face" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-face')">
+  <div class="modal" style="max-width:480px;">
     <div class="modal-header">
-      <span class="modal-title">📸 Verificación de Identidad</span>
-      <button class="modal-close" onclick="closeModal('modal-identidad')">×</button>
+      <span class="modal-title">📸 Verificación de Entrega</span>
+      <button class="modal-close" onclick="closeFaceModal()">×</button>
     </div>
-    <div class="modal-body" id="identidad-body">
-      <p>Cargando...</p>
+    <div class="modal-body" id="face-body">
+      <!-- Dynamic content -->
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-identidad')">Cerrar</button>
+      <button class="btn btn-ghost" onclick="closeFaceModal()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -570,10 +570,23 @@ function renderMotoCard(m) {
        </button>`
     : `<div class="btn-accion ${btnClass}" style="cursor:default;opacity:.7;">${btnLabel}</div>`;
 
-  // Checklist button
-  const checklistBtn = ['lista_para_entrega','por_validar_entrega'].includes(m.estado)
-    ? `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
-         onclick="openChecklist(${m.id})">✅ Checklist pre-entrega</button>`
+  // Checklist buttons — context-aware based on current state
+  let checklistBtn = '';
+  if (m.estado === 'por_llegar') {
+    checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=origen'">📦 Checklist Origen</button>`;
+  } else if (['recibida','por_ensamblar','en_ensamble'].includes(m.estado)) {
+    checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=ensamble'">⚙️ Checklist Ensamble</button>`;
+  } else if (['lista_para_entrega','por_validar_entrega'].includes(m.estado)) {
+    checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=entrega'">🏍️ Checklist Entrega</button>`;
+  }
+
+  // Face verification / delivery photo button
+  const faceBtn = ['lista_para_entrega','por_validar_entrega'].includes(m.estado)
+    ? `<button class="btn-accion-sec" style="border-color:#7c3aed;color:#7c3aed;"
+         onclick="openFaceCompare(${m.id},'${esc(m.tipo_asignacion || 'voltika_entrega')}')">📸 Foto de entrega</button>`
     : '';
 
   // Identity verification button — show on delivery states
@@ -607,7 +620,7 @@ function renderMotoCard(m) {
       <div class="card-actions">
         ${mainBtn}
         ${checklistBtn}
-        ${identidadBtn}
+        ${faceBtn}
         ${secBtn}
       </div>
     </div>
@@ -641,86 +654,255 @@ function getCardAccion(m) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// IDENTIDAD — show customer verification photos for delivery comparison
+// FACE COMPARE — delivery photo + automatic face matching
 // ═══════════════════════════════════════════════════════════════════════════════
-async function openIdentidad(motoId) {
-  const body = document.getElementById('identidad-body');
-  body.innerHTML = '<div style="text-align:center;padding:20px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:10px;">Buscando verificación...</p></div>';
-  openModal('modal-identidad');
+let faceStream = null;
+let faceMotoId = null;
+let faceTipo = 'credito';
+
+function openFaceCompare(motoId, tipoAsignacion) {
+  faceMotoId = motoId;
+  // Determine if this is credit (face compare) or contado/msi (photo only)
+  const moto = dashData ? [...(dashData.voltika_entrega||[]),...(dashData.consignacion||[])].find(m => m.id === motoId) : null;
+  faceTipo = (moto && moto.pago_tipo === 'enganche') || tipoAsignacion === 'voltika_entrega' ? 'credito' : 'contado';
+
+  const body = document.getElementById('face-body');
+  const isCredit = faceTipo === 'credito';
+
+  body.innerHTML = `
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:var(--vka-blue-dark);margin-bottom:4px;">
+        ${isCredit ? '📸 Tomar foto para comparación facial' : '📸 Tomar foto del cliente y su INE'}
+      </div>
+      <div style="font-size:12px;color:var(--vka-grey);">
+        ${isCredit ? 'Se comparará automáticamente con la selfie del crédito' : 'Solo para registro — sin comparación automática'}
+      </div>
+    </div>
+
+    <!-- Camera preview -->
+    <div id="face-camera-area" style="position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:10px;overflow:hidden;margin-bottom:12px;">
+      <video id="face-video" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover;"></video>
+      <canvas id="face-canvas" style="display:none;"></canvas>
+    </div>
+
+    <!-- Captured preview (hidden initially) -->
+    <div id="face-preview" style="display:none;margin-bottom:12px;">
+      <img id="face-preview-img" style="width:100%;border-radius:10px;border:2px solid var(--vka-blue);">
+    </div>
+
+    ${!isCredit ? `
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:600;color:var(--vka-blue-dark);display:block;margin-bottom:6px;">Foto de INE (opcional)</label>
+      <input type="file" id="face-ine-input" accept="image/*" capture="environment"
+        style="font-size:13px;padding:8px;border:1.5px solid var(--vka-border);border-radius:8px;width:100%;">
+    </div>` : ''}
+
+    <!-- Buttons -->
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" id="face-btn-capture" onclick="capturePhoto()" style="flex:1;">📷 Tomar foto</button>
+      <button class="btn btn-ghost" id="face-btn-retake" onclick="retakePhoto()" style="flex:1;display:none;">🔄 Otra vez</button>
+    </div>
+    <button class="btn btn-success" id="face-btn-send" onclick="sendFaceCompare()" style="width:100%;margin-top:8px;display:none;">
+      ${isCredit ? '🔍 Comparar caras' : '💾 Guardar foto'}
+    </button>
+
+    <!-- Result area -->
+    <div id="face-result" style="display:none;margin-top:12px;"></div>
+  `;
+
+  openModal('modal-face');
+  startFaceCamera();
+}
+
+async function startFaceCamera() {
+  try {
+    faceStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    document.getElementById('face-video').srcObject = faceStream;
+  } catch (e) {
+    document.getElementById('face-camera-area').innerHTML =
+      '<div style="color:#fff;display:flex;align-items:center;justify-content:center;height:100%;font-size:13px;padding:20px;text-align:center;">No se pudo acceder a la cámara.<br>Usa el botón de abajo para subir una foto.</div>';
+    // Fallback: file input
+    const area = document.getElementById('face-camera-area');
+    area.insertAdjacentHTML('afterend',
+      '<input type="file" id="face-file-input" accept="image/*" capture="user" onchange="handleFaceFile(this)" style="width:100%;padding:10px;margin-bottom:8px;font-size:13px;border:1.5px solid var(--vka-border);border-radius:8px;">');
+    document.getElementById('face-btn-capture').style.display = 'none';
+  }
+}
+
+function handleFaceFile(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('face-preview-img').src = e.target.result;
+    document.getElementById('face-preview').style.display = 'block';
+    document.getElementById('face-camera-area').style.display = 'none';
+    document.getElementById('face-btn-send').style.display = 'block';
+    document.getElementById('face-btn-retake').style.display = 'block';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function capturePhoto() {
+  const video = document.getElementById('face-video');
+  const canvas = document.getElementById('face-canvas');
+  if (!video || !video.videoWidth) return;
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  document.getElementById('face-preview-img').src = dataUrl;
+  document.getElementById('face-preview').style.display = 'block';
+  document.getElementById('face-camera-area').style.display = 'none';
+  document.getElementById('face-btn-capture').style.display = 'none';
+  document.getElementById('face-btn-retake').style.display = 'inline-block';
+  document.getElementById('face-btn-send').style.display = 'block';
+
+  // Stop camera
+  if (faceStream) {
+    faceStream.getTracks().forEach(t => t.stop());
+    faceStream = null;
+  }
+}
+
+function retakePhoto() {
+  document.getElementById('face-preview').style.display = 'none';
+  document.getElementById('face-camera-area').style.display = 'block';
+  document.getElementById('face-btn-capture').style.display = 'inline-block';
+  document.getElementById('face-btn-retake').style.display = 'none';
+  document.getElementById('face-btn-send').style.display = 'none';
+  document.getElementById('face-result').style.display = 'none';
+  startFaceCamera();
+}
+
+async function sendFaceCompare() {
+  const btn = document.getElementById('face-btn-send');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span> Procesando...';
+
+  const resultEl = document.getElementById('face-result');
+  resultEl.style.display = 'none';
+
+  // Get photo as blob
+  const imgSrc = document.getElementById('face-preview-img').src;
+  let blob;
+
+  if (imgSrc.startsWith('data:')) {
+    const resp = await fetch(imgSrc);
+    blob = await resp.blob();
+  } else {
+    // File input fallback
+    const fileInput = document.getElementById('face-file-input');
+    if (fileInput && fileInput.files[0]) blob = fileInput.files[0];
+  }
+
+  if (!blob) {
+    btn.disabled = false;
+    btn.textContent = faceTipo === 'credito' ? '🔍 Comparar caras' : '💾 Guardar foto';
+    resultEl.innerHTML = '<div style="color:var(--vka-red);font-size:13px;">No se encontró la foto.</div>';
+    resultEl.style.display = 'block';
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('moto_id', faceMotoId);
+  formData.append('tipo', faceTipo);
+  formData.append('foto', blob, 'delivery_photo.jpg');
+
+  // INE photo for contado
+  const ineInput = document.getElementById('face-ine-input');
+  if (ineInput && ineInput.files[0]) {
+    formData.append('ine_foto', ineInput.files[0]);
+  }
 
   try {
-    const r = await fetch('php/admin-identidad.php?moto_id=' + motoId);
+    const r = await fetch('php/admin-face-compare.php', {
+      method: 'POST',
+      body: formData
+    });
     const d = await r.json();
 
-    if (!d.ok || !d.found) {
-      body.innerHTML = `<div style="text-align:center;padding:20px;">
-        <div style="font-size:36px;margin-bottom:10px;">🔍</div>
-        <p style="color:var(--vka-grey);">No se encontró verificación de identidad para este cliente.</p>
-        <p style="font-size:12px;color:var(--vka-grey);margin-top:8px;">El cliente puede no haber completado el proceso de crédito con verificación Truora.</p>
-      </div>`;
-      return;
-    }
+    if (!d.ok) {
+      resultEl.innerHTML = `<div style="padding:12px;background:var(--vka-red-light);border-radius:8px;color:#991b1b;font-size:13px;">${esc(d.error || 'Error')}</div>`;
+    } else if (d.comparison && d.match !== undefined) {
+      // Face comparison result
+      const matchColor = d.match ? '#10b981' : '#ef4444';
+      const matchIcon = d.match ? '✅' : '❌';
+      const matchBg = d.match ? '#d1fae5' : '#fee2e2';
+      const similarity = d.similarity ? Math.round(d.similarity * 100) + '%' : 'N/A';
 
-    const v = d.verificacion;
-    const statusColor = v.approved ? '#10b981' : '#ef4444';
-    const statusText  = v.approved ? 'Identidad verificada' : 'Verificación rechazada';
-    const statusIcon  = v.approved ? '✅' : '❌';
-
-    let html = '';
-
-    // Status header
-    html += `<div style="text-align:center;padding:12px;border-radius:8px;margin-bottom:16px;
-      background:${v.approved ? '#d1fae5' : '#fee2e2'};">
-      <div style="font-size:16px;font-weight:800;color:${statusColor};">${statusIcon} ${statusText}</div>
-      ${v.truora_score ? `<div style="font-size:12px;color:var(--vka-grey);margin-top:4px;">Score: ${v.truora_score}</div>` : ''}
-    </div>`;
-
-    // Customer info
-    html += `<div style="font-size:13px;color:var(--vka-grey);margin-bottom:12px;">
-      <strong>${esc(v.nombre)}</strong><br>
-      ${esc(v.email || '')} ${v.telefono ? '· ' + esc(v.telefono) : ''}<br>
-      <span style="font-size:11px;">Verificado: ${esc(v.fecha || '')}</span>
-    </div>`;
-
-    // Selfie — main photo for face comparison
-    if (v.selfie_url) {
-      html += `<div style="margin-bottom:14px;">
-        <div style="font-size:12px;font-weight:700;color:var(--vka-blue-dark);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
-          Selfie del cliente — comparar con quien recoge</div>
-        <div style="border:3px solid ${statusColor};border-radius:12px;overflow:hidden;text-align:center;background:#f9fafb;">
-          <img src="${esc(v.selfie_url)}" alt="Selfie"
-            style="width:100%;max-width:300px;height:auto;display:block;margin:0 auto;">
+      resultEl.innerHTML = `
+        <div style="padding:16px;background:${matchBg};border-radius:10px;text-align:center;border:2px solid ${matchColor};">
+          <div style="font-size:32px;margin-bottom:6px;">${matchIcon}</div>
+          <div style="font-size:16px;font-weight:800;color:${matchColor};">${d.match ? 'CARAS COINCIDEN' : 'CARAS NO COINCIDEN'}</div>
+          <div style="font-size:13px;color:var(--vka-grey);margin-top:4px;">Similitud: ${similarity}</div>
+          <div style="font-size:12px;color:#555;margin-top:8px;">${esc(d.message)}</div>
         </div>
-      </div>`;
+        ${d.original_selfie ? `
+        <div style="margin-top:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--vka-grey);text-transform:uppercase;margin-bottom:6px;">Comparación visual</div>
+          <div style="display:flex;gap:8px;">
+            <div style="flex:1;text-align:center;">
+              <img src="${esc(d.original_selfie)}" style="width:100%;border-radius:8px;border:2px solid var(--vka-border);">
+              <div style="font-size:10px;color:var(--vka-grey);margin-top:4px;">Selfie del crédito</div>
+            </div>
+            <div style="flex:1;text-align:center;">
+              <img src="${esc(d.pickup_photo)}" style="width:100%;border-radius:8px;border:2px solid var(--vka-border);">
+              <div style="font-size:10px;color:var(--vka-grey);margin-top:4px;">Foto de entrega</div>
+            </div>
+          </div>
+        </div>` : ''}
+      `;
+    } else if (d.api_error) {
+      // API failed, show manual comparison
+      resultEl.innerHTML = `
+        <div style="padding:12px;background:#FFF8E1;border-radius:8px;border:1px solid #FFD54F;text-align:center;">
+          <div style="font-size:14px;font-weight:700;color:#F9A825;">⚠️ Comparación automática no disponible</div>
+          <div style="font-size:12px;color:#5D4037;margin-top:4px;">${esc(d.message)}</div>
+        </div>
+        ${d.original_selfie ? `
+        <div style="margin-top:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--vka-grey);text-transform:uppercase;margin-bottom:6px;">Comparar visualmente:</div>
+          <div style="display:flex;gap:8px;">
+            <div style="flex:1;text-align:center;">
+              <img src="${esc(d.original_selfie)}" style="width:100%;border-radius:8px;">
+              <div style="font-size:10px;color:var(--vka-grey);margin-top:4px;">Selfie crédito</div>
+            </div>
+            <div style="flex:1;text-align:center;">
+              <img src="${esc(d.pickup_photo)}" style="width:100%;border-radius:8px;">
+              <div style="font-size:10px;color:var(--vka-grey);margin-top:4px;">Foto entrega</div>
+            </div>
+          </div>
+        </div>` : ''}
+      `;
+    } else {
+      // Contado — just saved
+      resultEl.innerHTML = `
+        <div style="padding:12px;background:#d1fae5;border-radius:8px;text-align:center;">
+          <div style="font-size:14px;font-weight:700;color:#10b981;">✅ ${esc(d.message)}</div>
+        </div>
+      `;
     }
+    resultEl.style.display = 'block';
 
-    // INE photos
-    if (v.ine_frente_url || v.ine_reverso_url) {
-      html += `<div style="font-size:12px;font-weight:700;color:var(--vka-blue-dark);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">INE</div>`;
-      html += `<div style="display:flex;gap:8px;margin-bottom:12px;">`;
-      if (v.ine_frente_url) {
-        html += `<div style="flex:1;border:1.5px solid var(--vka-border);border-radius:8px;overflow:hidden;">
-          <img src="${esc(v.ine_frente_url)}" alt="INE Frente" style="width:100%;height:auto;display:block;">
-          <div style="text-align:center;font-size:10px;color:var(--vka-grey);padding:4px;">Frente</div>
-        </div>`;
-      }
-      if (v.ine_reverso_url) {
-        html += `<div style="flex:1;border:1.5px solid var(--vka-border);border-radius:8px;overflow:hidden;">
-          <img src="${esc(v.ine_reverso_url)}" alt="INE Reverso" style="width:100%;height:auto;display:block;">
-          <div style="text-align:center;font-size:10px;color:var(--vka-grey);padding:4px;">Reverso</div>
-        </div>`;
-      }
-      html += `</div>`;
-    }
-
-    if (!v.selfie_url && !v.ine_frente_url) {
-      html += `<p style="color:var(--vka-grey);text-align:center;">No se encontraron fotos almacenadas.</p>`;
-    }
-
-    body.innerHTML = html;
   } catch (e) {
-    body.innerHTML = `<div style="text-align:center;padding:20px;color:var(--vka-red);">Error al consultar verificación.</div>`;
+    resultEl.innerHTML = '<div style="padding:12px;background:var(--vka-red-light);border-radius:8px;color:#991b1b;font-size:13px;">Error de conexión</div>';
+    resultEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = faceTipo === 'credito' ? '🔍 Comparar caras' : '💾 Guardar foto';
   }
+}
+
+function closeFaceModal() {
+  if (faceStream) {
+    faceStream.getTracks().forEach(t => t.stop());
+    faceStream = null;
+  }
+  closeModal('modal-face');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
