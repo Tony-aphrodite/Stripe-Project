@@ -1,0 +1,14 @@
+[2:12 AM, 4/2/2026] Moises Oscar Limón: Hi, we are checking the production test to circulo de credito
+[2:12 AM, 4/2/2026] Moises Oscar Limón: https://developer.circulodecredito.com.mx/prueba_de_seguridad
+[2:12 AM, 4/2/2026] Moises Oscar Limón: We are request this information
+[2:13 AM, 4/2/2026] Moises Oscar Limón: Hola buena tarde.
+ 
+En nuestro apihub pude encontrar la guia para el pase a producción, básicamente es seguir:
+ 
+https://developer.circulodecredito.com.mx/guia_de_inicio A partir del paso 4 (generar certificados y subirlo / descargarlo al apihub)
+https://developer.circulodecredito.com.mx/prueba_de_seguridad Para validar la generación correcta de sus certificados
+https://developer.circulodecredito.com.mx/pase_a_produccion
+ 
+Quedamos al pendiente de sus dudas / comentarios.
+ 
+Saludos.
