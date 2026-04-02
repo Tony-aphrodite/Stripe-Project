@@ -19,7 +19,6 @@ if (!$motoId) {
 
 $pdo = getDB();
 
-// 1) Obtener datos del cliente desde inventario_motos
 $stmt = $pdo->prepare("SELECT cliente_email, cliente_telefono, cliente_nombre FROM inventario_motos WHERE id = ?");
 $stmt->execute([$motoId]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -29,18 +28,17 @@ if (!$moto) {
     exit;
 }
 
-// 2) Buscar verificación de identidad por email O telefono
 $verif = null;
 $conditions = [];
-$params     = [];
+$params = [];
 
 if (!empty($moto['cliente_email'])) {
     $conditions[] = "email = ?";
-    $params[]     = $moto['cliente_email'];
+    $params[] = $moto['cliente_email'];
 }
 if (!empty($moto['cliente_telefono'])) {
     $conditions[] = "telefono = ?";
-    $params[]     = $moto['cliente_telefono'];
+    $params[] = $moto['cliente_telefono'];
 }
 
 if (!empty($conditions)) {
@@ -59,7 +57,6 @@ if (!$verif) {
     exit;
 }
 
-// 3) Construir URLs de las fotos
 $files     = json_decode($verif['files_saved'], true) ?: [];
 $uploadUrl = 'php/uploads/';
 
