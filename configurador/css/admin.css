@@ -362,7 +362,7 @@ body.admin-body {
 .btn-accion:active { transform: translateY(0); }
 .btn-accion.accion-ensamble  { background: var(--vka-blue); color: #fff; }
 .btn-accion.accion-venta     { background: var(--vka-green); color: #fff; }
-.btn-accion.accion-validar   { background: var(--vka-blue-dark); color: #fff; }
+.btn-accion.accion-validar   { background: #039fe1; color: #fff; }
 .btn-accion.accion-retener   { background: transparent; color: var(--vka-grey); border: 1.5px solid var(--vka-border); }
 .btn-accion.accion-llegar    { background: var(--vka-blue-light); color: var(--vka-blue-dark); }
 .btn-accion.accion-ensamblar { background: var(--vka-blue); color: #fff; }
