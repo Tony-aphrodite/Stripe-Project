@@ -570,11 +570,18 @@ function renderMotoCard(m) {
        </button>`
     : `<div class="btn-accion ${btnClass}" style="cursor:default;opacity:.7;">${btnLabel}</div>`;
 
-  // Checklist button
-  const checklistBtn = ['lista_para_entrega','por_validar_entrega'].includes(m.estado)
-    ? `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
-         onclick="openChecklist(${m.id})">✅ Checklist pre-entrega</button>`
-    : '';
+  // Checklist buttons — context-aware based on current state
+  let checklistBtn = '';
+  if (m.estado === 'por_llegar') {
+    checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=origen'">📦 Checklist Origen</button>`;
+  } else if (['recibida','por_ensamblar','en_ensamble'].includes(m.estado)) {
+    checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=ensamble'">⚙️ Checklist Ensamble</button>`;
+  } else if (['lista_para_entrega','por_validar_entrega'].includes(m.estado)) {
+    checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=entrega'">🏍️ Checklist Entrega</button>`;
+  }
 
   // Face verification / delivery photo button
   const faceBtn = ['lista_para_entrega','por_validar_entrega'].includes(m.estado)
