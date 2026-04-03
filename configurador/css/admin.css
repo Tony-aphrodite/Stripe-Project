@@ -201,22 +201,27 @@ body.admin-body {
 /* ─── SECTION HEADER — matches reference bold section labels ─────────────────── */
 .section-header {
   margin-bottom: 14px;
-  padding: 10px 14px;
-  background: var(--vka-white);
+  padding: 12px 14px;
+  background: var(--vka-blue-dark);
+  color: #fff;
   border-radius: var(--vka-radius-sm);
   border-left: 4px solid var(--vka-blue);
   box-shadow: var(--vka-shadow);
 }
+.section-header.consignacion {
+  background: linear-gradient(135deg, #065f46, #10b981);
+  border-left-color: #10b981;
+}
 .section-title {
   font-size: 12px;
   font-weight: 800;
-  color: var(--vka-blue-dark);
+  color: #fff;
   letter-spacing: .6px;
   text-transform: uppercase;
 }
 .section-subtitle {
   font-size: 11px;
-  color: var(--vka-grey);
+  color: rgba(255,255,255,.75);
   margin-top: 2px;
   font-style: italic;
 }
