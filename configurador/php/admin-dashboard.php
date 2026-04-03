@@ -19,25 +19,25 @@ $dealer = requireDealerAuth();
 try {
     $pdo = getDB();
 
-    // Recalculate dias_en_paso for all active motos of this dealer
+    // Recalculate dias_en_paso for all active motos of this dealer (including unassigned)
     $pdo->prepare("
         UPDATE inventario_motos
         SET dias_en_paso = DATEDIFF(NOW(), fecha_estado)
         WHERE activo = 1
-          AND dealer_id = ?
+          AND (dealer_id = ? OR dealer_id IS NULL)
           AND estado NOT IN ('entregada','retenida')
           AND fecha_estado IS NOT NULL
     ")->execute([$dealer['id']]);
 
-    // Fetch motos for this dealer
+    // Fetch motos for this dealer (including unassigned ones)
     $stmt = $pdo->prepare("
         SELECT id, vin, vin_display, modelo, color, tipo_asignacion, estado,
                cliente_nombre, cliente_email, cliente_telefono, pedido_num,
                pago_estado, dias_en_paso, notas, log_estados,
-               fecha_llegada, fecha_estado, precio_venta
+               fecha_llegada, fecha_estado, precio_venta, punto_nombre
         FROM inventario_motos
         WHERE activo = 1
-          AND dealer_id = ?
+          AND (dealer_id = ? OR dealer_id IS NULL)
           AND estado NOT IN ('entregada')
         ORDER BY
           FIELD(estado,'por_validar_entrega','lista_para_entrega','en_ensamble',

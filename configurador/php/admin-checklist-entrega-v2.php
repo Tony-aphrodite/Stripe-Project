@@ -198,24 +198,38 @@ try {
     }
 
     if ($row) {
-        $vals[] = $row['id'];
-        $setStr = implode(', ', $sets);
-        $pdo->prepare("UPDATE checklist_entrega_v2 SET $setStr WHERE id = ?")->execute($vals);
-    } else {
-        $sets[] = "moto_id = ?";   $vals[] = $motoId;
-        $sets[] = "dealer_id = ?"; $vals[] = $dealer['id'];
-        $cols = implode(', ', array_map(fn($s) => explode(' = ', $s)[0], $sets));
-        $qmarks = [];
-        $cleanVals = [];
+        // UPDATE existing record
+        $updateSets = [];
+        $updateVals = [];
         foreach ($sets as $i => $s) {
             if (str_contains($s, 'NOW()')) {
-                $qmarks[] = 'NOW()';
+                $updateSets[] = $s;
             } else {
-                $qmarks[] = '?';
-                $cleanVals[] = $vals[$i];
+                $updateSets[] = $s;
+                $updateVals[] = $vals[$i];
             }
         }
-        $pdo->prepare("INSERT INTO checklist_entrega_v2 ($cols) VALUES (" . implode(',', $qmarks) . ")")->execute($cleanVals);
+        $updateVals[] = $row['id'];
+        $pdo->prepare("UPDATE checklist_entrega_v2 SET " . implode(', ', $updateSets) . " WHERE id = ?")->execute($updateVals);
+    } else {
+        // INSERT new record — build safely with explicit moto_id and dealer_id
+        $insertCols = ['moto_id', 'dealer_id'];
+        $insertQmarks = ['?', '?'];
+        $insertVals = [$motoId, $dealer['id']];
+
+        foreach ($sets as $i => $s) {
+            $colName = trim(explode('=', $s)[0]);
+            $insertCols[] = $colName;
+            if (str_contains($s, 'NOW()')) {
+                $insertQmarks[] = 'NOW()';
+            } else {
+                $insertQmarks[] = '?';
+                $insertVals[] = $vals[$i];
+            }
+        }
+
+        $sql = "INSERT INTO checklist_entrega_v2 (" . implode(', ', $insertCols) . ") VALUES (" . implode(', ', $insertQmarks) . ")";
+        $pdo->prepare($sql)->execute($insertVals);
     }
 
     // Final delivery
