@@ -73,6 +73,27 @@ try {
 
     $nuevoEstado = $trans['to'];
 
+    // ── Checklist validation — block transition if checklist not complete ────
+    $checklistRequired = [
+        'recibir'            => ['table' => 'checklist_origen',     'field' => 'completado', 'msg' => 'Debe completar el Checklist de Origen antes de registrar la llegada.'],
+        'iniciar_ensamble'   => ['table' => 'checklist_ensamble',   'field' => 'fase1_completada', 'msg' => 'Debe completar la Fase 1 del Ensamble (Inicio) antes de iniciar.'],
+        'terminar_ensamble'  => ['table' => 'checklist_ensamble',   'field' => 'completado', 'msg' => 'Debe completar todas las fases del Ensamble (incluyendo validación final) antes de liberar.'],
+        'iniciar_validacion' => ['table' => 'checklist_entrega_v2', 'field' => 'fase3_completada', 'msg' => 'Debe completar las Fases 1-3 del Checklist de Entrega antes de iniciar validación.'],
+    ];
+
+    if (isset($checklistRequired[$accion])) {
+        $req = $checklistRequired[$accion];
+        $chkStmt = $pdo->prepare("SELECT {$req['field']} FROM {$req['table']} WHERE moto_id = ? ORDER BY id DESC LIMIT 1");
+        $chkStmt->execute([$motoId]);
+        $chkRow = $chkStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$chkRow || !$chkRow[$req['field']]) {
+            http_response_code(409);
+            echo json_encode(['ok' => false, 'error' => $req['msg']]);
+            exit;
+        }
+    }
+
     // Build log entry
     $logEntry = [
         'estado'    => $nuevoEstado,
