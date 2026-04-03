@@ -473,34 +473,93 @@ const ENTREGA_PHASES = {
     photos: [],
     rule: 'Sin OTP validado → NO ENTREGA',
   },
-  fase5: {
-    title: 'Fase 5: Acta de Entrega (Legal)',
-    icon: '📜',
-    sections: [
-      { id: 'acta_declaraciones', title: 'Declaraciones del Cliente', items: [
-        { key: 'decl_identidad', label: 'Declaro ser titular del contrato de compraventa y/o crédito con Mtech Gears, S.A. de C.V. (Voltika)', critical: true },
-        { key: 'decl_validacion', label: 'He verificado que la motocicleta corresponde al modelo, color y VIN de mi pedido', critical: true },
-        { key: 'decl_condicion', label: 'La motocicleta se encuentra en buen estado físico, sin daños visibles, completa y funcional', critical: true },
-        { key: 'decl_componentes', label: 'Confirmo que recibí la motocicleta con todos sus componentes, accesorios, llaves, cargador, manual y documentación', critical: true },
-        { key: 'decl_funcionamiento', label: 'Se me mostró el funcionamiento básico de la unidad, incluyendo encendido, modos de manejo, carga y operación', critical: true },
-      ]},
-      { id: 'acta_aceptacion', title: 'Aceptación de Entrega', items: [
-        { key: 'acta_aceptada', label: 'Acepto la entrega de la motocicleta a mi entera satisfacción', critical: true },
-        { key: 'acta_liberacion', label: 'Libero a Mtech Gears, S.A. de C.V. (Voltika) de responsabilidad posterior por daños visibles, faltantes o condiciones físicas, salvo garantía aplicable', critical: true },
-      ]},
-      { id: 'acta_legal', title: 'Validación Electrónica y Legal', items: [
-        { key: 'clausula_medios', label: 'Acepto que esta acta se firma mediante medios electrónicos con plena validez jurídica conforme a legislación mexicana', critical: true },
-        { key: 'clausula_uso_info', label: 'Autorizo el uso de información, imágenes y validaciones para defensa legal, contracargos y cumplimiento ante autoridades (PROFECO, SAT, INAI)', critical: true },
-      ]},
-      { id: 'acta_final', title: 'Validación Final', items: [
-        { key: 'acepta_terminos', label: 'Acepto todos los términos de entrega', critical: true },
-        { key: 'firma_digital', label: 'Firma digital / aceptación del cliente', critical: true },
-        { key: 'firma_punto', label: 'Firma del responsable del Punto Voltika', critical: true },
-      ]},
-    ],
-    photos: [],
-    legal: true,
-  },
+  fase5: null, // Dynamically set based on tipo_acta — see FASE5_CREDITO / FASE5_CONTADO
+};
+
+// ── Fase 5 for CRÉDITO ──────────────────────────────────────────────────────
+const FASE5_CREDITO = {
+  title: 'Fase 5: Acta de Entrega — Crédito',
+  icon: '📜',
+  sections: [
+    { id: 'acta_declaraciones', title: 'Declaraciones del Cliente', items: [
+      { key: 'decl_identidad', label: 'Declaro ser titular del contrato de compraventa y/o crédito con Mtech Gears, S.A. de C.V. (Voltika)', critical: true },
+      { key: 'decl_validacion', label: 'He verificado que la motocicleta corresponde al modelo, color y VIN de mi pedido', critical: true },
+      { key: 'decl_condicion', label: 'La motocicleta se encuentra en buen estado físico, sin daños visibles, completa y funcional', critical: true },
+      { key: 'decl_componentes', label: 'Confirmo que recibí todos los componentes, accesorios, llaves, cargador, manual y documentación', critical: true },
+      { key: 'decl_funcionamiento', label: 'Se me mostró el funcionamiento básico de la unidad', critical: true },
+    ]},
+    { id: 'acta_aceptacion', title: 'Aceptación de Entrega', items: [
+      { key: 'acta_aceptada', label: 'Acepto la entrega a mi entera satisfacción', critical: true },
+      { key: 'acta_liberacion', label: 'Libero a Voltika de responsabilidad posterior por daños visibles, faltantes o condiciones físicas, salvo garantía', critical: true },
+    ]},
+    { id: 'acta_legal', title: 'Validación Electrónica y Legal', items: [
+      { key: 'clausula_medios', label: 'Acepto firma mediante medios electrónicos con plena validez jurídica', critical: true },
+      { key: 'clausula_uso_info', label: 'Autorizo uso de información para defensa legal, contracargos y autoridades (PROFECO, SAT, INAI)', critical: true },
+    ]},
+    { id: 'acta_final', title: 'Validación Final', items: [
+      { key: 'acepta_terminos', label: 'Acepto todos los términos de entrega', critical: true },
+      { key: 'firma_digital', label: 'Firma digital / aceptación del cliente', critical: true },
+      { key: 'firma_punto', label: 'Firma del responsable del Punto Voltika', critical: true },
+    ]},
+  ],
+  photos: [],
+  legal: true,
+  legal_type: 'credito',
+};
+
+// ── Fase 5 for CONTADO / MSI / SPEI / OXXO ─────────────────────────────────
+const FASE5_CONTADO = {
+  title: 'Fase 5: Acta de Entrega — Compraventa',
+  icon: '📜',
+  sections: [
+    { id: 'acta_declaraciones', title: 'Declaraciones del Cliente', items: [
+      { key: 'decl_pago_total', label: 'He realizado el pago total del vehículo mediante el método seleccionado', critical: true },
+      { key: 'decl_validacion', label: 'He verificado que la motocicleta corresponde al modelo, color y VIN de mi compra', critical: true },
+      { key: 'decl_condicion', label: 'La motocicleta se encuentra en buen estado físico, sin daños visibles, completa y funcional', critical: true },
+      { key: 'decl_componentes', label: 'Confirmo que recibí todos los componentes, accesorios, cargador, llaves y documentación', critical: true },
+      { key: 'decl_funcionamiento', label: 'Se me explicó el funcionamiento básico de la unidad', critical: true },
+    ]},
+    { id: 'acta_aceptacion', title: 'Aceptación de Entrega', items: [
+      { key: 'acta_aceptada', label: 'Acepto la entrega a mi entera satisfacción', critical: true },
+      { key: 'acta_liberacion', label: 'Libero a Voltika de responsabilidad posterior por daños visibles, faltantes o condiciones físicas, salvo garantía', critical: true },
+    ]},
+    { id: 'acta_cumplimiento', title: 'Cumplimiento de la Operación Comercial', items: [
+      { key: 'cumpl_pago_confirmado', label: 'El pago total ha sido realizado y confirmado', critical: true },
+      { key: 'cumpl_entrega_total', label: 'La entrega constituye cumplimiento total de la operación por parte de Voltika', critical: true },
+      { key: 'cumpl_sin_obligacion', label: 'No existe obligación pendiente de entrega, devolución o prestación adicional', critical: true },
+      { key: 'cumpl_op_concluida', label: 'La operación se considera concluida en su totalidad', critical: true },
+    ]},
+    { id: 'acta_transferencia', title: 'Transferencia de Posesión y Responsabilidad', items: [
+      { key: 'transf_posesion', label: 'Asumo la posesión, uso y responsabilidad total del vehículo', critical: true },
+      { key: 'transf_uso_responsable', label: 'Cualquier uso indebido, accidente o infracción será mi responsabilidad exclusiva', critical: true },
+      { key: 'transf_voltika_libre', label: 'Voltika no será responsable por hechos posteriores a la entrega', critical: true },
+    ]},
+    { id: 'acta_renuncia', title: 'Renuncia a Desconocimiento de Cargos', items: [
+      { key: 'renuncia_pago_voluntario', label: 'El pago realizado fue voluntario y autorizado', critical: true },
+      { key: 'renuncia_cumplimiento', label: 'La entrega junto con esta acta constituye cumplimiento total', critical: true },
+      { key: 'renuncia_contracargos', label: 'Renuncio expresamente a desconocer cargos, incluyendo contracargos ante bancos o Stripe', critical: true },
+      { key: 'renuncia_registros_prueba', label: 'Reconozco que registros digitales, OTP, fotos y confirmaciones constituyen prueba suficiente', critical: true },
+    ]},
+    { id: 'acta_legal', title: 'Validación Electrónica y Legal', items: [
+      { key: 'clausula_medios', label: 'Acepto firma mediante medios electrónicos con plena validez jurídica', critical: true },
+      { key: 'clausula_uso_info', label: 'Autorizo uso de información, logs, IP y OTP para defensa legal y autoridades (PROFECO, SAT, INAI)', critical: true },
+    ]},
+    { id: 'acta_evidencia', title: 'Evidencia de Entrega (uso interno)', items: [
+      { key: 'evidencia_foto_cliente', label: 'Foto cliente + moto' },
+      { key: 'evidencia_foto_vin', label: 'Foto VIN' },
+      { key: 'evidencia_foto_entrega', label: 'Foto entrega' },
+      { key: 'evidencia_video', label: 'Video corto' },
+    ]},
+    { id: 'acta_final', title: 'Validación Final', items: [
+      { key: 'acepta_terminos', label: 'Acepto todos los términos de entrega', critical: true },
+      { key: 'telefono_validado', label: 'Teléfono validado', critical: true },
+      { key: 'firma_digital', label: 'Firma / aceptación digital del cliente', critical: true },
+      { key: 'firma_punto', label: 'Firma del responsable del Punto Voltika', critical: true },
+    ]},
+  ],
+  photos: ['Cliente + moto','VIN','Entrega','Video corto'],
+  legal: true,
+  legal_type: 'contado',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -762,6 +821,10 @@ async function loadEntrega() {
     checklistData = clData.checklist || {};
     currentPhase = checklistData.fase_actual || 'fase1';
 
+    // Set fase5 dynamically based on tipo_acta
+    const tipoActa = clData.tipo_acta || 'credito';
+    ENTREGA_PHASES.fase5 = (tipoActa === 'contado') ? FASE5_CONTADO : FASE5_CREDITO;
+
     // Cache moto info for acta
     if (motoData.ok && motoData.motos) {
       dashMotoCache = motoData.motos.find(m => m.id === motoId) || null;
@@ -818,22 +881,35 @@ function renderEntrega() {
     const fechaEntrega = now.toLocaleDateString('es-MX', { day:'numeric', month:'long', year:'numeric' }) + ', ' +
       now.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
 
+    const isContado = phaseData.legal_type === 'contado';
+    const introText = isContado
+      ? 'En este acto, el cliente declara haber recibido la motocicleta eléctrica descrita en el presente documento, en condiciones óptimas de funcionamiento, completa y conforme a lo contratado, derivado de una operación de compraventa pagada en su totalidad.'
+      : 'En este acto, el cliente declara haber recibido la motocicleta eléctrica descrita en el presente documento, en condiciones óptimas de funcionamiento, completa y conforme a lo contratado.';
+    const docLabel = isContado ? 'Número de pedido / folio' : 'Número de contrato';
+
     html += `<div class="cl-legal">
       <div style="text-align:center;border-bottom:2px solid var(--vka-blue-dark);padding-bottom:14px;margin-bottom:16px;">
         <div style="font-size:10px;color:var(--vka-grey);letter-spacing:1px;text-transform:uppercase;">Acta de Entrega de Motocicleta Eléctrica</div>
         <h4 style="margin:4px 0;">VOLTIKA — MTECH GEARS, S.A. DE C.V.</h4>
-        <div style="font-size:11px;color:var(--vka-grey);">En este acto, el cliente declara haber recibido la motocicleta eléctrica descrita en el presente documento, en condiciones óptimas de funcionamiento, completa y conforme a lo contratado.</div>
+        <div style="font-size:11px;color:var(--vka-grey);">${introText}</div>
       </div>
 
       <div style="font-size:11px;font-weight:700;color:var(--vka-blue-dark);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Datos de la Operación</div>
       <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px;">
-        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);width:40%;">Nombre del cliente</td><td style="padding:6px 0;font-weight:600;" id="acta-cliente">${esc(motoData.cliente_nombre)}</td></tr>
-        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Modelo</td><td style="padding:6px 0;font-weight:600;" id="acta-modelo">${esc(motoData.modelo)}</td></tr>
-        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Color</td><td style="padding:6px 0;font-weight:600;" id="acta-color">${esc(motoData.color)}</td></tr>
-        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">VIN</td><td style="padding:6px 0;font-weight:600;" id="acta-vin">${esc(motoData.vin || motoData.vin_display || '—')}</td></tr>
-        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Número de contrato</td><td style="padding:6px 0;font-weight:600;" id="acta-contrato">${esc(motoData.pedido_num)}</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);width:40%;">Nombre del cliente</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.cliente_nombre)}</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Modelo</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.modelo)}</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Color</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.color)}</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">VIN (NIV)</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.vin || motoData.vin_display || '—')}</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">${docLabel}</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.pedido_num)}</td></tr>
+        ${isContado ? `<tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Método de pago</td><td style="padding:6px 0;font-weight:600;">
+          <select id="acta-metodo-pago" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;">
+            <option value="tarjeta">Tarjeta (incluye MSI)</option>
+            <option value="spei">Transferencia SPEI</option>
+            <option value="oxxo">OXXO / pago referenciado</option>
+            <option value="otro">Otro</option>
+          </select></td></tr>` : ''}
         <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Fecha y hora de entrega</td><td style="padding:6px 0;font-weight:600;">${fechaEntrega}</td></tr>
-        <tr><td style="padding:6px 0;color:var(--vka-grey);">Lugar de entrega</td><td style="padding:6px 0;font-weight:600;" id="acta-lugar">${esc(motoData.punto_nombre || '—')}</td></tr>
+        <tr><td style="padding:6px 0;color:var(--vka-grey);">Lugar de entrega</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.punto_nombre || '—')}</td></tr>
       </table>
     </div>`;
   }
@@ -878,10 +954,16 @@ function renderEntrega() {
 
 async function saveEntrega(completar) {
   const items = collectItems();
+  const payload = { moto_id: motoId, fase: currentPhase, items, notas: '', completar_fase: completar };
+
+  // Include metodo_pago for contado acta
+  const metodoPagoEl = document.getElementById('acta-metodo-pago');
+  if (metodoPagoEl) payload.metodo_pago_acta = metodoPagoEl.value;
+
   try {
     const r = await fetch('php/admin-checklist-entrega-v2.php', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ moto_id: motoId, fase: currentPhase, items, notas: '', completar_fase: completar })
+      body: JSON.stringify(payload)
     });
     const d = await r.json();
     showToast(d.message || (d.ok ? 'Guardado' : d.error), d.ok ? 'success' : 'error');

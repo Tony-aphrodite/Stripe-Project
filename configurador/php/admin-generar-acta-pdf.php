@@ -46,6 +46,18 @@ $fechaEntrega = $entrega && $entrega['fase5_fecha']
     : date('d/m/Y H:i');
 
 $dealerNombre = $entrega['dealer_nombre_firma'] ?? 'Punto Voltika Autorizado';
+$puntoTaller  = $entrega['punto_taller'] ?? $moto['punto_nombre'] ?? 'Punto Voltika Autorizado';
+$tipoActa     = $entrega['tipo_acta'] ?? 'credito';
+$isContado    = ($tipoActa !== 'credito');
+$metodoPago   = $entrega['metodo_pago_acta'] ?? 'tarjeta';
+
+$metodosPagoLabel = [
+    'tarjeta' => 'Tarjeta (incluye MSI)',
+    'spei'    => 'Transferencia SPEI',
+    'oxxo'    => 'OXXO / pago referenciado',
+    'otro'    => 'Otro',
+];
+$metodoPagoDisplay = $metodosPagoLabel[$metodoPago] ?? $metodoPago;
 
 $e = function($v) { return htmlspecialchars($v ?? '—', ENT_QUOTES, 'UTF-8'); };
 
@@ -119,7 +131,11 @@ table.data td:last-child { font-weight: 600; }
 <h2>VOLTIKA — MTECH GEARS, S.A. DE C.V.</h2>
 
 <p style="text-align:center;font-size:10.5px;color:#555;margin-bottom:16px;">
+<?php if ($isContado): ?>
+En este acto, el cliente declara haber recibido la motocicleta eléctrica descrita en el presente documento, en condiciones óptimas de funcionamiento, completa y conforme a lo contratado, derivado de una operación de compraventa pagada en su totalidad.
+<?php else: ?>
 En este acto, el cliente declara haber recibido la motocicleta eléctrica descrita en el presente documento, en condiciones óptimas de funcionamiento, completa y conforme a lo contratado.
+<?php endif; ?>
 </p>
 
 <!-- DATOS DE LA OPERACIÓN -->
@@ -128,8 +144,11 @@ En este acto, el cliente declara haber recibido la motocicleta eléctrica descri
 <tr><td>Nombre del cliente</td><td><?= $e($moto['cliente_nombre']) ?></td></tr>
 <tr><td>Modelo</td><td><?= $e($moto['modelo']) ?></td></tr>
 <tr><td>Color</td><td><?= $e($moto['color']) ?></td></tr>
-<tr><td>VIN</td><td><?= $e($moto['vin']) ?></td></tr>
-<tr><td>Número de contrato</td><td><?= $e($moto['pedido_num']) ?></td></tr>
+<tr><td>VIN (NIV)</td><td><?= $e($moto['vin']) ?></td></tr>
+<tr><td><?= $isContado ? 'Número de pedido / folio' : 'Número de contrato' ?></td><td><?= $e($moto['pedido_num']) ?></td></tr>
+<?php if ($isContado): ?>
+<tr><td>Método de pago</td><td><?= $e($metodoPagoDisplay) ?></td></tr>
+<?php endif; ?>
 <tr><td>Fecha y hora de entrega</td><td><?= $fechaEntrega ?></td></tr>
 <tr><td>Lugar de entrega</td><td><?= $e($moto['punto_nombre']) ?></td></tr>
 </table>
@@ -169,6 +188,28 @@ Se me mostró el funcionamiento básico de la unidad, incluyendo encendido, modo
 <div class="check-item"><span class="check-icon">✔</span> Reconozco que cualquier daño visible, faltante o defecto aparente debió ser señalado al momento de la entrega.</div>
 <div class="check-item"><span class="check-icon">✔</span> Libero expresamente a Mtech Gears, S.A. de C.V. (Voltika) de cualquier responsabilidad posterior relacionada con daños visibles, faltantes y condiciones físicas de la unidad, salvo aquellos casos cubiertos por la garantía aplicable.</div>
 
+<?php if ($isContado): ?>
+<!-- CUMPLIMIENTO DE LA OPERACIÓN COMERCIAL (CONTADO ONLY) -->
+<div class="section-title">Cumplimiento de la Operación Comercial</div>
+<div class="check-item"><span class="check-icon">✔</span> El pago total del vehículo ha sido realizado y confirmado.</div>
+<div class="check-item"><span class="check-icon">✔</span> La entrega del vehículo constituye el cumplimiento total de la operación comercial por parte de Voltika.</div>
+<div class="check-item"><span class="check-icon">✔</span> No existe obligación pendiente de entrega, devolución o prestación adicional por parte de Voltika.</div>
+<div class="check-item"><span class="check-icon">✔</span> La operación se considera concluida en su totalidad.</div>
+
+<!-- TRANSFERENCIA DE POSESIÓN (CONTADO ONLY) -->
+<div class="section-title">Transferencia de Posesión y Responsabilidad</div>
+<div class="check-item"><span class="check-icon">✔</span> A partir de este momento asumo la posesión, uso y responsabilidad total del vehículo.</div>
+<div class="check-item"><span class="check-icon">✔</span> Cualquier uso indebido, accidente, daño o infracción será responsabilidad exclusiva del cliente.</div>
+<div class="check-item"><span class="check-icon">✔</span> Voltika no será responsable por hechos posteriores a la entrega.</div>
+
+<!-- RENUNCIA A DESCONOCIMIENTO DE CARGOS (CONTADO ONLY) -->
+<div class="section-title">Renuncia a Desconocimiento de Cargos</div>
+<div class="check-item"><span class="check-icon">✔</span> El pago realizado fue voluntario y autorizado.</div>
+<div class="check-item"><span class="check-icon">✔</span> La entrega del vehículo, junto con esta acta, constituye cumplimiento total de la operación.</div>
+<div class="check-item"><span class="check-icon">✔</span> Renuncio expresamente a desconocer cargos realizados, incluyendo contracargos ante bancos o plataformas de pago (Stripe).</div>
+<div class="check-item"><span class="check-icon">✔</span> Los registros digitales, OTP, evidencia fotográfica y confirmaciones de pago constituyen prueba suficiente en cualquier proceso de aclaración o disputa.</div>
+<?php endif; ?>
+
 <!-- VALIDACIÓN ELECTRÓNICA Y LEGAL -->
 <div class="section-title">Validación Electrónica y Legal</div>
 
@@ -176,8 +217,8 @@ Se me mostró el funcionamiento básico de la unidad, incluyendo encendido, modo
 <ul style="margin:4px 0;padding-left:18px;font-size:10.5px;">
 <li>La presente acta se firma mediante medios electrónicos</li>
 <li>La validación puede realizarse mediante OTP, firma digital o aceptación en pantalla</li>
-<li>Este documento tiene plena validez jurídica conforme a la legislación mexicana vigente</li>
-<li>Forma parte integral del contrato de compraventa y/o crédito firmado previamente</li>
+<li>Este documento tiene plena validez jurídica conforme al Código de Comercio y legislación mexicana vigente</li>
+<li>Forma parte del expediente digital de la operación</li>
 </ul>
 
 <!-- PROTECCIÓN Y USO DE INFORMACIÓN -->
@@ -185,8 +226,8 @@ Se me mostró el funcionamiento básico de la unidad, incluyendo encendido, modo
 
 <p>El cliente autoriza expresamente a Voltika a:</p>
 <ul style="margin:4px 0;padding-left:18px;font-size:10.5px;">
-<li>Registrar evidencia fotográfica de la entrega</li>
-<li>Utilizar registros digitales, OTP y validaciones para fines legales</li>
+<li>Registrar evidencia fotográfica y/o video de la entrega</li>
+<li>Conservar logs, IP, OTP y registros digitales</li>
 <li>Usar esta información para: defensa ante contracargos, procesos legales, cumplimiento ante autoridades (PROFECO, SAT, INAI)</li>
 </ul>
 
@@ -200,6 +241,9 @@ Se me mostró el funcionamiento básico de la unidad, incluyendo encendido, modo
 
 <div class="check-item"><span class="check-icon">✔</span> Acepto los términos de entrega</div>
 <div class="check-item"><span class="check-icon">✔</span> OTP validado: <?= ($entrega && $entrega['otp_validado']) ? '<strong style="color:#10b981;">Sí</strong>' : '<strong style="color:#C62828;">Pendiente</strong>' ?></div>
+<?php if ($isContado): ?>
+<div class="check-item"><span class="check-icon">✔</span> Teléfono validado: <?= ($entrega && $entrega['telefono_validado']) ? '<strong style="color:#10b981;">Sí</strong>' : '<strong style="color:#C62828;">Pendiente</strong>' ?></div>
+<?php endif; ?>
 
 <!-- FIRMAS -->
 <div class="signatures">
@@ -212,6 +256,7 @@ Se me mostró el funcionamiento básico de la unidad, incluyendo encendido, modo
   <div class="sig-block">
     <div class="sig-line">
       <?= $e($dealerNombre) ?><br>
+      <?= $isContado ? $e($puntoTaller) . '<br>' : '' ?>
       <strong>Punto Voltika Autorizado</strong>
     </div>
   </div>
@@ -219,7 +264,11 @@ Se me mostró el funcionamiento básico de la unidad, incluyendo encendido, modo
 
 <!-- CLÁUSULA FINAL -->
 <div class="footer">
+<?php if ($isContado): ?>
+  La presente acta constituye prueba plena de la entrega de la motocicleta, su aceptación por parte del cliente y la conclusión total de la operación comercial, con efectos legales conforme a la legislación vigente en México.<br>
+<?php else: ?>
   La presente acta constituye prueba plena de la entrega de la motocicleta, su aceptación por parte del cliente y la conformidad con el estado de la unidad al momento de la entrega.<br>
+<?php endif; ?>
   <strong>VOLTIKA — MTECH GEARS, S.A. DE C.V.</strong> · Folio: VK-<?= $motoId ?>-<?= date('Ymd') ?>
 </div>
 

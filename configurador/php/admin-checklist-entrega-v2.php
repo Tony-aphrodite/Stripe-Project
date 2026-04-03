@@ -24,7 +24,51 @@ $campos_fase1 = ['ine_presentada','nombre_coincide','foto_coincide','datos_confi
 $campos_fase2 = ['pago_confirmado','enganche_validado','metodo_pago_registrado','domiciliacion_confirmada'];
 $campos_fase3 = ['vin_coincide','unidad_ensamblada','estado_fisico_ok','sin_danos','unidad_completa'];
 $campos_fase4 = ['otp_enviado','otp_validado'];
-$campos_fase5 = ['decl_identidad','decl_validacion','decl_condicion','decl_componentes','decl_funcionamiento','acta_aceptada','acta_liberacion','clausula_medios','clausula_uso_info','acepta_terminos','firma_digital','firma_punto'];
+// Fase 5 campos — shared + type-specific
+$campos_fase5_credito = [
+    'decl_identidad','decl_validacion','decl_condicion','decl_componentes','decl_funcionamiento',
+    'acta_aceptada','acta_liberacion','clausula_medios','clausula_uso_info',
+    'acepta_terminos','firma_digital','firma_punto',
+];
+$campos_fase5_contado = [
+    'decl_pago_total','decl_validacion','decl_condicion','decl_componentes','decl_funcionamiento',
+    'acta_aceptada','acta_liberacion',
+    'cumpl_pago_confirmado','cumpl_entrega_total','cumpl_sin_obligacion','cumpl_op_concluida',
+    'transf_posesion','transf_uso_responsable','transf_voltika_libre',
+    'renuncia_pago_voluntario','renuncia_cumplimiento','renuncia_contracargos','renuncia_registros_prueba',
+    'clausula_medios','clausula_uso_info',
+    'evidencia_foto_cliente','evidencia_foto_vin','evidencia_foto_entrega','evidencia_video',
+    'acepta_terminos','telefono_validado','firma_digital','firma_punto',
+];
+
+// Determine type from request or existing record
+function getCamposFase5($pdo, $motoId, $json = []) {
+    global $campos_fase5_credito, $campos_fase5_contado;
+
+    $tipoActa = $json['tipo_acta'] ?? null;
+
+    if (!$tipoActa) {
+        // Check existing checklist
+        $s = $pdo->prepare("SELECT tipo_acta FROM checklist_entrega_v2 WHERE moto_id = ? ORDER BY id DESC LIMIT 1");
+        $s->execute([$motoId]);
+        $r = $s->fetch(PDO::FETCH_ASSOC);
+        $tipoActa = $r['tipo_acta'] ?? null;
+    }
+
+    if (!$tipoActa) {
+        // Infer from moto payment type
+        $s = $pdo->prepare("SELECT pago_estado, tipo_asignacion FROM inventario_motos WHERE id = ?");
+        $s->execute([$motoId]);
+        $m = $s->fetch(PDO::FETCH_ASSOC);
+        // consignacion or fully paid = contado; voltika_entrega with parcial = credito
+        $tipoActa = ($m && $m['pago_estado'] === 'parcial') ? 'credito' : 'contado';
+    }
+
+    return [
+        'tipo'   => $tipoActa,
+        'campos' => $tipoActa === 'credito' ? $campos_fase5_credito : $campos_fase5_contado,
+    ];
+}
 
 // ── GET ──────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -34,7 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $pdo  = getDB();
         $stmt = $pdo->prepare("SELECT * FROM checklist_entrega_v2 WHERE moto_id = ? ORDER BY id DESC LIMIT 1");
         $stmt->execute([$motoId]);
-        echo json_encode(['ok' => true, 'checklist' => $stmt->fetch(PDO::FETCH_ASSOC) ?: null]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Also return the acta type
+        $f5 = getCamposFase5($pdo, $motoId);
+        echo json_encode(['ok' => true, 'checklist' => $row ?: null, 'tipo_acta' => $f5['tipo']]);
     } catch (PDOException $e) {
         http_response_code(500);
         echo json_encode(['error' => 'DB error']);
@@ -79,13 +127,14 @@ try {
         }
     }
 
-    // Determine campos
+    // Determine campos — fase5 depends on acta type
+    $f5Info = getCamposFase5($pdo, $motoId, $json);
     $camposMap = [
         'fase1' => $campos_fase1,
         'fase2' => $campos_fase2,
         'fase3' => $campos_fase3,
         'fase4' => $campos_fase4,
-        'fase5' => $campos_fase5,
+        'fase5' => $f5Info['campos'],
     ];
     $camposToSave = $camposMap[$fase] ?? [];
 
@@ -97,6 +146,17 @@ try {
         $vals[] = !empty($items[$c]) ? 1 : 0;
     }
     $sets[] = "notas = ?"; $vals[] = $notas;
+
+    // Save tipo_acta and metodo_pago_acta
+    if ($fase === 'fase5') {
+        $sets[] = "tipo_acta = ?"; $vals[] = $f5Info['tipo'];
+        if (!empty($json['metodo_pago_acta'])) {
+            $sets[] = "metodo_pago_acta = ?"; $vals[] = $json['metodo_pago_acta'];
+        }
+        if (!empty($json['punto_taller'])) {
+            $sets[] = "punto_taller = ?"; $vals[] = $json['punto_taller'];
+        }
+    }
 
     // Save fotos
     if ($fase === 'fase1' && !empty($fotos)) {
