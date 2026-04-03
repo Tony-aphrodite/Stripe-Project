@@ -154,16 +154,21 @@ try {
         $vals[] = $row['id'];
         $pdo->prepare("UPDATE checklist_ensamble SET " . implode(', ', $sets) . " WHERE id = ?")->execute($vals);
     } else {
-        $sets[] = "moto_id = ?";   $vals[] = $motoId;
-        $sets[] = "dealer_id = ?"; $vals[] = $dealer['id'];
-        $cols = implode(', ', array_map(fn($s) => explode(' = ', $s)[0], $sets));
-        $qmarks = implode(', ', array_map(fn($s) => str_contains($s, 'NOW()') ? 'NOW()' : '?', $sets));
-        // Remove NOW() values from $vals
-        $cleanVals = [];
+        $insertCols = ['moto_id', 'dealer_id'];
+        $insertQmarks = ['?', '?'];
+        $insertVals = [$motoId, $dealer['id']];
+
         foreach ($sets as $i => $s) {
-            if (!str_contains($s, 'NOW()')) $cleanVals[] = $vals[$i];
+            $colName = trim(explode('=', $s)[0]);
+            $insertCols[] = $colName;
+            if (str_contains($s, 'NOW()')) {
+                $insertQmarks[] = 'NOW()';
+            } else {
+                $insertQmarks[] = '?';
+                $insertVals[] = $vals[$i];
+            }
         }
-        $pdo->prepare("INSERT INTO checklist_ensamble ($cols) VALUES ($qmarks)")->execute($cleanVals);
+        $pdo->prepare("INSERT INTO checklist_ensamble (" . implode(', ', $insertCols) . ") VALUES (" . implode(', ', $insertQmarks) . ")")->execute($insertVals);
     }
 
     // If fully completed, update moto status

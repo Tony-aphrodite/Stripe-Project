@@ -53,8 +53,8 @@ $trans = $transitions[$accion];
 try {
     $pdo = getDB();
 
-    // Fetch moto and verify ownership
-    $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? AND dealer_id = ? AND activo = 1 LIMIT 1");
+    // Fetch moto — allow unassigned motos (dealer_id IS NULL) to be claimed
+    $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? AND activo = 1 AND (dealer_id = ? OR dealer_id IS NULL) LIMIT 1");
     $stmt->execute([$motoId, $dealer['id']]);
     $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -62,6 +62,11 @@ try {
         http_response_code(404);
         echo json_encode(['error' => 'Moto no encontrada']);
         exit;
+    }
+
+    // Assign dealer_id if not set
+    if (empty($moto['dealer_id'])) {
+        $pdo->prepare("UPDATE inventario_motos SET dealer_id = ? WHERE id = ?")->execute([$dealer['id'], $motoId]);
     }
 
     // Validate transition
