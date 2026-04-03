@@ -202,6 +202,22 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: DOCUMENT HUB (VIN click) ═══════════════════════════════════════ -->
+<div id="modal-docs" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-docs')">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title">📋 Documentos</span>
+      <button class="modal-close" onclick="closeModal('modal-docs')">×</button>
+    </div>
+    <div class="modal-body" id="docs-body">
+      <p>Cargando...</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-docs')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL: FACE COMPARE / DELIVERY PHOTO ═════════════════════════════════ -->
 <div id="modal-face" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-face')">
   <div class="modal" style="max-width:480px;">
@@ -608,7 +624,7 @@ function renderMotoCard(m) {
       <div class="card-cliente">${esc(m.cliente_nombre || 'Sin asignar')}</div>
       <div class="card-modelo">${esc(m.modelo)} ${esc(m.color)}</div>
       <div class="card-color" style="display:none">Color: ${esc(m.color)}</div>
-      <div class="card-vin">VIN: <strong>${esc(m.vin_display || '****')}</strong></div>
+      <div class="card-vin" style="cursor:pointer;" onclick="event.stopPropagation();openDocHub(${m.id})">VIN: <strong style="color:var(--vka-blue);text-decoration:underline;">${esc(m.vin_display || '****')}</strong> 📋</div>
       <div class="card-dias ${diasAlert ? 'alerta' : ''}">
         ${diasAlert ? '⚠️' : ''} ${esc(diasLabel)}
       </div>
@@ -651,6 +667,77 @@ function getCardAccion(m) {
 
   const info = map[m.estado] || { label: '—', cls: '', accion: null, msg: '' };
   return { btnLabel: info.label, btnClass: info.cls, accion: info.accion, btnMsg: info.msg };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOCUMENT HUB — VIN click shows all documents for a motorcycle
+// ═══════════════════════════════════════════════════════════════════════════════
+async function openDocHub(motoId) {
+  const body = document.getElementById('docs-body');
+  body.innerHTML = '<div style="text-align:center;padding:20px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
+  openModal('modal-docs');
+
+  try {
+    const r = await fetch('php/admin-documentos.php?moto_id=' + motoId);
+    const d = await r.json();
+
+    if (!d.ok) {
+      body.innerHTML = `<div style="text-align:center;color:var(--vka-red);">${esc(d.error)}</div>`;
+      return;
+    }
+
+    const m = d.moto;
+    let html = '';
+
+    // Moto header
+    html += `<div style="background:var(--vka-blue-soft);border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:16px;font-weight:800;color:var(--vka-blue-dark);">${esc(m.modelo)} ${esc(m.color)}</div>
+      <div style="font-size:12px;color:var(--vka-grey);margin-top:2px;">VIN: <strong>${esc(m.vin || m.vin_display)}</strong></div>
+      <div style="font-size:12px;color:var(--vka-grey);">${esc(m.cliente_nombre || '—')} · ${esc(m.pedido_num || '—')}</div>
+    </div>`;
+
+    // Document list
+    if (!d.documentos.length) {
+      html += '<p style="color:var(--vka-grey);text-align:center;">No hay documentos registrados.</p>';
+    } else {
+      d.documentos.forEach(doc => {
+        const statusColor = doc.completado ? '#10b981' : '#f59e0b';
+        const statusIcon = doc.completado ? '✅' : '⏳';
+        const statusText = doc.completado ? 'Completado' : (doc.existe ? 'En progreso' : 'No iniciado');
+        const clickable = doc.url ? 'cursor:pointer;' : '';
+        const target = doc.target || '_self';
+
+        html += `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1.5px solid var(--vka-border);border-radius:10px;margin-bottom:8px;${clickable}background:#fff;"
+          ${doc.url ? `onclick="window.open('${esc(doc.url)}','${target}')"` : ''}>
+          <div style="font-size:24px;flex-shrink:0;">${doc.icon}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:var(--vka-blue-dark);">${esc(doc.titulo)}</div>
+            ${doc.fecha ? `<div style="font-size:10px;color:var(--vka-grey);">${esc(doc.fecha)}</div>` : ''}
+            ${doc.metodo ? `<div style="font-size:10px;color:var(--vka-grey);">Método: ${esc(doc.metodo)} · $${Number(doc.total||0).toLocaleString('es-MX')} MXN</div>` : ''}
+            ${doc.score ? `<div style="font-size:10px;color:var(--vka-grey);">Score: ${doc.score}</div>` : ''}
+            ${doc.fase ? `<div style="font-size:10px;color:var(--vka-grey);">Fase: ${esc(doc.fase)}</div>` : ''}
+            ${doc.hash ? `<div style="font-size:9px;color:var(--vka-grey);word-break:break-all;">Hash: ${esc(doc.hash)}</div>` : ''}
+          </div>
+          <div style="flex-shrink:0;">
+            <span style="font-size:11px;font-weight:700;color:${statusColor};">${statusIcon} ${statusText}</span>
+          </div>
+        </div>`;
+      });
+    }
+
+    // Selfie preview if available
+    const idDoc = d.documentos.find(x => x.tipo === 'verificacion_identidad');
+    if (idDoc && idDoc.selfie) {
+      html += `<div style="margin-top:12px;text-align:center;">
+        <div style="font-size:11px;font-weight:700;color:var(--vka-grey);text-transform:uppercase;margin-bottom:6px;">Selfie de verificación</div>
+        <img src="${esc(idDoc.selfie)}" style="width:120px;height:120px;object-fit:cover;border-radius:50%;border:3px solid ${idDoc.completado ? '#10b981' : '#f59e0b'};">
+      </div>`;
+    }
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = '<div style="text-align:center;color:var(--vka-red);">Error al cargar documentos.</div>';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
