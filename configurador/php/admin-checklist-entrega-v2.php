@@ -24,7 +24,7 @@ $campos_fase1 = ['ine_presentada','nombre_coincide','foto_coincide','datos_confi
 $campos_fase2 = ['pago_confirmado','enganche_validado','metodo_pago_registrado','domiciliacion_confirmada'];
 $campos_fase3 = ['vin_coincide','unidad_ensamblada','estado_fisico_ok','sin_danos','unidad_completa'];
 $campos_fase4 = ['otp_enviado','otp_validado'];
-$campos_fase5 = ['acta_aceptada','clausula_identidad','clausula_medios','clausula_uso_info','firma_digital'];
+$campos_fase5 = ['decl_identidad','decl_validacion','decl_condicion','decl_componentes','decl_funcionamiento','acta_aceptada','acta_liberacion','clausula_medios','clausula_uso_info','acepta_terminos','firma_digital','firma_punto'];
 
 // ── GET ──────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
