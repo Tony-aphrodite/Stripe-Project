@@ -324,6 +324,44 @@
             <label>Precio de venta (MXN)</label>
             <input type="number" id="f-precio" placeholder="45000" min="0">
           </div>
+          <div class="field form-col-2" style="border-top:2px solid var(--vka-border);padding-top:14px;margin-top:10px;">
+            <label style="font-size:13px;font-weight:800;color:var(--vka-blue-dark);">Información adicional</label>
+          </div>
+          <div class="field">
+            <label>Año modelo</label>
+            <input type="text" id="f-anio-modelo" placeholder="2026">
+          </div>
+          <div class="field">
+            <label>Potencia</label>
+            <input type="text" id="f-potencia" placeholder="3000W">
+          </div>
+          <div class="field form-col-2">
+            <label>Descripción</label>
+            <textarea id="f-descripcion" rows="2" placeholder="Descripción del modelo..."></textarea>
+          </div>
+          <div class="field form-col-2">
+            <label>Accesorios</label>
+            <textarea id="f-accesorios" rows="2" placeholder="Lista de accesorios incluidos..."></textarea>
+          </div>
+          <div class="field form-col-2" style="border-top:2px solid var(--vka-border);padding-top:14px;margin-top:10px;">
+            <label style="font-size:13px;font-weight:800;color:var(--vka-blue-dark);">Información aduanal</label>
+          </div>
+          <div class="field">
+            <label>No. Pedimento</label>
+            <input type="text" id="f-num-pedimento" placeholder="26 47 3463 6001234">
+          </div>
+          <div class="field">
+            <label>Fecha ingreso al país</label>
+            <input type="date" id="f-fecha-ingreso-pais">
+          </div>
+          <div class="field">
+            <label>Aduana</label>
+            <input type="text" id="f-aduana" placeholder="Manzanillo, Colima">
+          </div>
+          <div class="field">
+            <label>Hecho en</label>
+            <input type="text" id="f-hecho-en" placeholder="China" value="China">
+          </div>
           <div class="field form-col-2">
             <label>Notas</label>
             <textarea id="f-notas" rows="3" placeholder="Notas internas..."></textarea>
@@ -489,7 +527,7 @@ function renderTable(motos) {
             <span class="badge ${badgeCls}">${ESTADOS_LABEL[m.estado]||m.estado}</span>
           </div>
           <div class="inv-card-row" style="margin-top:4px;">
-            <span class="inv-card-vin">VIN: <strong>${esc(m.vin_display || m.vin)}</strong></span>
+            <span class="inv-card-vin" onclick="event.stopPropagation();openDetalle(${m.id})" style="cursor:pointer;">VIN: <strong style="color:var(--vka-blue);text-decoration:underline;">${esc(m.vin)}</strong></span>
             <span class="badge ${tipoCls}">${tipoLabel}</span>
           </div>
           <div class="inv-card-row inv-card-bottom">
@@ -515,7 +553,7 @@ function renderTable(motos) {
       const tipoCls   = m.tipo_asignacion === 'consignacion' ? 'badge-consignacion' : 'badge-voltika';
       const diasAlert = m.dias_en_paso > 1;
       html += `<tr onclick="openDetalle(${m.id})">
-        <td><strong>${esc(m.vin_display || m.vin)}</strong></td>
+        <td><strong style="color:var(--vka-blue);text-decoration:underline;cursor:pointer;">${esc(m.vin)}</strong></td>
         <td>${esc(m.modelo)} <span style="color:var(--vka-grey)">${esc(m.color)}</span></td>
         <td><span class="badge ${tipoCls}">${m.tipo_asignacion === 'consignacion' ? 'Consig.' : 'Voltika'}</span></td>
         <td><span class="badge ${badgeCls}">${ESTADOS_LABEL[m.estado]||m.estado}</span></td>
@@ -539,7 +577,7 @@ function openDetalle(motoId) {
   const m = allMotos.find(m => m.id === motoId);
   if (!m) return;
 
-  document.getElementById('modal-detalle-title').textContent = `${m.modelo} ${m.color} — ${m.vin_display}`;
+  document.getElementById('modal-detalle-title').textContent = `${m.modelo} ${m.color} — ${m.vin}`;
   document.getElementById('modal-detalle-body').innerHTML = buildDetalleHtml(m);
   openModal('modal-detalle');
 }
@@ -562,15 +600,29 @@ function buildDetalleHtml(m) {
     <div class="detail-main">
       <div class="info-card">
         <div class="info-card-title">Información de la moto</div>
-        ${infoRow('VIN completo', m.vin)}
+        ${infoRow('VIN', m.vin)}
         ${infoRow('Modelo', m.modelo)}
         ${infoRow('Color', m.color)}
+        ${infoRow('Año modelo', m.anio_modelo || '—')}
+        ${infoRow('Potencia', m.potencia || '—')}
         ${infoRow('Tipo', m.tipo_asignacion === 'consignacion' ? 'Consignación' : 'Voltika Entrega')}
         ${infoRow('Estado', ESTADOS_LABEL[m.estado] || m.estado)}
         ${infoRow('Días en paso', m.dias_en_paso + (m.dias_en_paso > 1 ? ' días ⚠️' : ' día'))}
         ${infoRow('Pago', m.pago_estado || '—')}
         ${m.precio_venta ? infoRow('Precio venta', '$' + Number(m.precio_venta).toLocaleString('es-MX') + ' MXN') : ''}
         ${m.fecha_llegada ? infoRow('Fecha llegada', m.fecha_llegada) : ''}
+      </div>
+      ${(m.descripcion || m.accesorios) ? `<div class="info-card">
+        <div class="info-card-title">Descripción y Accesorios</div>
+        ${m.descripcion ? infoRow('Descripción', m.descripcion) : ''}
+        ${m.accesorios ? infoRow('Accesorios', m.accesorios) : ''}
+      </div>` : ''}
+      <div class="info-card">
+        <div class="info-card-title">Información Aduanal</div>
+        ${infoRow('No. Pedimento', m.num_pedimento || '—')}
+        ${infoRow('Fecha ingreso al país', m.fecha_ingreso_pais || '—')}
+        ${infoRow('Aduana', m.aduana || '—')}
+        ${infoRow('Hecho en', m.hecho_en || '—')}
       </div>
       <div class="info-card">
         <div class="info-card-title">Información del cliente</div>
@@ -628,6 +680,14 @@ function editarMoto() {
   document.getElementById('f-precio').value         = m.precio_venta || '';
   document.getElementById('f-notas').value          = m.notas || '';
   document.getElementById('f-fecha-llegada').value  = m.fecha_llegada || '';
+  document.getElementById('f-anio-modelo').value    = m.anio_modelo || '';
+  document.getElementById('f-potencia').value       = m.potencia || '';
+  document.getElementById('f-descripcion').value    = m.descripcion || '';
+  document.getElementById('f-accesorios').value     = m.accesorios || '';
+  document.getElementById('f-num-pedimento').value  = m.num_pedimento || '';
+  document.getElementById('f-fecha-ingreso-pais').value = m.fecha_ingreso_pais || '';
+  document.getElementById('f-aduana').value         = m.aduana || '';
+  document.getElementById('f-hecho-en').value       = m.hecho_en || 'China';
   document.getElementById('f-moto-id').value        = m.id;
   document.getElementById('btn-save-moto').textContent = 'Guardar cambios';
   openModal('modal-add');
@@ -660,6 +720,14 @@ async function submitMoto(e) {
     precio_venta:     parseFloat(document.getElementById('f-precio').value) || 0,
     notas:            document.getElementById('f-notas').value.trim(),
     fecha_llegada:    document.getElementById('f-fecha-llegada').value || null,
+    anio_modelo:      document.getElementById('f-anio-modelo').value.trim(),
+    potencia:         document.getElementById('f-potencia').value.trim(),
+    descripcion:      document.getElementById('f-descripcion').value.trim(),
+    accesorios:       document.getElementById('f-accesorios').value.trim(),
+    num_pedimento:    document.getElementById('f-num-pedimento').value.trim(),
+    fecha_ingreso_pais: document.getElementById('f-fecha-ingreso-pais').value || null,
+    aduana:           document.getElementById('f-aduana').value.trim(),
+    hecho_en:         document.getElementById('f-hecho-en').value.trim(),
   };
   if (isEdit) payload.moto_id = parseInt(motoId);
 

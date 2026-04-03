@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // Admin ve todo; dealer solo ve su punto
     if ($dealer['rol'] !== 'admin') {
-        $where[]  = 'm.dealer_id = ?';
+        $where[]  = '(m.dealer_id = ? OR m.dealer_id IS NULL)';
         $params[] = $dealer['id'];
     }
 
@@ -62,6 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                m.pedido_num, m.pago_estado, m.dias_en_paso,
                m.fecha_llegada, m.fecha_estado, m.precio_venta, m.notas,
                m.log_estados, m.freg,
+               m.anio_modelo, m.potencia, m.descripcion, m.accesorios,
+               m.num_pedimento, m.fecha_ingreso_pais, m.aduana, m.hecho_en,
                d.nombre AS dealer_nombre
         FROM inventario_motos m
         LEFT JOIN dealer_usuarios d ON d.id = m.dealer_id
@@ -109,6 +111,14 @@ if ($accion === 'agregar') {
     $precioVenta     = floatval($json['precio_venta']?? 0);
     $notas           = trim($json['notas']           ?? '');
     $fechaLlegada    = $json['fecha_llegada']        ?? null;
+    $anioModelo      = trim($json['anio_modelo']     ?? '');
+    $potencia        = trim($json['potencia']        ?? '');
+    $descripcion     = trim($json['descripcion']     ?? '');
+    $accesorios      = trim($json['accesorios']      ?? '');
+    $numPedimento    = trim($json['num_pedimento']   ?? '');
+    $fechaIngresoPais= $json['fecha_ingreso_pais']   ?? null;
+    $aduana          = trim($json['aduana']           ?? '');
+    $hechoEn         = trim($json['hecho_en']        ?? 'China');
 
     // Override dealer_id / punto for non-admin
     $dealerId    = ($dealer['rol'] === 'admin' && !empty($json['dealer_id']))
@@ -145,15 +155,19 @@ if ($accion === 'agregar') {
                 (vin, vin_display, modelo, color, tipo_asignacion, estado,
                  dealer_id, punto_nombre, punto_id, cliente_nombre, cliente_email,
                  cliente_telefono, pedido_num, pago_estado, precio_venta, notas,
-                 fecha_llegada, fecha_estado, log_estados)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?)
+                 fecha_llegada, fecha_estado, log_estados,
+                 anio_modelo, potencia, descripcion, accesorios,
+                 num_pedimento, fecha_ingreso_pais, aduana, hecho_en)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?,?,?,?,?,?,?,?,?)
         ")->execute([
             $vin, $vinDisplay, $modelo, $color, $tipoAsignacion, $estado,
             $dealerId, $puntoNombre, $puntoId,
             $clienteNombre, $clienteEmail, $clienteTelefono,
             $pedidoNum, $pagoEstado, $precioVenta, $notas,
             $fechaLlegada,
-            json_encode($log, JSON_UNESCAPED_UNICODE)
+            json_encode($log, JSON_UNESCAPED_UNICODE),
+            $anioModelo, $potencia, $descripcion, $accesorios,
+            $numPedimento, $fechaIngresoPais, $aduana, $hechoEn
         ]);
 
         $newId = $pdo->lastInsertId();
@@ -191,7 +205,8 @@ if ($accion === 'actualizar') {
 
     $allowed = ['modelo','color','tipo_asignacion','cliente_nombre','cliente_email',
                 'cliente_telefono','pedido_num','pago_estado','precio_venta','notas',
-                'fecha_llegada'];
+                'fecha_llegada','anio_modelo','potencia','descripcion','accesorios',
+                'num_pedimento','fecha_ingreso_pais','aduana','hecho_en'];
     $sets = []; $vals = [];
     foreach ($allowed as $f) {
         if (array_key_exists($f, $json)) {
@@ -203,7 +218,7 @@ if ($accion === 'actualizar') {
 
     $vals[] = $motoId;
     $vals[] = $dealer['id'];
-    $cond   = $dealer['rol'] === 'admin' ? 'id = ?' : 'id = ? AND dealer_id = ?';
+    $cond   = $dealer['rol'] === 'admin' ? 'id = ?' : 'id = ? AND (dealer_id = ? OR dealer_id IS NULL)';
     if ($dealer['rol'] === 'admin') array_pop($vals);
 
     try {
