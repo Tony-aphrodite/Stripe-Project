@@ -61,13 +61,13 @@ var VkUI = {
     renderBanner: function() {
         var base = (window.VK_BASE_PATH || '');
         return '<div class="vk-card__banner" style="position:relative;overflow:hidden;">' +
-            '<img src="' + base + 'img/mexico_map.svg" alt="" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:80px;height:auto;opacity:0.6;">' +
+            '<img src="' + base + 'img/last/icon_02.png" alt="" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:75px;height:auto;opacity:0.5;">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
             '<span style="font-size:18px;">\ud83d\udccd</span>' +
             '<span style="font-size:16px;font-weight:800;">Entrega en tu ciudad</span>' +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
-            '<img src="' + base + 'img/punto_voltika_autorizado.png" style="width:18px;height:18px;">' +
+            '<span style="color:#4CAF50;font-size:14px;">\u2714</span>' +
             '<span style="font-size:13px;">Punto <strong>Voltika</strong> autorizado</span>' +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:6px;">' +
@@ -125,7 +125,7 @@ var VkUI = {
         var badges = [];
         if (metodo === 'credito') {
             badges = [
-                { icon: '<img src="' + base + 'img/punto_voltika_autorizado.png" alt="" style="width:35px;height:35px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
+                { icon: '<img src="' + base + 'img/last/icon_01.png" alt="" style="width:35px;height:35px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
                 { icon: imgPlacas,   text: 'Documentos para placas incluidos' },
                 { icon: imgAhorro,   text: 'P\u00e1gala con lo que hoy gastas en gasolina' },
                 { icon: imgGarantia, text: 'Garant\u00eda Voltika' }

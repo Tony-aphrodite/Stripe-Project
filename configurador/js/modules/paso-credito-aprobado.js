@@ -29,12 +29,8 @@ var PasoCreditoAprobado = {
 
         // Blue gradient header
         html += '<div class="vk-aprobado-header">';
-        html += '<div class="vk-aprobado-header__check">';
-        html += '<div style="width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto;">';
-        html += '<div style="width:70px;height:70px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.15);">';
-        html += '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-        html += '</div>';
-        html += '</div>';
+        html += '<div class="vk-aprobado-header__check" style="text-align:center;">';
+        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/last/icon_06.png" alt="Moto aprobada" style="width:180px;height:auto;margin:0 auto;display:block;">';
         html += '</div>';
         html += '<h2 class="vk-aprobado-header__title" style="color:#ffffff;font-size:32px;margin-top:16px;">\u00a1Felicidades!</h2>';
         html += '<p class="vk-aprobado-header__subtitle" style="font-size:20px;">Tu cr\u00e9dito Voltika ya est\u00e1 aprobado</p>';
