@@ -54,32 +54,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // Unassigned transactions (payments without moto)
     if ($vista === 'transacciones_pendientes') {
-        $stmt = $pdo->query("
-            SELECT t.id, t.nombre, t.email, t.telefono, t.modelo, t.color,
-                   t.tpago, t.total, t.pedido, t.stripe_pi, t.freg
-            FROM transacciones t
-            LEFT JOIN inventario_motos m ON m.transaccion_id = t.id
-            WHERE m.id IS NULL
-            ORDER BY t.freg DESC
-            LIMIT 100
-        ");
-        echo json_encode(['ok' => true, 'transacciones' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        try {
+            $stmt = $pdo->query("
+                SELECT t.id, t.nombre, t.email, t.telefono, t.modelo, t.color,
+                       t.tpago, t.total, t.pedido, t.stripe_pi, t.freg
+                FROM transacciones t
+                LEFT JOIN inventario_motos m ON m.transaccion_id = t.id
+                WHERE m.id IS NULL
+                ORDER BY t.freg DESC
+                LIMIT 100
+            ");
+            echo json_encode(['ok' => true, 'transacciones' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        } catch (PDOException $e) {
+            // Fallback: simpler query without stripe_pi column
+            try {
+                $stmt = $pdo->query("
+                    SELECT t.id, t.nombre, t.email, t.telefono, t.modelo, t.color,
+                           t.tpago, t.total, t.pedido, t.freg
+                    FROM transacciones t
+                    LEFT JOIN inventario_motos m ON m.transaccion_id = t.id
+                    WHERE m.id IS NULL
+                    ORDER BY t.freg DESC
+                    LIMIT 100
+                ");
+                echo json_encode(['ok' => true, 'transacciones' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            } catch (PDOException $e2) {
+                echo json_encode(['ok' => true, 'transacciones' => [], 'note' => 'Table transacciones may not exist yet']);
+            }
+        }
         exit;
     }
 
     // Default: all motos with location info
-    $stmt = $pdo->query("
-        SELECT m.id, m.vin, m.modelo, m.color, m.estado, m.punto_nombre,
-               m.cliente_nombre, m.pedido_num, m.pago_estado, m.stripe_payment_status,
-               m.dealer_id, m.cedis_origen, m.transaccion_id, m.freg,
-               d.nombre AS dealer_nombre
-        FROM inventario_motos m
-        LEFT JOIN dealer_usuarios d ON d.id = m.dealer_id
-        WHERE m.activo = 1
-        ORDER BY m.freg DESC
-        LIMIT 500
-    ");
-    echo json_encode(['ok' => true, 'motos' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    try {
+        $stmt = $pdo->query("
+            SELECT m.id, m.vin, m.modelo, m.color, m.estado, m.punto_nombre,
+                   m.cliente_nombre, m.pedido_num, m.pago_estado, m.stripe_payment_status,
+                   m.dealer_id, m.cedis_origen, m.transaccion_id, m.freg,
+                   d.nombre AS dealer_nombre
+            FROM inventario_motos m
+            LEFT JOIN dealer_usuarios d ON d.id = m.dealer_id
+            WHERE m.activo = 1
+            ORDER BY m.freg DESC
+            LIMIT 500
+        ");
+        echo json_encode(['ok' => true, 'motos' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    } catch (PDOException $e) {
+        // Fallback without new columns
+        $stmt = $pdo->query("
+            SELECT m.id, m.vin, m.modelo, m.color, m.estado, m.punto_nombre,
+                   m.cliente_nombre, m.pedido_num, m.pago_estado,
+                   m.dealer_id, m.freg
+            FROM inventario_motos m
+            WHERE m.activo = 1
+            ORDER BY m.freg DESC
+            LIMIT 500
+        ");
+        echo json_encode(['ok' => true, 'motos' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    }
     exit;
 }
 
