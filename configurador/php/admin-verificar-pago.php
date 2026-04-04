@@ -25,68 +25,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $motoId = intval($_GET['moto_id'] ?? 0);
     if (!$motoId) { echo json_encode(['ok' => false, 'error' => 'moto_id requerido']); exit; }
 
-    $stmt = $pdo->prepare("SELECT stripe_pi, stripe_payment_status, stripe_verified_at, pago_estado, transaccion_id FROM inventario_motos WHERE id = ?");
-    $stmt->execute([$motoId]);
-    $moto = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$moto) { echo json_encode(['ok' => false, 'error' => 'Moto no encontrada']); exit; }
-
-    // If we have a stripe_pi but status is not confirmed, try to verify now
-    if ($moto['stripe_pi'] && $moto['stripe_payment_status'] !== 'succeeded') {
-        $result = verifyStripePayment($moto['stripe_pi']);
-        if ($result) {
-            $pdo->prepare("UPDATE inventario_motos SET stripe_payment_status = ?, stripe_verified_at = NOW() WHERE id = ?")
-                ->execute([$result['status'], $motoId]);
-            $moto['stripe_payment_status'] = $result['status'];
-            $moto['stripe_verified_at'] = date('Y-m-d H:i:s');
-
-            // Auto-update pago_estado if payment succeeded
-            if ($result['status'] === 'succeeded' && $moto['pago_estado'] !== 'pagada') {
-                $pdo->prepare("UPDATE inventario_motos SET pago_estado = 'pagada' WHERE id = ?")->execute([$motoId]);
-                $moto['pago_estado'] = 'pagada';
+    try {
+        // Try with all columns
+        try {
+            $stmt = $pdo->prepare("SELECT stripe_pi, stripe_payment_status, stripe_verified_at, pago_estado, transaccion_id, pedido_num FROM inventario_motos WHERE id = ?");
+            $stmt->execute([$motoId]);
+            $moto = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            $stmt = $pdo->prepare("SELECT pago_estado, pedido_num FROM inventario_motos WHERE id = ?");
+            $stmt->execute([$motoId]);
+            $moto = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($moto) {
+                $moto['stripe_pi'] = null;
+                $moto['stripe_payment_status'] = 'unknown';
+                $moto['stripe_verified_at'] = null;
+                $moto['transaccion_id'] = null;
             }
         }
-    }
 
-    // If no stripe_pi, try to find from transacciones table
-    if (!$moto['stripe_pi'] && !$moto['transaccion_id']) {
-        $stmt2 = $pdo->prepare("SELECT id, stripe_pi, total FROM transacciones WHERE pedido = ? OR pedido = ? LIMIT 1");
-        $pedido = preg_replace('/^VK-/', '', $moto['pedido_num'] ?? '');
-        $stmt2->execute([$pedido, 'VK-' . $pedido]);
-        $tx = $stmt2->fetch(PDO::FETCH_ASSOC);
+        if (!$moto) { echo json_encode(['ok' => false, 'error' => 'Moto no encontrada']); exit; }
 
-        if ($tx && $tx['stripe_pi']) {
-            // Link transaction to moto
-            $pdo->prepare("UPDATE inventario_motos SET stripe_pi = ?, transaccion_id = ? WHERE id = ?")
-                ->execute([$tx['stripe_pi'], $tx['id'], $motoId]);
-            $moto['stripe_pi'] = $tx['stripe_pi'];
-            $moto['transaccion_id'] = $tx['id'];
-
-            // Verify with Stripe
-            $result = verifyStripePayment($tx['stripe_pi']);
+        // If we have a stripe_pi but status is not confirmed, try Stripe API
+        if (!empty($moto['stripe_pi']) && ($moto['stripe_payment_status'] ?? '') !== 'succeeded') {
+            $result = verifyStripePayment($moto['stripe_pi']);
             if ($result) {
-                $pdo->prepare("UPDATE inventario_motos SET stripe_payment_status = ?, stripe_verified_at = NOW() WHERE id = ?")
-                    ->execute([$result['status'], $motoId]);
+                try {
+                    $pdo->prepare("UPDATE inventario_motos SET stripe_payment_status = ?, stripe_verified_at = NOW() WHERE id = ?")
+                        ->execute([$result['status'], $motoId]);
+                } catch (PDOException $e) { /* column may not exist */ }
                 $moto['stripe_payment_status'] = $result['status'];
-                if ($result['status'] === 'succeeded') {
+
+                if ($result['status'] === 'succeeded' && $moto['pago_estado'] !== 'pagada') {
                     $pdo->prepare("UPDATE inventario_motos SET pago_estado = 'pagada' WHERE id = ?")->execute([$motoId]);
                     $moto['pago_estado'] = 'pagada';
                 }
             }
         }
-    }
 
-    echo json_encode([
-        'ok' => true,
-        'pago' => [
-            'stripe_pi'             => $moto['stripe_pi'] ?: null,
-            'stripe_payment_status' => $moto['stripe_payment_status'] ?: 'unknown',
-            'stripe_verified_at'    => $moto['stripe_verified_at'] ?: null,
-            'pago_estado'           => $moto['pago_estado'],
-            'transaccion_id'        => $moto['transaccion_id'],
-            'puede_entregar'        => ($moto['pago_estado'] === 'pagada' || $moto['stripe_payment_status'] === 'succeeded'),
-        ],
-    ]);
+        // If no stripe_pi, try to find from transacciones table
+        if (empty($moto['stripe_pi']) && empty($moto['transaccion_id'])) {
+            try {
+                $pedido = preg_replace('/^VK-/', '', $moto['pedido_num'] ?? '');
+                if ($pedido) {
+                    $stmt2 = $pdo->prepare("SELECT id, stripe_pi, total FROM transacciones WHERE pedido = ? OR pedido = ? LIMIT 1");
+                    $stmt2->execute([$pedido, 'VK-' . $pedido]);
+                    $tx = $stmt2->fetch(PDO::FETCH_ASSOC);
+
+                    if ($tx && !empty($tx['stripe_pi'])) {
+                        try {
+                            $pdo->prepare("UPDATE inventario_motos SET stripe_pi = ?, transaccion_id = ? WHERE id = ?")
+                                ->execute([$tx['stripe_pi'], $tx['id'], $motoId]);
+                        } catch (PDOException $e) { /* columns may not exist */ }
+                        $moto['stripe_pi'] = $tx['stripe_pi'];
+                        $moto['transaccion_id'] = $tx['id'];
+
+                        $result = verifyStripePayment($tx['stripe_pi']);
+                        if ($result) {
+                            try {
+                                $pdo->prepare("UPDATE inventario_motos SET stripe_payment_status = ?, stripe_verified_at = NOW() WHERE id = ?")
+                                    ->execute([$result['status'], $motoId]);
+                            } catch (PDOException $e) {}
+                            $moto['stripe_payment_status'] = $result['status'];
+                            if ($result['status'] === 'succeeded') {
+                                $pdo->prepare("UPDATE inventario_motos SET pago_estado = 'pagada' WHERE id = ?")->execute([$motoId]);
+                                $moto['pago_estado'] = 'pagada';
+                            }
+                        }
+                    }
+                }
+            } catch (PDOException $e) { /* transacciones table may not exist */ }
+        }
+
+        echo json_encode([
+            'ok' => true,
+            'pago' => [
+                'stripe_pi'             => $moto['stripe_pi'] ?? null,
+                'stripe_payment_status' => $moto['stripe_payment_status'] ?? 'unknown',
+                'stripe_verified_at'    => $moto['stripe_verified_at'] ?? null,
+                'pago_estado'           => $moto['pago_estado'] ?? 'unknown',
+                'transaccion_id'        => $moto['transaccion_id'] ?? null,
+                'puede_entregar'        => (($moto['pago_estado'] ?? '') === 'pagada' || ($moto['stripe_payment_status'] ?? '') === 'succeeded'),
+            ],
+        ]);
+
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'Error: ' . $e->getMessage()]);
+    }
     exit;
 }
 
