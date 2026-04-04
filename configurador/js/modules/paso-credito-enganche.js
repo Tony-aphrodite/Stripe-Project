@@ -125,7 +125,7 @@ var PasoCreditoEnganche = {
         html += '</div>';
         // Benefits
         html += '<div style="margin-bottom:14px;">';
-        html += '<div style="font-size:15px;margin-bottom:10px;font-weight:700;"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#00C851;color:#fff;font-size:12px;">&#10003;</span> <strong style="color:#00C851;">Forma m\u00e1s r\u00e1pida</strong> de asegurar tu Voltika</div>';
+        html += '<div style="font-size:15px;margin-bottom:10px;font-weight:700;display:flex;align-items:center;gap:8px;"><img src="' + (window.VK_BASE_PATH || '') + 'img/last/icon_09.png" style="width:28px;height:28px;object-fit:contain;"> <strong style="color:#00C851;">Forma m\u00e1s r\u00e1pida</strong> de asegurar tu Voltika</div>';
         html += '<div style="font-size:14px;margin-bottom:6px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#039fe1;color:#fff;font-size:11px;font-weight:700;">&#10148;</span> Aparta tu Voltika <strong>en segundos</strong></div>';
         html += '<div style="font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span style="color:#00C851;font-size:16px;">&#10004;</span> Pago <strong>inmediato y seguro</strong></div>';
         html += '<div style="font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span style="color:#00C851;font-size:16px;">&#10004;</span> Confirmaci\u00f3n <strong>al instante</strong></div>';
@@ -137,7 +137,7 @@ var PasoCreditoEnganche = {
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:10px;"></div>';
         // Protected badge
         html += '<div style="display:flex;align-items:center;gap:6px;padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:12px;">';
-        html += '<span style="font-size:16px;">&#128274;</span> <span style="font-size:13px;font-weight:600;color:#1a3a5c;">Pago <strong>100% protegido</strong></span>';
+        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/last/icon_08.png" style="width:24px;height:24px;object-fit:contain;"> <span style="font-size:13px;font-weight:600;color:#1a3a5c;">Pago <strong>100% protegido</strong></span>';
         html += '</div>';
         // Pay button
         html += '<button class="vk-btn vk-btn--primary" id="vk-enganche-pagar" style="font-size:16px;font-weight:800;padding:16px;border-radius:10px;">';

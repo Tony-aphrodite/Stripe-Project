@@ -563,11 +563,11 @@ var Paso3 = {
         // VER UBICACIÓN button
         h += '<a href="' + mapsUrl + '" target="_blank" rel="noopener" ' +
             'style="display:block;text-align:center;font-size:13px;font-weight:700;color:#fff;text-decoration:none;padding:14px;border-radius:8px;background:#039fe1;margin-bottom:10px;">' +
-            self._pinIcon() + ' VER UBICACI\u00d3N DEL VOLTIKA CENTER</a>';
+            'VER UBICACI\u00d3N DEL VOLTIKA CENTER</a>';
 
         // Footer
-        h += '<div style="font-size:12px;color:#1a3a5c;text-align:center;">';
-        h += self._clockIcon() + ' ' + centro.horarios;
+        h += '<div style="font-size:12px;color:#1a3a5c;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">';
+        h += '<img src="' + (window.VK_BASE_PATH || '') + 'img/last/icon_10.png" style="width:16px;height:16px;object-fit:contain;"> ' + centro.horarios;
         h += '</div>';
 
         h += '</div>'; // end body

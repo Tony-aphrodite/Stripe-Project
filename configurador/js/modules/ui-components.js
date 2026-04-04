@@ -67,7 +67,7 @@ var VkUI = {
             '<span style="font-size:16px;font-weight:800;">Entrega en tu ciudad</span>' +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
-            '<img src="' + base + 'img/punto_voltika_autorizado.png" style="width:18px;height:18px;">' +
+            '<img src="' + base + 'img/last/icon_02.png" style="width:22px;height:22px;object-fit:contain;">' +
             '<span style="font-size:13px;">Punto <strong>Voltika</strong> autorizado</span>' +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:6px;">' +
@@ -125,7 +125,7 @@ var VkUI = {
         var badges = [];
         if (metodo === 'credito') {
             badges = [
-                { icon: '<img src="' + base + 'img/punto_voltika_autorizado.png" alt="" style="width:35px;height:35px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
+                { icon: '<img src="' + base + 'img/last/icon_01.png" alt="" style="width:35px;height:35px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
                 { icon: imgPlacas,   text: 'Documentos para placas incluidos' },
                 { icon: imgAhorro,   text: 'P\u00e1gala con lo que hoy gastas en gasolina' },
                 { icon: imgGarantia, text: 'Garant\u00eda Voltika' }
