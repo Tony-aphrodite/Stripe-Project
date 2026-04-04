@@ -99,6 +99,58 @@ try {
         }
     }
 
+    // ── Payment validation — block delivery if payment not confirmed ────────
+    $paymentRequiredActions = ['iniciar_validacion', 'iniciar_venta'];
+    if (in_array($accion, $paymentRequiredActions)) {
+        $payOk = ($moto['pago_estado'] === 'pagada');
+
+        // Try to verify via Stripe if we have a payment intent
+        if (!$payOk && !empty($moto['stripe_pi']) && STRIPE_SECRET_KEY) {
+            $ch = curl_init('https://api.stripe.com/v1/payment_intents/' . urlencode($moto['stripe_pi']));
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . STRIPE_SECRET_KEY],
+                CURLOPT_TIMEOUT => 10,
+            ]);
+            $resp = curl_exec($ch);
+            curl_close($ch);
+            $piData = json_decode($resp, true);
+            if ($piData && ($piData['status'] ?? '') === 'succeeded') {
+                $payOk = true;
+                $pdo->prepare("UPDATE inventario_motos SET pago_estado = 'pagada', stripe_payment_status = 'succeeded', stripe_verified_at = NOW() WHERE id = ?")->execute([$motoId]);
+            }
+        }
+
+        // Also check existing stripe_payment_status column
+        if (!$payOk && ($moto['stripe_payment_status'] ?? '') === 'succeeded') {
+            $payOk = true;
+        }
+
+        if (!$payOk) {
+            http_response_code(409);
+            echo json_encode(['ok' => false, 'error' => 'No se puede proceder: el pago no ha sido confirmado. Verifique el estado de pago en Stripe.']);
+            exit;
+        }
+    }
+
+    // ── Acta signature validation — block delivery without signed acta ────
+    if ($accion === 'iniciar_validacion' || $accion === 'iniciar_venta') {
+        $actaStmt = $pdo->prepare("SELECT cliente_acta_firmada, otp_validado FROM checklist_entrega_v2 WHERE moto_id = ? ORDER BY id DESC LIMIT 1");
+        $actaStmt->execute([$motoId]);
+        $actaRow = $actaStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$actaRow || !$actaRow['cliente_acta_firmada']) {
+            http_response_code(409);
+            echo json_encode(['ok' => false, 'error' => 'El cliente debe firmar el Acta de Entrega antes de proceder. Sin acta firmada = no existe entrega.']);
+            exit;
+        }
+        if (!$actaRow['otp_validado']) {
+            http_response_code(409);
+            echo json_encode(['ok' => false, 'error' => 'El OTP del cliente no ha sido validado. Sin OTP = no existe entrega.']);
+            exit;
+        }
+    }
+
     // Build log entry
     $logEntry = [
         'estado'    => $nuevoEstado,
