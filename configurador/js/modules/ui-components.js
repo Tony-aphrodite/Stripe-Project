@@ -61,13 +61,13 @@ var VkUI = {
     renderBanner: function() {
         var base = (window.VK_BASE_PATH || '');
         return '<div class="vk-card__banner" style="position:relative;overflow:hidden;">' +
-            '<img src="' + base + 'img/mexico_map.svg" alt="" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:80px;height:auto;opacity:0.6;">' +
+            '<img src="' + base + 'img/last/icon_02.png" alt="" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:75px;height:auto;opacity:0.5;">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
             '<span style="font-size:18px;">\ud83d\udccd</span>' +
             '<span style="font-size:16px;font-weight:800;">Entrega en tu ciudad</span>' +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
-            '<img src="' + base + 'img/last/icon_02.png" style="width:22px;height:22px;object-fit:contain;">' +
+            '<span style="color:#4CAF50;font-size:14px;">\u2714</span>' +
             '<span style="font-size:13px;">Punto <strong>Voltika</strong> autorizado</span>' +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:6px;">' +
