@@ -451,8 +451,9 @@ function renderDashboard(data) {
   html += renderSection('UNIDADES A CONSIGNACIÓN',
     'Disponibles para venta en punto', data.consignacion, 'consignacion');
 
-  html += `<div style="text-align:center;padding:16px 0;">
-    <a href="inventario.html" class="dealer-inventario-link">📋 Ver inventario completo</a>
+  html += `<div style="text-align:center;padding:16px 0;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+    <a href="inventario.html" class="dealer-inventario-link">📋 Ver inventario</a>
+    ${dealer && ['admin','cedis'].includes(dealer.rol) ? '<a href="cedis.html" class="dealer-inventario-link" style="border-color:#0f172a;color:#0f172a;">🏭 CEDIS Control</a>' : ''}
   </div>`;
 
   el.innerHTML = html;

@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="css/admin.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <style>
 html,body { overflow-x:hidden; max-width:100%; }
 .cedis-header { background:linear-gradient(135deg,#0f172a,#1e3a5f); padding:14px 16px; display:flex; align-items:center; gap:12px; color:#fff; position:sticky; top:0; z-index:100; }
@@ -252,41 +253,78 @@ function parseExcel(input) {
   const reader = new FileReader();
 
   reader.onload = function(e) {
-    const text = e.target.result;
-    const lines = text.split('\n').filter(l => l.trim());
-    if (lines.length < 2) { showToast('Archivo vacío', 'warning'); return; }
+    let rows = [];
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const motos = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',').map(c => c.trim());
-      const moto = {};
-      headers.forEach((h, j) => {
-        const key = h.replace(/[^a-z_]/g, '').replace('vin','vin').replace('modelo','modelo')
-          .replace('color','color').replace('año','anio_modelo').replace('anio','anio_modelo')
-          .replace('potencia','potencia').replace('descripcion','descripcion')
-          .replace('accesorios','accesorios').replace('pedimento','num_pedimento')
-          .replace('aduana','aduana').replace('hecho','hecho_en').replace('notas','notas');
-        moto[key] = cols[j] || '';
-      });
-      if (moto.vin && moto.modelo && moto.color) motos.push(moto);
+    try {
+      // Use SheetJS for xlsx/xls/csv
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    } catch(err) {
+      showToast('Error al leer el archivo: ' + err.message, 'error');
+      return;
     }
 
-    document.getElementById('excel-preview').innerHTML = `
-      <p style="font-size:13px;font-weight:700;margin-bottom:8px;">${motos.length} motos encontradas en el archivo</p>
-      <button class="btn btn-primary" onclick='importExcel(${JSON.stringify(motos)})'>⚡ Importar ${motos.length} motos</button>
-    `;
+    if (!rows.length) { showToast('Archivo vacío', 'warning'); return; }
+
+    // Map column names to DB fields (flexible matching)
+    const colMap = {
+      'vin': 'vin', 'niv': 'vin',
+      'modelo': 'modelo', 'model': 'modelo',
+      'color': 'color',
+      'año': 'anio_modelo', 'anio': 'anio_modelo', 'año modelo': 'anio_modelo', 'year': 'anio_modelo',
+      'potencia': 'potencia', 'power': 'potencia',
+      'descripcion': 'descripcion', 'descripción': 'descripcion', 'description': 'descripcion',
+      'accesorios': 'accesorios', 'accessories': 'accesorios',
+      'pedimento': 'num_pedimento', 'no. pedimento': 'num_pedimento', 'num_pedimento': 'num_pedimento',
+      'fecha ingreso': 'fecha_ingreso_pais', 'fecha_ingreso_pais': 'fecha_ingreso_pais',
+      'aduana': 'aduana',
+      'hecho en': 'hecho_en', 'hecho_en': 'hecho_en', 'made in': 'hecho_en',
+      'notas': 'notas', 'notes': 'notas',
+      'tipo': 'tipo_asignacion',
+    };
+
+    const motos = [];
+    rows.forEach(row => {
+      const moto = {};
+      Object.keys(row).forEach(key => {
+        const normalized = key.trim().toLowerCase();
+        const dbField = colMap[normalized] || null;
+        if (dbField) moto[dbField] = String(row[key]).trim();
+      });
+      if (moto.vin && moto.modelo && moto.color) motos.push(moto);
+    });
+
+    if (!motos.length) {
+      showToast('No se encontraron motos válidas. Verifica que las columnas VIN, Modelo y Color existan.', 'warning');
+      return;
+    }
+
+    // Preview table
+    let previewHtml = `<p style="font-size:13px;font-weight:700;margin-bottom:8px;">${motos.length} motos encontradas</p>`;
+    previewHtml += '<div style="max-height:200px;overflow-y:auto;border:1px solid var(--vka-border);border-radius:8px;margin-bottom:12px;">';
+    previewHtml += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+    previewHtml += '<thead><tr style="background:var(--vka-blue-dark);color:#fff;"><th style="padding:6px;">VIN</th><th style="padding:6px;">Modelo</th><th style="padding:6px;">Color</th></tr></thead><tbody>';
+    motos.slice(0, 20).forEach(m => {
+      previewHtml += `<tr><td style="padding:4px 6px;border-bottom:1px solid #eee;">${esc(m.vin)}</td><td style="padding:4px 6px;border-bottom:1px solid #eee;">${esc(m.modelo)}</td><td style="padding:4px 6px;border-bottom:1px solid #eee;">${esc(m.color)}</td></tr>`;
+    });
+    if (motos.length > 20) previewHtml += `<tr><td colspan="3" style="padding:6px;text-align:center;color:var(--vka-grey);">... y ${motos.length - 20} más</td></tr>`;
+    previewHtml += '</tbody></table></div>';
+
+    // Store for import
+    window._pendingImportMotos = motos;
+    previewHtml += `<button class="btn btn-primary" onclick="importExcel()">⚡ Importar ${motos.length} motos</button>`;
+
+    document.getElementById('excel-preview').innerHTML = previewHtml;
   };
 
-  if (file.name.endsWith('.csv')) {
-    reader.readAsText(file);
-  } else {
-    showToast('Por ahora solo se acepta formato CSV. Exporta tu Excel como CSV.', 'warning');
-  }
+  reader.readAsArrayBuffer(file);
 }
 
 async function importExcel(motos) {
+  if (!motos) motos = window._pendingImportMotos;
+  if (!motos || !motos.length) { showToast('No hay motos para importar', 'warning'); return; }
   try {
     const r = await fetch('php/admin-cedis.php', {
       method: 'POST', headers: {'Content-Type':'application/json'},
