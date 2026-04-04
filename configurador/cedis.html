@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CEDIS — Voltika Inventory Control</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="css/admin.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+html,body { overflow-x:hidden; max-width:100%; }
+.cedis-header { background:linear-gradient(135deg,#0f172a,#1e3a5f); padding:14px 16px; display:flex; align-items:center; gap:12px; color:#fff; position:sticky; top:0; z-index:100; }
+.cedis-header img { height:22px; }
+.cedis-header h1 { font-size:15px; font-weight:800; flex:1; }
+.cedis-tabs { display:flex; background:#fff; border-bottom:2px solid var(--vka-border); overflow-x:auto; scrollbar-width:none; }
+.cedis-tabs::-webkit-scrollbar { display:none; }
+.cedis-tab { flex:1; text-align:center; padding:12px 8px; font-size:11px; font-weight:700; color:var(--vka-grey); cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap; }
+.cedis-tab.active { color:var(--vka-blue); border-bottom-color:var(--vka-blue); }
+.cedis-content { padding:12px; max-width:900px; margin:0 auto; }
+.cedis-card { background:#fff; border-radius:10px; border:1.5px solid var(--vka-border); padding:14px; margin-bottom:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+.punto-card { display:flex; align-items:center; gap:12px; cursor:pointer; }
+.punto-card:hover { background:var(--vka-blue-soft); }
+.punto-badge { width:44px; height:44px; border-radius:50%; background:var(--vka-blue); color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; flex-shrink:0; }
+.tx-card { display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid var(--vka-border); }
+.tx-card:last-child { border-bottom:none; }
+.excel-drop { border:2px dashed var(--vka-border); border-radius:12px; padding:30px 20px; text-align:center; cursor:pointer; margin-bottom:16px; }
+.excel-drop:hover { border-color:var(--vka-blue); background:var(--vka-blue-soft); }
+</style>
+</head>
+<body class="admin-body">
+
+<div class="cedis-header">
+  <a href="dealer-panel.html" style="color:rgba(255,255,255,.8);text-decoration:none;font-size:13px;">← Panel</a>
+  <img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'">
+  <h1>CEDIS — Control de Inventario</h1>
+  <button onclick="doLogout()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:12px;cursor:pointer;">🚪 Salir</button>
+</div>
+
+<div class="cedis-tabs">
+  <div class="cedis-tab active" onclick="switchCedisTab('inventario')">📋 Inventario</div>
+  <div class="cedis-tab" onclick="switchCedisTab('puntos')">📍 Puntos</div>
+  <div class="cedis-tab" onclick="switchCedisTab('pagos')">💳 Pagos</div>
+  <div class="cedis-tab" onclick="switchCedisTab('import')">📥 Importar</div>
+</div>
+
+<div class="cedis-content" id="cedis-content">
+  <div style="text-align:center;padding:40px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>
+</div>
+
+<div id="toast-container"></div>
+
+<!-- Modal: Mover a Punto -->
+<div id="modal-mover" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-mover')">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <span class="modal-title">📍 Mover a Punto</span>
+      <button class="modal-close" onclick="closeModal('modal-mover')">×</button>
+    </div>
+    <div class="modal-body" id="mover-body">Cargando...</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-mover')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-mover" onclick="confirmarMover()">Transferir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Asignar Pago -->
+<div id="modal-asignar" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-asignar')">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <span class="modal-title">💳 Asignar Pago</span>
+      <button class="modal-close" onclick="closeModal('modal-asignar')">×</button>
+    </div>
+    <div class="modal-body" id="asignar-body">Cargando...</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-asignar')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-asignar" onclick="confirmarAsignar()">Vincular</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let dealer = null;
+let allMotos = [];
+let allPuntos = [];
+let allTx = [];
+let currentMotoId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('php/admin-login.php', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'check'}) })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok && ['admin','cedis'].includes(d.dealer.rol)) { dealer = d.dealer; loadInventario(); }
+    else { window.location.href = 'dealer-panel.html'; }
+  }).catch(() => window.location.href = 'dealer-panel.html');
+});
+
+async function doLogout() {
+  await fetch('php/admin-login.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});
+  window.location.href = 'dealer-panel.html';
+}
+
+function switchCedisTab(tab) {
+  document.querySelectorAll('.cedis-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  if (tab === 'inventario') loadInventario();
+  else if (tab === 'puntos') loadPuntos();
+  else if (tab === 'pagos') loadPagos();
+  else if (tab === 'import') showImport();
+}
+
+// ═══ INVENTARIO ══════════════════════════════════════════════════════════════
+async function loadInventario() {
+  const el = document.getElementById('cedis-content');
+  el.innerHTML = '<div style="text-align:center;padding:30px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
+  try {
+    const r = await fetch('php/admin-cedis.php');
+    const d = await r.json();
+    allMotos = d.motos || [];
+    renderInventario();
+  } catch(e) { el.innerHTML = '<p style="color:var(--vka-red);text-align:center;">Error</p>'; }
+}
+
+function renderInventario() {
+  const el = document.getElementById('cedis-content');
+  if (!allMotos.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--vka-grey);">No hay motos en inventario</div>'; return; }
+
+  let html = `<div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;">
+    <input type="text" id="cedis-search" placeholder="Buscar VIN, modelo, cliente..." oninput="filterInventario()"
+      style="flex:1;padding:10px 12px;border:1.5px solid var(--vka-border);border-radius:8px;font-size:13px;">
+    <span style="font-size:12px;color:var(--vka-grey);">${allMotos.length} motos</span>
+  </div>`;
+
+  html += '<div id="cedis-moto-list">';
+  allMotos.forEach(m => {
+    const payColor = m.stripe_payment_status === 'succeeded' ? '#10b981' : (m.pago_estado === 'pagada' ? '#10b981' : '#f59e0b');
+    const payIcon = payColor === '#10b981' ? '✅' : '⏳';
+    html += `<div class="cedis-card" data-search="${(m.vin+m.modelo+m.cliente_nombre+m.pedido_num).toLowerCase()}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--vka-blue-dark);">${esc(m.modelo)} ${esc(m.color)}</div>
+          <div style="font-size:12px;color:var(--vka-blue);font-weight:600;">${esc(m.vin)}</div>
+        </div>
+        <span class="badge badge-${m.estado.replace(/_/g,'-')}">${m.estado.replace(/_/g,' ')}</span>
+      </div>
+      <div style="font-size:11px;color:var(--vka-grey);margin-bottom:6px;">
+        ${m.cliente_nombre ? '👤 ' + esc(m.cliente_nombre) : '<span style="color:#f59e0b;">Sin cliente asignado</span>'}
+        ${m.pedido_num ? ' · 📋 ' + esc(m.pedido_num) : ''}
+      </div>
+      <div style="font-size:11px;display:flex;justify-content:space-between;align-items:center;">
+        <span>📍 ${esc(m.punto_nombre || 'CEDIS (sin asignar)')}</span>
+        <span style="color:${payColor};font-weight:700;">${payIcon} ${m.pago_estado || '—'}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="abrirMover(${m.id})" style="font-size:10px;">📍 Mover</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirAsignar(${m.id})" style="font-size:10px;">💳 Pago</button>
+        <button class="btn btn-ghost btn-sm" onclick="verificarPago(${m.id})" style="font-size:10px;">🔄 Stripe</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function filterInventario() {
+  const q = document.getElementById('cedis-search').value.toLowerCase();
+  document.querySelectorAll('#cedis-moto-list .cedis-card').forEach(card => {
+    card.style.display = card.dataset.search.includes(q) ? '' : 'none';
+  });
+}
+
+// ═══ PUNTOS ══════════════════════════════════════════════════════════════════
+async function loadPuntos() {
+  const el = document.getElementById('cedis-content');
+  el.innerHTML = '<div style="text-align:center;padding:30px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
+  try {
+    const r = await fetch('php/admin-cedis.php?vista=puntos');
+    const d = await r.json();
+    allPuntos = d.puntos || [];
+    let html = '<h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">📍 Puntos Voltika</h3>';
+    if (!allPuntos.length) { html += '<p style="color:var(--vka-grey);">No hay puntos registrados</p>'; }
+    else {
+      allPuntos.forEach(p => {
+        html += `<div class="cedis-card punto-card">
+          <div class="punto-badge">${(p.activas||0)}</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:700;color:var(--vka-blue-dark);">${esc(p.punto_nombre || '—')}</div>
+            <div style="font-size:12px;color:var(--vka-grey);">${esc(p.dealer_nombre)} · ${p.total_motos||0} total · ${p.entregadas||0} entregadas</div>
+          </div>
+        </div>`;
+      });
+    }
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '<p style="color:var(--vka-red);text-align:center;">Error</p>'; }
+}
+
+// ═══ PAGOS ═══════════════════════════════════════════════════════════════════
+async function loadPagos() {
+  const el = document.getElementById('cedis-content');
+  el.innerHTML = '<div style="text-align:center;padding:30px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
+  try {
+    const r = await fetch('php/admin-cedis.php?vista=transacciones_pendientes');
+    const d = await r.json();
+    allTx = d.transacciones || [];
+    let html = '<h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">💳 Transacciones sin moto asignada</h3>';
+    if (!allTx.length) { html += '<p style="color:var(--vka-grey);">Todas las transacciones tienen moto asignada</p>'; }
+    else {
+      html += '<div class="cedis-card" style="padding:0;">';
+      allTx.forEach(t => {
+        html += `<div class="tx-card">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;">${esc(t.nombre)}</div>
+            <div style="font-size:11px;color:var(--vka-grey);">${esc(t.modelo)} ${esc(t.color)} · ${esc(t.tpago)} · $${Number(t.total||0).toLocaleString('es-MX')}</div>
+            <div style="font-size:10px;color:var(--vka-grey);">Pedido: ${esc(t.pedido)} · ${esc(t.freg)}</div>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    }
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '<p style="color:var(--vka-red);text-align:center;">Error</p>'; }
+}
+
+// ═══ IMPORT EXCEL ════════════════════════════════════════════════════════════
+function showImport() {
+  const el = document.getElementById('cedis-content');
+  el.innerHTML = `
+    <h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">📥 Importar desde Excel</h3>
+    <div class="excel-drop" onclick="document.getElementById('excel-file').click()">
+      <div style="font-size:36px;margin-bottom:8px;">📄</div>
+      <div style="font-size:14px;font-weight:700;color:var(--vka-blue-dark);">Haz clic para seleccionar archivo Excel</div>
+      <div style="font-size:12px;color:var(--vka-grey);margin-top:4px;">.xlsx, .xls o .csv</div>
+      <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="parseExcel(this)">
+    </div>
+    <div style="background:#FFF8E1;border:1.5px solid #FFD54F;border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;color:#5D4037;margin-bottom:6px;">Formato requerido (columnas):</div>
+      <div style="font-size:11px;color:#5D4037;line-height:1.8;">
+        <strong>VIN</strong> (requerido) · <strong>Modelo</strong> (requerido) · <strong>Color</strong> (requerido) ·
+        Año Modelo · Potencia · Descripción · Accesorios ·
+        No. Pedimento · Fecha Ingreso País · Aduana · Hecho En · Notas
+      </div>
+    </div>
+    <div id="excel-preview"></div>
+    <div id="excel-result"></div>
+  `;
+}
+
+function parseExcel(input) {
+  if (!input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    let rows = [];
+
+    try {
+      // Use SheetJS for xlsx/xls/csv
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    } catch(err) {
+      showToast('Error al leer el archivo: ' + err.message, 'error');
+      return;
+    }
+
+    if (!rows.length) { showToast('Archivo vacío', 'warning'); return; }
+
+    // Map column names to DB fields (flexible matching)
+    const colMap = {
+      'vin': 'vin', 'niv': 'vin',
+      'modelo': 'modelo', 'model': 'modelo',
+      'color': 'color',
+      'año': 'anio_modelo', 'anio': 'anio_modelo', 'año modelo': 'anio_modelo', 'year': 'anio_modelo',
+      'potencia': 'potencia', 'power': 'potencia',
+      'descripcion': 'descripcion', 'descripción': 'descripcion', 'description': 'descripcion',
+      'accesorios': 'accesorios', 'accessories': 'accesorios',
+      'pedimento': 'num_pedimento', 'no. pedimento': 'num_pedimento', 'num_pedimento': 'num_pedimento',
+      'fecha ingreso': 'fecha_ingreso_pais', 'fecha_ingreso_pais': 'fecha_ingreso_pais',
+      'aduana': 'aduana',
+      'hecho en': 'hecho_en', 'hecho_en': 'hecho_en', 'made in': 'hecho_en',
+      'notas': 'notas', 'notes': 'notas',
+      'tipo': 'tipo_asignacion',
+    };
+
+    const motos = [];
+    rows.forEach(row => {
+      const moto = {};
+      Object.keys(row).forEach(key => {
+        const normalized = key.trim().toLowerCase();
+        const dbField = colMap[normalized] || null;
+        if (dbField) moto[dbField] = String(row[key]).trim();
+      });
+      if (moto.vin && moto.modelo && moto.color) motos.push(moto);
+    });
+
+    if (!motos.length) {
+      showToast('No se encontraron motos válidas. Verifica que las columnas VIN, Modelo y Color existan.', 'warning');
+      return;
+    }
+
+    // Preview table
+    let previewHtml = `<p style="font-size:13px;font-weight:700;margin-bottom:8px;">${motos.length} motos encontradas</p>`;
+    previewHtml += '<div style="max-height:200px;overflow-y:auto;border:1px solid var(--vka-border);border-radius:8px;margin-bottom:12px;">';
+    previewHtml += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+    previewHtml += '<thead><tr style="background:var(--vka-blue-dark);color:#fff;"><th style="padding:6px;">VIN</th><th style="padding:6px;">Modelo</th><th style="padding:6px;">Color</th></tr></thead><tbody>';
+    motos.slice(0, 20).forEach(m => {
+      previewHtml += `<tr><td style="padding:4px 6px;border-bottom:1px solid #eee;">${esc(m.vin)}</td><td style="padding:4px 6px;border-bottom:1px solid #eee;">${esc(m.modelo)}</td><td style="padding:4px 6px;border-bottom:1px solid #eee;">${esc(m.color)}</td></tr>`;
+    });
+    if (motos.length > 20) previewHtml += `<tr><td colspan="3" style="padding:6px;text-align:center;color:var(--vka-grey);">... y ${motos.length - 20} más</td></tr>`;
+    previewHtml += '</tbody></table></div>';
+
+    // Store for import
+    window._pendingImportMotos = motos;
+    previewHtml += `<button class="btn btn-primary" onclick="importExcel()">⚡ Importar ${motos.length} motos</button>`;
+
+    document.getElementById('excel-preview').innerHTML = previewHtml;
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+async function importExcel(motos) {
+  if (!motos) motos = window._pendingImportMotos;
+  if (!motos || !motos.length) { showToast('No hay motos para importar', 'warning'); return; }
+  try {
+    const r = await fetch('php/admin-cedis.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ accion: 'import_excel', motos })
+    });
+    const d = await r.json();
+    let html = `<div style="padding:12px;background:#d1fae5;border-radius:8px;margin-top:12px;">
+      <strong>✅ ${d.imported} motos importadas</strong></div>`;
+    if (d.errors && d.errors.length) {
+      html += '<div style="padding:12px;background:#fee2e2;border-radius:8px;margin-top:8px;font-size:12px;">';
+      d.errors.forEach(err => { html += '<div>❌ ' + esc(err) + '</div>'; });
+      html += '</div>';
+    }
+    document.getElementById('excel-result').innerHTML = html;
+  } catch(e) { showToast('Error de conexión', 'error'); }
+}
+
+// ═══ MOVER A PUNTO ═══════════════════════════════════════════════════════════
+async function abrirMover(motoId) {
+  currentMotoId = motoId;
+  openModal('modal-mover');
+  const body = document.getElementById('mover-body');
+  body.innerHTML = '<div class="loader dark" style="width:24px;height:24px;border-width:3px;"></div>';
+
+  try {
+    const r = await fetch('php/admin-cedis.php?vista=puntos');
+    const d = await r.json();
+    let html = '<p style="font-size:13px;margin-bottom:12px;">Seleccionar Punto Voltika destino:</p>';
+    (d.puntos || []).forEach(p => {
+      html += `<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1.5px solid var(--vka-border);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+        <input type="radio" name="punto-dest" value="${p.dealer_id}" data-nombre="${esc(p.punto_nombre||'')}" data-punto-id="${esc(p.punto_id||'')}">
+        <div><strong>${esc(p.punto_nombre || '—')}</strong><br><span style="font-size:11px;color:var(--vka-grey);">${esc(p.dealer_nombre)} · ${p.activas||0} activas</span></div>
+      </label>`;
+    });
+    body.innerHTML = html;
+  } catch(e) { body.innerHTML = '<p style="color:var(--vka-red);">Error</p>'; }
+}
+
+async function confirmarMover() {
+  const selected = document.querySelector('input[name="punto-dest"]:checked');
+  if (!selected) { showToast('Selecciona un punto', 'warning'); return; }
+
+  try {
+    const r = await fetch('php/admin-cedis.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        accion: 'mover_punto',
+        moto_id: currentMotoId,
+        dealer_id: parseInt(selected.value),
+        punto_nombre: selected.dataset.nombre,
+        punto_id: selected.dataset.puntoId,
+      })
+    });
+    const d = await r.json();
+    showToast(d.message || 'Transferida', d.ok ? 'success' : 'error');
+    closeModal('modal-mover');
+    loadInventario();
+  } catch(e) { showToast('Error', 'error'); }
+}
+
+// ═══ ASIGNAR PAGO ════════════════════════════════════════════════════════════
+async function abrirAsignar(motoId) {
+  currentMotoId = motoId;
+  openModal('modal-asignar');
+  const body = document.getElementById('asignar-body');
+  body.innerHTML = '<div class="loader dark" style="width:24px;height:24px;border-width:3px;"></div>';
+
+  try {
+    const r = await fetch('php/admin-cedis.php?vista=transacciones_pendientes');
+    const d = await r.json();
+    let html = '<p style="font-size:13px;margin-bottom:12px;">Seleccionar transacción:</p>';
+    if (!(d.transacciones||[]).length) { html += '<p style="color:var(--vka-grey);">No hay transacciones pendientes</p>'; }
+    else {
+      (d.transacciones || []).forEach(t => {
+        html += `<label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1.5px solid var(--vka-border);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+          <input type="radio" name="tx-dest" value="${t.id}" data-stripe="${esc(t.stripe_pi||'')}" style="margin-top:3px;">
+          <div><strong>${esc(t.nombre)}</strong> · $${Number(t.total||0).toLocaleString('es-MX')}<br>
+          <span style="font-size:11px;color:var(--vka-grey);">${esc(t.modelo)} ${esc(t.color)} · ${esc(t.tpago)} · ${esc(t.freg)}</span></div>
+        </label>`;
+      });
+    }
+    html += '<div style="margin-top:12px;border-top:1px solid var(--vka-border);padding-top:12px;">';
+    html += '<p style="font-size:12px;color:var(--vka-grey);margin-bottom:6px;">O ingresar Stripe PaymentIntent manualmente:</p>';
+    html += '<input type="text" id="manual-stripe-pi" placeholder="pi_xxxxxxxxx" style="width:100%;padding:8px;border:1.5px solid var(--vka-border);border-radius:8px;font-size:12px;">';
+    html += '</div>';
+    body.innerHTML = html;
+  } catch(e) { body.innerHTML = '<p style="color:var(--vka-red);">Error</p>'; }
+}
+
+async function confirmarAsignar() {
+  const selected = document.querySelector('input[name="tx-dest"]:checked');
+  const manualPi = document.getElementById('manual-stripe-pi')?.value?.trim();
+
+  const payload = { accion: 'asignar_pago', moto_id: currentMotoId };
+  if (selected) {
+    payload.transaccion_id = parseInt(selected.value);
+    payload.stripe_pi = selected.dataset.stripe;
+  } else if (manualPi) {
+    payload.stripe_pi = manualPi;
+  } else {
+    showToast('Selecciona una transacción o ingresa un PaymentIntent', 'warning');
+    return;
+  }
+
+  try {
+    const r = await fetch('php/admin-cedis.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    showToast(d.message || 'Vinculado', d.ok ? 'success' : 'error');
+    closeModal('modal-asignar');
+    loadInventario();
+  } catch(e) { showToast('Error', 'error'); }
+}
+
+// ═══ VERIFICAR PAGO STRIPE ══════════════════════════════════════════════════
+async function verificarPago(motoId) {
+  showToast('Verificando con Stripe...', '');
+  try {
+    const r = await fetch('php/admin-verificar-pago.php?moto_id=' + motoId);
+    const d = await r.json();
+    if (d.ok) {
+      const p = d.pago;
+      showToast(p.stripe_payment_status === 'succeeded' ? '✅ Pago confirmado en Stripe' : '⏳ Estado: ' + p.stripe_payment_status, p.stripe_payment_status === 'succeeded' ? 'success' : 'warning');
+      loadInventario();
+    } else {
+      showToast(d.error || 'Error', 'error');
+    }
+  } catch(e) { showToast('Error de conexión', 'error'); }
+}
+
+// ═══ UTILS ═══════════════════════════════════════════════════════════════════
+function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModalOnOverlay(e, id) { if (e.target === e.currentTarget) closeModal(id); }
+function showToast(msg, type) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type||'');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+</script>
+</body>
+</html>

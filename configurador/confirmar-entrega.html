@@ -116,15 +116,23 @@ body { background: var(--vka-blue-soft); }
       <div class="steps-indicator" id="steps-indicator">
         <div class="step-ind active" id="step-ind-1">
           <div class="step-circle">1</div>
-          <div class="step-label">Buscar pedido</div>
+          <div class="step-label">Pedido</div>
         </div>
         <div class="step-ind" id="step-ind-2">
           <div class="step-circle">2</div>
-          <div class="step-label">Código OTP</div>
+          <div class="step-label">OTP</div>
         </div>
         <div class="step-ind" id="step-ind-3">
+          <div class="step-circle">3</div>
+          <div class="step-label">Checklist</div>
+        </div>
+        <div class="step-ind" id="step-ind-4">
+          <div class="step-circle">4</div>
+          <div class="step-label">Acta</div>
+        </div>
+        <div class="step-ind" id="step-ind-5">
           <div class="step-circle">✓</div>
-          <div class="step-label">Confirmado</div>
+          <div class="step-label">Completado</div>
         </div>
       </div>
 
@@ -194,8 +202,91 @@ body { background: var(--vka-blue-soft); }
         </button>
       </div>
 
-      <!-- ── PASO 3: Éxito ──────────────────────────────────────────────── -->
+      <!-- ── PASO 3: Checklist del cliente ────────────────────────────── -->
       <div class="entrega-step" id="step-3">
+        <h3 style="text-align:center;color:var(--vka-blue-dark);margin-bottom:12px;">Verifica tu motocicleta</h3>
+        <p style="text-align:center;font-size:13px;color:var(--vka-grey);margin-bottom:16px;">
+          Confirma que la unidad corresponde a tu pedido y está en buen estado.
+        </p>
+        <div id="client-checklist-items" style="background:#fff;border-radius:10px;border:1.5px solid var(--vka-border);padding:12px 14px;margin-bottom:16px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_vin_correcto" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">El VIN coincide con mi pedido</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_modelo_correcto" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">El modelo es correcto</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_color_correcto" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">El color es correcto</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_sin_danos" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Sin daños visibles</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_accesorios_completos" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Accesorios completos</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_llaves_recibidas" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Llaves recibidas</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_cargador_recibido" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Cargador recibido</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_manual_recibido" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Manual recibido</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_funcionamiento_mostrado" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Se me mostró el funcionamiento básico</span>
+          </label>
+        </div>
+        <button class="btn btn-primary" style="width:100%;padding:13px;font-size:15px;" id="btn-checklist-continuar" onclick="saveClientChecklist()" disabled>
+          Continuar al Acta de Entrega →
+        </button>
+      </div>
+
+      <!-- ── PASO 4: Acta de Entrega (firma) ─────────────────────────────── -->
+      <div class="entrega-step" id="step-4">
+        <h3 style="text-align:center;color:var(--vka-blue-dark);margin-bottom:12px;">Acta de Entrega</h3>
+        <div id="acta-content" style="background:#fff;border:2px solid var(--vka-blue-dark);border-radius:10px;padding:14px;margin-bottom:16px;font-size:11px;line-height:1.6;max-height:300px;overflow-y:auto;">
+          <div style="text-align:center;border-bottom:2px solid var(--vka-blue-dark);padding-bottom:10px;margin-bottom:12px;">
+            <div style="font-size:9px;color:var(--vka-grey);letter-spacing:1px;text-transform:uppercase;">Acta de Entrega de Motocicleta Eléctrica</div>
+            <div style="font-size:13px;font-weight:900;color:var(--vka-blue-dark);">VOLTIKA — MTECH GEARS, S.A. DE C.V.</div>
+          </div>
+          <p>En este acto, el cliente declara haber recibido la motocicleta eléctrica en condiciones óptimas de funcionamiento, completa y conforme a lo contratado.</p>
+          <p><strong>Declaro que:</strong></p>
+          <ul style="padding-left:16px;margin:4px 0;">
+            <li>Soy la persona titular del contrato de compraventa y/o crédito.</li>
+            <li>He verificado que la motocicleta corresponde a mi pedido.</li>
+            <li>La motocicleta se encuentra en buen estado físico.</li>
+            <li>Recibí todos los componentes y documentación.</li>
+            <li>Se me mostró el funcionamiento básico.</li>
+          </ul>
+          <p><strong>Acepto:</strong></p>
+          <ul style="padding-left:16px;margin:4px 0;">
+            <li>La entrega a mi entera satisfacción.</li>
+            <li>Libero a Voltika de responsabilidad por daños visibles o faltantes, salvo garantía.</li>
+            <li>Esta acta se firma mediante medios electrónicos con plena validez jurídica.</li>
+            <li>Autorizo el uso de información para fines legales (PROFECO, SAT, INAI).</li>
+          </ul>
+        </div>
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:#FFF8E1;border:1.5px solid #FFD54F;border-radius:10px;margin-bottom:16px;cursor:pointer;">
+          <input type="checkbox" id="acta-acepto" style="width:22px;height:22px;accent-color:var(--vka-blue);margin-top:2px;" onchange="document.getElementById('btn-firmar-acta').disabled=!this.checked">
+          <span style="font-size:13px;font-weight:700;color:#5D4037;">Acepto todos los términos del Acta de Entrega y confirmo la recepción de mi motocicleta.</span>
+        </label>
+        <button class="btn btn-success" style="width:100%;padding:14px;font-size:15px;font-weight:800;" id="btn-firmar-acta" onclick="firmarActa()" disabled>
+          ✍️ Firmar Acta de Entrega
+        </button>
+      </div>
+
+      <!-- ── PASO 5: Éxito + PDF ─────────────────────────────────────────── -->
+      <div class="entrega-step" id="step-5">
         <div class="confetti">🎉</div>
         <div class="success-check">
           <div class="success-icon">✓</div>
@@ -459,7 +550,79 @@ function showSuccessStep(data) {
     <p>📍 <strong>Punto:</strong> ${esc(data.punto_nombre || '—')}</p>
     <p>📅 <strong>Fecha de entrega:</strong> ${esc(data.fecha_entrega || new Date().toLocaleDateString('es-MX'))}</p>
   `;
-  goStep(3);
+  goStep(3); // Go to client checklist (not final step)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CLIENT CHECKLIST
+// ═══════════════════════════════════════════════════════════════════════════════
+// Enable continue button when all items checked
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('cl-client-item')) {
+    const all = document.querySelectorAll('.cl-client-item');
+    const checked = [...all].every(cb => cb.checked);
+    document.getElementById('btn-checklist-continuar').disabled = !checked;
+  }
+});
+
+async function saveClientChecklist() {
+  const items = {};
+  document.querySelectorAll('.cl-client-item').forEach(cb => {
+    items[cb.dataset.key] = cb.checked;
+  });
+
+  try {
+    const r = await fetch('php/cliente-acta.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ accion: 'checklist', pedido_num: currentPedido, items })
+    });
+    const d = await r.json();
+    if (d.ok && d.completado) {
+      goStep(4); // Go to Acta signing
+    } else {
+      showToast(d.message || 'Faltan items', 'warning');
+    }
+  } catch(e) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACTA SIGNING
+// ═══════════════════════════════════════════════════════════════════════════════
+async function firmarActa() {
+  const btn = document.getElementById('btn-firmar-acta');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span> Firmando...';
+
+  try {
+    const r = await fetch('php/cliente-acta.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ accion: 'firmar', pedido_num: currentPedido })
+    });
+    const d = await r.json();
+
+    if (d.ok && d.firmada) {
+      // Show PDF download link in success step
+      const pdfLink = d.pdf_url || '';
+      document.getElementById('success-details').innerHTML += `
+        <div style="margin-top:12px;text-align:center;">
+          <a href="${pdfLink}" target="_blank"
+            style="display:inline-block;padding:12px 24px;background:var(--vka-blue);color:#fff;border-radius:10px;font-weight:700;text-decoration:none;font-size:14px;">
+            📄 Descargar Acta de Entrega (PDF)
+          </a>
+        </div>`;
+      goStep(5); // Go to final success
+    } else {
+      showToast(d.error || 'Error al firmar', 'error');
+      btn.disabled = false;
+      btn.textContent = '✍️ Firmar Acta de Entrega';
+    }
+  } catch(e) {
+    showToast('Error de conexión', 'error');
+    btn.disabled = false;
+    btn.textContent = '✍️ Firmar Acta de Entrega';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -467,11 +630,11 @@ function showSuccessStep(data) {
 // ═══════════════════════════════════════════════════════════════════════════════
 function goStep(stepNum) {
   // Steps content
-  [1,2,3].forEach(n => {
+  [1,2,3,4,5].forEach(n => {
     document.getElementById('step-' + n)?.classList.toggle('active', n === stepNum);
   });
   // Steps indicator
-  [1,2,3].forEach(n => {
+  [1,2,3,4,5].forEach(n => {
     const el = document.getElementById('step-ind-' + n);
     if (!el) return;
     el.classList.remove('active', 'done');

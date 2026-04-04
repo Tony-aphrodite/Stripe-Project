@@ -29,22 +29,29 @@ try {
           AND fecha_estado IS NOT NULL
     ")->execute([$dealer['id']]);
 
-    // Fetch motos for this dealer (including unassigned ones)
+    // Fetch motos: admin/cedis see all; dealer sees only their punto
+    $isAdmin = in_array($dealer['rol'], ['admin', 'cedis']);
+    $filterClause = $isAdmin
+        ? '1=1'
+        : '(m.dealer_id = ? OR m.dealer_id IS NULL OR m.punto_id = ?)';
+    $filterParams = $isAdmin ? [] : [$dealer['id'], $dealer['punto_id'] ?? ''];
+
     $stmt = $pdo->prepare("
-        SELECT id, vin, vin_display, modelo, color, tipo_asignacion, estado,
-               cliente_nombre, cliente_email, cliente_telefono, pedido_num,
-               pago_estado, dias_en_paso, notas, log_estados,
-               fecha_llegada, fecha_estado, precio_venta, punto_nombre
-        FROM inventario_motos
-        WHERE activo = 1
-          AND (dealer_id = ? OR dealer_id IS NULL)
-          AND estado NOT IN ('entregada')
+        SELECT m.id, m.vin, m.vin_display, m.modelo, m.color, m.tipo_asignacion, m.estado,
+               m.cliente_nombre, m.cliente_email, m.cliente_telefono, m.pedido_num,
+               m.pago_estado, m.dias_en_paso, m.notas, m.log_estados,
+               m.fecha_llegada, m.fecha_estado, m.precio_venta, m.punto_nombre,
+               m.stripe_payment_status, m.stripe_pi
+        FROM inventario_motos m
+        WHERE m.activo = 1
+          AND $filterClause
+          AND m.estado NOT IN ('entregada')
         ORDER BY
-          FIELD(estado,'por_validar_entrega','lista_para_entrega','en_ensamble',
+          FIELD(m.estado,'por_validar_entrega','lista_para_entrega','en_ensamble',
                        'por_ensamblar','recibida','retenida','por_llegar'),
-          dias_en_paso DESC
+          m.dias_en_paso DESC
     ");
-    $stmt->execute([$dealer['id']]);
+    $stmt->execute($filterParams);
     $motos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Decode log_estados JSON
