@@ -91,15 +91,20 @@ try {
     ]]);
 
     try {
+        // Get the transaccion ID we just inserted
+        $txId = $pdo->lastInsertId();
+
         $stmtMoto = $pdo->prepare("
             INSERT INTO inventario_motos
                 (vin, vin_display, modelo, color, tipo_asignacion, estado,
                  cliente_nombre, cliente_email, cliente_telefono,
-                 pedido_num, pago_estado, fecha_estado, log_estados, precio_venta, notas)
+                 pedido_num, pago_estado, fecha_estado, log_estados, precio_venta, notas,
+                 stripe_pi, transaccion_id)
             VALUES
                 (?, ?, ?, ?, 'voltika_entrega', 'por_llegar',
                  ?, ?, ?,
-                 ?, ?, NOW(), ?, ?, ?)
+                 ?, ?, NOW(), ?, ?, ?,
+                 ?, ?)
         ");
         $stmtMoto->execute([
             $vinAuto, $vinDisplay, $modelo, $color,
@@ -107,7 +112,9 @@ try {
             'VK-' . $pedidoNum,
             $pagoTipo === 'enganche' ? 'parcial' : 'pagada',
             $logEstados, $total,
-            'Pedido confirmado vía configurador. Tipo: ' . $pagoTipo
+            'Pedido confirmado vía configurador. Tipo: ' . $pagoTipo,
+            $paymentIntentId ?: null,
+            $txId ?: null
         ]);
     } catch (PDOException $e) {
         error_log('Voltika inventario_motos auto-insert error: ' . $e->getMessage());
