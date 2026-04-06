@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/admin-auth.php';
+require_once __DIR__ . '/envia-api.php';
 
 $dealer = requireDealerAuth();
 
@@ -135,10 +136,12 @@ $accion = $json['accion'] ?? '';
 
 // ── MOVER A PUNTO ────────────────────────────────────────────────────────────
 if ($accion === 'mover_punto') {
-    $motoId     = intval($json['moto_id'] ?? 0);
-    $dealerId   = intval($json['dealer_id'] ?? 0);
-    $puntoNombre = trim($json['punto_nombre'] ?? '');
-    $puntoId     = trim($json['punto_id'] ?? '');
+    $motoId        = intval($json['moto_id']  ?? 0);
+    $dealerId      = intval($json['dealer_id'] ?? 0);
+    $puntoNombre   = trim($json['punto_nombre'] ?? '');
+    $puntoId       = trim($json['punto_id']     ?? '');
+    $fechaLlegada  = trim($json['fecha_estimada_llegada']  ?? '');
+    $fechaRecogida = trim($json['fecha_estimada_recogida'] ?? '');
 
     if (!$motoId || !$dealerId) {
         echo json_encode(['ok' => false, 'error' => 'moto_id y dealer_id requeridos']);
@@ -158,12 +161,27 @@ if ($accion === 'mover_punto') {
         // If checklist table doesn't exist yet, allow move (graceful degradation)
     }
 
+    // Ensure date columns exist
+    foreach ([
+        "ALTER TABLE inventario_motos ADD COLUMN fecha_estimada_llegada  DATE NULL",
+        "ALTER TABLE inventario_motos ADD COLUMN fecha_estimada_recogida DATE NULL",
+    ] as $sql) {
+        try { $pdo->exec($sql); } catch (PDOException $ignored) {}
+    }
+
+    // Fetch moto for email
+    $motoStmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? LIMIT 1");
+    $motoStmt->execute([$motoId]);
+    $moto = $motoStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
     $pdo->prepare("
         UPDATE inventario_motos
         SET dealer_id = ?, punto_nombre = ?, punto_id = ?,
-            cedis_origen = IFNULL(cedis_origen, punto_nombre)
+            cedis_origen = IFNULL(cedis_origen, punto_nombre),
+            fecha_estimada_llegada  = NULLIF(?, ''),
+            fecha_estimada_recogida = NULLIF(?, '')
         WHERE id = ?
-    ")->execute([$dealerId, $puntoNombre, $puntoId, $motoId]);
+    ")->execute([$dealerId, $puntoNombre, $puntoId, $fechaLlegada, $fechaRecogida, $motoId]);
 
     // Log
     $pdo->prepare("
@@ -174,6 +192,67 @@ if ($accion === 'mover_punto') {
                         'notas', CONCAT('Transferido a: ', ?)))
         WHERE id = ?
     ")->execute([$dealer['nombre'], $puntoNombre, $motoId]);
+
+    // ── Send email to customer if they have email ─────────────────────────────
+    if (!empty($moto['cliente_email'])) {
+        $nombre  = $moto['cliente_nombre'] ?? 'Cliente';
+        $fechaLL = $fechaLlegada  ? date('d/m/Y', strtotime($fechaLlegada))  : 'Por confirmar';
+        $fechaRC = $fechaRecogida ? date('d/m/Y', strtotime($fechaRecogida)) : 'Por confirmar';
+
+        $emailHtml = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;">
+  <tr><td align="center" style="padding:24px;">
+    <table width="620" cellpadding="0" cellspacing="0"
+           style="background:#fff;border-radius:8px;overflow:hidden;max-width:620px;width:100%;">
+      <tr>
+        <td style="background:linear-gradient(135deg,#1d4ed8,#039fe1);padding:24px 28px;color:#fff;">
+          <h1 style="margin:0;font-size:22px;font-weight:800;">&#9889; voltika</h1>
+          <p style="margin:8px 0 0;font-size:16px;">&#128666; Tu moto está en camino al punto de entrega</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:28px;">
+          <p style="margin:0 0 16px;font-size:15px;color:#111;">
+            Hola <strong>' . htmlspecialchars($nombre) . '</strong>,
+          </p>
+          <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.6;">
+            Tu motocicleta <strong>' . htmlspecialchars(($moto['modelo'] ?? '') . ' ' . ($moto['color'] ?? '')) . '</strong>
+            ha sido asignada al punto <strong>' . htmlspecialchars($puntoNombre) . '</strong>.
+          </p>
+          <table width="100%" cellpadding="8" cellspacing="0"
+                 style="border:1px solid #E5E7EB;border-radius:8px;font-size:14px;">
+            <tr style="background:#F9FAFB;">
+              <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">Punto de entrega</td>
+              <td style="font-weight:700;padding:10px 12px;border-bottom:1px solid #E5E7EB;">' . htmlspecialchars($puntoNombre) . '</td>
+            </tr>
+            <tr>
+              <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">&#128197; Llegada estimada al punto</td>
+              <td style="font-weight:700;padding:10px 12px;border-bottom:1px solid #E5E7EB;color:#1d4ed8;">' . $fechaLL . '</td>
+            </tr>
+            <tr style="background:#F9FAFB;">
+              <td style="color:#6B7280;padding:10px 12px;">&#128274; Fecha estimada de recogida</td>
+              <td style="font-weight:700;padding:10px 12px;color:#059669;">' . $fechaRC . '</td>
+            </tr>
+          </table>
+          <p style="margin:20px 0 0;font-size:13px;color:#9CA3AF;">
+            Te avisaremos cuando esté lista para recoger.
+            ¿Dudas? <a href="mailto:ventas@voltika.com.mx" style="color:#039fe1;">ventas@voltika.com.mx</a>
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>';
+
+        sendMail(
+            $moto['cliente_email'],
+            $nombre,
+            '🏍️ Tu Voltika está en camino — ' . $puntoNombre,
+            $emailHtml
+        );
+    }
 
     echo json_encode(['ok' => true, 'message' => 'Moto transferida a ' . $puntoNombre]);
     exit;

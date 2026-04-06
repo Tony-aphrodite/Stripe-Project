@@ -466,6 +466,14 @@
           </select>
         </div>
         <div class="field">
+          <label>📅 Fecha estimada de llegada al punto</label>
+          <input type="date" id="ep-fecha-llegada">
+        </div>
+        <div class="field">
+          <label>🔒 Fecha estimada de recogida por el cliente</label>
+          <input type="date" id="ep-fecha-recogida">
+        </div>
+        <div class="field">
           <label>Notas de envío</label>
           <input type="text" id="ep-notas" placeholder="Ej: Guía de envío #123, conductor...">
         </div>
@@ -1450,6 +1458,8 @@ async function openModalEnviarPunto() {
   const errEl = document.getElementById('ep-error');
   errEl.style.display = 'none';
   document.getElementById('ep-notas').value = '';
+  document.getElementById('ep-fecha-llegada').value = '';
+  document.getElementById('ep-fecha-recogida').value = '';
 
   // Load puntos for selector
   const sel = document.getElementById('ep-punto-id');
@@ -1474,11 +1484,13 @@ async function openModalEnviarPunto() {
 }
 
 async function enviarAPunto() {
-  const sel     = document.getElementById('ep-punto-id');
-  const notas   = document.getElementById('ep-notas').value.trim();
-  const errEl   = document.getElementById('ep-error');
-  const btn     = document.getElementById('btn-ep-confirmar');
-  errEl.style.display = 'none';
+  const sel            = document.getElementById('ep-punto-id');
+  const notas          = document.getElementById('ep-notas').value.trim();
+  const fechaLlegada   = document.getElementById('ep-fecha-llegada').value;
+  const fechaRecogida  = document.getElementById('ep-fecha-recogida').value;
+  const errEl          = document.getElementById('ep-error');
+  const btn            = document.getElementById('btn-ep-confirmar');
+  errEl.style.display  = 'none';
 
   const [dealerDestinoId, puntoNombreDest] = (sel.value || '').split('|');
   if (!dealerDestinoId || !puntoNombreDest) {
@@ -1498,13 +1510,16 @@ async function enviarAPunto() {
         accion: 'enviar_a_punto',
         dealer_destino_id: parseInt(dealerDestinoId),
         punto_nombre_destino: puntoNombreDest,
+        fecha_estimada_llegada:  fechaLlegada  || null,
+        fecha_estimada_recogida: fechaRecogida || null,
         notas
       })
     });
     const d = await r.json();
     if (d.ok) {
       closeModal('modal-enviar-punto');
-      showToast(`✅ ${d.message}`, 'success');
+      const trackMsg = d.tracking_number ? ` | Guía: ${d.tracking_number}` : '';
+      showToast(`✅ ${d.message}${trackMsg}`, 'success');
       await loadInventario();
     } else {
       errEl.textContent = d.error || 'Error al enviar';

@@ -60,6 +60,19 @@ if (!defined('CDC_API_KEY')) {
     define('CDC_API_KEY', getenv('CDC_API_KEY') ?: '5WdpF9Eqw7925TFAosGKifwkZ7nDuNUN');
 }
 
+// Envia.com (shipping / tracking)
+if (!defined('ENVIA_API_KEY'))  define('ENVIA_API_KEY',  getenv('ENVIA_API_KEY')  ?: '');
+if (!defined('ENVIA_CARRIER'))  define('ENVIA_CARRIER',  getenv('ENVIA_CARRIER')  ?: 'estafeta');
+if (!defined('ENVIA_SERVICE'))  define('ENVIA_SERVICE',  getenv('ENVIA_SERVICE')  ?: 'standard');
+// CEDIS origin address (configure in .env)
+if (!defined('CEDIS_NOMBRE'))   define('CEDIS_NOMBRE',   getenv('CEDIS_NOMBRE')   ?: 'Voltika CEDIS');
+if (!defined('CEDIS_TELEFONO')) define('CEDIS_TELEFONO', getenv('CEDIS_TELEFONO') ?: '5512345678');
+if (!defined('CEDIS_CALLE'))    define('CEDIS_CALLE',    getenv('CEDIS_CALLE')    ?: '');
+if (!defined('CEDIS_NUMERO'))   define('CEDIS_NUMERO',   getenv('CEDIS_NUMERO')   ?: '');
+if (!defined('CEDIS_CIUDAD'))   define('CEDIS_CIUDAD',   getenv('CEDIS_CIUDAD')   ?: '');
+if (!defined('CEDIS_ESTADO'))   define('CEDIS_ESTADO',   getenv('CEDIS_ESTADO')   ?: '');
+if (!defined('CEDIS_CP'))       define('CEDIS_CP',       getenv('CEDIS_CP')       ?: '');
+
 // Cincel (NOM-151 Digital Signature)
 if (!defined('CINCEL_API_URL'))  define('CINCEL_API_URL',  getenv('CINCEL_API_URL')  ?: 'https://api.cincel.digital/v3');
 if (!defined('CINCEL_EMAIL'))    define('CINCEL_EMAIL',    getenv('CINCEL_EMAIL')    ?: 'test@riactor.com');
