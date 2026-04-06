@@ -75,17 +75,11 @@ html,body { overflow-x:hidden; max-width:100%; }
     </div>
     <div class="modal-body" id="mover-body">Cargando...</div>
     <div style="padding:0 20px 16px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;border-top:1px solid var(--vka-border);padding-top:12px;">
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--vka-blue-dark);display:block;margin-bottom:4px;">📅 Llegada estimada al punto</label>
-          <input type="date" id="mover-fecha-llegada" style="width:100%;padding:8px;border:1.5px solid var(--vka-border);border-radius:8px;font-size:13px;">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--vka-blue-dark);display:block;margin-bottom:4px;">🔒 Fecha estimada de recogida</label>
-          <input type="date" id="mover-fecha-recogida" style="width:100%;padding:8px;border:1.5px solid var(--vka-border);border-radius:8px;font-size:13px;">
-        </div>
+      <div style="margin-top:12px;border-top:1px solid var(--vka-border);padding-top:12px;">
+        <label style="font-size:12px;font-weight:600;color:var(--vka-blue-dark);display:block;margin-bottom:4px;">🔒 Fecha estimada de recogida por el cliente</label>
+        <input type="date" id="mover-fecha-recogida" style="width:100%;padding:8px;border:1.5px solid var(--vka-border);border-radius:8px;font-size:13px;">
+        <p style="font-size:11px;color:var(--vka-grey);margin-top:6px;">La fecha de llegada al punto la proporciona envia.com automáticamente. Si el cliente tiene email, recibirá notificación.</p>
       </div>
-      <p style="font-size:11px;color:var(--vka-grey);margin-top:8px;">Si el cliente tiene email registrado, recibirá una notificación automática.</p>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-mover')">Cancelar</button>
@@ -491,7 +485,6 @@ async function confirmarMover() {
   const selected = document.querySelector('input[name="punto-dest"]:checked');
   if (!selected) { showToast('Selecciona un punto', 'warning'); return; }
 
-  const fechaLlegada  = document.getElementById('mover-fecha-llegada').value  || null;
   const fechaRecogida = document.getElementById('mover-fecha-recogida').value || null;
 
   try {
@@ -503,7 +496,6 @@ async function confirmarMover() {
         dealer_id: parseInt(selected.value),
         punto_nombre: selected.dataset.nombre,
         punto_id: selected.dataset.puntoId,
-        fecha_estimada_llegada:  fechaLlegada,
         fecha_estimada_recogida: fechaRecogida,
       })
     });

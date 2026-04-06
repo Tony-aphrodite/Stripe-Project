@@ -120,24 +120,35 @@ function enviaCrearEnvio(array $destino, array $paquete = [], string $pedidoNum 
     }
 
     $shipment       = $data['data'][0] ?? [];
-    $trackingNumber = $shipment['trackingNumber'] ?? ($shipment['tracking_number'] ?? '');
-    $trackingUrl    = $shipment['trackingUrl']    ?? ($shipment['tracking_url']    ?? '');
-    $labelUrl       = $shipment['label']          ?? ($shipment['label_url']       ?? '');
+    $trackingNumber = $shipment['trackingNumber']      ?? ($shipment['tracking_number']      ?? '');
+    $trackingUrl    = $shipment['trackingUrl']         ?? ($shipment['tracking_url']         ?? '');
+    $labelUrl       = $shipment['label']               ?? ($shipment['label_url']            ?? '');
+
+    // Estimated delivery date — envia.com returns this in several possible fields
+    $estimatedDate  = $shipment['estimatedDeliveryDate'] ?? ($shipment['estimated_delivery_date']
+                   ?? ($shipment['deliveryDate']          ?? ($shipment['delivery_date']      ?? '')));
+
+    // Normalize to Y-m-d if present (envia.com may return ISO 8601 or d/m/Y)
+    if ($estimatedDate) {
+        $ts = strtotime($estimatedDate);
+        $estimatedDate = $ts ? date('Y-m-d', $ts) : '';
+    }
 
     // Fallback tracking URL if not provided
     if (!$trackingUrl && $trackingNumber) {
         $trackingUrl = 'https://envia.com/rastreo/' . urlencode($trackingNumber);
     }
 
-    error_log('Voltika envia.com shipment created: ' . $trackingNumber . ' for pedido ' . $pedidoNum);
+    error_log('Voltika envia.com shipment created: ' . $trackingNumber . ' ETA: ' . ($estimatedDate ?: '—') . ' pedido: ' . $pedidoNum);
 
     return [
-        'ok'              => true,
-        'tracking_number' => $trackingNumber,
-        'tracking_url'    => $trackingUrl,
-        'label_url'       => $labelUrl,
-        'carrier'         => $shipment['carrier'] ?? ENVIA_CARRIER,
-        'raw'             => $shipment,
+        'ok'                     => true,
+        'tracking_number'        => $trackingNumber,
+        'tracking_url'           => $trackingUrl,
+        'label_url'              => $labelUrl,
+        'estimated_delivery_date'=> $estimatedDate,
+        'carrier'                => $shipment['carrier'] ?? ENVIA_CARRIER,
+        'raw'                    => $shipment,
     ];
 }
 

@@ -107,6 +107,10 @@ if ($accion === 'enviar_a_punto') {
             if ($enviaResult && $enviaResult['ok']) {
                 $trackingNumber = $enviaResult['tracking_number'];
                 $trackingUrl    = $enviaResult['tracking_url'];
+                // Use envia.com estimated date if available (override manual input)
+                if (!empty($enviaResult['estimated_delivery_date'])) {
+                    $fechaLlegada = $enviaResult['estimated_delivery_date'];
+                }
             } else {
                 error_log('Voltika envia.com skipped: ' . ($enviaResult['error'] ?? 'no API key'));
             }
@@ -115,15 +119,15 @@ if ($accion === 'enviar_a_punto') {
         // ── Update DB ──────────────────────────────────────────────────────────
         $logActual   = $moto['log_estados'] ? json_decode($moto['log_estados'], true) : [];
         $logActual[] = [
-            'estado'           => 'en_envio',
-            'accion'           => 'enviar_a_punto',
-            'dealer'           => $dealer['nombre'],
-            'timestamp'        => date('Y-m-d H:i:s'),
-            'notas'            => "Enviado a: $puntoNombreDest" . ($notas ? " — $notas" : ''),
-            'tracking_number'  => $trackingNumber ?: null,
-            'tracking_url'     => $trackingUrl    ?: null,
-            'fecha_llegada_est'=> $fechaLlegada   ?: null,
-            'fecha_recogida_est'=> $fechaRecogida ?: null,
+            'estado'            => 'en_envio',
+            'accion'            => 'enviar_a_punto',
+            'dealer'            => $dealer['nombre'],
+            'timestamp'         => date('Y-m-d H:i:s'),
+            'notas'             => "Enviado a: $puntoNombreDest" . ($notas ? " — $notas" : ''),
+            'tracking_number'   => $trackingNumber ?: null,
+            'tracking_url'      => $trackingUrl    ?: null,
+            'fecha_llegada_est' => $fechaLlegada   ?: null,
+            'fecha_recogida_est'=> $fechaRecogida  ?: null,
         ];
 
         $pdo->prepare("

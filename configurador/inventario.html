@@ -466,12 +466,9 @@
           </select>
         </div>
         <div class="field">
-          <label>📅 Fecha estimada de llegada al punto</label>
-          <input type="date" id="ep-fecha-llegada">
-        </div>
-        <div class="field">
           <label>🔒 Fecha estimada de recogida por el cliente</label>
           <input type="date" id="ep-fecha-recogida">
+          <small style="color:var(--vka-grey);font-size:11px;">La fecha de llegada al punto la proporciona envia.com automáticamente.</small>
         </div>
         <div class="field">
           <label>Notas de envío</label>
@@ -1458,7 +1455,6 @@ async function openModalEnviarPunto() {
   const errEl = document.getElementById('ep-error');
   errEl.style.display = 'none';
   document.getElementById('ep-notas').value = '';
-  document.getElementById('ep-fecha-llegada').value = '';
   document.getElementById('ep-fecha-recogida').value = '';
 
   // Load puntos for selector
@@ -1486,7 +1482,6 @@ async function openModalEnviarPunto() {
 async function enviarAPunto() {
   const sel            = document.getElementById('ep-punto-id');
   const notas          = document.getElementById('ep-notas').value.trim();
-  const fechaLlegada   = document.getElementById('ep-fecha-llegada').value;
   const fechaRecogida  = document.getElementById('ep-fecha-recogida').value;
   const errEl          = document.getElementById('ep-error');
   const btn            = document.getElementById('btn-ep-confirmar');
@@ -1510,7 +1505,6 @@ async function enviarAPunto() {
         accion: 'enviar_a_punto',
         dealer_destino_id: parseInt(dealerDestinoId),
         punto_nombre_destino: puntoNombreDest,
-        fecha_estimada_llegada:  fechaLlegada  || null,
         fecha_estimada_recogida: fechaRecogida || null,
         notas
       })
