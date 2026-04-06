@@ -8,6 +8,7 @@
 
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/inventory-utils.php';
 
 // ── Stripe SDK ───────────────────────────────────────────────────────────────
 require_once __DIR__ . '/vendor/autoload.php';
@@ -118,6 +119,27 @@ function handlePaymentSucceeded($paymentIntent) {
 
         if ($order) {
             webhookLog("Found order in transacciones: pedido #{$order['pedido']} for {$order['email']}");
+
+            // ── FIFO auto-assign moto ────────────────────────────────────────
+            $pedidoFmt = 'VK-' . $order['pedido'];
+            $motoId = asignarMotoFIFO(
+                $pdo,
+                $order['modelo'] ?? '',
+                $order['color']  ?? '',
+                $order['nombre'] ?? '',
+                $order['email']  ?? '',
+                $order['telefono'] ?? '',
+                $pedidoFmt,
+                $piId,
+                $order['tpago'] ?? 'contado',
+                floatval($order['total'] ?? 0)
+            );
+            if ($motoId) {
+                webhookLog("FIFO: Moto #$motoId assigned to pedido $pedidoFmt ({$order['email']})");
+            } else {
+                webhookLog("FIFO WARNING: No available moto found for {$order['modelo']} {$order['color']} — pedido $pedidoFmt");
+            }
+
             sendConfirmationEmail($order, $methodLabel);
             return;
         }

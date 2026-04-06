@@ -68,12 +68,19 @@ html,body { overflow-x:hidden; max-width:100%; }
 
 <!-- Modal: Mover a Punto -->
 <div id="modal-mover" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-mover')">
-  <div class="modal" style="max-width:400px;">
+  <div class="modal" style="max-width:420px;">
     <div class="modal-header">
       <span class="modal-title">📍 Mover a Punto</span>
       <button class="modal-close" onclick="closeModal('modal-mover')">×</button>
     </div>
     <div class="modal-body" id="mover-body">Cargando...</div>
+    <div style="padding:0 20px 16px;">
+      <div style="margin-top:12px;border-top:1px solid var(--vka-border);padding-top:12px;">
+        <label style="font-size:12px;font-weight:600;color:var(--vka-blue-dark);display:block;margin-bottom:4px;">🔒 Fecha estimada de recogida por el cliente</label>
+        <input type="date" id="mover-fecha-recogida" style="width:100%;padding:8px;border:1.5px solid var(--vka-border);border-radius:8px;font-size:13px;">
+        <p style="font-size:11px;color:var(--vka-grey);margin-top:6px;">La fecha de llegada al punto la proporciona envia.com automáticamente. Si el cliente tiene email, recibirá notificación.</p>
+      </div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-mover')">Cancelar</button>
       <button class="btn btn-primary" id="btn-confirmar-mover" onclick="confirmarMover()">Transferir</button>
@@ -156,20 +163,29 @@ function renderInventario() {
     const clBadge = clOk
       ? `<div style="font-size:11px;color:#059669;font-weight:700;margin-bottom:6px;">✅ Checklist de Origen completo</div>`
       : `<div style="font-size:11px;color:#d97706;font-weight:700;margin-bottom:6px;">⚠️ Checklist de Origen pendiente</div>`;
-    html += `<div class="cedis-card" data-search="${(m.vin+m.modelo+(m.cliente_nombre||'')+(m.pedido_num||'')).toLowerCase()}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+    // Product line: modelo + color + año + potencia
+    const productLine = [esc(m.modelo), esc(m.color), m.anio_modelo ? esc(m.anio_modelo) : '', m.potencia ? esc(m.potencia) : ''].filter(Boolean).join(' · ');
+    html += `<div class="cedis-card" data-search="${(m.vin+m.modelo+(m.cliente_nombre||'')+(m.cliente_telefono||'')+(m.pedido_num||'')).toLowerCase()}">
+
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:700;color:var(--vka-blue-dark);">${esc(m.modelo)} ${esc(m.color)}</div>
-          <div style="font-size:12px;color:var(--vka-blue);font-weight:600;cursor:pointer;text-decoration:underline;word-break:break-all;" onclick="openDetalleMoto(${m.id})">${esc(m.vin)}</div>
+          <div style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);line-height:1.2;">${productLine}</div>
+          ${m.precio_venta ? `<div style="font-size:11px;color:#059669;font-weight:700;margin-top:2px;">$${Number(m.precio_venta).toLocaleString('es-MX')} MXN</div>` : ''}
         </div>
         <span class="badge badge-${m.estado.replace(/_/g,'-')}" style="flex-shrink:0;margin-left:8px;">${m.estado.replace(/_/g,' ')}</span>
       </div>
-      <div style="margin-bottom:6px;">
-        <div style="font-size:12px;color:#333;font-weight:500;word-break:break-word;">
-          ${m.cliente_nombre ? '👤 ' + esc(m.cliente_nombre) : '<span style="color:#f59e0b;">Sin cliente asignado</span>'}
-        </div>
-        ${m.pedido_num ? `<div style="font-size:11px;color:var(--vka-grey);">📋 ${esc(m.pedido_num)}</div>` : ''}
+
+      <div style="font-size:12px;color:var(--vka-blue);font-weight:600;cursor:pointer;text-decoration:underline;word-break:break-all;margin-bottom:8px;" onclick="openDetalleMoto(${m.id})">${esc(m.vin)}</div>
+
+      <div style="background:var(--vka-grey-light);border-radius:7px;padding:8px 10px;margin-bottom:8px;">
+        ${m.cliente_nombre
+          ? `<div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:3px;">👤 ${esc(m.cliente_nombre)}</div>`
+          : `<div style="font-size:12px;color:#f59e0b;font-weight:600;">Sin cliente asignado</div>`}
+        ${m.cliente_telefono ? `<div style="font-size:11px;color:#333;">📞 ${esc(m.cliente_telefono)}</div>` : ''}
+        ${m.cliente_email    ? `<div style="font-size:11px;color:#555;word-break:break-all;">✉️ ${esc(m.cliente_email)}</div>` : ''}
+        ${m.pedido_num       ? `<div style="font-size:11px;color:var(--vka-grey);margin-top:2px;">📋 ${esc(m.pedido_num)}</div>` : ''}
       </div>
+
       <div style="font-size:11px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <span>📍 ${esc(m.punto_nombre || 'CEDIS (sin asignar)')}</span>
         <span style="color:${payColor};font-weight:700;">${payIcon} ${m.pago_estado || '—'}</span>
@@ -469,6 +485,8 @@ async function confirmarMover() {
   const selected = document.querySelector('input[name="punto-dest"]:checked');
   if (!selected) { showToast('Selecciona un punto', 'warning'); return; }
 
+  const fechaRecogida = document.getElementById('mover-fecha-recogida').value || null;
+
   try {
     const r = await fetch('php/admin-cedis.php', {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -478,6 +496,7 @@ async function confirmarMover() {
         dealer_id: parseInt(selected.value),
         punto_nombre: selected.dataset.nombre,
         punto_id: selected.dataset.puntoId,
+        fecha_estimada_recogida: fechaRecogida,
       })
     });
     const d = await r.json();

@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/inventory-utils.php';
 
 // ── Request ───────────────────────────────────────────────────────────────────
 $json = json_decode(file_get_contents('php://input'), true);
@@ -88,6 +89,21 @@ try {
         $metodoPago, $ciudad, $estado, $cp, $total,
         $asesoria ? 1 : 0, $seguro ? 1 : 0,
     ]);
+    // ── FIFO: auto-assign matching moto from inventory ───────────────────────
+    $stripePi = trim($json['stripe_pi'] ?? '');
+    asignarMotoFIFO(
+        $pdo,
+        $modelo,
+        $color,
+        $nombre,
+        $email,
+        $telefono,
+        $pedidoNum,
+        $stripePi,
+        $metodoPago,
+        $total
+    );
+
 } catch (PDOException $e) {
     error_log('Voltika pedidos DB error: ' . $e->getMessage());
 }

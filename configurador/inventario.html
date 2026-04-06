@@ -40,11 +40,16 @@
 .info-row {
   display:flex; justify-content:space-between;
   padding:5px 0; border-bottom:1px solid var(--vka-grey-light);
-  font-size:13px;
+  font-size:13px; gap:8px;
 }
 .info-row:last-child { border-bottom:none; }
-.info-label { color:var(--vka-grey); }
-.info-value { font-weight:600; color:#1a1a1a; text-align:right; }
+.info-label { color:var(--vka-grey); flex-shrink:0; }
+.info-value { font-weight:600; color:#1a1a1a; text-align:right; word-break:break-word; }
+
+@media (max-width:640px) {
+  .detail-row { flex-direction:column; gap:0; }
+  .detail-main, .detail-side { width:100%; flex:none; }
+}
 .tracker-vertical { display:flex; flex-direction:column; gap:0; padding:4px 0; }
 .empty-inv { text-align:center; padding:60px 20px; color:var(--vka-grey); }
 
@@ -161,12 +166,23 @@
   <!-- Tabs -->
   <div class="tabs">
     <div class="tab active" onclick="switchInvTab('lista')">📋 Lista</div>
+    <div class="tab" onclick="switchInvTab('dashboard')">📊 Dashboard</div>
     <div class="tab" onclick="switchInvTab('ventas')">💰 Ventas</div>
     <div class="tab" onclick="switchInvTab('referidos')">🤝 Referidos</div>
+    <div class="tab tab-admin" onclick="switchInvTab('puntos')" style="display:none;">📍 Puntos</div>
   </div>
 
   <!-- ── LISTA TAB ─────────────────────────────────────────────────────────── -->
   <div id="invtab-lista" class="tab-content active">
+    <!-- En Camino section (dealers only) -->
+    <div id="entrantes-section" style="display:none;margin-bottom:16px;">
+      <div style="background:#dbeafe;border:1.5px solid #93c5fd;border-radius:10px;padding:14px 16px;">
+        <div style="font-size:13px;font-weight:800;color:#1d4ed8;margin-bottom:10px;">
+          📦 Motos en Camino — Pendientes de Recepción
+        </div>
+        <div id="entrantes-wrap"></div>
+      </div>
+    </div>
     <!-- Filter bar -->
     <div class="filter-bar">
       <input type="text" id="filter-q" placeholder="Buscar por VIN, cliente, pedido..." style="flex:1;min-width:160px;" oninput="filtrarMotos()">
@@ -177,6 +193,8 @@
         <option value="por_ensamblar">Por Ensamblar</option>
         <option value="en_ensamble">En Ensamble</option>
         <option value="lista_para_entrega">Lista para Entrega</option>
+        <option value="en_envio">En Envío</option>
+        <option value="en_punto">En Punto</option>
         <option value="por_validar_entrega">Por Validar Entrega</option>
         <option value="entregada">Entregada</option>
         <option value="retenida">Retenida</option>
@@ -197,6 +215,13 @@
     <!-- Table -->
     <div id="inv-table-wrap">
       <div class="empty-inv"><div class="loader dark" style="width:32px;height:32px;border-width:3px;"></div><p style="margin-top:12px;">Cargando inventario...</p></div>
+    </div>
+  </div>
+
+  <!-- ── DASHBOARD TAB ───────────────────────────────────────────────────────── -->
+  <div id="invtab-dashboard" class="tab-content">
+    <div id="dashboard-wrap">
+      <div class="empty-inv"><p>Cargando dashboard...</p></div>
     </div>
   </div>
 
@@ -230,6 +255,16 @@
     </div>
   </div>
 
+  <!-- ── PUNTOS TAB (admin only) ───────────────────────────────────────────── -->
+  <div id="invtab-puntos" class="tab-content">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn btn-primary btn-sm" onclick="openModalPunto()">+ Agregar punto</button>
+    </div>
+    <div id="puntos-wrap">
+      <div class="empty-inv"><p>Cargando puntos...</p></div>
+    </div>
+  </div>
+
 </div><!-- /admin-main -->
 
 <!-- Toast -->
@@ -246,6 +281,8 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-detalle')">Cerrar</button>
       <button class="btn btn-ghost btn-sm" id="btn-ver-checklist" onclick="verChecklistOrigen()" style="color:var(--vka-blue);">📋 Checklist</button>
+      <button class="btn btn-sm" id="btn-confirmar-recepcion" onclick="confirmarRecepcion()" style="display:none;background:#4c1d95;color:#fff;border:none;font-weight:700;">✅ Confirmar Recepción</button>
+      <button class="btn btn-sm" id="btn-enviar-a-punto" onclick="openModalEnviarPunto()" style="display:none;background:#1d4ed8;color:#fff;border:none;font-weight:700;">📦 Enviar a Punto</button>
       <button class="btn btn-primary btn-sm" id="btn-editar-moto" onclick="editarMoto()">✏️ Editar</button>
     </div>
   </div>
@@ -379,6 +416,74 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: PUNTO ══════════════════════════════════════════════════════════ -->
+<div id="modal-punto" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-punto')">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-punto-title">Agregar punto</span>
+      <button class="modal-close" onclick="closeModal('modal-punto')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid single">
+        <div class="field"><label>Nombre del responsable *</label><input type="text" id="p-nombre" placeholder="Juan Pérez"></div>
+        <div class="field"><label>Nombre del punto *</label><input type="text" id="p-punto-nombre" placeholder="Sucursal Monterrey"></div>
+        <div class="field"><label>ID del punto</label><input type="text" id="p-punto-id" placeholder="MTY_01 (auto si se deja vacío)"></div>
+        <div class="field"><label>Email de acceso</label><input type="email" id="p-email" placeholder="monterrey@voltika.mx"></div>
+        <div class="field"><label>Rol</label>
+          <select id="p-rol">
+            <option value="dealer">Dealer</option>
+            <option value="cedis">CEDIS</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="p-id">
+      <div id="p-error" class="login-error" style="display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-punto')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPunto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: ENVIAR A PUNTO ════════════════════════════════════════════════ -->
+<div id="modal-enviar-punto" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-enviar-punto')">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <span class="modal-title">Enviar moto a un punto</span>
+      <button class="modal-close" onclick="closeModal('modal-enviar-punto')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--vka-grey);margin-bottom:14px;">
+        Selecciona el punto de destino. La moto cambiará al estado <strong>En Envío</strong>
+        y el punto recibirá una notificación para confirmar la recepción.
+      </p>
+      <div class="form-grid single">
+        <div class="field">
+          <label>Punto de destino *</label>
+          <select id="ep-punto-id">
+            <option value="">Seleccionar punto...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>🔒 Fecha estimada de recogida por el cliente</label>
+          <input type="date" id="ep-fecha-recogida">
+          <small style="color:var(--vka-grey);font-size:11px;">La fecha de llegada al punto la proporciona envia.com automáticamente.</small>
+        </div>
+        <div class="field">
+          <label>Notas de envío</label>
+          <input type="text" id="ep-notas" placeholder="Ej: Guía de envío #123, conductor...">
+        </div>
+      </div>
+      <div id="ep-error" class="login-error" style="display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-enviar-punto')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-ep-confirmar" onclick="enviarAPunto()">📦 Confirmar Envío</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL: REFERIDO ═══════════════════════════════════════════════════════ -->
 <div id="modal-referido" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-referido')">
   <div class="modal" style="max-width:400px;">
@@ -411,11 +516,13 @@ let currentDetalleId = null;
 const ESTADOS_LABEL = {
   por_llegar:'Por Llegar', recibida:'Recibida', por_ensamblar:'Por Ensamblar',
   en_ensamble:'En Ensamble', lista_para_entrega:'Lista para Entrega',
+  en_envio:'En Envío', en_punto:'En Punto',
   por_validar_entrega:'Por Validar Entrega', entregada:'Entregada', retenida:'Retenida'
 };
 const ESTADOS_BADGE = {
   por_llegar:'badge-por-llegar', recibida:'badge-recibida', por_ensamblar:'badge-por-ensamblar',
   en_ensamble:'badge-en-ensamble', lista_para_entrega:'badge-lista',
+  en_envio:'badge-en-envio', en_punto:'badge-en-punto',
   por_validar_entrega:'badge-por-validar', entregada:'badge-entregada', retenida:'badge-retenida'
 };
 
@@ -432,6 +539,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (d.ok) {
       dealer = d.dealer;
       document.getElementById('header-punto').textContent = dealer.punto_nombre || '';
+      // Show Puntos tab for admin/cedis only
+      if (['admin','cedis'].includes(dealer.rol)) {
+        document.querySelector('.tab-admin').style.display = '';
+      }
       loadInventario();
     } else {
       window.location.href = 'dealer-panel.html';
@@ -457,6 +568,7 @@ async function loadInventario() {
     if (!d.ok) throw new Error(d.error);
     allMotos = d.motos || [];
     renderStats(d.stats || {});
+    renderEntrantes();
     filtrarMotos();
   } catch(e) {
     document.getElementById('inv-table-wrap').innerHTML =
@@ -584,6 +696,15 @@ function openDetalle(motoId) {
   // Punto dealers cannot edit; only CEDIS/admin can
   const isCedisOrAdmin = dealer && ['admin','cedis'].includes(dealer.rol);
   document.getElementById('btn-editar-moto').style.display = isCedisOrAdmin ? '' : 'none';
+
+  // Show "Enviar a Punto" button only for CEDIS/admin when moto is lista_para_entrega
+  const btnEnviar = document.getElementById('btn-enviar-a-punto');
+  btnEnviar.style.display = (isCedisOrAdmin && m.estado === 'lista_para_entrega') ? '' : 'none';
+
+  // Show "Confirmar Recepción" button only for dealer when moto is en_envio
+  const isDealer = dealer && ['dealer'].includes(dealer.rol);
+  const btnConfirmar = document.getElementById('btn-confirmar-recepcion');
+  btnConfirmar.style.display = (isDealer && m.estado === 'en_envio') ? '' : 'none';
 
   openModal('modal-detalle');
 }
@@ -940,14 +1061,16 @@ async function guardarReferido() {
 // TABS
 // ═══════════════════════════════════════════════════════════════════════════════
 function switchInvTab(tab) {
+  const tabs = ['lista','dashboard','ventas','referidos','puntos'];
   document.querySelectorAll('.tab').forEach((t,i) => {
-    const tabs = ['lista','ventas','referidos'];
     t.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('invtab-' + tab)?.classList.add('active');
-  if (tab === 'ventas') loadVentas();
+  if (tab === 'ventas')    loadVentas();
   if (tab === 'referidos') loadReferidos();
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'puntos')    loadPuntos();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -969,6 +1092,440 @@ function showToast(msg, type='') {
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderDashboard() {
+  const wrap = document.getElementById('dashboard-wrap');
+  if (!allMotos.length) {
+    wrap.innerHTML = '<div class="empty-inv"><div class="empty-state-icon">📊</div><p>Sin datos de inventario.</p></div>';
+    return;
+  }
+
+  const activas = allMotos.filter(m => m.estado !== 'entregada');
+
+  // ── By model ──────────────────────────────────────────────────────────────
+  const byModelo = {};
+  activas.forEach(m => {
+    byModelo[m.modelo] = (byModelo[m.modelo] || 0) + 1;
+  });
+
+  // ── By punto ──────────────────────────────────────────────────────────────
+  const byPunto = {};
+  activas.forEach(m => {
+    const p = m.punto_nombre || 'Sin asignar';
+    byPunto[p] = (byPunto[p] || 0) + 1;
+  });
+
+  // ── FIFO: oldest first by fecha_ingreso_pais ───────────────────────────────
+  const fifo = [...activas]
+    .filter(m => m.fecha_ingreso_pais)
+    .sort((a, b) => new Date(a.fecha_ingreso_pais) - new Date(b.fecha_ingreso_pais));
+
+  let html = '';
+
+  // Summary row
+  html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">`;
+  html += `<div class="stat-card blue"><div class="stat-card-value">${allMotos.length}</div><div class="stat-card-label">Total inventario</div></div>`;
+  html += `<div class="stat-card"><div class="stat-card-value">${activas.length}</div><div class="stat-card-label">Unidades activas</div></div>`;
+  html += `<div class="stat-card green"><div class="stat-card-value">${allMotos.length - activas.length}</div><div class="stat-card-label">Entregadas</div></div>`;
+  html += `<div class="stat-card orange"><div class="stat-card-value">${fifo.length}</div><div class="stat-card-label">Con fecha ingreso</div></div>`;
+  html += `</div>`;
+
+  // By model
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">`;
+  html += `<div class="info-card" style="margin:0;">
+    <div class="info-card-title">📦 Inventario por modelo</div>`;
+  if (!Object.keys(byModelo).length) {
+    html += `<p style="font-size:13px;color:var(--vka-grey);">Sin datos</p>`;
+  } else {
+    const total = activas.length || 1;
+    Object.entries(byModelo).sort((a,b) => b[1]-a[1]).forEach(([modelo, cnt]) => {
+      const pct = Math.round((cnt / total) * 100);
+      html += `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+          <strong>${esc(modelo)}</strong><span>${cnt} unid. (${pct}%)</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:8px;">
+          <div style="background:var(--vka-blue);width:${pct}%;height:8px;border-radius:4px;"></div>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
+  // By punto
+  html += `<div class="info-card" style="margin:0;">
+    <div class="info-card-title">📍 Inventario por punto</div>`;
+  if (!Object.keys(byPunto).length) {
+    html += `<p style="font-size:13px;color:var(--vka-grey);">Sin datos</p>`;
+  } else {
+    const total = activas.length || 1;
+    Object.entries(byPunto).sort((a,b) => b[1]-a[1]).forEach(([punto, cnt]) => {
+      const pct = Math.round((cnt / total) * 100);
+      html += `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+          <strong>${esc(punto)}</strong><span>${cnt} unid.</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:8px;">
+          <div style="background:var(--vka-green);width:${pct}%;height:8px;border-radius:4px;"></div>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div></div>`;
+
+  // FIFO table
+  html += `<div class="info-card" style="margin:0;">
+    <div class="info-card-title">⏱️ FIFO — Cola de salida (más antiguos primero)</div>`;
+  if (!fifo.length) {
+    html += `<p style="font-size:13px;color:var(--vka-grey);">Sin motos con fecha de ingreso registrada.</p>`;
+  } else {
+    html += `<table class="inv-table"><thead><tr>
+      <th>#</th><th>Modelo / Color</th><th>VIN</th><th>Fecha ingreso país</th>
+      <th>Días en inventario</th><th>Punto</th><th>Estado</th>
+    </tr></thead><tbody>`;
+    fifo.forEach((m, i) => {
+      const dias = Math.floor((new Date() - new Date(m.fecha_ingreso_pais)) / 86400000);
+      const badgeCls = ESTADOS_BADGE[m.estado] || '';
+      const alert = dias > 60 ? 'color:var(--vka-red);font-weight:700;' : dias > 30 ? 'color:var(--vka-orange);font-weight:700;' : '';
+      html += `<tr onclick="openDetalle(${m.id})" style="cursor:pointer;">
+        <td style="font-weight:700;color:var(--vka-grey);">${i+1}</td>
+        <td>${esc(m.modelo)} <span style="color:var(--vka-grey)">${esc(m.color)}</span></td>
+        <td style="font-family:monospace;font-size:12px;">${esc(m.vin_display||m.vin)}</td>
+        <td>${esc(m.fecha_ingreso_pais)}</td>
+        <td style="${alert}">${dias}d${dias>60?' 🔴':dias>30?' 🟡':''}</td>
+        <td style="font-size:12px;">${esc(m.punto_nombre||'—')}</td>
+        <td><span class="badge ${badgeCls}">${ESTADOS_LABEL[m.estado]||m.estado}</span></td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  html += `</div>`;
+
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUNTOS
+// ═══════════════════════════════════════════════════════════════════════════════
+let allPuntos = [];
+
+async function loadPuntos() {
+  document.getElementById('puntos-wrap').innerHTML = '<div class="empty-inv"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
+  try {
+    const r = await fetch('php/admin-puntos.php');
+    const d = await r.json();
+    allPuntos = d.puntos || [];
+    renderPuntos(allPuntos);
+  } catch {
+    document.getElementById('puntos-wrap').innerHTML = '<div class="empty-inv" style="color:var(--vka-red)">Error al cargar puntos.</div>';
+  }
+}
+
+function renderPuntos(puntos) {
+  const el = document.getElementById('puntos-wrap');
+  if (!puntos.length) {
+    el.innerHTML = `<div class="empty-inv"><div class="empty-state-icon">📍</div><p>No hay puntos registrados.</p></div>`;
+    return;
+  }
+
+  const isMobile = window.innerWidth <= 680;
+
+  if (isMobile) {
+    let html = '<div class="inv-card-list">';
+    puntos.forEach(p => {
+      html += `<div class="inv-list-card" style="cursor:default;">
+        <div class="inv-card-row inv-card-top">
+          <span style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);">${esc(p.punto_nombre)}</span>
+          <span class="badge badge-por-llegar">${esc(p.rol)}</span>
+        </div>
+        <div class="inv-card-row" style="margin-top:4px;">
+          <span style="font-size:13px;color:#444;">${esc(p.nombre)}</span>
+          <span style="font-size:12px;color:var(--vka-grey);">${esc(p.punto_id||'—')}</span>
+        </div>
+        <div class="inv-card-row inv-card-bottom">
+          <span style="font-size:12px;color:#555;">Activas: <strong>${p.activas||0}</strong> · Entregadas: ${p.entregadas||0}</span>
+          <button class="btn btn-ghost btn-sm" onclick="editarPunto(${p.id})" style="font-size:11px;padding:4px 8px;">✏️ Editar</button>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  } else {
+    let html = `<table class="inv-table"><thead><tr>
+      <th>Punto</th><th>ID</th><th>Responsable</th><th>Rol</th>
+      <th>Motos activas</th><th>Entregadas</th><th>Acciones</th>
+    </tr></thead><tbody>`;
+    puntos.forEach(p => {
+      html += `<tr>
+        <td><strong>${esc(p.punto_nombre)}</strong></td>
+        <td style="font-family:monospace;font-size:12px;">${esc(p.punto_id||'—')}</td>
+        <td>${esc(p.nombre)}</td>
+        <td><span class="badge badge-por-llegar">${esc(p.rol)}</span></td>
+        <td><strong style="color:var(--vka-blue);">${p.activas||0}</strong></td>
+        <td>${p.entregadas||0}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="editarPunto(${p.id})" style="font-size:12px;">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="eliminarPunto(${p.id})" style="font-size:12px;color:var(--vka-red);">🗑 Eliminar</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
+}
+
+function openModalPunto() {
+  document.getElementById('modal-punto-title').textContent = 'Agregar punto';
+  document.getElementById('p-nombre').value = '';
+  document.getElementById('p-punto-nombre').value = '';
+  document.getElementById('p-punto-id').value = '';
+  document.getElementById('p-email').value = '';
+  document.getElementById('p-rol').value = 'dealer';
+  document.getElementById('p-id').value = '';
+  document.getElementById('p-error').style.display = 'none';
+  openModal('modal-punto');
+}
+
+function editarPunto(id) {
+  const p = allPuntos.find(x => x.id == id);
+  if (!p) return;
+  document.getElementById('modal-punto-title').textContent = 'Editar punto';
+  document.getElementById('p-nombre').value = p.nombre || '';
+  document.getElementById('p-punto-nombre').value = p.punto_nombre || '';
+  document.getElementById('p-punto-id').value = p.punto_id || '';
+  document.getElementById('p-email').value = p.email || '';
+  document.getElementById('p-rol').value = p.rol || 'dealer';
+  document.getElementById('p-id').value = p.id;
+  document.getElementById('p-error').style.display = 'none';
+  openModal('modal-punto');
+}
+
+async function guardarPunto() {
+  const id          = document.getElementById('p-id').value;
+  const nombre      = document.getElementById('p-nombre').value.trim();
+  const puntoNombre = document.getElementById('p-punto-nombre').value.trim();
+  const puntoId     = document.getElementById('p-punto-id').value.trim();
+  const email       = document.getElementById('p-email').value.trim();
+  const rol         = document.getElementById('p-rol').value;
+  const errEl       = document.getElementById('p-error');
+
+  if (!nombre || !puntoNombre) {
+    errEl.textContent = 'Nombre del responsable y nombre del punto son requeridos';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const payload = id
+    ? { accion: 'actualizar', id: parseInt(id), nombre, punto_nombre: puntoNombre, punto_id: puntoId }
+    : { accion: 'agregar', nombre, punto_nombre: puntoNombre, punto_id: puntoId, email, rol };
+
+  try {
+    const r = await fetch('php/admin-puntos.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      closeModal('modal-punto');
+      showToast(id ? '✅ Punto actualizado' : '✅ Punto creado', 'success');
+      loadPuntos();
+    } else {
+      errEl.textContent = d.error || 'Error al guardar';
+      errEl.style.display = 'block';
+    }
+  } catch {
+    errEl.textContent = 'Error de conexión';
+    errEl.style.display = 'block';
+  }
+}
+
+async function eliminarPunto(id) {
+  if (!confirm('¿Desactivar este punto? Las motos asignadas no se eliminarán.')) return;
+  try {
+    const r = await fetch('php/admin-puntos.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ accion: 'eliminar', id })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('✅ Punto desactivado', 'success');
+      loadPuntos();
+    } else {
+      showToast('❌ ' + (d.error || 'Error'), 'error');
+    }
+  } catch {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ENTRANTES (dealer: motos en_envio asignadas a este punto)
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderEntrantes() {
+  const section = document.getElementById('entrantes-section');
+  const wrap    = document.getElementById('entrantes-wrap');
+  if (!dealer) return;
+
+  // Only show for dealer role (not cedis/admin)
+  const isDealer = dealer.rol === 'dealer';
+  const entrantes = allMotos.filter(m => m.estado === 'en_envio');
+
+  if (!isDealer || !entrantes.length) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = '';
+
+  const isMobile = window.innerWidth <= 680;
+  let html = '';
+
+  if (isMobile) {
+    html = '<div class="inv-card-list">';
+    entrantes.forEach(m => {
+      html += `<div class="inv-list-card" style="cursor:default;border-color:#93c5fd;">
+        <div class="inv-card-row inv-card-top">
+          <span class="inv-card-modelo">${esc(m.modelo)} <span class="inv-card-color">${esc(m.color)}</span></span>
+          <span class="badge badge-en-envio">En Envío</span>
+        </div>
+        <div class="inv-card-row" style="margin-top:4px;">
+          <span class="inv-card-vin">VIN: <strong style="color:var(--vka-blue);">${esc(m.vin)}</strong></span>
+        </div>
+        ${m.cliente_nombre ? `<div style="font-size:12px;color:#444;margin-top:3px;">${esc(m.cliente_nombre)}</div>` : ''}
+        <div style="margin-top:8px;">
+          <button class="btn btn-sm" style="width:100%;background:#4c1d95;color:#fff;border:none;font-weight:700;"
+            onclick="confirmarRecepcionDirecto(${m.id})">✅ Confirmar Recepción</button>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  } else {
+    html = `<table class="inv-table" style="background:transparent;">
+      <thead><tr style="background:rgba(29,78,216,.08);">
+        <th>Modelo / Color</th><th>VIN</th><th>Cliente</th><th>Pedido</th><th>Acción</th>
+      </tr></thead><tbody>`;
+    entrantes.forEach(m => {
+      html += `<tr style="background:rgba(255,255,255,.7);">
+        <td>${esc(m.modelo)} <span style="color:var(--vka-grey)">${esc(m.color)}</span></td>
+        <td style="font-family:monospace;font-size:12px;"><strong style="color:var(--vka-blue);">${esc(m.vin)}</strong></td>
+        <td>${esc(m.cliente_nombre||'—')}</td>
+        <td style="font-size:12px;">${esc(m.pedido_num||'—')}</td>
+        <td>
+          <button class="btn btn-sm" style="background:#4c1d95;color:#fff;border:none;font-weight:700;"
+            onclick="confirmarRecepcionDirecto(${m.id})">✅ Confirmar Recepción</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  }
+
+  wrap.innerHTML = html;
+}
+
+async function confirmarRecepcionDirecto(motoId) {
+  if (!confirm('¿Confirmar la recepción de esta moto en tu punto?')) return;
+  try {
+    const r = await fetch('php/admin-moto-accion.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ moto_id: motoId, accion: 'confirmar_recepcion' })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('✅ Moto ingresada al inventario del punto', 'success');
+      await loadInventario();
+    } else {
+      showToast('❌ ' + (d.error || 'Error'), 'error');
+    }
+  } catch { showToast('Error de conexión', 'error'); }
+}
+
+async function confirmarRecepcion() {
+  await confirmarRecepcionDirecto(currentDetalleId);
+  closeModal('modal-detalle');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ENVIAR A PUNTO (CEDIS/admin: send lista_para_entrega moto to a dealer punto)
+// ═══════════════════════════════════════════════════════════════════════════════
+async function openModalEnviarPunto() {
+  const errEl = document.getElementById('ep-error');
+  errEl.style.display = 'none';
+  document.getElementById('ep-notas').value = '';
+  document.getElementById('ep-fecha-recogida').value = '';
+
+  // Load puntos for selector
+  const sel = document.getElementById('ep-punto-id');
+  sel.innerHTML = '<option value="">Cargando puntos...</option>';
+
+  try {
+    const r = await fetch('php/admin-puntos.php');
+    const d = await r.json();
+    const puntos = (d.puntos || []).filter(p => p.rol === 'dealer');
+    if (!puntos.length) {
+      sel.innerHTML = '<option value="">No hay puntos disponibles</option>';
+    } else {
+      sel.innerHTML = '<option value="">Seleccionar punto...</option>' +
+        puntos.map(p => `<option value="${p.id}|${esc(p.punto_nombre)}">${esc(p.punto_nombre)} — ${esc(p.nombre)}</option>`).join('');
+    }
+  } catch {
+    sel.innerHTML = '<option value="">Error al cargar puntos</option>';
+  }
+
+  closeModal('modal-detalle');
+  openModal('modal-enviar-punto');
+}
+
+async function enviarAPunto() {
+  const sel            = document.getElementById('ep-punto-id');
+  const notas          = document.getElementById('ep-notas').value.trim();
+  const fechaRecogida  = document.getElementById('ep-fecha-recogida').value;
+  const errEl          = document.getElementById('ep-error');
+  const btn            = document.getElementById('btn-ep-confirmar');
+  errEl.style.display  = 'none';
+
+  const [dealerDestinoId, puntoNombreDest] = (sel.value || '').split('|');
+  if (!dealerDestinoId || !puntoNombreDest) {
+    errEl.textContent = 'Selecciona un punto de destino';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    const r = await fetch('php/admin-moto-accion.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        moto_id: currentDetalleId,
+        accion: 'enviar_a_punto',
+        dealer_destino_id: parseInt(dealerDestinoId),
+        punto_nombre_destino: puntoNombreDest,
+        fecha_estimada_recogida: fechaRecogida || null,
+        notas
+      })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      closeModal('modal-enviar-punto');
+      const trackMsg = d.tracking_number ? ` | Guía: ${d.tracking_number}` : '';
+      showToast(`✅ ${d.message}${trackMsg}`, 'success');
+      await loadInventario();
+    } else {
+      errEl.textContent = d.error || 'Error al enviar';
+      errEl.style.display = 'block';
+    }
+  } catch {
+    errEl.textContent = 'Error de conexión';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📦 Confirmar Envío';
+  }
 }
 </script>
 </body>
