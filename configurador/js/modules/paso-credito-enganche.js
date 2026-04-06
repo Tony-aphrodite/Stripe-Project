@@ -41,9 +41,10 @@ var PasoCreditoEnganche = {
         var motoImg     = VkUI.getImagenMoto(modelo.id, colorId);
         var plazoSemanas = Math.round(plazoMeses * 4.33);
 
-        // Estimated delivery date (~5 months from now)
+        // Estimated delivery date (15 days from now, consistent with app config)
         var entrega = new Date();
-        entrega.setMonth(entrega.getMonth() + 5);
+        var _diasEntrega = (VOLTIKA_PRODUCTOS.config && VOLTIKA_PRODUCTOS.config.entregaDiasInventario) || 15;
+        entrega.setDate(entrega.getDate() + _diasEntrega);
         var mesesNombres = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
         var entregaStr = entrega.getDate() + ' ' + mesesNombres[entrega.getMonth()] + ' ' + entrega.getFullYear();
 
