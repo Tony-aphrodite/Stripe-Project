@@ -141,7 +141,12 @@ var PasoResumen = {
         html += '<div>Entrega: <strong>' + ciudad + '</strong></div>';
         html += '<div></div>';
         if (state.costoLogistico > 0) {
-            html += '<div>Costo log\u00edstico: <strong>' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</strong></div>';
+            var _esContadoInit = (state.metodoPago !== 'msi');
+            if (_esContadoInit) {
+                html += '<div id="vk-summary-logistica">Costo log\u00edstico: <s style="color:#999;">' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</s> <strong style="color:#00C851;">$0</strong></div>';
+            } else {
+                html += '<div id="vk-summary-logistica">Costo log\u00edstico: <strong>' + VkUI.formatPrecio(state.costoLogistico) + ' MXN</strong></div>';
+            }
             html += '<div></div>';
         }
         html += '</div>';
@@ -278,6 +283,17 @@ var PasoResumen = {
             // Activate selected
             jQuery('#vk-opcion-' + tipo).css({'border': '2px solid #039fe1', 'background': '#f0faff'});
             jQuery('#vk-radio-' + tipo).css({'background': '#039fe1', 'border': 'none'}).html('<span style="width:8px;height:8px;border-radius:50%;background:#fff;display:block;margin:auto;"></span>');
+            // Update state and Resumen logistics line
+            self.app.state.metodoPago = tipo === 'contado' ? 'contado' : 'msi';
+            var _cLog = self.app.state.costoLogistico || 0;
+            if (_cLog > 0) {
+                var $logEl = jQuery('#vk-summary-logistica');
+                if (tipo === 'contado') {
+                    $logEl.html('Costo log\u00edstico: <s style="color:#999;">' + VkUI.formatPrecio(_cLog) + ' MXN</s> <strong style="color:#00C851;">$0</strong>');
+                } else {
+                    $logEl.html('Costo log\u00edstico: <strong>' + VkUI.formatPrecio(_cLog) + ' MXN</strong>');
+                }
+            }
         });
 
         // Crédito: Iniciar proceso
