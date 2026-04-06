@@ -40,11 +40,16 @@
 .info-row {
   display:flex; justify-content:space-between;
   padding:5px 0; border-bottom:1px solid var(--vka-grey-light);
-  font-size:13px;
+  font-size:13px; gap:8px;
 }
 .info-row:last-child { border-bottom:none; }
-.info-label { color:var(--vka-grey); }
-.info-value { font-weight:600; color:#1a1a1a; text-align:right; }
+.info-label { color:var(--vka-grey); flex-shrink:0; }
+.info-value { font-weight:600; color:#1a1a1a; text-align:right; word-break:break-word; }
+
+@media (max-width:640px) {
+  .detail-row { flex-direction:column; gap:0; }
+  .detail-main, .detail-side { width:100%; flex:none; }
+}
 .tracker-vertical { display:flex; flex-direction:column; gap:0; padding:4px 0; }
 .empty-inv { text-align:center; padding:60px 20px; color:var(--vka-grey); }
 
