@@ -224,6 +224,7 @@ let currentPhase = 'main';  // for ensamble/entrega: 'fase1','fase2',...
 let checklistData = null;
 let uploadedPhotos = {};
 let dashMotoCache = null;
+let readOnly = false; // true for punto dealers — view only, no editing
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CHECKLIST DEFINITIONS
@@ -584,7 +585,19 @@ document.addEventListener('DOMContentLoaded', () => {
   })
   .then(r => r.json())
   .then(d => {
-    if (d.ok) { dealer = d.dealer; switchType(currentType); }
+    if (d.ok) {
+      dealer = d.dealer;
+      // Punto dealers can only VIEW the checklist, not edit it
+      readOnly = !['admin', 'cedis'].includes(dealer.rol);
+      if (readOnly) {
+        // Show readonly banner in header
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:8px 16px;font-size:12px;font-weight:700;color:#92400E;text-align:center;';
+        banner.textContent = '👁️ Modo solo lectura — Este checklist fue llenado por CEDIS';
+        document.querySelector('.cl-type-bar').before(banner);
+      }
+      switchType(currentType);
+    }
     else { window.location.href = 'dealer-panel.html'; }
   })
   .catch(() => window.location.href = 'dealer-panel.html');
@@ -629,6 +642,26 @@ function renderOrigen() {
     return;
   }
 
+  // Punto dealers: show read-only view even if checklist is not yet locked
+  if (readOnly) {
+    if (!checklistData || !checklistData.id) {
+      document.getElementById('cl-content').innerHTML = `
+        <div style="text-align:center;padding:40px 20px;">
+          <div style="font-size:48px;margin-bottom:12px;">📋</div>
+          <div style="font-size:16px;font-weight:800;color:#92400e;margin-bottom:8px;">Checklist pendiente</div>
+          <div style="font-size:13px;color:#555;line-height:1.6;">
+            CEDIS aún no ha completado el Checklist de Origen para esta motocicleta.<br>
+            La moto no puede ser recibida hasta que CEDIS complete la inspección.
+          </div>
+        </div>`;
+      document.getElementById('cl-actions').innerHTML = '';
+      return;
+    }
+    // Show read-only filled checklist
+    renderOrigenReadOnly();
+    return;
+  }
+
   let html = '';
   let totalItems = 0, checkedItems = 0;
 
@@ -667,6 +700,100 @@ function renderOrigen() {
   document.getElementById('cl-content').innerHTML = html;
   updateProgress(checkedItems, totalItems);
   renderOrigenActions(checkedItems === totalItems);
+}
+
+// Shared read-only renderer for ensamble / entrega phases (punto dealers)
+function renderReadOnlyPhase(phaseData, title) {
+  if (!phaseData) return;
+
+  if (!checklistData || !checklistData.id) {
+    document.getElementById('cl-content').innerHTML = `
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:48px;margin-bottom:12px;">📋</div>
+        <div style="font-size:16px;font-weight:800;color:#92400e;margin-bottom:8px;">Checklist pendiente</div>
+        <div style="font-size:13px;color:#555;line-height:1.6;">
+          CEDIS aún no ha completado el checklist <strong>${esc(title)}</strong> para esta motocicleta.
+        </div>
+      </div>`;
+    document.getElementById('cl-actions').innerHTML = '';
+    return;
+  }
+
+  let html = '';
+  let totalItems = 0, checkedItems = 0;
+
+  (phaseData.sections || []).forEach(section => {
+    const itemsHtml = section.items.map(item => {
+      totalItems++;
+      const checked = checklistData && checklistData[item.key];
+      if (checked) checkedItems++;
+      const cls = item.critical ? ' critical' : '';
+      const icon = checked ? '✅' : '❌';
+      return `<div class="cl-item${cls}" style="opacity:${checked ? 1 : 0.6};">
+        <span style="font-size:16px;flex-shrink:0;">${icon}</span>
+        <label style="cursor:default;">${item.label}</label>
+      </div>`;
+    }).join('');
+
+    const count = section.items.filter(i => checklistData && checklistData[i.key]).length;
+    html += `
+      <div class="cl-section">
+        <div class="cl-section-head">${section.title}<span class="cl-section-count">${count}/${section.items.length}</span></div>
+        <div class="cl-section-body">${itemsHtml}</div>
+      </div>`;
+  });
+
+  document.getElementById('cl-content').innerHTML = html;
+  updateProgress(checkedItems, totalItems);
+  document.getElementById('cl-actions').innerHTML = `
+    <div style="background:#f0fdf4;border:2px solid #10b981;border-radius:10px;padding:16px;text-align:center;">
+      <div style="font-size:13px;font-weight:700;color:#065f46;">
+        👁️ Vista de revisión — Solo CEDIS puede modificar este checklist
+      </div>
+    </div>`;
+}
+
+function renderOrigenReadOnly() {
+  let html = '';
+  let totalItems = 0, checkedItems = 0;
+
+  ORIGEN_SECTIONS.forEach(section => {
+    const itemsHtml = section.items.map(item => {
+      totalItems++;
+      const checked = checklistData && checklistData[item.key];
+      if (checked) checkedItems++;
+      const cls = item.critical ? ' critical' : '';
+      const icon = checked ? '✅' : '❌';
+      return `<div class="cl-item${cls}" style="opacity:${checked ? 1 : 0.6};">
+        <span style="font-size:16px;flex-shrink:0;">${icon}</span>
+        <label style="cursor:default;">${item.label}</label>
+      </div>`;
+    }).join('');
+
+    const count = section.items.filter(i => checklistData && checklistData[i.key]).length;
+    html += `
+      <div class="cl-section">
+        <div class="cl-section-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          ${section.title}
+          <span class="cl-section-count">${count}/${section.items.length}</span>
+        </div>
+        <div class="cl-section-body">${itemsHtml}</div>
+      </div>`;
+  });
+
+  if (checklistData && checklistData.notas) {
+    html += `<div class="cl-section"><div class="cl-section-head">📝 Notas</div>
+      <div class="cl-section-body"><p style="font-size:13px;color:#555;">${esc(checklistData.notas)}</p></div></div>`;
+  }
+
+  document.getElementById('cl-content').innerHTML = html;
+  updateProgress(checkedItems, totalItems);
+  document.getElementById('cl-actions').innerHTML = `
+    <div style="background:#f0fdf4;border:2px solid #10b981;border-radius:10px;padding:16px;text-align:center;">
+      <div style="font-size:13px;font-weight:700;color:#065f46;">
+        👁️ Vista de revisión — Solo CEDIS puede modificar este checklist
+      </div>
+    </div>`;
 }
 
 function renderOrigenActions(allDone) {
@@ -739,6 +866,11 @@ function setEnsamblePhase(phase) {
 function renderEnsamble() {
   if (checklistData && checklistData.bloqueado) {
     showLocked('Ensamble de Unidad');
+    return;
+  }
+
+  if (readOnly) {
+    renderReadOnlyPhase(ENSAMBLE_PHASES[currentPhase], 'Ensamble de Unidad');
     return;
   }
 
@@ -862,6 +994,11 @@ function setEntregaPhase(phase) {
 function renderEntrega() {
   if (checklistData && checklistData.bloqueado) {
     showLocked('Entrega de Unidad', null, 'Sin identidad + OTP + acta firmada = NO EXISTE ENTREGA');
+    return;
+  }
+
+  if (readOnly) {
+    renderReadOnlyPhase(ENTREGA_PHASES[currentPhase], 'Entrega de Unidad');
     return;
   }
 

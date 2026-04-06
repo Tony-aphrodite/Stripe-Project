@@ -245,6 +245,7 @@
     <div class="modal-body" id="modal-detalle-body">Cargando...</div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-detalle')">Cerrar</button>
+      <button class="btn btn-ghost btn-sm" id="btn-ver-checklist" onclick="verChecklistOrigen()" style="color:var(--vka-blue);">📋 Checklist</button>
       <button class="btn btn-primary btn-sm" id="btn-editar-moto" onclick="editarMoto()">✏️ Editar</button>
     </div>
   </div>
@@ -531,7 +532,7 @@ function renderTable(motos) {
             <span class="badge ${tipoCls}">${tipoLabel}</span>
           </div>
           <div class="inv-card-row inv-card-bottom">
-            <span class="inv-card-cliente">${esc(m.cliente_nombre || '—')}</span>
+            <span class="inv-card-cliente" style="word-break:break-word;white-space:normal;">${esc(m.cliente_nombre || '—')}</span>
             <span style="${diasAlert?'color:var(--vka-orange);font-weight:700;':'color:var(--vka-grey);'}font-size:12px;">${m.dias_en_paso}d${diasAlert?' ⚠️':''}</span>
           </div>
           ${m.pedido_num ? `<div style="font-size:11px;color:var(--vka-grey);margin-top:3px;">Pedido: ${esc(m.pedido_num)} · <span style="${pagoColor}font-weight:600;">${m.pago_estado||'—'}</span></div>` : ''}
@@ -579,7 +580,18 @@ function openDetalle(motoId) {
 
   document.getElementById('modal-detalle-title').textContent = `${m.modelo} ${m.color} — ${m.vin}`;
   document.getElementById('modal-detalle-body').innerHTML = buildDetalleHtml(m);
+
+  // Punto dealers cannot edit; only CEDIS/admin can
+  const isCedisOrAdmin = dealer && ['admin','cedis'].includes(dealer.rol);
+  document.getElementById('btn-editar-moto').style.display = isCedisOrAdmin ? '' : 'none';
+
   openModal('modal-detalle');
+}
+
+function verChecklistOrigen() {
+  if (!currentDetalleId) return;
+  closeModal('modal-detalle');
+  window.location.href = 'checklist.html?moto_id=' + currentDetalleId + '&type=origen';
 }
 
 function buildDetalleHtml(m) {

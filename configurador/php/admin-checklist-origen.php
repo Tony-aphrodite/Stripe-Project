@@ -67,6 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 // ── POST ─────────────────────────────────────────────────────────────────────
+// Only CEDIS and admin roles can write the origin checklist
+if (!in_array($dealer['rol'], ['admin', 'cedis'])) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'Solo CEDIS puede modificar el Checklist de Origen.']);
+    exit;
+}
+
 $json      = json_decode(file_get_contents('php://input'), true) ?? [];
 $motoId    = intval($json['moto_id'] ?? 0);
 $items     = $json['items'] ?? [];

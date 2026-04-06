@@ -51,6 +51,21 @@ html,body { overflow-x:hidden; max-width:100%; }
 
 <div id="toast-container"></div>
 
+<!-- Modal: Detalle Moto -->
+<div id="modal-detalle-moto" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-detalle-moto')">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-detalle-moto-title">Detalle de Motocicleta</span>
+      <button class="modal-close" onclick="closeModal('modal-detalle-moto')">×</button>
+    </div>
+    <div class="modal-body" id="modal-detalle-moto-body">Cargando...</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-detalle-moto')">Cerrar</button>
+      <button class="btn btn-primary btn-sm" id="btn-detalle-checklist" onclick="">📋 Ver Checklist</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Mover a Punto -->
 <div id="modal-mover" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-mover')">
   <div class="modal" style="max-width:400px;">
@@ -137,26 +152,34 @@ function renderInventario() {
   allMotos.forEach(m => {
     const payColor = m.stripe_payment_status === 'succeeded' ? '#10b981' : (m.pago_estado === 'pagada' ? '#10b981' : '#f59e0b');
     const payIcon = payColor === '#10b981' ? '✅' : '⏳';
-    html += `<div class="cedis-card" data-search="${(m.vin+m.modelo+m.cliente_nombre+m.pedido_num).toLowerCase()}">
+    const clOk = m.checklist_bloqueado == 1;
+    const clBadge = clOk
+      ? `<div style="font-size:11px;color:#059669;font-weight:700;margin-bottom:6px;">✅ Checklist de Origen completo</div>`
+      : `<div style="font-size:11px;color:#d97706;font-weight:700;margin-bottom:6px;">⚠️ Checklist de Origen pendiente</div>`;
+    html += `<div class="cedis-card" data-search="${(m.vin+m.modelo+(m.cliente_nombre||'')+(m.pedido_num||'')).toLowerCase()}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-        <div>
+        <div style="flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:700;color:var(--vka-blue-dark);">${esc(m.modelo)} ${esc(m.color)}</div>
-          <div style="font-size:12px;color:var(--vka-blue);font-weight:600;">${esc(m.vin)}</div>
+          <div style="font-size:12px;color:var(--vka-blue);font-weight:600;cursor:pointer;text-decoration:underline;word-break:break-all;" onclick="openDetalleMoto(${m.id})">${esc(m.vin)}</div>
         </div>
-        <span class="badge badge-${m.estado.replace(/_/g,'-')}">${m.estado.replace(/_/g,' ')}</span>
+        <span class="badge badge-${m.estado.replace(/_/g,'-')}" style="flex-shrink:0;margin-left:8px;">${m.estado.replace(/_/g,' ')}</span>
       </div>
-      <div style="font-size:11px;color:var(--vka-grey);margin-bottom:6px;">
-        ${m.cliente_nombre ? '👤 ' + esc(m.cliente_nombre) : '<span style="color:#f59e0b;">Sin cliente asignado</span>'}
-        ${m.pedido_num ? ' · 📋 ' + esc(m.pedido_num) : ''}
+      <div style="margin-bottom:6px;">
+        <div style="font-size:12px;color:#333;font-weight:500;word-break:break-word;">
+          ${m.cliente_nombre ? '👤 ' + esc(m.cliente_nombre) : '<span style="color:#f59e0b;">Sin cliente asignado</span>'}
+        </div>
+        ${m.pedido_num ? `<div style="font-size:11px;color:var(--vka-grey);">📋 ${esc(m.pedido_num)}</div>` : ''}
       </div>
-      <div style="font-size:11px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:11px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <span>📍 ${esc(m.punto_nombre || 'CEDIS (sin asignar)')}</span>
         <span style="color:${payColor};font-weight:700;">${payIcon} ${m.pago_estado || '—'}</span>
       </div>
-      <div style="display:flex;gap:6px;margin-top:8px;">
+      ${clBadge}
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
         <button class="btn btn-ghost btn-sm" onclick="abrirMover(${m.id})" style="font-size:10px;">📍 Mover</button>
         <button class="btn btn-ghost btn-sm" onclick="abrirAsignar(${m.id})" style="font-size:10px;">💳 Pago</button>
         <button class="btn btn-ghost btn-sm" onclick="verificarPago(${m.id})" style="font-size:10px;">🔄 Stripe</button>
+        <button class="btn btn-ghost btn-sm" onclick="verChecklist(${m.id})" style="font-size:10px;">📋 Checklist</button>
       </div>
     </div>`;
   });
@@ -342,9 +365,65 @@ async function importExcel(motos) {
   } catch(e) { showToast('Error de conexión', 'error'); }
 }
 
+// ═══ DETALLE MOTO ════════════════════════════════════════════════════════════
+function openDetalleMoto(motoId) {
+  const m = allMotos.find(x => x.id == motoId);
+  if (!m) return;
+
+  document.getElementById('modal-detalle-moto-title').textContent = m.modelo + ' ' + m.color + ' — ' + m.vin;
+  document.getElementById('btn-detalle-checklist').onclick = () => { closeModal('modal-detalle-moto'); verChecklist(motoId); };
+
+  const clOk = m.checklist_bloqueado == 1;
+  const rows = [
+    ['VIN', m.vin],
+    ['Modelo', m.modelo],
+    ['Color', m.color],
+    ['Estado', m.estado ? m.estado.replace(/_/g,' ') : '—'],
+    ['Checklist Origen', clOk ? '✅ Completado' : '⚠️ Pendiente'],
+    ['Cliente', m.cliente_nombre || '—'],
+    ['Pedido', m.pedido_num || '—'],
+    ['Ubicación', m.punto_nombre || 'CEDIS'],
+    ['Pago', m.pago_estado || '—'],
+    ['Dealer', m.dealer_nombre || '—'],
+    ['Fecha registro', m.freg || '—'],
+  ];
+
+  const rowsHtml = rows.map(([label, value]) =>
+    `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;">
+      <span style="color:#6b7280;">${label}</span>
+      <span style="font-weight:600;color:#111;text-align:right;max-width:60%;word-break:break-word;">${esc(String(value))}</span>
+    </div>`
+  ).join('');
+
+  document.getElementById('modal-detalle-moto-body').innerHTML = `<div>${rowsHtml}</div>`;
+  openModal('modal-detalle-moto');
+}
+
+function verChecklist(motoId) {
+  window.location.href = 'checklist.html?moto_id=' + motoId + '&type=origen';
+}
+
 // ═══ MOVER A PUNTO ═══════════════════════════════════════════════════════════
 async function abrirMover(motoId) {
   currentMotoId = motoId;
+
+  // Verificar checklist completado antes de permitir mover
+  const moto = allMotos.find(x => x.id == motoId);
+  if (moto && !moto.checklist_bloqueado) {
+    // Doble verificación en servidor por si los datos en memoria están desactualizados
+    try {
+      const cr = await fetch('php/admin-checklist-origen.php?moto_id=' + motoId);
+      const cd = await cr.json();
+      if (!cd.checklist || !cd.checklist.completado || !cd.checklist.bloqueado) {
+        showChecklistRequerido(motoId, moto);
+        return;
+      }
+    } catch(e) {
+      // Si hay error de red, mostrar advertencia pero no bloquear
+      showToast('No se pudo verificar el checklist — procede con precaución', 'warning');
+    }
+  }
+
   openModal('modal-mover');
   const body = document.getElementById('mover-body');
   body.innerHTML = '<div class="loader dark" style="width:24px;height:24px;border-width:3px;"></div>';
@@ -361,6 +440,29 @@ async function abrirMover(motoId) {
     });
     body.innerHTML = html;
   } catch(e) { body.innerHTML = '<p style="color:var(--vka-red);">Error</p>'; }
+}
+
+function showChecklistRequerido(motoId, moto) {
+  // Reutilizamos el modal de mover para mostrar el bloqueo
+  const body = document.getElementById('mover-body');
+  const btnConfirmar = document.getElementById('btn-confirmar-mover');
+  btnConfirmar.style.display = 'none';
+  body.innerHTML = `
+    <div style="text-align:center;padding:16px 0;">
+      <div style="font-size:40px;margin-bottom:10px;">🔒</div>
+      <div style="font-size:15px;font-weight:800;color:#92400e;margin-bottom:8px;">Checklist de Origen requerido</div>
+      <div style="font-size:13px;color:#555;margin-bottom:16px;line-height:1.5;">
+        Antes de transferir <strong>${esc(moto ? moto.vin : '')}</strong> a un punto,
+        debes completar el Checklist de Origen en CEDIS.
+      </div>
+      <button class="btn btn-primary" onclick="closeModal('modal-mover');verChecklist(${motoId});"
+        style="width:100%;padding:12px;font-size:14px;">
+        📋 Llenar Checklist de Origen
+      </button>
+    </div>`;
+  openModal('modal-mover');
+  // Restore button for next time
+  setTimeout(() => { btnConfirmar.style.display = ''; }, 100);
 }
 
 async function confirmarMover() {

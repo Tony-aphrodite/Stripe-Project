@@ -61,7 +61,7 @@ var VkUI = {
     renderBanner: function() {
         var base = (window.VK_BASE_PATH || '');
         return '<div class="vk-card__banner" style="position:relative;overflow:hidden;">' +
-            '<img src="' + base + 'img/last/icon_02.png" alt="" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:75px;height:auto;opacity:0.5;">' +
+            '<img src="' + base + 'img/last/icon_02.png" alt="" style="position:absolute;right:5px;top:50%;transform:translateY(-50%);width:100px;height:auto;opacity:1;">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
             '<span style="font-size:18px;">\ud83d\udccd</span>' +
             '<span style="font-size:16px;font-weight:800;">Entrega en tu ciudad</span>' +
@@ -110,8 +110,8 @@ var VkUI = {
      */
     renderTrustBadges: function(metodo) {
         var base = window.VK_BASE_PATH || '';
-        var imgAhorro   = '<img src="' + base + 'img/ahorro_gasolina.png" alt="" style="width:35px;height:35px;object-fit:contain;">';
-        var imgPlacas   = '<svg width="35" height="35" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        var imgAhorro   = '<img src="' + base + 'img/ahorro_gasolina.png" alt="" style="width:45px;height:45px;object-fit:contain;">';
+        var imgPlacas   = '<svg width="45" height="45" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">' +
             '<rect x="4" y="12" width="40" height="24" rx="3" fill="#fff" stroke="#1a3a5c" stroke-width="2"/>' +
             '<rect x="7" y="15" width="6" height="8" rx="1" fill="#039fe1" opacity="0.2" stroke="#039fe1" stroke-width="0.8"/>' +
             '<text x="24" y="27" font-size="9" font-weight="800" text-anchor="middle" fill="#1a3a5c" font-family="Arial,sans-serif">MEX</text>' +
@@ -120,12 +120,12 @@ var VkUI = {
             '<circle cx="38" cy="32" r="1.5" fill="#039fe1"/>' +
             '<rect x="35" y="15" width="6" height="8" rx="1" fill="#10b981" opacity="0.3" stroke="#10b981" stroke-width="0.8"/>' +
             '</svg>';
-        var imgGarantia = '<img src="' + base + 'img/garantia.png" alt="" style="width:30px;height:30px;object-fit:contain;">';
+        var imgGarantia = '<img src="' + base + 'img/garantia.png" alt="" style="width:45px;height:45px;object-fit:contain;">';
 
         var badges = [];
         if (metodo === 'credito') {
             badges = [
-                { icon: '<img src="' + base + 'img/last/icon_01.png" alt="" style="width:35px;height:35px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
+                { icon: '<img src="' + base + 'img/last/icon_01.png" alt="" style="width:45px;height:45px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
                 { icon: imgPlacas,   text: 'Documentos para placas incluidos' },
                 { icon: imgAhorro,   text: 'P\u00e1gala con lo que hoy gastas en gasolina' },
                 { icon: imgGarantia, text: 'Garant\u00eda Voltika' }
