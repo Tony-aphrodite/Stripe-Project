@@ -161,8 +161,10 @@
   <!-- Tabs -->
   <div class="tabs">
     <div class="tab active" onclick="switchInvTab('lista')">📋 Lista</div>
+    <div class="tab" onclick="switchInvTab('dashboard')">📊 Dashboard</div>
     <div class="tab" onclick="switchInvTab('ventas')">💰 Ventas</div>
     <div class="tab" onclick="switchInvTab('referidos')">🤝 Referidos</div>
+    <div class="tab tab-admin" onclick="switchInvTab('puntos')" style="display:none;">📍 Puntos</div>
   </div>
 
   <!-- ── LISTA TAB ─────────────────────────────────────────────────────────── -->
@@ -200,6 +202,13 @@
     </div>
   </div>
 
+  <!-- ── DASHBOARD TAB ───────────────────────────────────────────────────────── -->
+  <div id="invtab-dashboard" class="tab-content">
+    <div id="dashboard-wrap">
+      <div class="empty-inv"><p>Cargando dashboard...</p></div>
+    </div>
+  </div>
+
   <!-- ── VENTAS TAB ────────────────────────────────────────────────────────── -->
   <div id="invtab-ventas" class="tab-content">
     <div class="filter-bar">
@@ -227,6 +236,16 @@
     </div>
     <div id="referidos-wrap">
       <div class="empty-inv"><p>Cargando referidos...</p></div>
+    </div>
+  </div>
+
+  <!-- ── PUNTOS TAB (admin only) ───────────────────────────────────────────── -->
+  <div id="invtab-puntos" class="tab-content">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn btn-primary btn-sm" onclick="openModalPunto()">+ Agregar punto</button>
+    </div>
+    <div id="puntos-wrap">
+      <div class="empty-inv"><p>Cargando puntos...</p></div>
     </div>
   </div>
 
@@ -379,6 +398,36 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: PUNTO ══════════════════════════════════════════════════════════ -->
+<div id="modal-punto" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-punto')">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-punto-title">Agregar punto</span>
+      <button class="modal-close" onclick="closeModal('modal-punto')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid single">
+        <div class="field"><label>Nombre del responsable *</label><input type="text" id="p-nombre" placeholder="Juan Pérez"></div>
+        <div class="field"><label>Nombre del punto *</label><input type="text" id="p-punto-nombre" placeholder="Sucursal Monterrey"></div>
+        <div class="field"><label>ID del punto</label><input type="text" id="p-punto-id" placeholder="MTY_01 (auto si se deja vacío)"></div>
+        <div class="field"><label>Email de acceso</label><input type="email" id="p-email" placeholder="monterrey@voltika.mx"></div>
+        <div class="field"><label>Rol</label>
+          <select id="p-rol">
+            <option value="dealer">Dealer</option>
+            <option value="cedis">CEDIS</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="p-id">
+      <div id="p-error" class="login-error" style="display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-punto')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPunto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL: REFERIDO ═══════════════════════════════════════════════════════ -->
 <div id="modal-referido" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-referido')">
   <div class="modal" style="max-width:400px;">
@@ -432,6 +481,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (d.ok) {
       dealer = d.dealer;
       document.getElementById('header-punto').textContent = dealer.punto_nombre || '';
+      // Show Puntos tab for admin/cedis only
+      if (['admin','cedis'].includes(dealer.rol)) {
+        document.querySelector('.tab-admin').style.display = '';
+      }
       loadInventario();
     } else {
       window.location.href = 'dealer-panel.html';
@@ -940,14 +993,16 @@ async function guardarReferido() {
 // TABS
 // ═══════════════════════════════════════════════════════════════════════════════
 function switchInvTab(tab) {
+  const tabs = ['lista','dashboard','ventas','referidos','puntos'];
   document.querySelectorAll('.tab').forEach((t,i) => {
-    const tabs = ['lista','ventas','referidos'];
     t.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('invtab-' + tab)?.classList.add('active');
-  if (tab === 'ventas') loadVentas();
+  if (tab === 'ventas')    loadVentas();
   if (tab === 'referidos') loadReferidos();
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'puntos')    loadPuntos();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -969,6 +1024,274 @@ function showToast(msg, type='') {
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderDashboard() {
+  const wrap = document.getElementById('dashboard-wrap');
+  if (!allMotos.length) {
+    wrap.innerHTML = '<div class="empty-inv"><div class="empty-state-icon">📊</div><p>Sin datos de inventario.</p></div>';
+    return;
+  }
+
+  const activas = allMotos.filter(m => m.estado !== 'entregada');
+
+  // ── By model ──────────────────────────────────────────────────────────────
+  const byModelo = {};
+  activas.forEach(m => {
+    byModelo[m.modelo] = (byModelo[m.modelo] || 0) + 1;
+  });
+
+  // ── By punto ──────────────────────────────────────────────────────────────
+  const byPunto = {};
+  activas.forEach(m => {
+    const p = m.punto_nombre || 'Sin asignar';
+    byPunto[p] = (byPunto[p] || 0) + 1;
+  });
+
+  // ── FIFO: oldest first by fecha_ingreso_pais ───────────────────────────────
+  const fifo = [...activas]
+    .filter(m => m.fecha_ingreso_pais)
+    .sort((a, b) => new Date(a.fecha_ingreso_pais) - new Date(b.fecha_ingreso_pais));
+
+  let html = '';
+
+  // Summary row
+  html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">`;
+  html += `<div class="stat-card blue"><div class="stat-card-value">${allMotos.length}</div><div class="stat-card-label">Total inventario</div></div>`;
+  html += `<div class="stat-card"><div class="stat-card-value">${activas.length}</div><div class="stat-card-label">Unidades activas</div></div>`;
+  html += `<div class="stat-card green"><div class="stat-card-value">${allMotos.length - activas.length}</div><div class="stat-card-label">Entregadas</div></div>`;
+  html += `<div class="stat-card orange"><div class="stat-card-value">${fifo.length}</div><div class="stat-card-label">Con fecha ingreso</div></div>`;
+  html += `</div>`;
+
+  // By model
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">`;
+  html += `<div class="info-card" style="margin:0;">
+    <div class="info-card-title">📦 Inventario por modelo</div>`;
+  if (!Object.keys(byModelo).length) {
+    html += `<p style="font-size:13px;color:var(--vka-grey);">Sin datos</p>`;
+  } else {
+    const total = activas.length || 1;
+    Object.entries(byModelo).sort((a,b) => b[1]-a[1]).forEach(([modelo, cnt]) => {
+      const pct = Math.round((cnt / total) * 100);
+      html += `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+          <strong>${esc(modelo)}</strong><span>${cnt} unid. (${pct}%)</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:8px;">
+          <div style="background:var(--vka-blue);width:${pct}%;height:8px;border-radius:4px;"></div>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
+  // By punto
+  html += `<div class="info-card" style="margin:0;">
+    <div class="info-card-title">📍 Inventario por punto</div>`;
+  if (!Object.keys(byPunto).length) {
+    html += `<p style="font-size:13px;color:var(--vka-grey);">Sin datos</p>`;
+  } else {
+    const total = activas.length || 1;
+    Object.entries(byPunto).sort((a,b) => b[1]-a[1]).forEach(([punto, cnt]) => {
+      const pct = Math.round((cnt / total) * 100);
+      html += `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+          <strong>${esc(punto)}</strong><span>${cnt} unid.</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:8px;">
+          <div style="background:var(--vka-green);width:${pct}%;height:8px;border-radius:4px;"></div>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div></div>`;
+
+  // FIFO table
+  html += `<div class="info-card" style="margin:0;">
+    <div class="info-card-title">⏱️ FIFO — Cola de salida (más antiguos primero)</div>`;
+  if (!fifo.length) {
+    html += `<p style="font-size:13px;color:var(--vka-grey);">Sin motos con fecha de ingreso registrada.</p>`;
+  } else {
+    html += `<table class="inv-table"><thead><tr>
+      <th>#</th><th>Modelo / Color</th><th>VIN</th><th>Fecha ingreso país</th>
+      <th>Días en inventario</th><th>Punto</th><th>Estado</th>
+    </tr></thead><tbody>`;
+    fifo.forEach((m, i) => {
+      const dias = Math.floor((new Date() - new Date(m.fecha_ingreso_pais)) / 86400000);
+      const badgeCls = ESTADOS_BADGE[m.estado] || '';
+      const alert = dias > 60 ? 'color:var(--vka-red);font-weight:700;' : dias > 30 ? 'color:var(--vka-orange);font-weight:700;' : '';
+      html += `<tr onclick="openDetalle(${m.id})" style="cursor:pointer;">
+        <td style="font-weight:700;color:var(--vka-grey);">${i+1}</td>
+        <td>${esc(m.modelo)} <span style="color:var(--vka-grey)">${esc(m.color)}</span></td>
+        <td style="font-family:monospace;font-size:12px;">${esc(m.vin_display||m.vin)}</td>
+        <td>${esc(m.fecha_ingreso_pais)}</td>
+        <td style="${alert}">${dias}d${dias>60?' 🔴':dias>30?' 🟡':''}</td>
+        <td style="font-size:12px;">${esc(m.punto_nombre||'—')}</td>
+        <td><span class="badge ${badgeCls}">${ESTADOS_LABEL[m.estado]||m.estado}</span></td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  html += `</div>`;
+
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUNTOS
+// ═══════════════════════════════════════════════════════════════════════════════
+let allPuntos = [];
+
+async function loadPuntos() {
+  document.getElementById('puntos-wrap').innerHTML = '<div class="empty-inv"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
+  try {
+    const r = await fetch('php/admin-puntos.php');
+    const d = await r.json();
+    allPuntos = d.puntos || [];
+    renderPuntos(allPuntos);
+  } catch {
+    document.getElementById('puntos-wrap').innerHTML = '<div class="empty-inv" style="color:var(--vka-red)">Error al cargar puntos.</div>';
+  }
+}
+
+function renderPuntos(puntos) {
+  const el = document.getElementById('puntos-wrap');
+  if (!puntos.length) {
+    el.innerHTML = `<div class="empty-inv"><div class="empty-state-icon">📍</div><p>No hay puntos registrados.</p></div>`;
+    return;
+  }
+
+  const isMobile = window.innerWidth <= 680;
+
+  if (isMobile) {
+    let html = '<div class="inv-card-list">';
+    puntos.forEach(p => {
+      html += `<div class="inv-list-card" style="cursor:default;">
+        <div class="inv-card-row inv-card-top">
+          <span style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);">${esc(p.punto_nombre)}</span>
+          <span class="badge badge-por-llegar">${esc(p.rol)}</span>
+        </div>
+        <div class="inv-card-row" style="margin-top:4px;">
+          <span style="font-size:13px;color:#444;">${esc(p.nombre)}</span>
+          <span style="font-size:12px;color:var(--vka-grey);">${esc(p.punto_id||'—')}</span>
+        </div>
+        <div class="inv-card-row inv-card-bottom">
+          <span style="font-size:12px;color:#555;">Activas: <strong>${p.activas||0}</strong> · Entregadas: ${p.entregadas||0}</span>
+          <button class="btn btn-ghost btn-sm" onclick="editarPunto(${p.id})" style="font-size:11px;padding:4px 8px;">✏️ Editar</button>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  } else {
+    let html = `<table class="inv-table"><thead><tr>
+      <th>Punto</th><th>ID</th><th>Responsable</th><th>Rol</th>
+      <th>Motos activas</th><th>Entregadas</th><th>Acciones</th>
+    </tr></thead><tbody>`;
+    puntos.forEach(p => {
+      html += `<tr>
+        <td><strong>${esc(p.punto_nombre)}</strong></td>
+        <td style="font-family:monospace;font-size:12px;">${esc(p.punto_id||'—')}</td>
+        <td>${esc(p.nombre)}</td>
+        <td><span class="badge badge-por-llegar">${esc(p.rol)}</span></td>
+        <td><strong style="color:var(--vka-blue);">${p.activas||0}</strong></td>
+        <td>${p.entregadas||0}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="editarPunto(${p.id})" style="font-size:12px;">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="eliminarPunto(${p.id})" style="font-size:12px;color:var(--vka-red);">🗑 Eliminar</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
+}
+
+function openModalPunto() {
+  document.getElementById('modal-punto-title').textContent = 'Agregar punto';
+  document.getElementById('p-nombre').value = '';
+  document.getElementById('p-punto-nombre').value = '';
+  document.getElementById('p-punto-id').value = '';
+  document.getElementById('p-email').value = '';
+  document.getElementById('p-rol').value = 'dealer';
+  document.getElementById('p-id').value = '';
+  document.getElementById('p-error').style.display = 'none';
+  openModal('modal-punto');
+}
+
+function editarPunto(id) {
+  const p = allPuntos.find(x => x.id == id);
+  if (!p) return;
+  document.getElementById('modal-punto-title').textContent = 'Editar punto';
+  document.getElementById('p-nombre').value = p.nombre || '';
+  document.getElementById('p-punto-nombre').value = p.punto_nombre || '';
+  document.getElementById('p-punto-id').value = p.punto_id || '';
+  document.getElementById('p-email').value = p.email || '';
+  document.getElementById('p-rol').value = p.rol || 'dealer';
+  document.getElementById('p-id').value = p.id;
+  document.getElementById('p-error').style.display = 'none';
+  openModal('modal-punto');
+}
+
+async function guardarPunto() {
+  const id          = document.getElementById('p-id').value;
+  const nombre      = document.getElementById('p-nombre').value.trim();
+  const puntoNombre = document.getElementById('p-punto-nombre').value.trim();
+  const puntoId     = document.getElementById('p-punto-id').value.trim();
+  const email       = document.getElementById('p-email').value.trim();
+  const rol         = document.getElementById('p-rol').value;
+  const errEl       = document.getElementById('p-error');
+
+  if (!nombre || !puntoNombre) {
+    errEl.textContent = 'Nombre del responsable y nombre del punto son requeridos';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const payload = id
+    ? { accion: 'actualizar', id: parseInt(id), nombre, punto_nombre: puntoNombre, punto_id: puntoId }
+    : { accion: 'agregar', nombre, punto_nombre: puntoNombre, punto_id: puntoId, email, rol };
+
+  try {
+    const r = await fetch('php/admin-puntos.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      closeModal('modal-punto');
+      showToast(id ? '✅ Punto actualizado' : '✅ Punto creado', 'success');
+      loadPuntos();
+    } else {
+      errEl.textContent = d.error || 'Error al guardar';
+      errEl.style.display = 'block';
+    }
+  } catch {
+    errEl.textContent = 'Error de conexión';
+    errEl.style.display = 'block';
+  }
+}
+
+async function eliminarPunto(id) {
+  if (!confirm('¿Desactivar este punto? Las motos asignadas no se eliminarán.')) return;
+  try {
+    const r = await fetch('php/admin-puntos.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ accion: 'eliminar', id })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('✅ Punto desactivado', 'success');
+      loadPuntos();
+    } else {
+      showToast('❌ ' + (d.error || 'Error'), 'error');
+    }
+  } catch {
+    showToast('Error de conexión', 'error');
+  }
 }
 </script>
 </body>
