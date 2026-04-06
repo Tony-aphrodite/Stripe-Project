@@ -36,6 +36,46 @@ $pdo = getDB();
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $vista = $_GET['vista'] ?? '';
 
+    // Single punto inventory drill-down
+    if ($vista === 'punto_inventario') {
+        $dealerId = intval($_GET['dealer_id'] ?? 0);
+        if (!$dealerId) { echo json_encode(['ok' => false, 'error' => 'dealer_id requerido']); exit; }
+
+        // Punto info
+        $puntoStmt = $pdo->prepare("SELECT nombre, punto_nombre, email FROM dealer_usuarios WHERE id = ? LIMIT 1");
+        $puntoStmt->execute([$dealerId]);
+        $puntoInfo = $puntoStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        // All motos for this punto
+        $motosStmt = $pdo->prepare("
+            SELECT m.id, m.vin, m.modelo, m.color, m.estado, m.pago_estado,
+                   m.cliente_nombre, m.cliente_email, m.cliente_telefono,
+                   m.pedido_num, m.dias_en_paso, m.fecha_estado,
+                   m.anio_modelo, m.potencia, m.precio_venta,
+                   m.stripe_payment_status,
+                   IFNULL(co.completado, 0) AS checklist_completado
+            FROM inventario_motos m
+            LEFT JOIN (
+                SELECT moto_id, MAX(completado) AS completado
+                FROM checklist_origen GROUP BY moto_id
+            ) co ON co.moto_id = m.id
+            WHERE m.dealer_id = ? AND m.activo = 1
+            ORDER BY m.fecha_estado DESC
+        ");
+        $motosStmt->execute([$dealerId]);
+        $motos = $motosStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Stats by estado
+        $stats = [];
+        foreach ($motos as $m) {
+            $e = $m['estado'];
+            $stats[$e] = ($stats[$e] ?? 0) + 1;
+        }
+
+        echo json_encode(['ok' => true, 'punto' => $puntoInfo, 'motos' => $motos, 'stats' => $stats]);
+        exit;
+    }
+
     // Puntos overview
     if ($vista === 'puntos') {
         $stmt = $pdo->query("
