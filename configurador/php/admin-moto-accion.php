@@ -29,17 +29,124 @@ if (!$motoId || !$accion) {
     exit;
 }
 
-// Estado transitions
+// ── Role helpers ─────────────────────────────────────────────────────────────
+$isCedis  = in_array($dealer['rol'], ['admin', 'cedis']);
+$isDealer = in_array($dealer['rol'], ['dealer', 'admin']);
+
+// ── Special action: enviar_a_punto (CEDIS only, handled separately) ──────────
+if ($accion === 'enviar_a_punto') {
+    if (!$isCedis) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Solo CEDIS puede enviar motos a un punto']);
+        exit;
+    }
+
+    $dealerDestinoId  = intval($json['dealer_destino_id']  ?? 0);
+    $puntoNombreDest  = trim($json['punto_nombre_destino'] ?? '');
+    $puntoIdDest      = trim($json['punto_id_destino']     ?? '');
+
+    if (!$dealerDestinoId || !$puntoNombreDest) {
+        http_response_code(400);
+        echo json_encode(['error' => 'dealer_destino_id y punto_nombre_destino son requeridos']);
+        exit;
+    }
+
+    try {
+        $pdo = getDB();
+        $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? AND activo = 1 LIMIT 1");
+        $stmt->execute([$motoId]);
+        $moto = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$moto) { http_response_code(404); echo json_encode(['error' => 'Moto no encontrada']); exit; }
+
+        if ($moto['estado'] !== 'lista_para_entrega') {
+            http_response_code(409);
+            echo json_encode(['error' => 'La moto debe estar en "Lista para Entrega" para enviarla a un punto']);
+            exit;
+        }
+
+        $logActual   = $moto['log_estados'] ? json_decode($moto['log_estados'], true) : [];
+        $logActual[] = [
+            'estado'    => 'en_envio',
+            'accion'    => 'enviar_a_punto',
+            'dealer'    => $dealer['nombre'],
+            'timestamp' => date('Y-m-d H:i:s'),
+            'notas'     => "Enviado a: $puntoNombreDest" . ($notas ? " — $notas" : ''),
+        ];
+
+        $pdo->prepare("
+            UPDATE inventario_motos
+            SET estado = 'en_envio', fecha_estado = NOW(), dias_en_paso = 0,
+                dealer_id = ?, punto_nombre = ?, punto_id = ?,
+                cedis_origen = IFNULL(cedis_origen, punto_nombre),
+                log_estados = ?
+            WHERE id = ?
+        ")->execute([
+            $dealerDestinoId,
+            $puntoNombreDest,
+            $puntoIdDest ?: null,
+            json_encode($logActual, JSON_UNESCAPED_UNICODE),
+            $motoId,
+        ]);
+
+        echo json_encode(['ok' => true, 'nuevo_estado' => 'en_envio', 'moto_id' => $motoId,
+                          'message' => "Moto en camino a $puntoNombreDest"]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Error interno: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Special action: confirmar_recepcion (Punto/dealer only) ──────────────────
+if ($accion === 'confirmar_recepcion') {
+    try {
+        $pdo = getDB();
+        $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? AND activo = 1 AND dealer_id = ? LIMIT 1");
+        $stmt->execute([$motoId, $dealer['id']]);
+        $moto = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$moto) { http_response_code(404); echo json_encode(['error' => 'Moto no encontrada o no asignada a tu punto']); exit; }
+
+        if ($moto['estado'] !== 'en_envio') {
+            http_response_code(409);
+            echo json_encode(['error' => 'La moto debe estar "En Envío" para confirmar recepción']);
+            exit;
+        }
+
+        $logActual   = $moto['log_estados'] ? json_decode($moto['log_estados'], true) : [];
+        $logActual[] = [
+            'estado'    => 'en_punto',
+            'accion'    => 'confirmar_recepcion',
+            'dealer'    => $dealer['nombre'],
+            'timestamp' => date('Y-m-d H:i:s'),
+            'notas'     => 'Recepción confirmada en ' . $dealer['punto_nombre'] . ($notas ? " — $notas" : ''),
+        ];
+
+        $pdo->prepare("
+            UPDATE inventario_motos
+            SET estado = 'en_punto', fecha_estado = NOW(), dias_en_paso = 0, log_estados = ?
+            WHERE id = ?
+        ")->execute([json_encode($logActual, JSON_UNESCAPED_UNICODE), $motoId]);
+
+        echo json_encode(['ok' => true, 'nuevo_estado' => 'en_punto', 'moto_id' => $motoId,
+                          'message' => 'Moto ingresada al inventario del punto']);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Error interno: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// Estado transitions (standard)
 $transitions = [
-    'recibir'            => ['from' => 'por_llegar',            'to' => 'recibida'],
-    'iniciar_ensamble'   => ['from' => 'por_ensamblar',         'to' => 'en_ensamble'],
-    'terminar_ensamble'  => ['from' => 'en_ensamble',           'to' => 'lista_para_entrega'],
-    'marcar_lista'       => ['from' => 'recibida',              'to' => 'lista_para_entrega'],
-    'iniciar_validacion' => ['from' => 'lista_para_entrega',    'to' => 'por_validar_entrega'],
-    'retener'            => ['from' => null,                    'to' => 'retenida'],
-    'liberar'            => ['from' => 'retenida',              'to' => 'recibida'],
-    'iniciar_venta'      => ['from' => 'lista_para_entrega',    'to' => 'por_validar_entrega'],
-    'por_ensamblar'      => ['from' => 'recibida',              'to' => 'por_ensamblar'],
+    'recibir'            => ['from' => 'por_llegar',            'to' => 'recibida',              'rol' => ['admin','cedis']],
+    'iniciar_ensamble'   => ['from' => 'por_ensamblar',         'to' => 'en_ensamble',           'rol' => ['admin','cedis']],
+    'terminar_ensamble'  => ['from' => 'en_ensamble',           'to' => 'lista_para_entrega',    'rol' => ['admin','cedis']],
+    'marcar_lista'       => ['from' => 'recibida',              'to' => 'lista_para_entrega',    'rol' => ['admin','cedis']],
+    'iniciar_validacion' => ['from' => 'en_punto',              'to' => 'por_validar_entrega',   'rol' => ['admin','dealer']],
+    'retener'            => ['from' => null,                    'to' => 'retenida',              'rol' => ['admin','cedis']],
+    'liberar'            => ['from' => 'retenida',              'to' => 'recibida',              'rol' => ['admin','cedis']],
+    'iniciar_venta'      => ['from' => 'en_punto',              'to' => 'por_validar_entrega',   'rol' => ['admin','dealer']],
+    'por_ensamblar'      => ['from' => 'recibida',              'to' => 'por_ensamblar',         'rol' => ['admin','cedis']],
 ];
 
 if (!isset($transitions[$accion])) {

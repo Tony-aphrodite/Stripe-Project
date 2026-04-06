@@ -782,6 +782,8 @@ body.admin-body {
 .badge-por-validar     { background: #fef3c7; color: #92400e; }
 .badge-entregada       { background: var(--vka-green-light); color: #065f46; }
 .badge-retenida        { background: var(--vka-red-light); color: #991b1b; }
+.badge-en-envio        { background: #dbeafe; color: #1d4ed8; }
+.badge-en-punto        { background: #ede9fe; color: #4c1d95; }
 .badge-voltika         { background: var(--vka-blue-light); color: var(--vka-blue-dark); }
 .badge-consignacion    { background: #d1fae5; color: #065f46; }
 

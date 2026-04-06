@@ -174,6 +174,15 @@
 
   <!-- ── LISTA TAB ─────────────────────────────────────────────────────────── -->
   <div id="invtab-lista" class="tab-content active">
+    <!-- En Camino section (dealers only) -->
+    <div id="entrantes-section" style="display:none;margin-bottom:16px;">
+      <div style="background:#dbeafe;border:1.5px solid #93c5fd;border-radius:10px;padding:14px 16px;">
+        <div style="font-size:13px;font-weight:800;color:#1d4ed8;margin-bottom:10px;">
+          📦 Motos en Camino — Pendientes de Recepción
+        </div>
+        <div id="entrantes-wrap"></div>
+      </div>
+    </div>
     <!-- Filter bar -->
     <div class="filter-bar">
       <input type="text" id="filter-q" placeholder="Buscar por VIN, cliente, pedido..." style="flex:1;min-width:160px;" oninput="filtrarMotos()">
@@ -184,6 +193,8 @@
         <option value="por_ensamblar">Por Ensamblar</option>
         <option value="en_ensamble">En Ensamble</option>
         <option value="lista_para_entrega">Lista para Entrega</option>
+        <option value="en_envio">En Envío</option>
+        <option value="en_punto">En Punto</option>
         <option value="por_validar_entrega">Por Validar Entrega</option>
         <option value="entregada">Entregada</option>
         <option value="retenida">Retenida</option>
@@ -270,6 +281,8 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-detalle')">Cerrar</button>
       <button class="btn btn-ghost btn-sm" id="btn-ver-checklist" onclick="verChecklistOrigen()" style="color:var(--vka-blue);">📋 Checklist</button>
+      <button class="btn btn-sm" id="btn-confirmar-recepcion" onclick="confirmarRecepcion()" style="display:none;background:#4c1d95;color:#fff;border:none;font-weight:700;">✅ Confirmar Recepción</button>
+      <button class="btn btn-sm" id="btn-enviar-a-punto" onclick="openModalEnviarPunto()" style="display:none;background:#1d4ed8;color:#fff;border:none;font-weight:700;">📦 Enviar a Punto</button>
       <button class="btn btn-primary btn-sm" id="btn-editar-moto" onclick="editarMoto()">✏️ Editar</button>
     </div>
   </div>
@@ -433,6 +446,39 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: ENVIAR A PUNTO ════════════════════════════════════════════════ -->
+<div id="modal-enviar-punto" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-enviar-punto')">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <span class="modal-title">Enviar moto a un punto</span>
+      <button class="modal-close" onclick="closeModal('modal-enviar-punto')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--vka-grey);margin-bottom:14px;">
+        Selecciona el punto de destino. La moto cambiará al estado <strong>En Envío</strong>
+        y el punto recibirá una notificación para confirmar la recepción.
+      </p>
+      <div class="form-grid single">
+        <div class="field">
+          <label>Punto de destino *</label>
+          <select id="ep-punto-id">
+            <option value="">Seleccionar punto...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Notas de envío</label>
+          <input type="text" id="ep-notas" placeholder="Ej: Guía de envío #123, conductor...">
+        </div>
+      </div>
+      <div id="ep-error" class="login-error" style="display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-enviar-punto')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-ep-confirmar" onclick="enviarAPunto()">📦 Confirmar Envío</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL: REFERIDO ═══════════════════════════════════════════════════════ -->
 <div id="modal-referido" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-referido')">
   <div class="modal" style="max-width:400px;">
@@ -465,11 +511,13 @@ let currentDetalleId = null;
 const ESTADOS_LABEL = {
   por_llegar:'Por Llegar', recibida:'Recibida', por_ensamblar:'Por Ensamblar',
   en_ensamble:'En Ensamble', lista_para_entrega:'Lista para Entrega',
+  en_envio:'En Envío', en_punto:'En Punto',
   por_validar_entrega:'Por Validar Entrega', entregada:'Entregada', retenida:'Retenida'
 };
 const ESTADOS_BADGE = {
   por_llegar:'badge-por-llegar', recibida:'badge-recibida', por_ensamblar:'badge-por-ensamblar',
   en_ensamble:'badge-en-ensamble', lista_para_entrega:'badge-lista',
+  en_envio:'badge-en-envio', en_punto:'badge-en-punto',
   por_validar_entrega:'badge-por-validar', entregada:'badge-entregada', retenida:'badge-retenida'
 };
 
@@ -515,6 +563,7 @@ async function loadInventario() {
     if (!d.ok) throw new Error(d.error);
     allMotos = d.motos || [];
     renderStats(d.stats || {});
+    renderEntrantes();
     filtrarMotos();
   } catch(e) {
     document.getElementById('inv-table-wrap').innerHTML =
@@ -642,6 +691,15 @@ function openDetalle(motoId) {
   // Punto dealers cannot edit; only CEDIS/admin can
   const isCedisOrAdmin = dealer && ['admin','cedis'].includes(dealer.rol);
   document.getElementById('btn-editar-moto').style.display = isCedisOrAdmin ? '' : 'none';
+
+  // Show "Enviar a Punto" button only for CEDIS/admin when moto is lista_para_entrega
+  const btnEnviar = document.getElementById('btn-enviar-a-punto');
+  btnEnviar.style.display = (isCedisOrAdmin && m.estado === 'lista_para_entrega') ? '' : 'none';
+
+  // Show "Confirmar Recepción" button only for dealer when moto is en_envio
+  const isDealer = dealer && ['dealer'].includes(dealer.rol);
+  const btnConfirmar = document.getElementById('btn-confirmar-recepcion');
+  btnConfirmar.style.display = (isDealer && m.estado === 'en_envio') ? '' : 'none';
 
   openModal('modal-detalle');
 }
@@ -1296,6 +1354,168 @@ async function eliminarPunto(id) {
     }
   } catch {
     showToast('Error de conexión', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ENTRANTES (dealer: motos en_envio asignadas a este punto)
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderEntrantes() {
+  const section = document.getElementById('entrantes-section');
+  const wrap    = document.getElementById('entrantes-wrap');
+  if (!dealer) return;
+
+  // Only show for dealer role (not cedis/admin)
+  const isDealer = dealer.rol === 'dealer';
+  const entrantes = allMotos.filter(m => m.estado === 'en_envio');
+
+  if (!isDealer || !entrantes.length) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = '';
+
+  const isMobile = window.innerWidth <= 680;
+  let html = '';
+
+  if (isMobile) {
+    html = '<div class="inv-card-list">';
+    entrantes.forEach(m => {
+      html += `<div class="inv-list-card" style="cursor:default;border-color:#93c5fd;">
+        <div class="inv-card-row inv-card-top">
+          <span class="inv-card-modelo">${esc(m.modelo)} <span class="inv-card-color">${esc(m.color)}</span></span>
+          <span class="badge badge-en-envio">En Envío</span>
+        </div>
+        <div class="inv-card-row" style="margin-top:4px;">
+          <span class="inv-card-vin">VIN: <strong style="color:var(--vka-blue);">${esc(m.vin)}</strong></span>
+        </div>
+        ${m.cliente_nombre ? `<div style="font-size:12px;color:#444;margin-top:3px;">${esc(m.cliente_nombre)}</div>` : ''}
+        <div style="margin-top:8px;">
+          <button class="btn btn-sm" style="width:100%;background:#4c1d95;color:#fff;border:none;font-weight:700;"
+            onclick="confirmarRecepcionDirecto(${m.id})">✅ Confirmar Recepción</button>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  } else {
+    html = `<table class="inv-table" style="background:transparent;">
+      <thead><tr style="background:rgba(29,78,216,.08);">
+        <th>Modelo / Color</th><th>VIN</th><th>Cliente</th><th>Pedido</th><th>Acción</th>
+      </tr></thead><tbody>`;
+    entrantes.forEach(m => {
+      html += `<tr style="background:rgba(255,255,255,.7);">
+        <td>${esc(m.modelo)} <span style="color:var(--vka-grey)">${esc(m.color)}</span></td>
+        <td style="font-family:monospace;font-size:12px;"><strong style="color:var(--vka-blue);">${esc(m.vin)}</strong></td>
+        <td>${esc(m.cliente_nombre||'—')}</td>
+        <td style="font-size:12px;">${esc(m.pedido_num||'—')}</td>
+        <td>
+          <button class="btn btn-sm" style="background:#4c1d95;color:#fff;border:none;font-weight:700;"
+            onclick="confirmarRecepcionDirecto(${m.id})">✅ Confirmar Recepción</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  }
+
+  wrap.innerHTML = html;
+}
+
+async function confirmarRecepcionDirecto(motoId) {
+  if (!confirm('¿Confirmar la recepción de esta moto en tu punto?')) return;
+  try {
+    const r = await fetch('php/admin-moto-accion.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ moto_id: motoId, accion: 'confirmar_recepcion' })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('✅ Moto ingresada al inventario del punto', 'success');
+      await loadInventario();
+    } else {
+      showToast('❌ ' + (d.error || 'Error'), 'error');
+    }
+  } catch { showToast('Error de conexión', 'error'); }
+}
+
+async function confirmarRecepcion() {
+  await confirmarRecepcionDirecto(currentDetalleId);
+  closeModal('modal-detalle');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ENVIAR A PUNTO (CEDIS/admin: send lista_para_entrega moto to a dealer punto)
+// ═══════════════════════════════════════════════════════════════════════════════
+async function openModalEnviarPunto() {
+  const errEl = document.getElementById('ep-error');
+  errEl.style.display = 'none';
+  document.getElementById('ep-notas').value = '';
+
+  // Load puntos for selector
+  const sel = document.getElementById('ep-punto-id');
+  sel.innerHTML = '<option value="">Cargando puntos...</option>';
+
+  try {
+    const r = await fetch('php/admin-puntos.php');
+    const d = await r.json();
+    const puntos = (d.puntos || []).filter(p => p.rol === 'dealer');
+    if (!puntos.length) {
+      sel.innerHTML = '<option value="">No hay puntos disponibles</option>';
+    } else {
+      sel.innerHTML = '<option value="">Seleccionar punto...</option>' +
+        puntos.map(p => `<option value="${p.id}|${esc(p.punto_nombre)}">${esc(p.punto_nombre)} — ${esc(p.nombre)}</option>`).join('');
+    }
+  } catch {
+    sel.innerHTML = '<option value="">Error al cargar puntos</option>';
+  }
+
+  closeModal('modal-detalle');
+  openModal('modal-enviar-punto');
+}
+
+async function enviarAPunto() {
+  const sel     = document.getElementById('ep-punto-id');
+  const notas   = document.getElementById('ep-notas').value.trim();
+  const errEl   = document.getElementById('ep-error');
+  const btn     = document.getElementById('btn-ep-confirmar');
+  errEl.style.display = 'none';
+
+  const [dealerDestinoId, puntoNombreDest] = (sel.value || '').split('|');
+  if (!dealerDestinoId || !puntoNombreDest) {
+    errEl.textContent = 'Selecciona un punto de destino';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    const r = await fetch('php/admin-moto-accion.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        moto_id: currentDetalleId,
+        accion: 'enviar_a_punto',
+        dealer_destino_id: parseInt(dealerDestinoId),
+        punto_nombre_destino: puntoNombreDest,
+        notas
+      })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      closeModal('modal-enviar-punto');
+      showToast(`✅ ${d.message}`, 'success');
+      await loadInventario();
+    } else {
+      errEl.textContent = d.error || 'Error al enviar';
+      errEl.style.display = 'block';
+    }
+  } catch {
+    errEl.textContent = 'Error de conexión';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📦 Confirmar Envío';
   }
 }
 </script>
