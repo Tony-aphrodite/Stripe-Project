@@ -62,6 +62,9 @@ var PasoResumen = {
         html += VkUI.renderCardLogos();
         html += '</div>';
 
+        // 2b. Inventory availability badge (loaded async)
+        html += '<div id="vk-inv-badge" style="text-align:center;margin-bottom:10px;min-height:22px;"></div>';
+
         // 3. "Tu moto está lista" card — adapts to metodoPago
         html += '<div class="vk-card" style="padding:20px;margin-bottom:14px;text-align:center;">';
         html += '<div style="font-size:14px;font-weight:700;margin-bottom:2px;">Tu moto ' + modelo.nombre + ' est\u00e1 lista</div>';
@@ -153,6 +156,28 @@ var PasoResumen = {
         html += '</div>';
 
         jQuery('#vk-resumen-container').html(html);
+
+        // Load inventory availability badge async
+        this._loadInventoryBadge(modelo.id || modelo.nombre, color);
+    },
+
+    _loadInventoryBadge: function(modeloId, color) {
+        var base = window.VK_BASE_PATH || '';
+        var url  = base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modeloId) + '&color=' + encodeURIComponent(color);
+        jQuery.getJSON(url).done(function(d) {
+            var badge = jQuery('#vk-inv-badge');
+            if (!badge.length) return;
+            var total = d.total || 0;
+            if (total > 3) {
+                badge.html('<span style="display:inline-block;background:#d1fae5;color:#065f46;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;">&#10004; ' + total + ' unidades disponibles</span>');
+            } else if (total > 0) {
+                badge.html('<span style="display:inline-block;background:#fef3c7;color:#92400e;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;">&#9888; \u00daltimas ' + total + ' unidade' + (total === 1 ? '' : 's') + ' disponible' + (total === 1 ? '' : 's') + '</span>');
+            } else {
+                badge.html('<span style="display:inline-block;background:#fee2e2;color:#991b1b;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;">&#9888; Bajo pedido — se asigna unidad al confirmar</span>');
+            }
+        }).fail(function() {
+            // Ignore if endpoint unavailable
+        });
     },
 
     /* ── CRÉDITO: Screen 5 ───────────────────────────────────────────────── */
