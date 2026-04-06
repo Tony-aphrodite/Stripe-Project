@@ -81,9 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
     unset($r);
 
-    // Stats totals
+    // Stats totals — same dealer filter as list
     $stats = [];
-    $stmtStats = $pdo->query("SELECT estado, COUNT(*) AS cnt FROM inventario_motos WHERE activo=1 GROUP BY estado");
+    if ($dealer['rol'] === 'admin') {
+        $stmtStats = $pdo->query("SELECT estado, COUNT(*) AS cnt FROM inventario_motos WHERE activo=1 GROUP BY estado");
+    } else {
+        $stmtStats = $pdo->prepare("SELECT estado, COUNT(*) AS cnt FROM inventario_motos WHERE activo=1 AND (dealer_id = ? OR dealer_id IS NULL) GROUP BY estado");
+        $stmtStats->execute([$dealer['id']]);
+    }
     foreach ($stmtStats->fetchAll(PDO::FETCH_ASSOC) as $s) {
         $stats[$s['estado']] = (int)$s['cnt'];
     }
