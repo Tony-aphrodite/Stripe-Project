@@ -85,26 +85,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
 
-    // Default: all motos with location info
+    // Default: all motos with location info + checklist status
     try {
         $stmt = $pdo->query("
             SELECT m.id, m.vin, m.modelo, m.color, m.estado, m.punto_nombre,
                    m.cliente_nombre, m.pedido_num, m.pago_estado, m.stripe_payment_status,
                    m.dealer_id, m.cedis_origen, m.transaccion_id, m.freg,
-                   d.nombre AS dealer_nombre
+                   d.nombre AS dealer_nombre,
+                   IFNULL(co.completado, 0) AS checklist_completado,
+                   IFNULL(co.bloqueado, 0)  AS checklist_bloqueado
             FROM inventario_motos m
             LEFT JOIN dealer_usuarios d ON d.id = m.dealer_id
+            LEFT JOIN (
+                SELECT moto_id,
+                       MAX(completado) AS completado,
+                       MAX(bloqueado)  AS bloqueado
+                FROM checklist_origen
+                GROUP BY moto_id
+            ) co ON co.moto_id = m.id
             WHERE m.activo = 1
             ORDER BY m.freg DESC
             LIMIT 500
         ");
         echo json_encode(['ok' => true, 'motos' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     } catch (PDOException $e) {
-        // Fallback without new columns
+        // Fallback without checklist join
         $stmt = $pdo->query("
             SELECT m.id, m.vin, m.modelo, m.color, m.estado, m.punto_nombre,
                    m.cliente_nombre, m.pedido_num, m.pago_estado,
-                   m.dealer_id, m.freg
+                   m.dealer_id, m.freg,
+                   0 AS checklist_completado, 0 AS checklist_bloqueado
             FROM inventario_motos m
             WHERE m.activo = 1
             ORDER BY m.freg DESC
@@ -129,6 +139,19 @@ if ($accion === 'mover_punto') {
     if (!$motoId || !$dealerId) {
         echo json_encode(['ok' => false, 'error' => 'moto_id y dealer_id requeridos']);
         exit;
+    }
+
+    // Verify checklist_origen is completed and locked before allowing move
+    try {
+        $clStmt = $pdo->prepare("SELECT completado, bloqueado FROM checklist_origen WHERE moto_id = ? ORDER BY id DESC LIMIT 1");
+        $clStmt->execute([$motoId]);
+        $clRow = $clStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$clRow || !$clRow['completado'] || !$clRow['bloqueado']) {
+            echo json_encode(['ok' => false, 'error' => 'El Checklist de Origen debe completarse antes de transferir la moto.', 'checklist_requerido' => true]);
+            exit;
+        }
+    } catch (PDOException $e) {
+        // If checklist table doesn't exist yet, allow move (graceful degradation)
     }
 
     $pdo->prepare("
