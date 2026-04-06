@@ -89,7 +89,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         $stmt = $pdo->query("
             SELECT m.id, m.vin, m.modelo, m.color, m.estado, m.punto_nombre,
-                   m.cliente_nombre, m.pedido_num, m.pago_estado, m.stripe_payment_status,
+                   m.cliente_nombre, m.cliente_email, m.cliente_telefono,
+                   m.pedido_num, m.pago_estado, m.stripe_payment_status,
+                   m.anio_modelo, m.potencia, m.precio_venta, m.fecha_llegada,
                    m.dealer_id, m.cedis_origen, m.transaccion_id, m.freg,
                    d.nombre AS dealer_nombre,
                    IFNULL(co.completado, 0) AS checklist_completado,
@@ -112,7 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Fallback without checklist join
         $stmt = $pdo->query("
             SELECT m.id, m.vin, m.modelo, m.color, m.estado, m.punto_nombre,
-                   m.cliente_nombre, m.pedido_num, m.pago_estado,
+                   m.cliente_nombre, m.cliente_email, m.cliente_telefono,
+                   m.pedido_num, m.pago_estado,
+                   m.anio_modelo, m.potencia, m.precio_venta,
                    m.dealer_id, m.freg,
                    0 AS checklist_completado, 0 AS checklist_bloqueado
             FROM inventario_motos m
