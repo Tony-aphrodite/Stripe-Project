@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/admin-auth.php';
 require_once __DIR__ . '/envia-api.php';
+require_once __DIR__ . '/notificaciones.php';
 
 $dealer = requireDealerAuth();
 
@@ -153,79 +154,9 @@ if ($accion === 'enviar_a_punto') {
             $motoId,
         ]);
 
-        // ── Send customer email ────────────────────────────────────────────────
-        if (!empty($moto['cliente_email'])) {
-            $nombre       = $moto['cliente_nombre'] ?? 'Cliente';
-            $fechaLL      = $fechaLlegada  ? date('d/m/Y', strtotime($fechaLlegada))  : 'Por confirmar';
-            $fechaRC      = $fechaRecogida ? date('d/m/Y', strtotime($fechaRecogida)) : 'Por confirmar';
-            $trackingHtml = $trackingUrl
-                ? "<p style='margin:16px 0 0;'><a href='$trackingUrl' style='background:#1d4ed8;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;'>📦 Rastrear mi envío</a></p>"
-                : '';
-            $trackingInfo = $trackingNumber
-                ? "<tr><td style='color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;'>No. de rastreo</td><td style='font-weight:700;padding:10px 12px;border-bottom:1px solid #E5E7EB;'>$trackingNumber</td></tr>"
-                : '';
-
-            $emailHtml = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;">
-  <tr><td align="center" style="padding:24px;">
-    <table width="620" cellpadding="0" cellspacing="0"
-           style="background:#fff;border-radius:8px;overflow:hidden;max-width:620px;width:100%;">
-      <tr>
-        <td style="background:linear-gradient(135deg,#1d4ed8,#039fe1);padding:24px 28px;color:#fff;">
-          <h1 style="margin:0;font-size:22px;font-weight:800;">&#9889; voltika</h1>
-          <p style="margin:8px 0 0;font-size:16px;">&#128666; Tu moto está en camino</p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:28px;">
-          <p style="margin:0 0 16px;font-size:15px;color:#111;">
-            Hola <strong>' . htmlspecialchars($nombre) . '</strong>,
-          </p>
-          <p style="margin:0 0 20px;font-size:14px;color:#555;">
-            Tu motocicleta <strong>' . htmlspecialchars($moto['modelo'] . ' ' . $moto['color']) . '</strong>
-            ha sido enviada al punto de entrega <strong>' . htmlspecialchars($puntoNombreDest) . '</strong>.
-          </p>
-          <table width="100%" cellpadding="8" cellspacing="0"
-                 style="border:1px solid #E5E7EB;border-radius:8px;font-size:14px;">
-            <tr style="background:#F9FAFB;">
-              <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">Modelo</td>
-              <td style="font-weight:700;padding:10px 12px;border-bottom:1px solid #E5E7EB;">' . htmlspecialchars($moto['modelo'] . ' ' . $moto['color']) . '</td>
-            </tr>
-            <tr>
-              <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">Punto de entrega</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #E5E7EB;font-weight:700;">' . htmlspecialchars($puntoNombreDest) . '</td>
-            </tr>
-            <tr style="background:#F9FAFB;">
-              <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">&#128197; Llegada estimada al punto</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #E5E7EB;font-weight:700;color:#1d4ed8;">' . $fechaLL . '</td>
-            </tr>
-            <tr>
-              <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">&#128274; Fecha estimada de recogida</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #E5E7EB;font-weight:700;color:#059669;">' . $fechaRC . '</td>
-            </tr>
-            ' . $trackingInfo . '
-            ' . ($moto['pedido_num'] ? "<tr style='background:#F9FAFB;'><td style='color:#6B7280;padding:10px 12px;'>Pedido</td><td style='font-weight:700;padding:10px 12px;'>" . htmlspecialchars($moto['pedido_num']) . "</td></tr>" : '') . '
-          </table>
-          ' . $trackingHtml . '
-          <p style="margin:24px 0 0;font-size:13px;color:#9CA3AF;">
-            Te avisaremos cuando tu moto esté lista para recoger. ¿Dudas?
-            <a href="mailto:ventas@voltika.com.mx" style="color:#039fe1;">ventas@voltika.com.mx</a>
-          </p>
-        </td>
-      </tr>
-    </table>
-  </td></tr>
-</table>
-</body></html>';
-
-            sendMail(
-                $moto['cliente_email'],
-                $nombre,
-                '🏍️ Tu Voltika está en camino — ' . $puntoNombreDest,
-                $emailHtml
-            );
-        }
+        // ── Notify customer (email + WhatsApp) ─────────────────────────────────
+        // Trigger 1+2 combined: punto assigned AND moto in transit
+        notifEnCamino($motoId);
 
         echo json_encode([
             'ok'              => true,
@@ -444,69 +375,10 @@ try {
         ]);
     }
 
-    // ── Email: moto lista para recoger (terminar_ensamble → lista_para_entrega) ─
-    if ($accion === 'terminar_ensamble' && !empty($moto['cliente_email'])) {
-        $nombre      = $moto['cliente_nombre'] ?? 'Cliente';
-        $puntoNombre = $moto['punto_nombre']   ?? 'el punto de entrega';
-
-        $emailHtml = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;">
-  <tr><td align="center" style="padding:24px;">
-    <table width="620" cellpadding="0" cellspacing="0"
-           style="background:#fff;border-radius:8px;overflow:hidden;max-width:620px;width:100%;">
-      <tr>
-        <td style="background:linear-gradient(135deg,#059669,#10b981);padding:24px 28px;color:#fff;">
-          <h1 style="margin:0;font-size:22px;font-weight:800;">&#9889; voltika</h1>
-          <p style="margin:8px 0 0;font-size:18px;font-weight:700;">&#9989; ¡Tu moto está lista!</p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:28px;">
-          <p style="margin:0 0 16px;font-size:15px;color:#111;">
-            Hola <strong>' . htmlspecialchars($nombre) . '</strong>,
-          </p>
-          <p style="margin:0 0 20px;font-size:15px;color:#111;line-height:1.6;">
-            &#127881; ¡Excelente noticia! Tu motocicleta
-            <strong>' . htmlspecialchars($moto['modelo'] . ' ' . $moto['color']) . '</strong>
-            ha pasado por el proceso de ensamble y validación exitosamente.
-            <br><br>
-            <strong style="color:#059669;">Ya puedes pasar a recogerla.</strong>
-          </p>
-          <table width="100%" cellpadding="8" cellspacing="0"
-                 style="border:1px solid #E5E7EB;border-radius:8px;font-size:14px;">
-            <tr style="background:#F9FAFB;">
-              <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">Motocicleta</td>
-              <td style="font-weight:700;padding:10px 12px;border-bottom:1px solid #E5E7EB;">' . htmlspecialchars($moto['modelo'] . ' ' . $moto['color']) . '</td>
-            </tr>
-            <tr>
-              <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">Punto de entrega</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #E5E7EB;font-weight:700;color:#059669;">' . htmlspecialchars($puntoNombre) . '</td>
-            </tr>
-            ' . ($moto['pedido_num'] ? "<tr style='background:#F9FAFB;'><td style='color:#6B7280;padding:10px 12px;'>Pedido</td><td style='font-weight:700;padding:10px 12px;'>" . htmlspecialchars($moto['pedido_num']) . "</td></tr>" : '') . '
-          </table>
-          <div style="background:#d1fae5;border-radius:8px;padding:16px;margin:20px 0 0;text-align:center;">
-            <p style="margin:0;font-size:14px;font-weight:700;color:#065f46;">
-              &#128205; Preséntate en <strong>' . htmlspecialchars($puntoNombre) . '</strong>
-              con tu identificación oficial y número de pedido.
-            </p>
-          </div>
-          <p style="margin:20px 0 0;font-size:13px;color:#9CA3AF;">
-            ¿Dudas? <a href="mailto:ventas@voltika.com.mx" style="color:#039fe1;">ventas@voltika.com.mx</a>
-          </p>
-        </td>
-      </tr>
-    </table>
-  </td></tr>
-</table>
-</body></html>';
-
-        sendMail(
-            $moto['cliente_email'],
-            $nombre,
-            '✅ ¡Tu Voltika está lista para recoger! — ' . $puntoNombre,
-            $emailHtml
-        );
+    // ── Notify customer (email + WhatsApp) ──────────────────────────────────
+    // Trigger 3: moto ready for pickup
+    if ($accion === 'terminar_ensamble') {
+        notifListaParaEntrega($motoId);
     }
 
     echo json_encode([
