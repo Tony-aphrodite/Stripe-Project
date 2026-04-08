@@ -55,6 +55,21 @@ try {
     exit;
 }
 
+// ── Step 1b: Audit-trail row for the captured signature ──────────────────
+// Persists IP, user-agent, timestamp and a SHA-256 of the signature image so
+// we can prove later that this exact signature came from this exact session.
+// Required for legal disputes and the CDC NIP-CIEC compliance file.
+$firmaAuditId = saveFirmaAudit([
+    'nombre'      => $nombre,
+    'email'       => $email,
+    'telefono'    => $telefono,
+    'curp'        => $curp,
+    'modelo'      => $modelo,
+    'pdf_file'    => $pdfPath ? basename($pdfPath) : null,
+    'firma_base64'=> $firma,
+    'customer_id' => $customerId,
+]);
+
 // ── Step 2: Send to Cincel for NOM-151 timestamp ──────────────────────────
 $cincelResult = null;
 if ($cincelEmail && $cincelPassword) {
@@ -82,12 +97,76 @@ $emailSent = false;
 
 // ── Response ──────────────────────────────────────────────────────────────
 echo json_encode([
-    'ok'        => true,
-    'pdf'       => $pdfPath ? basename($pdfPath) : null,
-    'cincel'    => $cincelResult,
-    'emailSent' => $emailSent,
-    'timestamp' => date('c')
+    'ok'             => true,
+    'pdf'            => $pdfPath ? basename($pdfPath) : null,
+    'cincel'         => $cincelResult,
+    'emailSent'      => $emailSent,
+    'firma_audit_id' => $firmaAuditId,
+    'timestamp'      => date('c')
 ]);
+
+/**
+ * Save a row in `firmas_contratos` so we have a tamper-evident record of who
+ * signed, from where, and what they signed. The signature image itself is
+ * stored as the original base64 string plus a SHA-256 hash for integrity.
+ *
+ * Returns the new row id, or null on failure.
+ */
+function saveFirmaAudit(array $data): ?int {
+    if (empty($data['firma_base64'])) return null;
+    try {
+        $pdo = getDB();
+        $pdo->exec("CREATE TABLE IF NOT EXISTS firmas_contratos (
+            id            INT AUTO_INCREMENT PRIMARY KEY,
+            nombre        VARCHAR(200),
+            email         VARCHAR(200),
+            telefono      VARCHAR(30),
+            curp          VARCHAR(20),
+            modelo        VARCHAR(200),
+            pdf_file      VARCHAR(255),
+            customer_id   VARCHAR(100),
+            firma_base64  MEDIUMTEXT,
+            firma_sha256  CHAR(64),
+            ip            VARCHAR(64),
+            user_agent    VARCHAR(500),
+            freg          DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_email (email),
+            INDEX idx_freg  (freg)
+        )");
+
+        $hash = hash('sha256', (string)$data['firma_base64']);
+        $ip   = $_SERVER['HTTP_X_FORWARDED_FOR']
+              ?? $_SERVER['REMOTE_ADDR']
+              ?? null;
+        $ua   = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        if ($ip) $ip = substr(explode(',', $ip)[0], 0, 64);
+        if ($ua) $ua = substr($ua, 0, 500);
+
+        $stmt = $pdo->prepare("
+            INSERT INTO firmas_contratos
+                (nombre, email, telefono, curp, modelo, pdf_file, customer_id,
+                 firma_base64, firma_sha256, ip, user_agent)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $data['nombre']      ?? null,
+            $data['email']       ?? null,
+            $data['telefono']    ?? null,
+            $data['curp']        ?? null,
+            $data['modelo']      ?? null,
+            $data['pdf_file']    ?? null,
+            $data['customer_id'] ?? null,
+            $data['firma_base64'],
+            $hash,
+            $ip,
+            $ua,
+        ]);
+        return (int)$pdo->lastInsertId();
+    } catch (PDOException $e) {
+        error_log('Voltika firmas_contratos error: ' . $e->getMessage());
+        return null;
+    }
+}
 
 
 // ==========================================================================

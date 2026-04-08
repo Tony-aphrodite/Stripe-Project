@@ -355,6 +355,8 @@ var PasoCreditoEnganche = {
         self.app.state.totalPagado = enganche;
         self.app.state.enganchePagado = true;
 
+        var centro = self.app.state.centroEntrega || {};
+
         jQuery.ajax({
             url: self.ORDER_CONFIRM_URL,
             method: 'POST',
@@ -376,7 +378,10 @@ var PasoCreditoEnganche = {
                 plazoMeses:  self.app.state.plazoMeses,
                 pagoSemanal: VkCalculadora.calcular(modelo.precioContado, self.app.state.enganchePorcentaje || 0.30, self.app.state.plazoMeses || 36).pagoSemanal,
                 asesoriaPlacas: self.app.state.asesoriaPlacos || false,
-                seguroQualitas: self.app.state.seguro || false
+                seguroQualitas: self.app.state.seguro || false,
+                punto_id:      centro.id || '',
+                punto_nombre:  centro.nombre || '',
+                punto_tipo:    centro.tipo || ''
             }),
             complete: function() {
                 self._setLoading(false);

@@ -41,6 +41,13 @@ $msiPago         = floatval($json['msiPago'] ?? 0);
 $msiMeses        = intval($json['msiMeses'] ?? 9);
 $asesoriaPlacas  = !empty($json['asesoriaPlacas']) ? 'Sí' : 'No';
 $seguroQualitas  = !empty($json['seguroQualitas']) ? 'Sí' : 'No';
+// Persisted as int flags (Sí/No is only used for the email body below)
+$asesoriaPlacasInt = !empty($json['asesoriaPlacas']) ? 1 : 0;
+$seguroQualitasInt = !empty($json['seguroQualitas']) ? 1 : 0;
+// Selected delivery point (set in paso3-delivery.js → state.centroEntrega)
+$puntoId     = trim($json['punto_id']     ?? '');
+$puntoNombre = trim($json['punto_nombre'] ?? '');
+$puntoTipo   = trim($json['punto_tipo']   ?? '');
 
 $pedidoNum = time();
 $fecha     = date('Y-m-d H:i');
@@ -64,20 +71,35 @@ try {
         total      DECIMAL(12,2),
         freg       DATETIME DEFAULT CURRENT_TIMESTAMP,
         pedido     VARCHAR(20),
-        stripe_pi  VARCHAR(100)
+        stripe_pi  VARCHAR(100),
+        asesoria_placas TINYINT(1) NOT NULL DEFAULT 0,
+        seguro_qualitas TINYINT(1) NOT NULL DEFAULT 0,
+        punto_id        VARCHAR(80)  NULL,
+        punto_nombre    VARCHAR(200) NULL,
+        msi_meses       INT          NULL,
+        msi_pago        DECIMAL(12,2) NULL
     )");
+    // Backfill columns on pre-existing tables
+    ensureTransaccionesColumns($pdo);
 
     $stmt = $pdo->prepare("
         INSERT INTO transacciones
-            (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago, precio, total, freg, pedido, stripe_pi)
+            (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago,
+             precio, total, freg, pedido, stripe_pi,
+             asesoria_placas, seguro_qualitas, punto_id, punto_nombre,
+             msi_meses, msi_pago)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $nombre, $email, $telefono, $modelo, $color,
         $ciudad, $estado, $cp, $pagoTipo,
         $pagoTipo === 'msi' ? $msiPago : $total,
-        $total, $fecha, $pedidoNum, $paymentIntentId
+        $total, $fecha, $pedidoNum, $paymentIntentId,
+        $asesoriaPlacasInt, $seguroQualitasInt,
+        $puntoId ?: null, $puntoNombre ?: null,
+        $pagoTipo === 'msi' ? $msiMeses : null,
+        $pagoTipo === 'msi' ? $msiPago  : null,
     ]);
     // ── Auto-crear registro en inventario_motos para el dealer panel ────────
     $vinAuto = 'VK-' . strtoupper(substr($modelo, 0, 3)) . '-' . $pedidoNum;
@@ -99,12 +121,12 @@ try {
                 (vin, vin_display, modelo, color, tipo_asignacion, estado,
                  cliente_nombre, cliente_email, cliente_telefono,
                  pedido_num, pago_estado, fecha_estado, log_estados, precio_venta, notas,
-                 stripe_pi, transaccion_id)
+                 stripe_pi, transaccion_id, punto_id, punto_nombre)
             VALUES
                 (?, ?, ?, ?, 'voltika_entrega', 'por_llegar',
                  ?, ?, ?,
                  ?, ?, NOW(), ?, ?, ?,
-                 ?, ?)
+                 ?, ?, ?, ?)
         ");
         $stmtMoto->execute([
             $vinAuto, $vinDisplay, $modelo, $color,
@@ -112,9 +134,12 @@ try {
             'VK-' . $pedidoNum,
             $pagoTipo === 'enganche' ? 'parcial' : 'pagada',
             $logEstados, $total,
-            'Pedido confirmado vía configurador. Tipo: ' . $pagoTipo,
+            'Pedido confirmado vía configurador. Tipo: ' . $pagoTipo
+                . ($puntoNombre ? ' · Punto preferido: ' . $puntoNombre : ''),
             $paymentIntentId ?: null,
-            $txId ?: null
+            $txId ?: null,
+            $puntoId     ?: null,
+            $puntoNombre ?: null,
         ]);
     } catch (PDOException $e) {
         error_log('Voltika inventario_motos auto-insert error: ' . $e->getMessage());
@@ -367,3 +392,36 @@ echo json_encode([
     'pedido'    => $pedidoNum,
     'emailSent' => $emailSent
 ]);
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Helpers
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Backfill missing columns on `transacciones` so old installs pick up the new
+ * fields without a manual migration.
+ */
+function ensureTransaccionesColumns(PDO $pdo): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    $cols = [
+        'asesoria_placas' => "ADD COLUMN asesoria_placas TINYINT(1) NOT NULL DEFAULT 0 AFTER stripe_pi",
+        'seguro_qualitas' => "ADD COLUMN seguro_qualitas TINYINT(1) NOT NULL DEFAULT 0 AFTER asesoria_placas",
+        'punto_id'        => "ADD COLUMN punto_id        VARCHAR(80)   NULL AFTER seguro_qualitas",
+        'punto_nombre'    => "ADD COLUMN punto_nombre    VARCHAR(200)  NULL AFTER punto_id",
+        'msi_meses'       => "ADD COLUMN msi_meses       INT           NULL AFTER punto_nombre",
+        'msi_pago'        => "ADD COLUMN msi_pago        DECIMAL(12,2) NULL AFTER msi_meses",
+    ];
+    try {
+        $existing = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($cols as $name => $alter) {
+            if (!in_array($name, $existing, true)) {
+                try { $pdo->exec("ALTER TABLE transacciones " . $alter); }
+                catch (PDOException $e) { error_log('ensureTransaccionesColumns(' . $name . '): ' . $e->getMessage()); }
+            }
+        }
+    } catch (PDOException $e) {
+        error_log('ensureTransaccionesColumns: ' . $e->getMessage());
+    }
+}

@@ -53,6 +53,8 @@ $fechaNac  = '';
 $telefono  = '';
 $email     = '';
 
+$domicilioDiferente = 0;
+
 if (!empty($_POST)) {
     // Multipart FormData from frontend
     $nombre    = trim($_POST['nombre'] ?? '');
@@ -60,6 +62,7 @@ if (!empty($_POST)) {
     $fechaNac  = trim($_POST['fecha_nacimiento'] ?? '');
     $telefono  = trim($_POST['telefono'] ?? '');
     $email     = trim($_POST['email'] ?? '');
+    $domicilioDiferente = !empty($_POST['domicilio_diferente']) ? 1 : 0;
 } else {
     // JSON fallback
     $json = json_decode(file_get_contents('php://input'), true);
@@ -69,6 +72,7 @@ if (!empty($_POST)) {
         $fechaNac  = trim($json['fecha_nacimiento'] ?? '');
         $telefono  = trim($json['telefono'] ?? '');
         $email     = trim($json['email'] ?? '');
+        $domicilioDiferente = !empty($json['domicilio_diferente']) ? 1 : 0;
     }
 }
 
@@ -84,7 +88,7 @@ $timestamp = date('Ymd_His');
 $prefix    = preg_replace('/[^a-zA-Z0-9]/', '', $nombre) . '_' . $timestamp;
 $savedFiles = [];
 
-$fileFields = ['ine_frente', 'ine_reverso', 'selfie'];
+$fileFields = ['ine_frente', 'ine_reverso', 'selfie', 'comprobante_domicilio'];
 foreach ($fileFields as $field) {
     if (isset($_FILES[$field]) && $_FILES[$field]['error'] === UPLOAD_ERR_OK) {
         $tmpName  = $_FILES[$field]['tmp_name'];
@@ -322,8 +326,9 @@ if ($result) {
                  truora_check_id, truora_score, identity_status, approved, files_saved,
                  ine_frente_path, ine_reverso_path, selfie_path,
                  face_check_id, face_score, face_match,
-                 doc_check_id, doc_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 doc_check_id, doc_status,
+                 comprobante_path, domicilio_diferente)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $nombre, $apellidos, $fechaNac, $telefono, $email,
@@ -337,6 +342,8 @@ if ($result) {
             $faceResult ? ($faceMatched ? 1 : 0) : null,
             $docResult['check_id'] ?? null,
             $docResult['status']   ?? null,
+            $savedFiles['comprobante_domicilio'] ?? null,
+            $domicilioDiferente,
         ]);
     } catch (PDOException $e) {
         error_log('Voltika verificaciones_identidad DB error: ' . $e->getMessage());
@@ -523,6 +530,8 @@ function ensureVerifColumns(PDO $pdo): void {
         'doc_status'       => "ADD COLUMN doc_status       VARCHAR(50)  NULL AFTER doc_check_id",
         'webhook_payload'  => "ADD COLUMN webhook_payload  TEXT         NULL AFTER doc_status",
         'webhook_received_at' => "ADD COLUMN webhook_received_at DATETIME NULL AFTER webhook_payload",
+        'comprobante_path'    => "ADD COLUMN comprobante_path    VARCHAR(255) NULL AFTER webhook_received_at",
+        'domicilio_diferente' => "ADD COLUMN domicilio_diferente TINYINT(1)   NOT NULL DEFAULT 0 AFTER comprobante_path",
     ];
     try {
         $existing = $pdo->query("SHOW COLUMNS FROM verificaciones_identidad")->fetchAll(PDO::FETCH_COLUMN);
