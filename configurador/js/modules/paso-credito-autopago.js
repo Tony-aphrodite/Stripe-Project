@@ -255,6 +255,31 @@ var PasoCreditoAutopago = {
                         state.autopagoActivado = true;
                         state._setupIntentId = result.setupIntent.id;
                         state._stripeCustomerId = response.customerId || null;
+
+                        // Persist to backend so collections can charge weekly.
+                        // Fire-and-forget — UI advances regardless of DB result.
+                        var modelo = self.app.getModelo(state.modeloSeleccionado);
+                        var pagoSemanal = 0;
+                        try {
+                            pagoSemanal = VkCalculadora.calcular(
+                                modelo.precioContado,
+                                state.enganchePorcentaje || 0.30,
+                                state.plazoMeses || 36
+                            ).pagoSemanal;
+                        } catch (err) { /* fallback to 0 */ }
+
+                        jQuery.ajax({
+                            url: (window.VK_BASE_PATH || '') + 'php/confirmar-autopago.php',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({
+                                setupIntentId:   result.setupIntent.id,
+                                customerId:      response.customerId,
+                                paymentMethodId: result.setupIntent.payment_method || null,
+                                montoSemanal:    pagoSemanal
+                            })
+                        });
+
                         self._setLoading(false);
                         self.app.irAPaso('exito');
                     } else {

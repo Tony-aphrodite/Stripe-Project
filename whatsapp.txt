@@ -1,0 +1,238 @@
+1) When a user purchase waiting the assignation of a punto voltika, when the punto is assigned
+2) When the moto is shipping from the cedis to the punto
+3) When the punto finish de assembly process and is ready to pick up
+===============
+skydropx:
+dm@mtechmexico.mx
+Envios36.$
+===================
+Following is the first (1 of 3) messaging (email and Whatsaap) to costumer:
+
+When delivery point is assigned ( CEDIS transfer): 
+
+Hola, {{Nombre}} 
+
+Tu Voltika ya cuenta con un punto de entrega asignado en tu ciudad y está en proceso para ti.
+
+---
+
+### 🧾 Resumen de tu compra
+
+Modelo: {{Modelo}}  
+Color: {{Color}}  
+Número de pedido: {{Pedido}}  
+Forma de pago: {{Contado / MSI / Crédito Voltika}}  
+Monto pagado: {{Monto}}  
+
+---
+
+### 📍 Punto de entrega
+
+Este será el punto donde recibirás tu motocicleta:
+
+{{Nombre del punto}}  
+{{Dirección completa}}  
+
+👉 Ver ubicación: {{link_maps}}
+
+---
+
+Tu unidad está avanzando en su proceso de entrega hacia este punto.  
+
+En breve recibirás la fecha estimada de llegada y disponibilidad para recogerla.
+
+---
+
+### 🔐 Entrega segura
+
+Para recibir tu Voltika será necesario:
+
+✔ Presentar tu INE  
+✔ Acudir con el mismo número telefónico con el que realizaste tu compra  
+✔ Validar un código de seguridad al momento  
+
+---
+
+💡 La entrega se realiza únicamente al titular de la compra o persona autorizada previamente.
+
+---
+
+Gracias por confiar en Voltika ⚡  
+Tu nueva forma de moverte ya está en camino.
+
+Equipo Voltika
+
+====================
+Here is the massage to be send thru WhatsApp:
+
+===========================
+Hola {{Nombre}} 👋  
+
+Tu Voltika ya tiene punto de entrega:
+
+📍 {{Nombre del punto}}  
+👉 {{link_maps}}
+
+---
+
+🧾 {{Modelo}} – {{Color}}  
+Pedido: {{Pedido}}  
+
+---
+
+Va en camino. Te avisamos cuando esté lista.
+
+=============================
+Next find the second email and Whatsaap message when shipping company is selected:
+
+=============================
+Here is the second message:
+
+===============================
+Hola, {{Nombre}} 👋  
+
+Tu Voltika ya está en tránsito hacia tu punto de entrega.
+
+---
+
+### 🧾 Resumen de tu compra
+
+Modelo: {{Modelo}}  
+Color: {{Color}}  
+Pedido: {{Pedido}}  
+
+---
+
+### 📍 Destino
+
+{{Nombre del punto}}  
+{{Dirección}}  
+
+Ver ubicación: {{link_maps}}
+
+---
+
+🚚 Entrega estimada en punto: {{FECHA_ESTIMADA}}  
+
+Tu unidad ya está en ruta y avanzando hacia tu ciudad.
+
+---
+
+📩 Recibirás la confirmación de llegada en cuanto esté lista para entrega.
+
+---
+
+🔐 Recuerda para recogerla:  
+INE + mismo número + código de seguridad que se enviará.
+
+---
+
+Gracias por confiar en Voltika.
+Tu moto ya está cada vez más cerca.
+===============================
+
+Here is the second message thru WhatsApp:
+
+===========================
+
+Hola {{Nombre}} 👋  
+
+Tu Voltika ya va en camino 🚚  
+
+📍 {{Nombre del punto}}  
+📅 Llega aprox: {{FECHA_ESTIMADA}}  
+
+---
+
+🧾 {{Modelo}} – {{Color}}  
+
+---
+
+Te avisamos cuando esté lista 🙌
+
+==============================
+Third message: ( when point select the flow process ready to delivery): important addition only in this stage + point phone number and opening hours
+
+=============================
+Hola, {{Nombre}} 👋  
+
+Tu Voltika ya está lista y disponible para entrega.
+
+---
+
+### 🧾 Resumen de tu compra
+
+Modelo: {{Modelo}}  
+Color: {{Color}}  
+Pedido: {{Pedido}}  
+
+---
+
+### 📍 Punto de entrega
+
+{{Nombre del punto}}  
+{{Dirección completa}}  
+
+🕒 Horario: {{Horario}}  
+📞 Teléfono: {{Teléfono}}  
+
+👉 Ver ubicación: {{link_maps}}
+
+---
+
+Tu motocicleta ya está completamente preparada y lista para rodar.  
+Puedes pasar por ella dentro del horario indicado.
+
+---
+
+### 🔐 Entrega rápida y segura
+
+Para recibir tu Voltika solo necesitas:
+
+✔ Tu INE  
+✔ El mismo número telefónico con el que realizaste tu compra  
+✔ Validar un código de seguridad al momento  
+
+---
+
+⏱ Te recomendamos recogerla lo antes posible para agilizar tu entrega.
+
+---
+
+Gracias por confiar en Voltika.
+Tu nueva forma de moverte ya está lista para ti.
+
+Equipo Voltika
+
+======================
+
+Here is the WhatsApp message:
+
+========================
+Hola {{Nombre}} 👋  
+
+Tu Voltika ya está lista 🎉  
+
+📍 {{Nombre del punto}}  
+🕒 {{Horario}}  
+👉 {{link_maps}}
+
+---
+
+🧾 {{Modelo}} – {{Color}}  
+
+---
+
+Para recoger:
+✔ INE  
+✔ mismo número  
+✔ código de seguridad al momento.
+
+---
+
+Te esperamos
+
+
+
+
+

@@ -508,6 +508,8 @@ var Paso4A = {
         self.app.state.pagoCompletado = true;
         self.app.state._pagoTipo = self._pagoTipo;
 
+        var centro = self.app.state.centroEntrega || {};
+
         $.ajax({
             url: self.ORDER_CONFIRM_URL,
             method: 'POST',
@@ -527,7 +529,10 @@ var Paso4A = {
                 msiPago:   msiPago,
                 msiMeses:  modelo.msiMeses,
                 asesoriaPlacas: self.app.state.asesoriaPlacos || false,
-                seguroQualitas: self.app.state.seguro || false
+                seguroQualitas: self.app.state.seguro || false,
+                punto_id:      centro.id || '',
+                punto_nombre:  centro.nombre || '',
+                punto_tipo:    centro.tipo || ''
             }),
             complete: function() {
                 self._setLoading(false);

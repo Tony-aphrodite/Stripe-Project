@@ -70,6 +70,16 @@ try {
         ]
     ]);
 
+    // Persist a pending subscription row so we can track abandonment.
+    // Confirmed → 'active' from confirmar-autopago.php after Stripe accepts the card.
+    saveSubscripcionPending([
+        'nombre'           => $nombre,
+        'email'            => $email,
+        'telefono'         => $telefono,
+        'stripe_customer'  => $customer->id,
+        'stripe_setup_id'  => $setupIntent->id,
+    ]);
+
     echo json_encode([
         'ok'           => true,
         'clientSecret' => $setupIntent->client_secret,
@@ -89,4 +99,46 @@ try {
         'ok'    => false,
         'error' => 'Error interno: ' . $e->getMessage()
     ]);
+}
+
+/**
+ * Create the subscripciones_credito table if missing and insert a 'pending' row.
+ * The row is updated to 'active' once the customer's card is confirmed in
+ * confirmar-autopago.php. Idempotent on stripe_setup_intent_id.
+ */
+function saveSubscripcionPending(array $data): void {
+    try {
+        $pdo = getDB();
+        $pdo->exec("CREATE TABLE IF NOT EXISTS subscripciones_credito (
+            id                       INT AUTO_INCREMENT PRIMARY KEY,
+            nombre                   VARCHAR(200),
+            email                    VARCHAR(200),
+            telefono                 VARCHAR(30),
+            stripe_customer_id       VARCHAR(100),
+            stripe_setup_intent_id   VARCHAR(100) UNIQUE,
+            stripe_payment_method_id VARCHAR(100) NULL,
+            status                   VARCHAR(20) DEFAULT 'pending',
+            monto_semanal            DECIMAL(12,2) NULL,
+            inventario_moto_id       INT NULL,
+            freg                     DATETIME DEFAULT CURRENT_TIMESTAMP,
+            factivacion              DATETIME NULL,
+            INDEX idx_email    (email),
+            INDEX idx_status   (status),
+            INDEX idx_customer (stripe_customer_id)
+        )");
+        $stmt = $pdo->prepare("
+            INSERT IGNORE INTO subscripciones_credito
+                (nombre, email, telefono, stripe_customer_id, stripe_setup_intent_id, status)
+            VALUES (?, ?, ?, ?, ?, 'pending')
+        ");
+        $stmt->execute([
+            $data['nombre'] ?: null,
+            $data['email']  ?: null,
+            $data['telefono'] ?: null,
+            $data['stripe_customer'],
+            $data['stripe_setup_id'],
+        ]);
+    } catch (PDOException $e) {
+        error_log('Voltika subscripciones_credito pending error: ' . $e->getMessage());
+    }
 }

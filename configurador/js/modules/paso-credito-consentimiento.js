@@ -241,6 +241,17 @@ var PasoCreditoConsentimiento = {
         jQuery(document).on('change', '#vk-cons-tyc, #vk-cons-buro', function() {
             self._updateCTA();
             jQuery('#vk-cons-checkbox-error').hide();
+            // NIP-CIEC: capture first moment both consents are checked
+            var tyc  = jQuery('#vk-cons-tyc').is(':checked');
+            var buro = jQuery('#vk-cons-buro').is(':checked');
+            if (tyc && buro && !self.app.state._fechaAprobacionConsulta) {
+                var now = new Date();
+                var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+                self.app.state._fechaAprobacionConsulta =
+                    now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+                self.app.state._horaAprobacionConsulta =
+                    pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+            }
         });
 
         jQuery(document).on('click', '#vk-cons-evaluar', function() {
@@ -363,7 +374,15 @@ var PasoCreditoConsentimiento = {
                 fechaNacimiento: state.fechaNacimiento || '',
                 CP:              state.cpDomicilio || '',
                 ciudad:          state.ciudad || '',
-                estado:          state.estadoDomicilio || state.estado || ''
+                estado:          state.estadoDomicilio || state.estado || '',
+                // NIP-CIEC extras (Phase A)
+                direccion:       ((state.calle || '') + ' ' + (state.numeroExterior || '') +
+                                  (state.numeroInterior ? ' INT ' + state.numeroInterior : '')).trim(),
+                colonia:         state.colonia || '',
+                municipio:       state.municipio || state.ciudad || '',
+                tipo_consulta:   'PF',
+                fecha_aprobacion_consulta: state._fechaAprobacionConsulta || '',
+                hora_aprobacion_consulta:  state._horaAprobacionConsulta || ''
             }),
             success: function(res) {
                 state._buroResult  = res;

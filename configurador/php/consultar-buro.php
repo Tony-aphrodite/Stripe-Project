@@ -60,6 +60,13 @@ $municipio       = strtoupper(trim($json['municipio'] ?? ''));
 $ciudad          = strtoupper(trim($json['ciudad'] ?? ''));
 $estado          = strtoupper(trim($json['estado'] ?? ''));
 
+// NIP-CIEC extras (Phase A)
+$tipoConsulta             = strtoupper(trim($json['tipo_consulta'] ?? 'PF'));
+$fechaAprobacionConsulta  = trim($json['fecha_aprobacion_consulta'] ?? '');
+$horaAprobacionConsulta   = trim($json['hora_aprobacion_consulta']  ?? '');
+if (!$fechaAprobacionConsulta) $fechaAprobacionConsulta = date('Y-m-d');
+if (!$horaAprobacionConsulta)  $horaAprobacionConsulta  = date('H:i:s');
+
 if (!$primerNombre || !$apellidoPaterno) {
     http_response_code(400);
     echo json_encode(['error' => 'Nombre y apellido paterno son requeridos']);
@@ -188,11 +195,17 @@ try {
         folio_consulta   VARCHAR(100),
         freg             DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
+
+    // Idempotent column additions for NIP-CIEC compliance (Phase A)
+    ensureConsultasBuroColumns($pdo);
+
     $stmt = $pdo->prepare("
         INSERT INTO consultas_buro
             (nombre, apellido_paterno, apellido_materno, fecha_nacimiento, cp,
-             score, pago_mensual, dpd90_flag, dpd_max, num_cuentas, folio_consulta)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             score, pago_mensual, dpd90_flag, dpd_max, num_cuentas, folio_consulta,
+             rfc, curp, calle_numero, colonia, municipio, ciudad, estado,
+             tipo_consulta, fecha_aprobacion_consulta, hora_aprobacion_consulta)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $primerNombre, $apellidoPaterno, $apellidoMaterno, $fechaNacimiento, $cp,
@@ -200,6 +213,8 @@ try {
         $result['dpd90_flag'] ? 1 : 0,
         $result['dpd_max'], $result['num_cuentas'],
         $result['folioConsulta'],
+        $rfc, $curp, $direccion, $colonia, $municipio, $ciudad, $estado,
+        $tipoConsulta, $fechaAprobacionConsulta, $horaAprobacionConsulta,
     ]);
 } catch (PDOException $e) {
     error_log('Voltika consultas_buro DB error: ' . $e->getMessage());
@@ -208,6 +223,38 @@ try {
 echo json_encode($result);
 
 // ── Funciones auxiliares ────────────────────────────────────────────────────
+
+/**
+ * Idempotently add NIP-CIEC compliance columns to consultas_buro.
+ * Safe to call on every request — each ALTER wrapped in try/catch.
+ */
+function ensureConsultasBuroColumns(PDO $pdo): void {
+    $cols = [
+        'rfc'                       => "VARCHAR(20) NULL",
+        'curp'                      => "VARCHAR(20) NULL",
+        'calle_numero'              => "VARCHAR(200) NULL",
+        'colonia'                   => "VARCHAR(150) NULL",
+        'municipio'                 => "VARCHAR(150) NULL",
+        'ciudad'                    => "VARCHAR(100) NULL",
+        'estado'                    => "VARCHAR(10) NULL",
+        'tipo_consulta'             => "VARCHAR(5) NOT NULL DEFAULT 'PF'",
+        'fecha_aprobacion_consulta' => "DATE NULL",
+        'hora_aprobacion_consulta'  => "TIME NULL",
+    ];
+    try {
+        $existing = [];
+        $rs = $pdo->query("SHOW COLUMNS FROM consultas_buro");
+        foreach ($rs as $row) { $existing[strtolower($row['Field'])] = true; }
+        foreach ($cols as $name => $def) {
+            if (!isset($existing[$name])) {
+                try { $pdo->exec("ALTER TABLE consultas_buro ADD COLUMN `$name` $def"); }
+                catch (PDOException $e) { error_log("ensureConsultasBuroColumns $name: " . $e->getMessage()); }
+            }
+        }
+    } catch (PDOException $e) {
+        error_log('ensureConsultasBuroColumns: ' . $e->getMessage());
+    }
+}
 
 function extractPreaprobacionData(array $response): array {
 

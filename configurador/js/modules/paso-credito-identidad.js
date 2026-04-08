@@ -319,6 +319,20 @@ var PasoCreditoIdentidad = {
             success: function(res) {
                 state._truoraResult = res;
                 state._identidadVerificada = true;
+
+                // If face match ran and explicitly failed, block and ask the
+                // user to retake the selfie. If it passed or did not run
+                // (e.g. feature flag off / fallback), let them continue.
+                if (res && res.face && res.face.match === false) {
+                    jQuery('#vk-identidad-continuar').prop('disabled', false);
+                    jQuery('#vk-identidad-label').show();
+                    jQuery('#vk-identidad-spinner').hide();
+                    jQuery('#vk-identidad-error')
+                        .text('No pudimos confirmar que la selfie coincide con la foto de tu INE. Por favor vuelve a tomarte la selfie con buena iluminación y rostro despejado.')
+                        .show();
+                    return;
+                }
+
                 self.app.irAPaso('credito-enganche');
             },
             error: function() {
