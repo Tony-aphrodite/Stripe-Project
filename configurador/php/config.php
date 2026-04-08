@@ -54,6 +54,11 @@ if (!defined('SMSMASIVOS_API_KEY')) {
 if (!defined('TRUORA_API_KEY')) {
     define('TRUORA_API_KEY', getenv('TRUORA_API_KEY') ?: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiIiwiYWRkaXRpb25hbF9kYXRhIjoie30iLCJhcHBsaWNhdGlvbl9pZCI6IiIsImNsaWVudF9pZCI6IlRDSTc0NTkxNzg2NDA1NzYzZTMxZjFlODllYjY3NjY2NGEyIiwiZXhwIjozMzQ5Mjc4Mjg5LCJncmFudCI6IiIsImlhdCI6MTc3MjQ3ODI4OSwiaXNzIjoiaHR0cHM6Ly9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbS91cy1lYXN0LTFfUmJvQ2lFd01nIiwianRpIjoiMDM3NTdlMjYtMTc5Yi00YTc4LWI0ZjEtMWYxOTE0YTI3NmM2Iiwia2V5X25hbWUiOiJwcnVlYmEiLCJrZXlfdHlwZSI6ImJhY2tlbmQiLCJ1c2VybmFtZSI6IlRDSTc0NTkxNzg2NDA1NzYzZTMxZjFlODllYjY3NjY2NGEyLXBydWViYSJ9.xL1w6VcjOCI5HqNijvWEj6dGjScUXRVouPkoueKCKs8');
 }
+// Shared secret for verifying Truora webhook signatures. Configured in the
+// Truora dashboard when creating the webhook subscription.
+if (!defined('TRUORA_WEBHOOK_SECRET')) {
+    define('TRUORA_WEBHOOK_SECRET', getenv('TRUORA_WEBHOOK_SECRET') ?: '');
+}
 
 // Círculo de Crédito
 if (!defined('CDC_API_KEY')) {
