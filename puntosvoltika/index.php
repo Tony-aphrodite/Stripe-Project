@@ -30,7 +30,7 @@ $sharedV = file_exists($sharedAdminCssPath) ? filemtime($sharedAdminCssPath) : t
 <body>
 <div id="pvApp" class="ad-app">
   <nav id="pvSidebar" class="ad-sidebar" style="display:none">
-    <div class="ad-logo">📍 PUNTO</div>
+    <div class="ad-logo"><img src="../configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'"></div>
     <div class="ad-nav">
       <button data-route="inicio" class="active"><span>🏠</span> Inicio</button>
       <button data-route="inventario"><span>🛵</span> Inventario</button>

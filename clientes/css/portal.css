@@ -216,6 +216,7 @@ button{font-family:inherit}
   font-size:28px;font-weight:800;letter-spacing:2px;
   color:var(--vk-primary);
 }
+.vk-logo img{height:40px;width:auto;display:inline-block}
 
 /* ── Check list row ────────────────────────────────────────────────────── */
 .vk-check{display:flex;gap:8px;align-items:center;font-size:13px;padding:8px 0;cursor:pointer;color:var(--vk-text)}

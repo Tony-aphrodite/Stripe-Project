@@ -61,13 +61,14 @@ html,body{
   box-shadow:var(--ad-shadow);
 }
 .ad-logo{
-  font-size:20px;font-weight:800;
-  color:#ffffff;
   margin-bottom:24px;
-  letter-spacing:1px;
-  display:flex;align-items:center;gap:6px;
+  display:flex;align-items:center;
+  min-height:32px;
 }
-.ad-logo::before{content:"⚡";color:var(--ad-primary)}
+.ad-logo img{
+  height:28px;width:auto;max-width:100%;
+  display:block;
+}
 .ad-nav{display:flex;flex-direction:column;gap:4px;flex:1}
 .ad-nav button{
   background:none;border:0;
@@ -269,7 +270,8 @@ html,body{
     padding:8px 10px;
     flex-direction:row;align-items:center;gap:8px;
   }
-  .ad-logo{font-size:15px;margin:0 6px 0 0;flex-shrink:0}
+  .ad-logo{margin:0 6px 0 0;flex-shrink:0;min-height:0}
+  .ad-logo img{height:22px}
   .ad-nav{
     flex:1;flex-direction:row;flex-wrap:nowrap;gap:4px;
     overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;

@@ -3,7 +3,7 @@ window.VK_recovery = (function(){
   function wrap(title, sub, body){
     VKApp.showTabbar(false);
     VKApp.render(
-      '<div class="vk-logo">VOLTIKA</div>'+
+      '<div class="vk-logo"><img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" onerror="this.style.display=\'none\'"></div>'+
       '<div class="vk-card">'+
         '<div class="vk-h1">'+title+'</div>'+
         '<div class="vk-muted">'+sub+'</div>'+
