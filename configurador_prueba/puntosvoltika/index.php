@@ -5,8 +5,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Voltika — Punto</title>
-<link rel="stylesheet" href="../admin/css/admin.css?v=1">
-<link rel="stylesheet" href="css/punto.css?v=1">
+<link rel="stylesheet" href="../admin/css/admin.css?v=2">
+<link rel="stylesheet" href="css/punto.css?v=2">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
@@ -33,13 +33,13 @@
     <div id="pvModalBody"></div>
   </div>
 </div>
-<script src="js/punto-app.js?v=1"></script>
-<script src="js/modules/punto-login.js?v=1"></script>
-<script src="js/modules/punto-inicio.js?v=1"></script>
-<script src="js/modules/punto-inventario.js?v=1"></script>
-<script src="js/modules/punto-recepcion.js?v=1"></script>
-<script src="js/modules/punto-entrega.js?v=1"></script>
-<script src="js/modules/punto-venta.js?v=1"></script>
+<script src="js/punto-app.js?v=2"></script>
+<script src="js/modules/punto-login.js?v=2"></script>
+<script src="js/modules/punto-inicio.js?v=2"></script>
+<script src="js/modules/punto-inventario.js?v=2"></script>
+<script src="js/modules/punto-recepcion.js?v=2"></script>
+<script src="js/modules/punto-entrega.js?v=2"></script>
+<script src="js/modules/punto-venta.js?v=2"></script>
 <script>$(function(){ PVApp.start(); });</script>
 </body>
 </html>

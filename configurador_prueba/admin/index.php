@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Voltika — Admin Dashboard</title>
-<link rel="stylesheet" href="css/admin.css?v=1">
+<link rel="stylesheet" href="css/admin.css?v=2">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
@@ -33,13 +33,13 @@
     <div id="adModalBody"></div>
   </div>
 </div>
-<script src="js/admin-app.js?v=1"></script>
-<script src="js/modules/admin-login.js?v=1"></script>
-<script src="js/modules/admin-dashboard.js?v=1"></script>
-<script src="js/modules/admin-inventario.js?v=1"></script>
-<script src="js/modules/admin-envios.js?v=1"></script>
-<script src="js/modules/admin-pagos.js?v=1"></script>
-<script src="js/modules/admin-puntos.js?v=1"></script>
+<script src="js/admin-app.js?v=2"></script>
+<script src="js/modules/admin-login.js?v=2"></script>
+<script src="js/modules/admin-dashboard.js?v=2"></script>
+<script src="js/modules/admin-inventario.js?v=2"></script>
+<script src="js/modules/admin-envios.js?v=2"></script>
+<script src="js/modules/admin-pagos.js?v=2"></script>
+<script src="js/modules/admin-puntos.js?v=2"></script>
 <script>$(function(){ ADApp.start(); });</script>
 </body>
 </html>
