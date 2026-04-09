@@ -29,7 +29,7 @@ if ($nuevoEstado === 'enviada') {
     $pdo->prepare("UPDATE inventario_motos SET estado='por_llegar' WHERE id=?")->execute([$envio['moto_id']]);
     // Notify
     if ($envio['cliente_telefono'] || $envio['cliente_email']) {
-        require_once __DIR__ . '/../../../php/voltika-notify.php';
+        require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
         try {
             voltikaNotify('moto_enviada', [
                 'cliente_id' => $envio['cliente_id'] ?? null,

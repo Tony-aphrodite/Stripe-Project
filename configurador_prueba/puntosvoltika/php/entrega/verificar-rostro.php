@@ -15,7 +15,7 @@ if (!$entregaId || !$motoId) puntoJsonOut(['error' => 'Datos incompletos'], 400)
 $pdo = getDB();
 
 // Save uploaded photo to disk
-$uploadsDir = __DIR__ . '/../../../php/uploads/entregas';
+$uploadsDir = __DIR__ . '/../../../configurador_prueba/php/uploads/entregas';
 if (!is_dir($uploadsDir)) @mkdir($uploadsDir, 0755, true);
 
 $savedPaths = [];

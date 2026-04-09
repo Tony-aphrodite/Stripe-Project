@@ -3,7 +3,7 @@
  * Voltika Admin/CEDIS — Bootstrap
  * Central entry point for all admin panel endpoints.
  */
-require_once __DIR__ . '/../../php/config.php';
+require_once __DIR__ . '/../../configurador_prueba/php/config.php';
 
 if (!headers_sent()) {
     header('Content-Type: application/json');

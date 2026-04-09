@@ -48,7 +48,7 @@ $pdo->prepare("INSERT INTO ventas_log (moto_id, tipo, dealer_id, cliente_name, c
 puntoLog('entrega_finalizada', ['moto_id' => $motoId]);
 
 // Notify cliente — "¡Bienvenido a la familia Voltika!"
-require_once __DIR__ . '/../../../php/voltika-notify.php';
+require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
 try {
     $proximo = '';
     if (!empty($m['cliente_id'])) {

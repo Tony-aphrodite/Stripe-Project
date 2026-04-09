@@ -48,7 +48,7 @@ adminLog('asignar_punto', ['moto_id' => $motoId, 'punto_id' => $puntoId]);
 
 // Notify client if linked to an order
 if ($moto['cliente_telefono'] || $moto['cliente_email']) {
-    require_once __DIR__ . '/../../../php/voltika-notify.php';
+    require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
     try {
         voltikaNotify('punto_asignado', [
             'cliente_id' => $moto['cliente_id'] ?? null,

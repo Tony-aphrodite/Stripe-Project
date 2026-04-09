@@ -3,7 +3,7 @@
  * Voltika Puntos — Bootstrap
  * Shared entry point for all Punto Voltika panel endpoints.
  */
-require_once __DIR__ . '/../../php/config.php';
+require_once __DIR__ . '/../../configurador_prueba/php/config.php';
 
 if (!headers_sent()) {
     header('Content-Type: application/json');

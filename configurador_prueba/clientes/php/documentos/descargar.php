@@ -23,7 +23,7 @@ try {
 } catch (Throwable $e) {}
 
 // Locate file in configurador uploads; fallback to on-the-fly stub
-$base = __DIR__ . '/../../../php/uploads';
+$base = __DIR__ . '/../../../configurador_prueba/php/uploads';
 $candidates = [
     'contrato'      => ["$base/contratos/cliente_{$cid}.pdf"],
     'pagare'        => ["$base/pagares/cliente_{$cid}.pdf"],

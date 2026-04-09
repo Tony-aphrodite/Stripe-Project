@@ -6,7 +6,7 @@
  */
 
 // Reuse configurador's central config (DB, SMTP, SMS, Stripe, Truora, .env loader)
-require_once __DIR__ . '/../../php/config.php';
+require_once __DIR__ . '/../../configurador_prueba/php/config.php';
 
 // ── CORS / JSON defaults ────────────────────────────────────────────────────
 if (!headers_sent()) {

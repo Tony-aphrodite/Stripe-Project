@@ -13,7 +13,7 @@ if (!$motoId) puntoJsonOut(['error' => 'moto_id requerido'], 400);
 $pdo = getDB();
 
 // Save moto photos
-$uploadsDir = __DIR__ . '/../../../php/uploads/entregas';
+$uploadsDir = __DIR__ . '/../../../configurador_prueba/php/uploads/entregas';
 if (!is_dir($uploadsDir)) @mkdir($uploadsDir, 0755, true);
 
 $entregaStmt = $pdo->prepare("SELECT id FROM entregas WHERE moto_id=? ORDER BY freg DESC LIMIT 1");

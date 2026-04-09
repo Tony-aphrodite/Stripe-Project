@@ -61,7 +61,7 @@ puntoLog('recibir_moto', ['moto_id' => $motoId, 'envio_id' => $envioId, 'estado'
 
 // Notify cliente that moto is ready to pick up (only if reception OK AND moto has a client)
 if ($allOk && !empty($row['cliente_telefono'])) {
-    require_once __DIR__ . '/../../../php/voltika-notify.php';
+    require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
     try {
         $pq = $pdo->prepare("SELECT nombre, direccion, horarios FROM puntos_voltika WHERE id=?");
         $pq->execute([$ctx['punto_id']]);

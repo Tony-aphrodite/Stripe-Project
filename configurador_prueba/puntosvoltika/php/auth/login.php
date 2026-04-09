@@ -3,7 +3,7 @@
 session_name('VOLTIKA_PUNTO');
 session_start();
 
-require_once __DIR__ . '/../../../php/config.php';
+require_once __DIR__ . '/../../../configurador_prueba/php/config.php';
 header('Content-Type: application/json');
 
 $d = json_decode(file_get_contents('php://input'), true) ?: [];
