@@ -33,9 +33,12 @@ try {
 } catch (Throwable $e) {}
 
 // Comprobantes de pago
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM ciclos_pago WHERE cliente_id = ? AND estado IN ('paid_manual','paid_auto')");
-$stmt->execute([$cid]);
-$nPagos = (int)$stmt->fetchColumn();
+$nPagos = 0;
+try {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM ciclos_pago WHERE cliente_id = ? AND estado IN ('paid_manual','paid_auto')");
+    $stmt->execute([$cid]);
+    $nPagos = (int)$stmt->fetchColumn();
+} catch (Throwable $e) { error_log('documentos/lista ciclos: ' . $e->getMessage()); }
 $docs[] = ['tipo' => 'comprobantes', 'titulo' => 'Comprobantes de pago',
            'subtitulo' => "Historial completo ($nPagos pagos)", 'disponible' => $nPagos > 0];
 

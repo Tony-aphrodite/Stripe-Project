@@ -83,5 +83,6 @@ try {
     ]);
 } catch (Throwable $e) {
     error_log('entrega/estado: ' . $e->getMessage());
-    portalJsonOut(['error' => 'Error interno'], 500);
+    // Return empty state instead of 500 — schema may not be fully initialized
+    portalJsonOut(['ok' => true, 'entrega' => null]);
 }

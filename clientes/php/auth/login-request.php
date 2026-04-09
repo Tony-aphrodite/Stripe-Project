@@ -15,6 +15,22 @@ if (!$cliente) {
 }
 
 $codigo = portalGenOTP();
+
+// Persist OTP in DB (not session) — survives any cookie/proxy issues
+$pdo = getDB();
+$pdo->exec("CREATE TABLE IF NOT EXISTS portal_otp (
+    telefono VARCHAR(20) PRIMARY KEY,
+    codigo VARCHAR(10) NOT NULL,
+    cliente_id INT NOT NULL,
+    intentos INT DEFAULT 0,
+    expira INT NOT NULL,
+    freg DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+$pdo->prepare("REPLACE INTO portal_otp (telefono, codigo, cliente_id, intentos, expira)
+    VALUES (?, ?, ?, 0, ?)")
+    ->execute([$tel, $codigo, (int)$cliente['id'], time() + 600]);
+
+// Also keep it in session as a fast path (harmless if session is lost)
 $_SESSION['portal_otp_login'] = [
     'codigo'   => $codigo,
     'telefono' => $tel,

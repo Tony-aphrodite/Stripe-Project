@@ -2,14 +2,22 @@
 require_once __DIR__ . '/../bootstrap.php';
 $cid = portalRequireAuth();
 
-$info = portalComputeAccountState($cid);
+try {
+    $info = portalComputeAccountState($cid);
+} catch (Throwable $e) {
+    error_log('cliente/estado computeAccountState: ' . $e->getMessage());
+    $info = ['state'=>'no_subscription','subscripcion'=>null,'proximoCiclo'=>null,'progreso'=>0,'total_ciclos'=>0,'ciclos_pagados'=>0];
+}
 $sub  = $info['subscripcion'];
 $next = $info['proximoCiclo'];
 
 $pdo = getDB();
-$stmt = $pdo->prepare("SELECT nombre, apellido_paterno, email, telefono FROM clientes WHERE id = ?");
-$stmt->execute([$cid]);
-$cliente = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$cliente = [];
+try {
+    $stmt = $pdo->prepare("SELECT nombre, apellido_paterno, email, telefono FROM clientes WHERE id = ?");
+    $stmt->execute([$cid]);
+    $cliente = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+} catch (Throwable $e) { error_log('cliente/estado clientes: ' . $e->getMessage()); }
 
 $nombre = trim(($cliente['nombre'] ?? '') . ' ' . ($cliente['apellido_paterno'] ?? ''));
 if ($nombre === '' && $sub) $nombre = 'Cliente Voltika';

@@ -4,17 +4,25 @@ $cid = portalRequireAuth();
 $pdo = getDB();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $stmt = $pdo->prepare("SELECT id, nombre, apellido_paterno, apellido_materno, email, telefono, fecha_nacimiento FROM clientes WHERE id = ?");
-    $stmt->execute([$cid]);
-    $c = $stmt->fetch(PDO::FETCH_ASSOC);
+    $c = null; $sub = null;
+    try {
+        $stmt = $pdo->prepare("SELECT id, nombre, apellido_paterno, apellido_materno, email, telefono, fecha_nacimiento FROM clientes WHERE id = ?");
+        $stmt->execute([$cid]);
+        $c = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $e) { error_log('perfil cliente: ' . $e->getMessage()); }
 
-    $stmt = $pdo->prepare("SELECT modelo, color, serie, fecha_entrega FROM subscripciones_credito WHERE cliente_id = ? ORDER BY id DESC LIMIT 1");
-    $stmt->execute([$cid]);
-    $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+    try {
+        $stmt = $pdo->prepare("SELECT modelo, color, serie, fecha_entrega FROM subscripciones_credito WHERE cliente_id = ? ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$cid]);
+        $sub = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $e) { error_log('perfil sub: ' . $e->getMessage()); }
 
-    $stmt = $pdo->prepare("SELECT notif_email, notif_whatsapp, notif_sms, idioma FROM portal_preferencias WHERE cliente_id = ?");
-    $stmt->execute([$cid]);
-    $pref = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['notif_email'=>1,'notif_whatsapp'=>1,'notif_sms'=>1,'idioma'=>'es'];
+    $pref = ['notif_email'=>1,'notif_whatsapp'=>1,'notif_sms'=>1,'idioma'=>'es'];
+    try {
+        $stmt = $pdo->prepare("SELECT notif_email, notif_whatsapp, notif_sms, idioma FROM portal_preferencias WHERE cliente_id = ?");
+        $stmt->execute([$cid]);
+        $pref = $stmt->fetch(PDO::FETCH_ASSOC) ?: $pref;
+    } catch (Throwable $e) {}
 
     portalJsonOut(['cliente' => $c, 'moto' => $sub, 'preferencias' => $pref]);
 }

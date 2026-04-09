@@ -161,6 +161,52 @@ function portalEnsureTables(): void {
             INDEX idx_cliente (cliente_id),
             INDEX idx_telefono (telefono)
         )");
+
+        // ── Upgrade legacy subscripciones_credito (Stripe flow schema) ─────
+        // Add any columns the portal needs but that are missing on older tables
+        $existing = [];
+        try { $existing = $pdo->query("SHOW COLUMNS FROM subscripciones_credito")->fetchAll(PDO::FETCH_COLUMN); } catch (Throwable $e) {}
+        $migrations = [
+            'cliente_id'     => "ALTER TABLE subscripciones_credito ADD COLUMN cliente_id INT NULL",
+            'modelo'         => "ALTER TABLE subscripciones_credito ADD COLUMN modelo VARCHAR(200) NULL",
+            'color'          => "ALTER TABLE subscripciones_credito ADD COLUMN color VARCHAR(50) NULL",
+            'serie'          => "ALTER TABLE subscripciones_credito ADD COLUMN serie VARCHAR(100) NULL",
+            'precio_contado' => "ALTER TABLE subscripciones_credito ADD COLUMN precio_contado DECIMAL(12,2) NULL",
+            'plazo_meses'    => "ALTER TABLE subscripciones_credito ADD COLUMN plazo_meses INT NULL",
+            'plazo_semanas'  => "ALTER TABLE subscripciones_credito ADD COLUMN plazo_semanas INT NULL",
+            'fecha_inicio'   => "ALTER TABLE subscripciones_credito ADD COLUMN fecha_inicio DATE NULL",
+            'fecha_entrega'  => "ALTER TABLE subscripciones_credito ADD COLUMN fecha_entrega DATE NULL",
+            'estado'         => "ALTER TABLE subscripciones_credito ADD COLUMN estado VARCHAR(30) DEFAULT 'activa'",
+        ];
+        foreach ($migrations as $col => $sql) {
+            if (!in_array($col, $existing, true)) {
+                try { $pdo->exec($sql); } catch (Throwable $e) { error_log("portal migrate {$col}: " . $e->getMessage()); }
+            }
+        }
+
+        // If legacy 'status' column exists but estado doesn't have data yet,
+        // mirror status into estado so portal queries find active subscriptions
+        try {
+            if (in_array('status', $existing, true)) {
+                $pdo->exec("UPDATE subscripciones_credito
+                    SET estado = CASE
+                        WHEN status IN ('active','activa') THEN 'activa'
+                        WHEN status IN ('cancelled','canceled','cancelada') THEN 'cancelada'
+                        WHEN status IN ('completed','liquidada') THEN 'liquidada'
+                        ELSE COALESCE(estado, 'activa')
+                    END
+                    WHERE estado IS NULL OR estado = ''");
+            }
+        } catch (Throwable $e) {}
+
+        // Backfill cliente_id from telefono for rows that still have NULL
+        try {
+            $pdo->exec("UPDATE subscripciones_credito s
+                JOIN clientes c ON c.telefono = s.telefono
+                SET s.cliente_id = c.id
+                WHERE s.cliente_id IS NULL AND s.telefono IS NOT NULL");
+        } catch (Throwable $e) {}
+
     } catch (Throwable $e) {
         error_log('portalEnsureTables: ' . $e->getMessage());
     }
@@ -296,28 +342,51 @@ function portalFindClienteByEmail(string $email): ?array {
  */
 function portalComputeAccountState(int $clienteId): array {
     $pdo = getDB();
-    $stmt = $pdo->prepare("SELECT * FROM subscripciones_credito
-        WHERE cliente_id = ? AND (estado IS NULL OR estado NOT IN ('cancelada','liquidada'))
-        ORDER BY id DESC LIMIT 1");
-    $stmt->execute([$clienteId]);
-    $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+    $sub = null;
+    try {
+        // Try by cliente_id first
+        $stmt = $pdo->prepare("SELECT * FROM subscripciones_credito
+            WHERE cliente_id = ?
+            AND (estado IS NULL OR estado NOT IN ('cancelada','liquidada'))
+            ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$clienteId]);
+        $sub = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $e) { error_log('portalComputeAccountState sub: ' . $e->getMessage()); }
 
+    // Fallback: lookup by telefono from clientes table
     if (!$sub) {
-        return ['state' => 'no_subscription', 'subscripcion' => null, 'proximoCiclo' => null, 'progreso' => 0];
+        try {
+            $stmt = $pdo->prepare("SELECT s.* FROM subscripciones_credito s
+                JOIN clientes c ON c.telefono = s.telefono
+                WHERE c.id = ?
+                AND (s.estado IS NULL OR s.estado NOT IN ('cancelada','liquidada'))
+                ORDER BY s.id DESC LIMIT 1");
+            $stmt->execute([$clienteId]);
+            $sub = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (Throwable $e) { error_log('portalComputeAccountState fallback: ' . $e->getMessage()); }
     }
 
-    portalEnsureCiclos($sub);
+    if (!$sub) {
+        return [
+            'state' => 'no_subscription', 'subscripcion' => null, 'proximoCiclo' => null,
+            'progreso' => 0, 'total_ciclos' => 0, 'ciclos_pagados' => 0,
+        ];
+    }
+
+    try { portalEnsureCiclos($sub); } catch (Throwable $e) { error_log('ensureCiclos: ' . $e->getMessage()); }
 
     // Find next pending or overdue cycle
-    $stmt = $pdo->prepare("SELECT * FROM ciclos_pago
-        WHERE subscripcion_id = ? AND estado IN ('pending','overdue')
-        ORDER BY fecha_vencimiento ASC LIMIT 1");
-    $stmt->execute([$sub['id']]);
-    $next = $stmt->fetch(PDO::FETCH_ASSOC);
+    $next = null; $tot = 0; $pag = 0;
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM ciclos_pago
+            WHERE subscripcion_id = ? AND estado IN ('pending','overdue')
+            ORDER BY fecha_vencimiento ASC LIMIT 1");
+        $stmt->execute([$sub['id']]);
+        $next = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
-    // Count progress
-    $tot = (int)$pdo->query("SELECT COUNT(*) FROM ciclos_pago WHERE subscripcion_id = " . (int)$sub['id'])->fetchColumn();
-    $pag = (int)$pdo->query("SELECT COUNT(*) FROM ciclos_pago WHERE subscripcion_id = " . (int)$sub['id'] . " AND estado IN ('paid_manual','paid_auto')")->fetchColumn();
+        $tot = (int)$pdo->query("SELECT COUNT(*) FROM ciclos_pago WHERE subscripcion_id = " . (int)$sub['id'])->fetchColumn();
+        $pag = (int)$pdo->query("SELECT COUNT(*) FROM ciclos_pago WHERE subscripcion_id = " . (int)$sub['id'] . " AND estado IN ('paid_manual','paid_auto')")->fetchColumn();
+    } catch (Throwable $e) { error_log('portalComputeAccountState ciclos: ' . $e->getMessage()); }
     $progreso = $tot > 0 ? round(($pag / $tot) * 100, 1) : 0;
 
     $state = 'account_current';

@@ -3,11 +3,14 @@ require_once __DIR__ . '/../bootstrap.php';
 $cid = portalRequireAuth();
 $pdo = getDB();
 
-$stmt = $pdo->prepare("SELECT stripe_customer_id, stripe_payment_method_id FROM subscripciones_credito
-    WHERE cliente_id = ? ORDER BY id DESC LIMIT 1");
-$stmt->execute([$cid]);
-$sub = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$sub || !$sub['stripe_payment_method_id']) portalJsonOut(['metodo' => null]);
+$sub = null;
+try {
+    $stmt = $pdo->prepare("SELECT stripe_customer_id, stripe_payment_method_id FROM subscripciones_credito
+        WHERE cliente_id = ? ORDER BY id DESC LIMIT 1");
+    $stmt->execute([$cid]);
+    $sub = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+} catch (Throwable $e) { error_log('metodo-pago: ' . $e->getMessage()); }
+if (!$sub || empty($sub['stripe_payment_method_id'])) portalJsonOut(['metodo' => null]);
 
 $ch = curl_init('https://api.stripe.com/v1/payment_methods/' . urlencode($sub['stripe_payment_method_id']));
 curl_setopt_array($ch, [
