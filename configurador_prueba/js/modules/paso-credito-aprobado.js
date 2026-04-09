@@ -30,7 +30,7 @@ var PasoCreditoAprobado = {
         // Blue gradient header
         html += '<div class="vk-aprobado-header">';
         html += '<div class="vk-aprobado-header__check" style="text-align:center;">';
-        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/last/icon_06.png" alt="Moto aprobada" style="width:180px;height:auto;margin:0 auto;display:block;">';
+        html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/Archivo 4/last_elements-06.png" alt="Moto aprobada" style="width:180px;height:auto;margin:0 auto;display:block;">';
         html += '</div>';
         html += '<h2 class="vk-aprobado-header__title" style="color:#ffffff;font-size:32px;margin-top:16px;">\u00a1Felicidades!</h2>';
         html += '<p class="vk-aprobado-header__subtitle" style="font-size:20px;">Tu cr\u00e9dito Voltika ya est\u00e1 aprobado</p>';

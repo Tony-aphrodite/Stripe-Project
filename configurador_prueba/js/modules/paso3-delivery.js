@@ -567,7 +567,7 @@ var Paso3 = {
 
         // Footer
         h += '<div style="font-size:12px;color:#1a3a5c;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">';
-        h += '<img src="' + (window.VK_BASE_PATH || '') + 'img/last/icon_10.png" style="width:16px;height:16px;object-fit:contain;"> ' + centro.horarios;
+        h += '<img src="' + (window.VK_BASE_PATH || '') + 'img/Archivo 4/last_elements-10.png" style="width:16px;height:16px;object-fit:contain;"> ' + centro.horarios;
         h += '</div>';
 
         h += '</div>'; // end body

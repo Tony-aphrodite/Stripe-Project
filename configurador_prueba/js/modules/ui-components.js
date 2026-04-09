@@ -125,7 +125,7 @@ var VkUI = {
         var badges = [];
         if (metodo === 'credito') {
             badges = [
-                { icon: '<img src="' + base + 'img/last/icon_01.png" alt="" style="width:45px;height:45px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
+                { icon: '<img src="' + base + 'img/Archivo 4/last_elements-01.png" alt="" style="width:45px;height:45px;object-fit:contain;">', text: 'Aprobaci\u00f3n en 2 minutos 100% en l\u00ednea' },
                 { icon: imgPlacas,   text: 'Documentos para placas incluidos' },
                 { icon: imgAhorro,   text: 'P\u00e1gala con lo que hoy gastas en gasolina' },
                 { icon: imgGarantia, text: 'Garant\u00eda Voltika' }
