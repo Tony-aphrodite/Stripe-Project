@@ -41,29 +41,12 @@ var PasoExito = {
         html += '<div style="text-align:center;padding:24px 0 16px;position:relative;">';
         // Confetti-like decorations (CSS)
         html += '<div style="display:inline-block;margin-bottom:12px;">';
-        html += '<img src="' + base + 'img/Archivo 4/last_elements-07.png" alt="" style="width:180px;height:auto;">';
+        html += '<img src="' + base + 'img/Archivo 4/last_elements-07.png" alt="" style="width:280px;max-width:90%;height:auto;">';
         html += '</div>';
         html += '<h2 style="font-size:26px;font-weight:800;color:#333;margin:0 0 4px;">\u00a1Listo!</h2>';
         html += '<p style="font-size:18px;color:#333;margin:0;font-weight:700;">Tu Voltika fue apartada &#127881;</p>';
         html += '</div>';
 
-        // === Moto + Asesor celebration image ===
-        html += '<div style="text-align:center;margin-bottom:20px;position:relative;">';
-        // Confetti dots
-        html += '<div style="position:absolute;top:0;left:10%;width:8px;height:8px;background:#FFD700;border-radius:50%;"></div>';
-        html += '<div style="position:absolute;top:10px;right:15%;width:6px;height:6px;background:#039fe1;border-radius:50%;"></div>';
-        html += '<div style="position:absolute;top:20px;left:20%;width:5px;height:5px;background:#4CAF50;border-radius:50%;"></div>';
-        html += '<div style="position:absolute;top:5px;right:25%;width:7px;height:7px;background:#FF5722;border-radius:50%;"></div>';
-
-        html += '<div style="display:flex;align-items:center;justify-content:center;gap:0;padding:10px 0;">';
-        if (modelo) {
-            var motoImg = VkUI.getImagenMoto(modelo.id, state.colorSeleccionado || modelo.colorDefault);
-            html += '<img src="' + base + motoImg + '" alt="Voltika" style="width:45%;max-width:170px;height:auto;">';
-        }
-        html += '<img src="' + base + 'img/final.jpg" alt="Asesor Voltika" ' +
-            'style="width:35%;max-width:130px;height:auto;border-radius:14px;margin-left:-10px;">';
-        html += '</div>';
-        html += '</div>';
 
         // === Contact info card ===
         html += '<div class="vk-card" style="padding:20px;margin-bottom:16px;">';
@@ -84,11 +67,11 @@ var PasoExito = {
         // Contact badges
         html += '<div style="background:#F5F5F5;border-radius:10px;padding:12px;margin-bottom:14px;">';
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
-        html += '<img src="' + base + 'img/Archivo 4/last_elements-10.png" style="width:20px;height:20px;object-fit:contain;">';
+        html += '<img src="' + base + 'img/Archivo 4/last_elements-10.png" style="width:36px;height:36px;object-fit:contain;">';
         html += '<span style="font-size:13px;color:#333;">Te contactaremos por <strong>WhatsApp o email</strong></span>';
         html += '</div>';
         html += '<div style="display:flex;align-items:center;gap:8px;">';
-        html += '<img src="' + base + 'img/Archivo 4/last_elements-11.png" style="width:20px;height:20px;object-fit:contain;">';
+        html += '<img src="' + base + 'img/Archivo 4/last_elements-11.png" style="width:36px;height:36px;object-fit:contain;">';
         html += '<span style="font-size:13px;color:#333;"><strong>Mantente</strong> pendiente de nuestros mensajes</span>';
         html += '</div>';
         html += '</div>';
@@ -96,7 +79,7 @@ var PasoExito = {
         // Security key section (before Felicidades)
         html += '<div style="background:#F3E8FD;border-radius:12px;padding:18px;margin:14px 0;border:1px solid #E0D0F0;">';
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">';
-        html += '<img src="' + base + 'img/Archivo 4/last_elements-05.png" style="width:28px;height:28px;object-fit:contain;">';
+        html += '<img src="' + base + 'img/Archivo 4/last_elements-05.png" style="width:42px;height:42px;object-fit:contain;">';
         html += '<span style="font-size:15px;font-weight:800;color:#333;">Tu tel\u00e9fono ser\u00e1 tu llave de seguridad</span>';
         html += '</div>';
         html += '<p style="font-size:14px;color:#555;line-height:1.6;margin:0 0 10px;">Para proteger tu compra, la entrega de tu Voltika se autoriza <strong>\u00fanicamente</strong> con un c\u00f3digo <strong>SMS</strong> enviado a tu tel\u00e9fono.</p>';
