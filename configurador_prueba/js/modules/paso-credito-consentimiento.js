@@ -382,7 +382,11 @@ var PasoCreditoConsentimiento = {
                 municipio:       state.municipio || state.ciudad || '',
                 tipo_consulta:   'PF',
                 fecha_aprobacion_consulta: state._fechaAprobacionConsulta || '',
-                hora_aprobacion_consulta:  state._horaAprobacionConsulta || ''
+                hora_aprobacion_consulta:  state._horaAprobacionConsulta || '',
+                // NIP-CIEC Phase B: consent flags
+                ingreso_nip_ciec:  'SI',
+                respuesta_leyenda: 'SI',
+                aceptacion_tyc:    'SI'
             }),
             success: function(res) {
                 state._buroResult  = res;

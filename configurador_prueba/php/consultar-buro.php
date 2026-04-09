@@ -67,6 +67,13 @@ $horaAprobacionConsulta   = trim($json['hora_aprobacion_consulta']  ?? '');
 if (!$fechaAprobacionConsulta) $fechaAprobacionConsulta = date('Y-m-d');
 if (!$horaAprobacionConsulta)  $horaAprobacionConsulta  = date('H:i:s');
 
+// NIP-CIEC Phase B: consent flags + query timestamps
+$ingresoNipCiec    = strtoupper(trim($json['ingreso_nip_ciec'] ?? 'SI'));
+$respuestaLeyenda  = strtoupper(trim($json['respuesta_leyenda'] ?? 'SI'));
+$aceptacionTyc     = strtoupper(trim($json['aceptacion_tyc'] ?? 'SI'));
+$fechaConsulta     = date('Y-m-d');   // actual API call date
+$horaConsulta      = date('H:i:s');   // actual API call time
+
 if (!$primerNombre || !$apellidoPaterno) {
     http_response_code(400);
     echo json_encode(['error' => 'Nombre y apellido paterno son requeridos']);
@@ -204,8 +211,10 @@ try {
             (nombre, apellido_paterno, apellido_materno, fecha_nacimiento, cp,
              score, pago_mensual, dpd90_flag, dpd_max, num_cuentas, folio_consulta,
              rfc, curp, calle_numero, colonia, municipio, ciudad, estado,
-             tipo_consulta, fecha_aprobacion_consulta, hora_aprobacion_consulta)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             tipo_consulta, fecha_aprobacion_consulta, hora_aprobacion_consulta,
+             fecha_consulta, hora_consulta, usuario_api,
+             ingreso_nip_ciec, respuesta_leyenda, aceptacion_tyc)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $primerNombre, $apellidoPaterno, $apellidoMaterno, $fechaNacimiento, $cp,
@@ -215,6 +224,8 @@ try {
         $result['folioConsulta'],
         $rfc, $curp, $direccion, $colonia, $municipio, $ciudad, $estado,
         $tipoConsulta, $fechaAprobacionConsulta, $horaAprobacionConsulta,
+        $fechaConsulta, $horaConsulta, CDC_FOLIO,
+        $ingresoNipCiec, $respuestaLeyenda, $aceptacionTyc,
     ]);
 } catch (PDOException $e) {
     error_log('Voltika consultas_buro DB error: ' . $e->getMessage());
@@ -240,6 +251,12 @@ function ensureConsultasBuroColumns(PDO $pdo): void {
         'tipo_consulta'             => "VARCHAR(5) NOT NULL DEFAULT 'PF'",
         'fecha_aprobacion_consulta' => "DATE NULL",
         'hora_aprobacion_consulta'  => "TIME NULL",
+        'fecha_consulta'            => "DATE NULL",
+        'hora_consulta'             => "TIME NULL",
+        'usuario_api'               => "VARCHAR(100) NULL",
+        'ingreso_nip_ciec'          => "VARCHAR(5) DEFAULT 'SI'",
+        'respuesta_leyenda'         => "VARCHAR(5) DEFAULT 'SI'",
+        'aceptacion_tyc'            => "VARCHAR(5) DEFAULT 'SI'",
     ];
     try {
         $existing = [];
