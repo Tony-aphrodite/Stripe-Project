@@ -209,12 +209,12 @@ var PasoResumen = {
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;">Color: ' + color + '</div>';
         html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Pago semanal desde</div>';
         html += '<div style="font-size:32px;font-weight:900;color:var(--vk-text-primary);line-height:1.1;">' + VkUI.formatPrecio(credito.pagoSemanal) + '</div>';
-        html += '<div style="font-size:12px;font-weight:700;margin-top:4px;">Enganche<br><span style="color:var(--vk-green-primary);">' + VkUI.formatPrecio(credito.enganche) + '</span></div>';
+        html += '<div style="font-size:11px;color:var(--vk-text-secondary);margin-top:2px;">menos de <strong>' + VkUI.formatPrecio(pagoDiario) + '</strong> al d\u00eda</div>';
+        html += '<div style="font-size:12px;font-weight:700;margin-top:6px;">Enganche<br><span style="color:var(--vk-green-primary);">' + VkUI.formatPrecio(credito.enganche) + '</span></div>';
         html += '<div style="font-size:12px;font-weight:700;margin-top:4px;">Plazo<br><span style="color:#039fe1;">' + (state.plazoMeses || 36) + ' meses</span></div>';
         html += '</div>';
         html += '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">';
         html += '<img src="' + img + '" alt="' + modelo.nombre + '" style="width:100px;height:auto;object-fit:contain;">';
-        html += '<div style="font-size:11px;color:var(--vk-text-secondary);text-align:center;margin-top:4px;">menos de <strong>' + VkUI.formatPrecio(pagoDiario) + '</strong> al d\u00eda</div>';
         html += '</div>';
         html += '</div>';
         html += '<div style="display:flex;align-items:center;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--vk-border);">';
