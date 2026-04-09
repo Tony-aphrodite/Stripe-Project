@@ -1,39 +1,59 @@
 <?php
-// NOTE: this endpoint re-uses VOLTIKA_PUNTO session namespace
-session_name('VOLTIKA_PUNTO');
-session_start();
+require_once __DIR__ . '/../bootstrap.php';
 
-require_once __DIR__ . '/../../../configurador_prueba/php/config.php';
-header('Content-Type: application/json');
-
-$d = json_decode(file_get_contents('php://input'), true) ?: [];
+$d = puntoJsonIn();
 $email = trim($d['email'] ?? '');
 $pass  = $d['password'] ?? '';
-if (!$email || !$pass) { http_response_code(400); echo json_encode(['error'=>'Email y contraseña requeridos']); exit; }
+if (!$email || !$pass) {
+    puntoJsonOut(['error' => 'Email y contraseña requeridos'], 400);
+}
 
 $pdo = getDB();
-$stmt = $pdo->prepare("SELECT * FROM dealer_usuarios WHERE email=? AND activo=1 AND rol='dealer' LIMIT 1");
+// Allow both dealer and admin roles — admin can access any punto for supervision
+$stmt = $pdo->prepare("SELECT * FROM dealer_usuarios
+    WHERE email=? AND activo=1 AND rol IN ('dealer','admin') LIMIT 1");
 $stmt->execute([$email]);
 $u = $stmt->fetch(PDO::FETCH_ASSOC);
+
 if (!$u || !password_verify($pass, $u['password_hash'])) {
-    http_response_code(401); echo json_encode(['error'=>'Credenciales inválidas']); exit;
+    puntoJsonOut(['error' => 'Credenciales inválidas'], 401);
 }
 
-$_SESSION['punto_user_id']  = (int)$u['id'];
+$_SESSION['punto_user_id']     = (int)$u['id'];
 $_SESSION['punto_user_nombre'] = $u['nombre'];
-$_SESSION['punto_id']       = (int)($u['punto_id'] ?: 0);
-$_SESSION['punto_nombre']   = $u['punto_nombre'];
+$_SESSION['punto_user_rol']    = $u['rol'];
+$_SESSION['punto_id']          = (int)($u['punto_id'] ?: 0);
+$_SESSION['punto_nombre']      = $u['punto_nombre'] ?? '';
 
-// Load point details
+// Load point details if user is bound to a specific punto
 $p = null;
-if ($u['punto_id']) {
-    $pStmt = $pdo->prepare("SELECT * FROM puntos_voltika WHERE id=?");
-    $pStmt->execute([$u['punto_id']]);
-    $p = $pStmt->fetch(PDO::FETCH_ASSOC);
+if (!empty($u['punto_id'])) {
+    try {
+        $pStmt = $pdo->prepare("SELECT * FROM puntos_voltika WHERE id=? OR codigo_venta=? OR codigo_electronico=? LIMIT 1");
+        $pStmt->execute([$u['punto_id'], $u['punto_id'], $u['punto_id']]);
+        $p = $pStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $e) { $p = null; }
 }
 
-echo json_encode([
+// Admin without bound punto: let them pick or default to first
+if (!$p && $u['rol'] === 'admin') {
+    try {
+        $p = $pdo->query("SELECT * FROM puntos_voltika WHERE activo=1 ORDER BY id ASC LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($p) {
+            $_SESSION['punto_id']     = (int)$p['id'];
+            $_SESSION['punto_nombre'] = $p['nombre'];
+        }
+    } catch (Throwable $e) {}
+}
+
+puntoLog('login', ['email' => $email, 'rol' => $u['rol']]);
+puntoJsonOut([
     'ok' => true,
-    'usuario' => ['id'=>$u['id'], 'nombre'=>$u['nombre'], 'punto_nombre'=>$u['punto_nombre']],
-    'punto' => $p
+    'usuario' => [
+        'id' => (int)$u['id'],
+        'nombre' => $u['nombre'],
+        'rol' => $u['rol'],
+        'punto_nombre' => $u['punto_nombre'] ?? ($p['nombre'] ?? null),
+    ],
+    'punto' => $p,
 ]);
