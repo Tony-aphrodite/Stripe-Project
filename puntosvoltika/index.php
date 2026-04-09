@@ -23,6 +23,7 @@ $sharedV = file_exists($sharedAdminCssPath) ? filemtime($sharedAdminCssPath) : t
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Voltika — Punto</title>
+<link rel="icon" type="image/svg+xml" href="../configurador_prueba/img/favicon.svg">
 <link rel="stylesheet" href="<?= htmlspecialchars($sharedAdminCss . '?v=' . $sharedV) ?>">
 <link rel="stylesheet" href="<?= $asset('css/punto.css') ?>">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
