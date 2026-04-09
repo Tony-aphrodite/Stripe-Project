@@ -1,0 +1,15 @@
+/* Punto-specific tweaks on top of admin.css */
+.pv-bike-card{background:var(--ad-surface);border:1px solid var(--ad-border);border-radius:var(--ad-radius);padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:center}
+.pv-bike-card .pv-info{flex:1}
+.pv-bike-card .pv-actions{display:flex;gap:6px}
+.pv-wizard-steps{display:flex;gap:4px;margin-bottom:20px}
+.pv-wizard-steps>div{flex:1;height:4px;background:var(--ad-border);border-radius:2px}
+.pv-wizard-steps>div.active{background:var(--ad-primary)}
+.pv-wizard-steps>div.done{background:var(--ad-primary)}
+.pv-check{display:flex;align-items:center;gap:10px;padding:10px;background:var(--ad-surface-2);border-radius:var(--ad-radius-sm);margin-bottom:6px;cursor:pointer}
+.pv-check input{width:18px;height:18px}
+.pv-photo-slot{background:var(--ad-surface-2);border:2px dashed var(--ad-border);border-radius:var(--ad-radius-sm);padding:30px 10px;text-align:center;color:var(--ad-dim);cursor:pointer}
+.pv-photo-slot.filled{border-style:solid;padding:4px}
+.pv-photo-slot img{max-width:100%;border-radius:var(--ad-radius-sm)}
+.pv-otp-input{display:flex;gap:8px;margin:14px 0}
+.pv-otp-input input{flex:1;max-width:52px;aspect-ratio:1;text-align:center;font-size:24px;font-weight:700;background:var(--ad-surface-2);border:1px solid var(--ad-border);border-radius:var(--ad-radius-sm);color:var(--ad-text)}

@@ -13,9 +13,10 @@
   <div id="vkScreen" class="vk-screen"></div>
   <nav id="vkTabbar" class="vk-tabbar" style="display:none">
     <button data-route="inicio"><span class="ic">⚡</span><em>Inicio</em></button>
-    <button data-route="pagos"><span class="ic">💳</span><em>Mis pagos</em></button>
-    <button data-route="documentos"><span class="ic">📄</span><em>Documentos</em></button>
-    <button data-route="cuenta"><span class="ic">👤</span><em>Mi cuenta</em></button>
+    <button data-route="pagos"><span class="ic">💳</span><em>Pagos</em></button>
+    <button data-route="entrega"><span class="ic">🎁</span><em>Entrega</em></button>
+    <button data-route="documentos"><span class="ic">📄</span><em>Docs</em></button>
+    <button data-route="cuenta"><span class="ic">👤</span><em>Cuenta</em></button>
     <button data-route="ayuda"><span class="ic">💬</span><em>Ayuda</em></button>
   </nav>
 </div>
@@ -24,6 +25,7 @@
 <script src="js/modules/recovery.js?v=1"></script>
 <script src="js/modules/inicio.js?v=1"></script>
 <script src="js/modules/pagos.js?v=1"></script>
+<script src="js/modules/entrega.js?v=1"></script>
 <script src="js/modules/documentos.js?v=1"></script>
 <script src="js/modules/cuenta.js?v=1"></script>
 <script src="js/modules/ayuda.js?v=1"></script>
