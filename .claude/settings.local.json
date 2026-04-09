@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(curl -sS -o admin-app.js \"https://voltika.mx/admin/js/admin-app.js\")",
+      "Bash(node -c admin-app.js)"
     ]
   }
 }

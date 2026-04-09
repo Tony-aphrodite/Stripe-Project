@@ -16,6 +16,16 @@ html,body{background:var(--ad-bg);color:var(--ad-text);font-family:-apple-system
 .ad-user{font-size:12px;color:var(--ad-dim);padding:8px 0;border-top:1px solid var(--ad-border);margin-top:8px}
 .ad-logout{background:none;border:1px solid var(--ad-border);color:var(--ad-dim);padding:8px;border-radius:var(--ad-radius-sm);cursor:pointer;font-size:12px;margin-top:8px}
 .ad-main{flex:1;margin-left:220px;padding:20px 24px}
+/* When sidebar is hidden (login / no auth), remove offset */
+.ad-sidebar[style*="display: none"] + .ad-main,
+.ad-sidebar[style*="display:none"] + .ad-main{margin-left:0}
+/* Mobile: stack the layout, no fixed sidebar */
+@media (max-width: 768px){
+  .ad-sidebar{position:relative;width:100%;border-right:0;border-bottom:1px solid var(--ad-border)}
+  .ad-main{margin-left:0;padding:16px}
+  .ad-nav{flex-direction:row;flex-wrap:wrap;gap:4px}
+  .ad-nav button{flex:1;min-width:0;padding:8px 6px;font-size:11px;justify-content:center}
+}
 .ad-h1{font-size:22px;font-weight:700;margin-bottom:16px}
 .ad-h2{font-size:16px;font-weight:700;margin:16px 0 10px}
 /* KPI strip */
