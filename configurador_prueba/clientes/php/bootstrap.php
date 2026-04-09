@@ -9,8 +9,12 @@
 require_once __DIR__ . '/../../configurador_prueba/php/config.php';
 
 // ── CORS / JSON defaults ────────────────────────────────────────────────────
+// Only set JSON content-type when this is an API request (not when included from index.php)
+$isApiRequest = (basename($_SERVER['SCRIPT_NAME'] ?? '') !== 'index.php');
 if (!headers_sent()) {
-    header('Content-Type: application/json');
+    if ($isApiRequest) {
+        header('Content-Type: application/json');
+    }
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Access-Control-Allow-Credentials: true');
