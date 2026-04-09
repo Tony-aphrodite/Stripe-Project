@@ -30,6 +30,7 @@ $asset = function(string $rel): string {
 <div id="adApp" class="ad-app">
   <nav id="adSidebar" class="ad-sidebar" style="display:none">
     <div class="ad-logo"><img src="../configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'"></div>
+    <button class="ad-hamburger" id="adHamburger">&#9776;</button>
     <div class="ad-nav">
       <button data-route="dashboard" class="active"><span>📊</span> Dashboard</button>
       <button data-route="inventario"><span>🏭</span> Inventario</button>

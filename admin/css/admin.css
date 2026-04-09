@@ -260,6 +260,13 @@ html,body{
 /* ── Toolbar ───────────────────────────────────────────────────────────── */
 .ad-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
 
+/* ── Hamburger button (hidden on desktop) ─────────────────────────────── */
+.ad-hamburger{
+  display:none;
+  background:none;border:0;color:#fff;font-size:22px;
+  cursor:pointer;padding:4px 6px;flex-shrink:0;line-height:1;
+}
+
 /* ── Mobile / narrow viewports (≤ 768px) ───────────────────────────────── */
 @media (max-width: 768px){
   .ad-app{flex-direction:column}
@@ -267,22 +274,27 @@ html,body{
     position:relative;top:auto;left:auto;bottom:auto;
     width:100%;height:auto;
     border-right:0;border-bottom:1px solid var(--ad-navy-2);
-    padding:8px 10px;
+    padding:8px 12px;
     flex-direction:row;align-items:center;gap:8px;
+    flex-wrap:wrap;
   }
-  .ad-logo{margin:0 6px 0 0;flex-shrink:0;min-height:0}
+  .ad-logo{margin:0;flex-shrink:0;min-height:0}
   .ad-logo img{height:22px}
+  .ad-hamburger{display:block;margin-left:auto}
   .ad-nav{
-    flex:1;flex-direction:row;flex-wrap:nowrap;gap:4px;
-    overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    display:none;
+    width:100%;flex-direction:column;gap:2px;
+    order:10;
   }
-  .ad-nav::-webkit-scrollbar{display:none}
+  .ad-nav.open{display:flex}
   .ad-nav button{
-    flex:0 0 auto;padding:7px 12px;font-size:11px;
+    padding:10px 12px;font-size:13px;
     white-space:nowrap;justify-content:flex-start;
+    border-radius:var(--ad-radius-sm);
   }
   .ad-user{display:none}
-  .ad-logout{margin:0;flex-shrink:0;padding:6px 10px;font-size:11px}
+  .ad-logout{display:none;width:100%;order:11;margin-top:4px;text-align:center}
+  .ad-nav.open ~ .ad-logout{display:block}
   .ad-main{margin-left:0;padding:14px}
   .ad-kpis{grid-template-columns:repeat(2,1fr);gap:8px}
   .ad-kpi{padding:12px}
