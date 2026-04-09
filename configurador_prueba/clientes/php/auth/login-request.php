@@ -32,6 +32,10 @@ portalLog('login_request', [
     'detalle' => $r['ok'] ? 'sms_ok' : 'sms_fallback',
 ]);
 
-$out = ['status' => 'sent'];
-if (!$r['ok']) $out['testCode'] = $codigo; // dev fallback
+$out = ['ok' => true, 'status' => 'sent'];
+// Always expose testCode for known test numbers, or when SMS fails
+$isTestNumber = in_array($tel, ['5500000000', '0000000000']);
+if (!$r['ok'] || $isTestNumber) {
+    $out['testCode'] = $codigo;
+}
 portalJsonOut($out);
