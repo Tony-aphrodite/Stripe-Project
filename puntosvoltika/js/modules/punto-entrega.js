@@ -1,0 +1,148 @@
+window.PV_entrega = (function(){
+  var ctx = {};
+  function render(){
+    PVApp.render('<div class="ad-h1">Entregar al cliente</div><div><span class="ad-spin"></span></div>');
+    PVApp.api('inventario/listar.php').done(function(r){
+      var list = (r.inventario_entrega||[]).filter(function(m){ return m.estado!=='entregada'; });
+      var html = '<div class="ad-h1">Entregar al cliente</div>';
+      if (list.length===0) html += '<div class="ad-card">Sin motos para entregar</div>';
+      list.forEach(function(m){
+        html += '<div class="ad-card">'+
+          '<div style="font-weight:700">'+m.modelo+' · '+m.color+'</div>'+
+          '<div style="font-size:12px">Cliente: '+(m.cliente_nombre||'—')+'</div>'+
+          '<div style="font-size:11px;color:var(--ad-dim)">'+(m.cliente_telefono||'')+' · '+(m.cliente_email||'')+'</div>'+
+          '<button class="ad-btn primary sm pvStart" data-id="'+m.id+'" data-nombre="'+m.cliente_nombre+'" data-tel="'+m.cliente_telefono+'" style="margin-top:8px">🎁 Iniciar entrega</button>'+
+        '</div>';
+      });
+      PVApp.render(html);
+      $('.pvStart').on('click', function(){
+        ctx = { moto_id: $(this).data('id'), cliente: $(this).data('nombre'), tel: $(this).data('tel'), step:0 };
+        step1();
+      });
+    });
+  }
+  function steps(idx){
+    var s='<div class="pv-wizard-steps">';
+    for(var i=0;i<5;i++) s+='<div class="'+(i<idx?'done':(i===idx?'active':''))+'"></div>';
+    s+='</div>';
+    return s;
+  }
+  // Step 1: Send OTP
+  function step1(){
+    PVApp.modal(
+      steps(0)+
+      '<div class="ad-h2">1. Enviar OTP al cliente</div>'+
+      '<div class="ad-card">Cliente: <strong>'+ctx.cliente+'</strong><br>Tel: '+ctx.tel+'</div>'+
+      '<button id="pvS1" class="ad-btn primary" style="width:100%">Enviar código por SMS</button>'
+    );
+    $('#pvS1').on('click', function(){
+      var $b=$(this).prop('disabled',true).html('<span class="ad-spin"></span>');
+      PVApp.api('entrega/iniciar.php',{moto_id:ctx.moto_id}).done(function(r){
+        if(r.ok){ ctx.testCode=r.test_code; step2(); }
+      }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); $b.prop('disabled',false).text('Enviar código por SMS'); });
+    });
+  }
+  // Step 2: Verify OTP
+  function step2(){
+    PVApp.modal(
+      steps(1)+
+      '<div class="ad-h2">2. Verificar código del cliente</div>'+
+      '<div>Pide al cliente que te muestre el código recibido por SMS.</div>'+
+      '<div class="pv-otp-input">'+[0,1,2,3,4,5].map(function(i){return '<input maxlength="1" data-i="'+i+'" inputmode="numeric">';}).join('')+'</div>'+
+      (ctx.testCode?'<div class="ad-card" style="color:var(--ad-warn)">Código de prueba: <b>'+ctx.testCode+'</b></div>':'')+
+      '<button id="pvS2" class="ad-btn primary" style="width:100%">Verificar</button>'
+    );
+    var $ins=$('.pv-otp-input input');
+    $ins.on('input',function(){ this.value=this.value.replace(/\D/g,''); if(this.value)$ins.eq($(this).data('i')+1).focus(); });
+    $ins.eq(0).focus();
+    $('#pvS2').on('click', function(){
+      var code=$ins.map(function(){return this.value;}).get().join('');
+      PVApp.api('entrega/verificar-otp.php',{moto_id:ctx.moto_id,codigo:code}).done(function(r){
+        if(r.ok){ ctx.entrega_id=r.entrega_id; step3(); }
+      }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Código incorrecto'); });
+    });
+  }
+  // Step 3: Face verification + photos
+  function step3(){
+    PVApp.modal(
+      steps(2)+
+      '<div class="ad-h2">3. Foto del cliente e INE</div>'+
+      '<div style="color:var(--ad-dim);font-size:12px;margin-bottom:10px">Toma foto del rostro del cliente y de su identificación.</div>'+
+      '<label class="ad-label">Foto rostro cliente</label>'+
+      '<input type="file" id="pvFCliente" accept="image/*" capture="user" class="ad-input" style="margin-bottom:10px">'+
+      '<label class="ad-label">Foto INE</label>'+
+      '<input type="file" id="pvFIne" accept="image/*" class="ad-input" style="margin-bottom:10px">'+
+      '<button id="pvS3" class="ad-btn primary" style="width:100%">Verificar rostro</button>'
+    );
+    $('#pvS3').on('click', function(){
+      var $b=$(this).prop('disabled',true).html('<span class="ad-spin"></span>');
+      readFiles(['pvFCliente','pvFIne'], function(files){
+        PVApp.api('entrega/verificar-rostro.php',{
+          entrega_id: ctx.entrega_id, moto_id: ctx.moto_id,
+          foto_cliente: files.pvFCliente, foto_ine: files.pvFIne
+        }).done(function(r){
+          if(r.ok){ PVApp.toast('Face score: '+r.face_score); step4(); }
+        }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); $b.prop('disabled',false).text('Verificar rostro'); });
+      });
+    });
+  }
+  // Step 4: Moto checklist + photos
+  function step4(){
+    PVApp.modal(
+      steps(3)+
+      '<div class="ad-h2">4. Checklist de la moto</div>'+
+      '<label class="pv-check"><input type="checkbox" id="pvM1"> VIN coincide con lo esperado</label>'+
+      '<label class="pv-check"><input type="checkbox" id="pvM2"> Estado físico OK</label>'+
+      '<label class="pv-check"><input type="checkbox" id="pvM3"> Sin daños</label>'+
+      '<label class="pv-check"><input type="checkbox" id="pvM4"> Unidad completa</label>'+
+      '<label class="ad-label">Fotos de la moto</label>'+
+      '<input type="file" id="pvFoto1" accept="image/*" class="ad-input" style="margin-bottom:6px" placeholder="Frente">'+
+      '<input type="file" id="pvFoto2" accept="image/*" class="ad-input" style="margin-bottom:6px" placeholder="Lateral">'+
+      '<input type="file" id="pvFoto3" accept="image/*" class="ad-input" style="margin-bottom:10px" placeholder="Trasera">'+
+      '<button id="pvS4" class="ad-btn primary" style="width:100%">Guardar checklist</button>'
+    );
+    $('#pvS4').on('click', function(){
+      var $b=$(this).prop('disabled',true).html('<span class="ad-spin"></span>');
+      readFiles(['pvFoto1','pvFoto2','pvFoto3'], function(files){
+        PVApp.api('entrega/checklist.php',{
+          moto_id: ctx.moto_id,
+          vin_coincide: $('#pvM1').is(':checked')?1:0,
+          estado_fisico_ok: $('#pvM2').is(':checked')?1:0,
+          sin_danos: $('#pvM3').is(':checked')?1:0,
+          unidad_completa: $('#pvM4').is(':checked')?1:0,
+          fotos_moto: [files.pvFoto1, files.pvFoto2, files.pvFoto3].filter(Boolean)
+        }).done(function(r){ if(r.ok) step5(); })
+          .fail(function(){ $b.prop('disabled',false).text('Guardar checklist'); });
+      });
+    });
+  }
+  // Step 5: Wait for ACTA + finalize
+  function step5(){
+    PVApp.modal(
+      steps(4)+
+      '<div class="ad-h2">5. Firma del ACTA DE ENTREGA</div>'+
+      '<div class="ad-card" style="color:var(--ad-warn)">'+
+        '📱 Pide al cliente que ingrese al portal <strong>voltika.mx/clientes</strong> desde su celular, revise el acta y la firme.'+
+      '</div>'+
+      '<button id="pvS5" class="ad-btn primary" style="width:100%">Finalizar entrega</button>'
+    );
+    $('#pvS5').on('click', function(){
+      PVApp.api('entrega/finalizar.php',{moto_id:ctx.moto_id}).done(function(r){
+        if(r.ok){ PVApp.closeModal(); PVApp.toast('✅ '+r.mensaje); render(); }
+      }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
+    });
+  }
+
+  function readFiles(ids, cb){
+    var out={}; var pending=ids.length;
+    if(pending===0) return cb(out);
+    ids.forEach(function(id){
+      var f=document.getElementById(id); var file=f&&f.files&&f.files[0];
+      if(!file){ if(--pending===0) cb(out); return; }
+      var reader=new FileReader();
+      reader.onload=function(){ out[id]=reader.result; if(--pending===0) cb(out); };
+      reader.readAsDataURL(file);
+    });
+  }
+  return { render:render };
+})();

@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Dealer — Voltika</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="css/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+  /* Page-specific overrides */
+  .section-wrap { margin-bottom: 28px; }
+  .nav-tabs-top {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 24px; background: #fff;
+    border-bottom: 1px solid var(--vka-border);
+    overflow-x: auto;
+  }
+  .nav-tab {
+    padding: 14px 16px; font-size: 13px; font-weight: 600;
+    color: var(--vka-grey); border-bottom: 2px solid transparent;
+    cursor: pointer; white-space: nowrap; transition: color .2s, border-color .2s;
+  }
+  .nav-tab.active  { color: var(--vka-blue); border-bottom-color: var(--vka-blue); }
+  .nav-tab:hover   { color: var(--vka-blue-dark); }
+  .nav-tab-content { display: none; }
+  .nav-tab-content.active { display: block; }
+  .btn-qr-header {
+    margin-left: auto; background: var(--vka-blue); color:#fff;
+    border: none; border-radius: 20px; padding: 7px 16px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .dealer-inventario-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--vka-blue); font-size: 13px; font-weight: 600;
+    text-decoration: none; padding: 7px 14px;
+    border: 1.5px solid var(--vka-blue); border-radius: 20px;
+    transition: background .2s, color .2s;
+  }
+  .dealer-inventario-link:hover { background: var(--vka-blue); color: #fff; }
+
+  /* ── Mobile: QR button — icon only ── */
+  @media (max-width: 480px) {
+    .btn-qr-header { padding: 7px 10px; border-radius: 50%; }
+    .btn-qr-header .qr-btn-text { display: none; }
+    .section-wrap { margin-bottom: 18px; }
+    .section-header { padding: 8px 12px; }
+    .section-title { font-size: 11px; }
+  }
+</style>
+</head>
+<body class="admin-body">
+
+<!-- ═══ LOGIN SCREEN ══════════════════════════════════════════════════════════ -->
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'"
+           alt="Voltika">
+      <span style="display:none;font-size:22px;font-weight:900;color:#1a3a5c;">Voltika</span>
+    </div>
+    <div class="login-title">Panel de Dealer</div>
+    <div class="login-subtitle">Acceso para puntos Voltika autorizados</div>
+    <form id="login-form" onsubmit="doLogin(event)">
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="dealer@voltika.com.mx" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-login" id="btn-login">Entrar al panel</button>
+      <div id="login-error" class="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ MAIN PANEL ════════════════════════════════════════════════════════════ -->
+<div id="main-panel" style="display:none;">
+
+  <!-- Header -->
+  <header class="admin-header">
+    <div class="header-left">
+      <img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg"
+           class="header-logo" alt="Voltika"
+           onerror="this.style.display='none'">
+      <span class="header-sep">|</span>
+      <span class="header-punto" id="header-punto">Cargando...</span>
+    </div>
+    <div class="header-right">
+      <a href="https://wa.me/5213416370" target="_blank" class="btn-soporte">💬 Soporte</a>
+      <button class="btn-logout" onclick="doLogout()" title="Cerrar sesión">🚪 Salir</button>
+    </div>
+  </header>
+
+  <!-- Stats bar -->
+  <div class="stats-bar" id="stats-bar">
+    <span>Cargando datos...</span>
+  </div>
+
+  <!-- Nav tabs -->
+  <div class="nav-tabs-top">
+    <div class="nav-tab active" onclick="switchTab('dashboard')"><span class="tab-ico">🏠</span><span class="tab-txt"> Dashboard</span></div>
+    <div class="nav-tab" onclick="switchTab('entregas')"><span class="tab-ico">📦</span><span class="tab-txt"> Entregas</span></div>
+    <div class="nav-tab" onclick="switchTab('consignacion')"><span class="tab-ico">🏪</span><span class="tab-txt"> Consig.</span></div>
+    <button class="btn-qr-header" onclick="openQRModal()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/>
+        <path d="M14 14h.01M14 18h.01M18 14h.01M18 18h.01M18 21h.01M21 18h.01M21 21h.01"/>
+      </svg>
+      <span class="qr-btn-text">Escanear QR</span>
+    </button>
+  </div>
+
+  <!-- ── DASHBOARD TAB ──────────────────────────────────────────────────── -->
+  <div id="tab-dashboard" class="nav-tab-content active">
+    <div class="admin-main">
+      <div id="dashboard-content">
+        <div class="empty-state">
+          <div class="loader dark" style="width:32px;height:32px;border-width:3px;"></div>
+          <p style="margin-top:16px;">Cargando panel...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ENTREGAS TAB ────────────────────────────────────────────────────── -->
+  <div id="tab-entregas" class="nav-tab-content">
+    <div class="admin-main">
+      <div id="entregas-content">
+        <div class="empty-state"><p>Cargando entregas...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONSIGNACIÓN TAB ────────────────────────────────────────────────── -->
+  <div id="tab-consignacion" class="nav-tab-content">
+    <div class="admin-main">
+      <div id="consignacion-content">
+        <div class="empty-state"><p>Cargando consignación...</p></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main-panel -->
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ═══ MODAL: QR SCANNER ═════════════════════════════════════════════════════ -->
+<div id="modal-qr" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-qr')">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <span class="modal-title">📷 Escanear QR</span>
+      <button class="modal-close" onclick="closeQRModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="btn btn-primary btn-sm" id="btn-qr-pedido" onclick="setQRTipo('pedido')">QR de Pedido</button>
+        <button class="btn btn-ghost btn-sm" id="btn-qr-moto" onclick="setQRTipo('moto')">QR de Moto</button>
+      </div>
+      <div class="qr-scanner-area" id="qr-scanner-area">
+        <video id="qr-video" playsinline muted></video>
+        <div class="qr-scanner-overlay"><div class="qr-frame"></div></div>
+      </div>
+      <div id="qr-result" class="qr-result" style="display:none;"></div>
+      <div class="qr-manual">
+        <label id="qr-manual-label">O ingresa el número de pedido manualmente:</label>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          <input type="text" id="qr-manual-input" placeholder="Ej: VK-ABC123 o VIN">
+          <button class="btn btn-primary btn-sm" onclick="verifyManual()">Verificar</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeQRModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: CHECKLIST ══════════════════════════════════════════════════════ -->
+<div id="modal-checklist" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-checklist')">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <span class="modal-title">✅ Checklist Pre-Entrega</span>
+      <button class="modal-close" onclick="closeModal('modal-checklist')">×</button>
+    </div>
+    <div class="modal-body" id="checklist-body">
+      <p>Cargando checklist...</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-checklist')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveChecklist(false)">Guardar progreso</button>
+      <button class="btn btn-success" id="btn-completar-checklist" onclick="saveChecklist(true)">Completar y enviar a entrega</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: DOCUMENT HUB (VIN click) ═══════════════════════════════════════ -->
+<div id="modal-docs" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-docs')">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title">📋 Documentos</span>
+      <button class="modal-close" onclick="closeModal('modal-docs')">×</button>
+    </div>
+    <div class="modal-body" id="docs-body">
+      <p>Cargando...</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-docs')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: FACE COMPARE / DELIVERY PHOTO ═════════════════════════════════ -->
+<div id="modal-face" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-face')">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title">📸 Verificación de Entrega</span>
+      <button class="modal-close" onclick="closeFaceModal()">×</button>
+    </div>
+    <div class="modal-body" id="face-body">
+      <!-- Dynamic content -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeFaceModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: CONFIRMAR ACCIÓN ══════════════════════════════════════════════ -->
+<div id="modal-accion" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-accion')">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-accion-title">Confirmar acción</span>
+      <button class="modal-close" onclick="closeModal('modal-accion')">×</button>
+    </div>
+    <div class="modal-body">
+      <p id="modal-accion-msg" style="font-size:14px;color:#555;margin-bottom:16px;"></p>
+      <div class="field">
+        <label>Notas adicionales (opcional)</label>
+        <textarea id="modal-accion-notas" class="checklist-notes" rows="3" placeholder="Observaciones..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-accion')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-accion" onclick="ejecutarAccion()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let dealer = null;
+let dashData = null;
+let pendingAccion = null; // { moto_id, accion, titulo, mensaje, btnClass }
+let currentChecklistMotoId = null;
+let qrStream = null;
+let qrTipo = 'pedido';
+let qrInterval = null;
+
+const ESTADOS_LABEL = {
+  'por_llegar':          'Por Llegar',
+  'recibida':            'Recibida',
+  'por_ensamblar':       'Por Ensamblar',
+  'en_ensamble':         'En Ensamble',
+  'lista_para_entrega':  'Lista para Entrega',
+  'por_validar_entrega': 'Por Validar Entrega',
+  'entregada':           'Entregada',
+  'retenida':            'Retenida',
+};
+
+const PASOS_TRACKER = [
+  { key: 'por_llegar',          label: 'Por Llegar',            short: 'Por llegar',  icon: '🚚' },
+  { key: 'recibida',            label: 'Recibida',              short: 'Recibida',    icon: '✓'  },
+  { key: 'por_ensamblar',       label: 'Por Ensamblar',         short: 'P.Ensamblar', icon: '🔧' },
+  { key: 'en_ensamble',         label: 'En Ensamble',           short: 'Ensamble',    icon: '⚙️' },
+  { key: 'lista_para_entrega',  label: 'Lista para Entrega',    short: 'Lista',       icon: '⚡' },
+  { key: 'por_validar_entrega', label: 'Por Validar Entrega',   short: 'Validar',     icon: '🔒' },
+  { key: 'entregada',           label: 'Entregada',             short: 'Entregada',   icon: '🏍️' },
+];
+
+const PASO_IDX = Object.fromEntries(PASOS_TRACKER.map((p, i) => [p.key, i]));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('php/admin-login.php', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ action: 'check' })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) { dealer = d.dealer; showPanel(); }
+    else       { showLogin(); }
+  })
+  .catch(() => showLogin());
+});
+
+function showLogin()  { document.getElementById('login-screen').style.display = 'flex'; }
+function showPanel()  {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-panel').style.display = 'block';
+  updateHeaderPunto();
+  loadDashboard();
+}
+
+function updateHeaderPunto() {
+  const el = document.getElementById('header-punto');
+  el.innerHTML = '<span>' + esc(dealer.punto_nombre || 'Panel Dealer') + '</span> ⚡';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════════════════════
+async function doLogin(e) {
+  e.preventDefault();
+  const btn   = document.getElementById('btn-login');
+  const errEl = document.getElementById('login-error');
+  errEl.classList.remove('visible');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span> Entrando...';
+
+  try {
+    const r = await fetch('php/admin-login.php', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        action:   'login',
+        email:    document.getElementById('login-email').value.trim(),
+        password: document.getElementById('login-password').value,
+      })
+    });
+    const d = await r.json();
+
+    if (d.ok) {
+      dealer = d.dealer;
+      showPanel();
+    } else {
+      errEl.textContent = d.error || 'Error de autenticación';
+      errEl.classList.add('visible');
+    }
+  } catch {
+    errEl.textContent = 'Error de conexión. Intenta de nuevo.';
+    errEl.classList.add('visible');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Entrar al panel';
+  }
+}
+
+async function doLogout() {
+  await fetch('php/admin-login.php', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ action: 'logout' })
+  });
+  dealer = null;
+  document.getElementById('main-panel').style.display = 'none';
+  showLogin();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadDashboard() {
+  try {
+    const r = await fetch('php/admin-dashboard.php');
+    if (r.status === 401) { doLogout(); return; }
+    dashData = await r.json();
+
+    updateStatsBar(dashData.stats);
+    renderDashboard(dashData);
+    renderEntregas(dashData.voltika_entrega);
+    renderConsignacion(dashData.consignacion);
+  } catch (e) {
+    document.getElementById('dashboard-content').innerHTML =
+      '<div class="empty-state"><p style="color:var(--vka-red)">Error al cargar datos. <a href="#" onclick="loadDashboard()">Reintentar</a></p></div>';
+  }
+}
+
+function updateStatsBar(stats) {
+  const el = document.getElementById('stats-bar');
+  const isMobile = window.innerWidth <= 480;
+
+  if (isMobile) {
+    el.className = 'stats-bar stats-bar-mobile';
+    el.innerHTML = `
+      <div class="stat-pill">
+        <span class="stat-pill-num">${stats.entregas_pendientes}</span>
+        <span class="stat-pill-lbl">⚡ Pendientes</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-pill-num">${stats.unidades_en_piso}</span>
+        <span class="stat-pill-lbl">🏍️ En piso</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-pill-num">${stats.en_ensamble}</span>
+        <span class="stat-pill-lbl">⚙️ Ensamble</span>
+      </div>
+      <div class="stat-refresh" onclick="loadDashboard()">🔄</div>
+    `;
+  } else {
+    el.className = 'stats-bar';
+    const hoy = new Date().toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
+    el.innerHTML = `
+      <strong>Hoy:</strong> ${hoy}
+      <span class="stats-dot"></span>
+      <span>⚡ <strong>${stats.entregas_pendientes}</strong> entrega${stats.entregas_pendientes!==1?'s':''} pendiente${stats.entregas_pendientes!==1?'s':''}</span>
+      <span class="stats-dot"></span>
+      <span>🏍️ <strong>${stats.unidades_en_piso}</strong> unidad${stats.unidades_en_piso!==1?'es':''} en piso</span>
+      <span class="stats-dot"></span>
+      <span>⚙️ <strong>${stats.en_ensamble}</strong> en ensamble</span>
+      <span style="margin-left:auto;">
+        <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">🔄 Actualizar</button>
+      </span>
+    `;
+  }
+}
+
+function renderDashboard(data) {
+  const el = document.getElementById('dashboard-content');
+  const all = [...data.voltika_entrega, ...data.consignacion];
+  if (!all.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">🏍️</div>
+      <p>No hay unidades activas en este punto.</p>
+      <a href="inventario.html" class="dealer-inventario-link" style="margin-top:12px;">Ver inventario completo</a>
+    </div>`;
+    return;
+  }
+
+  let html = '';
+
+  // Section A — Voltika Entrega
+  html += renderSection('UNIDADES ASIGNADAS POR VOLTIKA PARA ENTREGA',
+    'No disponibles para venta', data.voltika_entrega, 'entrega');
+
+  // Section B — Consignación
+  html += renderSection('UNIDADES A CONSIGNACIÓN',
+    'Disponibles para venta en punto', data.consignacion, 'consignacion');
+
+  html += `<div style="text-align:center;padding:16px 0;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+    <a href="inventario.html" class="dealer-inventario-link">📋 Ver inventario</a>
+    ${dealer && ['admin','cedis'].includes(dealer.rol) ? '<a href="cedis.html" class="dealer-inventario-link" style="border-color:#0f172a;color:#0f172a;">🏭 CEDIS Control</a>' : ''}
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+function renderSection(titulo, subtitulo, motos, tipo) {
+  const headerCls = tipo === 'consignacion' ? 'section-header consignacion' : 'section-header';
+  let html = `<div class="section-wrap">
+    <div class="${headerCls}">
+      <div class="section-title">${titulo}</div>
+      <div class="section-subtitle">${subtitulo}</div>
+    </div>`;
+
+  if (!motos.length) {
+    html += `<div class="empty-state" style="padding:24px;">
+      <p style="color:var(--vka-grey)">No hay unidades en esta sección</p>
+    </div>`;
+  } else {
+    html += `<div class="cards-grid">`;
+    motos.forEach(m => { html += renderMotoCard(m); });
+    html += `</div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+function renderEntregas(motos) {
+  const el = document.getElementById('entregas-content');
+  if (!motos.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div>
+      <p>Sin entregas pendientes asignadas por Voltika.</p></div>`;
+    return;
+  }
+  let html = `<div class="section-wrap">
+    <div class="section-header">
+      <div class="section-title">Entregas Voltika</div>
+      <div class="section-subtitle">Unidades asignadas para entrega a cliente</div>
+    </div>
+    <div class="cards-grid">`;
+  motos.forEach(m => { html += renderMotoCard(m); });
+  html += `</div></div>`;
+  el.innerHTML = html;
+}
+
+function renderConsignacion(motos) {
+  const el = document.getElementById('consignacion-content');
+  if (!motos.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏪</div>
+      <p>Sin unidades en consignación.</p></div>`;
+    return;
+  }
+  let html = `<div class="section-wrap">
+    <div class="section-header">
+      <div class="section-title">Consignación</div>
+      <div class="section-subtitle">Unidades disponibles para venta en punto</div>
+    </div>
+    <div class="cards-grid">`;
+  motos.forEach(m => { html += renderMotoCard(m); });
+  html += `</div></div>`;
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CARD RENDERER — matches reference design (admin1-4 images)
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderMotoCard(m) {
+  const estadoIdx  = PASO_IDX[m.estado] ?? 0;
+  const totalPasos = PASOS_TRACKER.length - 1; // 6
+  const diasAlert  = m.dias_alerta;
+  const pagoClass  = m.pago_estado === 'pendiente' ? 'pendiente' : '';
+
+  // Status color class
+  const statusColorMap = {
+    'en_ensamble':         'active-ensamble',
+    'lista_para_entrega':  'active-lista',
+    'por_validar_entrega': 'active-validar',
+    'retenida':            'active-retenida',
+    'entregada':           'active-entregada',
+  };
+  const statusCls = statusColorMap[m.estado] || '';
+
+  // Días label
+  const diasLabel = m.estado === 'retenida'
+    ? 'Retenida'
+    : m.tipo_asignacion === 'consignacion' && m.dias_en_paso > 0
+      ? `En piso: ${m.dias_en_paso} día${m.dias_en_paso > 1 ? 's' : ''}`
+      : m.dias_en_paso > 0
+        ? `Tiempo en este paso: ${m.dias_en_paso} día${m.dias_en_paso > 1 ? 's' : ''}`
+        : 'Recién actualizado';
+
+  // ── Mini track with step dots ──────────────────────────────────────────────
+  const fillPct = Math.round((estadoIdx / totalPasos) * 100);
+  let miniDots = '';
+  for (let i = 0; i <= totalPasos; i++) {
+    let dotCls = 'card-mini-step-dot';
+    if (i < estadoIdx)      dotCls += ' done';
+    else if (i === estadoIdx) dotCls += ' current';
+    miniDots += `<div class="${dotCls}"></div>`;
+  }
+  const miniTrack = `
+    <div class="card-mini-track">
+      <div class="card-mini-fill" style="width:${fillPct}%"></div>
+      <div class="card-mini-steps">${miniDots}</div>
+    </div>`;
+
+  // ── Right tracker ──────────────────────────────────────────────────────────
+  const isMobile = window.innerWidth <= 480;
+  let trackerHtml = '';
+  PASOS_TRACKER.forEach((p, i) => {
+    let cls = 'tracker-step';
+    if (i < estadoIdx)        cls += ' done';
+    else if (i === estadoIdx) cls += ' active';
+    const dotIcon = i < estadoIdx ? '✓' : '';
+    const lbl = isMobile ? p.short : p.label;
+    const ico = isMobile ? '' : `<span class="tracker-step-icon">${p.icon}</span>`;
+    trackerHtml += `
+      <div class="${cls}">
+        <div class="tracker-dot">${dotIcon}</div>
+        <div class="tracker-info">
+          <span class="tracker-label">${lbl}</span>${ico}
+        </div>
+      </div>`;
+  });
+
+  // ── Action button ──────────────────────────────────────────────────────────
+  const { btnLabel, btnClass, accion, btnMsg } = getCardAccion(m);
+
+  const mainBtn = accion
+    ? `<button class="btn-accion ${btnClass}"
+         onclick="prepareAccion(${m.id},'${accion}','${btnLabel}','${btnMsg}','${btnClass}')">
+         ${btnLabel}
+       </button>`
+    : `<div class="btn-accion ${btnClass}" style="cursor:default;opacity:1;">${btnLabel}</div>`;
+
+  // Checklist buttons — context-aware based on current state
+  let checklistBtn = '';
+  if (m.estado === 'por_llegar') {
+    checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=origen'">📦 Checklist Origen</button>`;
+  } else if (['recibida','por_ensamblar','en_ensamble'].includes(m.estado)) {
+    checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=ensamble'">⚙️ Checklist Ensamble</button>`;
+  } else if (['lista_para_entrega','por_validar_entrega'].includes(m.estado)) {
+    checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=entrega'">🏍️ Checklist Entrega</button>`;
+  }
+
+  // Face verification / delivery photo button
+  const faceBtn = ['lista_para_entrega','por_validar_entrega'].includes(m.estado)
+    ? `<button class="btn-accion-sec" style="border-color:#7c3aed;color:#7c3aed;"
+         onclick="openFaceCompare(${m.id},'${esc(m.tipo_asignacion || 'voltika_entrega')}')">📸 Foto de entrega</button>`
+    : '';
+
+  // Identity verification button — show on delivery states
+  const identidadBtn = ['lista_para_entrega','por_validar_entrega'].includes(m.estado)
+    ? `<button class="btn-accion-sec" style="border-color:#7c3aed;color:#7c3aed;"
+         onclick="openIdentidad(${m.id})">📸 Verificar identidad</button>`
+    : '';
+
+  // Retener / Liberar
+  const secBtn = m.estado === 'retenida'
+    ? `<button class="btn-accion-sec" onclick="prepareAccion(${m.id},'liberar','Liberar moto','¿Confirmas liberar esta unidad?')">🔓 Liberar</button>`
+    : m.estado !== 'entregada'
+    ? `<button class="btn-accion-sec" onclick="prepareAccion(${m.id},'retener','Retener moto','¿Confirmas retener esta unidad?')">🔒 Retener</button>`
+    : '';
+
+  return `
+  <div class="moto-card" id="card-${m.id}">
+    <div class="card-left">
+      <div class="card-cliente">${esc(m.cliente_nombre || 'Sin asignar')}</div>
+      <div class="card-modelo">${esc(m.modelo)} ${esc(m.color)}</div>
+      <div class="card-color" style="display:none">Color: ${esc(m.color)}</div>
+      <div class="card-vin" style="cursor:pointer;" onclick="event.stopPropagation();openDocHub(${m.id})">VIN: <strong style="color:var(--vka-blue);text-decoration:underline;">${esc(m.vin_display || '****')}</strong> 📋</div>
+      <div class="card-dias ${diasAlert ? 'alerta' : ''}">
+        ${diasAlert ? '⚠️' : ''} ${esc(diasLabel)}
+      </div>
+      <div class="card-status-block">
+        <div class="card-status-label ${statusCls}">${ESTADOS_LABEL[m.estado] || m.estado}</div>
+        <span class="card-pago ${pagoClass}">${m.pago_estado === 'pagada' ? 'Pagada' : 'Pendiente'}</span>
+      </div>
+      ${miniTrack}
+      <div class="card-actions">
+        ${mainBtn}
+        ${checklistBtn}
+        ${faceBtn}
+        ${secBtn}
+      </div>
+    </div>
+    <div class="card-right">
+      ${trackerHtml}
+    </div>
+  </div>`;
+}
+
+function getCardAccion(m) {
+  const map = {
+    'por_llegar':          { label: '📥 Registrar llegada',   cls: 'accion-llegar',    accion: 'recibir',            msg: '¿Confirmas que la moto llegó al punto?' },
+    'recibida':            { label: '🔧 Iniciar ensamble',    cls: 'accion-ensamblar', accion: 'por_ensamblar',      msg: '¿Confirmas que la moto está lista para ensamble?' },
+    'por_ensamblar':       { label: '⚙️ Iniciar ensamble',   cls: 'accion-ensamble',  accion: 'iniciar_ensamble',   msg: '¿Confirmas que el ensamble ha iniciado?' },
+    'en_ensamble':         { label: '✅ Terminar ensamble',   cls: 'accion-ensamble',  accion: 'terminar_ensamble',  msg: '¿Confirmas que el ensamble está completado?' },
+    'lista_para_entrega':  { label: '🔒 Iniciar validación', cls: 'accion-validar',   accion: 'iniciar_validacion', msg: '¿Confirmas que iniciarás el proceso de validación de entrega?' },
+    'por_validar_entrega': { label: '🔒 En validación',      cls: 'accion-validar',   accion: null,                 msg: '' },
+    'retenida':            { label: '🔒 Retenida',           cls: 'accion-retener',   accion: null,                 msg: '' },
+    'entregada':           { label: '🏍️ Entregada',          cls: 'accion-entregada', accion: null,                 msg: '' },
+  };
+
+  // Override for consignacion
+  if (m.tipo_asignacion === 'consignacion') {
+    if (m.estado === 'lista_para_entrega') {
+      return { btnLabel: '💰 Iniciar venta', btnClass: 'accion-venta', accion: 'iniciar_venta', btnMsg: '¿Confirmas que iniciarás el proceso de venta en punto?' };
+    }
+  }
+
+  const info = map[m.estado] || { label: '—', cls: '', accion: null, msg: '' };
+  return { btnLabel: info.label, btnClass: info.cls, accion: info.accion, btnMsg: info.msg };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOCUMENT HUB — VIN click shows all documents for a motorcycle
+// ═══════════════════════════════════════════════════════════════════════════════
+async function openDocHub(motoId) {
+  const body = document.getElementById('docs-body');
+  body.innerHTML = '<div style="text-align:center;padding:20px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
+  openModal('modal-docs');
+
+  try {
+    const r = await fetch('php/admin-documentos.php?moto_id=' + motoId);
+    const d = await r.json();
+
+    if (!d.ok) {
+      body.innerHTML = `<div style="text-align:center;color:var(--vka-red);">${esc(d.error)}</div>`;
+      return;
+    }
+
+    const m = d.moto;
+    let html = '';
+
+    // Moto header
+    html += `<div style="background:var(--vka-blue-soft);border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:16px;font-weight:800;color:var(--vka-blue-dark);">${esc(m.modelo)} ${esc(m.color)}</div>
+      <div style="font-size:12px;color:var(--vka-grey);margin-top:2px;">VIN: <strong>${esc(m.vin || m.vin_display)}</strong></div>
+      <div style="font-size:12px;color:var(--vka-grey);">${esc(m.cliente_nombre || '—')} · ${esc(m.pedido_num || '—')}</div>
+    </div>`;
+
+    // Document list
+    if (!d.documentos.length) {
+      html += '<p style="color:var(--vka-grey);text-align:center;">No hay documentos registrados.</p>';
+    } else {
+      d.documentos.forEach(doc => {
+        const statusColor = doc.completado ? '#10b981' : '#f59e0b';
+        const statusIcon = doc.completado ? '✅' : '⏳';
+        const statusText = doc.completado ? 'Completado' : (doc.existe ? 'En progreso' : 'No iniciado');
+        const clickable = doc.url ? 'cursor:pointer;' : '';
+        const target = doc.target || '_self';
+
+        html += `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1.5px solid var(--vka-border);border-radius:10px;margin-bottom:8px;${clickable}background:#fff;"
+          ${doc.url ? `onclick="window.open('${esc(doc.url)}','${target}')"` : ''}>
+          <div style="font-size:24px;flex-shrink:0;">${doc.icon}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:var(--vka-blue-dark);">${esc(doc.titulo)}</div>
+            ${doc.fecha ? `<div style="font-size:10px;color:var(--vka-grey);">${esc(doc.fecha)}</div>` : ''}
+            ${doc.metodo ? `<div style="font-size:10px;color:var(--vka-grey);">Método: ${esc(doc.metodo)} · $${Number(doc.total||0).toLocaleString('es-MX')} MXN</div>` : ''}
+            ${doc.score ? `<div style="font-size:10px;color:var(--vka-grey);">Score: ${doc.score}</div>` : ''}
+            ${doc.fase ? `<div style="font-size:10px;color:var(--vka-grey);">Fase: ${esc(doc.fase)}</div>` : ''}
+            ${doc.hash ? `<div style="font-size:9px;color:var(--vka-grey);word-break:break-all;">Hash: ${esc(doc.hash)}</div>` : ''}
+          </div>
+          <div style="flex-shrink:0;">
+            <span style="font-size:11px;font-weight:700;color:${statusColor};">${statusIcon} ${statusText}</span>
+          </div>
+        </div>`;
+      });
+    }
+
+    // Selfie preview if available
+    const idDoc = d.documentos.find(x => x.tipo === 'verificacion_identidad');
+    if (idDoc && idDoc.selfie) {
+      html += `<div style="margin-top:12px;text-align:center;">
+        <div style="font-size:11px;font-weight:700;color:var(--vka-grey);text-transform:uppercase;margin-bottom:6px;">Selfie de verificación</div>
+        <img src="${esc(idDoc.selfie)}" style="width:120px;height:120px;object-fit:cover;border-radius:50%;border:3px solid ${idDoc.completado ? '#10b981' : '#f59e0b'};">
+      </div>`;
+    }
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = '<div style="text-align:center;color:var(--vka-red);">Error al cargar documentos.</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FACE COMPARE — delivery photo + automatic face matching
+// ═══════════════════════════════════════════════════════════════════════════════
+let faceStream = null;
+let faceMotoId = null;
+let faceTipo = 'credito';
+
+function openFaceCompare(motoId, tipoAsignacion) {
+  faceMotoId = motoId;
+  // Determine if this is credit (face compare) or contado/msi (photo only)
+  const moto = dashData ? [...(dashData.voltika_entrega||[]),...(dashData.consignacion||[])].find(m => m.id === motoId) : null;
+  faceTipo = (moto && moto.pago_tipo === 'enganche') || tipoAsignacion === 'voltika_entrega' ? 'credito' : 'contado';
+
+  const body = document.getElementById('face-body');
+  const isCredit = faceTipo === 'credito';
+
+  body.innerHTML = `
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:var(--vka-blue-dark);margin-bottom:4px;">
+        ${isCredit ? '📸 Tomar foto para comparación facial' : '📸 Tomar foto del cliente y su INE'}
+      </div>
+      <div style="font-size:12px;color:var(--vka-grey);">
+        ${isCredit ? 'Se comparará automáticamente con la selfie del crédito' : 'Solo para registro — sin comparación automática'}
+      </div>
+    </div>
+
+    <!-- Camera preview -->
+    <div id="face-camera-area" style="position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:10px;overflow:hidden;margin-bottom:12px;">
+      <video id="face-video" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover;"></video>
+      <canvas id="face-canvas" style="display:none;"></canvas>
+    </div>
+
+    <!-- Captured preview (hidden initially) -->
+    <div id="face-preview" style="display:none;margin-bottom:12px;">
+      <img id="face-preview-img" style="width:100%;border-radius:10px;border:2px solid var(--vka-blue);">
+    </div>
+
+    ${!isCredit ? `
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:600;color:var(--vka-blue-dark);display:block;margin-bottom:6px;">Foto de INE (opcional)</label>
+      <input type="file" id="face-ine-input" accept="image/*" capture="environment"
+        style="font-size:13px;padding:8px;border:1.5px solid var(--vka-border);border-radius:8px;width:100%;">
+    </div>` : ''}
+
+    <!-- Buttons -->
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" id="face-btn-capture" onclick="capturePhoto()" style="flex:1;">📷 Tomar foto</button>
+      <button class="btn btn-ghost" id="face-btn-retake" onclick="retakePhoto()" style="flex:1;display:none;">🔄 Otra vez</button>
+    </div>
+    <button class="btn btn-success" id="face-btn-send" onclick="sendFaceCompare()" style="width:100%;margin-top:8px;display:none;">
+      ${isCredit ? '🔍 Comparar caras' : '💾 Guardar foto'}
+    </button>
+
+    <!-- Result area -->
+    <div id="face-result" style="display:none;margin-top:12px;"></div>
+  `;
+
+  openModal('modal-face');
+  startFaceCamera();
+}
+
+async function startFaceCamera() {
+  try {
+    faceStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    document.getElementById('face-video').srcObject = faceStream;
+  } catch (e) {
+    document.getElementById('face-camera-area').innerHTML =
+      '<div style="color:#fff;display:flex;align-items:center;justify-content:center;height:100%;font-size:13px;padding:20px;text-align:center;">No se pudo acceder a la cámara.<br>Usa el botón de abajo para subir una foto.</div>';
+    // Fallback: file input
+    const area = document.getElementById('face-camera-area');
+    area.insertAdjacentHTML('afterend',
+      '<input type="file" id="face-file-input" accept="image/*" capture="user" onchange="handleFaceFile(this)" style="width:100%;padding:10px;margin-bottom:8px;font-size:13px;border:1.5px solid var(--vka-border);border-radius:8px;">');
+    document.getElementById('face-btn-capture').style.display = 'none';
+  }
+}
+
+function handleFaceFile(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('face-preview-img').src = e.target.result;
+    document.getElementById('face-preview').style.display = 'block';
+    document.getElementById('face-camera-area').style.display = 'none';
+    document.getElementById('face-btn-send').style.display = 'block';
+    document.getElementById('face-btn-retake').style.display = 'block';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function capturePhoto() {
+  const video = document.getElementById('face-video');
+  const canvas = document.getElementById('face-canvas');
+  if (!video || !video.videoWidth) return;
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  document.getElementById('face-preview-img').src = dataUrl;
+  document.getElementById('face-preview').style.display = 'block';
+  document.getElementById('face-camera-area').style.display = 'none';
+  document.getElementById('face-btn-capture').style.display = 'none';
+  document.getElementById('face-btn-retake').style.display = 'inline-block';
+  document.getElementById('face-btn-send').style.display = 'block';
+
+  // Stop camera
+  if (faceStream) {
+    faceStream.getTracks().forEach(t => t.stop());
+    faceStream = null;
+  }
+}
+
+function retakePhoto() {
+  document.getElementById('face-preview').style.display = 'none';
+  document.getElementById('face-camera-area').style.display = 'block';
+  document.getElementById('face-btn-capture').style.display = 'inline-block';
+  document.getElementById('face-btn-retake').style.display = 'none';
+  document.getElementById('face-btn-send').style.display = 'none';
+  document.getElementById('face-result').style.display = 'none';
+  startFaceCamera();
+}
+
+async function sendFaceCompare() {
+  const btn = document.getElementById('face-btn-send');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span> Procesando...';
+
+  const resultEl = document.getElementById('face-result');
+  resultEl.style.display = 'none';
+
+  // Get photo as blob
+  const imgSrc = document.getElementById('face-preview-img').src;
+  let blob;
+
+  if (imgSrc.startsWith('data:')) {
+    const resp = await fetch(imgSrc);
+    blob = await resp.blob();
+  } else {
+    // File input fallback
+    const fileInput = document.getElementById('face-file-input');
+    if (fileInput && fileInput.files[0]) blob = fileInput.files[0];
+  }
+
+  if (!blob) {
+    btn.disabled = false;
+    btn.textContent = faceTipo === 'credito' ? '🔍 Comparar caras' : '💾 Guardar foto';
+    resultEl.innerHTML = '<div style="color:var(--vka-red);font-size:13px;">No se encontró la foto.</div>';
+    resultEl.style.display = 'block';
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('moto_id', faceMotoId);
+  formData.append('tipo', faceTipo);
+  formData.append('foto', blob, 'delivery_photo.jpg');
+
+  // INE photo for contado
+  const ineInput = document.getElementById('face-ine-input');
+  if (ineInput && ineInput.files[0]) {
+    formData.append('ine_foto', ineInput.files[0]);
+  }
+
+  try {
+    const r = await fetch('php/admin-face-compare.php', {
+      method: 'POST',
+      body: formData
+    });
+    const d = await r.json();
+
+    if (!d.ok) {
+      resultEl.innerHTML = `<div style="padding:12px;background:var(--vka-red-light);border-radius:8px;color:#991b1b;font-size:13px;">${esc(d.error || 'Error')}</div>`;
+    } else if (d.comparison && d.match !== undefined) {
+      // Face comparison result
+      const matchColor = d.match ? '#10b981' : '#ef4444';
+      const matchIcon = d.match ? '✅' : '❌';
+      const matchBg = d.match ? '#d1fae5' : '#fee2e2';
+      const similarity = d.similarity ? Math.round(d.similarity * 100) + '%' : 'N/A';
+
+      resultEl.innerHTML = `
+        <div style="padding:16px;background:${matchBg};border-radius:10px;text-align:center;border:2px solid ${matchColor};">
+          <div style="font-size:32px;margin-bottom:6px;">${matchIcon}</div>
+          <div style="font-size:16px;font-weight:800;color:${matchColor};">${d.match ? 'CARAS COINCIDEN' : 'CARAS NO COINCIDEN'}</div>
+          <div style="font-size:13px;color:var(--vka-grey);margin-top:4px;">Similitud: ${similarity}</div>
+          <div style="font-size:12px;color:#555;margin-top:8px;">${esc(d.message)}</div>
+        </div>
+        ${d.original_selfie ? `
+        <div style="margin-top:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--vka-grey);text-transform:uppercase;margin-bottom:6px;">Comparación visual</div>
+          <div style="display:flex;gap:8px;">
+            <div style="flex:1;text-align:center;">
+              <img src="${esc(d.original_selfie)}" style="width:100%;border-radius:8px;border:2px solid var(--vka-border);">
+              <div style="font-size:10px;color:var(--vka-grey);margin-top:4px;">Selfie del crédito</div>
+            </div>
+            <div style="flex:1;text-align:center;">
+              <img src="${esc(d.pickup_photo)}" style="width:100%;border-radius:8px;border:2px solid var(--vka-border);">
+              <div style="font-size:10px;color:var(--vka-grey);margin-top:4px;">Foto de entrega</div>
+            </div>
+          </div>
+        </div>` : ''}
+      `;
+    } else if (d.api_error) {
+      // API failed, show manual comparison
+      resultEl.innerHTML = `
+        <div style="padding:12px;background:#FFF8E1;border-radius:8px;border:1px solid #FFD54F;text-align:center;">
+          <div style="font-size:14px;font-weight:700;color:#F9A825;">⚠️ Comparación automática no disponible</div>
+          <div style="font-size:12px;color:#5D4037;margin-top:4px;">${esc(d.message)}</div>
+        </div>
+        ${d.original_selfie ? `
+        <div style="margin-top:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--vka-grey);text-transform:uppercase;margin-bottom:6px;">Comparar visualmente:</div>
+          <div style="display:flex;gap:8px;">
+            <div style="flex:1;text-align:center;">
+              <img src="${esc(d.original_selfie)}" style="width:100%;border-radius:8px;">
+              <div style="font-size:10px;color:var(--vka-grey);margin-top:4px;">Selfie crédito</div>
+            </div>
+            <div style="flex:1;text-align:center;">
+              <img src="${esc(d.pickup_photo)}" style="width:100%;border-radius:8px;">
+              <div style="font-size:10px;color:var(--vka-grey);margin-top:4px;">Foto entrega</div>
+            </div>
+          </div>
+        </div>` : ''}
+      `;
+    } else {
+      // Contado — just saved
+      resultEl.innerHTML = `
+        <div style="padding:12px;background:#d1fae5;border-radius:8px;text-align:center;">
+          <div style="font-size:14px;font-weight:700;color:#10b981;">✅ ${esc(d.message)}</div>
+        </div>
+      `;
+    }
+    resultEl.style.display = 'block';
+
+  } catch (e) {
+    resultEl.innerHTML = '<div style="padding:12px;background:var(--vka-red-light);border-radius:8px;color:#991b1b;font-size:13px;">Error de conexión</div>';
+    resultEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = faceTipo === 'credito' ? '🔍 Comparar caras' : '💾 Guardar foto';
+  }
+}
+
+function closeFaceModal() {
+  if (faceStream) {
+    faceStream.getTracks().forEach(t => t.stop());
+    faceStream = null;
+  }
+  closeModal('modal-face');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACCIÓN
+// ═══════════════════════════════════════════════════════════════════════════════
+function prepareAccion(motoId, accion, titulo, mensaje, btnClass) {
+  pendingAccion = { moto_id: motoId, accion, titulo, mensaje, btnClass };
+  document.getElementById('modal-accion-title').textContent = titulo;
+  document.getElementById('modal-accion-msg').textContent   = mensaje;
+  document.getElementById('modal-accion-notas').value        = '';
+  const btn = document.getElementById('btn-confirmar-accion');
+  btn.className = 'btn ' + (btnClass && btnClass.includes('venta') ? 'btn-success' :
+                             btnClass && btnClass.includes('validar') ? 'btn-dark' : 'btn-primary');
+  openModal('modal-accion');
+}
+
+async function ejecutarAccion() {
+  if (!pendingAccion) return;
+  const btn = document.getElementById('btn-confirmar-accion');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span> Procesando...';
+
+  try {
+    const r = await fetch('php/admin-moto-accion.php', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        moto_id: pendingAccion.moto_id,
+        accion:  pendingAccion.accion,
+        notas:   document.getElementById('modal-accion-notas').value.trim(),
+      })
+    });
+    const d = await r.json();
+
+    if (d.ok) {
+      closeModal('modal-accion');
+      showToast('✅ ' + pendingAccion.titulo + ' completado', 'success');
+      await loadDashboard();
+    } else {
+      showToast('❌ ' + (d.error || 'Error desconocido'), 'error');
+    }
+  } catch {
+    showToast('Error de conexión', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar';
+    pendingAccion = null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHECKLIST
+// ═══════════════════════════════════════════════════════════════════════════════
+const CHECKLIST_ITEMS = {
+  'Revisión física': ['revision_fisica','revision_electrica','carga_bateria','luces_ok','frenos_ok','velocimetro_ok'],
+  'Documentación': ['documentos_completos','llaves_entregadas','manual_entregado'],
+  'Verificación del cliente': ['identidad_verificada','datos_confirmados'],
+  'Códigos QR': ['qr_pedido_ok','qr_moto_ok'],
+};
+
+const CHECKLIST_LABELS = {
+  revision_fisica:       'Revisión física completa',
+  revision_electrica:    'Revisión eléctrica (batería, motor)',
+  carga_bateria:         'Batería cargada al 100%',
+  luces_ok:              'Luces delanteras y traseras funcionando',
+  frenos_ok:             'Frenos delantero y trasero verificados',
+  velocimetro_ok:        'Velocímetro y panel digital funcionando',
+  documentos_completos:  'Documentos del vehículo completos',
+  llaves_entregadas:     'Llaves / control entregado',
+  manual_entregado:      'Manual del propietario incluido',
+  identidad_verificada:  'Identidad del cliente verificada',
+  datos_confirmados:     'Datos del pedido confirmados con cliente',
+  qr_pedido_ok:          'QR del pedido escaneado y verificado',
+  qr_moto_ok:            'QR de la motocicleta escaneado y verificado',
+};
+
+async function openChecklist(motoId) {
+  currentChecklistMotoId = motoId;
+  const body = document.getElementById('checklist-body');
+  body.innerHTML = '<p>Cargando checklist...</p>';
+  openModal('modal-checklist');
+
+  const r = await fetch('php/admin-checklist.php?moto_id=' + motoId);
+  const d = await r.json();
+  const existing = d.checklist || {};
+
+  renderChecklistForm(existing);
+}
+
+function renderChecklistForm(existing) {
+  const body = document.getElementById('checklist-body');
+  const allCampos = Object.values(CHECKLIST_ITEMS).flat();
+  const checked   = allCampos.filter(c => existing[c] == 1).length;
+  const total     = allCampos.length;
+  const pct       = Math.round((checked / total) * 100);
+
+  let html = `<div class="checklist-count">${checked} / ${total} completados</div>
+  <div class="checklist-progress">
+    <div class="checklist-progress-bar" id="cl-progress-bar" style="width:${pct}%"></div>
+  </div>`;
+
+  for (const [seccion, campos] of Object.entries(CHECKLIST_ITEMS)) {
+    html += `<div class="checklist-section">
+      <div class="checklist-section-title">${seccion}</div>`;
+    campos.forEach(c => {
+      const checked = existing[c] == 1 ? 'checked' : '';
+      html += `<div class="checklist-item">
+        <input type="checkbox" id="cl-${c}" name="${c}" ${checked} onchange="updateClProgress()">
+        <label for="cl-${c}">${CHECKLIST_LABELS[c]}</label>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="field">
+    <label>Notas / observaciones</label>
+    <textarea class="checklist-notes" id="cl-notas" placeholder="Cualquier observación adicional...">${esc(existing.notas || '')}</textarea>
+  </div>`;
+
+  body.innerHTML = html;
+  updateClProgress();
+}
+
+function updateClProgress() {
+  const allCampos  = Object.values(CHECKLIST_ITEMS).flat();
+  const total      = allCampos.length;
+  const checked    = allCampos.filter(c => {
+    const el = document.getElementById('cl-' + c);
+    return el && el.checked;
+  }).length;
+  const pct = Math.round((checked / total) * 100);
+  const bar = document.getElementById('cl-progress-bar');
+  if (bar) bar.style.width = pct + '%';
+
+  const countEl = document.querySelector('.checklist-count');
+  if (countEl) countEl.textContent = `${checked} / ${total} completados`;
+
+  const completarBtn = document.getElementById('btn-completar-checklist');
+  if (completarBtn) completarBtn.disabled = checked < total;
+}
+
+async function saveChecklist(completar) {
+  const allCampos = Object.values(CHECKLIST_ITEMS).flat();
+  const items = {};
+  allCampos.forEach(c => {
+    const el = document.getElementById('cl-' + c);
+    items[c] = el && el.checked ? 1 : 0;
+  });
+  const notas = document.getElementById('cl-notas')?.value || '';
+
+  const r = await fetch('php/admin-checklist.php', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ moto_id: currentChecklistMotoId, items, notas, completar })
+  });
+  const d = await r.json();
+
+  if (d.ok) {
+    showToast(completar && d.completado ? '✅ Checklist completo — moto en validación' : '💾 Checklist guardado', 'success');
+    closeModal('modal-checklist');
+    if (completar && d.completado) await loadDashboard();
+  } else {
+    showToast('❌ ' + (d.error || 'Error al guardar'), 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// QR SCANNER
+// ═══════════════════════════════════════════════════════════════════════════════
+function setQRTipo(tipo) {
+  qrTipo = tipo;
+  document.getElementById('btn-qr-pedido').className = 'btn btn-sm ' + (tipo==='pedido' ? 'btn-primary' : 'btn-ghost');
+  document.getElementById('btn-qr-moto').className   = 'btn btn-sm ' + (tipo==='moto'   ? 'btn-primary' : 'btn-ghost');
+  document.getElementById('qr-manual-label').textContent =
+    tipo === 'pedido' ? 'O ingresa el número de pedido manualmente:' : 'O ingresa el VIN manualmente:';
+  document.getElementById('qr-manual-input').placeholder = tipo === 'pedido' ? 'Ej: VK-ABC123' : 'Ej: VK2024MO31234';
+}
+
+async function openQRModal() {
+  openModal('modal-qr');
+  document.getElementById('qr-result').style.display = 'none';
+  setQRTipo('pedido');
+
+  try {
+    qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('qr-video');
+    video.srcObject = qrStream;
+    await video.play();
+    startQRScan(video);
+  } catch (e) {
+    document.getElementById('qr-scanner-area').innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:13px;text-align:center;padding:20px;">📵 Cámara no disponible.<br>Usa el campo manual.</div>';
+  }
+}
+
+function startQRScan(video) {
+  const canvas  = document.createElement('canvas');
+  const ctx     = canvas.getContext('2d');
+  qrInterval    = setInterval(() => {
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+    if (code) {
+      clearInterval(qrInterval);
+      processQR(code.data);
+    }
+  }, 250);
+}
+
+function closeQRModal() {
+  clearInterval(qrInterval);
+  if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
+  closeModal('modal-qr');
+}
+
+async function processQR(codigo) {
+  const resultEl = document.getElementById('qr-result');
+  resultEl.style.display = 'block';
+  resultEl.className = 'qr-result';
+  resultEl.textContent = '⏳ Verificando...';
+
+  try {
+    const r = await fetch('php/admin-qr-verify.php', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ tipo: qrTipo, codigo })
+    });
+    const d = await r.json();
+
+    if (d.ok) {
+      resultEl.className = 'qr-result ok';
+      resultEl.innerHTML = `<strong>✅ ${d.mensaje}</strong><br>
+        ${d.data?.cliente_nombre ? `Cliente: ${esc(d.data.cliente_nombre)}<br>` : ''}
+        ${d.data?.modelo ? `Moto: ${esc(d.data.modelo)} ${esc(d.data.color || '')}<br>` : ''}
+        ${d.data?.estado ? `Estado: ${ESTADOS_LABEL[d.data.estado] || d.data.estado}` : ''}`;
+    } else {
+      resultEl.className = 'qr-result err';
+      resultEl.textContent = '❌ ' + (d.error || 'QR no reconocido');
+    }
+  } catch {
+    resultEl.className = 'qr-result err';
+    resultEl.textContent = '❌ Error de conexión';
+  }
+}
+
+function verifyManual() {
+  const val = document.getElementById('qr-manual-input').value.trim();
+  if (!val) { showToast('Ingresa un código', 'warning'); return; }
+  processQR(val);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach((t, i) => {
+    const tabs = ['dashboard','entregas','consignacion'];
+    t.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.nav-tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + tab)?.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+function closeModalOnOverlay(e, id) { if (e.target.id === id) closeModal(id); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════════════════
+function showToast(msg, type = '') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════════════
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>

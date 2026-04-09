@@ -1,0 +1,66 @@
+<?php
+require_once __DIR__ . '/../bootstrap.php';
+// Override content type for file download
+header_remove('Content-Type');
+
+$cid = portalRequireAuth();
+$tipo = $_GET['tipo'] ?? '';
+$pdo = getDB();
+
+$info = portalComputeAccountState($cid);
+$alCorriente = in_array($info['state'], ['account_current','payment_due_soon','payment_due_today']);
+
+if ($tipo === 'carta_factura' && !$alCorriente) {
+    header('Content-Type: application/json');
+    portalJsonOut(['error' => 'Para activar tu carta factura, tu compra debe estar al corriente.'], 403);
+}
+
+// Log download
+try {
+    $stmt = $pdo->prepare("INSERT INTO portal_descargas_log (cliente_id, doc_type, ip, user_agent)
+        VALUES (?, ?, ?, ?)");
+    $stmt->execute([$cid, $tipo, $_SERVER['REMOTE_ADDR'] ?? null, substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255)]);
+} catch (Throwable $e) {}
+
+// Locate file in configurador uploads; fallback to on-the-fly stub
+$base = __DIR__ . '/../../../configurador_prueba/php/uploads';
+$candidates = [
+    'contrato'      => ["$base/contratos/cliente_{$cid}.pdf"],
+    'pagare'        => ["$base/pagares/cliente_{$cid}.pdf"],
+    'acta_entrega'  => ["$base/actas/cliente_{$cid}.pdf"],
+    'carta_factura' => ["$base/cartas_factura/cliente_{$cid}.pdf"],
+];
+
+if (isset($candidates[$tipo])) {
+    foreach ($candidates[$tipo] as $f) {
+        if (file_exists($f)) {
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: attachment; filename="' . $tipo . '_voltika.pdf"');
+            header('Content-Length: ' . filesize($f));
+            readfile($f);
+            exit;
+        }
+    }
+}
+
+// Fallback: generate a simple text-based receipt for "comprobantes"
+if ($tipo === 'comprobantes') {
+    $stmt = $pdo->prepare("SELECT semana_num, fecha_vencimiento, monto, estado, stripe_payment_intent
+        FROM ciclos_pago WHERE cliente_id = ? AND estado IN ('paid_manual','paid_auto') ORDER BY semana_num");
+    $stmt->execute([$cid]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    header('Content-Type: text/plain; charset=utf-8');
+    header('Content-Disposition: attachment; filename="comprobantes_voltika.txt"');
+    echo "VOLTIKA - Comprobantes de pago\n";
+    echo "Cliente #$cid\n";
+    echo str_repeat('=', 60) . "\n\n";
+    foreach ($rows as $r) {
+        echo "Semana {$r['semana_num']}\tVenc: {$r['fecha_vencimiento']}\t\${$r['monto']}\t[{$r['estado']}]\n";
+        if ($r['stripe_payment_intent']) echo "  Ref: {$r['stripe_payment_intent']}\n";
+    }
+    exit;
+}
+
+// Default: not available yet
+header('Content-Type: application/json');
+portalJsonOut(['error' => 'Documento no disponible todavía'], 404);

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Crédito — Voltika</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--vk-blue:#039fe1;--vk-dark:#1a3a5c;--vk-green:#10b981;--vk-red:#ef4444;--vk-grey:#6b7280;--vk-border:#e5e7eb;--vk-bg:#f0faff;}
+body{font-family:'Inter',sans-serif;background:var(--vk-bg);color:#1a1a1a;min-height:100vh;}
+
+.header{background:linear-gradient(135deg,var(--vk-dark),var(--vk-blue));padding:16px;text-align:center;color:#fff;}
+.header img{height:28px;margin-bottom:6px;}
+.header h1{font-size:16px;font-weight:800;}
+.header p{font-size:12px;opacity:.8;}
+
+.container{max-width:480px;margin:0 auto;padding:16px;}
+
+/* Search */
+.search-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:16px;}
+.search-input{width:100%;padding:13px 14px;border:2px solid var(--vk-border);border-radius:10px;font-size:15px;font-family:inherit;outline:none;}
+.search-input:focus{border-color:var(--vk-blue);}
+.btn{display:block;width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:10px;}
+.btn-primary{background:var(--vk-blue);color:#fff;}
+.btn-green{background:var(--vk-green);color:#fff;}
+.btn-ghost{background:transparent;color:var(--vk-grey);border:1.5px solid var(--vk-border);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* Credit summary */
+.credit-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:16px;}
+.credit-header{text-align:center;margin-bottom:16px;}
+.credit-modelo{font-size:18px;font-weight:900;color:var(--vk-dark);}
+.credit-pedido{font-size:12px;color:var(--vk-grey);}
+
+.balance-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.balance-item{background:var(--vk-bg);border-radius:10px;padding:12px;text-align:center;}
+.balance-value{font-size:20px;font-weight:900;color:var(--vk-dark);}
+.balance-label{font-size:10px;color:var(--vk-grey);margin-top:2px;}
+.balance-item.full{grid-column:1/-1;}
+.balance-item.green .balance-value{color:var(--vk-green);}
+.balance-item.red .balance-value{color:var(--vk-red);}
+
+.progress-section{margin-bottom:16px;}
+.progress-bar{height:8px;background:#e5e7eb;border-radius:20px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--vk-dark),var(--vk-blue));border-radius:20px;transition:width .5s;}
+.progress-text{display:flex;justify-content:space-between;font-size:11px;color:var(--vk-grey);margin-top:4px;}
+
+.next-pay{background:linear-gradient(135deg,var(--vk-dark),var(--vk-blue));border-radius:10px;padding:14px;color:#fff;text-align:center;margin-bottom:16px;}
+.next-pay-amount{font-size:24px;font-weight:900;}
+.next-pay-date{font-size:12px;opacity:.8;margin-top:2px;}
+
+/* History */
+.history-title{font-size:14px;font-weight:800;color:var(--vk-dark);margin-bottom:10px;}
+.history-list{background:#fff;border-radius:10px;border:1.5px solid var(--vk-border);overflow:hidden;}
+.history-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f3f4f6;font-size:13px;}
+.history-item:last-child{border-bottom:none;}
+.history-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.history-icon.paid{background:#d1fae5;color:#065f46;}
+.history-icon.pending{background:#fef3c7;color:#92400e;}
+.history-icon.failed{background:#fee2e2;color:#991b1b;}
+.history-info{flex:1;}
+.history-week{font-weight:700;color:var(--vk-dark);}
+.history-date{font-size:11px;color:var(--vk-grey);}
+.history-amount{font-weight:700;}
+.history-amount.paid{color:var(--vk-green);}
+.history-amount.pending{color:#f59e0b;}
+
+/* Stripe element */
+#stripe-card-element{padding:12px;border:2px solid var(--vk-border);border-radius:10px;background:#fff;margin-bottom:12px;}
+#stripe-error{color:var(--vk-red);font-size:12px;margin-bottom:8px;display:none;}
+
+.toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;}
+.toast{background:var(--vk-dark);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;margin-top:6px;box-shadow:0 4px 12px rgba(0,0,0,.2);}
+.toast.success{background:var(--vk-green);}
+.toast.error{background:var(--vk-red);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'">
+  <h1>Mi Crédito Voltika</h1>
+  <p>Consulta tu saldo y realiza tus pagos</p>
+</div>
+
+<div class="container">
+
+  <!-- Search -->
+  <div id="view-search" class="search-card">
+    <p style="font-size:14px;color:var(--vk-dark);font-weight:700;margin-bottom:10px;">Ingresa tu número de pedido</p>
+    <input type="text" class="search-input" id="input-pedido" placeholder="Ej: VK-1234567890">
+    <button class="btn btn-primary" onclick="buscarCredito()">Consultar mi crédito</button>
+    <div id="search-error" style="display:none;color:var(--vk-red);font-size:13px;margin-top:8px;text-align:center;"></div>
+  </div>
+
+  <!-- Credit Dashboard (hidden initially) -->
+  <div id="view-dashboard" style="display:none;">
+
+    <!-- Summary -->
+    <div class="credit-card">
+      <div class="credit-header">
+        <div class="credit-modelo" id="cr-modelo"></div>
+        <div class="credit-pedido" id="cr-pedido"></div>
+        <div style="font-size:12px;color:var(--vk-grey);margin-top:2px;" id="cr-cliente"></div>
+      </div>
+
+      <div class="balance-grid">
+        <div class="balance-item green">
+          <div class="balance-value" id="cr-pagado">$0</div>
+          <div class="balance-label">Pagado</div>
+        </div>
+        <div class="balance-item red">
+          <div class="balance-value" id="cr-restante">$0</div>
+          <div class="balance-label">Restante</div>
+        </div>
+        <div class="balance-item">
+          <div class="balance-value" id="cr-semanas">0/0</div>
+          <div class="balance-label">Semanas pagadas</div>
+        </div>
+        <div class="balance-item">
+          <div class="balance-value" id="cr-pago-semanal">$0</div>
+          <div class="balance-label">Pago semanal</div>
+        </div>
+      </div>
+
+      <div class="progress-section">
+        <div class="progress-bar"><div class="progress-fill" id="cr-progress" style="width:0%"></div></div>
+        <div class="progress-text">
+          <span id="cr-progress-pct">0%</span>
+          <span id="cr-estado"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Next payment -->
+    <div class="next-pay">
+      <div style="font-size:12px;opacity:.8;">Próximo pago</div>
+      <div class="next-pay-amount" id="cr-next-amount">$0 MXN</div>
+      <div class="next-pay-date" id="cr-next-date"></div>
+    </div>
+
+    <!-- Pay now -->
+    <div class="credit-card" id="pay-section">
+      <p style="font-size:14px;font-weight:800;color:var(--vk-dark);margin-bottom:12px;">💳 Realizar pago</p>
+      <div id="stripe-card-element"></div>
+      <div id="stripe-error"></div>
+      <button class="btn btn-green" id="btn-pagar" onclick="realizarPago()">Pagar ahora</button>
+    </div>
+
+    <!-- History -->
+    <div style="margin-bottom:16px;">
+      <div class="history-title">Historial de pagos</div>
+      <div class="history-list" id="cr-historial">
+        <div style="padding:20px;text-align:center;color:var(--vk-grey);font-size:13px;">Cargando...</div>
+      </div>
+    </div>
+
+    <button class="btn btn-ghost" onclick="location.reload()" style="margin-bottom:24px;">← Buscar otro pedido</button>
+  </div>
+
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+const STRIPE_PK = 'pk_test_51Rr5XCDPx1FQbvVSr8odW16SQzUgPoyMJroHp5emN9PttKU4oHs0jAOsBpxM50ISn4xmUzemZomXX6IuIrQN8FRB00NM2T7eGp';
+let stripe, cardElement;
+let creditoData = null;
+let currentPedido = '';
+
+// Init Stripe
+document.addEventListener('DOMContentLoaded', () => {
+  stripe = Stripe(STRIPE_PK);
+  const elements = stripe.elements({ locale: 'es' });
+  cardElement = elements.create('card', {
+    style: { base: { fontSize: '16px', fontFamily: 'Inter, sans-serif' } }
+  });
+
+  // URL param pre-fill
+  const params = new URLSearchParams(window.location.search);
+  const pedido = params.get('pedido');
+  if (pedido) {
+    document.getElementById('input-pedido').value = pedido;
+    buscarCredito();
+  }
+});
+
+async function buscarCredito() {
+  const pedido = document.getElementById('input-pedido').value.trim();
+  if (!pedido) return;
+  currentPedido = pedido;
+
+  const errEl = document.getElementById('search-error');
+  errEl.style.display = 'none';
+
+  try {
+    const r = await fetch('php/cliente-credito.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ accion: 'buscar', pedido_num: pedido })
+    });
+    const d = await r.json();
+
+    if (!d.ok) {
+      errEl.textContent = d.error;
+      errEl.style.display = 'block';
+      return;
+    }
+
+    creditoData = d.credito;
+    renderDashboard();
+    loadHistorial();
+  } catch(e) {
+    errEl.textContent = 'Error de conexión';
+    errEl.style.display = 'block';
+  }
+}
+
+function renderDashboard() {
+  const c = creditoData;
+  document.getElementById('view-search').style.display = 'none';
+  document.getElementById('view-dashboard').style.display = 'block';
+
+  document.getElementById('cr-modelo').textContent = c.modelo + ' ' + c.color;
+  document.getElementById('cr-pedido').textContent = c.pedido_num;
+  document.getElementById('cr-cliente').textContent = c.cliente_nombre;
+
+  document.getElementById('cr-pagado').textContent = fmt(c.monto_pagado + c.enganche);
+  document.getElementById('cr-restante').textContent = fmt(c.monto_restante);
+  document.getElementById('cr-semanas').textContent = c.semanas_pagadas + '/' + c.semanas_total;
+  document.getElementById('cr-pago-semanal').textContent = fmt(c.pago_semanal);
+
+  const pct = c.semanas_total > 0 ? Math.round((c.semanas_pagadas / c.semanas_total) * 100) : 0;
+  document.getElementById('cr-progress').style.width = pct + '%';
+  document.getElementById('cr-progress-pct').textContent = pct + '%';
+  document.getElementById('cr-estado').textContent = c.estado_credito === 'completado' ? '✅ Completado' : c.estado_credito;
+
+  document.getElementById('cr-next-amount').textContent = fmt(c.pago_semanal) + ' MXN';
+  document.getElementById('cr-next-date').textContent = c.proximo_pago ? formatDate(c.proximo_pago) : '—';
+
+  // Mount Stripe card if not already
+  if (c.estado_credito !== 'completado') {
+    setTimeout(() => {
+      const el = document.getElementById('stripe-card-element');
+      if (el && !el.hasChildNodes()) cardElement.mount('#stripe-card-element');
+    }, 300);
+  } else {
+    document.getElementById('pay-section').style.display = 'none';
+  }
+}
+
+async function loadHistorial() {
+  try {
+    const r = await fetch('php/cliente-credito.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ accion: 'historial', pedido_num: currentPedido })
+    });
+    const d = await r.json();
+    if (!d.ok) return;
+
+    const el = document.getElementById('cr-historial');
+    if (!d.historial.length) {
+      el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--vk-grey);">Sin pagos registrados</div>';
+      return;
+    }
+
+    el.innerHTML = d.historial.map(h => {
+      const icon = h.estado === 'pagado' ? 'paid' : h.estado === 'fallido' ? 'failed' : 'pending';
+      const iconText = h.estado === 'pagado' ? '✓' : h.estado === 'fallido' ? '✕' : '…';
+      const amtClass = h.estado === 'pagado' ? 'paid' : 'pending';
+      return `<div class="history-item">
+        <div class="history-icon ${icon}">${iconText}</div>
+        <div class="history-info">
+          <div class="history-week">Semana ${h.semana_num}</div>
+          <div class="history-date">${h.fecha_pago ? formatDate(h.fecha_pago) : (h.fecha_programada ? formatDate(h.fecha_programada) : '—')}</div>
+        </div>
+        <div class="history-amount ${amtClass}">${fmt(h.monto)}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function realizarPago() {
+  const btn = document.getElementById('btn-pagar');
+  const errEl = document.getElementById('stripe-error');
+  btn.disabled = true;
+  btn.textContent = 'Procesando...';
+  errEl.style.display = 'none';
+
+  try {
+    // Get PaymentIntent from server
+    const r = await fetch('php/cliente-credito.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ accion: 'pagar', pedido_num: currentPedido })
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      errEl.textContent = d.error;
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Pagar ahora';
+      return;
+    }
+
+    // Confirm with Stripe
+    const result = await stripe.confirmCardPayment(d.client_secret, {
+      payment_method: { card: cardElement }
+    });
+
+    if (result.error) {
+      errEl.textContent = result.error.message;
+      errEl.style.display = 'block';
+    } else if (result.paymentIntent.status === 'succeeded') {
+      // Confirm on server
+      await fetch('php/cliente-credito.php', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          accion: 'confirmar_pago',
+          pedido_num: currentPedido,
+          payment_intent_id: result.paymentIntent.id
+        })
+      });
+      showToast('Pago realizado exitosamente', 'success');
+      buscarCredito(); // Refresh
+    }
+  } catch(e) {
+    errEl.textContent = 'Error de conexión';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Pagar ahora';
+  }
+}
+
+function fmt(n) { return '$' + Number(n||0).toLocaleString('es-MX', {minimumFractionDigits:0, maximumFractionDigits:0}); }
+function formatDate(d) { return new Date(d).toLocaleDateString('es-MX', {day:'numeric',month:'short',year:'numeric'}); }
+function showToast(msg, type) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type||'');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+</script>
+</body>
+</html>
