@@ -15,17 +15,10 @@ html,body{background:var(--ad-bg);color:var(--ad-text);font-family:-apple-system
 .ad-nav button.active{color:var(--ad-primary)}
 .ad-user{font-size:12px;color:var(--ad-dim);padding:8px 0;border-top:1px solid var(--ad-border);margin-top:8px}
 .ad-logout{background:none;border:1px solid var(--ad-border);color:var(--ad-dim);padding:8px;border-radius:var(--ad-radius-sm);cursor:pointer;font-size:12px;margin-top:8px}
-.ad-main{flex:1;margin-left:220px;padding:20px 24px}
+.ad-main{flex:1;margin-left:220px;padding:20px 24px;min-width:0}
 /* When sidebar is hidden (login / no auth), remove offset */
 .ad-sidebar[style*="display: none"] + .ad-main,
 .ad-sidebar[style*="display:none"] + .ad-main{margin-left:0}
-/* Mobile: stack the layout, no fixed sidebar */
-@media (max-width: 768px){
-  .ad-sidebar{position:relative;width:100%;border-right:0;border-bottom:1px solid var(--ad-border)}
-  .ad-main{margin-left:0;padding:16px}
-  .ad-nav{flex-direction:row;flex-wrap:wrap;gap:4px}
-  .ad-nav button{flex:1;min-width:0;padding:8px 6px;font-size:11px;justify-content:center}
-}
 .ad-h1{font-size:22px;font-weight:700;margin-bottom:16px}
 .ad-h2{font-size:16px;font-weight:700;margin:16px 0 10px}
 /* KPI strip */
@@ -72,10 +65,38 @@ html,body{background:var(--ad-bg);color:var(--ad-text);font-family:-apple-system
 .ad-card{background:var(--ad-surface);border:1px solid var(--ad-border);border-radius:var(--ad-radius);padding:16px;margin-bottom:14px}
 /* Toolbar */
 .ad-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
-/* Responsive */
-@media(max-width:768px){
-  .ad-sidebar{width:60px;padding:8px}.ad-logo{font-size:14px}.ad-nav button span{font-size:18px}.ad-nav button em{display:none}.ad-main{margin-left:60px;padding:12px}
-  .ad-kpis{grid-template-columns:repeat(2,1fr)}.ad-table{font-size:12px}
+/* ── Mobile / narrow viewports (≤ 768px) ─────────────────────────────────
+   Stack the layout: sidebar becomes a horizontal top bar; main content
+   flows below it full-width. Buttons scroll horizontally if needed. */
+@media (max-width: 768px){
+  .ad-app{flex-direction:column}
+  .ad-sidebar{
+    position:relative; top:auto; left:auto; bottom:auto;
+    width:100%; height:auto;
+    border-right:0; border-bottom:1px solid var(--ad-border);
+    padding:8px 10px;
+    flex-direction:row; align-items:center; gap:8px;
+  }
+  .ad-logo{font-size:14px; margin:0 6px 0 0; flex-shrink:0}
+  .ad-nav{
+    flex:1; flex-direction:row; flex-wrap:nowrap; gap:2px;
+    overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  }
+  .ad-nav::-webkit-scrollbar{display:none}
+  .ad-nav button{
+    flex:0 0 auto; padding:6px 10px; font-size:11px;
+    white-space:nowrap; justify-content:flex-start;
+  }
+  .ad-user{display:none}
+  .ad-logout{margin:0; flex-shrink:0; padding:6px 8px; font-size:11px}
+  .ad-main{margin-left:0; padding:12px}
+  .ad-kpis{grid-template-columns:repeat(2,1fr); gap:8px}
+  .ad-kpi{padding:10px}
+  .ad-kpi .value{font-size:18px}
+  .ad-table{font-size:12px; display:block; overflow-x:auto}
+  .ad-h1{font-size:18px}
+  .ad-toolbar{flex-direction:column; align-items:stretch}
+  .ad-modal-content{width:95%; padding:16px}
 }
 .ad-spin{display:inline-block;width:14px;height:14px;border:2px solid var(--ad-border);border-top-color:var(--ad-primary);border-radius:50%;animation:adspin .7s linear infinite}
 @keyframes adspin{to{transform:rotate(360deg)}}
