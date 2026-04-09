@@ -2,7 +2,7 @@ window.VK_login = (function(){
   function render(){
     VKApp.showTabbar(false);
     VKApp.render(
-      '<div class="vk-logo">VOLTIKA</div>'+
+      '<div class="vk-logo"><img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" onerror="this.style.display=\'none\'"></div>'+
       '<div class="vk-card">'+
         '<div class="vk-h1">Hola 👋</div>'+
         '<div class="vk-muted">Accede a tu cuenta con tu número de teléfono</div>'+
@@ -28,7 +28,7 @@ window.VK_login = (function(){
   }
   function otpScreen(tel, testCode){
     VKApp.render(
-      '<div class="vk-logo">VOLTIKA</div>'+
+      '<div class="vk-logo"><img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" onerror="this.style.display=\'none\'"></div>'+
       '<div class="vk-card">'+
         '<div class="vk-h1">Ingresa tu código</div>'+
         '<div class="vk-muted">Enviado a '+tel+'</div>'+

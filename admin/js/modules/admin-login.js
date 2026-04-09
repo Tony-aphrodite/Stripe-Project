@@ -3,7 +3,7 @@ window.AD_login = (function(){
     $('#adSidebar').hide();
     ADApp.render(
       '<div class="ad-login">'+
-        '<div style="font-size:32px;font-weight:800;color:var(--ad-primary);margin-bottom:24px">⚡ VOLTIKA</div>'+
+        '<div style="margin-bottom:24px;display:flex;justify-content:center;"><img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" style="height:40px;width:auto;" onerror="this.style.display=\'none\'"></div>'+
         '<div class="ad-card">'+
           '<div class="ad-h2">Acceso al Panel</div>'+
           '<input id="adEmail" class="ad-input" type="email" placeholder="Email">'+

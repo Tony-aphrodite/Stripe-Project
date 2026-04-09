@@ -20,6 +20,7 @@ $asset = function(string $rel): string {
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Voltika — Mi cuenta</title>
+<link rel="icon" type="image/svg+xml" href="../configurador_prueba/img/favicon.svg">
 <link rel="stylesheet" href="<?= $asset('css/portal.css') ?>">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>

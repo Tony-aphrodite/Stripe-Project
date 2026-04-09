@@ -25,7 +25,8 @@ window.PVApp = (function(){
     $screen = $('#pvScreen'); $sidebar = $('#pvSidebar');
     $('#pvModalClose').on('click', closeModal);
     $('#pvModal').on('click', function(e){ if(e.target===this) closeModal(); });
-    $('.ad-nav').on('click', 'button', function(){ go($(this).data('route')); });
+    $('.ad-hamburger').on('click', function(){ $('.ad-nav').toggleClass('open'); });
+    $('.ad-nav').on('click', 'button', function(){ $('.ad-nav').removeClass('open'); go($(this).data('route')); });
     $('#pvLogout').on('click', function(){
       api('auth/logout.php', {}).always(function(){ state.user=null; $sidebar.hide(); PV_login.render(); });
     });

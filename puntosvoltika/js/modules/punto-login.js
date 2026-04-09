@@ -3,7 +3,7 @@ window.PV_login = (function(){
     $('#pvSidebar').hide();
     PVApp.render(
       '<div class="ad-login">'+
-        '<div style="font-size:32px;font-weight:800;color:var(--ad-primary);margin-bottom:24px">📍 PUNTO VOLTIKA</div>'+
+        '<div style="margin-bottom:24px;display:flex;justify-content:center;"><img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" style="height:40px;width:auto;" onerror="this.style.display=\'none\'"></div>'+
         '<div class="ad-card">'+
           '<div class="ad-h2">Acceso del punto</div>'+
           '<input id="pvEmail" class="ad-input" type="email" placeholder="Email">'+

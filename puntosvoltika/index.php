@@ -23,6 +23,7 @@ $sharedV = file_exists($sharedAdminCssPath) ? filemtime($sharedAdminCssPath) : t
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Voltika — Punto</title>
+<link rel="icon" type="image/svg+xml" href="../configurador_prueba/img/favicon.svg">
 <link rel="stylesheet" href="<?= htmlspecialchars($sharedAdminCss . '?v=' . $sharedV) ?>">
 <link rel="stylesheet" href="<?= $asset('css/punto.css') ?>">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -30,7 +31,8 @@ $sharedV = file_exists($sharedAdminCssPath) ? filemtime($sharedAdminCssPath) : t
 <body>
 <div id="pvApp" class="ad-app">
   <nav id="pvSidebar" class="ad-sidebar" style="display:none">
-    <div class="ad-logo">📍 PUNTO</div>
+    <div class="ad-logo"><img src="../configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'"></div>
+    <button class="ad-hamburger" id="pvHamburger">&#9776;</button>
     <div class="ad-nav">
       <button data-route="inicio" class="active"><span>🏠</span> Inicio</button>
       <button data-route="inventario"><span>🛵</span> Inventario</button>

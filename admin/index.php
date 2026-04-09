@@ -22,19 +22,22 @@ $asset = function(string $rel): string {
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Voltika — Admin Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="../configurador_prueba/img/favicon.svg">
 <link rel="stylesheet" href="<?= $asset('css/admin.css') ?>">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
 <div id="adApp" class="ad-app">
   <nav id="adSidebar" class="ad-sidebar" style="display:none">
-    <div class="ad-logo">⚡ VOLTIKA</div>
+    <div class="ad-logo"><img src="../configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'"></div>
+    <button class="ad-hamburger" id="adHamburger">&#9776;</button>
     <div class="ad-nav">
       <button data-route="dashboard" class="active"><span>📊</span> Dashboard</button>
       <button data-route="inventario"><span>🏭</span> Inventario</button>
       <button data-route="envios"><span>🚚</span> Envíos</button>
       <button data-route="pagos"><span>💳</span> Pagos</button>
       <button data-route="puntos"><span>📍</span> Puntos Voltika</button>
+      <button data-route="buro"><span>📋</span> Buro CDC</button>
     </div>
     <div class="ad-user" id="adUser"></div>
     <button class="ad-logout" id="adLogout">Cerrar sesión</button>
@@ -57,6 +60,7 @@ $asset = function(string $rel): string {
 <script src="<?= $asset('js/modules/admin-envios.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-pagos.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-puntos.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-buro.js') ?>"></script>
 <script>$(function(){ ADApp.start(); });</script>
 </body>
 </html>
