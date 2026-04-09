@@ -100,6 +100,26 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS admin_log (
     freg DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+// ciclos_pago — shared with clientes portal (needed for KPI cartera queries)
+$pdo->exec("CREATE TABLE IF NOT EXISTS ciclos_pago (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    subscripcion_id INT NOT NULL,
+    cliente_id INT NULL,
+    semana_num INT NOT NULL,
+    fecha_vencimiento DATE NOT NULL,
+    monto DECIMAL(10,2) NOT NULL,
+    estado ENUM('pending','paid_manual','paid_auto','overdue','skipped') DEFAULT 'pending',
+    transaccion_id INT NULL,
+    stripe_payment_intent VARCHAR(100) NULL,
+    origen VARCHAR(30) NULL,
+    freg DATETIME DEFAULT CURRENT_TIMESTAMP,
+    fupd DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_sub_semana (subscripcion_id, semana_num),
+    INDEX idx_cliente (cliente_id),
+    INDEX idx_estado (estado),
+    INDEX idx_venc (fecha_vencimiento)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 // Ensure puntos_voltika columns exist on inventario_motos
 try { $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN punto_voltika_id INT AFTER punto_id"); } catch(Throwable $e){}
 
