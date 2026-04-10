@@ -42,7 +42,7 @@ window.ADApp = (function(){
   }
   function showApp() {
     $sidebar.show();
-    $('#adUser').html('👤 ' + state.user.nombre + '<br><small>' + state.user.rol.toUpperCase() + '</small>');
+    $('#adUser').html('<div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(3,159,225,.2);display:flex;align-items:center;justify-content:center;font-size:14px;">👤</div><div><div style="color:rgba(255,255,255,.85);font-weight:600;font-size:13px;">' + state.user.nombre + '</div><div style="font-size:10px;letter-spacing:.5px;color:rgba(255,255,255,.4);text-transform:uppercase;">' + state.user.rol + '</div></div></div>');
     go('dashboard');
   }
   function badgeEstado(est) {
