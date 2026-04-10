@@ -123,6 +123,10 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS ciclos_pago (
 // Ensure puntos_voltika columns exist on inventario_motos
 try { $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN punto_voltika_id INT AFTER punto_id"); } catch(Throwable $e){}
 
+// Ensure tracking columns on envios
+try { $pdo->exec("ALTER TABLE envios ADD COLUMN tracking_number VARCHAR(100) NULL AFTER notas"); } catch(Throwable $e){}
+try { $pdo->exec("ALTER TABLE envios ADD COLUMN carrier VARCHAR(80) NULL AFTER tracking_number"); } catch(Throwable $e){}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function adminJsonIn() {
