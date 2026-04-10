@@ -1,8 +1,8 @@
 <?php
 /**
- * Voltika - Generar Contrato PDF (Carátula de Crédito) + Cincel NOM-151
+ * Voltika - Generar Contrato PDF (Carátula de Compraventa a Plazos) + Cincel NOM-151
  *
- * Template: "Carátula de contrato VF Marzo 22" from legal team
+ * Template: "Carátula de compraventa a plazos VF April 8" from legal team
  * Autofill fields from configurador state + Truora INE + Stripe
  */
 
@@ -251,7 +251,7 @@ function generateContractPDF($nombre, $email, $telefono, $modelo, $color,
 }
 
 /**
- * Generate Carátula de Crédito PDF with FPDF
+ * Generate Carátula de Compraventa a Plazos PDF with FPDF
  */
 function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $color,
                                $ciudad, $estado, $cp, $precioContado, $precioSinIVA,
@@ -271,7 +271,7 @@ function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $co
 
     // Title
     $pdf->SetFont('Arial', 'B', 16);
-    $pdf->Cell(0, 10, $enc('CARÁTULA DE CRÉDITO'), 0, 1, 'C');
+    $pdf->Cell(0, 10, $enc('CARÁTULA DE COMPRAVENTA A PLAZOS'), 0, 1, 'C');
     $pdf->Ln(3);
 
     // Company info table
@@ -385,16 +385,18 @@ function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $co
 
     // CONDICIONES DE PAGO
     $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell(0, 8, $enc('CONDICIONES DE PAGO Y FINANCIAMIENTO'), 0, 1);
+    $pdf->Cell(0, 8, $enc('CONDICIONES DE COMPRA A PLAZOS'), 0, 1);
 
     $condRows = [
         ['Enganche', $fmt($enganche)],
-        ['Monto Financiado', $fmt($montoFinanciado)],
+        ['Precio de Contado', $fmt($precioContado)],
+        ['Enganche', $fmt($enganche)],
+        ['Saldo pendiente de pago', $fmt($montoFinanciado)],
         ['Numero total de Pagos', $numPagos],
         ['Periodicidad', 'Semanal'],
         ['Monto por pago semanal', $fmt($pagoSemanal)],
-        ['Total de Intereses y cargos', $fmt($totalIntereses)],
-        ['MONTO TOTAL A PAGAR', $fmt($montoTotalPagar)],
+        ['Precio total a plazo', $fmt($montoTotalPagar)],
+        ['Diferencia entre precio de contado y precio total a plazo', $fmt($totalIntereses)],
     ];
     foreach ($condRows as $i => $row) {
         $isLast = ($i === count($condRows) - 1);
@@ -416,7 +418,7 @@ function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $co
     $legalSections = [
         'VALIDACIÓN ELECTRÓNICA, PAGO Y ENTREGA' => 'EL CLIENTE reconoce que su identidad sera validada mediante mecanismos electronicos, incluyendo codigos de seguridad (OTP) enviados a su numero telefonico registrado. Asimismo, acepta que la confirmacion de sus datos personales y de la compra, incluyendo apellido y modelo adquirido, junto con la validacion del codigo OTP, constituira: (i) confirmacion de identidad, (ii) manifestacion expresa de voluntad, (iii) autorizacion para la entrega de la motocicleta, y (iv) aceptacion plena de la recepcion del producto. La entrega se considerara realizada en el momento en que el sistema registre dicha validacion electronica, constituyendo cumplimiento de la obligacion de entrega por parte de VOLTIKA. EL CLIENTE reconoce que dicha validacion tendra efectos legales equivalentes a una firma autografa conforme al Codigo de Comercio y podra ser utilizada como prueba en procesos de aclaracion, contracargos o disputas ante instituciones financieras o emisores de tarjetas.',
 
-        'NATURALEZA DEL FINANCIAMIENTO' => 'El financiamiento otorgado forma parte de una operacion comercial de compraventa a plazo. VOLTIKA no es una institucion de credito ni entidad financiera y no esta sujeta a supervision de la Comision Nacional Bancaria y de Valores (CNBV). EL CLIENTE reconoce que el credito tiene caracter mercantil y privado.',
+        'NATURALEZA DE LA OPERACIÓN' => 'La presente operacion corresponde a una compraventa a plazos. El precio total a plazo incluye el costo comercial derivado de la venta a plazos. VOLTIKA es una empresa comercial y no una institucion financiera. EL CLIENTE reconoce que conoce el precio de contado, el precio total a plazo, el monto del enganche, el numero y monto de los pagos, asi como el monto total a pagar.',
 
         'RESERVA DE DOMINIO Y RECUPERACIÓN' => 'La propiedad de la motocicleta permanecera en favor de VOLTIKA hasta el pago total del credito. En caso de incumplimiento, VOLTIKA podra ejercer acciones legales para la recuperacion del vehiculo. EL CLIENTE autoriza el uso de tecnologias de geolocalizacion y control remoto para fines de seguridad y recuperacion del bien.',
     ];
@@ -453,7 +455,7 @@ function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $co
 
     $pdf->Ln(6);
     $pdf->SetFont('Arial', 'B', 7);
-    $pdf->MultiCell(0, 4, $enc('La presente caratula forma parte integral del contrato de credito, terminos y condiciones, pagare y acta de entrega. Su firma, ya sea autografa o electronica, implica aceptacion total de los mismos.'));
+    $pdf->MultiCell(0, 4, $enc('La presente caratula forma parte integral del contrato de compraventa a plazos, terminos y condiciones, pagare y acta de entrega. Su firma, ya sea autografa o electronica, implica aceptacion total de los mismos.'));
 
     // ══════════════════════════════════════════════════════════════════════
     // CONTRATO DE FINANCIAMIENTO (pages 3+)
@@ -471,7 +473,7 @@ function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $co
 }
 
 /**
- * Generate Contrato de Financiamiento pages (appended to Carátula PDF)
+ * Generate Contrato de Compraventa a Plazos pages (appended to Carátula PDF)
  */
 function generateContratoPages($pdf, $enc, $folio, $nombre, $firmaImgPath, $fechaFirma) {
 
@@ -479,14 +481,14 @@ function generateContratoPages($pdf, $enc, $folio, $nombre, $firmaImgPath, $fech
 
     // Header with Folio
     $pdf->SetFont('Arial', 'B', 12);
-    $pdf->Cell(0, 8, $enc('CONTRATO DE APERTURA DE CRÉDITO'), 0, 1, 'C');
+    $pdf->Cell(0, 8, $enc('CONTRATO DE COMPRAVENTA A PLAZOS'), 0, 1, 'C');
     $pdf->SetFont('Arial', '', 7);
     $pdf->Cell(0, 5, $enc('Folio: ' . $folio), 0, 1, 'R');
     $pdf->Ln(3);
 
     // Opening paragraph
     $pdf->SetFont('Arial', '', 7);
-    $pdf->MultiCell(0, 3.5, $enc('QUE CELEBRAN POR UNA PARTE MTECH GEARS, S.A. DE C.V. (EN LO SUCESIVO VOLTIKA); Y POR LA OTRA PARTE POR PROPIO DERECHO LA PERSONA FISICA CUYOS DATOS GENERALES SE ENCONTRARAN EN LA CARATULA DEL PRESENTE CONTRATO, MISMA QUE FORMA PARTE INTEGRAL DEL MISMO (EN LO SUCESIVO CLIENTE); Y EN CONJUNTO CON VOLTIKA SE LES DENOMINARA LAS PARTES AL TENOR DE LAS SIGUIENTES DECLARACIONES, DEFINICIONES Y CLAUSULAS:'));
+    $pdf->MultiCell(0, 3.5, $enc('CON RESERVA DE DOMINIO QUE CELEBRAN POR UNA PARTE MTECH GEARS, S.A. DE C.V. (EN LO SUCESIVO VOLTIKA); Y POR LA OTRA PARTE POR PROPIO DERECHO LA PERSONA FISICA CUYOS DATOS GENERALES SE ENCONTRARAN EN LA CARATULA DEL PRESENTE CONTRATO, MISMA QUE FORMA PARTE INTEGRAL DEL MISMO (EN LO SUCESIVO CLIENTE); Y EN CONJUNTO CON VOLTIKA SE LES DENOMINARA LAS PARTES AL TENOR DE LAS SIGUIENTES DECLARACIONES, DEFINICIONES Y CLAUSULAS:'));
     $pdf->Ln(3);
 
     // DECLARACIONES
@@ -613,7 +615,7 @@ function generateMinimalPDF($filepath, $nombre, $email, $telefono, $modelo, $col
 
     $fmt = function($n) { return '$' . number_format($n, 2) . ' MXN'; };
 
-    $content  = "CARATULA DE CREDITO - MTECH GEARS S.A. DE C.V.\n";
+    $content  = "CARATULA DE COMPRAVENTA A PLAZOS - MTECH GEARS S.A. DE C.V.\n";
     $content .= "Folio: {$folio} | Fecha: {$fechaFirma}\n\n";
     $content .= "CLIENTE: {$nombre}\n";
     $content .= "Domicilio: {$domicilio}\n";

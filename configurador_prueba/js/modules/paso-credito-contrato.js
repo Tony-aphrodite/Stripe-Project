@@ -112,8 +112,8 @@ var PasoCreditoContrato = {
         html += '<label style="display:flex;align-items:flex-start;gap:10px;padding:14px;border:1.5px solid var(--vk-border);border-radius:10px;margin-bottom:14px;cursor:pointer;">';
         html += '<input type="checkbox" id="vk-contrato-acepto" style="margin-top:3px;flex-shrink:0;width:18px;height:18px;">';
         html += '<span style="font-size:13px;color:var(--vk-text-secondary);line-height:1.5;">';
-        html += 'He le\u00eddo y acepto de conformidad los <a href="#" id="vk-ver-contrato-completo" style="color:#039fe1;text-decoration:underline;">t\u00e9rminos y cl\u00e1usulas del contrato</a> y en el <a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" rel="noopener" style="color:#039fe1;text-decoration:underline;">aviso de privacidad</a>.';
-        html += ' <a href="#" id="vk-ver-contrato" style="color:#039fe1;font-weight:600;text-decoration:none;">Ver contrato</a>';
+        html += 'He le\u00eddo y acepto de conformidad los <a href="#" id="vk-ver-contrato-completo" style="color:#039fe1;text-decoration:underline;">cl\u00e1usulas y t\u00e9rminos</a> y en el <a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" rel="noopener" style="color:#039fe1;text-decoration:underline;">aviso de privacidad</a>.';
+        html += ' <a href="#" id="vk-ver-contrato" style="color:#039fe1;font-weight:600;text-decoration:none;">Ver Car\u00e1tula de compraventa a plazos</a>';
         html += '</span>';
         html += '</label>';
 
@@ -384,49 +384,66 @@ var PasoCreditoContrato = {
         html += '<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;">';
 
         html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-        html += '<span style="font-size:16px;font-weight:800;color:#333;">Car\u00e1tula de Cr\u00e9dito</span>';
+        html += '<span style="font-size:16px;font-weight:800;color:#333;">Car\u00e1tula de Compraventa a Plazos</span>';
         html += '<button id="vk-contrato-modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>';
         html += '</div>';
 
+        html += '<div style="font-size:10px;color:#888;margin-bottom:4px;">Resumen de condiciones de la operaci\u00f3n comercial</div>';
         html += '<div style="font-size:10px;color:#888;margin-bottom:6px;">MTECH GEARS S.A. DE C.V. | RFC: MGE230316KA2</div>';
 
         // Customer ID highlighted
         html += '<div style="background:#039fe1;color:#fff;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;font-weight:700;">Folio: ' + folio + '</div>';
 
         // Client data
-        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">DATOS DEL CLIENTE</div>';
+        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">DATOS DEL CLIENTE CONSUMIDOR</div>';
         html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
-        html += 'Nombre completo: <strong>' + nombreCompleto + '</strong><br>';
-        html += 'Email: <strong>' + (s.email || '--') + '</strong><br>';
-        html += 'Tel: <strong>+52 ' + (s.telefono || '--') + '</strong>';
+        html += 'Nombre: <strong>' + nombreCompleto + '</strong><br>';
+        // Address from credit form
+        var domicilio = '';
+        if (s.calle) domicilio += s.calle;
+        if (s.numeroExterior) domicilio += ' ' + s.numeroExterior;
+        if (s.colonia) domicilio += ', ' + s.colonia;
+        if (s.ciudadDomicilio || s.ciudad) domicilio += ', ' + (s.ciudadDomicilio || s.ciudad);
+        if (s.estadoDomicilio || s.estado) domicilio += ', ' + (s.estadoDomicilio || s.estado);
+        if (s.cpDomicilio || s.codigoPostal) domicilio += ' C.P. ' + (s.cpDomicilio || s.codigoPostal);
+        if (domicilio) html += 'Domicilio: <strong>' + domicilio + '</strong><br>';
+        if (s._curp) html += 'CURP: <strong>' + s._curp + '</strong><br>';
+        html += 'Correo electr\u00f3nico: <strong>' + (s.email || '--') + '</strong><br>';
+        html += 'Tel\u00e9fono (validado mediante OTP): <strong>+52 ' + (s.telefono || '--') + '</strong>';
         html += '</div>';
+        html += '<div style="font-size:10px;color:#666;margin:-8px 0 12px;line-height:1.4;">El n\u00famero telef\u00f3nico se\u00f1alado ser\u00e1 el medio de identificaci\u00f3n de EL CLIENTE para efectos de validaci\u00f3n, autorizaci\u00f3n y entrega.</div>';
 
         // Vehicle
-        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">MOTOCICLETA</div>';
+        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">CARACTER\u00cdSTICAS DE LA MOTOCICLETA</div>';
         html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
-        html += 'Modelo: <strong>VOLTIKA ' + m.nombre + '</strong><br>';
+        html += 'Marca: <strong>VOLTIKA</strong> | Submarca: <strong>TROMOX</strong><br>';
+        html += 'Tipo o versi\u00f3n: <strong>' + m.nombre + '</strong><br>';
         html += 'Color: <strong>' + colorCap + '</strong><br>';
-        html += 'A\u00f1o: <strong>2026</strong>';
+        html += 'A\u00f1o-modelo: <strong>2026</strong>';
+        html += '</div>';
+        html += '<div style="font-size:10px;color:#666;margin:-8px 0 12px;line-height:1.4;">El n\u00famero de serie (VIN/NIV) ser\u00e1 asignado y confirmado en el acta de entrega correspondiente.</div>';
+
+        // Price detail with IVA
+        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">DETALLE DEL VEH\u00cdCULO Y PRECIO</div>';
+        html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
+        html += 'Precio del veh\u00edculo (Sin IVA): <strong>' + f(d.precioSinIVA) + '</strong><br>';
+        html += 'IVA del veh\u00edculo (16%): <strong>' + f(d.ivaVehiculo) + '</strong><br>';
+        html += 'Precio de Contado: <strong>' + f(m.precioContado) + ' MXN</strong><br>';
+        html += '<span style="font-size:10px;color:#666;">El precio incluye costos log\u00edsticos, traslado y entrega</span>';
         html += '</div>';
 
-        // Price
-        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">PRECIO</div>';
+        // Credit conditions — "Condiciones de Compra a Plazos"
+        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">CONDICIONES DE COMPRA A PLAZOS</div>';
         html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
-        html += 'Precio (sin IVA): ' + f(d.precioSinIVA) + '<br>';
-        html += 'IVA (16%): ' + f(d.ivaVehiculo) + '<br>';
-        html += '<strong>Precio total: ' + f(m.precioContado) + ' MXN</strong>';
+        html += 'Precio de Contado: <strong>' + f(m.precioContado) + ' MXN</strong><br>';
+        html += 'Enganche: <strong>' + f(c.enganche) + ' MXN</strong><br>';
+        html += 'Saldo pendiente de pago: <strong>' + f(c.montoFinanciado) + ' MXN</strong><br>';
+        html += 'N\u00famero total de Pagos: <strong>' + d.numPagos + '</strong> | Periodicidad: <strong>Semanal</strong><br>';
+        html += 'Monto por pago semanal: <strong style="color:#039fe1;">' + f(c.pagoSemanal) + ' MXN</strong><br>';
+        html += 'Precio total a plazo: <strong style="font-size:14px;">' + f(d.montoTotalPagar) + ' MXN</strong><br>';
+        html += 'Diferencia entre precio de contado y precio total a plazo: <strong>' + f(d.totalIntereses) + ' MXN</strong>';
         html += '</div>';
-
-        // Credit conditions
-        html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">CONDICIONES DE PAGO</div>';
-        html += '<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8;">';
-        html += 'Enganche pagado: <strong>' + f(c.enganche) + '</strong><br>';
-        html += 'Monto financiado: <strong>' + f(c.montoFinanciado) + '</strong><br>';
-        html += 'Pagos: <strong>' + d.numPagos + ' Pagos semanales</strong><br>';
-        html += 'Pago semanal: <strong style="color:#039fe1;">' + f(c.pagoSemanal) + '</strong><br>';
-        html += 'Costo del financiamiento: ' + f(d.totalIntereses) + '<br>';
-        html += '<strong style="font-size:14px;">Total a Pagar: ' + f(d.montoTotalPagar) + ' MXN</strong>';
-        html += '</div>';
+        html += '<div style="font-size:10px;color:#666;margin:-8px 0 12px;line-height:1.4;">El precio total a plazo es mayor al precio de contado debido a la facilidad de pago en parcialidades.</div>';
 
         html += '<button id="vk-contrato-modal-ok" class="vk-btn vk-btn--primary" style="margin-top:8px;font-size:14px;font-weight:700;">Cerrar</button>';
         html += '</div></div>';
@@ -449,13 +466,13 @@ var PasoCreditoContrato = {
         html += '<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;">';
 
         html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-        html += '<span style="font-size:16px;font-weight:800;color:#333;">Contrato de Cr\u00e9dito Completo</span>';
+        html += '<span style="font-size:16px;font-weight:800;color:#333;">Contrato de Compraventa a Plazos</span>';
         html += '<button id="vk-contrato-modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>';
         html += '</div>';
 
         // Company header
         html += '<div style="text-align:center;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #1a3a5c;">';
-        html += '<div style="font-size:14px;font-weight:800;color:#1a3a5c;">CAR\u00c1TULA DE CR\u00c9DITO</div>';
+        html += '<div style="font-size:14px;font-weight:800;color:#1a3a5c;">CAR\u00c1TULA DE COMPRAVENTA A PLAZOS</div>';
         html += '<div style="font-size:10px;color:#888;">MTECH GEARS S.A. DE C.V. | RFC: MGE230316KA2</div>';
         html += '</div>';
 
@@ -489,7 +506,7 @@ var PasoCreditoContrato = {
 
         // Full contract from DOCX (contrato-texto.js)
         html += '<div style="border-top:2px solid #1a3a5c;margin-top:16px;padding-top:14px;">';
-        html += '<div style="text-align:center;font-size:12px;font-weight:800;color:#1a3a5c;margin-bottom:6px;">CONTRATO DE APERTURA DE CR\u00c9DITO</div>';
+        html += '<div style="text-align:center;font-size:12px;font-weight:800;color:#1a3a5c;margin-bottom:6px;">CONTRATO DE COMPRAVENTA A PLAZOS</div>';
         html += '<div style="text-align:center;font-size:9px;color:#888;margin-bottom:12px;">CONTRATO ASOCIADO AL FOLIO: <strong>' + folio + '</strong></div>';
         html += '</div>';
 
@@ -503,7 +520,7 @@ var PasoCreditoContrato = {
                 para = para.replace(/XXXXXXXXXXX/g, folio);
                 para = para.replace(/XXXXXXXXXX/g, folio);
                 // Bold clause headers
-                var isBold = /^(CONTRATO|DECLARACIONES|DEFINICIONES|CL\u00c1USULAS|PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA|S\u00c9PTIMA|OCTAVA|NOVENA|D\u00c9CIMA|VIG\u00c9SIMA|EL CLIENTE$|Firma electr)/.test(para);
+                var isBold = /^(CONTRATO|DECLARACIONES|DEFINICIONES|PROTECCI|CL\u00c1USULAS|PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA|S\u00c9PTIMA|OCTAVA|NOVENA|D\u00c9CIMA|VIG\u00c9SIMA|EL CLIENTE$|Firma electr)/.test(para);
                 if (isBold) {
                     html += '<p><strong>' + para + '</strong></p>';
                 } else {
@@ -511,7 +528,7 @@ var PasoCreditoContrato = {
                 }
             }
         } else {
-            html += '<p>Error: Contrato de Financiamiento no disponible.</p>';
+            html += '<p>Error: Contrato de Compraventa a Plazos no disponible.</p>';
         }
 
         // Signature section with autofill
@@ -524,7 +541,7 @@ var PasoCreditoContrato = {
 
         html += '</div>'; // end scrollable
 
-        html += '<div style="font-size:9px;color:#999;margin-top:12px;text-align:center;font-style:italic;">La presente car\u00e1tula y contrato de cr\u00e9dito forman un solo documento legal.</div>';
+        html += '<div style="font-size:9px;color:#999;margin-top:12px;text-align:center;font-style:italic;">La presente car\u00e1tula forma parte integral del contrato de compraventa a plazos, t\u00e9rminos y condiciones, pagar\u00e9 y acta de entrega.</div>';
 
         html += '<button id="vk-contrato-modal-ok" class="vk-btn vk-btn--primary" style="margin-top:12px;font-size:14px;font-weight:700;">Cerrar</button>';
         html += '</div></div>';

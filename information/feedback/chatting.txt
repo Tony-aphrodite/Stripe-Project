@@ -1,0 +1,18 @@
+Oscar, here are the screens we need for costumer portal when costumer payment is contado or MSI:
+
+3 screens only:
+Home, documents and mi cuenta.
+
+The home page with dinamic delivery status (pending to asign, in transit, ready to pick up).
+
+Oscar also we need to update and modify the credit contract and carátula to “ Carátula de compraventa a plazos and contrato de compraventa a plazos”
+
+
+This is the “Carátula de compraventa a plazos” has to be autofilll replacing the one is located in the configuration flow with text and order as this document, this carátula has to replace the check box text in the part of “Ver contrato” change to “ Ver Carátula de compraventa a plazos”
+
+Replace also the current contract to the following “contrato de compraventa a plazos” with exact text and reference folio and last page costumer full name amd cincel siganature
+
+
+This is the new contract document to replace the current one.(Contrato de compraventa a plazos Voltika Abril 8 Definitivo.docx)
+
+When selecting in the check box link “cláusulas y términos “ has to show both documents together same as we have with current contract (carátula with contract ) like one sole document
