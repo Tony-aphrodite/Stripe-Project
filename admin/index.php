@@ -38,6 +38,7 @@ $asset = function(string $rel): string {
       <button data-route="envios"><span>🚚</span> Envíos</button>
       <button data-route="pagos"><span>💳</span> Pagos</button>
       <button data-route="puntos"><span>📍</span> Puntos Voltika</button>
+      <button data-route="checklists"><span>✅</span> Checklists</button>
       <button data-route="buro"><span>📋</span> Buro CDC</button>
     </div>
     <div class="ad-user" id="adUser"></div>
@@ -62,6 +63,7 @@ $asset = function(string $rel): string {
 <script src="<?= $asset('js/modules/admin-pagos.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-puntos.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-ventas.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-checklists.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-buro.js') ?>"></script>
 <script>$(function(){ ADApp.start(); });</script>
 </body>
