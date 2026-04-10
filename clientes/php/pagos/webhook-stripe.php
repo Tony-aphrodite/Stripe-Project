@@ -1,7 +1,13 @@
 <?php
 /**
- * Voltika Portal - Stripe webhook listener
- * Listens for payment_intent.succeeded and updates ciclos_pago accordingly.
+ * Voltika Portal - Stripe webhook listener (DEPRECATED)
+ *
+ * Payment webhook handling has been consolidated into the main webhook:
+ *   configurador_prueba/php/stripe-webhook.php
+ *
+ * This file remains for backward compatibility — if Stripe still sends
+ * events to this URL, it will process them locally as before.
+ * Once the Stripe Dashboard webhook URL is updated, this file can be removed.
  */
 require_once __DIR__ . '/../bootstrap.php';
 
@@ -23,7 +29,9 @@ if (STRIPE_WEBHOOK_SECRET && $sig) {
 }
 
 $event = json_decode($payload, true);
-$logFile = __DIR__ . '/../../../configurador/php/logs/portal-webhook.log';
+$logDir = __DIR__ . '/../../../configurador_prueba/php/logs';
+if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
+$logFile = $logDir . '/portal-webhook.log';
 @file_put_contents($logFile, json_encode([
     'ts' => date('c'), 'verified' => $verified,
     'type' => $event['type'] ?? null, 'id' => $event['id'] ?? null,

@@ -70,6 +70,11 @@ switch ($eventType) {
         break;
 }
 
+// ── Also handle subscription/ciclos_pago updates for ALL succeeded payments ──
+if ($eventType === 'payment_intent.succeeded') {
+    handleCiclosPagoUpdate($event->data->object);
+}
+
 // ── Always return 200 to Stripe ──────────────────────────────────────────────
 http_response_code(200);
 echo json_encode(['received' => true]);
@@ -312,5 +317,34 @@ function sendConfirmationEmail($order, $methodLabel) {
         );
     } catch (Exception $e) {
         webhookLog("Email exception for pedido #$pedidoNum: " . $e->getMessage());
+    }
+}
+
+/**
+ * Handle ciclos_pago update for subscription payments.
+ * Reads subscripcion_id and ciclos from PaymentIntent metadata.
+ * Previously handled by a separate portal webhook — now unified here.
+ */
+function handleCiclosPagoUpdate($paymentIntent) {
+    $piId = $paymentIntent->id ?? '';
+    $meta = (array)($paymentIntent->metadata ?? []);
+    $subId = (int)($meta['subscripcion_id'] ?? 0);
+    $ciclos = $meta['ciclos'] ?? '';
+
+    if (!$subId || !$ciclos) return;
+
+    webhookLog("Updating ciclos_pago: subscripcion=$subId, ciclos=$ciclos, PI=$piId");
+
+    try {
+        $pdo = getDB();
+        $nums = array_map('intval', explode(',', $ciclos));
+        $ph = implode(',', array_fill(0, count($nums), '?'));
+        $stmt = $pdo->prepare("UPDATE ciclos_pago SET estado = 'paid_auto', stripe_payment_intent = ?
+            WHERE subscripcion_id = ? AND semana_num IN ($ph) AND estado NOT IN ('paid_manual','paid_auto')");
+        $stmt->execute([$piId, $subId, ...$nums]);
+        $updated = $stmt->rowCount();
+        webhookLog("ciclos_pago updated: $updated rows for subscripcion=$subId");
+    } catch (PDOException $e) {
+        webhookLog("ciclos_pago DB ERROR: " . $e->getMessage());
     }
 }

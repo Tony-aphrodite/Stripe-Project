@@ -64,7 +64,8 @@ window.AD_inventario = (function(){
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
       [['VIN',m.vin_display||m.vin],['Estado',m.estado],['Pago',m.pago_estado],['Año',m.anio_modelo],
        ['Cliente',m.cliente_nombre||'—'],['Email',m.cliente_email||'—'],['Teléfono',m.cliente_telefono||'—'],
-       ['Pedido',m.pedido_num||'—'],['Punto',m.punto_voltika_nombre||'—']].forEach(function(p){
+       ['Pedido',m.pedido_num||'—'],['Punto',m.punto_voltika_nombre||'—'],
+       ['Método pago',r.transaccion?r.transaccion.tpago:'—'],['Monto',r.transaccion?ADApp.money(r.transaccion.total):'—'],['Stripe PI',m.stripe_pi||'—']].forEach(function(p){
         html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
       });
       html += '</div>';
@@ -83,11 +84,15 @@ window.AD_inventario = (function(){
         });
       }
       // Assign to point action
+      var origenOk = r.checklist_origen && r.checklist_origen.completado;
       html += '<div class="ad-h2">Acciones</div>';
-      html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'">📍 Asignar a punto</button> ';
+      if(!origenOk){
+        html += '<div style="padding:10px;border-radius:8px;background:rgba(239,68,68,.08);color:#b91c1c;font-size:12px;margin-bottom:8px;">⚠ El checklist de origen debe estar completo antes de asignar a un punto.</div>';
+      }
+      html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'" '+(origenOk?'':'disabled style="opacity:.5;cursor:not-allowed;"')+'>📍 Asignar a punto</button> ';
       html += '<button class="ad-btn ghost" id="adVerifyPay" data-id="'+m.id+'">💳 Verificar pago</button>';
       ADApp.modal(html);
-      $('#adAssign').on('click',function(){ assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
+      $('#adAssign').on('click',function(){ if(!origenOk) return; assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
       $('#adVerifyPay').on('click',function(){
         ADApp.api('pagos/verificar.php',{moto_id:m.id}).done(function(r2){
           alert(r2.verificado?'✅ Pago verificado':'⚠️ No verificado: '+(r2.stripe_status||'sin Stripe PI'));

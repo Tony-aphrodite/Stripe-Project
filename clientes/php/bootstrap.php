@@ -5,8 +5,9 @@
  * Reuses configurador's config.php (DB, SMTP, SMS, Stripe, .env).
  */
 
-// Reuse configurador's central config (DB, SMTP, SMS, Stripe, Truora, .env loader)
-require_once __DIR__ . '/../../configurador_prueba/php/config.php';
+// Reuse master bootstrap (DB, SMTP, SMS, Stripe, Truora, .env + all table schemas)
+require_once __DIR__ . '/../../configurador_prueba/php/master-bootstrap.php';
+voltikaEnsureSchema();
 
 // ── CORS / JSON defaults ────────────────────────────────────────────────────
 // Only set JSON content-type when this is an API request (not when included from index.php)
