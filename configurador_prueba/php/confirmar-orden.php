@@ -103,7 +103,7 @@ try {
     ]);
     // ── Auto-crear registro en inventario_motos para el dealer panel ────────
     $vinAuto = 'VK-' . strtoupper(substr($modelo, 0, 3)) . '-' . $pedidoNum;
-    $vinDisplay = '****' . substr($pedidoNum, -4);
+    $vinDisplay = $vinAuto;
     $logEstados = json_encode([[
         'estado'    => 'por_llegar',
         'accion'    => 'pedido_confirmado',

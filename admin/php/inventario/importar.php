@@ -106,7 +106,7 @@ for ($i = 1; $i < count($rows); $i++) {
     $anio    = trim($row[$colMap['anio'] ?? -1] ?? '') ?: date('Y');
     $hecho   = trim($row[$colMap['hecho_en'] ?? -1] ?? '');
     $notas   = trim($row[$colMap['notas'] ?? -1] ?? '');
-    $vinDisp = strlen($vin) > 4 ? '****' . substr($vin, -4) : $vin;
+    $vinDisp = strtoupper($vin);
     $log     = json_encode([['estado' => 'por_llegar', 'fecha' => date('Y-m-d H:i:s'), 'usuario' => $uid]]);
 
     try {

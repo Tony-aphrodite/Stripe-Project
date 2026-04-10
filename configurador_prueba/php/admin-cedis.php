@@ -367,7 +367,7 @@ if ($accion === 'import_excel') {
         }
 
         try {
-            $vinDisplay = '****' . substr($vin, -4);
+            $vinDisplay = strtoupper($vin);
             $log = json_encode([[
                 'estado' => 'por_llegar', 'accion' => 'import_excel',
                 'dealer' => $dealer['nombre'], 'timestamp' => date('Y-m-d H:i:s'),

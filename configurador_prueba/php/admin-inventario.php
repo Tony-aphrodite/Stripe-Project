@@ -142,8 +142,7 @@ if ($accion === 'agregar') {
         exit;
     }
 
-    // VIN display: mask all but last 4
-    $vinDisplay = '****' . substr($vin, -4);
+    $vinDisplay = strtoupper($vin);
 
     // Initial log
     $log = [[
