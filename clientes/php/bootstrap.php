@@ -299,15 +299,33 @@ function portalSendSMS(string $telefono, string $mensaje): array {
  */
 function portalFindClienteByPhone(string $tel): ?array {
     $pdo = getDB();
+    // Exact match first
     $stmt = $pdo->prepare("SELECT * FROM clientes WHERE telefono = ? ORDER BY id DESC LIMIT 1");
     $stmt->execute([$tel]);
     $c = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($c) return $c;
 
+    // Normalized match (last 10 digits) — handles +52, 52 prefix differences
+    if (strlen($tel) >= 10) {
+        $last10 = substr($tel, -10);
+        $stmt = $pdo->prepare("SELECT * FROM clientes WHERE RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''), 10) = ? ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$last10]);
+        $c = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($c) return $c;
+    }
+
     // Fallback: try to hydrate from subscripciones_credito
     $stmt = $pdo->prepare("SELECT * FROM subscripciones_credito WHERE telefono = ? ORDER BY id DESC LIMIT 1");
     $stmt->execute([$tel]);
     $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Normalized fallback for subscripciones_credito too
+    if (!$sub && strlen($tel) >= 10) {
+        $last10 = substr($tel, -10);
+        $stmt = $pdo->prepare("SELECT * FROM subscripciones_credito WHERE RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''), 10) = ? ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$last10]);
+        $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
     if (!$sub) return null;
 
     // Upsert minimal cliente row — try to find the name from inventario_motos or transacciones
