@@ -15,7 +15,7 @@ window.VK_inicio = (function(){
   function render(){
     var e = VKApp.state.estado || {};
     var c = VKApp.state.cliente || {};
-    var nombre = (c.nombre||'').split(' ')[0] || 'cliente';
+    var nombre = c.nombrePila || (c.nombre||'').split(' ')[0] || 'Cliente';
     var prox = e.proximo_pago || {};
     var prog = e.progreso || {};
     var pct = prog.total? Math.round((prog.pagados/prog.total)*100):0;
@@ -61,13 +61,18 @@ window.VK_inicio = (function(){
     $('#vkPayNow').on('click', function(){ pay('semanal'); });
     $('.vk-chip').on('click', function(){ pay($(this).data('tipo')); });
   }
+  var paying = false;
   function pay(tipo){
+    if(paying) return;
     if(!confirm('¿Confirmar pago ('+tipo+')?')) return;
+    paying = true;
+    $('#vkPayNow,.vk-chip').css('opacity','0.5').css('pointer-events','none');
     VKApp.toast('Procesando pago...');
     VKApp.api('pagos/crear-pago-directo.php',{tipo:tipo}).done(function(r){
       if(r.ok){ VKApp.toast('✅ Pago exitoso'); VKApp.loadEstado(function(){ render(); }); }
       else VKApp.toast(r.error||'Error en el pago');
-    }).fail(function(x){ VKApp.toast((x.responseJSON&&x.responseJSON.error)||'Pago rechazado'); });
+    }).fail(function(x){ VKApp.toast((x.responseJSON&&x.responseJSON.error)||'Pago rechazado'); })
+    .always(function(){ paying = false; $('#vkPayNow,.vk-chip').css('opacity','').css('pointer-events',''); });
   }
   return { render:render };
 })();

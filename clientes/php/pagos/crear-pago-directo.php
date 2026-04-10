@@ -21,33 +21,54 @@ if (!$sub) portalJsonOut(['error' => 'No tienes una cuenta activa'], 404);
 
 portalEnsureCiclos($sub);
 
-// Determine which cycles to settle
+// Lock cycles to prevent duplicate payments (race condition protection)
+$pdo->beginTransaction();
 $stmt = $pdo->prepare("SELECT * FROM ciclos_pago
     WHERE subscripcion_id = ? AND estado IN ('pending','overdue')
-    ORDER BY semana_num ASC");
+    ORDER BY semana_num ASC
+    FOR UPDATE");
 $stmt->execute([$sub['id']]);
 $pendientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-if (empty($pendientes)) portalJsonOut(['error' => 'No hay pagos pendientes'], 400);
+if (empty($pendientes)) {
+    $pdo->rollBack();
+    portalJsonOut(['error' => 'No hay pagos pendientes'], 400);
+}
 
 $numCiclos = match ($tipo) {
     'dos_semanas' => 2,
     'adelanto'    => max(1, (int)($in['num_semanas'] ?? 4)),
     default       => 1,
 };
-$aPagar = array_slice($pendientes, 0, $numCiclos);
+
+// Adelanto: discount from the LAST pending cycles (shortens the plan)
+// Normal/dos_semanas: pay the NEXT pending cycles
+if ($tipo === 'adelanto') {
+    $aPagar = array_slice($pendientes, -$numCiclos);
+} else {
+    $aPagar = array_slice($pendientes, 0, $numCiclos);
+}
 
 $monto = 0;
 foreach ($aPagar as $c) $monto += (float)$c['monto'];
 if ($montoCustom > 0) $monto = $montoCustom;
 
 $amountCents = (int)round($monto * 100);
-if ($amountCents <= 0) portalJsonOut(['error' => 'Monto inválido'], 400);
+if ($amountCents <= 0) {
+    $pdo->rollBack();
+    portalJsonOut(['error' => 'Monto inválido'], 400);
+}
 
 // ── Stripe PaymentIntent (off_session, confirm immediately) ─────────────────
 $customer = $sub['stripe_customer_id'] ?? '';
 $pm       = $sub['stripe_payment_method_id'] ?? '';
-if (!$customer || !$pm) portalJsonOut(['error' => 'Método de pago no configurado'], 400);
+if (!$customer || !$pm) {
+    $pdo->rollBack();
+    portalJsonOut(['error' => 'Método de pago no configurado'], 400);
+}
+
+// Idempotency key prevents duplicate charges on double-click / retry
+$idempotencyKey = 'voltika_' . $sub['id'] . '_' . implode('_', array_column($aPagar, 'semana_num')) . '_' . date('Ymd');
 
 $postFields = http_build_query([
     'amount' => $amountCents,
@@ -71,6 +92,7 @@ curl_setopt_array($ch, [
     CURLOPT_HTTPHEADER => [
         'Authorization: Bearer ' . STRIPE_SECRET_KEY,
         'Content-Type: application/x-www-form-urlencoded',
+        'Idempotency-Key: ' . $idempotencyKey,
     ],
     CURLOPT_TIMEOUT => 30,
 ]);
@@ -91,6 +113,7 @@ if ($code >= 200 && $code < 300 && ($data['status'] ?? '') === 'succeeded') {
     $upd = $pdo->prepare("UPDATE ciclos_pago SET estado = 'paid_manual', stripe_payment_intent = ?, origen = 'portal_manual'
         WHERE id = ?");
     foreach ($aPagar as $c) $upd->execute([$data['id'], $c['id']]);
+    $pdo->commit();
 
     // Insert transaccion row (best-effort, tolerant of schema differences)
     try {
@@ -119,7 +142,8 @@ if ($code >= 200 && $code < 300 && ($data['status'] ?? '') === 'succeeded') {
     ]);
 }
 
-// Failure
+// Failure — release locked rows
+$pdo->rollBack();
 $err = $data['error']['message'] ?? 'No se pudo procesar el pago';
 portalLog('payment_fail', ['success' => 0, 'detalle' => $err]);
 portalJsonOut(['error' => $err, 'stripe' => $data['error'] ?? null], 402);

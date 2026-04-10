@@ -19,6 +19,33 @@ try {
     $cliente = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $e) { error_log('cliente/estado clientes: ' . $e->getMessage()); }
 
+// Auto-fill empty name from inventario_motos or transacciones
+if (empty($cliente['nombre'])) {
+    $tel = $cliente['telefono'] ?? null;
+    $em  = $cliente['email'] ?? null;
+    $foundName = null;
+    if ($tel) {
+        $nStmt = $pdo->prepare("SELECT cliente_nombre FROM inventario_motos WHERE cliente_telefono = ? AND cliente_nombre IS NOT NULL AND cliente_nombre != '' ORDER BY id DESC LIMIT 1");
+        $nStmt->execute([$tel]);
+        $foundName = ($nStmt->fetchColumn()) ?: null;
+    }
+    if (!$foundName && $em) {
+        $nStmt = $pdo->prepare("SELECT cliente_nombre FROM inventario_motos WHERE cliente_email = ? AND cliente_nombre IS NOT NULL AND cliente_nombre != '' ORDER BY id DESC LIMIT 1");
+        $nStmt->execute([$em]);
+        $foundName = ($nStmt->fetchColumn()) ?: null;
+    }
+    if (!$foundName && ($tel || $em)) {
+        $q = $tel ? "telefono = ?" : "email = ?";
+        $nStmt = $pdo->prepare("SELECT nombre FROM transacciones WHERE $q AND nombre IS NOT NULL AND nombre != '' ORDER BY id DESC LIMIT 1");
+        $nStmt->execute([$tel ?: $em]);
+        $foundName = ($nStmt->fetchColumn()) ?: null;
+    }
+    if ($foundName) {
+        $pdo->prepare("UPDATE clientes SET nombre = ? WHERE id = ? AND (nombre IS NULL OR nombre = '')")->execute([$foundName, $cid]);
+        $cliente['nombre'] = $foundName;
+    }
+}
+
 $nombre = trim(($cliente['nombre'] ?? '') . ' ' . ($cliente['apellido_paterno'] ?? ''));
 if ($nombre === '' && $sub) $nombre = 'Cliente Voltika';
 
