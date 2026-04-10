@@ -69,6 +69,14 @@ if (!defined('CDC_API_KEY')) {
 if (!defined('ENVIA_API_KEY'))  define('ENVIA_API_KEY',  getenv('ENVIA_API_KEY')  ?: '');
 if (!defined('ENVIA_CARRIER'))  define('ENVIA_CARRIER',  getenv('ENVIA_CARRIER')  ?: 'estafeta');
 if (!defined('ENVIA_SERVICE'))  define('ENVIA_SERVICE',  getenv('ENVIA_SERVICE')  ?: 'standard');
+
+// Skydropx (shipping quotes + labels)
+if (!defined('SKYDROPX_API_KEY')) define('SKYDROPX_API_KEY', getenv('SKYDROPX_API_KEY') ?: 'XdkfMZOHYt4S8LJSNAUViThofrzsj4tgOvGfczTJbis');
+// Default parcel dimensions for moto shipments (kg / cm)
+if (!defined('SKYDROPX_PARCEL_WEIGHT')) define('SKYDROPX_PARCEL_WEIGHT', 150);
+if (!defined('SKYDROPX_PARCEL_HEIGHT')) define('SKYDROPX_PARCEL_HEIGHT', 120);
+if (!defined('SKYDROPX_PARCEL_WIDTH'))  define('SKYDROPX_PARCEL_WIDTH',  80);
+if (!defined('SKYDROPX_PARCEL_LENGTH')) define('SKYDROPX_PARCEL_LENGTH', 200);
 // CEDIS origin address (configure in .env)
 if (!defined('CEDIS_NOMBRE'))   define('CEDIS_NOMBRE',   getenv('CEDIS_NOMBRE')   ?: 'Voltika CEDIS');
 if (!defined('CEDIS_TELEFONO')) define('CEDIS_TELEFONO', getenv('CEDIS_TELEFONO') ?: '5512345678');

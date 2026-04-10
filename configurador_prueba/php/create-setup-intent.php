@@ -39,7 +39,9 @@ if (!STRIPE_SECRET_KEY || STRIPE_SECRET_KEY === 'sk_test_PLACEHOLDER') {
 $input = json_decode(file_get_contents('php://input'), true);
 $nombre   = isset($input['nombre'])   ? trim($input['nombre'])   : '';
 $email    = isset($input['email'])    ? trim($input['email'])    : '';
-$telefono = isset($input['telefono']) ? trim($input['telefono']) : '';
+$telefono = isset($input['telefono']) ? preg_replace('/\D/', '', trim($input['telefono'])) : '';
+// Normalize: strip leading 52 country code if present
+if (strlen($telefono) > 10 && substr($telefono, 0, 2) === '52') $telefono = substr($telefono, 2);
 
 try {
     // Create or find Stripe Customer

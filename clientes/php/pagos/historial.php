@@ -20,12 +20,21 @@ try {
 } catch (Throwable $e) { error_log('historial ciclos: ' . $e->getMessage()); }
 
 $pagado = 0;
+$pagosRealizados = 0;
+$pagosRestantes = 0;
 foreach ($ciclos as $c) {
-    if (in_array($c['estado'], ['paid_manual','paid_auto'])) $pagado += (float)$c['monto'];
+    if (in_array($c['estado'], ['paid_manual','paid_auto'])) {
+        $pagado += (float)$c['monto'];
+        $pagosRealizados++;
+    } else {
+        $pagosRestantes++;
+    }
 }
 
 portalJsonOut([
     'ciclos' => $ciclos,
     'pagado_a_la_fecha' => $pagado,
     'total_ciclos' => count($ciclos),
+    'pagos_realizados' => $pagosRealizados,
+    'pagos_restantes' => $pagosRestantes,
 ]);

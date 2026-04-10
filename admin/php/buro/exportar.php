@@ -7,8 +7,9 @@
  *   desde  — fecha inicio (YYYY-MM-DD), optional
  *   hasta  — fecha fin   (YYYY-MM-DD), optional
  */
+session_name('VOLTIKA_ADMIN');
 session_start();
-if (empty($_SESSION['VOLTIKA_ADMIN'])) {
+if (empty($_SESSION['admin_user_id'])) {
     http_response_code(401);
     exit('No autorizado');
 }

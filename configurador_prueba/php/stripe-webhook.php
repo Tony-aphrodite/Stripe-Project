@@ -120,25 +120,8 @@ function handlePaymentSucceeded($paymentIntent) {
         if ($order) {
             webhookLog("Found order in transacciones: pedido #{$order['pedido']} for {$order['email']}");
 
-            // ── FIFO auto-assign moto ────────────────────────────────────────
-            $pedidoFmt = 'VK-' . $order['pedido'];
-            $motoId = asignarMotoFIFO(
-                $pdo,
-                $order['modelo'] ?? '',
-                $order['color']  ?? '',
-                $order['nombre'] ?? '',
-                $order['email']  ?? '',
-                $order['telefono'] ?? '',
-                $pedidoFmt,
-                $piId,
-                $order['tpago'] ?? 'contado',
-                floatval($order['total'] ?? 0)
-            );
-            if ($motoId) {
-                webhookLog("FIFO: Moto #$motoId assigned to pedido $pedidoFmt ({$order['email']})");
-            } else {
-                webhookLog("FIFO WARNING: No available moto found for {$order['modelo']} {$order['color']} — pedido $pedidoFmt");
-            }
+            // Bike assignment is now manual via Admin → Ventas panel
+            webhookLog("Pedido VK-{$order['pedido']} awaiting manual bike assignment in admin panel");
 
             sendConfirmationEmail($order, $methodLabel);
             return;

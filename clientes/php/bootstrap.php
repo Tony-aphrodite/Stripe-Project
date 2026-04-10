@@ -299,25 +299,53 @@ function portalSendSMS(string $telefono, string $mensaje): array {
  */
 function portalFindClienteByPhone(string $tel): ?array {
     $pdo = getDB();
+    // Exact match first
     $stmt = $pdo->prepare("SELECT * FROM clientes WHERE telefono = ? ORDER BY id DESC LIMIT 1");
     $stmt->execute([$tel]);
     $c = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($c) return $c;
 
+    // Normalized match (last 10 digits) — handles +52, 52 prefix differences
+    if (strlen($tel) >= 10) {
+        $last10 = substr($tel, -10);
+        $stmt = $pdo->prepare("SELECT * FROM clientes WHERE RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''), 10) = ? ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$last10]);
+        $c = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($c) return $c;
+    }
+
     // Fallback: try to hydrate from subscripciones_credito
     $stmt = $pdo->prepare("SELECT * FROM subscripciones_credito WHERE telefono = ? ORDER BY id DESC LIMIT 1");
     $stmt->execute([$tel]);
     $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Normalized fallback for subscripciones_credito too
+    if (!$sub && strlen($tel) >= 10) {
+        $last10 = substr($tel, -10);
+        $stmt = $pdo->prepare("SELECT * FROM subscripciones_credito WHERE RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''), 10) = ? ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$last10]);
+        $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
     if (!$sub) return null;
 
-    // Upsert minimal cliente row
-    $stmt = $pdo->prepare("INSERT INTO clientes (telefono, email) VALUES (?, ?)");
-    $stmt->execute([$tel, $sub['email'] ?? null]);
+    // Upsert minimal cliente row — try to find the name from inventario_motos or transacciones
+    $nombre = null;
+    $nStmt = $pdo->prepare("SELECT cliente_nombre FROM inventario_motos WHERE cliente_telefono = ? AND cliente_nombre IS NOT NULL AND cliente_nombre != '' ORDER BY id DESC LIMIT 1");
+    $nStmt->execute([$tel]);
+    $nombre = ($nStmt->fetchColumn()) ?: null;
+    if (!$nombre) {
+        $nStmt = $pdo->prepare("SELECT nombre FROM transacciones WHERE telefono = ? AND nombre IS NOT NULL AND nombre != '' ORDER BY id DESC LIMIT 1");
+        $nStmt->execute([$tel]);
+        $nombre = ($nStmt->fetchColumn()) ?: null;
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO clientes (telefono, email, nombre) VALUES (?, ?, ?)");
+    $stmt->execute([$tel, $sub['email'] ?? null, $nombre]);
     $cid = (int)$pdo->lastInsertId();
     // Link the subscription if not already linked
     $pdo->prepare("UPDATE subscripciones_credito SET cliente_id = ? WHERE id = ? AND (cliente_id IS NULL OR cliente_id = 0)")
         ->execute([$cid, $sub['id']]);
-    return ['id' => $cid, 'telefono' => $tel, 'email' => $sub['email'] ?? null];
+    return ['id' => $cid, 'telefono' => $tel, 'email' => $sub['email'] ?? null, 'nombre' => $nombre];
 }
 
 function portalFindClienteByEmail(string $email): ?array {
@@ -330,10 +358,21 @@ function portalFindClienteByEmail(string $email): ?array {
     $stmt->execute([$email]);
     $sub = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$sub) return null;
-    $stmt = $pdo->prepare("INSERT INTO clientes (telefono, email) VALUES (?, ?)");
-    $stmt->execute([$sub['telefono'] ?? null, $email]);
+
+    $nombre = null;
+    $nStmt = $pdo->prepare("SELECT cliente_nombre FROM inventario_motos WHERE cliente_email = ? AND cliente_nombre IS NOT NULL AND cliente_nombre != '' ORDER BY id DESC LIMIT 1");
+    $nStmt->execute([$email]);
+    $nombre = ($nStmt->fetchColumn()) ?: null;
+    if (!$nombre) {
+        $nStmt = $pdo->prepare("SELECT nombre FROM transacciones WHERE email = ? AND nombre IS NOT NULL AND nombre != '' ORDER BY id DESC LIMIT 1");
+        $nStmt->execute([$email]);
+        $nombre = ($nStmt->fetchColumn()) ?: null;
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO clientes (telefono, email, nombre) VALUES (?, ?, ?)");
+    $stmt->execute([$sub['telefono'] ?? null, $email, $nombre]);
     $cid = (int)$pdo->lastInsertId();
-    return ['id' => $cid, 'telefono' => $sub['telefono'] ?? null, 'email' => $email];
+    return ['id' => $cid, 'telefono' => $sub['telefono'] ?? null, 'email' => $email, 'nombre' => $nombre];
 }
 
 /**

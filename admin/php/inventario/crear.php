@@ -30,7 +30,7 @@ foreach ($motos as $m) {
 
     $stmt->execute([
         $vin,
-        $m['vin_display'] ?? $vin,
+        $m['vin_display'] ?? strtoupper($vin),
         $m['modelo'] ?? '',
         $m['color'] ?? '',
         'por_llegar',

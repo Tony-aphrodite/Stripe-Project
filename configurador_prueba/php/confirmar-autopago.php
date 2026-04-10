@@ -89,6 +89,51 @@ try {
         ]);
     }
 
+    // Auto-create clientes row so the customer can log into the portal
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS clientes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(150) NULL,
+            apellido_paterno VARCHAR(100) NULL,
+            apellido_materno VARCHAR(100) NULL,
+            email VARCHAR(150) NULL,
+            telefono VARCHAR(30) NULL,
+            rfc VARCHAR(20) NULL,
+            freg DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_tel (telefono),
+            INDEX idx_email (email)
+        )");
+        $subStmt = $pdo->prepare("SELECT id, nombre, email, telefono, cliente_id FROM subscripciones_credito WHERE stripe_setup_intent_id = ? LIMIT 1");
+        $subStmt->execute([$setupIntentId]);
+        $subRow = $subStmt->fetch(PDO::FETCH_ASSOC);
+        if ($subRow && empty($subRow['cliente_id'])) {
+            $telNorm = preg_replace('/\D/', '', $subRow['telefono'] ?? '');
+            if (strlen($telNorm) > 10 && substr($telNorm, 0, 2) === '52') $telNorm = substr($telNorm, 2);
+
+            // Check if clientes row already exists
+            $existingId = null;
+            if ($telNorm) {
+                $chk = $pdo->prepare("SELECT id FROM clientes WHERE telefono = ? OR RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''),10) = ? ORDER BY id DESC LIMIT 1");
+                $chk->execute([$telNorm, substr($telNorm, -10)]);
+                $existingId = (int)$chk->fetchColumn();
+            }
+            if (!$existingId && !empty($subRow['email'])) {
+                $chk = $pdo->prepare("SELECT id FROM clientes WHERE email = ? ORDER BY id DESC LIMIT 1");
+                $chk->execute([$subRow['email']]);
+                $existingId = (int)$chk->fetchColumn();
+            }
+
+            if ($existingId) {
+                $pdo->prepare("UPDATE subscripciones_credito SET cliente_id = ? WHERE id = ?")->execute([$existingId, $subRow['id']]);
+            } else {
+                $pdo->prepare("INSERT INTO clientes (telefono, email, nombre) VALUES (?, ?, ?)")
+                    ->execute([$telNorm ?: null, $subRow['email'] ?: null, $subRow['nombre'] ?: null]);
+                $newCid = (int)$pdo->lastInsertId();
+                $pdo->prepare("UPDATE subscripciones_credito SET cliente_id = ? WHERE id = ?")->execute([$newCid, $subRow['id']]);
+            }
+        }
+    } catch (Throwable $e) { error_log('confirmar-autopago clientes sync: ' . $e->getMessage()); }
+
     echo json_encode(['ok' => true]);
 } catch (PDOException $e) {
     error_log('Voltika confirmar-autopago error: ' . $e->getMessage());
