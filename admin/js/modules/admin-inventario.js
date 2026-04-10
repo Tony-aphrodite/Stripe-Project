@@ -87,7 +87,7 @@ window.AD_inventario = (function(){
       html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'">📍 Asignar a punto</button> ';
       html += '<button class="ad-btn ghost" id="adVerifyPay" data-id="'+m.id+'">💳 Verificar pago</button>';
       ADApp.modal(html);
-      $('#adAssign').on('click',function(){ assignToPunto(m.id); });
+      $('#adAssign').on('click',function(){ assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
       $('#adVerifyPay').on('click',function(){
         ADApp.api('pagos/verificar.php',{moto_id:m.id}).done(function(r2){
           alert(r2.verificado?'✅ Pago verificado':'⚠️ No verificado: '+(r2.stripe_status||'sin Stripe PI'));
@@ -95,22 +95,218 @@ window.AD_inventario = (function(){
       });
     });
   }
-  function assignToPunto(motoId){
+  function assignToPunto(motoId, motoInfo){
+    // Step 1: Choose assignment type
+    var html = '<div class="ad-h2">Asignar moto</div>'+
+      '<div class="ad-dim" style="margin-bottom:16px;">Selecciona el tipo de asignación:</div>'+
+      '<div id="adAssignOptions" style="display:flex;flex-direction:column;gap:10px;">'+
+        '<div class="ad-card" style="cursor:pointer;padding:16px;border:2px solid transparent;" id="adOptInventario">'+
+          '<strong style="font-size:15px;">Inventario para venta en punto</strong>'+
+          '<div class="ad-dim" style="margin-top:4px;">Enviar moto al punto para exhibición y venta directa. Sin orden de compra vinculada.</div>'+
+        '</div>'+
+        '<div class="ad-card" style="cursor:pointer;padding:16px;border:2px solid transparent;" id="adOptVenta">'+
+          '<strong style="font-size:15px;">Venta</strong>'+
+          '<div class="ad-dim" style="margin-top:4px;">Vincular esta moto a una orden de compra existente y enviar al punto de entrega.</div>'+
+        '</div>'+
+      '</div>';
+    ADApp.modal(html);
+
+    $('#adOptInventario').on('click', function(){ assignInventario(motoId); });
+    $('#adOptVenta').on('click', function(){ assignVenta(motoId, motoInfo); });
+  }
+
+  // ── Option A: Inventario para venta en punto ──────────────────────────
+  function assignInventario(motoId){
     ADApp.api('puntos/listar.php').done(function(r){
-      var html='<div class="ad-h2">Seleccionar punto</div>';
+      var html = '<div class="ad-h2">Inventario — Seleccionar punto</div>';
+      html += '<div id="adPuntosList">';
       (r.puntos||[]).forEach(function(p){
-        html += '<div class="ad-card" style="cursor:pointer;padding:10px" data-pid="'+p.id+'">'+
-          '<strong>'+p.nombre+'</strong> · '+p.ciudad+' · Inv: '+p.inventario_actual+
+        html += '<div class="ad-card adPuntoCard" style="cursor:pointer;padding:10px;margin-bottom:6px;" data-pid="'+p.id+'" data-cp="'+(p.cp||'')+'">'+
+          '<strong>'+p.nombre+'</strong> · '+(p.ciudad||'')+' · Inv: '+(p.inventario_actual||0)+
         '</div>';
       });
-      html += '<div class="ad-h2">Fecha estimada llegada</div><input type="date" class="ad-input" id="adFechaEst">';
+      html += '</div>';
+      html += '<div id="adQuoteInfo" style="display:none;margin-top:12px;padding:12px;border-radius:8px;background:#E3F2FD;font-size:13px;"></div>';
+      html += '<div id="adAssignBtn" style="display:none;margin-top:12px;"></div>';
       ADApp.modal(html);
-      $('[data-pid]').on('click',function(){
-        var pid=$(this).data('pid'), fecha=$('#adFechaEst').val();
-        ADApp.api('inventario/asignar-punto.php',{moto_id:motoId,punto_id:pid,fecha_estimada:fecha||null}).done(function(r2){
-          if(r2.ok){ ADApp.closeModal(); alert('✅ Moto asignada'); load(); }
-          else alert(r2.error);
-        }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
+
+      $('.adPuntoCard').on('click', function(){
+        $('.adPuntoCard').css('border-color','transparent');
+        $(this).css('border-color','var(--ad-primary)');
+        var pid = $(this).data('pid');
+        var cp = $(this).data('cp');
+        showQuoteAndConfirm(motoId, pid, 'inventario', null, cp);
+      });
+    });
+  }
+
+  // ── Option B: Venta ───────────────────────────────────────────────────
+  function assignVenta(motoId, motoInfo){
+    ADApp.api('ventas/sin-punto.php').done(function(r){
+      if(!r.ok || !r.rows.length){
+        ADApp.modal(
+          '<div class="ad-h2">Venta — Sin órdenes pendientes</div>'+
+          '<div class="ad-dim" style="padding:20px;text-align:center;">No hay órdenes de compra sin moto asignada.</div>'
+        );
+        return;
+      }
+
+      var html = '<div class="ad-h2">Venta — Seleccionar orden</div>'+
+        '<div class="ad-dim" style="margin-bottom:10px;">Órdenes sin moto asignada: <strong>'+r.rows.length+'</strong></div>'+
+        '<div style="max-height:400px;overflow-y:auto;">';
+
+      r.rows.forEach(function(o){
+        var hasPunto = o.punto_id && o.punto_nombre;
+        html += '<div class="ad-card adOrderCard" style="cursor:pointer;padding:10px;margin-bottom:6px;" '+
+          'data-tid="'+o.id+'" data-pid="'+(o.punto_id||'')+'" data-pname="'+(o.punto_nombre||'')+'">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;">'+
+            '<div>'+
+              '<strong>VK-'+(o.pedido||o.id)+'</strong> · '+(o.nombre||'')+'<br>'+
+              '<small class="ad-dim">'+o.modelo+' · '+o.color+' · '+ADApp.money(o.monto)+'</small>'+
+            '</div>'+
+            '<div style="text-align:right;">'+
+              (hasPunto
+                ? '<span class="ad-badge green" style="font-size:11px;">Punto: '+o.punto_nombre+'</span>'
+                : '<span class="ad-badge yellow" style="font-size:11px;">Sin punto</span>')+
+            '</div>'+
+          '</div>'+
+        '</div>';
+      });
+      html += '</div>';
+      html += '<div id="adVentaStep2" style="display:none;margin-top:12px;"></div>';
+      html += '<div id="adQuoteInfo" style="display:none;margin-top:12px;padding:12px;border-radius:8px;background:#E3F2FD;font-size:13px;"></div>';
+      html += '<div id="adAssignBtn" style="display:none;margin-top:12px;"></div>';
+      ADApp.modal(html);
+
+      $('.adOrderCard').on('click', function(){
+        $('.adOrderCard').css('border-color','transparent');
+        $(this).css('border-color','var(--ad-primary)');
+        var tid = $(this).data('tid');
+        var pid = $(this).data('pid');
+        var pname = $(this).data('pname');
+
+        if(pid){
+          // User already chose a punto → auto-assign, just confirm
+          $('#adVentaStep2').html(
+            '<div style="padding:10px;background:#E8F5E9;border-radius:8px;font-size:13px;">'+
+              'Punto seleccionado por el cliente: <strong>'+pname+'</strong>'+
+            '</div>'
+          ).show();
+          // Find punto_voltika_id from punto_id string
+          lookupPuntoId(pid, function(pvId, cp){
+            showQuoteAndConfirm(motoId, pvId, 'venta', tid, cp);
+          });
+        } else {
+          // No punto selected → show punto list
+          $('#adVentaStep2').show();
+          loadPuntosForVenta(motoId, tid);
+        }
+      });
+    });
+  }
+
+  function lookupPuntoId(puntoIdStr, callback){
+    ADApp.api('puntos/listar.php').done(function(r){
+      var found = null;
+      (r.puntos||[]).forEach(function(p){
+        // Match by id or by nombre
+        if(String(p.id) === String(puntoIdStr) || p.nombre === puntoIdStr){
+          found = p;
+        }
+      });
+      if(found){
+        callback(found.id, found.cp||'');
+      } else {
+        // Fallback: use first punto or show error
+        $('#adQuoteInfo').html('<div style="color:orange;">No se encontró el punto del cliente. Selecciona manualmente.</div>').show();
+        loadPuntosForVenta(arguments[0], arguments[1]); // won't work perfectly, fallback
+      }
+    });
+  }
+
+  function loadPuntosForVenta(motoId, transId){
+    ADApp.api('puntos/listar.php').done(function(r){
+      var html = '<div style="font-weight:600;margin-bottom:8px;">Seleccionar punto de entrega:</div>';
+      (r.puntos||[]).forEach(function(p){
+        html += '<div class="ad-card adPuntoVenta" style="cursor:pointer;padding:8px;margin-bottom:4px;font-size:13px;" '+
+          'data-pid="'+p.id+'" data-cp="'+(p.cp||'')+'">'+
+          '<strong>'+p.nombre+'</strong> · '+(p.ciudad||'')+
+        '</div>';
+      });
+      $('#adVentaStep2').html(html);
+
+      $('.adPuntoVenta').on('click', function(){
+        $('.adPuntoVenta').css('border-color','transparent');
+        $(this).css('border-color','var(--ad-primary)');
+        var pid = $(this).data('pid');
+        var cp = $(this).data('cp');
+        showQuoteAndConfirm(motoId, pid, 'venta', transId, cp);
+      });
+    });
+  }
+
+  // ── Shared: show Skydropx quote + confirm button ──────────────────────
+  function showQuoteAndConfirm(motoId, puntoId, tipo, transId, puntoCp){
+    var $info = $('#adQuoteInfo');
+    var $btn = $('#adAssignBtn');
+
+    // Try to get Skydropx quote
+    $info.html('<span class="ad-spin"></span> Consultando fecha estimada de envío...').show();
+    $btn.hide();
+
+    ADApp.api('inventario/cotizar-envio.php', {punto_id: puntoId}).done(function(q){
+      if(q.ok){
+        $info.html(
+          '<strong>Envío estimado:</strong> '+q.dias+' días hábiles<br>'+
+          '<strong>Fecha estimada:</strong> '+q.fecha_estimada+'<br>'+
+          '<strong>Carrier:</strong> '+q.carrier+(q.servicio?' ('+q.servicio+')':'')
+        ).show();
+        renderConfirmBtn(motoId, puntoId, tipo, transId, q.fecha_estimada);
+      } else {
+        // Skydropx failed — allow manual date
+        $info.html(
+          '<div style="color:orange;">No se pudo obtener cotización automática: '+(q.error||'')+'</div>'+
+          '<div style="margin-top:8px;">Fecha estimada (manual): <input type="date" class="ad-input" id="adFechaManual" style="width:180px;display:inline-block;"></div>'
+        ).show();
+        renderConfirmBtn(motoId, puntoId, tipo, transId, null);
+      }
+    }).fail(function(){
+      $info.html(
+        '<div style="color:orange;">Error de conexión al cotizar.</div>'+
+        '<div style="margin-top:8px;">Fecha estimada (manual): <input type="date" class="ad-input" id="adFechaManual" style="width:180px;display:inline-block;"></div>'
+      ).show();
+      renderConfirmBtn(motoId, puntoId, tipo, transId, null);
+    });
+  }
+
+  function renderConfirmBtn(motoId, puntoId, tipo, transId, fechaAuto){
+    var $btn = $('#adAssignBtn');
+    $btn.html('<button class="ad-btn primary" id="adDoAssign" style="width:100%;padding:10px;font-size:14px;">Confirmar asignación</button>').show();
+
+    $('#adDoAssign').on('click', function(){
+      var fecha = fechaAuto || ($('#adFechaManual').length ? $('#adFechaManual').val() : null);
+      var payload = {
+        moto_id: motoId,
+        punto_id: puntoId,
+        tipo: tipo,
+        fecha_estimada: fecha || null
+      };
+      if(transId) payload.transaccion_id = transId;
+
+      $(this).prop('disabled',true).html('<span class="ad-spin"></span> Asignando...');
+
+      ADApp.api('inventario/asignar-punto.php', payload).done(function(r){
+        if(r.ok){
+          ADApp.closeModal();
+          alert('Moto asignada correctamente'+(r.fecha_estimada?' — Llegada estimada: '+r.fecha_estimada:''));
+          load();
+        } else {
+          alert(r.error||'Error al asignar');
+          $('#adDoAssign').prop('disabled',false).html('Confirmar asignación');
+        }
+      }).fail(function(x){
+        alert((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
+        $('#adDoAssign').prop('disabled',false).html('Confirmar asignación');
       });
     });
   }
