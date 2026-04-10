@@ -336,46 +336,37 @@ button{font-family:inherit}
 /* ── 3-Metric summary grid ────────────────────────────────────────────── */
 .vk-metrics-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center}
 .vk-metric{padding:8px 4px}
-.vk-metric-icon{display:flex;justify-content:center;margin-bottom:6px}
+.vk-metric-circle{
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 8px;
+}
+.vk-metric-circle.blue{background:var(--vk-primary)}
+.vk-metric-circle.green{background:#22c55e}
+.vk-metric-circle.orange{background:#f59e0b}
 .vk-metric-label{font-size:11px;color:var(--vk-text-dim);font-weight:600;margin-bottom:4px}
 .vk-metric-value{font-size:18px;font-weight:800;color:var(--vk-text)}
+.vk-metric-sub{font-size:10px;color:var(--vk-text-dim);font-weight:600;margin-top:2px}
 
-/* ── Payment method card ──────────────────────────────────────────────── */
-.vk-pm-next{
-  font-size:13px;color:var(--vk-text-dim);margin-bottom:12px;
-  padding-bottom:12px;border-bottom:1px solid var(--vk-border);
-}
-.vk-pm-next strong{color:var(--vk-text)}
-.vk-pm-header{margin-bottom:10px}
-.vk-pm-title{font-size:12px;color:var(--vk-text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
-.vk-pm-card{
-  display:flex;align-items:center;gap:12px;
-  padding:12px;
-  background:var(--vk-surface-2);
-  border:1px solid var(--vk-border);
-  border-radius:var(--vk-radius-sm);
-}
-.vk-pm-brand{flex-shrink:0}
-.vk-pm-brand svg{border-radius:4px;display:block}
-.vk-pm-info{flex:1}
-.vk-pm-name{font-size:14px;font-weight:700;color:var(--vk-text)}
-.vk-pm-cambiar{
-  background:none;border:1px solid var(--vk-border-strong);
-  border-radius:var(--vk-radius-sm);
-  padding:6px 14px;font-size:12px;font-weight:700;
-  color:var(--vk-primary);cursor:pointer;
-  transition:all .15s ease;
-}
-.vk-pm-cambiar:hover{border-color:var(--vk-primary);background:var(--vk-primary-soft)}
+/* ── Credit progress ──────────────────────────────────────────────────── */
+.vk-credit-progress{display:flex;align-items:center;gap:16px}
+.vk-credit-left{flex:1}
+.vk-credit-pct{font-size:42px;font-weight:800;color:var(--vk-primary);flex-shrink:0;line-height:1}
 
-/* Trust texts (dark bg context from inicio) */
-.vk-trust-line-dark{
-  text-align:center;font-size:12px;color:var(--vk-text-dim);margin-top:12px;
+/* ── Next payment banner ──────────────────────────────────────────────── */
+.vk-next-pay-banner{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(34,197,94,.08);
+  border:1px solid rgba(34,197,94,.25);
+  border-radius:var(--vk-radius-sm);
+  padding:14px 16px;margin-top:14px;
+  font-size:13px;color:#15803d;
 }
-.vk-trust-sub-dark{
-  text-align:center;font-size:11px;color:var(--vk-text-dim);opacity:.7;
-  margin-top:4px;line-height:1.5;
-}
+.vk-next-pay-banner strong{color:#15803d}
+.vk-next-pay-banner svg{flex-shrink:0}
+
+/* ── Descargar link ───────────────────────────────────────────────────── */
+.vk-descargar-link{font-size:12px;display:inline-flex;align-items:center;gap:4px}
 
 /* ── History list ─────────────────────────────────────────────────────── */
 .vk-hist-list{margin-top:12px}
