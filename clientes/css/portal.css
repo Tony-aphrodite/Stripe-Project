@@ -209,6 +209,88 @@ button{font-family:inherit}
 }
 .vk-toast.show{opacity:1}
 
+/* ── Dark payment card ─────────────────────────────────────────────────── */
+.vk-card-dark{
+  background:linear-gradient(135deg,#0a1e3d 0%,#0c3a6e 50%,#1a5ba8 100%);
+  border:none;
+  border-radius:var(--vk-radius);
+  padding:22px 20px;
+  box-shadow:0 8px 28px rgba(10,30,61,.35);
+  margin-bottom:14px;
+  color:#fff;
+}
+.vk-card-dark-label{font-size:14px;font-weight:600;opacity:.85;margin-bottom:4px}
+.vk-card-dark-amount{font-size:42px;font-weight:800;color:#fff;margin:4px 0 6px}
+.vk-card-dark-fecha{font-size:13px;color:rgba(255,255,255,.8);margin-bottom:14px}
+.vk-card-dark-fecha strong{color:#fff;font-weight:700}
+.vk-btn-pay{
+  display:block;width:100%;border:0;
+  border-radius:var(--vk-radius-sm);
+  padding:16px 16px;
+  font-size:17px;font-weight:800;cursor:pointer;
+  background:#22c55e;color:#fff;
+  box-shadow:0 4px 14px rgba(34,197,94,.4);
+  margin-top:6px;
+  transition:all .15s ease;
+  letter-spacing:.3px;
+}
+.vk-btn-pay:hover{background:#16a34a}
+.vk-btn-pay:active{transform:translateY(1px)}
+.vk-trust-line{
+  text-align:center;font-size:12px;color:rgba(255,255,255,.7);
+  margin-top:12px;
+}
+.vk-trust-sub{
+  text-align:center;font-size:11px;color:rgba(255,255,255,.5);
+  margin-top:6px;line-height:1.5;
+}
+
+/* ── Prepay options grid ──────────────────────────────────────────────── */
+.vk-prepay-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr 1fr;
+  gap:8px;
+}
+.vk-prepay-opt{
+  background:var(--vk-surface);
+  border:1.5px solid var(--vk-border);
+  border-radius:var(--vk-radius-sm);
+  padding:14px 6px 10px;
+  text-align:center;
+  cursor:pointer;
+  transition:all .15s ease;
+  position:relative;
+}
+.vk-prepay-opt:hover{border-color:var(--vk-primary);background:var(--vk-primary-soft)}
+.vk-prepay-opt.popular{border-color:var(--vk-primary);background:var(--vk-primary-soft)}
+.vk-prepay-badge{
+  position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+  background:var(--vk-primary);color:#fff;
+  font-size:8px;font-weight:800;letter-spacing:.5px;
+  padding:2px 8px;border-radius:999px;
+  white-space:nowrap;
+}
+.vk-prepay-icon{width:28px;height:28px;margin:0 auto 6px}
+.vk-prepay-icon svg{width:100%;height:100%}
+.vk-prepay-label{font-size:11px;color:var(--vk-text-dim);font-weight:600;margin-bottom:4px}
+.vk-prepay-amount{font-size:14px;font-weight:800;color:var(--vk-text)}
+.vk-prepay-cur{font-size:9px;color:var(--vk-text-dim);font-weight:600}
+.vk-prepay-impact{
+  font-size:8px;font-weight:800;letter-spacing:.5px;
+  color:var(--vk-primary);margin-top:4px;
+}
+
+/* ── Payment method row ───────────────────────────────────────────────── */
+.vk-pay-method{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 0;border-bottom:1px solid var(--vk-border);
+}
+.vk-pay-method:last-child{border-bottom:0}
+.vk-pm-icon{flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center}
+.vk-pm-icon svg{border-radius:4px}
+.vk-pay-method .k{flex:1;color:var(--vk-text);font-size:14px;font-weight:600}
+.vk-pay-method .v{font-size:12px;color:var(--vk-text-dim);font-weight:500}
+
 /* ── Amount & logo ─────────────────────────────────────────────────────── */
 .vk-amount{font-size:34px;font-weight:800;color:var(--vk-primary)}
 .vk-logo{
