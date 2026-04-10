@@ -9,7 +9,10 @@ window.AD_inventario = (function(){
   }
   function paint(r){
     var html = '<div class="ad-toolbar"><div class="ad-h1">Inventario</div>'+
-      '<button class="ad-btn primary" id="adNewMoto">+ Nueva moto</button></div>';
+      '<div style="display:flex;gap:6px">'+
+      '<button class="ad-btn primary" id="adNewMoto">+ Nueva moto</button>'+
+      '<button class="ad-btn ghost" id="adImportExcel">Importar Excel</button>'+
+      '</div></div>';
     // Summary
     var s = r.resumen||{};
     html += '<div class="ad-kpis">';
@@ -52,6 +55,7 @@ window.AD_inventario = (function(){
     $('.adDetail').on('click',function(){ showDetail($(this).data('id')); });
     $('.adPage').on('click',function(){ filters.page=$(this).data('p'); load(); });
     $('#adNewMoto').on('click', showNewForm);
+    $('#adImportExcel').on('click', showImportForm);
   }
   function showDetail(id){
     ADApp.api('inventario/detalle.php?id='+id).done(function(r){
@@ -130,5 +134,108 @@ window.AD_inventario = (function(){
       });
     });
   }
+  function showImportForm(){
+    ADApp.modal(
+      '<div class="ad-h2">Importar motos desde Excel</div>'+
+      '<div class="ad-dim" style="margin-bottom:12px;">Formato: CSV o XLSX con columnas VIN, Modelo, Color, Año, Hecho_en, Notas</div>'+
+      '<div style="margin-bottom:12px;">'+
+        '<a href="#" id="adDlTemplate" style="color:var(--ad-primary);font-size:13px;">Descargar plantilla CSV</a>'+
+      '</div>'+
+      '<input type="file" id="adImportFile" accept=".csv,.xlsx,.txt" class="ad-input" style="margin-bottom:12px">'+
+      '<div id="adImportPreview" style="display:none;margin-bottom:12px;max-height:200px;overflow-y:auto;font-size:12px;"></div>'+
+      '<div id="adImportResult" style="display:none;margin-bottom:12px;"></div>'+
+      '<button class="ad-btn primary" id="adImportBtn" disabled>Importar</button>'
+    );
+
+    $('#adDlTemplate').on('click', function(e){
+      e.preventDefault();
+      var csv = 'VIN,Modelo,Color,Año,Hecho_en,Notas\n';
+      var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'plantilla_inventario.csv';
+      a.click();
+    });
+
+    $('#adImportFile').on('change', function(){
+      var file = this.files[0];
+      if(!file) return;
+      // Preview for CSV
+      if(file.name.match(/\.(csv|txt)$/i)){
+        var reader = new FileReader();
+        reader.onload = function(e){
+          var lines = e.target.result.split('\n').filter(function(l){return l.trim();});
+          if(lines.length < 2){ $('#adImportPreview').html('<div style="color:red;">Archivo vacío</div>').show(); return; }
+          var html = '<strong>' + (lines.length-1) + ' motos detectadas</strong><br>';
+          html += '<table class="ad-table" style="font-size:11px"><thead><tr>';
+          var headers = lines[0].split(',');
+          headers.forEach(function(h){ html += '<th>'+h.trim()+'</th>'; });
+          html += '</tr></thead><tbody>';
+          var max = Math.min(lines.length, 6);
+          for(var i=1; i<max; i++){
+            html += '<tr>';
+            lines[i].split(',').forEach(function(c){ html += '<td>'+c.trim()+'</td>'; });
+            html += '</tr>';
+          }
+          if(lines.length > 6) html += '<tr><td colspan="'+headers.length+'" style="text-align:center">... y ' + (lines.length-6) + ' más</td></tr>';
+          html += '</tbody></table>';
+          $('#adImportPreview').html(html).show();
+          $('#adImportBtn').prop('disabled', false);
+        };
+        reader.readAsText(file);
+      } else {
+        // XLSX — just show file name, server will parse
+        $('#adImportPreview').html('<strong>Archivo: </strong>' + file.name + ' (' + Math.round(file.size/1024) + ' KB)').show();
+        $('#adImportBtn').prop('disabled', false);
+      }
+    });
+
+    $('#adImportBtn').on('click', function(){
+      var file = $('#adImportFile')[0].files[0];
+      if(!file) return;
+      var $btn = $(this);
+      $btn.prop('disabled', true).html('<span class="ad-spin"></span> Importando...');
+
+      var fd = new FormData();
+      fd.append('archivo', file);
+
+      $.ajax({
+        url: 'php/inventario/importar.php',
+        method: 'POST',
+        data: fd,
+        processData: false,
+        contentType: false,
+        xhrFields: { withCredentials: true },
+        dataType: 'json'
+      }).done(function(r){
+        if(r.ok){
+          var html = '<div style="padding:12px;border-radius:8px;background:#E8F5E9;color:#2E7D32;">'+
+            '<strong>Importacion completada</strong><br>'+
+            'Creadas: <strong>'+r.creados+'</strong> · '+
+            'Duplicadas: '+r.duplicados+' · '+
+            'Errores: '+r.errores+' · '+
+            'Total filas: '+r.total_filas+
+            '</div>';
+          if(r.detalle && r.detalle.length){
+            html += '<div style="margin-top:8px;font-size:11px;color:#666;">';
+            r.detalle.forEach(function(d){ html += d + '<br>'; });
+            html += '</div>';
+          }
+          $('#adImportResult').html(html).show();
+          $btn.html('Cerrar').prop('disabled',false).off('click').on('click',function(){
+            ADApp.closeModal();
+            load();
+          });
+        } else {
+          $('#adImportResult').html('<div style="padding:12px;border-radius:8px;background:#FFEBEE;color:#C62828;">'+r.error+'</div>').show();
+          $btn.html('Importar').prop('disabled', false);
+        }
+      }).fail(function(){
+        $('#adImportResult').html('<div style="padding:12px;border-radius:8px;background:#FFEBEE;color:#C62828;">Error de conexion</div>').show();
+        $btn.html('Importar').prop('disabled', false);
+      });
+    });
+  }
+
   return { render:render };
 })();
