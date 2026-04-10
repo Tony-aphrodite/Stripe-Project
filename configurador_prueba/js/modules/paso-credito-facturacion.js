@@ -1,9 +1,8 @@
 /* ==========================================================================
    Voltika - Facturación Crédito (post-autopago subscription setup)
-   1. Payment success summary (enganche amount)
-   2. Invoice question: ¿Requieres factura?
-      - Sí → show all invoice fields (mandatory)
-      - No → show CONTINUAR button directly
+   1. Banner: ¿Deseas generar tu factura?
+   2. Card options: Sí, quiero mi factura / No necesito factura
+   3. If Sí → show invoice fields (same as contado/MSI)
    ========================================================================== */
 
 var PasoCreditoFacturacion = {
@@ -15,42 +14,47 @@ var PasoCreditoFacturacion = {
     },
 
     render: function() {
-        var state  = this.app.state;
-        var modelo = this.app.getModelo(state.modeloSeleccionado);
-        if (!modelo) return;
-
-        var enganchePct = state.enganchePorcentaje || 0.30;
-        var credito     = VkCalculadora.calcular(modelo.precioContado, enganchePct, state.plazoMeses || 12);
-        var enganche    = credito.enganche;
+        var state = this.app.state;
+        var nota = 'Recibir\u00e1s tu carta factura para emplacar desde la entrega.';
 
         var html = '';
 
-        // 1. Payment success banner
-        html += '<div style="background:#E8F5E9;border:2px solid #4CAF50;border-radius:12px;padding:16px 20px;margin-bottom:20px;text-align:center;">';
-        html += '<div style="font-size:36px;">&#10004;</div>';
-        html += '<div style="font-weight:800;font-size:18px;color:#4CAF50;">\u00a1Pago realizado con \u00e9xito!</div>';
-        html += '<div style="font-size:15px;font-weight:700;margin-top:6px;">' + VkUI.formatPrecio(enganche) + ' MXN enganche</div>';
-        html += '<div style="font-size:12px;color:#555;">Pago semanal: ' + VkUI.formatPrecio(credito.pagoSemanal) + ' MXN</div>';
+        // 1. Banner
+        html += '<div style="background:#E8F5E9;border:2px solid #4CAF50;border-radius:12px;padding:14px 20px;margin-bottom:20px;text-align:center;">';
+        html += '<div style="font-weight:800;font-size:18px;color:#1b5e3b;">\u00bfDeseas generar tu factura?</div>';
         html += '</div>';
 
-        // 2. Invoice section
-        html += '<div class="vk-card" style="padding:20px;">';
-
-        // Question: ¿Requieres factura?
-        html += '<div style="font-weight:700;font-size:16px;margin-bottom:12px;">\u00bfRequieres factura?</div>';
-
-        html += '<label style="display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer;">';
-        html += '<input type="radio" name="vk-cfac-opcion" value="si" id="vk-cfac-si" style="width:18px;height:18px;accent-color:#4CAF50;">';
-        html += '<span style="font-size:14px;font-weight:600;">S\u00ed, deseo factura</span>';
+        // 2. Option cards
+        // Card: Sí
+        html += '<label id="vk-cfac-card-si" style="display:flex;align-items:flex-start;gap:12px;border:2px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;transition:border-color .2s;">';
+        html += '<input type="radio" name="vk-cfac-opcion" value="si" id="vk-cfac-si" style="width:20px;height:20px;accent-color:#1b5e3b;margin-top:2px;flex-shrink:0;">';
+        html += '<div style="flex:1;">';
+        html += '<div style="font-size:15px;font-weight:700;color:#222;">S\u00ed, quiero mi factura</div>';
+        html += '<div style="font-size:13px;color:#666;margin-top:2px;">Se emitir\u00e1 al finalizar tus pagos.</div>';
+        html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;background:#f5f5f5;border-radius:8px;padding:10px 12px;">';
+        html += '<span style="font-size:18px;flex-shrink:0;">&#128196;</span>';
+        html += '<span style="font-size:12px;color:#555;line-height:1.4;">' + nota + '</span>';
+        html += '</div>';
+        html += '</div>';
+        html += '<span style="font-size:18px;color:#bbb;margin-top:2px;">&#8250;</span>';
         html += '</label>';
 
-        html += '<label style="display:flex;align-items:center;gap:10px;margin-bottom:16px;cursor:pointer;">';
-        html += '<input type="radio" name="vk-cfac-opcion" value="no" id="vk-cfac-no" style="width:18px;height:18px;accent-color:#4CAF50;">';
-        html += '<span style="font-size:14px;font-weight:600;">No, compra sin factura</span>';
+        // Card: No
+        html += '<label id="vk-cfac-card-no" style="display:flex;align-items:flex-start;gap:12px;border:2px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:20px;cursor:pointer;transition:border-color .2s;">';
+        html += '<input type="radio" name="vk-cfac-opcion" value="no" id="vk-cfac-no" style="width:20px;height:20px;accent-color:#1b5e3b;margin-top:2px;flex-shrink:0;">';
+        html += '<div style="flex:1;">';
+        html += '<div style="font-size:15px;font-weight:700;color:#222;">No necesito factura</div>';
+        html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;background:#f5f5f5;border-radius:8px;padding:10px 12px;">';
+        html += '<span style="font-size:18px;flex-shrink:0;">&#128196;</span>';
+        html += '<span style="font-size:12px;color:#555;line-height:1.4;">' + nota + '</span>';
+        html += '</div>';
+        html += '</div>';
+        html += '<span style="font-size:18px;color:#bbb;margin-top:2px;">&#8250;</span>';
         html += '</label>';
 
-        // Invoice fields (hidden by default)
+        // 3. Invoice fields (hidden by default)
         html += '<div id="vk-cfac-fields" style="display:none;">';
+        html += '<div class="vk-card" style="padding:20px;">';
 
         // RFC
         html += '<div class="vk-form-group">';
@@ -102,15 +106,14 @@ var PasoCreditoFacturacion = {
         // Note
         html += '<p style="font-size:12px;color:#888;text-align:center;font-style:italic;margin:10px 0;">La factura se emitir\u00e1 una vez asignada tu moto espec\u00edfica y ser\u00e1 enviada a tu correo electr\u00f3nico antes de la entrega.</p>';
 
+        html += '</div>'; // end card
         html += '</div>'; // end #vk-cfac-fields
 
         // Error
         html += '<div id="vk-cfac-error" style="display:none;color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin:12px 0;text-align:center;font-weight:600;"></div>';
 
-        // Button (changes based on selection)
+        // Button (hidden until selection, shown for "No"; shown inside fields for "Sí")
         html += '<button class="vk-btn vk-btn--primary" id="vk-cfac-submit" style="font-size:15px;font-weight:700;padding:14px;margin-top:12px;display:none;">CONTINUAR</button>';
-
-        html += '</div>'; // end card
 
         jQuery('#vk-credito-facturacion-container').html(html);
     },
@@ -122,9 +125,14 @@ var PasoCreditoFacturacion = {
             .off('change', 'input[name="vk-cfac-opcion"]')
             .off('click', '#vk-cfac-submit');
 
-        // Toggle fields based on factura selection
+        // Toggle fields + highlight selected card
         jQuery(document).on('change', 'input[name="vk-cfac-opcion"]', function() {
             var val = jQuery(this).val();
+            // Reset card borders
+            jQuery('#vk-cfac-card-si, #vk-cfac-card-no').css('border-color', '#e0e0e0');
+            // Highlight selected
+            jQuery(this).closest('label').css('border-color', '#1b5e3b');
+
             if (val === 'si') {
                 jQuery('#vk-cfac-fields').slideDown(200);
                 jQuery('#vk-cfac-submit').text('Generar factura').show();
