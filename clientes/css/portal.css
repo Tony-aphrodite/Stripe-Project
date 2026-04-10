@@ -473,10 +473,10 @@ button{font-family:inherit}
 .vk-doc-row-icon{flex-shrink:0}
 .vk-doc-row-body{flex:1;min-width:0}
 .vk-doc-row-title{font-size:13px;font-weight:700;color:var(--vk-text);margin-bottom:3px}
-.vk-doc-row-desc{font-size:11px;color:var(--vk-text-dim);line-height:1.4;margin-bottom:4px}
+.vk-doc-row-desc{font-size:11px;color:var(--vk-text-dim);line-height:1.4}
+.vk-doc-row-right{flex-shrink:0;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .vk-doc-row-size{font-size:10px;color:var(--vk-text-dim);opacity:.7}
 .vk-doc-ver{
-  flex-shrink:0;
   background:#22c55e;color:#fff;
   border:0;border-radius:var(--vk-radius-sm);
   padding:8px 14px;font-size:11px;font-weight:800;
@@ -484,4 +484,47 @@ button{font-family:inherit}
   transition:background .15s ease;
 }
 .vk-doc-ver:hover{background:#16a34a}
-.vk-doc-lock{font-size:20px;flex-shrink:0;opacity:.5}
+.vk-doc-lock{font-size:20px;opacity:.5}
+
+/* ── Warning banner (inline button) ──────────────────────────────────── */
+.vk-doc-warn-banner{
+  display:flex;align-items:center;gap:14px;
+  background:rgba(245,158,11,.1);
+  border:1px solid rgba(245,158,11,.35);
+  border-radius:var(--vk-radius-sm);
+  padding:14px;margin-top:-6px;margin-bottom:14px;
+}
+.vk-doc-warn-text{flex:1;font-size:12px;color:#b45309;line-height:1.5}
+.vk-doc-warn-text strong{display:block;margin-bottom:4px;font-size:13px}
+.vk-doc-warn-btn{
+  flex-shrink:0;
+  background:#22c55e;color:#fff;
+  border:0;border-radius:var(--vk-radius-sm);
+  padding:10px 14px;font-size:11px;font-weight:800;
+  cursor:pointer;letter-spacing:.3px;
+  white-space:nowrap;
+  transition:background .15s ease;
+}
+.vk-doc-warn-btn:hover{background:#16a34a}
+
+/* ── Help / Support row ───────────────────────────────────────────────── */
+.vk-doc-help{
+  display:flex;align-items:center;gap:12px;
+  background:var(--vk-surface);
+  border:1px solid var(--vk-border);
+  border-radius:var(--vk-radius-sm);
+  padding:16px;margin-top:18px;
+  box-shadow:var(--vk-shadow);
+}
+.vk-doc-help-text{flex:1}
+.vk-doc-help-btn{
+  flex-shrink:0;
+  background:none;
+  border:1px solid var(--vk-border-strong);
+  border-radius:var(--vk-radius-sm);
+  padding:10px 16px;font-size:12px;font-weight:700;
+  color:var(--vk-text);cursor:pointer;
+  white-space:nowrap;
+  transition:all .15s ease;
+}
+.vk-doc-help-btn:hover{border-color:var(--vk-primary);color:var(--vk-primary)}

@@ -22,7 +22,7 @@ window.VK_documentos = (function(){
       size: 'PDF • 1.0 MB'
     },
     carta_factura: {
-      icon: '<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>',
+      icon: '<svg viewBox="0 0 24 24" width="32" height="32" fill="none"><rect x="3" y="2" width="18" height="20" rx="2" fill="#fff3cd" stroke="#f59e0b" stroke-width="1.5"/><path d="M7 7h10M7 11h10M7 15h6" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/><circle cx="17" cy="17" r="5" fill="#22c55e"/><path d="M15 17l1.5 1.5 3-3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
       desc: 'Tu cuenta está al corriente. Puedes descargarla y usarla para realizar tu trámite de placas.',
       descLocked: 'Para activar tu carta factura, tu compra debe estar al corriente. Ponte al corriente y descárgala al instante.',
       size: 'PDF • 1.2 MB'
@@ -64,7 +64,7 @@ window.VK_documentos = (function(){
             '<div class="vk-doc-hl-header">'+
               '<div class="vk-doc-hl-icon">'+meta.icon+'</div>'+
               '<div class="vk-doc-hl-info">'+
-                '<div class="vk-doc-hl-title">Carta factura <span class="vk-doc-badge blue">LISTA PARA DESCARGAR</span></div>'+
+                '<div class="vk-doc-hl-title">Carta factura <span class="vk-doc-badge green">LISTA PARA DESCARGAR</span></div>'+
                 '<div class="vk-doc-hl-sub">Para emplacar tu Voltika</div>'+
                 '<div class="vk-doc-hl-desc">'+meta.desc+'</div>'+
                 '<div class="vk-doc-hl-tags">'+
@@ -87,10 +87,12 @@ window.VK_documentos = (function(){
               '</div>'+
             '</div>'+
           '</div>'+
-          '<div class="vk-banner warn" style="margin-top:-6px;margin-bottom:14px">'+
-            '<strong>¿Aún no puedes descargarla?</strong><br>'+
-            meta.descLocked+'<br>'+
-            '<button class="vk-btn primary" style="margin-top:10px;font-size:13px;padding:10px" onclick="VKApp.go(\'inicio\')">PONERME AL CORRIENTE</button>'+
+          '<div class="vk-doc-warn-banner">'+
+            '<div class="vk-doc-warn-text">'+
+              '<strong>¿Aún no puedes descargarla?</strong><br>'+
+              '<span>'+meta.descLocked+'</span>'+
+            '</div>'+
+            '<button class="vk-doc-warn-btn" onclick="VKApp.go(\'inicio\')">PONERME AL CORRIENTE</button>'+
           '</div>';
       }
     }
@@ -103,11 +105,13 @@ window.VK_documentos = (function(){
         '<div class="vk-doc-row-body">'+
           '<div class="vk-doc-row-title">'+d.titulo+' '+badgeFor(d)+'</div>'+
           '<div class="vk-doc-row-desc">'+(dm.desc||d.subtitulo)+'</div>'+
-          '<div class="vk-doc-row-size">'+(dm.size||'PDF')+'</div>'+
         '</div>'+
-        (d.disponible
-          ? '<button class="vk-doc-ver" data-tipo="'+d.tipo+'">VER</button>'
-          : '<span class="vk-doc-lock">🔒</span>')+
+        '<div class="vk-doc-row-right">'+
+          '<div class="vk-doc-row-size">'+(dm.size||'PDF')+'</div>'+
+          (d.disponible
+            ? '<button class="vk-doc-ver" data-tipo="'+d.tipo+'">VER</button>'
+            : '<span class="vk-doc-lock">🔒</span>')+
+        '</div>'+
       '</div>';
     }).join('');
 
@@ -121,10 +125,12 @@ window.VK_documentos = (function(){
       '</div>'+
       otrosHtml+
 
-      '<div class="vk-card" style="margin-top:18px">'+
-        '<div class="vk-h2">¿Dudas sobre tus documentos?</div>'+
-        '<div class="vk-muted">Nuestro equipo está aquí para ayudarte.</div>'+
-        '<button class="vk-btn ghost" style="margin-top:10px" onclick="VKApp.go(\'ayuda\')">CONTACTAR SOPORTE</button>'+
+      '<div class="vk-doc-help">'+
+        '<div class="vk-doc-help-text">'+
+          '<div class="vk-h2" style="margin:0 0 4px">¿Dudas sobre tus documentos?</div>'+
+          '<div class="vk-muted">Nuestro equipo está aquí para ayudarte.</div>'+
+        '</div>'+
+        '<button class="vk-doc-help-btn" onclick="VKApp.go(\'ayuda\')">CONTACTAR SOPORTE ›</button>'+
       '</div>'
     );
 
