@@ -92,6 +92,19 @@ window.AD_puntos = (function(){
     html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:2px;display:block;">Zonas de cobertura (prefijos CP, separados por coma):</label>';
     html += '<input class="ad-input" id="pfZonas" placeholder="01, 02, 03, 06, 11" value="'+zonas.join(', ')+'" style="margin-bottom:8px">';
 
+    // ── Referido codes ──
+    if(!isNew){
+      html += sectionTitle('Códigos de referido');
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
+      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código venta en punto</label>'+
+        '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodVenta" value="'+esc(p.codigo_venta||'')+'" readonly style="background:#f5f7fa;flex:1;">'+
+        '<button class="ad-btn sm ghost pfRegen" data-field="codigo_venta" title="Regenerar" style="padding:4px 8px;">&#8635;</button></div></div>';
+      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código venta online</label>'+
+        '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodElec" value="'+esc(p.codigo_electronico||'')+'" readonly style="background:#f5f7fa;flex:1;">'+
+        '<button class="ad-btn sm ghost pfRegen" data-field="codigo_electronico" title="Regenerar" style="padding:4px 8px;">&#8635;</button></div></div>';
+      html += '</div>';
+    }
+
     // ── Coordinates ──
     html += sectionTitle('Ubicación (mapa)');
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
@@ -139,6 +152,18 @@ window.AD_puntos = (function(){
       }).fail(function(){
         alert('Error de conexión');
         $('#pfSave').prop('disabled',false).html('Guardar');
+      });
+    });
+
+    // Regenerate referido code
+    $('.pfRegen').on('click', function(){
+      var field = $(this).data('field');
+      if(!confirm('Regenerar este código? El código anterior dejará de funcionar.')) return;
+      ADApp.api('puntos/regenerar-codigo.php', {id: p.id, campo: field}).done(function(r2){
+        if(r2.ok){
+          if(field==='codigo_venta') $('#pfCodVenta').val(r2.nuevo_codigo);
+          else $('#pfCodElec').val(r2.nuevo_codigo);
+        } else alert(r2.error||'Error');
       });
     });
   }
