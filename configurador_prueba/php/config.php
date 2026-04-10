@@ -71,7 +71,7 @@ if (!defined('ENVIA_CARRIER'))  define('ENVIA_CARRIER',  getenv('ENVIA_CARRIER')
 if (!defined('ENVIA_SERVICE'))  define('ENVIA_SERVICE',  getenv('ENVIA_SERVICE')  ?: 'standard');
 
 // Skydropx (shipping quotes + labels)
-if (!defined('SKYDROPX_API_KEY')) define('SKYDROPX_API_KEY', getenv('SKYDROPX_API_KEY') ?: '');
+if (!defined('SKYDROPX_API_KEY')) define('SKYDROPX_API_KEY', getenv('SKYDROPX_API_KEY') ?: 'XdkfMZOHYt4S8LJSNAUViThofrzsj4tgOvGfczTJbis');
 // Default parcel dimensions for moto shipments (kg / cm)
 if (!defined('SKYDROPX_PARCEL_WEIGHT')) define('SKYDROPX_PARCEL_WEIGHT', 150);
 if (!defined('SKYDROPX_PARCEL_HEIGHT')) define('SKYDROPX_PARCEL_HEIGHT', 120);
