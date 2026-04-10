@@ -24,7 +24,8 @@ window.AD_dashboard = (function(){
     // Quick actions
     html += '<div class="ad-h2">Acciones rápidas</div>';
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-    html += '<button class="ad-btn primary" onclick="ADApp.go(\'inventario\')">🏭 Ver inventario</button>';
+    html += '<button class="ad-btn primary" onclick="ADApp.go(\'ventas\')">🛒 Ventas</button>';
+    html += '<button class="ad-btn ghost" onclick="ADApp.go(\'inventario\')">🏭 Inventario</button>';
     html += '<button class="ad-btn ghost" onclick="ADApp.go(\'envios\')">🚚 Envíos</button>';
     html += '<button class="ad-btn ghost" onclick="ADApp.go(\'pagos\')">💳 Pagos</button>';
     html += '<button class="ad-btn ghost" onclick="ADApp.go(\'puntos\')">📍 Puntos</button>';
