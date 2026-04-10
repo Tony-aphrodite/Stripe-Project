@@ -264,13 +264,8 @@
             var self = this;
 
             $(document).on('click', '.vk-back-btn', function() {
-                var raw = $(this).data('go-to');
-                var num = parseInt(raw);
-                if (!isNaN(num) && num >= 1) {
-                    self.irAPaso(num);
-                } else if (raw) {
-                    self.irAPaso(String(raw));
-                }
+                // Use browser history to go to actual previous step
+                history.back();
             });
 
             // Browser back button → go to previous paso instead of leaving page
