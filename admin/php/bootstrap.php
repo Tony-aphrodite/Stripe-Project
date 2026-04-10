@@ -127,6 +127,16 @@ try { $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN punto_voltika_id INT A
 try { $pdo->exec("ALTER TABLE envios ADD COLUMN tracking_number VARCHAR(100) NULL AFTER notas"); } catch(Throwable $e){}
 try { $pdo->exec("ALTER TABLE envios ADD COLUMN carrier VARCHAR(80) NULL AFTER tracking_number"); } catch(Throwable $e){}
 
+// Ensure configurador fields on puntos_voltika
+try { $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN tipo ENUM('center','certificado','entrega') DEFAULT 'entrega' AFTER capacidad"); } catch(Throwable $e){}
+try { $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN servicios JSON NULL AFTER tipo"); } catch(Throwable $e){}
+try { $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN tags JSON NULL AFTER servicios"); } catch(Throwable $e){}
+try { $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN zonas JSON NULL AFTER tags"); } catch(Throwable $e){}
+try { $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN colonia VARCHAR(200) NULL AFTER direccion"); } catch(Throwable $e){}
+try { $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN descripcion TEXT NULL AFTER zonas"); } catch(Throwable $e){}
+try { $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN autorizado TINYINT DEFAULT 1 AFTER descripcion"); } catch(Throwable $e){}
+try { $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN slug VARCHAR(100) NULL AFTER id"); } catch(Throwable $e){}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function adminJsonIn() {
