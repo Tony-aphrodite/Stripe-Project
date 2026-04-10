@@ -107,7 +107,7 @@
          * Strings: 'resumen', 'credito-datos', 'credito-otp',
          *          'credito-consentimiento', 'credito-identidad',
          *          'credito-resultado', 'credito-enganche',
-         *          'credito-contrato', 'facturacion', 'exito'
+         *          'credito-contrato', 'credito-facturacion', 'facturacion', 'exito'
          */
         irAPaso: function(paso) {
             var self = this;
@@ -177,6 +177,7 @@
                 'credito-enganche': 4,
                 'credito-contrato': 4,
                 'credito-autopago': 4,
+                'credito-facturacion': 4,
                 'facturacion': 4,
                 'exito': 4
             };
@@ -250,6 +251,9 @@
                     break;
                 case 'credito-autopago':
                     PasoCreditoAutopago.init(this);
+                    break;
+                case 'credito-facturacion':
+                    PasoCreditoFacturacion.init(this);
                     break;
                 case 'facturacion':
                     PasoFacturacion.init(this);

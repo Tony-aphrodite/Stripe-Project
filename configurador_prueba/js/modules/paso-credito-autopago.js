@@ -281,7 +281,7 @@ var PasoCreditoAutopago = {
                         });
 
                         self._setLoading(false);
-                        self.app.irAPaso('exito');
+                        self.app.irAPaso('credito-facturacion');
                     } else {
                         // Unexpected status
                         jQuery('#vk-autopago-error').text('No se pudo procesar la tarjeta. Intenta de nuevo.').show();
@@ -305,7 +305,7 @@ var PasoCreditoAutopago = {
             self.app.state.autopagoActivado = true;
             self.app.state._setupIntentId = 'simulated_' + Date.now();
             self._setLoading(false);
-            self.app.irAPaso('exito');
+            self.app.irAPaso('credito-facturacion');
         }, 2000);
     },
 
