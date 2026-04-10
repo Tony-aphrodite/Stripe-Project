@@ -11,7 +11,7 @@ window.AD_puntos = (function(){
     var html = '<div class="ad-toolbar"><div class="ad-h1">Puntos Voltika</div>'+
       '<button class="ad-btn primary" id="adNewPunto">+ Nuevo punto</button></div>';
 
-    html += '<div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
+    html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
       '<th>Nombre</th><th>Tipo</th><th>Ciudad</th><th>Inventario</th>'+
       '<th>Listas entrega</th><th>Envíos pend.</th><th>Cód. venta</th><th>Activo</th><th></th>'+
       '</tr></thead><tbody>';
@@ -30,7 +30,7 @@ window.AD_puntos = (function(){
         '<td><button class="ad-btn sm ghost adEditP" data-id="'+p.id+'">Editar</button></td>'+
       '</tr>';
     });
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
 
     ADApp.render(html);
     $('#adNewPunto').on('click',function(){ showForm({}); });

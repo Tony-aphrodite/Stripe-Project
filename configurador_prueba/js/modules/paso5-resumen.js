@@ -173,7 +173,7 @@ var PasoResumen = {
             } else if (total > 0) {
                 badge.html('<span style="display:inline-block;background:#fef3c7;color:#92400e;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;">&#9888; \u00daltimas ' + total + ' unidade' + (total === 1 ? '' : 's') + ' disponible' + (total === 1 ? '' : 's') + '</span>');
             } else {
-                badge.html('<span style="display:inline-block;background:#fee2e2;color:#991b1b;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;">&#9888; Bajo pedido — se asigna unidad al confirmar</span>');
+                badge.html('');
             }
         }).fail(function() {
             // Ignore if endpoint unavailable

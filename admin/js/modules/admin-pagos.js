@@ -21,7 +21,7 @@ window.AD_pagos = (function(){
       '<select class="ad-select" id="adPTipo"><option value="">Todos</option><option value="contado">Contado</option><option value="msi">MSI</option><option value="credito">Crédito</option></select>'+
       '<button class="ad-btn sm ghost" id="adPFilter">Filtrar</button></div>';
     // Table
-    html += '<div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
+    html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
       '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Tipo</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th>'+
       '</tr></thead><tbody>';
     (r.pagos||[]).forEach(function(p){
@@ -37,7 +37,7 @@ window.AD_pagos = (function(){
           'data-id="'+p.id+'" data-pi="'+(p.stripe_pi||'')+'" data-fuente="'+(p.fuente||'orden')+'">Ver</button></td>'+
       '</tr>';
     });
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
     ADApp.render(html);
     $('#adPFilter').on('click',function(){ filtro.tipo=$('#adPTipo').val(); load(); });
     $('.adVerPago').on('click',function(){

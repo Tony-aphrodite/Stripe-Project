@@ -277,6 +277,8 @@ $tablas = [
             otp_enviado             TINYINT DEFAULT 0,
             otp_validado            TINYINT DEFAULT 0,
             otp_timestamp           DATETIME,
+            otp_code                VARCHAR(10),
+            otp_expires             DATETIME,
             fase4_completada        TINYINT DEFAULT 0,
             fase4_fecha             DATETIME,
 
@@ -286,6 +288,7 @@ $tablas = [
             clausula_medios         TINYINT DEFAULT 0,
             clausula_uso_info       TINYINT DEFAULT 0,
             firma_digital           TINYINT DEFAULT 0,
+            firma_data              LONGTEXT,
             pdf_acta_url            VARCHAR(255),
             fase5_completada        TINYINT DEFAULT 0,
             fase5_fecha             DATETIME,

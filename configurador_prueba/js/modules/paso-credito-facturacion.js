@@ -1,11 +1,11 @@
 /* ==========================================================================
-   Voltika - Facturación (post-payment for contado/MSI)
+   Voltika - Facturación Crédito (post-autopago subscription setup)
    1. Banner: ¿Deseas generar tu factura?
    2. Card options: Sí, quiero mi factura / No necesito factura
-   3. If Sí → show invoice fields
+   3. If Sí → show invoice fields (same as contado/MSI)
    ========================================================================== */
 
-var PasoFacturacion = {
+var PasoCreditoFacturacion = {
 
     init: function(app) {
         this.app = app;
@@ -26,8 +26,8 @@ var PasoFacturacion = {
 
         // 2. Option cards
         // Card: Sí
-        html += '<label id="vk-fac-card-si" style="display:flex;align-items:flex-start;gap:12px;border:2px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;transition:border-color .2s;">';
-        html += '<input type="radio" name="vk-factura-opcion" value="si" id="vk-factura-si" style="width:20px;height:20px;accent-color:#1b5e3b;margin-top:2px;flex-shrink:0;">';
+        html += '<label id="vk-cfac-card-si" style="display:flex;align-items:flex-start;gap:12px;border:2px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;transition:border-color .2s;">';
+        html += '<input type="radio" name="vk-cfac-opcion" value="si" id="vk-cfac-si" style="width:20px;height:20px;accent-color:#1b5e3b;margin-top:2px;flex-shrink:0;">';
         html += '<div style="flex:1;">';
         html += '<div style="font-size:15px;font-weight:700;color:#222;">S\u00ed, quiero mi factura</div>';
         html += '<div style="font-size:13px;color:#666;margin-top:2px;">Se emitir\u00e1 al finalizar tus pagos.</div>';
@@ -40,8 +40,8 @@ var PasoFacturacion = {
         html += '</label>';
 
         // Card: No
-        html += '<label id="vk-fac-card-no" style="display:flex;align-items:flex-start;gap:12px;border:2px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:20px;cursor:pointer;transition:border-color .2s;">';
-        html += '<input type="radio" name="vk-factura-opcion" value="no" id="vk-factura-no" style="width:20px;height:20px;accent-color:#1b5e3b;margin-top:2px;flex-shrink:0;">';
+        html += '<label id="vk-cfac-card-no" style="display:flex;align-items:flex-start;gap:12px;border:2px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:20px;cursor:pointer;transition:border-color .2s;">';
+        html += '<input type="radio" name="vk-cfac-opcion" value="no" id="vk-cfac-no" style="width:20px;height:20px;accent-color:#1b5e3b;margin-top:2px;flex-shrink:0;">';
         html += '<div style="flex:1;">';
         html += '<div style="font-size:15px;font-weight:700;color:#222;">No necesito factura</div>';
         html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;background:#f5f5f5;border-radius:8px;padding:10px 12px;">';
@@ -53,53 +53,53 @@ var PasoFacturacion = {
         html += '</label>';
 
         // 3. Invoice fields (hidden by default)
-        html += '<div id="vk-factura-fields" style="display:none;">';
+        html += '<div id="vk-cfac-fields" style="display:none;">';
         html += '<div class="vk-card" style="padding:20px;">';
 
         // RFC
         html += '<div class="vk-form-group">';
         html += '<label class="vk-form-label" style="font-weight:700;">RFC (obligatorio)</label>';
-        html += '<input type="text" class="vk-form-input" id="vk-fac-rfc" placeholder="Ingrese su RFC" maxlength="13" style="text-transform:uppercase;">';
+        html += '<input type="text" class="vk-form-input" id="vk-cfac-rfc" placeholder="Ingrese su RFC" maxlength="13" style="text-transform:uppercase;">';
         html += '</div>';
 
         // Nombre o Razón Social
         html += '<div class="vk-form-group">';
         html += '<label class="vk-form-label" style="font-weight:700;">Nombre o Raz\u00f3n Social</label>';
-        html += '<input type="text" class="vk-form-input" id="vk-fac-razon" placeholder="Como aparece en el SAT" value="' + (state.nombre || '') + '">';
+        html += '<input type="text" class="vk-form-input" id="vk-cfac-razon" placeholder="Como aparece en el SAT" value="' + (state.nombre || '') + '">';
         html += '</div>';
 
         // Régimen fiscal
         html += '<div style="margin-bottom:14px;">';
         html += '<div style="font-weight:700;font-size:13px;margin-bottom:8px;">Selecciona tu r\u00e9gimen fiscal:</div>';
-        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-regimen" value="fisica" style="accent-color:#4CAF50;"> <span style="font-size:13px;">Persona f\u00edsica</span></label>';
-        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-regimen" value="fisica_empresarial" style="accent-color:#4CAF50;"> <span style="font-size:13px;">Persona f\u00edsica con actividad empresarial</span></label>';
-        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-regimen" value="moral" style="accent-color:#4CAF50;"> <span style="font-size:13px;">Persona moral (empresa)</span></label>';
+        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfac-regimen" value="fisica" style="accent-color:#4CAF50;"> <span style="font-size:13px;">Persona f\u00edsica</span></label>';
+        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfac-regimen" value="fisica_empresarial" style="accent-color:#4CAF50;"> <span style="font-size:13px;">Persona f\u00edsica con actividad empresarial</span></label>';
+        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfac-regimen" value="moral" style="accent-color:#4CAF50;"> <span style="font-size:13px;">Persona moral (empresa)</span></label>';
         html += '</div>';
 
         // ¿Usarás la moto para generar ingresos?
         html += '<div style="margin-bottom:14px;">';
         html += '<div style="font-weight:700;font-size:13px;margin-bottom:8px;">\u00bfUsar\u00e1s la moto para generar ingresos?</div>';
-        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-ingresos" value="si" style="accent-color:#4CAF50;"> <span style="font-size:13px;">S\u00ed</span></label>';
-        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-ingresos" value="no" style="accent-color:#4CAF50;"> <span style="font-size:13px;">No</span></label>';
+        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfac-ingresos" value="si" style="accent-color:#4CAF50;"> <span style="font-size:13px;">S\u00ed</span></label>';
+        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfac-ingresos" value="no" style="accent-color:#4CAF50;"> <span style="font-size:13px;">No</span></label>';
         html += '</div>';
 
         // Uso de CFDI
         html += '<div style="margin-bottom:14px;">';
         html += '<div style="font-weight:700;font-size:13px;margin-bottom:8px;">Uso de CFDI:</div>';
-        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfdi" value="G03" checked style="accent-color:#4CAF50;"> <span style="font-size:13px;"><strong>G03</strong> \u2013 Gastos en general <span style="color:#4CAF50;font-size:11px;">(recomendado)</span></span></label>';
-        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfdi" value="S01" style="accent-color:#4CAF50;"> <span style="font-size:13px;"><strong>S01</strong> \u2013 Sin efectos fiscales</span></label>';
-        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfdi" value="I04" style="accent-color:#4CAF50;"> <span style="font-size:13px;"><strong>I04</strong> \u2013 Equipo de transporte <span style="color:#888;font-size:11px;">(uso empresarial)</span></span></label>';
+        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfac-cfdi" value="G03" checked style="accent-color:#4CAF50;"> <span style="font-size:13px;"><strong>G03</strong> \u2013 Gastos en general <span style="color:#4CAF50;font-size:11px;">(recomendado)</span></span></label>';
+        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfac-cfdi" value="S01" style="accent-color:#4CAF50;"> <span style="font-size:13px;"><strong>S01</strong> \u2013 Sin efectos fiscales</span></label>';
+        html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="vk-cfac-cfdi" value="I04" style="accent-color:#4CAF50;"> <span style="font-size:13px;"><strong>I04</strong> \u2013 Equipo de transporte <span style="color:#888;font-size:11px;">(uso empresarial)</span></span></label>';
         html += '</div>';
 
         // Código Postal fiscal
         html += '<div class="vk-form-group">';
         html += '<label class="vk-form-label" style="font-weight:700;">C\u00f3digo Postal (obligatorio)</label>';
-        html += '<input type="text" class="vk-form-input" id="vk-fac-cp" placeholder="C\u00f3digo Postal (obligatorio)" maxlength="5" inputmode="numeric" value="' + (state.codigoPostal || '') + '">';
+        html += '<input type="text" class="vk-form-input" id="vk-cfac-cp" placeholder="C\u00f3digo Postal (obligatorio)" maxlength="5" inputmode="numeric" value="' + (state.codigoPostal || state.cpDomicilio || '') + '">';
         html += '</div>';
 
         // Confirmation checkbox
         html += '<label style="display:flex;align-items:flex-start;gap:10px;margin:14px 0;cursor:pointer;">';
-        html += '<input type="checkbox" id="vk-fac-confirmo" style="margin-top:3px;width:18px;height:18px;accent-color:#4CAF50;flex-shrink:0;">';
+        html += '<input type="checkbox" id="vk-cfac-confirmo" style="margin-top:3px;width:18px;height:18px;accent-color:#4CAF50;flex-shrink:0;">';
         html += '<span style="font-size:13px;color:#555;line-height:1.5;">Confirmo que los datos fiscales proporcionados son correctos y que el uso del CFDI fue seleccionado bajo mi responsabilidad.</span>';
         html += '</label>';
 
@@ -107,64 +107,64 @@ var PasoFacturacion = {
         html += '<p style="font-size:12px;color:#888;text-align:center;font-style:italic;margin:10px 0;">La factura se emitir\u00e1 una vez asignada tu moto espec\u00edfica y ser\u00e1 enviada a tu correo electr\u00f3nico antes de la entrega.</p>';
 
         html += '</div>'; // end card
-        html += '</div>'; // end #vk-factura-fields
+        html += '</div>'; // end #vk-cfac-fields
 
         // Error
-        html += '<div id="vk-fac-error" style="display:none;color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin:12px 0;text-align:center;font-weight:600;"></div>';
+        html += '<div id="vk-cfac-error" style="display:none;color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin:12px 0;text-align:center;font-weight:600;"></div>';
 
-        // Button
-        html += '<button class="vk-btn vk-btn--primary" id="vk-fac-submit" style="font-size:15px;font-weight:700;padding:14px;margin-top:12px;display:none;">CONTINUAR</button>';
+        // Button (hidden until selection, shown for "No"; shown inside fields for "Sí")
+        html += '<button class="vk-btn vk-btn--primary" id="vk-cfac-submit" style="font-size:15px;font-weight:700;padding:14px;margin-top:12px;display:none;">CONTINUAR</button>';
 
-        jQuery('#vk-facturacion-container').html(html);
+        jQuery('#vk-credito-facturacion-container').html(html);
     },
 
     bindEvents: function() {
         var self = this;
 
         jQuery(document)
-            .off('change', 'input[name="vk-factura-opcion"]')
-            .off('click', '#vk-fac-submit');
+            .off('change', 'input[name="vk-cfac-opcion"]')
+            .off('click', '#vk-cfac-submit');
 
         // Toggle fields + highlight selected card
-        jQuery(document).on('change', 'input[name="vk-factura-opcion"]', function() {
+        jQuery(document).on('change', 'input[name="vk-cfac-opcion"]', function() {
             var val = jQuery(this).val();
             // Reset card borders
-            jQuery('#vk-fac-card-si, #vk-fac-card-no').css('border-color', '#e0e0e0');
+            jQuery('#vk-cfac-card-si, #vk-cfac-card-no').css('border-color', '#e0e0e0');
             // Highlight selected
             jQuery(this).closest('label').css('border-color', '#1b5e3b');
 
             if (val === 'si') {
-                jQuery('#vk-factura-fields').slideDown(200);
-                jQuery('#vk-fac-submit').text('Generar factura').show();
+                jQuery('#vk-cfac-fields').slideDown(200);
+                jQuery('#vk-cfac-submit').text('Generar factura').show();
             } else {
-                jQuery('#vk-factura-fields').slideUp(200);
-                jQuery('#vk-fac-submit').text('CONTINUAR').show();
+                jQuery('#vk-cfac-fields').slideUp(200);
+                jQuery('#vk-cfac-submit').text('CONTINUAR').show();
             }
-            jQuery('#vk-fac-error').hide();
+            jQuery('#vk-cfac-error').hide();
         });
 
         // Submit
-        jQuery(document).on('click', '#vk-fac-submit', function() {
+        jQuery(document).on('click', '#vk-cfac-submit', function() {
             self._submit();
         });
     },
 
     _submit: function() {
-        var wantsFactura = jQuery('#vk-factura-si').is(':checked');
+        var wantsFactura = jQuery('#vk-cfac-si').is(':checked');
 
-        if (!wantsFactura && !jQuery('#vk-factura-no').is(':checked')) {
-            jQuery('#vk-fac-error').text('Selecciona si deseas factura o no.').show();
+        if (!wantsFactura && !jQuery('#vk-cfac-no').is(':checked')) {
+            jQuery('#vk-cfac-error').text('Selecciona si deseas factura o no.').show();
             return;
         }
 
         if (wantsFactura) {
-            var rfc = jQuery('#vk-fac-rfc').val().trim().toUpperCase();
-            var razon = jQuery('#vk-fac-razon').val().trim();
-            var regimen = jQuery('input[name="vk-regimen"]:checked').val();
-            var ingresos = jQuery('input[name="vk-ingresos"]:checked').val();
-            var cfdi = jQuery('input[name="vk-cfdi"]:checked').val();
-            var cpFiscal = jQuery('#vk-fac-cp').val().trim();
-            var confirmo = jQuery('#vk-fac-confirmo').is(':checked');
+            var rfc = jQuery('#vk-cfac-rfc').val().trim().toUpperCase();
+            var razon = jQuery('#vk-cfac-razon').val().trim();
+            var regimen = jQuery('input[name="vk-cfac-regimen"]:checked').val();
+            var ingresos = jQuery('input[name="vk-cfac-ingresos"]:checked').val();
+            var cfdi = jQuery('input[name="vk-cfac-cfdi"]:checked').val();
+            var cpFiscal = jQuery('#vk-cfac-cp').val().trim();
+            var confirmo = jQuery('#vk-cfac-confirmo').is(':checked');
 
             var errores = [];
             if (!rfc || rfc.length < 12) errores.push('Ingresa tu RFC v\u00e1lido.');
@@ -176,7 +176,7 @@ var PasoFacturacion = {
             if (!confirmo) errores.push('Debes confirmar que los datos fiscales son correctos.');
 
             if (errores.length) {
-                jQuery('#vk-fac-error').html(errores.join('<br>')).show();
+                jQuery('#vk-cfac-error').html(errores.join('<br>')).show();
                 return;
             }
 
@@ -193,8 +193,8 @@ var PasoFacturacion = {
             this.app.state.facturacion = { requiere: false };
         }
 
-        jQuery('#vk-fac-error').hide();
-        var $btn = jQuery('#vk-fac-submit');
+        jQuery('#vk-cfac-error').hide();
+        var $btn = jQuery('#vk-cfac-submit');
         $btn.prop('disabled', true).text('Guardando...');
 
         var self = this;
@@ -212,6 +212,7 @@ var PasoFacturacion = {
                 modelo:      modelo ? modelo.nombre : '',
                 color:       state.colorSeleccionado || '',
                 total:       state.totalPagado || 0,
+                tipo:        'credito',
                 facturacion: state.facturacion
             }),
             complete: function() {

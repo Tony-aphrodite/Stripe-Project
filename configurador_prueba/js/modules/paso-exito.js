@@ -146,13 +146,13 @@ var PasoExito = {
         html += '</div>';
 
         // === Asesor contact card ===
-        html += '<div class="vk-card" style="padding:20px;margin-bottom:16px;">';
+        html += '<div class="vk-card" style="text-align:center;padding:20px;margin-bottom:16px;">';
 
         // Show registered phone
         var _tel2 = state.telefono || '';
         if (_tel2) {
             var _telFmt2 = '+52 ' + _tel2.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
-            html += '<div style="text-align:center;margin-bottom:12px;font-size:14px;color:#333;">Registrado con: <strong>' + _telFmt2 + '</strong></div>';
+            html += '<div style="margin-bottom:12px;font-size:14px;color:#333;">Registrado con: <strong>' + _telFmt2 + '</strong></div>';
         }
 
         html += '<p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 14px;">';
@@ -161,7 +161,7 @@ var PasoExito = {
         html += '</p>';
 
         // Checklist
-        html += '<div style="margin-bottom:14px;padding-left:4px;">';
+        html += '<div style="display:inline-block;text-align:left;margin-bottom:14px;">';
         var items = [
             '<strong>Confirmar</strong> el punto de <strong>entrega</strong>',
             '<strong>Coordinar</strong> fecha y <strong>horario</strong>',
@@ -178,8 +178,8 @@ var PasoExito = {
         html += '</div>'; // end card
 
         // === Security key section ===
-        html += '<div class="vk-card" style="padding:18px;margin-bottom:16px;">';
-        html += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">';
+        html += '<div class="vk-card" style="text-align:center;padding:18px;margin-bottom:16px;">';
+        html += '<div style="display:flex;align-items:flex-start;justify-content:center;gap:10px;margin-bottom:12px;">';
         html += '<span style="font-size:22px;flex-shrink:0;">&#128274;</span>';
         html += '<div style="font-size:16px;font-weight:800;color:#333;">Tu tel\u00e9fono ser\u00e1 tu llave de seguridad</div>';
         html += '</div>';
@@ -195,19 +195,19 @@ var PasoExito = {
 
         // === Contact badges ===
         html += '<div style="background:#F5F5F5;border-radius:10px;padding:14px;margin-bottom:16px;">';
-        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
+        html += '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;">';
         html += '<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#4CAF50;">';
         html += '<span style="color:#fff;font-size:11px;">&#10003;</span></span>';
         html += '<span style="font-size:13px;color:#333;">Te contactaremos por <strong>WhatsApp o email</strong></span>';
         html += '</div>';
-        html += '<div style="display:flex;align-items:center;gap:8px;">';
+        html += '<div style="display:flex;align-items:center;justify-content:center;gap:8px;">';
         html += '<span style="font-size:18px;">&#128276;</span>';
         html += '<span style="font-size:13px;color:#333;"><strong>Mantente</strong> pendiente de nuestros mensajes</span>';
         html += '</div>';
         html += '</div>';
 
         // === Felicidades ===
-        html += '<div style="margin-bottom:16px;padding:0 4px;">';
+        html += '<div style="text-align:center;margin-bottom:16px;padding:0 4px;">';
         html += '<p style="font-size:15px;color:#333;margin:0;">';
         html += '<span style="color:#4CAF50;font-weight:700;">&#10003; Felicidades!</span> Pr\u00f3ximamente recibir\u00e1s tu <strong>Voltika</strong>.</p>';
         html += '<p style="font-size:13px;color:#777;margin:6px 0 0;">Gracias por confiar en nosotros &#128522;</p>';

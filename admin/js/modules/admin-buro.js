@@ -36,7 +36,7 @@ window.AD_buro = (function(){
         return;
       }
 
-      var html = '<div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
+      var html = '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
         '<th>Folio CDC</th><th>Nombre</th><th>Score</th><th>Tipo</th>'+
         '<th>Fecha aprobacion</th><th>Hora aprobacion</th>'+
         '<th>Fecha consulta</th><th>Hora consulta</th>'+
@@ -59,7 +59,7 @@ window.AD_buro = (function(){
           '</tr>';
       });
 
-      html += '</tbody></table></div>';
+      html += '</tbody></table></div></div>';
       $('#burTable').html(html);
     }).fail(function(){
       $('#burTable').html('<div class="ad-card">Error de conexion</div>');

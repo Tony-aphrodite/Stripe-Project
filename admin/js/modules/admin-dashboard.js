@@ -23,12 +23,20 @@ window.AD_dashboard = (function(){
     html += '</div>';
     // Quick actions
     html += '<div class="ad-h2">Acciones rápidas</div>';
-    html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-    html += '<button class="ad-btn primary" onclick="ADApp.go(\'ventas\')">🛒 Ventas</button>';
-    html += '<button class="ad-btn ghost" onclick="ADApp.go(\'inventario\')">🏭 Inventario</button>';
-    html += '<button class="ad-btn ghost" onclick="ADApp.go(\'envios\')">🚚 Envíos</button>';
-    html += '<button class="ad-btn ghost" onclick="ADApp.go(\'pagos\')">💳 Pagos</button>';
-    html += '<button class="ad-btn ghost" onclick="ADApp.go(\'puntos\')">📍 Puntos</button>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px">';
+    var actions = [
+      {icon:'🛒',label:'Ventas',route:'ventas',bg:'linear-gradient(135deg,#e0f4fd,#fff)'},
+      {icon:'🏭',label:'Inventario',route:'inventario',bg:'linear-gradient(135deg,#dcfce7,#fff)'},
+      {icon:'🚚',label:'Envíos',route:'envios',bg:'linear-gradient(135deg,#fef3c7,#fff)'},
+      {icon:'💳',label:'Pagos',route:'pagos',bg:'linear-gradient(135deg,#e0e7ff,#fff)'},
+      {icon:'📍',label:'Puntos',route:'puntos',bg:'linear-gradient(135deg,#fce7f3,#fff)'}
+    ];
+    actions.forEach(function(a){
+      html += '<div class="ad-card" style="cursor:pointer;text-align:center;padding:28px 16px;background:'+a.bg+';border:1.5px solid var(--ad-border);" onclick="ADApp.go(\''+a.route+'\')" onmouseover="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 30px rgba(12,35,64,.12)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'\'">';
+      html += '<div style="font-size:36px;margin-bottom:10px">'+a.icon+'</div>';
+      html += '<div style="font-weight:700;font-size:14px;color:var(--ad-navy)">'+a.label+'</div>';
+      html += '</div>';
+    });
     html += '</div>';
     ADApp.render(html);
   }

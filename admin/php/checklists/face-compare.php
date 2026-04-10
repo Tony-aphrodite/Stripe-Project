@@ -78,7 +78,7 @@ if ($conditions) {
 
 if (!$originalSelfie) {
     // No original selfie — save photo only, skip face match
-    $pdo->prepare("UPDATE checklist_entrega_v2 SET face_match_result='no_selfie' WHERE moto_id=? ORDER BY freg DESC LIMIT 1")
+    $pdo->prepare("UPDATE checklist_entrega_v2 SET face_match_result='no_selfie' WHERE id=(SELECT id FROM (SELECT id FROM checklist_entrega_v2 WHERE moto_id=? ORDER BY freg DESC LIMIT 1) t)")
         ->execute([$motoId]);
     echo json_encode([
         'ok' => true, 'comparison' => false,
@@ -133,7 +133,7 @@ $isMatch = ($match === true || $match === 'true' || ($similarity !== null && $si
 $matchResult = $isMatch ? 'match' : 'no_match';
 $pdo->prepare("
     UPDATE checklist_entrega_v2 SET face_match_result=?, face_match_score=?
-    WHERE moto_id=? ORDER BY freg DESC LIMIT 1
+    WHERE id=(SELECT id FROM (SELECT id FROM checklist_entrega_v2 WHERE moto_id=? ORDER BY freg DESC LIMIT 1) t)
 ")->execute([$matchResult, $similarity, $motoId]);
 
 adminLog('checklist_face_compare', ['moto_id' => $motoId, 'match' => $isMatch, 'score' => $similarity]);

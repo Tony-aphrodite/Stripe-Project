@@ -31,9 +31,10 @@ $asset = function(string $rel): string {
     <button data-route="inicio"><span class="ic">🏠</span><em>Inicio</em></button>
     <button data-route="pagos"><span class="ic">💳</span><em>Pagos</em></button>
     <button data-route="entrega"><span class="ic">🚚</span><em>Entrega</em></button>
-    <button data-route="documentos"><span class="ic">📄</span><em>Docs</em></button>
+    <button data-route="documentos"><span class="ic">📄</span><em>Documentos</em></button>
+    <button data-route="mivoltika"><span class="ic">⚡</span><em>Mi Voltika</em></button>
     <button data-route="cuenta"><span class="ic">👤</span><em>Cuenta</em></button>
-    <button data-route="ayuda"><span class="ic">💬</span><em>Ayuda</em></button>
+    <button data-route="ayuda"><span class="ic">❓</span><em>Ayuda</em></button>
   </nav>
 </div>
 <script src="<?= $asset('js/app.js') ?>"></script>
@@ -44,6 +45,7 @@ $asset = function(string $rel): string {
 <script src="<?= $asset('js/modules/entrega.js') ?>"></script>
 <script src="<?= $asset('js/modules/documentos.js') ?>"></script>
 <script src="<?= $asset('js/modules/cuenta.js') ?>"></script>
+<script src="<?= $asset('js/modules/mivoltika.js') ?>"></script>
 <script src="<?= $asset('js/modules/ayuda.js') ?>"></script>
 <script>$(function(){ VKApp.start(); });</script>
 </body>
