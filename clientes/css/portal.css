@@ -519,3 +519,98 @@ button{font-family:inherit}
   transition:all .15s ease;
 }
 .vk-doc-help-btn:hover{border-color:var(--vk-primary);color:var(--vk-primary)}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MI CUENTA PAGE
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Profile card ─────────────────────────────────────────────────────── */
+.vk-profile-card{padding:18px}
+.vk-profile-top{display:flex;gap:14px;align-items:flex-start}
+.vk-profile-avatar{
+  width:48px;height:48px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--vk-primary),#6366f1);
+  color:#fff;font-size:18px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+}
+.vk-profile-info{flex:1;min-width:0}
+.vk-profile-name{font-size:16px;font-weight:700;color:var(--vk-text);margin-bottom:8px}
+.vk-profile-row{
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;color:var(--vk-text-dim);
+  margin-bottom:6px;
+}
+.vk-profile-icon{font-size:14px;flex-shrink:0}
+.vk-profile-val{flex:1;color:var(--vk-text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vk-profile-edit{
+  background:none;border:0;color:var(--vk-primary);
+  font-size:12px;font-weight:700;cursor:pointer;
+  padding:2px 6px;flex-shrink:0;
+}
+.vk-profile-edit:hover{text-decoration:underline}
+.vk-profile-footer{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-top:14px;padding-top:14px;
+  border-top:1px solid var(--vk-border);
+}
+.vk-profile-foot-item{text-align:center}
+.vk-profile-foot-val{font-size:12px;font-weight:600;color:var(--vk-primary);margin-top:2px}
+
+/* ── Moto card ────────────────────────────────────────────────────────── */
+.vk-moto-body{display:flex;gap:14px;align-items:center}
+.vk-moto-img{flex-shrink:0;width:120px;height:80px;border-radius:var(--vk-radius-sm);overflow:hidden;background:var(--vk-surface-2)}
+.vk-moto-img img{width:100%;height:100%;object-fit:contain}
+.vk-moto-info{flex:1}
+.vk-moto-model{font-size:15px;font-weight:700;color:var(--vk-text);margin-bottom:4px}
+.vk-moto-serie{display:inline-flex;align-items:center;gap:4px}
+.vk-moto-copy{cursor:pointer;font-size:14px}
+.vk-moto-copy:hover{opacity:.7}
+
+/* ── Shortcuts grid ───────────────────────────────────────────────────── */
+.vk-shortcuts-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:14px;
+  margin-bottom:14px;
+}
+@media(max-width:400px){.vk-shortcuts-grid{grid-template-columns:1fr}}
+.vk-shortcut-item{
+  display:flex;align-items:center;gap:10px;
+  padding:12px;
+  background:var(--vk-surface);
+  border:1px solid var(--vk-border);
+  border-radius:var(--vk-radius-sm);
+  margin-bottom:8px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.vk-shortcut-item:hover{border-color:var(--vk-primary);background:var(--vk-primary-soft)}
+.vk-shortcut-item.vk-sc-disabled{opacity:.6;cursor:default}
+.vk-shortcut-item.vk-sc-disabled:hover{border-color:var(--vk-border);background:var(--vk-surface)}
+.vk-shortcut-item.vk-sc-danger{border-color:rgba(239,68,68,.3)}
+.vk-shortcut-item.vk-sc-danger:hover{border-color:var(--vk-danger);background:rgba(239,68,68,.05)}
+.vk-shortcut-item.vk-sc-danger .vk-sc-title{color:var(--vk-danger)}
+.vk-sc-icon{font-size:20px;flex-shrink:0}
+.vk-sc-body{flex:1;min-width:0}
+.vk-sc-title{font-size:13px;font-weight:700;color:var(--vk-text)}
+.vk-sc-sub{font-size:10px;color:var(--vk-text-dim);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vk-sc-arrow{color:var(--vk-text-dim);font-size:18px;font-weight:300;flex-shrink:0}
+
+/* ── WhatsApp help bar ────────────────────────────────────────────────── */
+.vk-wa-help{
+  display:flex;align-items:center;gap:12px;
+  background:var(--vk-surface);
+  border:1px solid var(--vk-border);
+  border-radius:var(--vk-radius-sm);
+  padding:14px 16px;margin-bottom:14px;
+  box-shadow:var(--vk-shadow);
+}
+.vk-wa-text{flex:1;font-size:13px;color:var(--vk-text);line-height:1.4}
+.vk-wa-btn{
+  flex-shrink:0;
+  background:#25d366;color:#fff;
+  border:0;border-radius:var(--vk-radius-sm);
+  padding:10px 16px;font-size:12px;font-weight:700;
+  cursor:pointer;text-decoration:none;
+  white-space:nowrap;
+  transition:background .15s ease;
+}
+.vk-wa-btn:hover{background:#1fb855}

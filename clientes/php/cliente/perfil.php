@@ -12,10 +12,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     } catch (Throwable $e) { error_log('perfil cliente: ' . $e->getMessage()); }
 
     try {
-        $stmt = $pdo->prepare("SELECT modelo, color, serie, fecha_entrega FROM subscripciones_credito WHERE cliente_id = ? ORDER BY id DESC LIMIT 1");
+        $stmt = $pdo->prepare("SELECT modelo, color, serie, fecha_entrega, estado FROM subscripciones_credito WHERE cliente_id = ? ORDER BY id DESC LIMIT 1");
         $stmt->execute([$cid]);
         $sub = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     } catch (Throwable $e) { error_log('perfil sub: ' . $e->getMessage()); }
+
+    // Resolve motorcycle image path
+    $motoImg = null;
+    if ($sub && !empty($sub['modelo'])) {
+        $modelSlug = strtolower(trim($sub['modelo']));
+        // Map model names to image directory slugs
+        $modelMap = [
+            'voltika 250 sport' => 'pesgo', 'pesgo' => 'pesgo',
+            'voltika 150' => 'm03', 'm03' => 'm03',
+            'voltika cargo' => 'm05', 'm05' => 'm05',
+            'voltika city' => 'mc10', 'mc10' => 'mc10',
+            'voltika mini' => 'mino', 'mino' => 'mino',
+            'voltika ukko' => 'ukko', 'ukko' => 'ukko',
+        ];
+        $slug = $modelMap[$modelSlug] ?? null;
+        if (!$slug) {
+            foreach ($modelMap as $k => $v) {
+                if (stripos($modelSlug, $k) !== false) { $slug = $v; break; }
+            }
+        }
+        if ($slug) {
+            // Try color-specific image first
+            $colorSlug = strtolower(trim($sub['color'] ?? ''));
+            $colorMap = ['negro'=>'black','gris'=>'grey','plata'=>'silver','azul'=>'blue'];
+            $cf = null;
+            foreach ($colorMap as $es => $en) {
+                if (stripos($colorSlug, $es) !== false) { $cf = $en . '_side.png'; break; }
+            }
+            $baseDir = __DIR__ . '/../../configurador_prueba/img/' . $slug . '/';
+            $baseUrl = '../configurador_prueba/img/' . $slug . '/';
+            if ($cf && file_exists($baseDir . $cf)) $motoImg = $baseUrl . $cf;
+            elseif (file_exists($baseDir . 'model.png')) $motoImg = $baseUrl . 'model.png';
+        }
+    }
 
     $pref = ['notif_email'=>1,'notif_whatsapp'=>1,'notif_sms'=>1,'idioma'=>'es'];
     try {
@@ -24,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $pref = $stmt->fetch(PDO::FETCH_ASSOC) ?: $pref;
     } catch (Throwable $e) {}
 
-    portalJsonOut(['cliente' => $c, 'moto' => $sub, 'preferencias' => $pref]);
+    portalJsonOut(['cliente' => $c, 'moto' => $sub, 'moto_img' => $motoImg, 'preferencias' => $pref]);
 }
 
 // POST — update allowed fields
