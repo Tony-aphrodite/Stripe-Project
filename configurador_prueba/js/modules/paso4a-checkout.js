@@ -497,6 +497,11 @@ var Paso4A = {
         });
     },
 
+    _fullName: function(state) {
+        var parts = [state.nombre || '', state.apellidoPaterno || '', state.apellidoMaterno || ''];
+        return parts.filter(function(p){ return p; }).join(' ') || state.nombre || '';
+    },
+
     _confirmarOrden: function(customerData, modelo, paymentIntentId, total, msiPago) {
         var self = this;
 
@@ -517,7 +522,7 @@ var Paso4A = {
             data: JSON.stringify({
                 paymentIntentId: paymentIntentId,
                 pagoTipo:  self._pagoTipo,
-                nombre:    customerData.nombre,
+                nombre:    self._fullName(self.app.state) || customerData.nombre,
                 email:     customerData.email,
                 telefono:  customerData.telefono,
                 modelo:    customerData.modelo,
@@ -689,7 +694,7 @@ var Paso4A = {
         var modelo = self.app.getModelo(state.modeloSeleccionado);
         var total = modelo.precioContado; // Contado: freight free
         var base = window.VK_BASE_PATH || '';
-        var nombre = state.nombre || $('#vk-nombre').val() || 'Cliente';
+        var nombre = self._fullName(state) || $('#vk-nombre').val() || 'Cliente';
         var email = state.email || $('#vk-email').val() || '';
 
         $('#vk-contado-spei').prop('disabled', true).css('opacity', '0.6');
@@ -754,7 +759,7 @@ var Paso4A = {
         var modelo = self.app.getModelo(state.modeloSeleccionado);
         var total = modelo.precioContado; // Contado: freight free
         var base = window.VK_BASE_PATH || '';
-        var nombre = state.nombre || $('#vk-nombre').val() || 'Cliente Voltika';
+        var nombre = self._fullName(state) || $('#vk-nombre').val() || 'Cliente Voltika';
         var email = state.email || $('#vk-email').val() || 'cliente@voltika.mx';
 
         $('#vk-contado-oxxo').prop('disabled', true).css('opacity', '0.6');
