@@ -28,7 +28,7 @@ window.AD_ventas = (function(){
         return;
       }
 
-      var html = '<div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
+      var html = '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
         '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Color</th>'+
         '<th>Tipo</th><th>Monto</th><th>Fecha</th><th>Moto asignada</th><th>Accion</th>'+
         '</tr></thead><tbody>';
@@ -55,7 +55,7 @@ window.AD_ventas = (function(){
         html += '</tr>';
       });
 
-      html += '</tbody></table></div>';
+      html += '</tbody></table></div></div>';
       $('#vtTable').html(html);
     }).fail(function(){
       $('#vtTable').html('<div class="ad-card">Error de conexion</div>');

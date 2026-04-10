@@ -127,7 +127,7 @@ window.AD_checklists = (function(){
     '</div>';
 
     // Table
-    html += '<div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
+    html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
       '<th>VIN</th><th>Modelo</th><th>Color</th><th>Estado</th>'+
       '<th>Origen</th><th>Ensamble</th><th>Entrega</th><th></th>'+
     '</tr></thead><tbody>';
@@ -144,12 +144,12 @@ window.AD_checklists = (function(){
         '<td><button class="ad-btn sm primary clOpen" data-id="'+m.id+'">Abrir</button></td>'+
       '</tr>';
     });
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
 
     // Pagination
     if(r.pages>1){
-      html += '<div style="margin-top:10px;display:flex;gap:4px">';
-      for(var p=1;p<=r.pages;p++) html += '<button class="ad-btn sm '+(p===r.page?'primary':'ghost')+' clPage" data-p="'+p+'">'+p+'</button>';
+      html += '<div class="ad-pagination">';
+      for(var p=1;p<=r.pages;p++) html += '<button class="'+(p===r.page?'active':'')+' clPage" data-p="'+p+'">'+p+'</button>';
       html += '</div>';
     }
 

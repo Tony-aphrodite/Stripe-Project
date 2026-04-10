@@ -30,7 +30,7 @@ window.AD_envios = (function(){
       return;
     }
 
-    html += '<div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
+    html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
       '<th>Moto</th><th>VIN</th><th>Pedido</th><th>Destino</th>'+
       '<th>Tracking</th><th>Carrier</th><th>Estado</th>'+
       '<th>Fecha envío</th><th>ETA</th><th>Acciones</th>'+
@@ -60,7 +60,7 @@ window.AD_envios = (function(){
       html += '</td></tr>';
     });
 
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
     ADApp.render(html);
 
     $('#adNewEnvio').on('click', showCrearEnvio);

@@ -23,12 +23,12 @@ window.AD_dashboard = (function(){
     html += '</div>';
     // Quick actions
     html += '<div class="ad-h2">Acciones rápidas</div>';
-    html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-    html += '<button class="ad-btn primary" onclick="ADApp.go(\'ventas\')">🛒 Ventas</button>';
-    html += '<button class="ad-btn ghost" onclick="ADApp.go(\'inventario\')">🏭 Inventario</button>';
-    html += '<button class="ad-btn ghost" onclick="ADApp.go(\'envios\')">🚚 Envíos</button>';
-    html += '<button class="ad-btn ghost" onclick="ADApp.go(\'pagos\')">💳 Pagos</button>';
-    html += '<button class="ad-btn ghost" onclick="ADApp.go(\'puntos\')">📍 Puntos</button>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">';
+    html += '<div class="ad-card" style="cursor:pointer;text-align:center;padding:18px 12px;" onclick="ADApp.go(\'ventas\')"><div style="font-size:26px;margin-bottom:6px">🛒</div><div style="font-weight:700;font-size:13px">Ventas</div></div>';
+    html += '<div class="ad-card" style="cursor:pointer;text-align:center;padding:18px 12px;" onclick="ADApp.go(\'inventario\')"><div style="font-size:26px;margin-bottom:6px">🏭</div><div style="font-weight:700;font-size:13px">Inventario</div></div>';
+    html += '<div class="ad-card" style="cursor:pointer;text-align:center;padding:18px 12px;" onclick="ADApp.go(\'envios\')"><div style="font-size:26px;margin-bottom:6px">🚚</div><div style="font-weight:700;font-size:13px">Envíos</div></div>';
+    html += '<div class="ad-card" style="cursor:pointer;text-align:center;padding:18px 12px;" onclick="ADApp.go(\'pagos\')"><div style="font-size:26px;margin-bottom:6px">💳</div><div style="font-weight:700;font-size:13px">Pagos</div></div>';
+    html += '<div class="ad-card" style="cursor:pointer;text-align:center;padding:18px 12px;" onclick="ADApp.go(\'puntos\')"><div style="font-size:26px;margin-bottom:6px">📍</div><div style="font-weight:700;font-size:13px">Puntos</div></div>';
     html += '</div>';
     ADApp.render(html);
   }

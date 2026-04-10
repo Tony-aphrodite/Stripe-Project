@@ -31,7 +31,7 @@ window.AD_inventario = (function(){
       '<button class="ad-btn sm ghost" id="adFApply">Filtrar</button>'+
     '</div>';
     // Table
-    html += '<table class="ad-table"><thead><tr><th>VIN</th><th>Modelo</th><th>Color</th><th>Estado</th><th>Punto</th><th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
+    html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>VIN</th><th>Modelo</th><th>Color</th><th>Estado</th><th>Punto</th><th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
     (r.motos||[]).forEach(function(m){
       html += '<tr>'+
         '<td>'+( m.vin_display||m.vin||'—')+'</td>'+
@@ -43,11 +43,11 @@ window.AD_inventario = (function(){
         '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
       '</tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     // Pagination
     if(r.pages>1){
-      html += '<div style="margin-top:10px;display:flex;gap:4px">';
-      for(var p=1;p<=r.pages;p++) html += '<button class="ad-btn sm '+(p===r.page?'primary':'ghost')+' adPage" data-p="'+p+'">'+p+'</button>';
+      html += '<div class="ad-pagination">';
+      for(var p=1;p<=r.pages;p++) html += '<button class="'+(p===r.page?'active':'')+' adPage" data-p="'+p+'">'+p+'</button>';
       html += '</div>';
     }
     ADApp.render(html);
