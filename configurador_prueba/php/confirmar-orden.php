@@ -166,20 +166,36 @@ try {
         VALUES
             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
+    // Defensive defaults — pass '' / 0 instead of NULL for optional columns.
+    // If the production schema still has legacy NOT NULL constraints (the
+    // ensureTransaccionesColumns() MODIFY above should fix them, but we
+    // double-protect here) the INSERT still succeeds.
     $stmt->execute([
-        $nombre, $email, $telefono, $modelo, $color,
-        $ciudad, $estado, $cp, $pagoTipo,
+        $nombre ?: '',
+        $email ?: '',
+        $telefono ?: '',
+        $modelo ?: '',
+        $color ?: '',
+        $ciudad ?: '',
+        $estado ?: '',
+        $cp ?: '',
+        $pagoTipo ?: 'unico',
         $pagoTipo === 'msi' ? $msiPago : $total,
-        $total, $fecha, $pedidoNum, $paymentIntentId,
-        $asesoriaPlacasInt, $seguroQualitasInt,
-        $puntoId ?: null, $puntoNombre ?: null,
-        $pagoTipo === 'msi' ? $msiMeses : null,
-        $pagoTipo === 'msi' ? $msiPago  : null,
-        $codigoReferido ?: null,
-        $referidoId,
-        $referidoTipo ?: null,
-        $caso,
-        $folioContrato ?: null,
+        $total,
+        $fecha,
+        $pedidoNum,
+        $paymentIntentId ?: '',
+        $asesoriaPlacasInt,
+        $seguroQualitasInt,
+        $puntoId ?: '',
+        $puntoNombre ?: '',
+        $pagoTipo === 'msi' ? $msiMeses : 0,
+        $pagoTipo === 'msi' ? $msiPago  : 0,
+        $codigoReferido ?: '',
+        $referidoId ?: 0,
+        $referidoTipo ?: '',
+        $caso ?: 1,
+        $folioContrato ?: '',
     ]);
     $dbSaveOk = true;
     // ── Auto-crear registro en inventario_motos para el dealer panel ────────
@@ -570,5 +586,46 @@ function ensureTransaccionesColumns(PDO $pdo): void {
         }
     } catch (PDOException $e) {
         error_log('ensureTransaccionesColumns: ' . $e->getMessage());
+    }
+
+    // ── Fix legacy NOT NULL constraints on optional columns ────────────────
+    // Without this, any INSERT that passes NULL (e.g. an order with no
+    // referido code) hits SQLSTATE[23000] 1048 and lands in transacciones_errores.
+    // Observed in production screenshot: 17 orphan orders caused by
+    // "Column 'referido' cannot be null".
+    $nullableFixes = [
+        'referido'       => "MODIFY COLUMN referido       VARCHAR(40)   NULL DEFAULT NULL",
+        'referido_id'    => "MODIFY COLUMN referido_id    INT           NULL DEFAULT NULL",
+        'referido_tipo'  => "MODIFY COLUMN referido_tipo  VARCHAR(20)   NULL DEFAULT NULL",
+        'punto_id'       => "MODIFY COLUMN punto_id       VARCHAR(80)   NULL DEFAULT NULL",
+        'punto_nombre'   => "MODIFY COLUMN punto_nombre   VARCHAR(200)  NULL DEFAULT NULL",
+        'msi_meses'      => "MODIFY COLUMN msi_meses      INT           NULL DEFAULT NULL",
+        'msi_pago'       => "MODIFY COLUMN msi_pago       DECIMAL(12,2) NULL DEFAULT NULL",
+        'caso'           => "MODIFY COLUMN caso           TINYINT       NULL DEFAULT NULL",
+        'folio_contrato' => "MODIFY COLUMN folio_contrato VARCHAR(40)   NULL DEFAULT NULL",
+        'ciudad'         => "MODIFY COLUMN ciudad         VARCHAR(100)  NULL DEFAULT NULL",
+        'estado'         => "MODIFY COLUMN estado         VARCHAR(100)  NULL DEFAULT NULL",
+        'cp'              => "MODIFY COLUMN cp              VARCHAR(10)   NULL DEFAULT NULL",
+    ];
+    try {
+        $meta = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_ASSOC);
+        $notNullCols = [];
+        foreach ($meta as $c) {
+            if (($c['Null'] ?? 'YES') === 'NO') {
+                $notNullCols[$c['Field']] = true;
+            }
+        }
+        foreach ($nullableFixes as $name => $alter) {
+            if (isset($notNullCols[$name])) {
+                try {
+                    $pdo->exec("ALTER TABLE transacciones " . $alter);
+                    error_log("ensureTransaccionesColumns: relaxed NOT NULL on {$name}");
+                } catch (PDOException $e) {
+                    error_log('ensureTransaccionesColumns MODIFY(' . $name . '): ' . $e->getMessage());
+                }
+            }
+        }
+    } catch (PDOException $e) {
+        error_log('ensureTransaccionesColumns nullable scan: ' . $e->getMessage());
     }
 }

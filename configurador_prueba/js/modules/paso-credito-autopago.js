@@ -219,15 +219,34 @@ var PasoCreditoAutopago = {
         self._setLoading(true);
         jQuery('#vk-autopago-error').hide();
 
+        // Collect product context so the `subscripciones_credito` row isn't
+        // created with sparse data (the dashboard was showing orphans with
+        // modelo/color = "-" because this call previously only sent the
+        // customer identity).
+        var _modelo = self.app.getModelo(state.modeloSeleccionado) || {};
+        var _weekly = 0;
+        try {
+            _weekly = VkCalculadora.calcular(
+                _modelo.precioContado,
+                state.enganchePorcentaje || 0.30,
+                state.plazoMeses || 36
+            ).pagoSemanal;
+        } catch (err) { /* noop */ }
+
         // Step 1: Create SetupIntent on backend
         jQuery.ajax({
             url: (window.VK_BASE_PATH || '') + self.SETUP_INTENT_URL,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
-                nombre:   state.nombre,
-                email:    state.email,
-                telefono: state.telefono
+                nombre:        state.nombre,
+                email:         state.email,
+                telefono:      state.telefono,
+                modelo:        _modelo.nombre || state.modeloSeleccionado || '',
+                color:         state.colorSeleccionado || _modelo.colorDefault || '',
+                precioContado: _modelo.precioContado || 0,
+                plazoMeses:    state.plazoMeses || 36,
+                montoSemanal:  _weekly
             }),
             success: function(response) {
                 if (!response || !response.clientSecret) {

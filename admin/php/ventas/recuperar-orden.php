@@ -148,18 +148,60 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS transacciones (
     INDEX idx_stripe_pi (stripe_pi), INDEX idx_pedido (pedido), INDEX idx_folio (folio_contrato)
 )");
 
+// Ensure the schema has relaxed NULL constraints before INSERTing.
+// Duplicates the logic from ensureTransaccionesColumns() so the admin panel
+// doesn't depend on the client endpoint being called first.
+$nullableFixes = [
+    'referido'       => "VARCHAR(40)",
+    'referido_id'    => "INT",
+    'referido_tipo'  => "VARCHAR(20)",
+    'punto_id'       => "VARCHAR(80)",
+    'punto_nombre'   => "VARCHAR(200)",
+    'msi_meses'      => "INT",
+    'msi_pago'       => "DECIMAL(12,2)",
+    'caso'           => "TINYINT",
+    'folio_contrato' => "VARCHAR(40)",
+    'ciudad'         => "VARCHAR(100)",
+    'estado'         => "VARCHAR(100)",
+    'cp'             => "VARCHAR(10)",
+];
 try {
+    $meta = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($meta as $c) {
+        $name = $c['Field'] ?? '';
+        if (isset($nullableFixes[$name]) && ($c['Null'] ?? 'YES') === 'NO') {
+            try {
+                $pdo->exec("ALTER TABLE transacciones MODIFY COLUMN `{$name}` {$nullableFixes[$name]} NULL DEFAULT NULL");
+            } catch (Throwable $e) { /* noop */ }
+        }
+    }
+} catch (Throwable $e) { /* noop */ }
+
+try {
+    // Full INSERT including every column that could have a NOT NULL default
+    // to guarantee success regardless of legacy schema state.
     $ins = $pdo->prepare("
         INSERT INTO transacciones
             (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago,
-             precio, total, freg, pedido, stripe_pi, folio_contrato)
+             precio, total, freg, pedido, stripe_pi,
+             asesoria_placas, seguro_qualitas,
+             punto_id, punto_nombre,
+             msi_meses, msi_pago,
+             referido, referido_id, referido_tipo, caso,
+             folio_contrato)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?,
+             ?, ?, NOW(), ?, ?,
+             0, 0,
+             '', '',
+             0, 0,
+             '', 0, '', 1,
+             ?)
     ");
     $ins->execute([
-        $nombre, $email, $telefono, $modelo, $color,
-        $ciudad, $estadoCli, $cp, $tpago,
-        $total, $total, $pedidoNum, $stripePi, $folio,
+        $nombre ?: '', $email ?: '', $telefono ?: '', $modelo ?: '', $color ?: '',
+        $ciudad ?: '', $estadoCli ?: '', $cp ?: '', $tpago ?: 'enganche',
+        $total, $total, $pedidoNum, $stripePi ?: '', $folio ?: '',
     ]);
     $newId = $pdo->lastInsertId();
 } catch (Throwable $e) {
