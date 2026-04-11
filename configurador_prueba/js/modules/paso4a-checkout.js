@@ -514,6 +514,7 @@ var Paso4A = {
         self.app.state._pagoTipo = self._pagoTipo;
 
         var centro = self.app.state.centroEntrega || {};
+        var refData = self.app.state.referidoData || null;
 
         $.ajax({
             url: self.ORDER_CONFIRM_URL,
@@ -537,7 +538,10 @@ var Paso4A = {
                 seguroQualitas: self.app.state.seguro || false,
                 punto_id:      centro.id || '',
                 punto_nombre:  centro.nombre || '',
-                punto_tipo:    centro.tipo || ''
+                punto_tipo:    centro.tipo || '',
+                codigo_referido: self.app.state.codigoReferido || '',
+                referido_id:     refData ? refData.id : null,
+                referido_tipo:   refData ? refData.tipo : ''
             }),
             complete: function() {
                 self._setLoading(false);

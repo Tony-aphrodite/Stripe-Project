@@ -56,8 +56,8 @@ function voltikaNotifyTemplates(): array {
         ],
         'lista_para_recoger' => [
             'subject' => '✅ Tu Voltika está lista para entrega',
-            'body'    => "¡Hola {nombre}! 🎉\n\nTu moto {modelo} ya está en {punto} y lista para entrega.\nAcércate al punto con tu INE. Te enviaremos un código OTP por SMS para validar tu identidad al momento de recogerla.\n\nDirección: {direccion}\nHorario: {horario}",
-            'sms'     => 'Voltika: Tu moto ya esta lista en {punto}! Ven con tu INE. Recibiras un OTP al recogerla.',
+            'body'    => "¡Hola {nombre}! 🎉\n\nTu moto {modelo} ya está lista en {punto}.\n\n📅 Fecha de recolección: {fecha_entrega}\n📍 Dirección: {direccion}\n🕐 Horario: {horario}\n\nAcércate con tu INE el día de recolección. Al llegar recibirás un código OTP por SMS para validar tu identidad.",
+            'sms'     => 'Voltika: Tu moto esta lista en {punto}. Recogela el {fecha_entrega}. Lleva tu INE. Recibiras un OTP al recogerla.',
         ],
         'otp_entrega' => [
             'subject' => '🔐 Código de entrega Voltika',

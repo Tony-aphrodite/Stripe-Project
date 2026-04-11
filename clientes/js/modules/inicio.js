@@ -56,7 +56,7 @@ window.VK_inicio = (function(){
     // ── Header ──
     html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">';
     html += '<div style="display:flex;align-items:center;gap:8px"><img src="../configurador_prueba/img/favicon.svg" style="width:28px;height:28px"> <span style="font-size:18px;font-weight:800;color:#333">voltika</span></div>';
-    html += '<div style="display:flex;gap:12px"><span style="font-size:18px;cursor:pointer">&#128276;</span><span style="font-size:18px;cursor:pointer">&#128100;</span></div>';
+    html += '<div style="display:flex;gap:12px"><span style="font-size:18px;cursor:pointer" onclick="VKApp.go(\'notificaciones\')" title="Notificaciones">&#128276;</span><span style="font-size:18px;cursor:pointer" onclick="VKApp.go(\'cuenta\')" title="Mi cuenta">&#128100;</span></div>';
     html += '</div>';
 
     html += '<div class="vk-h1" style="margin-bottom:2px">¡Hola, '+nombre+'! &#128075;</div>';
@@ -88,6 +88,7 @@ window.VK_inicio = (function(){
       html += '<div style="font-weight:700;color:#333;margin-bottom:2px">Punto de entrega</div>';
       html += '<div style="font-weight:800;font-size:15px;color:#333">'+(punto.nombre||'Voltika')+'</div>';
       if(punto.direccion) html += '<div style="font-size:13px;color:#555">'+punto.direccion+'</div>';
+      if(entrega.fecha_recoleccion) html += '<div style="font-size:13px;color:#2563eb;margin-top:4px;font-weight:700">📅 Recógela el '+formatFechaES(entrega.fecha_recoleccion)+'</div>';
       if(punto.horario) html += '<div style="font-size:13px;color:#22c55e;margin-top:4px">Horario: '+punto.horario+'</div>';
       html += '<button class="vk-btn-outline" style="margin-top:10px" onclick="if(window.punto_dir){window.open(\'https://maps.google.com/?q=\'+encodeURIComponent(window.punto_dir))}">VER UBICACION &rarr;</button>';
       html += '</div>';
@@ -109,9 +110,17 @@ window.VK_inicio = (function(){
 
     } else {
       // BLUE card — preparation / in transit
+      var envio = entrega.envio || {};
+      var etaArrival = envio.fecha_estimada_llegada ? formatFechaES(envio.fecha_estimada_llegada) : '';
+      var enTransito = !!envio.fecha_envio && !envio.fecha_recepcion;
       html += '<div class="vk-delivery-card vk-delivery-prep">';
-      html += '<div class="vk-delivery-title">Tu VOLTIKA esta en preparacion &#128640;</div>';
-      html += '<div class="vk-delivery-sub">Estamos asignando tu punto de entrega y fecha estimada.</div>';
+      if (enTransito) {
+        html += '<div class="vk-delivery-title">Tu VOLTIKA va en camino &#128666;</div>';
+        html += '<div class="vk-delivery-sub">'+ (etaArrival ? 'Llegada estimada al punto: '+etaArrival : 'En tránsito hacia tu punto.') +'</div>';
+      } else {
+        html += '<div class="vk-delivery-title">Tu VOLTIKA esta en preparacion &#128640;</div>';
+        html += '<div class="vk-delivery-sub">Estamos asignando tu punto de entrega y fecha estimada.</div>';
+      }
 
       // Moto image + checklist
       var modelSlug2 = (compra.modelo||'').toLowerCase().replace(/\s+/g,'_');
@@ -196,7 +205,10 @@ window.VK_inicio = (function(){
     VKApp.render(
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
         '<div><div class="vk-muted">Bienvenido</div><div class="vk-h1">¡Hola, '+nombre+'!</div></div>'+
-        pill(e.state||'no_subscription')+
+        '<div style="display:flex;align-items:center;gap:10px">'+
+          '<span style="font-size:20px;cursor:pointer" onclick="VKApp.go(\'notificaciones\')" title="Notificaciones">&#128276;</span>'+
+          pill(e.state||'no_subscription')+
+        '</div>'+
       '</div>'+
 
       // --- Main payment card (dark blue) ---

@@ -81,10 +81,59 @@ window.PV_entrega = (function(){
           entrega_id: ctx.entrega_id, moto_id: ctx.moto_id,
           foto_cliente: files.pvFCliente, foto_ine: files.pvFIne
         }).done(function(r){
-          if(r.ok){ PVApp.toast('Face score: '+r.face_score); step4(); }
+          if(!r.ok) return;
+          handleFaceResult(r);
         }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); $b.prop('disabled',false).text('Verificar rostro'); });
       });
     });
+  }
+  // Decide how to proceed after the face-check endpoint responds.
+  // CREDITO purchases: hard-block on no_match, offer manual override if no original selfie on file.
+  // MSI / CONTADO: there is no comparison — just advance.
+  function handleFaceResult(r){
+    if (!r.es_credito) {
+      PVApp.toast(r.message || 'Fotos guardadas');
+      step4();
+      return;
+    }
+    // CREDITO — match confirmed by Truora
+    if (r.match === true) {
+      PVApp.toast('✅ Rostro coincide con el crédito'+(r.face_score!=null?' ('+r.face_score+'%)':''));
+      step4();
+      return;
+    }
+    // CREDITO — faces do NOT match → cannot deliver
+    if (r.match === false) {
+      PVApp.modal(
+        '<div class="ad-h2" style="color:var(--ad-err)">⛔ No se puede entregar</div>'+
+        '<div class="ad-card" style="color:var(--ad-err)">'+
+          '<strong>Las caras NO coinciden</strong> con la persona que realizó el crédito'+
+          (r.face_score!=null?' (similitud '+r.face_score+'%)':'')+'.<br><br>'+
+          'La entrega a crédito <strong>solo puede hacerse al titular</strong>. '+
+          'Solicita al cliente que se presente el titular del crédito, o escala a soporte para verificación manual.'+
+        '</div>'+
+        '<button id="pvFaceRetry" class="ad-btn ghost" style="width:100%;margin-top:10px">Reintentar con otra foto</button>'+
+        '<button id="pvFaceAbort" class="ad-btn" style="width:100%;margin-top:6px">Cancelar entrega</button>'
+      );
+      $('#pvFaceRetry').on('click', step3);
+      $('#pvFaceAbort').on('click', function(){ PVApp.closeModal(); render(); });
+      return;
+    }
+    // CREDITO — manual review path (no original selfie on file or Truora unavailable)
+    PVApp.modal(
+      '<div class="ad-h2" style="color:var(--ad-warn)">⚠️ Verificación manual requerida</div>'+
+      '<div class="ad-card">'+
+        (r.message || 'No se pudo comparar automáticamente con la selfie del crédito.')+'<br><br>'+
+        '<strong>Compara visualmente</strong> la foto tomada hoy contra la identificación (INE). '+
+        'Si estás seguro de que es el mismo titular del crédito, puedes continuar bajo tu responsabilidad.'+
+      '</div>'+
+      '<label class="pv-check"><input type="checkbox" id="pvFaceConfirm"> Confirmo que la persona presente es el titular del crédito</label>'+
+      '<button id="pvFaceManualOk" class="ad-btn primary" style="width:100%;margin-top:10px" disabled>Continuar con la entrega</button>'+
+      '<button id="pvFaceManualCancel" class="ad-btn ghost" style="width:100%;margin-top:6px">Cancelar</button>'
+    );
+    $('#pvFaceConfirm').on('change', function(){ $('#pvFaceManualOk').prop('disabled', !this.checked); });
+    $('#pvFaceManualOk').on('click', step4);
+    $('#pvFaceManualCancel').on('click', function(){ PVApp.closeModal(); render(); });
   }
   // Step 4: Moto checklist + photos
   function step4(){

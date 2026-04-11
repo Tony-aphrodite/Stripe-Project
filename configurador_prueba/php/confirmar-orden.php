@@ -48,6 +48,22 @@ $seguroQualitasInt = !empty($json['seguroQualitas']) ? 1 : 0;
 $puntoId     = trim($json['punto_id']     ?? '');
 $puntoNombre = trim($json['punto_nombre'] ?? '');
 $puntoTipo   = trim($json['punto_tipo']   ?? '');
+// CODIGO REFERIDO (validated in paso2-color.js via validar-referido.php)
+$codigoReferido = strtoupper(trim($json['codigo_referido'] ?? ''));
+$referidoId     = isset($json['referido_id']) && $json['referido_id'] !== null ? intval($json['referido_id']) : null;
+$referidoTipo   = trim($json['referido_tipo'] ?? ''); // 'referido' | 'punto' | ''
+
+// ─ Purchase case number per dashboards_diagrams.pdf ─────────────────────────
+//   CASE 1 — no referido code, no point selected by user
+//   CASE 2 — no referido code, user picked a point in the configurador
+//   CASE 3 — referido code present (influencer or point), general sale (online)
+//   CASE 4 — sale from a point's showroom inventory (handled by puntosvoltika/php/asignar/referido.php)
+$caso = 1;
+if ($codigoReferido !== '') {
+    $caso = 3;
+} elseif ($puntoId !== '' && $puntoId !== 'centro-cercano') {
+    $caso = 2;
+}
 
 $pedidoNum = time();
 $fecha     = date('Y-m-d H:i');
@@ -77,7 +93,11 @@ try {
         punto_id        VARCHAR(80)  NULL,
         punto_nombre    VARCHAR(200) NULL,
         msi_meses       INT          NULL,
-        msi_pago        DECIMAL(12,2) NULL
+        msi_pago        DECIMAL(12,2) NULL,
+        referido        VARCHAR(40)  NULL,
+        referido_id     INT          NULL,
+        referido_tipo   VARCHAR(20)  NULL,
+        caso            TINYINT      NULL
     )");
     // Backfill columns on pre-existing tables
     ensureTransaccionesColumns($pdo);
@@ -87,9 +107,9 @@ try {
             (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago,
              precio, total, freg, pedido, stripe_pi,
              asesoria_placas, seguro_qualitas, punto_id, punto_nombre,
-             msi_meses, msi_pago)
+             msi_meses, msi_pago, referido, referido_id, referido_tipo, caso)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $nombre, $email, $telefono, $modelo, $color,
@@ -100,6 +120,10 @@ try {
         $puntoId ?: null, $puntoNombre ?: null,
         $pagoTipo === 'msi' ? $msiMeses : null,
         $pagoTipo === 'msi' ? $msiPago  : null,
+        $codigoReferido ?: null,
+        $referidoId,
+        $referidoTipo ?: null,
+        $caso,
     ]);
     // ── Auto-crear registro en inventario_motos para el dealer panel ────────
     $vinAuto = 'VK-' . strtoupper(substr($modelo, 0, 3)) . '-' . $pedidoNum;
@@ -143,6 +167,19 @@ try {
         ]);
     } catch (PDOException $e) {
         error_log('Voltika inventario_motos auto-insert error: ' . $e->getMessage());
+    }
+
+    // Bump referido counter if a valid referido_id was provided (tipo='referido')
+    if ($referidoId && $referidoTipo === 'referido') {
+        try {
+            $pdo->prepare("
+                UPDATE referidos
+                SET ventas_count = ventas_count + 1
+                WHERE id = ? AND activo = 1
+            ")->execute([$referidoId]);
+        } catch (PDOException $e) {
+            error_log('Voltika referidos counter error: ' . $e->getMessage());
+        }
     }
 
 } catch (PDOException $e) {
@@ -412,6 +449,10 @@ function ensureTransaccionesColumns(PDO $pdo): void {
         'punto_nombre'    => "ADD COLUMN punto_nombre    VARCHAR(200)  NULL AFTER punto_id",
         'msi_meses'       => "ADD COLUMN msi_meses       INT           NULL AFTER punto_nombre",
         'msi_pago'        => "ADD COLUMN msi_pago        DECIMAL(12,2) NULL AFTER msi_meses",
+        'referido'        => "ADD COLUMN referido        VARCHAR(40)   NULL AFTER msi_pago",
+        'referido_id'     => "ADD COLUMN referido_id     INT           NULL AFTER referido",
+        'referido_tipo'   => "ADD COLUMN referido_tipo   VARCHAR(20)   NULL AFTER referido_id",
+        'caso'            => "ADD COLUMN caso            TINYINT       NULL AFTER referido_tipo",
     ];
     try {
         $existing = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);

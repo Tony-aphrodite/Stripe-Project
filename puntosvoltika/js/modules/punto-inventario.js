@@ -16,7 +16,18 @@ window.PV_inventario = (function(){
       html += bikeCard(m, 'venta');
     });
     PVApp.render(html);
-    $('.pv-bike-card').on('click', function(){ showDetalle($(this).data('id')); });
+
+    $('.pv-bike-card').on('click', function(e){
+      if ($(e.target).closest('.pv-estado-btn').length) return;
+      showDetalle($(this).data('id'));
+    });
+    $('.pv-estado-btn').on('click', function(e){
+      e.stopPropagation();
+      var id = $(this).data('id');
+      var action = $(this).data('action');
+      if (action === 'ensamble')  iniciarEnsamble(id);
+      if (action === 'lista')     marcarLista(id);
+    });
   }
   function bikeCard(m, tipo){
     var h = '<div class="pv-bike-card" data-id="'+m.id+'" style="cursor:pointer">';
@@ -27,9 +38,77 @@ window.PV_inventario = (function(){
       h += '<div style="font-size:12px">Cliente: <strong>'+m.cliente_nombre+'</strong></div>';
       h += '<div style="font-size:11px;color:var(--ad-dim)">'+(m.cliente_telefono||'')+'</div>';
     }
-    h += '<div style="font-size:11px;margin-top:4px"><span class="ad-badge '+(m.estado==='entregada'?'green':'blue')+'">'+m.estado+'</span></div>';
+    var badgeColor = 'blue';
+    if (m.estado === 'lista_para_entrega') badgeColor = 'green';
+    else if (m.estado === 'en_ensamble')   badgeColor = 'yellow';
+    else if (m.estado === 'entregada')     badgeColor = 'green';
+    h += '<div style="font-size:11px;margin-top:4px"><span class="ad-badge '+badgeColor+'">'+m.estado+'</span>';
+    if (m.estado === 'lista_para_entrega' && m.fecha_entrega_estimada) {
+      h += ' <span style="font-size:11px;color:var(--ad-dim)">· recolección: '+m.fecha_entrega_estimada+'</span>';
+    }
+    h += '</div>';
+
+    // State-transition action buttons (diagram: reception → assembly → lista_para_entrega)
+    if (tipo === 'entrega') {
+      if (m.estado === 'recibida') {
+        h += '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">';
+        h += '<button class="ad-btn ghost sm pv-estado-btn" data-id="'+m.id+'" data-action="ensamble">🔧 Iniciar ensamble</button>';
+        h += '<button class="ad-btn primary sm pv-estado-btn" data-id="'+m.id+'" data-action="lista">✅ Marcar lista para entrega</button>';
+        h += '</div>';
+      } else if (m.estado === 'en_ensamble') {
+        h += '<div style="margin-top:8px">';
+        h += '<button class="ad-btn primary sm pv-estado-btn" data-id="'+m.id+'" data-action="lista">✅ Marcar lista para entrega</button>';
+        h += '</div>';
+      }
+    }
+
     h += '</div></div>';
     return h;
+  }
+  function iniciarEnsamble(motoId){
+    if (!motoId) return;
+    if (!confirm('¿Iniciar ensamble de esta moto?')) return;
+    PVApp.api('inventario/cambiar-estado.php', {
+      moto_id: motoId,
+      nuevo_estado: 'en_ensamble'
+    }).done(function(r){
+      if (r.ok) { PVApp.toast('🔧 Moto en ensamble'); render(); }
+    }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
+  }
+  function marcarLista(motoId){
+    if (!motoId) return;
+    // Default pickup date: today + 2 days
+    var d = new Date(); d.setDate(d.getDate() + 2);
+    var dflt = d.toISOString().slice(0,10);
+    var minDate = new Date().toISOString().slice(0,10);
+    PVApp.modal(
+      '<div class="ad-h2">✅ Lista para entrega</div>'+
+      '<div style="color:var(--ad-dim);font-size:13px;margin-bottom:12px">'+
+        'Selecciona la fecha estimada en la que el cliente puede recoger su moto. '+
+        'Le enviaremos un SMS con esta fecha.'+
+      '</div>'+
+      '<label class="ad-label">Fecha de recolección</label>'+
+      '<input id="pvLFecha" type="date" class="ad-input" value="'+dflt+'" min="'+minDate+'" style="margin-bottom:10px">'+
+      '<label class="ad-label">Notas (opcional)</label>'+
+      '<textarea id="pvLNotas" class="ad-input" placeholder="Ej. ensamble sin incidencias"></textarea>'+
+      '<button id="pvLSave" class="ad-btn primary" style="width:100%;margin-top:14px">Confirmar y notificar al cliente</button>'
+    );
+    $('#pvLSave').on('click', function(){
+      var fecha = $('#pvLFecha').val();
+      if (!fecha) { alert('Selecciona una fecha'); return; }
+      PVApp.api('inventario/cambiar-estado.php', {
+        moto_id: motoId,
+        nuevo_estado: 'lista_para_entrega',
+        fecha_entrega_estimada: fecha,
+        notas: $('#pvLNotas').val()
+      }).done(function(r){
+        if (r.ok) {
+          PVApp.closeModal();
+          PVApp.toast('✅ Cliente notificado · recolección: '+fecha);
+          render();
+        }
+      }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
+    });
   }
   function showDetalle(motoId){
     if(!motoId) return;
@@ -40,7 +119,7 @@ window.PV_inventario = (function(){
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
       [['VIN',m.vin_display||m.vin||'—'],['Estado',m.estado||'—'],['Pago',m.pago_estado||'—'],
        ['Cliente',m.cliente_nombre||'—'],['Email',m.cliente_email||'—'],['Teléfono',m.cliente_telefono||'—'],
-       ['Pedido',m.pedido_num||'—']].forEach(function(p){
+       ['Pedido',m.pedido_num||'—'],['Fecha recolección',m.fecha_entrega_estimada||'—']].forEach(function(p){
         html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
       });
       html += '</div>';

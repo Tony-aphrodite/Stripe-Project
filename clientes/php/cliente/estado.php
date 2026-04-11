@@ -134,7 +134,32 @@ if (!$sub || $info['state'] === 'no_subscription') {
                 'direccion' => null,
                 'horario'   => null,
             ],
+            // Pickup date the point sets when marking lista_para_entrega
+            'fecha_recoleccion' => $moto['fecha_entrega_estimada'] ?? null,
+            // Skydrop shipment tracking (populated below)
+            'envio'     => null,
         ];
+
+        // Pull the latest envio row for this moto — this is where Skydrop's
+        // `fecha_estimada_llegada` lives. Clients want to see when the moto
+        // will arrive at the punto even before it's been received.
+        try {
+            $eStmt = $pdo->prepare("SELECT fecha_envio, fecha_estimada_llegada, fecha_recepcion,
+                    tracking_number, carrier, estado
+                FROM envios WHERE moto_id = ? ORDER BY id DESC LIMIT 1");
+            $eStmt->execute([(int)$moto['id']]);
+            $env = $eStmt->fetch(PDO::FETCH_ASSOC);
+            if ($env) {
+                $entrega['envio'] = [
+                    'estado'                 => $env['estado'] ?? null,
+                    'fecha_envio'            => $env['fecha_envio'] ?? null,
+                    'fecha_estimada_llegada' => $env['fecha_estimada_llegada'] ?? null,
+                    'fecha_recepcion'        => $env['fecha_recepcion'] ?? null,
+                    'tracking_number'        => $env['tracking_number'] ?? null,
+                    'carrier'                => $env['carrier'] ?? null,
+                ];
+            }
+        } catch (Throwable $e) { error_log('estado envios: ' . $e->getMessage()); }
 
         // Try to get punto details from puntos_voltika
         if (!empty($moto['punto_voltika_id'])) {

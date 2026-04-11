@@ -88,6 +88,7 @@ var Paso2 = {
         html += '<input type="text" id="vk-referido-input" class="vk-form-input" placeholder="C\u00f3digo de referido" ' +
             'value="' + (state.codigoReferido || '') + '" ' +
             'style="font-size:15px;padding:12px 14px;text-transform:uppercase;margin-top:6px;">';
+        html += '<div id="vk-referido-feedback" style="font-size:13px;margin-top:6px;min-height:18px;"></div>';
         html += '</div>';
         html += '</div>';
 
@@ -181,15 +182,81 @@ var Paso2 = {
         // Credit flux: calculator already done before color selection
         jQuery(document).off('click', '#vk-paso2-continuar');
         jQuery(document).on('click', '#vk-paso2-continuar', function() {
-            var referido = jQuery('#vk-referido-input').val().trim();
-            if (referido) self.app.state.codigoReferido = referido;
-            self.app.irAPaso(3);
+            var referido = (jQuery('#vk-referido-input').val() || '').trim().toUpperCase();
+            if (!referido) {
+                // Clear any previous referido state and advance
+                self.app.state.codigoReferido = '';
+                self.app.state.referidoData = null;
+                self.app.irAPaso(3);
+                return;
+            }
+            // Validate before advancing — block on invalid code
+            self._validarReferido(referido, function(data) {
+                if (data && data.ok) {
+                    self.app.state.codigoReferido = referido;
+                    self.app.state.referidoData = data;
+                    self.app.irAPaso(3);
+                } else {
+                    self._setReferidoFeedback('error', (data && data.error) || 'Código no válido');
+                    jQuery('#vk-referido-field').slideDown(0);
+                    jQuery('#vk-referido-input').focus().css('border-color', '#D32F2F');
+                    setTimeout(function(){ jQuery('#vk-referido-input').css('border-color',''); }, 3000);
+                }
+            });
         });
 
         // Referido toggle (credit flow)
         jQuery(document).off('click', '#vk-referido-toggle');
         jQuery(document).on('click', '#vk-referido-toggle', function() {
             jQuery('#vk-referido-field').slideToggle(200);
+        });
+
+        // Referido input — debounced validation on typing + uppercase
+        jQuery(document).off('input', '#vk-referido-input').off('blur', '#vk-referido-input');
+        var debounceTimer = null;
+        jQuery(document).on('input', '#vk-referido-input', function() {
+            var $el = jQuery(this);
+            var val = ($el.val() || '').toUpperCase();
+            $el.val(val);
+            self._setReferidoFeedback('idle', '');
+            if (debounceTimer) clearTimeout(debounceTimer);
+            if (val.length < 3) return;
+            debounceTimer = setTimeout(function() {
+                self._validarReferido(val, function(data) {
+                    if (data && data.ok) {
+                        var label = data.tipo === 'punto'
+                            ? 'Código válido · Punto: ' + data.nombre
+                            : 'Código válido · Referido: ' + data.nombre;
+                        self._setReferidoFeedback('ok', label);
+                        self.app.state.referidoData = data;
+                        self.app.state.codigoReferido = val;
+                    } else {
+                        self._setReferidoFeedback('error', (data && data.error) || 'Código no válido');
+                        self.app.state.referidoData = null;
+                    }
+                });
+            }, 450);
+        });
+    },
+
+    _setReferidoFeedback: function(kind, msg) {
+        var $fb = jQuery('#vk-referido-feedback');
+        if (!$fb.length) return;
+        if (!msg) { $fb.text('').css('color',''); return; }
+        var color = kind === 'ok' ? '#2e7d32' : (kind === 'error' ? '#C62828' : '#777');
+        var prefix = kind === 'ok' ? '\u2713 ' : (kind === 'error' ? '\u26A0 ' : '');
+        $fb.text(prefix + msg).css('color', color);
+    },
+
+    _validarReferido: function(codigo, cb) {
+        var basePath = window.VK_BASE_PATH || '';
+        jQuery.ajax({
+            url: basePath + 'php/validar-referido.php',
+            data: { codigo: codigo },
+            dataType: 'json',
+            timeout: 8000,
+            success: function(data) { cb(data || {ok:false}); },
+            error:   function()     { cb({ok:false, error:'Error de red'}); }
         });
     }
 };

@@ -49,6 +49,16 @@ try {
         $checklist = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     } catch (Throwable $e) {}
 
+    // Skydrop shipment tracking — latest envio row carries the ETA
+    $envio = null;
+    try {
+        $stmt = $pdo->prepare("SELECT estado, fecha_envio, fecha_estimada_llegada, fecha_recepcion,
+                tracking_number, carrier
+            FROM envios WHERE moto_id = ? ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$moto['id']]);
+        $envio = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $e) {}
+
     // Resumen de estado para UI
     $estadoUi = 'pendiente';
     if ($moto['estado'] === 'entregada') $estadoUi = 'entregada';
@@ -79,6 +89,15 @@ try {
             ],
             'otp_activo'    => $otp,
             'checklist'     => $checklist,
+            'fecha_recoleccion' => $moto['fecha_entrega_estimada'] ?? null,
+            'envio'         => $envio ? [
+                'estado'                 => $envio['estado'],
+                'fecha_envio'            => $envio['fecha_envio'],
+                'fecha_estimada_llegada' => $envio['fecha_estimada_llegada'],
+                'fecha_recepcion'        => $envio['fecha_recepcion'],
+                'tracking_number'        => $envio['tracking_number'],
+                'carrier'                => $envio['carrier'],
+            ] : null,
         ],
     ]);
 } catch (Throwable $e) {
