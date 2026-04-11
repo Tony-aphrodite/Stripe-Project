@@ -73,6 +73,30 @@ try {
         ]);
     } catch (Throwable $e) { error_log('notify acta_firmada: ' . $e->getMessage()); }
 
+    // Per dashboards_diagrams.pdf (Delivery process, step 6): notify the Point
+    // Panel so the dealer that owns this moto sees the ACTA was signed and can
+    // finalize the delivery. We persist a row in notificaciones_log targeted at
+    // the punto so the Point Panel can surface it (polling by destino).
+    try {
+        $punto = null;
+        if (!empty($moto['punto_voltika_id'])) {
+            $pq = $pdo->prepare("SELECT id, nombre FROM puntos_voltika WHERE id=? LIMIT 1");
+            $pq->execute([(int)$moto['punto_voltika_id']]);
+            $punto = $pq->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+        $mensajePunto = '✅ ACTA DE ENTREGA firmada por ' . $firma
+            . ' · Moto #' . $motoId
+            . ' · Modelo: ' . ($moto['modelo'] ?? '?')
+            . ' · Color: ' . ($moto['color'] ?? '?')
+            . ' — Puede finalizar la entrega.';
+        $destinoPunto = $punto
+            ? ('punto:' . $punto['id'])
+            : ('punto:moto:' . $motoId);
+        $pdo->prepare("INSERT INTO notificaciones_log (cliente_id, tipo, canal, destino, mensaje, status)
+            VALUES (?, ?, 'punto_panel', ?, ?, 'ok')")
+            ->execute([$cid, 'acta_firmada_punto', $destinoPunto, $mensajePunto]);
+    } catch (Throwable $e) { error_log('notify punto acta_firmada: ' . $e->getMessage()); }
+
     portalJsonOut([
         'ok' => true,
         'mensaje' => 'ACTA firmada correctamente',

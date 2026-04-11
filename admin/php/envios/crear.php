@@ -15,10 +15,30 @@ $carrier        = trim($d['carrier'] ?? '');
 $fechaEstimada  = $d['fecha_estimada'] ?? null;
 $transaccionId  = (int)($d['transaccion_id'] ?? 0);
 $notas          = trim($d['notas'] ?? '');
+// Type of assignment per dashboards_diagrams.pdf diagram 5. Only meaningful
+// for shipments WITHOUT a linked order — the point staff chooses whether the
+// moto is for 'showroom' sale or 'entrega' (for-delivery stock pool).
+// Accepted values: 'showroom' | 'entrega'. Defaults to 'entrega' when an order
+// is linked (transaccion_id > 0), because an order-linked shipment is always
+// for delivery.
+$envioTipo = strtolower(trim($d['envio_tipo'] ?? ''));
+if ($transaccionId) {
+    $envioTipo = 'entrega';
+} elseif (!in_array($envioTipo, ['showroom', 'entrega'], true)) {
+    adminJsonOut(['error' => 'envio_tipo requerido para envío sin orden (showroom|entrega)'], 400);
+}
 
 if (!$motoId || !$puntoId) adminJsonOut(['error' => 'moto_id y punto_id requeridos'], 400);
 
 $pdo = getDB();
+
+// Ensure envios.envio_tipo column exists (idempotent migration)
+try {
+    $cols = $pdo->query("SHOW COLUMNS FROM envios")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('envio_tipo', $cols, true)) {
+        $pdo->exec("ALTER TABLE envios ADD COLUMN envio_tipo ENUM('showroom','entrega') NULL AFTER estado");
+    }
+} catch (Throwable $e) { error_log('envios ensure envio_tipo: ' . $e->getMessage()); }
 
 // Verify moto
 $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id=? AND activo=1");
@@ -64,20 +84,57 @@ if (!$fechaEstimada) {
 
 // Create envio
 $ins = $pdo->prepare("INSERT INTO envios
-    (moto_id, punto_destino_id, estado, fecha_estimada_llegada, enviado_por, notas, tracking_number, carrier)
-    VALUES (?,?,'lista_para_enviar',?,?,?,?,?)");
-$ins->execute([$motoId, $puntoId, $fechaEstimada, $uid, $notas, $trackingNumber ?: null, $carrier ?: null]);
+    (moto_id, punto_destino_id, estado, envio_tipo, fecha_estimada_llegada, enviado_por, notas, tracking_number, carrier)
+    VALUES (?,?,'lista_para_enviar',?,?,?,?,?,?)");
+$ins->execute([$motoId, $puntoId, $envioTipo, $fechaEstimada, $uid, $notas, $trackingNumber ?: null, $carrier ?: null]);
 $envioId = (int)$pdo->lastInsertId();
 
-// Update moto
+// Update moto — per diagram 5, also set tipo_asignacion to match the shipment.
+// showroom → 'consignacion' (stays in the point's showroom stock pool)
+// entrega  → 'voltika_entrega' (reserved for delivery, waits for CEDIS assignment)
+$tipoAsignacion = ($envioTipo === 'showroom') ? 'consignacion' : 'voltika_entrega';
 $pdo->prepare("UPDATE inventario_motos SET punto_voltika_id=?, estado='por_llegar',
+    tipo_asignacion=?,
     fecha_estado=NOW(),
-    log_estados=JSON_ARRAY_APPEND(COALESCE(log_estados,'[]'), '$', JSON_OBJECT('estado','por_llegar','fecha',NOW(),'usuario',?))
-    WHERE id=?")->execute([$puntoId, $uid, $motoId]);
+    log_estados=JSON_ARRAY_APPEND(COALESCE(log_estados,'[]'), '$', JSON_OBJECT('estado','por_llegar','fecha',NOW(),'usuario',?,'envio_tipo',?))
+    WHERE id=?")->execute([$puntoId, $tipoAsignacion, $uid, $envioTipo, $motoId]);
 
 adminLog('envio_crear', [
     'envio_id' => $envioId, 'moto_id' => $motoId,
     'punto_id' => $puntoId, 'tracking' => $trackingNumber,
 ]);
+
+// Per dashboards_diagrams.pdf CASE 1/3 step: "when the shipping information
+// is created for an order, the client will receive a notification informing
+// the shipping to the point of his moto, and the estimate arrive date".
+// Only fires for order-linked shipments — stock shipments have no client yet.
+if ($transaccionId && !empty($order)) {
+    $clienteTel   = $order['telefono'] ?? '';
+    $clienteEmail = $order['email']    ?? '';
+    if ($clienteTel || $clienteEmail) {
+        require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
+        try {
+            $fechaHuman = $fechaEstimada;
+            if ($fechaEstimada) {
+                try {
+                    $meses = ['enero','febrero','marzo','abril','mayo','junio',
+                              'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+                    $dt = new DateTime($fechaEstimada);
+                    $fechaHuman = $dt->format('j') . ' de ' . $meses[(int)$dt->format('n') - 1] . ' de ' . $dt->format('Y');
+                } catch (Throwable $e) {}
+            }
+            voltikaNotify('moto_enviada', [
+                'cliente_id' => $moto['cliente_id'] ?? null,
+                'nombre'     => $order['nombre']    ?? '',
+                'modelo'     => $moto['modelo']     ?? ($order['modelo'] ?? ''),
+                'punto'      => $punto['nombre']    ?? '',
+                'ciudad'     => $punto['ciudad']    ?? '',
+                'fecha'      => $fechaHuman         ?? '',
+                'telefono'   => $clienteTel,
+                'email'      => $clienteEmail,
+            ]);
+        } catch (Throwable $e) { error_log('notify moto_enviada: ' . $e->getMessage()); }
+    }
+}
 
 adminJsonOut(['ok' => true, 'envio_id' => $envioId, 'fecha_estimada' => $fechaEstimada]);

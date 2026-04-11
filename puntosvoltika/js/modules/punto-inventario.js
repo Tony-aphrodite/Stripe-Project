@@ -5,6 +5,35 @@ window.PV_inventario = (function(){
   }
   function paint(r){
     var html = '<div class="ad-h1">Inventario</div>';
+
+    // CASE 3: online referral sales waiting for CEDIS to assign a physical moto.
+    // These show at the top because the point staff can't act on them beyond
+    // confirming the client info — they are informational until a real bike
+    // arrives.
+    var ventasPendientes = r.ventas_referido_pendientes || [];
+    if (ventasPendientes.length) {
+      html += '<div class="ad-h2">🛒 Ventas por referido · pendientes de asignación ('+ventasPendientes.length+')</div>';
+      html += '<div style="font-size:12px;color:var(--ad-dim);margin:2px 0 8px 2px">'+
+        'Órdenes realizadas con el código de este punto. CEDIS debe asignar una moto y enviarla.</div>';
+      ventasPendientes.forEach(function(v){ html += ventaReferidoCard(v); });
+    }
+
+    // Pending arrival — motos still in transit, split by showroom vs for-delivery
+    var porLlegarEntrega  = r.inventario_por_llegar_entrega  || [];
+    var porLlegarShowroom = r.inventario_por_llegar_showroom || [];
+    var totalPorLlegar = porLlegarEntrega.length + porLlegarShowroom.length;
+    if (totalPorLlegar > 0) {
+      html += '<div class="ad-h2">🚚 Por llegar ('+totalPorLlegar+')</div>';
+      if (porLlegarEntrega.length) {
+        html += '<div style="font-size:12px;color:var(--ad-dim);margin:4px 0 4px 2px">Para entrega a cliente</div>';
+        porLlegarEntrega.forEach(function(m){ html += bikeCard(m, 'por_llegar_entrega'); });
+      }
+      if (porLlegarShowroom.length) {
+        html += '<div style="font-size:12px;color:var(--ad-dim);margin:8px 0 4px 2px">Para showroom</div>';
+        porLlegarShowroom.forEach(function(m){ html += bikeCard(m, 'por_llegar_showroom'); });
+      }
+    }
+
     html += '<div class="ad-h2">Para entrega ('+(r.inventario_entrega||[]).length+')</div>';
     if((r.inventario_entrega||[]).length===0) html += '<div style="color:var(--ad-dim)">Sin motos reservadas</div>';
     (r.inventario_entrega||[]).forEach(function(m){
@@ -28,6 +57,20 @@ window.PV_inventario = (function(){
       if (action === 'ensamble')  iniciarEnsamble(id);
       if (action === 'lista')     marcarLista(id);
     });
+  }
+  function ventaReferidoCard(v){
+    // Uses its own class (pv-venta-card) so the bike-card click handler
+    // doesn't fire — these rows are informational and have no detail page.
+    var h = '<div class="pv-venta-card" style="background:#FFF8E1;border-left:3px solid #FFC107;padding:10px;margin-bottom:6px;border-radius:6px">';
+    h += '<div class="pv-info">';
+    h += '<div style="font-weight:700">VK-'+(v.pedido||v.id)+' · '+(v.modelo||'—')+' · '+(v.color||'—')+'</div>';
+    h += '<div style="font-size:12px">Cliente: <strong>'+(v.nombre||'—')+'</strong></div>';
+    h += '<div style="font-size:11px;color:var(--ad-dim)">'+(v.telefono||'')+(v.email?' · '+v.email:'')+'</div>';
+    h += '<div style="font-size:11px;margin-top:4px"><span class="ad-badge yellow">pendiente asignación</span>';
+    if (v.tpago) h += ' <span style="font-size:11px;color:var(--ad-dim)">· '+v.tpago+'</span>';
+    h += '</div>';
+    h += '</div></div>';
+    return h;
   }
   function bikeCard(m, tipo){
     var h = '<div class="pv-bike-card" data-id="'+m.id+'" style="cursor:pointer">';

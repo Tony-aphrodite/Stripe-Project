@@ -20,6 +20,16 @@ if (!$entregaId || !$motoId) puntoJsonOut(['error' => 'Datos incompletos'], 400)
 
 $pdo = getDB();
 
+// Step-order guard — per dashboards_diagrams.pdf (Delivery process step 4),
+// user verification can only start AFTER the OTP has been verified in step 3.
+$prev = $pdo->prepare("SELECT estado, otp_verified FROM entregas WHERE id=? AND moto_id=?");
+$prev->execute([$entregaId, $motoId]);
+$prevRow = $prev->fetch(PDO::FETCH_ASSOC);
+if (!$prevRow) puntoJsonOut(['error' => 'Entrega no encontrada'], 404);
+if (empty($prevRow['otp_verified'])) {
+    puntoJsonOut(['error' => 'Debes verificar el OTP del cliente antes de la verificación facial'], 409);
+}
+
 // ── Look up the moto and figure out the purchase type ────────────────────────
 $stmt = $pdo->prepare("SELECT cliente_email, cliente_telefono, cliente_nombre, pedido_num
     FROM inventario_motos WHERE id=? AND punto_voltika_id=?");

@@ -12,6 +12,23 @@ if (!$motoId) puntoJsonOut(['error' => 'moto_id requerido'], 400);
 
 $pdo = getDB();
 
+// Step-order guard — per dashboards_diagrams.pdf (Delivery process step 5),
+// the delivery checklist can only be filled AFTER step 3 (OTP verified) and
+// step 4 (user verification / face check). Both must be recorded in the
+// entregas / checklist_entrega_v2 tables.
+$guard = $pdo->prepare("SELECT otp_verified FROM entregas WHERE moto_id=? ORDER BY freg DESC LIMIT 1");
+$guard->execute([$motoId]);
+$otpOk = (int)($guard->fetchColumn() ?: 0);
+if (!$otpOk) {
+    puntoJsonOut(['error' => 'OTP del cliente no verificado — no se puede llenar el checklist'], 409);
+}
+$guard = $pdo->prepare("SELECT fase1_completada FROM checklist_entrega_v2 WHERE moto_id=? ORDER BY id DESC LIMIT 1");
+$guard->execute([$motoId]);
+$faceOk = (int)($guard->fetchColumn() ?: 0);
+if (!$faceOk) {
+    puntoJsonOut(['error' => 'Verificación facial pendiente — no se puede llenar el checklist'], 409);
+}
+
 // Save moto photos
 $uploadsDir = __DIR__ . '/../../../configurador_prueba/php/uploads/entregas';
 if (!is_dir($uploadsDir)) @mkdir($uploadsDir, 0755, true);

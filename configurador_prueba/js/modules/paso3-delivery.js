@@ -682,6 +682,38 @@ var Paso3 = {
         var self = this;
         var ciudad = self.app.state.ciudad || '';
 
+        // CASE 3 — if the user entered a PUNTO-type referido code, the delivery
+        // point is locked to the referring point. Skip the center picker and
+        // render a single read-only card. Per dashboards_diagrams.pdf the order
+        // must be auto-assigned to the referring punto — no manual override.
+        var refData = self.app.state.referidoData;
+        if (refData && refData.ok && refData.tipo === 'punto') {
+            var lockedCentro = {
+                id: 'punto-' + refData.id,
+                nombre: refData.nombre || 'Punto Voltika',
+                direccion: 'Asignado automáticamente por tu código de referido',
+                ciudad: ciudad,
+                estado: self.app.state.estado || '',
+                tipo: 'punto_referido'
+            };
+            // Persist as centroEntrega so the rest of paso3 continues happily
+            self.app.state.centroEntrega = lockedCentro;
+            var lockHtml = '';
+            lockHtml += '<div style="font-size:17px;font-weight:800;color:#1a3a5c;margin-bottom:12px;">Tu punto de entrega está asignado</div>';
+            lockHtml += '<div class="vk-card" style="padding:16px;border:2px solid #039fe1;background:#E0F4FD;border-radius:14px;margin-bottom:14px;">';
+            lockHtml += '<div style="display:flex;align-items:flex-start;gap:10px;">';
+            lockHtml += '<span style="font-size:22px;">🔒</span>';
+            lockHtml += '<div style="flex:1;min-width:0;">';
+            lockHtml += '<div style="font-weight:800;font-size:17px;color:#1a3a5c;margin-bottom:4px;">' + lockedCentro.nombre + '</div>';
+            lockHtml += '<div style="font-size:13px;color:#1a3a5c;margin-bottom:6px;">Tu código de referido <strong>' + (self.app.state.codigoReferido || '') + '</strong> te asigna automáticamente a este punto.</div>';
+            lockHtml += '<div style="font-size:12px;color:#2e7d32;">✓ No es necesario seleccionar otro punto</div>';
+            lockHtml += '</div></div></div>';
+            $('#vk-centro-recomendado').html(lockHtml);
+            $('#vk-otros-centros-wrapper').hide();
+            $('#vk-centros-section').slideDown(200);
+            return;
+        }
+
         if (typeof VOLTIKA_CENTROS === 'undefined' || !VOLTIKA_CENTROS.buscar) {
             // No centers module — show cercano fallback
             var recHtml = self._renderCentroCercanoCard(ciudad);

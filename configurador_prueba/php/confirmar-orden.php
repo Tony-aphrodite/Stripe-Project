@@ -54,15 +54,37 @@ $referidoId     = isset($json['referido_id']) && $json['referido_id'] !== null ?
 $referidoTipo   = trim($json['referido_tipo'] ?? ''); // 'referido' | 'punto' | ''
 
 // ─ Purchase case number per dashboards_diagrams.pdf ─────────────────────────
-//   CASE 1 — no referido code, no point selected by user
-//   CASE 2 — no referido code, user picked a point in the configurador
-//   CASE 3 — referido code present (influencer or point), general sale (online)
-//   CASE 4 — sale from a point's showroom inventory (handled by puntosvoltika/php/asignar/referido.php)
+//   CASE 1-A — no referido code, no point selected (punto_id = 'centro-cercano')
+//   CASE 1-B — no referido code, user picked a point in the configurador
+//   CASE 3   — referido code present (influencer or point), general sale (online)
+//   CASE 4   — sale from a point's showroom inventory (handled by puntosvoltika/php/asignar/referido.php)
+// The PDF has no "CASE 2" — the YES/NO point-selector branch inside CASE 1
+// is a sub-flow of CASE 1.
 $caso = 1;
 if ($codigoReferido !== '') {
     $caso = 3;
-} elseif ($puntoId !== '' && $puntoId !== 'centro-cercano') {
-    $caso = 2;
+}
+
+// CASE 3 — if the referido code is a PUNTO code (not influencer), auto-assign
+// the order to that point. Per the PDF, the order should land on the Point
+// Panel as "completed sale via referral, pending motorcycle assignment" without
+// any manual point selection step.
+$puntoVoltikaId = null;
+if ($caso === 3 && $referidoTipo === 'punto' && $referidoId) {
+    try {
+        $pdoTmp = getDB();
+        $pStmt = $pdoTmp->prepare("SELECT id, nombre FROM puntos_voltika WHERE id = ? AND activo = 1 LIMIT 1");
+        $pStmt->execute([(int)$referidoId]);
+        $pRow = $pStmt->fetch(PDO::FETCH_ASSOC);
+        if ($pRow) {
+            $puntoVoltikaId = (int)$pRow['id'];
+            // Override any stale puntoId/puntoNombre with the referral point
+            $puntoId     = 'punto-' . $puntoVoltikaId;
+            $puntoNombre = $pRow['nombre'];
+        }
+    } catch (Throwable $e) {
+        error_log('confirmar-orden CASE3 punto lookup: ' . $e->getMessage());
+    }
 }
 
 $pedidoNum = time();
@@ -140,17 +162,20 @@ try {
         // Get the transaccion ID we just inserted
         $txId = $pdo->lastInsertId();
 
+        // For CASE 3 referral sales, tipo_asignacion is 'voltika_entrega' (online),
+        // but the punto_voltika_id is pre-set from the referral code so the order
+        // lands directly in the referred point's queue.
         $stmtMoto = $pdo->prepare("
             INSERT INTO inventario_motos
                 (vin, vin_display, modelo, color, tipo_asignacion, estado,
                  cliente_nombre, cliente_email, cliente_telefono,
                  pedido_num, pago_estado, fecha_estado, log_estados, precio_venta, notas,
-                 stripe_pi, transaccion_id, punto_id, punto_nombre)
+                 stripe_pi, transaccion_id, punto_id, punto_nombre, punto_voltika_id)
             VALUES
                 (?, ?, ?, ?, 'voltika_entrega', 'por_llegar',
                  ?, ?, ?,
                  ?, ?, NOW(), ?, ?, ?,
-                 ?, ?, ?, ?)
+                 ?, ?, ?, ?, ?)
         ");
         $stmtMoto->execute([
             $vinAuto, $vinDisplay, $modelo, $color,
@@ -159,11 +184,13 @@ try {
             $pagoTipo === 'enganche' ? 'parcial' : 'pagada',
             $logEstados, $total,
             'Pedido confirmado vía configurador. Tipo: ' . $pagoTipo
-                . ($puntoNombre ? ' · Punto preferido: ' . $puntoNombre : ''),
+                . ($puntoNombre ? ' · Punto preferido: ' . $puntoNombre : '')
+                . ($caso === 3 ? ' · CASO 3 (referido)' : ''),
             $paymentIntentId ?: null,
             $txId ?: null,
             $puntoId     ?: null,
             $puntoNombre ?: null,
+            $puntoVoltikaId,
         ]);
     } catch (PDOException $e) {
         error_log('Voltika inventario_motos auto-insert error: ' . $e->getMessage());
@@ -179,6 +206,25 @@ try {
             ")->execute([$referidoId]);
         } catch (PDOException $e) {
             error_log('Voltika referidos counter error: ' . $e->getMessage());
+        }
+    }
+
+    // CASE 3 (dashboards_diagrams.pdf): the order was placed with a punto's
+    // CODIGO REFERIDO for a general sale — bump the punto's ventas_count so it
+    // shows up in punto reports alongside influencer referrals.
+    if ($puntoVoltikaId && $referidoTipo === 'punto') {
+        try {
+            $pvCols = $pdo->query("SHOW COLUMNS FROM puntos_voltika")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('ventas_count', $pvCols, true)) {
+                $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN ventas_count INT DEFAULT 0");
+            }
+            $pdo->prepare("
+                UPDATE puntos_voltika
+                SET ventas_count = COALESCE(ventas_count, 0) + 1
+                WHERE id = ? AND activo = 1
+            ")->execute([$puntoVoltikaId]);
+        } catch (PDOException $e) {
+            error_log('Voltika punto ventas_count error: ' . $e->getMessage());
         }
     }
 

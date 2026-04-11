@@ -49,7 +49,16 @@ if (!isset($validTransitions[$estadoActual]) || !in_array($nuevoEstado, $validTr
 }
 
 // lista_para_entrega requires a valid future pickup date
+// Per dashboards_diagrams.pdf (diagram 5): showroom motos with no cliente assigned
+// must NOT transition to lista_para_entrega — they should remain in showroom
+// inventory and wait for a CASE 4 direct sale or a CEDIS assignment.
 if ($nuevoEstado === 'lista_para_entrega') {
+    if (empty($moto['cliente_nombre']) && empty($moto['pedido_num'])) {
+        puntoJsonOut([
+            'error' => 'Esta moto está en showroom y no tiene cliente asignado. '
+                     . 'No se puede marcar "lista para entrega" sin un pedido vinculado.'
+        ], 400);
+    }
     if (!$fechaEntrega || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaEntrega)) {
         puntoJsonOut(['error' => 'Fecha de entrega estimada requerida (YYYY-MM-DD)'], 400);
     }
