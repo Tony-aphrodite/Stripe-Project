@@ -2,27 +2,44 @@ window.AD_ventas = (function(){
 
   function render(){
     ADApp.render(
-      '<div class="ad-toolbar">'+
+      '<div class="ad-toolbar" style="display:flex;align-items:center;justify-content:space-between;">'+
         '<div class="ad-h1">Ventas / Ordenes</div>'+
+        '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<span id="vtLastUpdated" class="ad-dim" style="font-size:12px;"></span>'+
+          '<button id="vtRefreshBtn" class="ad-btn sm" style="padding:6px 12px;">Actualizar</button>'+
+        '</div>'+
       '</div>'+
       '<div id="vtKpis" class="ad-kpis" style="margin-bottom:14px;"></div>'+
       '<div id="vtTable">Cargando...</div>'
     );
+    $('#vtRefreshBtn').on('click', loadData);
     loadData();
   }
 
+  function _formatLastUpdated(){
+    var d = new Date();
+    var hh = String(d.getHours()).padStart(2,'0');
+    var mm = String(d.getMinutes()).padStart(2,'0');
+    var ss = String(d.getSeconds()).padStart(2,'0');
+    return 'Última actualización: '+hh+':'+mm+':'+ss;
+  }
+
   function loadData(){
+    $('#vtLastUpdated').text('Cargando...');
     ADApp.api('ventas/listar.php').done(function(r){
       if(!r.ok){ $('#vtTable').html('<div class="ad-card">Error al cargar</div>'); return; }
 
       // KPIs
       var pendingPunto = (r.rows||[]).filter(function(o){ return o.punto_id==='centro-cercano'; }).length;
+      var orfanos = r.orfanos || (r.rows||[]).filter(function(o){ return o.source; }).length;
       $('#vtKpis').html(
         kpi('Total ordenes', r.total, 'blue')+
         kpi('Moto asignada', r.asignadas, 'green')+
         kpi('Sin asignar', r.sin_asignar, r.sin_asignar > 0 ? 'red' : 'green')+
-        kpi('Punto pendiente', pendingPunto, pendingPunto > 0 ? 'yellow' : 'green')
+        kpi('Punto pendiente', pendingPunto, pendingPunto > 0 ? 'yellow' : 'green')+
+        kpi('Huérfanos/errores', orfanos, orfanos > 0 ? 'red' : 'green')
       );
+      $('#vtLastUpdated').text(_formatLastUpdated());
 
       var rows = r.rows || [];
       _lastRows = rows;
@@ -50,12 +67,19 @@ window.AD_ventas = (function(){
           puntoHtml = '<span class="ad-badge gray">'+r.punto_id+'</span>';
         }
 
+        var tipoBadge = 'blue';
+        if(r.tipo === 'credito-orfano') tipoBadge = 'yellow';
+        if(r.tipo === 'error-captura') tipoBadge = 'red';
+        var alertaHtml = r.alerta
+          ? '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">⚠ '+esc(r.alerta)+'</div>'
+          : '';
+
         html += '<tr>'+
-          '<td><strong>VK-'+(r.pedido||r.id)+'</strong></td>'+
+          '<td><strong>VK-'+(r.pedido||r.id)+'</strong>'+alertaHtml+'</td>'+
           '<td>'+(r.nombre||'-')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
           '<td>'+(r.modelo||'-')+'</td>'+
           '<td>'+(r.color||'-')+'</td>'+
-          '<td><span class="ad-badge blue">'+(r.tipo||'-')+'</span></td>'+
+          '<td><span class="ad-badge '+tipoBadge+'">'+(r.tipo||'-')+'</span></td>'+
           '<td>'+ADApp.money(r.monto)+'</td>'+
           '<td>'+puntoHtml+'</td>'+
           '<td>'+(r.fecha?r.fecha.substring(0,10):'-')+'</td>';

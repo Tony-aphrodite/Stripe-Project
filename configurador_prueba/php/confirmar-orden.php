@@ -87,12 +87,35 @@ if ($caso === 3 && $referidoTipo === 'punto' && $referidoId) {
     }
 }
 
-$pedidoNum = time();
+// Entropy-enriched pedido number — plain time() collides when two users
+// confirm within the same second, which was making the second INSERT silently
+// fail on any future UNIQUE constraint and leaving the order invisible to
+// the admin dashboard (see listar.php).
+$pedidoNum = time() . '-' . substr(bin2hex(random_bytes(3)), 0, 4);
 $fecha     = date('Y-m-d H:i');
 
 // ── Guardar en BD ─────────────────────────────────────────────────────────────
+$dbSaveOk = false;
+$dbSaveErr = '';
 try {
     $pdo = getDB();
+
+    // Recovery table: any orphan orders we couldn't write to `transacciones`
+    // land here so the admin dashboard can recover them manually. Previously
+    // a failed INSERT was swallowed silently, making the sale invisible.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS transacciones_errores (
+        id        INT AUTO_INCREMENT PRIMARY KEY,
+        nombre    VARCHAR(200),
+        email     VARCHAR(200),
+        telefono  VARCHAR(30),
+        modelo    VARCHAR(200),
+        color     VARCHAR(100),
+        total     DECIMAL(12,2),
+        stripe_pi VARCHAR(100),
+        payload   TEXT,
+        error_msg TEXT,
+        freg      DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS transacciones (
         id         INT AUTO_INCREMENT PRIMARY KEY,
@@ -147,6 +170,7 @@ try {
         $referidoTipo ?: null,
         $caso,
     ]);
+    $dbSaveOk = true;
     // ── Auto-crear registro en inventario_motos para el dealer panel ────────
     $vinAuto = 'VK-' . strtoupper(substr($modelo, 0, 3)) . '-' . $pedidoNum;
     $vinDisplay = $vinAuto;
@@ -229,8 +253,25 @@ try {
     }
 
 } catch (PDOException $e) {
-    // Log pero no fallar — el pago ya fue capturado
-    error_log('Voltika DB error: ' . $e->getMessage());
+    // El pago ya se capturó en Stripe, así que NO podemos abortar sin dejar
+    // una orden huérfana. Escribimos la orden a `transacciones_errores` para
+    // que el admin la vea en el dashboard de ventas (ver admin/php/ventas/listar.php).
+    $dbSaveErr = $e->getMessage();
+    error_log('Voltika DB error: ' . $dbSaveErr);
+    try {
+        $errPdo = getDB();
+        $errStmt = $errPdo->prepare("
+            INSERT INTO transacciones_errores
+                (nombre, email, telefono, modelo, color, total, stripe_pi, payload, error_msg)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $errStmt->execute([
+            $nombre, $email, $telefono, $modelo, $color, $total,
+            $paymentIntentId, json_encode($json), $dbSaveErr,
+        ]);
+    } catch (Throwable $e2) {
+        error_log('Voltika transacciones_errores fallback failed: ' . $e2->getMessage());
+    }
 }
 
 // ── Enviar email de confirmacion ──────────────────────────────────────────────
@@ -471,9 +512,11 @@ if ($esCredito) {
 $emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
 
 echo json_encode([
-    'status'    => 'ok',
+    'status'    => $dbSaveOk ? 'ok' : 'ok_warn',
     'pedido'    => $pedidoNum,
-    'emailSent' => $emailSent
+    'emailSent' => $emailSent,
+    'db_saved'  => $dbSaveOk,
+    'db_warning'=> $dbSaveOk ? null : 'La orden quedó registrada en recuperación. Contactar soporte con número de pedido.',
 ]);
 
 // ═════════════════════════════════════════════════════════════════════════════
