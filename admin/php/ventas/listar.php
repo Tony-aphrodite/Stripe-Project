@@ -16,7 +16,7 @@ try {
     $stmt = $pdo->query("
         SELECT t.id, t.pedido, t.nombre, t.email, t.telefono,
                t.modelo, t.color, t.tpago, t.total, t.stripe_pi, t.freg,
-               t.punto_id, t.punto_nombre,
+               t.punto_id, t.punto_nombre, t.folio_contrato,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
                m.pago_estado
         FROM transacciones t
@@ -43,6 +43,7 @@ try {
             'pago_estado' => $r['pago_estado'] ?: 'pendiente',
             'punto_id'    => $r['punto_id'] ?? null,
             'punto_nombre'=> $r['punto_nombre'] ?? null,
+            'folio_contrato' => $r['folio_contrato'] ?? null,
         ];
     }
 } catch (Throwable $e) {

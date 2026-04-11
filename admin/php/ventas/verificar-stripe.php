@@ -12,7 +12,17 @@
  *   - Ideal para correr cada 15 min como cron.
  */
 require_once __DIR__ . '/../bootstrap.php';
-adminRequireAuth(['admin','cedis']);
+
+// Dual auth: admin session OR cron token via header/query.
+// Cron token is set in .env as VOLTIKA_CRON_TOKEN=xxxxxxxxxxxxxx
+$cronToken = getenv('VOLTIKA_CRON_TOKEN') ?: '';
+$provided  = $_GET['token']
+    ?? ($_SERVER['HTTP_X_CRON_TOKEN'] ?? '');
+$isCron = $cronToken !== '' && hash_equals($cronToken, (string)$provided);
+
+if (!$isCron) {
+    adminRequireAuth(['admin','cedis']);
+}
 
 $horas = max(1, min(720, (int)($_GET['horas'] ?? 24)));
 $desde = time() - ($horas * 3600);

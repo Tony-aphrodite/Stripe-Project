@@ -94,6 +94,13 @@ if ($caso === 3 && $referidoTipo === 'punto' && $referidoId) {
 $pedidoNum = time() . '-' . substr(bin2hex(random_bytes(3)), 0, 4);
 $fecha     = date('Y-m-d H:i');
 
+// Folio de contrato — now generated BEFORE the DB insert so it can be
+// persisted. Previously it was only computed for the email body, which
+// meant customers who referenced the folio (e.g. "VK-20260411-LEO") could
+// not be located in the database.
+$folioContrato = $json['folioContrato']
+    ?? ('VK-' . date('Ymd') . '-' . strtoupper(substr($nombre, 0, 3)));
+
 // ── Guardar en BD ─────────────────────────────────────────────────────────────
 $dbSaveOk = false;
 $dbSaveErr = '';
@@ -142,7 +149,9 @@ try {
         referido        VARCHAR(40)  NULL,
         referido_id     INT          NULL,
         referido_tipo   VARCHAR(20)  NULL,
-        caso            TINYINT      NULL
+        caso            TINYINT      NULL,
+        folio_contrato  VARCHAR(40)  NULL,
+        INDEX idx_folio (folio_contrato)
     )");
     // Backfill columns on pre-existing tables
     ensureTransaccionesColumns($pdo);
@@ -152,9 +161,10 @@ try {
             (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago,
              precio, total, freg, pedido, stripe_pi,
              asesoria_placas, seguro_qualitas, punto_id, punto_nombre,
-             msi_meses, msi_pago, referido, referido_id, referido_tipo, caso)
+             msi_meses, msi_pago, referido, referido_id, referido_tipo, caso,
+             folio_contrato)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $nombre, $email, $telefono, $modelo, $color,
@@ -169,6 +179,7 @@ try {
         $referidoId,
         $referidoTipo ?: null,
         $caso,
+        $folioContrato ?: null,
     ]);
     $dbSaveOk = true;
     // ── Auto-crear registro en inventario_motos para el dealer panel ────────
@@ -278,7 +289,7 @@ try {
 $enganchePct    = floatval($json['enganchePct'] ?? 0);
 $plazoMeses     = intval($json['plazoMeses'] ?? 36);
 $pagoSemanal    = floatval($json['pagoSemanal'] ?? 0);
-$folioContrato  = $json['folioContrato'] ?? ('VK-' . date('Ymd') . '-' . strtoupper(substr($nombre, 0, 3)));
+// $folioContrato already initialized near the top (before DB insert).
 $metodoPago     = $json['metodoPago'] ?? $pagoTipo;
 $esCredito      = ($pagoTipo === 'enganche' || $metodoPago === 'credito');
 
@@ -491,6 +502,11 @@ if ($esCredito) {
 <p style="font-size:11px;color:#aaa;margin:0;">Al completar tu compra aceptaste nuestros Términos y Condiciones y Aviso de Privacidad.</p>
 </div>
 
+<div style="margin-top:14px;padding:10px 12px;border-top:1px dashed #E5E7EB;">
+<p style="font-size:10px;color:#9CA3AF;margin:0 0 2px;font-family:Menlo,Consolas,monospace;">Ref. interna (soporte): ' . htmlspecialchars($paymentIntentId ?: 'n/a') . '</p>
+<p style="font-size:10px;color:#9CA3AF;margin:0;font-family:Menlo,Consolas,monospace;">Pedido: ' . htmlspecialchars($pedidoNum) . ' · Folio: ' . htmlspecialchars($folioContrato) . '</p>
+</div>
+
 </td></tr>
 
 <tr><td style="background:#1a3a5c;padding:20px 28px;text-align:center;">
@@ -542,6 +558,7 @@ function ensureTransaccionesColumns(PDO $pdo): void {
         'referido_id'     => "ADD COLUMN referido_id     INT           NULL AFTER referido",
         'referido_tipo'   => "ADD COLUMN referido_tipo   VARCHAR(20)   NULL AFTER referido_id",
         'caso'            => "ADD COLUMN caso            TINYINT       NULL AFTER referido_tipo",
+        'folio_contrato'  => "ADD COLUMN folio_contrato  VARCHAR(40)   NULL AFTER caso",
     ];
     try {
         $existing = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);

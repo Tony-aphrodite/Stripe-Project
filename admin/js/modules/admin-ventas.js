@@ -84,7 +84,13 @@ window.AD_ventas = (function(){
           '<td>'+puntoHtml+'</td>'+
           '<td>'+(r.fecha?r.fecha.substring(0,10):'-')+'</td>';
 
-        if(asignada){
+        var isOrphan = r.source === 'transacciones_errores' || r.source === 'subscripciones_credito';
+        if(isOrphan){
+          html += '<td><span class="ad-badge yellow">'+(r.source==='transacciones_errores'?'Error':'Crédito huérfano')+'</span></td>'+
+                  '<td><button class="ad-btn primary" style="padding:5px 12px;font-size:12px;background:#b91c1c;" '+
+                  'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button> '+
+                  '<button class="ad-btn sm ghost" style="margin-left:4px" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button></td>';
+        } else if(asignada){
           html += '<td><span class="ad-badge green">'+(r.moto_vin||'****')+'</span></td>'+
                   '<td><button class="ad-btn sm ghost" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button></td>';
         } else {
@@ -216,5 +222,73 @@ window.AD_ventas = (function(){
     return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
   }
 
-  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle };
+  // Recuperar — promueve una orden huérfana (transacciones_errores) o
+  // reconstruye desde Stripe PI a la tabla `transacciones`.
+  function showRecuperar(rowId, source, stripePi){
+    var rows = _lastRows || [];
+    var r = null;
+    for(var i=0;i<rows.length;i++){
+      if(rows[i].id===rowId && rows[i].source===source){ r=rows[i]; break; }
+    }
+    if(!r){ alert('Fila no encontrada'); return; }
+
+    var isErr = source === 'transacciones_errores';
+    var html = '<div class="ad-h2">Recuperar orden</div>'+
+      '<p class="ad-dim" style="font-size:13px;margin-bottom:12px;">'+
+        (isErr
+          ? 'Promover esta fila de <code>transacciones_errores</code> a <code>transacciones</code>. Puedes editar los campos antes de confirmar.'
+          : 'Reconstruir la transacción desde Stripe PaymentIntent. Campos vacíos se llenan con metadata del PI.')+
+      '</p>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">'+
+        '<label>Nombre<input id="rcvNombre" class="ad-input" value="'+esc(r.nombre||'')+'"></label>'+
+        '<label>Email<input id="rcvEmail" class="ad-input" value="'+esc(r.email||'')+'"></label>'+
+        '<label>Teléfono<input id="rcvTelefono" class="ad-input" value="'+esc(r.telefono||'')+'"></label>'+
+        '<label>Modelo<input id="rcvModelo" class="ad-input" value="'+esc(r.modelo||'')+'"></label>'+
+        '<label>Color<input id="rcvColor" class="ad-input" value="'+esc(r.color||'')+'"></label>'+
+        '<label>Total MXN<input id="rcvTotal" class="ad-input" type="number" value="'+(r.monto||0)+'"></label>'+
+        '<label>Folio contrato<input id="rcvFolio" class="ad-input" placeholder="VK-YYYYMMDD-XXX"></label>'+
+        '<label>Stripe PI<input id="rcvStripePi" class="ad-input" value="'+esc(stripePi||r.stripe_pi||'')+'" '+(isErr?'readonly':'')+'></label>'+
+      '</div>'+
+      '<div style="margin-top:14px;text-align:right;">'+
+        '<button class="ad-btn ghost" onclick="ADApp.closeModal()">Cancelar</button> '+
+        '<button class="ad-btn primary" id="rcvConfirm">Recuperar</button>'+
+      '</div>'+
+      '<div id="rcvMsg" style="margin-top:10px;font-size:12px;"></div>';
+
+    ADApp.modal(html);
+
+    $('#rcvConfirm').on('click', function(){
+      var payload = {
+        source:         isErr ? 'transacciones_errores' : 'stripe',
+        err_id:         isErr ? r.id : 0,
+        stripe_pi:      $('#rcvStripePi').val().trim(),
+        nombre:         $('#rcvNombre').val().trim(),
+        email:          $('#rcvEmail').val().trim(),
+        telefono:       $('#rcvTelefono').val().trim(),
+        modelo:         $('#rcvModelo').val().trim(),
+        color:          $('#rcvColor').val().trim(),
+        total:          parseFloat($('#rcvTotal').val())||0,
+        folio_contrato: $('#rcvFolio').val().trim(),
+      };
+      if(!isErr && !payload.stripe_pi){
+        $('#rcvMsg').html('<span style="color:#b91c1c;">Stripe PI requerido.</span>');
+        return;
+      }
+      $('#rcvConfirm').prop('disabled', true).text('Recuperando...');
+      ADApp.api('ventas/recuperar-orden.php', payload).done(function(resp){
+        if(resp.ok){
+          $('#rcvMsg').html('<span style="color:#059669;">✓ Recuperada · tx_id='+resp.tx_id+' · folio='+(resp.folio||'')+'</span>');
+          setTimeout(function(){ ADApp.closeModal(); loadData(); }, 1200);
+        } else {
+          $('#rcvMsg').html('<span style="color:#b91c1c;">Error: '+(resp.error||'desconocido')+'</span>');
+          $('#rcvConfirm').prop('disabled', false).text('Recuperar');
+        }
+      }).fail(function(){
+        $('#rcvMsg').html('<span style="color:#b91c1c;">Error de conexión.</span>');
+        $('#rcvConfirm').prop('disabled', false).text('Recuperar');
+      });
+    });
+  }
+
+  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar };
 })();
