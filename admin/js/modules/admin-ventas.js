@@ -209,8 +209,8 @@ window.AD_ventas = (function(){
       } else {
         alert(r.error || 'Error al asignar');
       }
-    }).fail(function(){
-      alert('Error de conexion');
+    }).fail(function(x){
+      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
     });
   }
 

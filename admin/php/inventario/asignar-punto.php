@@ -59,6 +59,11 @@ if ($tipo === 'venta') {
 
     // Link order data to bike
     $pedidoNum = 'VK-' . $order['pedido'];
+    $tpago = strtolower(trim($order['tpago'] ?? ''));
+    $pagoEstado = in_array($tpago, ['credito', 'enganche', 'parcial'], true)
+        ? 'parcial'
+        : 'pagada';
+
     $pdo->prepare("
         UPDATE inventario_motos SET
             cliente_nombre   = ?,
@@ -66,7 +71,7 @@ if ($tipo === 'venta') {
             cliente_telefono = ?,
             pedido_num       = ?,
             stripe_pi        = ?,
-            pago_estado      = 'pagada',
+            pago_estado      = ?,
             fmod             = NOW()
         WHERE id = ?
     ")->execute([
@@ -75,6 +80,7 @@ if ($tipo === 'venta') {
         $order['telefono'] ?? '',
         $pedidoNum,
         $order['stripe_pi'] ?? '',
+        $pagoEstado,
         $motoId,
     ]);
 }

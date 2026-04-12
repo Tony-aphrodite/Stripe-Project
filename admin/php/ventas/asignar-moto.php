@@ -57,6 +57,16 @@ if (!$moto) {
     adminJsonOut(['error' => 'Moto no encontrada'], 404);
 }
 
+// Rule: checklist_origen must be complete before assigning a bike.
+$co = $pdo->prepare("SELECT completado FROM checklist_origen WHERE moto_id = ? ORDER BY freg DESC LIMIT 1");
+$co->execute([$motoId]);
+$coRow = $co->fetch(PDO::FETCH_ASSOC);
+if (!$coRow || !$coRow['completado']) {
+    adminJsonOut([
+        'error' => 'El checklist de origen no está completo para esta moto. Debe completarse antes de asignar.'
+    ], 403);
+}
+
 // Block phantom VINs created by the old confirmar-orden.php auto-INSERT.
 // These are virtual records (VK-{MODEL}-{timestamp}-{hex}), not real bikes.
 if (preg_match('/^VK-[A-Z0-9]+-\d+-[a-f0-9]+$/i', $moto['vin'] ?? '')) {

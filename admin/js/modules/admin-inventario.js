@@ -355,23 +355,45 @@ window.AD_inventario = (function(){
       });
     });
   }
+  // Catalog: same models and colors the customer sees on the website
+  var CATALOGO = [
+    {modelo:'M05',           colores:['Gris','Negro','Plata']},
+    {modelo:'M03',           colores:['Negro','Gris','Plata']},
+    {modelo:'Ukko S+',       colores:['Gris','Negro','Azul','Naranja']},
+    {modelo:'MC10 Streetx',  colores:['Negro','Gris']},
+    {modelo:'Pesgo Plus',    colores:['Negro','Gris','Azul','Plata']},
+    {modelo:'Mino-B',        colores:['Gris','Azul','Verde']},
+  ];
+
   function showNewForm(){
     var html = '<div class="ad-h2">Nueva moto</div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
 
+    // VIN
+    html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">VIN *</label>'+
+      '<input class="ad-input" id="nmVin" placeholder="Número de identificación vehicular" style="width:100%"></div>';
+
+    // Modelo select
+    html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Modelo *</label>'+
+      '<select class="ad-input" id="nmModelo" style="width:100%"><option value="">— Seleccionar modelo —</option>';
+    CATALOGO.forEach(function(c){ html += '<option value="'+c.modelo+'">'+c.modelo+'</option>'; });
+    html += '</select></div>';
+
+    // Color select (populated on modelo change)
+    html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Color *</label>'+
+      '<select class="ad-input" id="nmColor" style="width:100%" disabled><option value="">— Primero selecciona modelo —</option></select></div>';
+
+    // Remaining fields
     var fields = [
-      {id:'nmVin',      label:'VIN *',           ph:'Número de identificación vehicular'},
-      {id:'nmModelo',   label:'Modelo *',         ph:'M05, Ukko S+, etc.'},
-      {id:'nmColor',    label:'Color *',          ph:'gris, negro, etc.'},
-      {id:'nmAnio',     label:'Año modelo',       ph:new Date().getFullYear()},
-      {id:'nmMotor',    label:'Núm. motor',       ph:'Número de motor'},
-      {id:'nmPotencia', label:'Potencia',         ph:'500W, 1000W, etc.'},
-      {id:'nmBaterias', label:'Config. baterías',  ph:'', type:'select', opts:['1','2']},
-      {id:'nmHecho',    label:'Hecho en',         ph:'País de fabricación'},
-      {id:'nmPedimento',label:'Núm. pedimento',   ph:'Número de pedimento'},
-      {id:'nmFechaIng', label:'Fecha ingreso país',ph:'', type:'date'},
-      {id:'nmAduana',   label:'Aduana',           ph:'Aduana de ingreso'},
-      {id:'nmCedis',    label:'CEDIS origen',     ph:'Centro de distribución'},
+      {id:'nmAnio',     label:'Año modelo',        ph:new Date().getFullYear()},
+      {id:'nmMotor',    label:'Núm. motor',        ph:'Número de motor'},
+      {id:'nmPotencia', label:'Potencia',           ph:'500W, 1000W, etc.'},
+      {id:'nmBaterias', label:'Config. baterías',   ph:'', type:'select', opts:['1','2']},
+      {id:'nmHecho',    label:'Hecho en',           ph:'País de fabricación'},
+      {id:'nmPedimento',label:'Núm. pedimento',     ph:'Número de pedimento'},
+      {id:'nmFechaIng', label:'Fecha ingreso país', ph:'', type:'date'},
+      {id:'nmAduana',   label:'Aduana',             ph:'Aduana de ingreso'},
+      {id:'nmCedis',    label:'CEDIS origen',       ph:'Centro de distribución'},
     ];
 
     fields.forEach(function(f){
@@ -397,10 +419,31 @@ window.AD_inventario = (function(){
 
     ADApp.modal(html);
 
+    // Cascade: modelo → color
+    $(document).off('change.nmModelo').on('change.nmModelo', '#nmModelo', function(){
+      var sel = $(this).val();
+      var $color = $('#nmColor');
+      $color.empty();
+      if(!sel){
+        $color.append('<option value="">— Primero selecciona modelo —</option>').prop('disabled',true);
+        return;
+      }
+      var cat = null;
+      for(var i=0; i<CATALOGO.length; i++){
+        if(CATALOGO[i].modelo === sel){ cat = CATALOGO[i]; break; }
+      }
+      if(!cat){ $color.append('<option value="">Sin colores</option>'); return; }
+      $color.prop('disabled',false);
+      $color.append('<option value="">— Seleccionar color —</option>');
+      for(var j=0; j<cat.colores.length; j++){
+        $color.append('<option value="'+cat.colores[j]+'">'+cat.colores[j]+'</option>');
+      }
+    });
+
     $('#nmSave').on('click',function(){
       var vin = $('#nmVin').val().trim();
-      var modelo = $('#nmModelo').val().trim();
-      var color = $('#nmColor').val().trim();
+      var modelo = $('#nmModelo').val();
+      var color = $('#nmColor').val();
       if(!vin || !modelo || !color){
         alert('VIN, Modelo y Color son obligatorios');
         return;
