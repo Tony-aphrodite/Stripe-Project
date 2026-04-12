@@ -9,7 +9,12 @@ adminRequireAuth(['admin','cedis']);
 
 $pdo = getDB();
 
-$where  = ["m.activo = 1", "(m.pedido_num IS NULL OR m.pedido_num = '')", "(m.cliente_email IS NULL OR m.cliente_email = '')"];
+$where  = [
+    "m.activo = 1",
+    "(m.pedido_num IS NULL OR m.pedido_num = '')",
+    "(m.cliente_email IS NULL OR m.cliente_email = '')",
+    "m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'",
+];
 $params = [];
 
 if (!empty($_GET['modelo'])) {

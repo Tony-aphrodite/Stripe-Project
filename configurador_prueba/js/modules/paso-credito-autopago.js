@@ -219,15 +219,34 @@ var PasoCreditoAutopago = {
         self._setLoading(true);
         jQuery('#vk-autopago-error').hide();
 
+        // Collect product context so the `subscripciones_credito` row isn't
+        // created with sparse data (the dashboard was showing orphans with
+        // modelo/color = "-" because this call previously only sent the
+        // customer identity).
+        var _modelo = self.app.getModelo(state.modeloSeleccionado) || {};
+        var _weekly = 0;
+        try {
+            _weekly = VkCalculadora.calcular(
+                _modelo.precioContado,
+                state.enganchePorcentaje || 0.30,
+                state.plazoMeses || 36
+            ).pagoSemanal;
+        } catch (err) { /* noop */ }
+
         // Step 1: Create SetupIntent on backend
         jQuery.ajax({
             url: (window.VK_BASE_PATH || '') + self.SETUP_INTENT_URL,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
-                nombre:   state.nombre,
-                email:    state.email,
-                telefono: state.telefono
+                nombre:        state.nombre,
+                email:         state.email,
+                telefono:      state.telefono,
+                modelo:        _modelo.nombre || state.modeloSeleccionado || '',
+                color:         state.colorSeleccionado || _modelo.colorDefault || '',
+                precioContado: _modelo.precioContado || 0,
+                plazoMeses:    state.plazoMeses || 36,
+                montoSemanal:  _weekly
             }),
             success: function(response) {
                 if (!response || !response.clientSecret) {
@@ -257,7 +276,9 @@ var PasoCreditoAutopago = {
                         state._stripeCustomerId = response.customerId || null;
 
                         // Persist to backend so collections can charge weekly.
-                        // Fire-and-forget — UI advances regardless of DB result.
+                        // We WAIT for the response so a backend failure blocks
+                        // the UI from advancing to the final success step
+                        // (previously this was fire-and-forget and masked errors).
                         var modelo = self.app.getModelo(state.modeloSeleccionado);
                         var pagoSemanal = 0;
                         try {
@@ -276,12 +297,29 @@ var PasoCreditoAutopago = {
                                 setupIntentId:   result.setupIntent.id,
                                 customerId:      response.customerId,
                                 paymentMethodId: result.setupIntent.payment_method || null,
-                                montoSemanal:    pagoSemanal
-                            })
+                                montoSemanal:    pagoSemanal,
+                                nombre:          state.nombre,
+                                email:           state.email,
+                                telefono:        state.telefono,
+                                modelo:          (modelo && modelo.nombre) || state.modeloSeleccionado,
+                                color:           state.colorSeleccionado || (modelo && modelo.colorDefault) || '',
+                                precioContado:   (modelo && modelo.precioContado) || 0,
+                                plazoMeses:      state.plazoMeses || 36
+                            }),
+                            success: function(resp) {
+                                self._setLoading(false);
+                                self.app.irAPaso('credito-facturacion');
+                            },
+                            error: function() {
+                                self._setLoading(false);
+                                jQuery('#vk-autopago-error')
+                                    .text('No pudimos guardar tu método de pago automático. ' +
+                                          'Tu tarjeta no fue cobrada. Por favor intenta de nuevo ' +
+                                          'o contacta soporte.')
+                                    .show();
+                                // NO avanzamos — el cliente necesita retry válido.
+                            }
                         });
-
-                        self._setLoading(false);
-                        self.app.irAPaso('credito-facturacion');
                     } else {
                         // Unexpected status
                         jQuery('#vk-autopago-error').text('No se pudo procesar la tarjeta. Intenta de nuevo.').show();
@@ -289,18 +327,30 @@ var PasoCreditoAutopago = {
                     }
                 });
             },
-            error: function() {
-                // Backend not ready — simulate for testing
-                console.warn('SetupIntent backend not available, simulating...');
-                self._simulateSuccess();
+            error: function(xhr) {
+                self._setLoading(false);
+                if (window.VK_DEBUG_SIMULATE_AUTOPAGO === true) {
+                    // Sólo simula si el debug flag está explícitamente activo
+                    // — evita que un backend caído parezca un éxito en prod.
+                    console.warn('VK_DEBUG: SetupIntent backend not available, simulating.');
+                    self._simulateSuccess();
+                    return;
+                }
+                var msg = 'No pudimos inicializar el pago automático. ' +
+                          'Verifica tu conexión o intenta más tarde. ' +
+                          'Tu tarjeta no ha sido cobrada.';
+                jQuery('#vk-autopago-error').text(msg).show();
             }
         });
     },
 
     _simulateSuccess: function() {
         var self = this;
-        // TEST MODE: Simulate card setup when backend (create-setup-intent.php) is not ready
-        // Remove this in production — replace with proper error handling
+        // TEST-ONLY: never reachable unless window.VK_DEBUG_SIMULATE_AUTOPAGO is true.
+        if (window.VK_DEBUG_SIMULATE_AUTOPAGO !== true) {
+            console.error('VK: _simulateSuccess() called without debug flag — blocking.');
+            return;
+        }
         setTimeout(function() {
             self.app.state.autopagoActivado = true;
             self.app.state._setupIntentId = 'simulated_' + Date.now();

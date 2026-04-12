@@ -61,13 +61,54 @@ window.AD_inventario = (function(){
     ADApp.api('inventario/detalle.php?id='+id).done(function(r){
       var m=r.moto; if(!m) return;
       var html = '<div class="ad-h2">'+m.modelo+' — '+m.color+'</div>';
+
+      // Vehicle info
+      html += '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);margin:10px 0 4px;text-transform:uppercase;">Vehículo</div>';
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
-      [['VIN',m.vin_display||m.vin],['Estado',m.estado],['Pago',m.pago_estado],['Año',m.anio_modelo],
-       ['Cliente',m.cliente_nombre||'—'],['Email',m.cliente_email||'—'],['Teléfono',m.cliente_telefono||'—'],
-       ['Pedido',m.pedido_num||'—'],['Punto',m.punto_voltika_nombre||'—']].forEach(function(p){
+      [['VIN',m.vin_display||m.vin],['Año modelo',m.anio_modelo||'—'],['Núm. motor',m.num_motor||'—'],
+       ['Potencia',m.potencia||'—'],['Baterías',m.config_baterias||'—'],['Hecho en',m.hecho_en||'—'],
+       ['Estado',m.estado],['Tipo asignación',m.tipo_asignacion||'—']].forEach(function(p){
         html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
       });
       html += '</div>';
+
+      // Import info
+      if(m.num_pedimento || m.aduana || m.cedis_origen){
+        html += '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);margin:10px 0 4px;text-transform:uppercase;">Importación</div>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
+        [['Pedimento',m.num_pedimento||'—'],['Aduana',m.aduana||'—'],
+         ['Ingreso país',m.fecha_ingreso_pais||'—'],['CEDIS origen',m.cedis_origen||'—']].forEach(function(p){
+          html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
+        });
+        html += '</div>';
+      }
+
+      // Customer & order info
+      html += '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);margin:10px 0 4px;text-transform:uppercase;">Cliente / Pedido</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
+      [['Cliente',m.cliente_nombre||'—'],['Email',m.cliente_email||'—'],['Teléfono',m.cliente_telefono||'—'],
+       ['Pedido',m.pedido_num||'—'],['Pago',m.pago_estado||'—'],['Punto',m.punto_voltika_nombre||'—'],
+       ['Método pago',r.transaccion?r.transaccion.tpago:'—'],['Monto',r.transaccion?ADApp.money(r.transaccion.total):'—'],
+       ['Stripe PI',m.stripe_pi||'—'],['Precio venta',m.precio_venta?ADApp.money(m.precio_venta):'—']].forEach(function(p){
+        html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
+      });
+      html += '</div>';
+
+      // Dates
+      html += '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);margin:10px 0 4px;text-transform:uppercase;">Fechas</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
+      [['Llegada',m.fecha_llegada||'—'],['Estimada llegada',m.fecha_estimada_llegada||'—'],
+       ['Estimada entrega',m.fecha_entrega_estimada||'—'],['Último cambio estado',m.fecha_estado||'—'],
+       ['Días en paso',m.dias_en_paso||'0'],['Recepción',m.recepcion_completada?'Completada':'Pendiente']].forEach(function(p){
+        html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
+      });
+      html += '</div>';
+
+      // Notes
+      if(m.notas){
+        html += '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);margin:10px 0 4px;text-transform:uppercase;">Notas</div>';
+        html += '<div style="font-size:13px;padding:8px;background:var(--ad-bg);border-radius:6px;">'+m.notas+'</div>';
+      }
       // Checklists status
       html += '<div class="ad-h2">Checklists</div>';
       html += '<div style="display:flex;gap:8px">';
@@ -83,11 +124,15 @@ window.AD_inventario = (function(){
         });
       }
       // Assign to point action
+      var origenOk = r.checklist_origen && r.checklist_origen.completado;
       html += '<div class="ad-h2">Acciones</div>';
-      html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'">📍 Asignar a punto</button> ';
+      if(!origenOk){
+        html += '<div style="padding:10px;border-radius:8px;background:rgba(239,68,68,.08);color:#b91c1c;font-size:12px;margin-bottom:8px;">⚠ El checklist de origen debe estar completo antes de asignar a un punto.</div>';
+      }
+      html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'" '+(origenOk?'':'disabled style="opacity:.5;cursor:not-allowed;"')+'>📍 Asignar a punto</button> ';
       html += '<button class="ad-btn ghost" id="adVerifyPay" data-id="'+m.id+'">💳 Verificar pago</button>';
       ADApp.modal(html);
-      $('#adAssign').on('click',function(){ assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
+      $('#adAssign').on('click',function(){ if(!origenOk) return; assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
       $('#adVerifyPay').on('click',function(){
         ADApp.api('pagos/verificar.php',{moto_id:m.id}).done(function(r2){
           alert(r2.verificado?'✅ Pago verificado':'⚠️ No verificado: '+(r2.stripe_status||'sin Stripe PI'));
@@ -311,29 +356,79 @@ window.AD_inventario = (function(){
     });
   }
   function showNewForm(){
-    ADApp.modal(
-      '<div class="ad-h2">Nueva moto</div>'+
-      '<input class="ad-input" id="nmVin" placeholder="VIN" style="margin-bottom:8px">'+
-      '<input class="ad-input" id="nmModelo" placeholder="Modelo" style="margin-bottom:8px">'+
-      '<input class="ad-input" id="nmColor" placeholder="Color" style="margin-bottom:8px">'+
-      '<input class="ad-input" id="nmAnio" placeholder="Año modelo" style="margin-bottom:8px">'+
-      '<input class="ad-input" id="nmHecho" placeholder="Hecho en" style="margin-bottom:8px">'+
-      '<textarea class="ad-input" id="nmNotas" placeholder="Notas" style="margin-bottom:8px"></textarea>'+
-      '<button class="ad-btn primary" id="nmSave">Guardar</button>'
-    );
+    var html = '<div class="ad-h2">Nueva moto</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+
+    var fields = [
+      {id:'nmVin',      label:'VIN *',           ph:'Número de identificación vehicular'},
+      {id:'nmModelo',   label:'Modelo *',         ph:'M05, Ukko S+, etc.'},
+      {id:'nmColor',    label:'Color *',          ph:'gris, negro, etc.'},
+      {id:'nmAnio',     label:'Año modelo',       ph:new Date().getFullYear()},
+      {id:'nmMotor',    label:'Núm. motor',       ph:'Número de motor'},
+      {id:'nmPotencia', label:'Potencia',         ph:'500W, 1000W, etc.'},
+      {id:'nmBaterias', label:'Config. baterías',  ph:'', type:'select', opts:['1','2']},
+      {id:'nmHecho',    label:'Hecho en',         ph:'País de fabricación'},
+      {id:'nmPedimento',label:'Núm. pedimento',   ph:'Número de pedimento'},
+      {id:'nmFechaIng', label:'Fecha ingreso país',ph:'', type:'date'},
+      {id:'nmAduana',   label:'Aduana',           ph:'Aduana de ingreso'},
+      {id:'nmCedis',    label:'CEDIS origen',     ph:'Centro de distribución'},
+    ];
+
+    fields.forEach(function(f){
+      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">'+f.label+'</label>';
+      if(f.type === 'select'){
+        html += '<select class="ad-input" id="'+f.id+'" style="width:100%">';
+        f.opts.forEach(function(o){ html += '<option value="'+o+'">'+o+'</option>'; });
+        html += '</select>';
+      } else if(f.type === 'date'){
+        html += '<input type="date" class="ad-input" id="'+f.id+'" style="width:100%">';
+      } else {
+        html += '<input class="ad-input" id="'+f.id+'" placeholder="'+f.ph+'" style="width:100%">';
+      }
+      html += '</div>';
+    });
+
+    html += '</div>'+
+      '<div style="margin-top:8px;">'+
+        '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Descripción / Notas</label>'+
+        '<textarea class="ad-input" id="nmNotas" placeholder="Notas adicionales" style="width:100%;min-height:60px;"></textarea>'+
+      '</div>'+
+      '<button class="ad-btn primary" id="nmSave" style="margin-top:12px;width:100%;">Guardar</button>';
+
+    ADApp.modal(html);
+
     $('#nmSave').on('click',function(){
+      var vin = $('#nmVin').val().trim();
+      var modelo = $('#nmModelo').val().trim();
+      var color = $('#nmColor').val().trim();
+      if(!vin || !modelo || !color){
+        alert('VIN, Modelo y Color son obligatorios');
+        return;
+      }
+      $(this).prop('disabled',true).html('<span class="ad-spin"></span> Guardando...');
       ADApp.api('inventario/crear.php',{
-        vin:$('#nmVin').val(),modelo:$('#nmModelo').val(),color:$('#nmColor').val(),
-        anio_modelo:$('#nmAnio').val(),hecho_en:$('#nmHecho').val(),notas:$('#nmNotas').val()
+        vin: vin,
+        modelo: modelo,
+        color: color,
+        anio_modelo: $('#nmAnio').val(),
+        num_motor: $('#nmMotor').val(),
+        potencia: $('#nmPotencia').val(),
+        config_baterias: $('#nmBaterias').val(),
+        hecho_en: $('#nmHecho').val(),
+        num_pedimento: $('#nmPedimento').val(),
+        fecha_ingreso_pais: $('#nmFechaIng').val() || null,
+        aduana: $('#nmAduana').val(),
+        cedis_origen: $('#nmCedis').val(),
+        notas: $('#nmNotas').val()
       }).done(function(r){
-        if(r.ok){ ADApp.closeModal(); load(); } else alert(r.error||'Error');
-      });
+        if(r.ok){ ADApp.closeModal(); load(); } else { alert(r.error||'Error'); $('#nmSave').prop('disabled',false).html('Guardar'); }
+      }).fail(function(){ alert('Error de conexión'); $('#nmSave').prop('disabled',false).html('Guardar'); });
     });
   }
   function showImportForm(){
     ADApp.modal(
       '<div class="ad-h2">Importar motos desde Excel</div>'+
-      '<div class="ad-dim" style="margin-bottom:12px;">Formato: CSV o XLSX con columnas VIN, Modelo, Color, Año, Hecho_en, Notas</div>'+
+      '<div class="ad-dim" style="margin-bottom:12px;">Formato: CSV o XLSX con columnas VIN, Modelo, Color, Año, Num_motor, Potencia, Config_baterias, Hecho_en, Num_pedimento, Aduana, CEDIS_origen, Notas</div>'+
       '<div style="margin-bottom:12px;">'+
         '<a href="#" id="adDlTemplate" style="color:var(--ad-primary);font-size:13px;">Descargar plantilla CSV</a>'+
       '</div>'+
@@ -345,7 +440,7 @@ window.AD_inventario = (function(){
 
     $('#adDlTemplate').on('click', function(e){
       e.preventDefault();
-      var csv = 'VIN,Modelo,Color,Año,Hecho_en,Notas\n';
+      var csv = 'VIN,Modelo,Color,Año,Num_motor,Potencia,Config_baterias,Hecho_en,Num_pedimento,Aduana,CEDIS_origen,Notas\n';
       var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);

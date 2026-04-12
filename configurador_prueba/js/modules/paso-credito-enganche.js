@@ -383,9 +383,33 @@ var PasoCreditoEnganche = {
                 punto_nombre:  centro.nombre || '',
                 punto_tipo:    centro.tipo || ''
             }),
-            complete: function() {
+            success: function(resp) {
                 self._setLoading(false);
+                // Guardar número de pedido devuelto por el servidor para
+                // que pasos posteriores (contrato, autopago) lo referencien.
+                if (resp && resp.pedido) {
+                    self.app.state.pedidoNum = resp.pedido;
+                }
+                if (resp && resp.db_saved === false) {
+                    // Pago capturado pero la orden quedó en recuperación.
+                    // Avisar al usuario con su número de pedido para soporte.
+                    self._showError(
+                        'Tu pago fue recibido (pedido #' + (resp.pedido || '?') +
+                        '), pero hubo un problema guardando la orden. ' +
+                        'Guarda este número y contacta soporte.'
+                    );
+                }
                 self.app.irAPaso('credito-contrato');
+            },
+            error: function(xhr) {
+                self._setLoading(false);
+                var msg = 'No pudimos registrar tu orden en el servidor. ' +
+                          'Tu pago sigue protegido por Stripe. ' +
+                          'Por favor contacta soporte con tu número de teléfono ' +
+                          'antes de reintentar el pago para evitar cargos duplicados.';
+                self._showError(msg);
+                // Intencionalmente NO avanzamos — así el cliente no queda
+                // atrapado en un estado sin orden confirmada.
             }
         });
     },

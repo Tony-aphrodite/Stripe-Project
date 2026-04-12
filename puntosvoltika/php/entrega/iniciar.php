@@ -17,6 +17,39 @@ $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$moto) puntoJsonOut(['error' => 'Moto no encontrada en este punto'], 404);
 if (!$moto['cliente_telefono']) puntoJsonOut(['error' => 'Moto no tiene cliente asignado'], 400);
 
+// Per dashboards_diagrams.pdf (Delivery process): delivery is blocked if payment is not complete.
+// Allowed: 'pagada' (cash/MSI) or 'pagada_completa'. 'parcial' (credito with enganche only) requires
+// the credit plan to be fully paid before release. Anything else blocks delivery.
+$pagoEstado = strtolower(trim($moto['pago_estado'] ?? ''));
+$pagoOk = in_array($pagoEstado, ['pagada', 'pagada_completa', 'completo', 'completado'], true);
+
+if (!$pagoOk && $pagoEstado === 'parcial') {
+    // Credito flow — allow only if the subscription is current and has no overdue cycles.
+    // The real table is `subscripciones_credito`, linked to the moto via `inventario_moto_id`.
+    try {
+        $sq = $pdo->prepare("SELECT s.id FROM subscripciones_credito s
+            WHERE s.inventario_moto_id = ? AND s.estado IN ('activa','active','completada','completed')
+            ORDER BY s.id DESC LIMIT 1");
+        $sq->execute([$motoId]);
+        $subId = $sq->fetchColumn();
+        if ($subId) {
+            $vq = $pdo->prepare("SELECT COUNT(*) FROM ciclos_pago
+                WHERE subscripcion_id = ? AND estado IN ('vencido','pendiente')
+                  AND fecha_vencimiento < CURDATE()");
+            $vq->execute([(int)$subId]);
+            $vencidos = (int)$vq->fetchColumn();
+            if ($vencidos === 0) $pagoOk = true;
+        }
+    } catch (Throwable $e) { error_log('iniciar entrega pago check: ' . $e->getMessage()); }
+}
+
+if (!$pagoOk) {
+    puntoJsonOut([
+        'error' => 'No se puede iniciar la entrega: el pago no está completo.',
+        'pago_estado' => $pagoEstado ?: 'desconocido'
+    ], 403);
+}
+
 // Generate OTP
 $otp = puntoGenOTP();
 $expires = date('Y-m-d H:i:s', time() + 600);

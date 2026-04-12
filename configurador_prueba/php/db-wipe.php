@@ -8,6 +8,7 @@ if ($secret !== 'voltika-wipe-2026') {
 require_once __DIR__ . '/config.php';
 
 // dealer_usuarios is intentionally excluded — login accounts must be preserved
+// puntos_voltika and dealer_usuarios are intentionally excluded
 $tables = [
     'inventario_motos',
     'ventas_log',
@@ -22,6 +23,12 @@ $tables = [
     'verificaciones_identidad',
     'consultas_buro',
     'preaprobaciones',
+    'envios',
+    'recepcion_punto',
+    'fotos_entrega',
+    'ciclos_pago',
+    'firmas_contratos',
+    'admin_log',
 ];
 
 $pdo = getDB();
@@ -57,6 +64,7 @@ th{background:#f5f5f5;}
 </style></head><body>
 <h2>&#128465; Voltika DB — Datos eliminados</h2>
 <div class="safe">&#10004; <strong>dealer_usuarios</strong> conservado — login intacto</div>
+<div class="safe">&#10004; <strong>puntos_voltika</strong> conservado — puntos de entrega intactos</div>
 <table>
 <tr><th>Tabla</th><th>Resultado</th></tr>
 <?php foreach ($results as $r): ?>

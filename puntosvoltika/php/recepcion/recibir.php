@@ -59,24 +59,9 @@ $pdo->prepare("UPDATE inventario_motos SET estado=? WHERE id=?")->execute([$newE
 
 puntoLog('recibir_moto', ['moto_id' => $motoId, 'envio_id' => $envioId, 'estado' => $newEstado]);
 
-// Notify cliente that moto is ready to pick up (only if reception OK AND moto has a client)
-if ($allOk && !empty($row['cliente_telefono'])) {
-    require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
-    try {
-        $pq = $pdo->prepare("SELECT nombre, direccion, horarios FROM puntos_voltika WHERE id=?");
-        $pq->execute([$ctx['punto_id']]);
-        $punto = $pq->fetch(PDO::FETCH_ASSOC) ?: [];
-        voltikaNotify('lista_para_recoger', [
-            'cliente_id' => $row['cliente_id'] ?? null,
-            'nombre'     => $row['cliente_nombre'] ?? '',
-            'modelo'     => $row['modelo'] ?? '',
-            'punto'      => $punto['nombre'] ?? '',
-            'direccion'  => $punto['direccion'] ?? '',
-            'horario'    => $punto['horarios'] ?? '',
-            'telefono'   => $row['cliente_telefono'],
-            'email'      => $row['cliente_email'] ?? '',
-        ]);
-    } catch (Throwable $e) { error_log('notify lista_para_recoger: ' . $e->getMessage()); }
-}
+// NOTE: The `lista_para_recoger` notification is NOT sent here. Per the flow diagram,
+// the client is only notified after the point marks the moto as `lista_para_entrega`
+// with a pickup date (see inventario/cambiar-estado.php). Reception alone is an
+// intermediate state — assembly + pickup date come next.
 
 puntoJsonOut(['ok' => true, 'recepcion_id' => $pdo->lastInsertId(), 'estado' => $newEstado]);

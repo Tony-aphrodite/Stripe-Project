@@ -44,7 +44,7 @@ foreach ($ciclos as $c) {
     $tpl = reminderTemplate($tipo, $cli['nombre'], $c['monto'], $c['fecha_vencimiento']);
 
     if ($cli['nE'] && $cli['email']) {
-        @sendMail($cli['email'], $tpl['subject'], $tpl['html']);
+        @sendMail($cli['email'], $cli['nombre'] ?: 'Cliente', $tpl['subject'], $tpl['html']);
     }
     if ($cli['nS'] && $cli['telefono']) {
         @portalSendSMS($cli['telefono'], $tpl['sms']);

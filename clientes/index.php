@@ -47,6 +47,7 @@ $asset = function(string $rel): string {
 <script src="<?= $asset('js/modules/cuenta.js') ?>"></script>
 <script src="<?= $asset('js/modules/mivoltika.js') ?>"></script>
 <script src="<?= $asset('js/modules/ayuda.js') ?>"></script>
+<script src="<?= $asset('js/modules/notificaciones.js') ?>"></script>
 <script>$(function(){ VKApp.start(); });</script>
 </body>
 </html>

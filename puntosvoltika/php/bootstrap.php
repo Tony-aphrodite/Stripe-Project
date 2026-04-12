@@ -3,7 +3,8 @@
  * Voltika Puntos — Bootstrap
  * Shared entry point for all Punto Voltika panel endpoints.
  */
-require_once __DIR__ . '/../../configurador_prueba/php/config.php';
+require_once __DIR__ . '/../../configurador_prueba/php/master-bootstrap.php';
+voltikaEnsureSchema();
 
 $isApiRequest = (basename($_SERVER['SCRIPT_NAME'] ?? '') !== 'index.php');
 if (!headers_sent()) {
@@ -22,48 +23,6 @@ session_name('VOLTIKA_PUNTO');
 session_start();
 
 $pdo = getDB();
-
-// Ensure tables exist (shared schema with admin panel)
-$pdo->exec("CREATE TABLE IF NOT EXISTS puntos_voltika (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(255) NOT NULL, direccion TEXT, ciudad VARCHAR(120), estado VARCHAR(80),
-    cp VARCHAR(10), telefono VARCHAR(20), email VARCHAR(255),
-    lat DECIMAL(10,7), lng DECIMAL(10,7), horarios VARCHAR(255), capacidad INT DEFAULT 0,
-    activo TINYINT DEFAULT 1,
-    codigo_venta VARCHAR(20) UNIQUE, codigo_electronico VARCHAR(20) UNIQUE,
-    freg DATETIME DEFAULT CURRENT_TIMESTAMP,
-    fmod DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-$pdo->exec("CREATE TABLE IF NOT EXISTS envios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    moto_id INT NOT NULL, punto_destino_id INT NOT NULL,
-    estado ENUM('lista_para_enviar','enviada','recibida') DEFAULT 'lista_para_enviar',
-    fecha_envio DATE, fecha_estimada_llegada DATE, fecha_recepcion DATETIME,
-    enviado_por INT, recibido_por INT, notas TEXT,
-    freg DATETIME DEFAULT CURRENT_TIMESTAMP,
-    fmod DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-$pdo->exec("CREATE TABLE IF NOT EXISTS recepcion_punto (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    envio_id INT NOT NULL, moto_id INT NOT NULL, punto_id INT NOT NULL,
-    recibido_por INT, vin_escaneado VARCHAR(50), vin_coincide TINYINT DEFAULT 0,
-    estado_fisico_ok TINYINT DEFAULT 0, sin_danos TINYINT DEFAULT 0,
-    componentes_completos TINYINT DEFAULT 0, bateria_ok TINYINT DEFAULT 0,
-    fotos JSON, notas TEXT, completado TINYINT DEFAULT 0,
-    freg DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-$pdo->exec("CREATE TABLE IF NOT EXISTS fotos_entrega (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    entrega_id INT NOT NULL, moto_id INT NOT NULL,
-    tipo ENUM('cliente','identificacion','moto_frente','moto_lateral','moto_trasera','otra'),
-    url TEXT NOT NULL, freg DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-$pdo->exec("CREATE TABLE IF NOT EXISTS admin_log (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    usuario_id INT, accion VARCHAR(100), detalle JSON, ip VARCHAR(45),
-    freg DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-try { $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN punto_voltika_id INT AFTER punto_id"); } catch(Throwable $e){}
 
 function puntoJsonIn() {
     return json_decode(file_get_contents('php://input'), true) ?: [];

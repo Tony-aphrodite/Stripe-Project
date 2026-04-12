@@ -14,8 +14,12 @@ var PasoResumen = {
     },
 
     _calcFechaEntrega: function() {
+        var modelo = this.app ? this.app.getModelo(this.app.state.modeloSeleccionado) : null;
+        var config = (typeof VOLTIKA_PRODUCTOS !== 'undefined') ? VOLTIKA_PRODUCTOS.config : {};
+        var enInventario = modelo ? (modelo.enInventario !== false) : true;
+        var dias = enInventario ? (config.entregaDiasInventario || 15) : (config.entregaDiasSinInventario || 70);
         var d = new Date();
-        d.setDate(d.getDate() + 15);
+        d.setDate(d.getDate() + dias);
         var m = ['enero','febrero','marzo','abril','mayo','junio',
                  'julio','agosto','septiembre','octubre','noviembre','diciembre'];
         return d.getDate() + ' de ' + m[d.getMonth()] + ' de ' + d.getFullYear();

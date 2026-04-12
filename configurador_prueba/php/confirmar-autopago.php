@@ -37,6 +37,17 @@ $customerId      = trim($json['customerId'] ?? '');
 $paymentMethodId = trim($json['paymentMethodId'] ?? '');
 $montoSemanal    = isset($json['montoSemanal']) ? floatval($json['montoSemanal']) : null;
 
+// Product context from Plan C JS payload. Backfilled into the row even if
+// create-setup-intent.php already wrote these fields — COALESCE protects
+// against overwriting existing data with empty strings.
+$ciNombre   = trim($json['nombre']   ?? '');
+$ciEmail    = trim($json['email']    ?? '');
+$ciTelefono = trim($json['telefono'] ?? '');
+$ciModelo   = trim($json['modelo']   ?? '');
+$ciColor    = trim($json['color']    ?? '');
+$ciPrecio   = isset($json['precioContado']) ? floatval($json['precioContado']) : 0;
+$ciPlazo    = isset($json['plazoMeses'])    ? intval($json['plazoMeses'])      : 0;
+
 if ($setupIntentId === '') {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'setupIntentId requerido']);
@@ -51,18 +62,50 @@ if (strpos($setupIntentId, 'simulated_') === 0) {
 
 try {
     $pdo = getDB();
+
+    // Make sure optional columns exist on legacy tables before we try to
+    // write to them. Idempotent.
+    try {
+        $existing = $pdo->query("SHOW COLUMNS FROM subscripciones_credito")->fetchAll(PDO::FETCH_COLUMN);
+        $ensure = [
+            'modelo'         => "ALTER TABLE subscripciones_credito ADD COLUMN modelo VARCHAR(200) NULL",
+            'color'          => "ALTER TABLE subscripciones_credito ADD COLUMN color VARCHAR(50) NULL",
+            'precio_contado' => "ALTER TABLE subscripciones_credito ADD COLUMN precio_contado DECIMAL(12,2) NULL",
+            'plazo_meses'    => "ALTER TABLE subscripciones_credito ADD COLUMN plazo_meses INT NULL",
+        ];
+        foreach ($ensure as $col => $sql) {
+            if (!in_array($col, $existing, true)) {
+                try { $pdo->exec($sql); } catch (Throwable $e) { /* noop */ }
+            }
+        }
+    } catch (Throwable $e) { /* noop */ }
+
     $stmt = $pdo->prepare("
         UPDATE subscripciones_credito
         SET status                   = 'active',
             stripe_payment_method_id = COALESCE(NULLIF(:pm, ''), stripe_payment_method_id),
             monto_semanal            = COALESCE(:monto, monto_semanal),
+            nombre                   = COALESCE(NULLIF(:nombre, ''), nombre),
+            email                    = COALESCE(NULLIF(:email, ''),  email),
+            telefono                 = COALESCE(NULLIF(:telefono, ''), telefono),
+            modelo                   = COALESCE(NULLIF(:modelo, ''), modelo),
+            color                    = COALESCE(NULLIF(:color, ''),  color),
+            precio_contado           = COALESCE(NULLIF(:precio, 0),  precio_contado),
+            plazo_meses              = COALESCE(NULLIF(:plazo, 0),   plazo_meses),
             factivacion              = NOW()
         WHERE stripe_setup_intent_id = :sid
     ");
     $stmt->execute([
-        ':pm'    => $paymentMethodId,
-        ':monto' => $montoSemanal,
-        ':sid'   => $setupIntentId,
+        ':pm'       => $paymentMethodId,
+        ':monto'    => $montoSemanal,
+        ':nombre'   => $ciNombre,
+        ':email'    => $ciEmail,
+        ':telefono' => $ciTelefono,
+        ':modelo'   => $ciModelo,
+        ':color'    => $ciColor,
+        ':precio'   => $ciPrecio,
+        ':plazo'    => $ciPlazo,
+        ':sid'      => $setupIntentId,
     ]);
 
     $updated = $stmt->rowCount();
@@ -72,20 +115,36 @@ try {
     if ($updated === 0) {
         $insert = $pdo->prepare("
             INSERT INTO subscripciones_credito
-                (stripe_customer_id, stripe_setup_intent_id, stripe_payment_method_id,
-                 monto_semanal, status, factivacion)
-            VALUES (?, ?, ?, ?, 'active', NOW())
+                (nombre, email, telefono,
+                 stripe_customer_id, stripe_setup_intent_id, stripe_payment_method_id,
+                 modelo, color, precio_contado, plazo_meses, monto_semanal,
+                 status, factivacion)
+            VALUES (?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?, ?, ?, ?,
+                    'active', NOW())
             ON DUPLICATE KEY UPDATE
                 stripe_payment_method_id = VALUES(stripe_payment_method_id),
                 monto_semanal            = VALUES(monto_semanal),
+                modelo                   = COALESCE(NULLIF(VALUES(modelo), ''), modelo),
+                color                    = COALESCE(NULLIF(VALUES(color),  ''), color),
+                precio_contado           = COALESCE(NULLIF(VALUES(precio_contado), 0), precio_contado),
+                plazo_meses              = COALESCE(NULLIF(VALUES(plazo_meses), 0),    plazo_meses),
                 status                   = 'active',
                 factivacion              = NOW()
         ");
         $insert->execute([
-            $customerId ?: null,
+            $ciNombre   ?: '',
+            $ciEmail    ?: '',
+            $ciTelefono ?: '',
+            $customerId ?: '',
             $setupIntentId,
-            $paymentMethodId ?: null,
-            $montoSemanal,
+            $paymentMethodId ?: '',
+            $ciModelo   ?: '',
+            $ciColor    ?: '',
+            $ciPrecio   ?: 0,
+            $ciPlazo    ?: 0,
+            $montoSemanal ?: 0,
         ]);
     }
 

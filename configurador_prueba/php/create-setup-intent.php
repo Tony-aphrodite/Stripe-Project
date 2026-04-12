@@ -43,6 +43,14 @@ $telefono = isset($input['telefono']) ? preg_replace('/\D/', '', trim($input['te
 // Normalize: strip leading 52 country code if present
 if (strlen($telefono) > 10 && substr($telefono, 0, 2) === '52') $telefono = substr($telefono, 2);
 
+// Product context — persisted on the pending subscripciones_credito row so
+// the admin dashboard doesn't see orphans with modelo/color = "-".
+$modelo        = isset($input['modelo'])        ? trim($input['modelo']) : '';
+$color         = isset($input['color'])         ? trim($input['color'])  : '';
+$precioContado = isset($input['precioContado']) ? floatval($input['precioContado']) : 0;
+$plazoMeses    = isset($input['plazoMeses'])    ? intval($input['plazoMeses']) : 0;
+$montoSemanal  = isset($input['montoSemanal'])  ? floatval($input['montoSemanal']) : 0;
+
 try {
     // Create or find Stripe Customer
     $customerParams = [
@@ -60,15 +68,23 @@ try {
     $customer = \Stripe\Customer::create($customerParams);
 
     // Create SetupIntent (saves card for future charges, no charge now)
+    // Stripe metadata doubles as recovery source: Plan G's enriquecer-vksc.php
+    // reads these fields back when a subscripciones_credito row has empty
+    // modelo/color/precio (e.g. legacy rows created before this backfill).
     $setupIntent = \Stripe\SetupIntent::create([
         'customer'             => $customer->id,
         'payment_method_types' => ['card'],
         'usage'                => 'off_session',  // For recurring charges
         'metadata'             => [
-            'nombre'   => $nombre,
-            'email'    => $email,
-            'telefono' => $telefono,
-            'tipo'     => 'autopago_credito_voltika'
+            'nombre'         => $nombre,
+            'email'          => $email,
+            'telefono'       => $telefono,
+            'tipo'           => 'autopago_credito_voltika',
+            'modelo'         => $modelo,
+            'color'          => $color,
+            'precio_contado' => (string)$precioContado,
+            'plazo_meses'    => (string)$plazoMeses,
+            'monto_semanal'  => (string)$montoSemanal,
         ]
     ]);
 
@@ -80,6 +96,11 @@ try {
         'telefono'         => $telefono,
         'stripe_customer'  => $customer->id,
         'stripe_setup_id'  => $setupIntent->id,
+        'modelo'           => $modelo,
+        'color'            => $color,
+        'precio_contado'   => $precioContado,
+        'plazo_meses'      => $plazoMeses,
+        'monto_semanal'    => $montoSemanal,
     ]);
 
     echo json_encode([
@@ -128,17 +149,37 @@ function saveSubscripcionPending(array $data): void {
             INDEX idx_status   (status),
             INDEX idx_customer (stripe_customer_id)
         )");
+        // Backfill optional columns on legacy tables
+        $existing = $pdo->query("SHOW COLUMNS FROM subscripciones_credito")->fetchAll(PDO::FETCH_COLUMN);
+        $ensure = [
+            'modelo'         => "ALTER TABLE subscripciones_credito ADD COLUMN modelo VARCHAR(200) NULL",
+            'color'          => "ALTER TABLE subscripciones_credito ADD COLUMN color VARCHAR(50) NULL",
+            'precio_contado' => "ALTER TABLE subscripciones_credito ADD COLUMN precio_contado DECIMAL(12,2) NULL",
+            'plazo_meses'    => "ALTER TABLE subscripciones_credito ADD COLUMN plazo_meses INT NULL",
+        ];
+        foreach ($ensure as $col => $sql) {
+            if (!in_array($col, $existing, true)) {
+                try { $pdo->exec($sql); } catch (Throwable $e) { /* noop */ }
+            }
+        }
         $stmt = $pdo->prepare("
             INSERT IGNORE INTO subscripciones_credito
-                (nombre, email, telefono, stripe_customer_id, stripe_setup_intent_id, status)
-            VALUES (?, ?, ?, ?, ?, 'pending')
+                (nombre, email, telefono, stripe_customer_id, stripe_setup_intent_id, status,
+                 modelo, color, precio_contado, plazo_meses, monto_semanal)
+            VALUES (?, ?, ?, ?, ?, 'pending',
+                    ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
-            $data['nombre'] ?: null,
-            $data['email']  ?: null,
-            $data['telefono'] ?: null,
+            $data['nombre'] ?: '',
+            $data['email']  ?: '',
+            $data['telefono'] ?: '',
             $data['stripe_customer'],
             $data['stripe_setup_id'],
+            $data['modelo']         ?: '',
+            $data['color']          ?: '',
+            $data['precio_contado'] ?: 0,
+            $data['plazo_meses']    ?: 0,
+            $data['monto_semanal']  ?: 0,
         ]);
     } catch (PDOException $e) {
         error_log('Voltika subscripciones_credito pending error: ' . $e->getMessage());

@@ -89,20 +89,11 @@ try {
         $metodoPago, $ciudad, $estado, $cp, $total,
         $asesoria ? 1 : 0, $seguro ? 1 : 0,
     ]);
-    // ── FIFO: auto-assign matching moto from inventory ───────────────────────
-    $stripePi = trim($json['stripe_pi'] ?? '');
-    asignarMotoFIFO(
-        $pdo,
-        $modelo,
-        $color,
-        $nombre,
-        $email,
-        $telefono,
-        $pedidoNum,
-        $stripePi,
-        $metodoPago,
-        $total
-    );
+    // Bike assignment is ALWAYS manual by CEDIS via admin dashboard.
+    // Per business rules: "a purchase NEVER adds a motorcycle to the inventory"
+    // and "the assignation of a bike NEVER is automatically".
+    // The old asignarMotoFIFO() call was removed here — CEDIS assigns via
+    // admin/php/ventas/asignar-moto.php after verifying payment.
 
 } catch (PDOException $e) {
     error_log('Voltika pedidos DB error: ' . $e->getMessage());

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Voltika — Reparar Todo</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; background: #f7f8fa; color: #222; }
+  h1 { font-size: 1.4rem; }
+  .card { background: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 10px rgba(0,0,0,.06); margin-bottom: 1rem; }
+  button { padding: .75rem 1.5rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-right: .5rem; }
+  .btn-dry { background: #ffd666; color: #664d00; }
+  .btn-run { background: #ff4d4f; color: #fff; }
+  .btn-diag { background: #4096ff; color: #fff; }
+  .result { white-space: pre-wrap; background: #0d1117; color: #c9d1d9; padding: 1rem; border-radius: 8px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .85rem; max-height: 500px; overflow: auto; }
+  .ok   { color: #3fb950; }
+  .fail { color: #f85149; }
+  .warn { color: #d29922; }
+  .summary { font-size: 1.1rem; font-weight: 600; margin: 1rem 0; padding: 1rem; border-radius: 8px; }
+  .summary.ok   { background: #e6f4ea; color: #1e7e34; }
+  .summary.fail { background: #fde8e8; color: #c41e3a; }
+  .step { margin: .5rem 0; padding-left: 1rem; border-left: 3px solid #eee; }
+  .step.ok   { border-left-color: #3fb950; }
+  .step.fail { border-left-color: #f85149; }
+  .mini { font-size: .85rem; color: #666; }
+</style>
+</head>
+<body>
+
+<h1>🔧 Voltika — Reparar Todo (one-shot)</h1>
+
+<div class="card">
+  <p>
+    Este script ejecuta en orden:<br>
+    <strong>1) reparar-schema</strong> → relaja NOT NULL en columnas legacy<br>
+    <strong>2) diagnosticar</strong> → verifica que el schema quedó limpio<br>
+    <strong>3) recuperar-lote</strong> → promueve todos los huérfanos a <code>transacciones</code><br>
+    <strong>4) counts</strong> → reporta filas finales
+  </p>
+  <p class="mini">
+    ⚠ Debes estar logueado en <a href="/admin/" target="_blank">/admin</a> (rol admin o cedis) antes de usar los botones.
+  </p>
+
+  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+    <button class="btn-diag" onclick="run(false, true)">1. Diagnosticar (solo lectura)</button>
+    <button class="btn-dry"  onclick="run(true,  false)">2. Dry-run (ver qué haría)</button>
+    <button class="btn-run"  onclick="confirmRun()">3. Ejecutar de verdad</button>
+  </div>
+</div>
+
+<div class="card">
+  <p>
+    <strong>Limpiar motos virtuales</strong> — Elimina los registros fantasma en <code>inventario_motos</code>
+    creados por el viejo <code>confirmar-orden.php</code> (VIN: VK-M05-xxx). Estos no son motos reales.
+    También agrega <code>fecha_estimada_entrega</code> a órdenes sin moto asignada.
+  </p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+    <button class="btn-dry" onclick="runPhantoms(true)">Dry-run phantoms</button>
+    <button class="btn-run" onclick="confirmPhantoms()">Limpiar phantoms</button>
+  </div>
+</div>
+
+<div id="summary"></div>
+
+<div class="card" id="resultCard" style="display:none">
+  <h3>Resultado</h3>
+  <div class="result" id="result"></div>
+</div>
+
+<script>
+const BASE = '/admin/php/ventas';
+
+async function run(dryRun, diagOnly) {
+  const card    = document.getElementById('resultCard');
+  const result  = document.getElementById('result');
+  const summary = document.getElementById('summary');
+  card.style.display = 'block';
+  summary.innerHTML = '';
+  result.textContent = '⏳ Ejecutando...';
+
+  try {
+    let url, body;
+    if (diagOnly) {
+      url = `${BASE}/diagnosticar-schema.php`;
+      body = null;
+    } else {
+      url = `${BASE}/reparar-todo.php`;
+      body = JSON.stringify({ dry_run: dryRun });
+    }
+
+    const res = await fetch(url, {
+      method: diagOnly ? 'GET' : 'POST',
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      credentials: 'include',
+      body,
+    });
+    const data = await res.json();
+    result.textContent = JSON.stringify(data, null, 2);
+
+    if (!res.ok || data.error) {
+      summary.innerHTML = `<div class="summary fail">❌ HTTP ${res.status}: ${data.error || 'error'}</div>`;
+      if (res.status === 401) {
+        summary.innerHTML += `<div class="card">No estás autenticado. Abrí <a href="/admin/" target="_blank">/admin</a>, iniciá sesión, y volvé a esta página.</div>`;
+      }
+      return;
+    }
+
+    if (diagOnly) {
+      const problems = data.total_problemas ?? 0;
+      const cls = problems === 0 ? 'ok' : 'fail';
+      summary.innerHTML = `<div class="summary ${cls}">
+        ${problems === 0 ? '✅' : '⚠'} ${problems} columnas problemáticas detectadas
+        · transacciones=${data.counts?.transacciones ?? '?'}
+        · errores=${data.counts?.transacciones_errores ?? '?'}
+        · subscripciones=${data.counts?.subscripciones_credito ?? '?'}
+      </div>`;
+      return;
+    }
+
+    // reparar-todo response
+    const steps = data.steps || {};
+    const cls = data.ok ? 'ok' : 'fail';
+    summary.innerHTML = `
+      <div class="summary ${cls}">${data.ok ? '✅' : '❌'} ${data.resumen || ''}</div>
+      <div class="card">
+        <div class="step ${steps.schema?.ok ? 'ok' : 'fail'}">
+          <strong>1. Schema:</strong> ${steps.schema?.total_changes ?? 0} cambios, ${steps.schema?.failed ?? 0} fallos
+          ${dryRun ? '<span class="warn">(dry-run)</span>' : ''}
+        </div>
+        <div class="step ${steps.diagnostico?.ok ? 'ok' : 'fail'}">
+          <strong>2. Diagnóstico:</strong> ${steps.diagnostico?.problemas ?? 0} problemas restantes
+        </div>
+        <div class="step ${steps.recuperacion?.ok ? 'ok' : 'fail'}">
+          <strong>3. Recuperación:</strong>
+          processed=${steps.recuperacion?.processed ?? 0},
+          recovered=${steps.recuperacion?.recovered ?? 0},
+          errors=${steps.recuperacion?.errors?.length ?? 0}
+          ${dryRun ? '<span class="warn">(dry-run — nada escrito)</span>' : ''}
+        </div>
+        <div class="step">
+          <strong>4. Counts finales:</strong>
+          transacciones=${steps.counts?.transacciones ?? '?'},
+          errores_no_recuperados=${steps.counts?.errores_no_recuperados ?? '?'}
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    result.textContent = 'Error: ' + e.message;
+    summary.innerHTML = `<div class="summary fail">❌ ${e.message}</div>`;
+  }
+}
+
+function confirmRun() {
+  if (!confirm('¿Ejecutar de verdad?\n\nEsto va a:\n- Modificar el schema de transacciones y clientes (MODIFY COLUMN)\n- Crear filas nuevas en transacciones promoviendo los huérfanos\n\n¿Continuar?')) return;
+  run(false, false);
+}
+
+async function runPhantoms(dryRun) {
+  const card    = document.getElementById('resultCard');
+  const result  = document.getElementById('result');
+  const summary = document.getElementById('summary');
+  card.style.display = 'block';
+  summary.innerHTML = '';
+  result.textContent = '⏳ Buscando motos virtuales...';
+  try {
+    const res = await fetch(`${BASE}/limpiar-phantoms.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ dry_run: dryRun }),
+    });
+    const data = await res.json();
+    result.textContent = JSON.stringify(data, null, 2);
+    const cls = data.ok ? 'ok' : 'fail';
+    summary.innerHTML = `
+      <div class="summary ${cls}">
+        ${data.ok ? '✅' : '❌'} Phantoms encontrados: ${data.phantoms_found ?? 0},
+        desactivados: ${data.deactivated ?? 0},
+        errores: ${data.errors?.length ?? 0}
+        ${dryRun ? '<span class="warn">(dry-run — nada tocado)</span>' : ''}
+      </div>`;
+  } catch (e) {
+    result.textContent = 'Error: ' + e.message;
+    summary.innerHTML = `<div class="summary fail">❌ ${e.message}</div>`;
+  }
+}
+function confirmPhantoms() {
+  if (!confirm('¿Limpiar motos virtuales?\n\nEsto va a:\n- Desactivar registros fantasma en inventario_motos (VK-M05-xxx)\n- Agregar fecha_estimada_entrega a órdenes sin moto\n\n¿Continuar?')) return;
+  runPhantoms(false);
+}
+</script>
+
+</body>
+</html>

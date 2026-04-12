@@ -1,6 +1,21 @@
 window.VK_entrega = (function(){
   var data = null;
 
+  // Format YYYY-MM-DD or ISO datetime as "15 de abril de 2026"
+  function fechaLarga(dateStr){
+    if(!dateStr) return '';
+    var s = String(dateStr).slice(0,10);
+    var d = new Date(s+'T12:00:00');
+    if(isNaN(d)) return s;
+    var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    return d.getDate()+' de '+meses[d.getMonth()]+' de '+d.getFullYear();
+  }
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
   function render(){
     VKApp.render('<div class="vk-h1">Mi entrega 🎁</div><div class="vk-muted">Cargando...</div>');
     VKApp.api('entrega/estado.php').done(function(r){
@@ -51,9 +66,40 @@ window.VK_entrega = (function(){
       (data.punto.telefono ?'<div class="vk-row"><span class="k">Teléfono</span><span class="v">'+data.punto.telefono+'</span></div>':'')+
     '</div>';
 
+    // Shipment tracking card — Skydrop ETA. Shown whenever we have envio data
+    // and the client hasn't received the moto at the point yet.
+    if (data.envio && st !== 'entregada' && st !== 'firmada' && st !== 'checklist_ok') {
+      var env = data.envio;
+      var etaFmt = fechaLarga(env.fecha_estimada_llegada);
+      var enviadoFmt = fechaLarga(env.fecha_envio);
+      var shipHtml = '<div class="vk-card">'+
+        '<div class="vk-h2">🚚 Envío</div>';
+      if (env.fecha_recepcion) {
+        shipHtml += '<div class="vk-row"><span class="k">Estado</span><span class="v" style="color:#22c55e">✅ Recibida en el punto</span></div>';
+      } else if (env.fecha_envio) {
+        shipHtml += '<div class="vk-row"><span class="k">Estado</span><span class="v">🚚 En tránsito</span></div>';
+      } else {
+        shipHtml += '<div class="vk-row"><span class="k">Estado</span><span class="v">📦 Preparando envío</span></div>';
+      }
+      if (enviadoFmt) shipHtml += '<div class="vk-row"><span class="k">Enviado</span><span class="v">'+enviadoFmt+'</span></div>';
+      if (etaFmt && !env.fecha_recepcion) shipHtml += '<div class="vk-row"><span class="k">Llegada estimada</span><span class="v"><strong>'+etaFmt+'</strong></span></div>';
+      if (env.carrier) shipHtml += '<div class="vk-row"><span class="k">Paquetería</span><span class="v">'+escapeHtml(env.carrier)+'</span></div>';
+      if (env.tracking_number) shipHtml += '<div class="vk-row"><span class="k">Guía</span><span class="v" style="font-family:monospace">'+escapeHtml(env.tracking_number)+'</span></div>';
+      shipHtml += '</div>';
+      html += shipHtml;
+    }
+
+    // Pickup date banner — set when the point marks moto lista_para_entrega
+    if (data.fecha_recoleccion && st !== 'entregada') {
+      html += '<div class="vk-banner ok">📅 Tu moto está lista. <strong>Recógela el '+fechaLarga(data.fecha_recoleccion)+'</strong> en el punto.</div>';
+    }
+
     // State-specific actions
-    if (st === 'pendiente' || st === 'en_transito') {
-      html += '<div class="vk-banner warn">🚚 Tu moto está en tránsito al punto de entrega. Te avisaremos cuando esté lista para recogerla.</div>';
+    if ((st === 'pendiente' || st === 'en_transito') && !data.fecha_recoleccion) {
+      var etaMsg = (data.envio && data.envio.fecha_estimada_llegada)
+        ? '🚚 Tu moto está en tránsito al punto de entrega. Llegada estimada: <strong>'+fechaLarga(data.envio.fecha_estimada_llegada)+'</strong>.'
+        : '🚚 Tu moto está en tránsito al punto de entrega. Te avisaremos cuando esté lista para recogerla.';
+      html += '<div class="vk-banner warn">'+etaMsg+'</div>';
     }
 
     if (data.otp_activo && st === 'otp_enviado') {

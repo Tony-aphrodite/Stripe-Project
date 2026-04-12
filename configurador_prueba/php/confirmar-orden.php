@@ -48,13 +48,81 @@ $seguroQualitasInt = !empty($json['seguroQualitas']) ? 1 : 0;
 $puntoId     = trim($json['punto_id']     ?? '');
 $puntoNombre = trim($json['punto_nombre'] ?? '');
 $puntoTipo   = trim($json['punto_tipo']   ?? '');
+// CODIGO REFERIDO (validated in paso2-color.js via validar-referido.php)
+$codigoReferido = strtoupper(trim($json['codigo_referido'] ?? ''));
+$referidoId     = isset($json['referido_id']) && $json['referido_id'] !== null ? intval($json['referido_id']) : null;
+$referidoTipo   = trim($json['referido_tipo'] ?? ''); // 'referido' | 'punto' | ''
 
-$pedidoNum = time();
+// ─ Purchase case number per dashboards_diagrams.pdf ─────────────────────────
+//   CASE 1-A — no referido code, no point selected (punto_id = 'centro-cercano')
+//   CASE 1-B — no referido code, user picked a point in the configurador
+//   CASE 3   — referido code present (influencer or point), general sale (online)
+//   CASE 4   — sale from a point's showroom inventory (handled by puntosvoltika/php/asignar/referido.php)
+// The PDF has no "CASE 2" — the YES/NO point-selector branch inside CASE 1
+// is a sub-flow of CASE 1.
+$caso = 1;
+if ($codigoReferido !== '') {
+    $caso = 3;
+}
+
+// CASE 3 — if the referido code is a PUNTO code (not influencer), auto-assign
+// the order to that point. Per the PDF, the order should land on the Point
+// Panel as "completed sale via referral, pending motorcycle assignment" without
+// any manual point selection step.
+$puntoVoltikaId = null;
+if ($caso === 3 && $referidoTipo === 'punto' && $referidoId) {
+    try {
+        $pdoTmp = getDB();
+        $pStmt = $pdoTmp->prepare("SELECT id, nombre FROM puntos_voltika WHERE id = ? AND activo = 1 LIMIT 1");
+        $pStmt->execute([(int)$referidoId]);
+        $pRow = $pStmt->fetch(PDO::FETCH_ASSOC);
+        if ($pRow) {
+            $puntoVoltikaId = (int)$pRow['id'];
+            // Override any stale puntoId/puntoNombre with the referral point
+            $puntoId     = 'punto-' . $puntoVoltikaId;
+            $puntoNombre = $pRow['nombre'];
+        }
+    } catch (Throwable $e) {
+        error_log('confirmar-orden CASE3 punto lookup: ' . $e->getMessage());
+    }
+}
+
+// Entropy-enriched pedido number — plain time() collides when two users
+// confirm within the same second, which was making the second INSERT silently
+// fail on any future UNIQUE constraint and leaving the order invisible to
+// the admin dashboard (see listar.php).
+$pedidoNum = time() . '-' . substr(bin2hex(random_bytes(3)), 0, 4);
 $fecha     = date('Y-m-d H:i');
 
+// Folio de contrato — now generated BEFORE the DB insert so it can be
+// persisted. Previously it was only computed for the email body, which
+// meant customers who referenced the folio (e.g. "VK-20260411-LEO") could
+// not be located in the database.
+$folioContrato = $json['folioContrato']
+    ?? ('VK-' . date('Ymd') . '-' . strtoupper(substr($nombre, 0, 3)));
+
 // ── Guardar en BD ─────────────────────────────────────────────────────────────
+$dbSaveOk = false;
+$dbSaveErr = '';
 try {
     $pdo = getDB();
+
+    // Recovery table: any orphan orders we couldn't write to `transacciones`
+    // land here so the admin dashboard can recover them manually. Previously
+    // a failed INSERT was swallowed silently, making the sale invisible.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS transacciones_errores (
+        id        INT AUTO_INCREMENT PRIMARY KEY,
+        nombre    VARCHAR(200),
+        email     VARCHAR(200),
+        telefono  VARCHAR(30),
+        modelo    VARCHAR(200),
+        color     VARCHAR(100),
+        total     DECIMAL(12,2),
+        stripe_pi VARCHAR(100),
+        payload   TEXT,
+        error_msg TEXT,
+        freg      DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS transacciones (
         id         INT AUTO_INCREMENT PRIMARY KEY,
@@ -77,7 +145,13 @@ try {
         punto_id        VARCHAR(80)  NULL,
         punto_nombre    VARCHAR(200) NULL,
         msi_meses       INT          NULL,
-        msi_pago        DECIMAL(12,2) NULL
+        msi_pago        DECIMAL(12,2) NULL,
+        referido        VARCHAR(40)  NULL,
+        referido_id     INT          NULL,
+        referido_tipo   VARCHAR(20)  NULL,
+        caso            TINYINT      NULL,
+        folio_contrato  VARCHAR(40)  NULL,
+        INDEX idx_folio (folio_contrato)
     )");
     // Backfill columns on pre-existing tables
     ensureTransaccionesColumns($pdo);
@@ -87,74 +161,110 @@ try {
             (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago,
              precio, total, freg, pedido, stripe_pi,
              asesoria_placas, seguro_qualitas, punto_id, punto_nombre,
-             msi_meses, msi_pago)
+             msi_meses, msi_pago, referido, referido_id, referido_tipo, caso,
+             folio_contrato)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
+    // Defensive defaults — pass '' / 0 instead of NULL for optional columns.
+    // If the production schema still has legacy NOT NULL constraints (the
+    // ensureTransaccionesColumns() MODIFY above should fix them, but we
+    // double-protect here) the INSERT still succeeds.
     $stmt->execute([
-        $nombre, $email, $telefono, $modelo, $color,
-        $ciudad, $estado, $cp, $pagoTipo,
+        $nombre ?: '',
+        $email ?: '',
+        $telefono ?: '',
+        $modelo ?: '',
+        $color ?: '',
+        $ciudad ?: '',
+        $estado ?: '',
+        $cp ?: '',
+        $pagoTipo ?: 'unico',
         $pagoTipo === 'msi' ? $msiPago : $total,
-        $total, $fecha, $pedidoNum, $paymentIntentId,
-        $asesoriaPlacasInt, $seguroQualitasInt,
-        $puntoId ?: null, $puntoNombre ?: null,
-        $pagoTipo === 'msi' ? $msiMeses : null,
-        $pagoTipo === 'msi' ? $msiPago  : null,
+        $total,
+        $fecha,
+        $pedidoNum,
+        $paymentIntentId ?: '',
+        $asesoriaPlacasInt,
+        $seguroQualitasInt,
+        $puntoId ?: '',
+        $puntoNombre ?: '',
+        $pagoTipo === 'msi' ? $msiMeses : 0,
+        $pagoTipo === 'msi' ? $msiPago  : 0,
+        $codigoReferido ?: '',
+        $referidoId ?: 0,
+        $referidoTipo ?: '',
+        $caso ?: 1,
+        $folioContrato ?: '',
     ]);
-    // ── Auto-crear registro en inventario_motos para el dealer panel ────────
-    $vinAuto = 'VK-' . strtoupper(substr($modelo, 0, 3)) . '-' . $pedidoNum;
-    $vinDisplay = $vinAuto;
-    $logEstados = json_encode([[
-        'estado'    => 'por_llegar',
-        'accion'    => 'pedido_confirmado',
-        'timestamp' => $fecha,
-        'dealer'    => 'sistema',
-        'notas'     => 'Creado automáticamente al confirmar orden #' . $pedidoNum
-    ]]);
+    $dbSaveOk = true;
 
-    try {
-        // Get the transaccion ID we just inserted
-        $txId = $pdo->lastInsertId();
+    // Per dashboards_diagrams.pdf: a purchase NEVER creates a motorcycle in
+    // inventario_motos. Physical bikes are added by CEDIS when they arrive at
+    // the warehouse. The CEDIS admin then manually assigns an existing bike to
+    // the order via the Ventas → Asignar flow. The auto-INSERT that was here
+    // created phantom VINs ("VK-M05-{pedido}") that made every order look
+    // "assigned" even though no real bike existed — violating CASE 1/3 rules.
 
-        $stmtMoto = $pdo->prepare("
-            INSERT INTO inventario_motos
-                (vin, vin_display, modelo, color, tipo_asignacion, estado,
-                 cliente_nombre, cliente_email, cliente_telefono,
-                 pedido_num, pago_estado, fecha_estado, log_estados, precio_venta, notas,
-                 stripe_pi, transaccion_id, punto_id, punto_nombre)
-            VALUES
-                (?, ?, ?, ?, 'voltika_entrega', 'por_llegar',
-                 ?, ?, ?,
-                 ?, ?, NOW(), ?, ?, ?,
-                 ?, ?, ?, ?)
-        ");
-        $stmtMoto->execute([
-            $vinAuto, $vinDisplay, $modelo, $color,
-            $nombre, $email, $telefono,
-            'VK-' . $pedidoNum,
-            $pagoTipo === 'enganche' ? 'parcial' : 'pagada',
-            $logEstados, $total,
-            'Pedido confirmado vía configurador. Tipo: ' . $pagoTipo
-                . ($puntoNombre ? ' · Punto preferido: ' . $puntoNombre : ''),
-            $paymentIntentId ?: null,
-            $txId ?: null,
-            $puntoId     ?: null,
-            $puntoNombre ?: null,
-        ]);
-    } catch (PDOException $e) {
-        error_log('Voltika inventario_motos auto-insert error: ' . $e->getMessage());
+    // Bump referido counter if a valid referido_id was provided (tipo='referido')
+    if ($referidoId && $referidoTipo === 'referido') {
+        try {
+            $pdo->prepare("
+                UPDATE referidos
+                SET ventas_count = ventas_count + 1
+                WHERE id = ? AND activo = 1
+            ")->execute([$referidoId]);
+        } catch (PDOException $e) {
+            error_log('Voltika referidos counter error: ' . $e->getMessage());
+        }
+    }
+
+    // CASE 3 (dashboards_diagrams.pdf): the order was placed with a punto's
+    // CODIGO REFERIDO for a general sale — bump the punto's ventas_count so it
+    // shows up in punto reports alongside influencer referrals.
+    if ($puntoVoltikaId && $referidoTipo === 'punto') {
+        try {
+            $pvCols = $pdo->query("SHOW COLUMNS FROM puntos_voltika")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('ventas_count', $pvCols, true)) {
+                $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN ventas_count INT DEFAULT 0");
+            }
+            $pdo->prepare("
+                UPDATE puntos_voltika
+                SET ventas_count = COALESCE(ventas_count, 0) + 1
+                WHERE id = ? AND activo = 1
+            ")->execute([$puntoVoltikaId]);
+        } catch (PDOException $e) {
+            error_log('Voltika punto ventas_count error: ' . $e->getMessage());
+        }
     }
 
 } catch (PDOException $e) {
-    // Log pero no fallar — el pago ya fue capturado
-    error_log('Voltika DB error: ' . $e->getMessage());
+    // El pago ya se capturó en Stripe, así que NO podemos abortar sin dejar
+    // una orden huérfana. Escribimos la orden a `transacciones_errores` para
+    // que el admin la vea en el dashboard de ventas (ver admin/php/ventas/listar.php).
+    $dbSaveErr = $e->getMessage();
+    error_log('Voltika DB error: ' . $dbSaveErr);
+    try {
+        $errPdo = getDB();
+        $errStmt = $errPdo->prepare("
+            INSERT INTO transacciones_errores
+                (nombre, email, telefono, modelo, color, total, stripe_pi, payload, error_msg)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $errStmt->execute([
+            $nombre, $email, $telefono, $modelo, $color, $total,
+            $paymentIntentId, json_encode($json), $dbSaveErr,
+        ]);
+    } catch (Throwable $e2) {
+        error_log('Voltika transacciones_errores fallback failed: ' . $e2->getMessage());
+    }
 }
 
 // ── Enviar email de confirmacion ──────────────────────────────────────────────
 $enganchePct    = floatval($json['enganchePct'] ?? 0);
 $plazoMeses     = intval($json['plazoMeses'] ?? 36);
 $pagoSemanal    = floatval($json['pagoSemanal'] ?? 0);
-$folioContrato  = $json['folioContrato'] ?? ('VK-' . date('Ymd') . '-' . strtoupper(substr($nombre, 0, 3)));
+// $folioContrato already initialized near the top (before DB insert).
 $metodoPago     = $json['metodoPago'] ?? $pagoTipo;
 $esCredito      = ($pagoTipo === 'enganche' || $metodoPago === 'credito');
 
@@ -367,6 +477,11 @@ if ($esCredito) {
 <p style="font-size:11px;color:#aaa;margin:0;">Al completar tu compra aceptaste nuestros Términos y Condiciones y Aviso de Privacidad.</p>
 </div>
 
+<div style="margin-top:14px;padding:10px 12px;border-top:1px dashed #E5E7EB;">
+<p style="font-size:10px;color:#9CA3AF;margin:0 0 2px;font-family:Menlo,Consolas,monospace;">Ref. interna (soporte): ' . htmlspecialchars($paymentIntentId ?: 'n/a') . '</p>
+<p style="font-size:10px;color:#9CA3AF;margin:0;font-family:Menlo,Consolas,monospace;">Pedido: ' . htmlspecialchars($pedidoNum) . ' · Folio: ' . htmlspecialchars($folioContrato) . '</p>
+</div>
+
 </td></tr>
 
 <tr><td style="background:#1a3a5c;padding:20px 28px;text-align:center;">
@@ -388,9 +503,11 @@ if ($esCredito) {
 $emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
 
 echo json_encode([
-    'status'    => 'ok',
+    'status'    => $dbSaveOk ? 'ok' : 'ok_warn',
     'pedido'    => $pedidoNum,
-    'emailSent' => $emailSent
+    'emailSent' => $emailSent,
+    'db_saved'  => $dbSaveOk,
+    'db_warning'=> $dbSaveOk ? null : 'La orden quedó registrada en recuperación. Contactar soporte con número de pedido.',
 ]);
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -412,6 +529,11 @@ function ensureTransaccionesColumns(PDO $pdo): void {
         'punto_nombre'    => "ADD COLUMN punto_nombre    VARCHAR(200)  NULL AFTER punto_id",
         'msi_meses'       => "ADD COLUMN msi_meses       INT           NULL AFTER punto_nombre",
         'msi_pago'        => "ADD COLUMN msi_pago        DECIMAL(12,2) NULL AFTER msi_meses",
+        'referido'        => "ADD COLUMN referido        VARCHAR(40)   NULL AFTER msi_pago",
+        'referido_id'     => "ADD COLUMN referido_id     INT           NULL AFTER referido",
+        'referido_tipo'   => "ADD COLUMN referido_tipo   VARCHAR(20)   NULL AFTER referido_id",
+        'caso'            => "ADD COLUMN caso            TINYINT       NULL AFTER referido_tipo",
+        'folio_contrato'  => "ADD COLUMN folio_contrato  VARCHAR(40)   NULL AFTER caso",
     ];
     try {
         $existing = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
@@ -423,5 +545,46 @@ function ensureTransaccionesColumns(PDO $pdo): void {
         }
     } catch (PDOException $e) {
         error_log('ensureTransaccionesColumns: ' . $e->getMessage());
+    }
+
+    // ── Fix legacy NOT NULL constraints on optional columns ────────────────
+    // Without this, any INSERT that passes NULL (e.g. an order with no
+    // referido code) hits SQLSTATE[23000] 1048 and lands in transacciones_errores.
+    // Observed in production screenshot: 17 orphan orders caused by
+    // "Column 'referido' cannot be null".
+    $nullableFixes = [
+        'referido'       => "MODIFY COLUMN referido       VARCHAR(40)   NULL DEFAULT NULL",
+        'referido_id'    => "MODIFY COLUMN referido_id    INT           NULL DEFAULT NULL",
+        'referido_tipo'  => "MODIFY COLUMN referido_tipo  VARCHAR(20)   NULL DEFAULT NULL",
+        'punto_id'       => "MODIFY COLUMN punto_id       VARCHAR(80)   NULL DEFAULT NULL",
+        'punto_nombre'   => "MODIFY COLUMN punto_nombre   VARCHAR(200)  NULL DEFAULT NULL",
+        'msi_meses'      => "MODIFY COLUMN msi_meses      INT           NULL DEFAULT NULL",
+        'msi_pago'       => "MODIFY COLUMN msi_pago       DECIMAL(12,2) NULL DEFAULT NULL",
+        'caso'           => "MODIFY COLUMN caso           TINYINT       NULL DEFAULT NULL",
+        'folio_contrato' => "MODIFY COLUMN folio_contrato VARCHAR(40)   NULL DEFAULT NULL",
+        'ciudad'         => "MODIFY COLUMN ciudad         VARCHAR(100)  NULL DEFAULT NULL",
+        'estado'         => "MODIFY COLUMN estado         VARCHAR(100)  NULL DEFAULT NULL",
+        'cp'              => "MODIFY COLUMN cp              VARCHAR(10)   NULL DEFAULT NULL",
+    ];
+    try {
+        $meta = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_ASSOC);
+        $notNullCols = [];
+        foreach ($meta as $c) {
+            if (($c['Null'] ?? 'YES') === 'NO') {
+                $notNullCols[$c['Field']] = true;
+            }
+        }
+        foreach ($nullableFixes as $name => $alter) {
+            if (isset($notNullCols[$name])) {
+                try {
+                    $pdo->exec("ALTER TABLE transacciones " . $alter);
+                    error_log("ensureTransaccionesColumns: relaxed NOT NULL on {$name}");
+                } catch (PDOException $e) {
+                    error_log('ensureTransaccionesColumns MODIFY(' . $name . '): ' . $e->getMessage());
+                }
+            }
+        }
+    } catch (PDOException $e) {
+        error_log('ensureTransaccionesColumns nullable scan: ' . $e->getMessage());
     }
 }

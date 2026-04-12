@@ -78,13 +78,19 @@ window.AD_envios = (function(){
   }
 
   // ── Create shipment modal ────────────────────────────────────────────
+  // Per dashboards_diagrams.pdf diagram 5, shipments without an order must
+  // specify a "type of assignment" — showroom vs entrega.
   function showCrearEnvio(){
     var html = '<div class="ad-h2">Crear envío</div>'+
       '<div class="ad-dim" style="margin-bottom:12px;">Selecciona el tipo de envío:</div>'+
       '<div style="display:flex;flex-direction:column;gap:10px;">'+
-        '<div class="ad-card" style="cursor:pointer;padding:14px;" id="adEnvInv">'+
-          '<strong>Inventario para venta en punto</strong>'+
-          '<div class="ad-dim" style="margin-top:2px;">Enviar moto al punto para exhibición</div>'+
+        '<div class="ad-card" style="cursor:pointer;padding:14px;" id="adEnvShowroom">'+
+          '<strong>Sin orden · Showroom (venta en punto)</strong>'+
+          '<div class="ad-dim" style="margin-top:2px;">Para exhibición y venta directa con el código del punto</div>'+
+        '</div>'+
+        '<div class="ad-card" style="cursor:pointer;padding:14px;" id="adEnvEntregaStock">'+
+          '<strong>Sin orden · Solo para entrega</strong>'+
+          '<div class="ad-dim" style="margin-top:2px;">Stock reservado que CEDIS asignará a pedidos posteriormente</div>'+
         '</div>'+
         '<div class="ad-card" style="cursor:pointer;padding:14px;" id="adEnvVenta">'+
           '<strong>Venta (vincular a orden)</strong>'+
@@ -92,7 +98,8 @@ window.AD_envios = (function(){
         '</div>'+
       '</div>';
     ADApp.modal(html);
-    $('#adEnvInv').on('click', function(){ crearEnvioStep2(null); });
+    $('#adEnvShowroom').on('click', function(){ crearEnvioStep2(null, 'showroom'); });
+    $('#adEnvEntregaStock').on('click', function(){ crearEnvioStep2(null, 'entrega'); });
     $('#adEnvVenta').on('click', crearEnvioSelectOrder);
   }
 
@@ -115,12 +122,13 @@ window.AD_envios = (function(){
       html += '</div>';
       ADApp.modal(html);
       $('.adPickOrder').on('click', function(){
-        crearEnvioStep2($(this).data('tid'));
+        crearEnvioStep2($(this).data('tid'), 'entrega');
       });
     });
   }
 
-  function crearEnvioStep2(transId){
+  function crearEnvioStep2(transId, envioTipo){
+    envioTipo = envioTipo || 'entrega';
     // Load motos + puntos in parallel
     $.when(
       ADApp.api('ventas/motos-disponibles.php'),
@@ -129,7 +137,17 @@ window.AD_envios = (function(){
       var motos = (mRes[0]||mRes).motos||[];
       var puntos = (pRes[0]||pRes).puntos||[];
 
-      var html = '<div class="ad-h2">Crear envío'+(transId?' (Venta)':' (Inventario)')+'</div>';
+      var tipoLabel = transId
+        ? 'Venta'
+        : (envioTipo === 'showroom' ? 'Sin orden · Showroom' : 'Sin orden · Solo para entrega');
+      var html = '<div class="ad-h2">Crear envío ('+tipoLabel+')</div>';
+      if (!transId) {
+        var tipoDescColor = envioTipo === 'showroom' ? '#E3F2FD' : '#FFF3E0';
+        var tipoDescText = envioTipo === 'showroom'
+          ? 'La moto entrará al showroom del punto y podrá venderse con el código del punto.'
+          : 'La moto entrará como stock reservado para entrega. CEDIS la asignará a un pedido posteriormente.';
+        html += '<div style="padding:10px;background:'+tipoDescColor+';border-radius:6px;margin-bottom:10px;font-size:12px;">'+tipoDescText+'</div>';
+      }
 
       // Moto selector
       html += '<label style="font-weight:600;font-size:13px;">Moto:</label>'+
@@ -196,6 +214,7 @@ window.AD_envios = (function(){
         var payload = {
           moto_id: parseInt(motoId),
           punto_id: parseInt(puntoId),
+          envio_tipo: envioTipo,
           tracking_number: $('#adEnvTracking').val().trim(),
           carrier: $('#adEnvCarrier').val().trim(),
           notas: $('#adEnvNotas').val().trim(),
