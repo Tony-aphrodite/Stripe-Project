@@ -84,31 +84,36 @@ window.AD_ventas = (function(){
           '<td>'+puntoHtml+'</td>'+
           '<td>'+(r.fecha?r.fecha.substring(0,10):'-')+'</td>';
 
+        // Action buttons are always wrapped in a horizontal flex container
+        // so they never stack vertically, regardless of how many appear.
         var isOrphan = r.source === 'transacciones_errores' || r.source === 'subscripciones_credito';
+        var motoCell, actions;
+        var btnStyleBase = 'padding:5px 10px;font-size:12px;white-space:nowrap;';
         if(isOrphan){
           var isVksc = r.source === 'subscripciones_credito';
           var needsEdit = isVksc && (!r.modelo || r.modelo==='-' || !r.color || r.color==='-');
-          html += '<td><span class="ad-badge yellow">'+(r.source==='transacciones_errores'?'Error':'Crédito huérfano')+'</span></td>'+
-                  '<td>';
+          motoCell = '<span class="ad-badge yellow">'+(r.source==='transacciones_errores'?'Error':'Crédito huérfano')+'</span>';
+          actions  = '';
           if(needsEdit){
-            // For VK-SC orphans missing modelo/color, the Recuperar action
-            // can't know what to insert — show Editar first so the admin
-            // can set modelo/color, then the Asignar flow works normally.
-            html += '<button class="ad-btn primary" style="padding:5px 12px;font-size:12px;background:#d97706;" '+
-                    'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar datos</button> ';
+            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#d97706;" '+
+                       'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar</button>';
           }
-          html += '<button class="ad-btn primary" style="padding:5px 12px;font-size:12px;background:#b91c1c;" '+
-                  'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button> '+
-                  '<button class="ad-btn sm ghost" style="margin-left:4px" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button></td>';
+          actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#b91c1c;" '+
+                     'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button>'+
+                     '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         } else if(asignada){
-          html += '<td><span class="ad-badge green">'+(r.moto_vin||'****')+'</span></td>'+
-                  '<td><button class="ad-btn sm ghost" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button></td>';
+          motoCell = '<span class="ad-badge green">'+(r.moto_vin||'****')+'</span>';
+          actions  = '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         } else {
-          html += '<td><span class="ad-badge red">Sin asignar</span></td>'+
-                  '<td><button class="ad-btn primary" style="padding:5px 12px;font-size:12px" '+
-                  'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button> '+
-                  '<button class="ad-btn sm ghost" style="margin-left:4px" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button></td>';
+          motoCell = '<span class="ad-badge red">Sin asignar</span>';
+          actions  = '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
+                     'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>'+
+                     '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         }
+        html += '<td>'+motoCell+'</td>'+
+                '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
+                actions+
+                '</div></td>';
         html += '</tr>';
       });
 
