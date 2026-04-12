@@ -13,9 +13,10 @@ $motos = isset($d['motos']) ? $d['motos'] : [$d];
 $created = 0;
 
 $stmt = $pdo->prepare("INSERT INTO inventario_motos
-    (vin, vin_display, modelo, color, estado, anio_modelo, potencia, descripcion, hecho_en,
-     num_pedimento, fecha_ingreso_pais, aduana, cedis_origen, notas, log_estados)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+    (vin, vin_display, modelo, color, estado, anio_modelo, num_motor, potencia,
+     config_baterias, descripcion, hecho_en, num_pedimento, fecha_ingreso_pais,
+     aduana, cedis_origen, notas, log_estados)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 
 foreach ($motos as $m) {
     $vin = trim($m['vin'] ?? '');
@@ -35,7 +36,9 @@ foreach ($motos as $m) {
         $m['color'] ?? '',
         'por_llegar',
         $m['anio_modelo'] ?? date('Y'),
+        $m['num_motor'] ?? '',
         $m['potencia'] ?? '',
+        $m['config_baterias'] ?? '1',
         $m['descripcion'] ?? '',
         $m['hecho_en'] ?? '',
         $m['num_pedimento'] ?? '',

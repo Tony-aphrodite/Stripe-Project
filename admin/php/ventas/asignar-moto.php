@@ -116,6 +116,12 @@ if ($estadoMoto && !in_array($estadoMoto, $estadosLibres, true)) {
 // ── Assign ───────────────────────────────────────────────────────────────
 $pedidoNum = 'VK-' . $order['pedido'];
 
+// Credito orders only have enganche paid at this point — mark as 'parcial'.
+// Contado and MSI are fully paid — mark as 'pagada'.
+$pagoEstado = in_array($tpago, ['credito', 'enganche', 'parcial'], true)
+    ? 'parcial'
+    : 'pagada';
+
 $stmt = $pdo->prepare("
     UPDATE inventario_motos SET
         cliente_nombre   = ?,
@@ -123,7 +129,7 @@ $stmt = $pdo->prepare("
         cliente_telefono = ?,
         pedido_num       = ?,
         stripe_pi        = ?,
-        pago_estado      = 'pagada',
+        pago_estado      = ?,
         fecha_estado     = NOW(),
         fmod             = NOW()
     WHERE id = ?
@@ -134,6 +140,7 @@ $stmt->execute([
     $order['telefono'] ?? '',
     $pedidoNum,
     $order['stripe_pi'] ?? '',
+    $pagoEstado,
     $motoId,
 ]);
 
