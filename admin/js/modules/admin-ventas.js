@@ -89,8 +89,7 @@ window.AD_ventas = (function(){
         var stock = r.inventario_disponible;
         if(!r.moto_id && stock !== undefined){
           if(stock === 0){
-            var eta = r.fecha_estimada_entrega || '—';
-            stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">Sin inventario<br>Entrega: ~'+eta+'</div>';
+            stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">Sin inventario<br>Pendiente de asignar moto</div>';
           } else {
             stockInfo = '<div style="font-size:11px;color:#059669;margin-top:2px;">'+stock+' disponible'+(stock>1?'s':'')+'</div>';
           }
