@@ -57,6 +57,14 @@ if (!$moto) {
     adminJsonOut(['error' => 'Moto no encontrada'], 404);
 }
 
+// Block phantom VINs created by the old confirmar-orden.php auto-INSERT.
+// These are virtual records (VK-{MODEL}-{timestamp}-{hex}), not real bikes.
+if (preg_match('/^VK-[A-Z0-9]+-\d+-[a-f0-9]+$/i', $moto['vin'] ?? '')) {
+    adminJsonOut([
+        'error' => 'Esta moto es un registro virtual (VIN: ' . ($moto['vin'] ?? '') . '). Solo se pueden asignar motos reales del inventario físico.'
+    ], 409);
+}
+
 // Check bike is not already assigned
 if (!empty($moto['pedido_num']) || !empty($moto['cliente_email'])) {
     adminJsonOut(['error' => 'Esta moto ya está asignada a otra orden (pedido: ' . ($moto['pedido_num'] ?: 'N/A') . ')'], 409);

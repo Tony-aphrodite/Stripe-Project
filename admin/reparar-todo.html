@@ -40,10 +40,22 @@
     ⚠ Debes estar logueado en <a href="/admin/" target="_blank">/admin</a> (rol admin o cedis) antes de usar los botones.
   </p>
 
-  <div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;">
     <button class="btn-diag" onclick="run(false, true)">1. Diagnosticar (solo lectura)</button>
     <button class="btn-dry"  onclick="run(true,  false)">2. Dry-run (ver qué haría)</button>
     <button class="btn-run"  onclick="confirmRun()">3. Ejecutar de verdad</button>
+  </div>
+</div>
+
+<div class="card">
+  <p>
+    <strong>Limpiar motos virtuales</strong> — Elimina los registros fantasma en <code>inventario_motos</code>
+    creados por el viejo <code>confirmar-orden.php</code> (VIN: VK-M05-xxx). Estos no son motos reales.
+    También agrega <code>fecha_estimada_entrega</code> a órdenes sin moto asignada.
+  </p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+    <button class="btn-dry" onclick="runPhantoms(true)">Dry-run phantoms</button>
+    <button class="btn-run" onclick="confirmPhantoms()">Limpiar phantoms</button>
   </div>
 </div>
 
@@ -140,6 +152,40 @@ async function run(dryRun, diagOnly) {
 function confirmRun() {
   if (!confirm('¿Ejecutar de verdad?\n\nEsto va a:\n- Modificar el schema de transacciones y clientes (MODIFY COLUMN)\n- Crear filas nuevas en transacciones promoviendo los huérfanos\n\n¿Continuar?')) return;
   run(false, false);
+}
+
+async function runPhantoms(dryRun) {
+  const card    = document.getElementById('resultCard');
+  const result  = document.getElementById('result');
+  const summary = document.getElementById('summary');
+  card.style.display = 'block';
+  summary.innerHTML = '';
+  result.textContent = '⏳ Buscando motos virtuales...';
+  try {
+    const res = await fetch(`${BASE}/limpiar-phantoms.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ dry_run: dryRun }),
+    });
+    const data = await res.json();
+    result.textContent = JSON.stringify(data, null, 2);
+    const cls = data.ok ? 'ok' : 'fail';
+    summary.innerHTML = `
+      <div class="summary ${cls}">
+        ${data.ok ? '✅' : '❌'} Phantoms encontrados: ${data.phantoms_found ?? 0},
+        desactivados: ${data.deactivated ?? 0},
+        errores: ${data.errors?.length ?? 0}
+        ${dryRun ? '<span class="warn">(dry-run — nada tocado)</span>' : ''}
+      </div>`;
+  } catch (e) {
+    result.textContent = 'Error: ' + e.message;
+    summary.innerHTML = `<div class="summary fail">❌ ${e.message}</div>`;
+  }
+}
+function confirmPhantoms() {
+  if (!confirm('¿Limpiar motos virtuales?\n\nEsto va a:\n- Desactivar registros fantasma en inventario_motos (VK-M05-xxx)\n- Agregar fecha_estimada_entrega a órdenes sin moto\n\n¿Continuar?')) return;
+  runPhantoms(false);
 }
 </script>
 

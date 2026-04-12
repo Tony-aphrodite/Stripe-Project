@@ -198,54 +198,13 @@ try {
         $folioContrato ?: '',
     ]);
     $dbSaveOk = true;
-    // ── Auto-crear registro en inventario_motos para el dealer panel ────────
-    $vinAuto = 'VK-' . strtoupper(substr($modelo, 0, 3)) . '-' . $pedidoNum;
-    $vinDisplay = $vinAuto;
-    $logEstados = json_encode([[
-        'estado'    => 'por_llegar',
-        'accion'    => 'pedido_confirmado',
-        'timestamp' => $fecha,
-        'dealer'    => 'sistema',
-        'notas'     => 'Creado automáticamente al confirmar orden #' . $pedidoNum
-    ]]);
 
-    try {
-        // Get the transaccion ID we just inserted
-        $txId = $pdo->lastInsertId();
-
-        // For CASE 3 referral sales, tipo_asignacion is 'voltika_entrega' (online),
-        // but the punto_voltika_id is pre-set from the referral code so the order
-        // lands directly in the referred point's queue.
-        $stmtMoto = $pdo->prepare("
-            INSERT INTO inventario_motos
-                (vin, vin_display, modelo, color, tipo_asignacion, estado,
-                 cliente_nombre, cliente_email, cliente_telefono,
-                 pedido_num, pago_estado, fecha_estado, log_estados, precio_venta, notas,
-                 stripe_pi, transaccion_id, punto_id, punto_nombre, punto_voltika_id)
-            VALUES
-                (?, ?, ?, ?, 'voltika_entrega', 'por_llegar',
-                 ?, ?, ?,
-                 ?, ?, NOW(), ?, ?, ?,
-                 ?, ?, ?, ?, ?)
-        ");
-        $stmtMoto->execute([
-            $vinAuto, $vinDisplay, $modelo, $color,
-            $nombre, $email, $telefono,
-            'VK-' . $pedidoNum,
-            $pagoTipo === 'enganche' ? 'parcial' : 'pagada',
-            $logEstados, $total,
-            'Pedido confirmado vía configurador. Tipo: ' . $pagoTipo
-                . ($puntoNombre ? ' · Punto preferido: ' . $puntoNombre : '')
-                . ($caso === 3 ? ' · CASO 3 (referido)' : ''),
-            $paymentIntentId ?: null,
-            $txId ?: null,
-            $puntoId     ?: null,
-            $puntoNombre ?: null,
-            $puntoVoltikaId,
-        ]);
-    } catch (PDOException $e) {
-        error_log('Voltika inventario_motos auto-insert error: ' . $e->getMessage());
-    }
+    // Per dashboards_diagrams.pdf: a purchase NEVER creates a motorcycle in
+    // inventario_motos. Physical bikes are added by CEDIS when they arrive at
+    // the warehouse. The CEDIS admin then manually assigns an existing bike to
+    // the order via the Ventas → Asignar flow. The auto-INSERT that was here
+    // created phantom VINs ("VK-M05-{pedido}") that made every order look
+    // "assigned" even though no real bike existed — violating CASE 1/3 rules.
 
     // Bump referido counter if a valid referido_id was provided (tipo='referido')
     if ($referidoId && $referidoTipo === 'referido') {

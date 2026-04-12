@@ -17,10 +17,14 @@ try {
         SELECT t.id, t.pedido, t.nombre, t.email, t.telefono,
                t.modelo, t.color, t.tpago, t.total, t.stripe_pi, t.freg,
                t.punto_id, t.punto_nombre, t.folio_contrato,
+               t.fecha_estimada_entrega,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
                m.pago_estado
         FROM transacciones t
-        LEFT JOIN inventario_motos m ON m.stripe_pi = t.stripe_pi AND m.stripe_pi <> ''
+        LEFT JOIN inventario_motos m
+               ON m.pedido_num = CONCAT('VK-', t.pedido)
+              AND m.activo = 1
+              AND m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
         ORDER BY t.freg DESC
         LIMIT 200
     ");
@@ -44,6 +48,7 @@ try {
             'punto_id'    => $r['punto_id'] ?? null,
             'punto_nombre'=> $r['punto_nombre'] ?? null,
             'folio_contrato' => $r['folio_contrato'] ?? null,
+            'fecha_estimada_entrega' => $r['fecha_estimada_entrega'] ?? null,
         ];
     }
 } catch (Throwable $e) {
@@ -152,6 +157,37 @@ try {
 
 // Sort combined rows by fecha desc
 usort($rows, fn($a, $b) => strcmp((string)($b['fecha'] ?? ''), (string)($a['fecha'] ?? '')));
+
+// ── Inventory availability per modelo+color ──────────────────────────────
+// Used by the dashboard to show "X disponibles" or "Sin inventario — 2 meses"
+$disponibles = [];
+try {
+    $inv = $pdo->query("
+        SELECT modelo, color, COUNT(*) AS cnt
+        FROM inventario_motos
+        WHERE activo = 1
+          AND (pedido_num IS NULL OR pedido_num = '')
+          AND (cliente_email IS NULL OR cliente_email = '')
+          AND vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
+          AND estado NOT IN ('entregada','retenida')
+        GROUP BY modelo, color
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($inv as $i) {
+        $key = strtolower(trim($i['modelo'])) . '|' . strtolower(trim($i['color']));
+        $disponibles[$key] = (int)$i['cnt'];
+    }
+} catch (Throwable $e) {}
+
+$twoMonths = date('Y-m-d', strtotime('+2 months'));
+foreach ($rows as &$row) {
+    $key = strtolower(trim($row['modelo'] ?? '')) . '|' . strtolower(trim($row['color'] ?? ''));
+    $stock = $disponibles[$key] ?? 0;
+    $row['inventario_disponible'] = $stock;
+    if (!$row['moto_id'] && $stock === 0) {
+        $row['fecha_estimada_entrega'] = $row['fecha_estimada_entrega'] ?? $twoMonths;
+    }
+}
+unset($row);
 
 // ── Counts ───────────────────────────────────────────────────────────────
 $total      = count($rows);

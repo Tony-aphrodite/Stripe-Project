@@ -84,6 +84,18 @@ window.AD_ventas = (function(){
           '<td>'+puntoHtml+'</td>'+
           '<td>'+(r.fecha?r.fecha.substring(0,10):'-')+'</td>';
 
+        // Inventory availability + delivery estimate info under the moto column
+        var stockInfo = '';
+        var stock = r.inventario_disponible;
+        if(!r.moto_id && stock !== undefined){
+          if(stock === 0){
+            var eta = r.fecha_estimada_entrega || '—';
+            stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">Sin inventario<br>Entrega: ~'+eta+'</div>';
+          } else {
+            stockInfo = '<div style="font-size:11px;color:#059669;margin-top:2px;">'+stock+' disponible'+(stock>1?'s':'')+'</div>';
+          }
+        }
+
         // Action buttons are always wrapped in a horizontal flex container
         // so they never stack vertically, regardless of how many appear.
         var isOrphan = r.source === 'transacciones_errores' || r.source === 'subscripciones_credito';
@@ -105,7 +117,7 @@ window.AD_ventas = (function(){
           motoCell = '<span class="ad-badge green">'+(r.moto_vin||'****')+'</span>';
           actions  = '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         } else {
-          motoCell = '<span class="ad-badge red">Sin asignar</span>';
+          motoCell = '<span class="ad-badge red">Sin asignar</span>'+stockInfo;
           actions  = '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
                      'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>'+
                      '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
@@ -146,7 +158,18 @@ window.AD_ventas = (function(){
 
   function renderMotos(motos, transId, pedido, showAll){
     if(!motos.length){
-      $('#vtMotos').html('<div style="text-align:center;padding:20px;color:var(--ad-dim);">No hay motos disponibles en inventario</div>');
+      var twoMonths = new Date(); twoMonths.setMonth(twoMonths.getMonth()+2);
+      var eta = twoMonths.toISOString().slice(0,10);
+      $('#vtMotos').html(
+        '<div style="text-align:center;padding:20px;">'+
+          '<div style="color:var(--ad-dim);margin-bottom:8px;">No hay motos disponibles en inventario</div>'+
+          '<div style="font-size:13px;color:#b91c1c;background:#fde8e8;padding:10px;border-radius:8px;">'+
+            'La orden quedará en estado <strong>"Pendiente de asignar"</strong> hasta que CEDIS registre '+
+            'nuevas motos en el inventario.<br>'+
+            'Entrega estimada: <strong>'+eta+'</strong> (~2 meses)'+
+          '</div>'+
+        '</div>'
+      );
       return;
     }
 
