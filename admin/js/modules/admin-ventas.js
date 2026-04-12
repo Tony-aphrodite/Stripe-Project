@@ -86,8 +86,18 @@ window.AD_ventas = (function(){
 
         var isOrphan = r.source === 'transacciones_errores' || r.source === 'subscripciones_credito';
         if(isOrphan){
+          var isVksc = r.source === 'subscripciones_credito';
+          var needsEdit = isVksc && (!r.modelo || r.modelo==='-' || !r.color || r.color==='-');
           html += '<td><span class="ad-badge yellow">'+(r.source==='transacciones_errores'?'Error':'Crédito huérfano')+'</span></td>'+
-                  '<td><button class="ad-btn primary" style="padding:5px 12px;font-size:12px;background:#b91c1c;" '+
+                  '<td>';
+          if(needsEdit){
+            // For VK-SC orphans missing modelo/color, the Recuperar action
+            // can't know what to insert — show Editar first so the admin
+            // can set modelo/color, then the Asignar flow works normally.
+            html += '<button class="ad-btn primary" style="padding:5px 12px;font-size:12px;background:#d97706;" '+
+                    'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar datos</button> ';
+          }
+          html += '<button class="ad-btn primary" style="padding:5px 12px;font-size:12px;background:#b91c1c;" '+
                   'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button> '+
                   '<button class="ad-btn sm ghost" style="margin-left:4px" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button></td>';
         } else if(asignada){
@@ -290,5 +300,113 @@ window.AD_ventas = (function(){
     });
   }
 
-  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar };
+  // Editar datos manuales de una fila VK-SC (subscripciones_credito) que
+  // quedó sin modelo/color por ser legacy (creada antes de Plan G). Sin
+  // estos campos, ni "Asignar moto" ni "Recuperar" pueden operar bien.
+  function showEditarVksc(vkscId){
+    var rows = _lastRows || [];
+    var r = null;
+    for(var i=0;i<rows.length;i++){
+      if(rows[i].id===vkscId && rows[i].source==='subscripciones_credito'){ r=rows[i]; break; }
+    }
+    if(!r){ alert('Fila VK-SC no encontrada'); return; }
+
+    ADApp.modal(
+      '<div class="ad-h2">Editar datos — VK-SC-'+r.id+'</div>'+
+      '<p class="ad-dim" style="font-size:13px;margin-bottom:12px;">'+
+        'Esta suscripción de crédito fue creada sin modelo/color. Completa los datos para poder recuperar la orden y asignar una moto.'+
+      '</p>'+
+      '<div id="vkscEditForm">Cargando modelos disponibles...</div>'
+    );
+
+    ADApp.api('ventas/modelos-colores.php').done(function(resp){
+      if(!resp.ok){
+        $('#vkscEditForm').html('<div style="color:#b91c1c;">Error cargando inventario: '+(resp.error||'')+'</div>');
+        return;
+      }
+      _renderEditVkscForm(r, resp.pares || []);
+    }).fail(function(){
+      $('#vkscEditForm').html('<div style="color:#b91c1c;">Error de conexión.</div>');
+    });
+  }
+
+  function _renderEditVkscForm(r, pares){
+    // Build modelo dropdown from unique modelos in pares
+    var modelosSet = {};
+    pares.forEach(function(p){ modelosSet[p.modelo] = true; });
+    var modelos = Object.keys(modelosSet).sort();
+
+    var modeloOpts = '<option value="">— seleccionar —</option>';
+    modelos.forEach(function(m){
+      modeloOpts += '<option value="'+esc(m)+'"'+(r.modelo===m?' selected':'')+'>'+m+'</option>';
+    });
+
+    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">'+
+      '<label>Nombre<input id="vkeNombre" class="ad-input" value="'+esc(r.nombre||'')+'"></label>'+
+      '<label>Teléfono<input id="vkeTelefono" class="ad-input" value="'+esc(r.telefono||'')+'"></label>'+
+      '<label>Email<input id="vkeEmail" class="ad-input" value="'+esc(r.email||'')+'"></label>'+
+      '<label>Precio contado MXN<input id="vkePrecio" class="ad-input" type="number" value="'+(r.monto||0)+'"></label>'+
+      '<label>Modelo<select id="vkeModelo" class="ad-input">'+modeloOpts+'</select></label>'+
+      '<label>Color<select id="vkeColor" class="ad-input"><option value="">— elegir modelo primero —</option></select></label>'+
+      '</div>'+
+      '<div id="vkeInventarioInfo" style="margin-top:8px;font-size:12px;color:var(--ad-dim);"></div>'+
+      '<div style="margin-top:14px;text-align:right;">'+
+        '<button class="ad-btn ghost" onclick="ADApp.closeModal()">Cancelar</button> '+
+        '<button class="ad-btn primary" id="vkeGuardar">Guardar</button>'+
+      '</div>'+
+      '<div id="vkeMsg" style="margin-top:10px;font-size:12px;"></div>';
+
+    $('#vkscEditForm').html(html);
+
+    // Populate color dropdown dynamically based on selected modelo
+    function refreshColors(){
+      var selModelo = $('#vkeModelo').val();
+      var colors = pares.filter(function(p){ return p.modelo === selModelo; });
+      var opts = '<option value="">— seleccionar —</option>';
+      colors.forEach(function(c){
+        opts += '<option value="'+esc(c.color)+'"'+(r.color===c.color?' selected':'')+'>'+
+                c.color+' ('+c.disponibles+' disponibles)</option>';
+      });
+      $('#vkeColor').html(opts);
+      if(!selModelo){
+        $('#vkeInventarioInfo').text('');
+      } else {
+        var total = colors.reduce(function(s,c){ return s+c.disponibles; }, 0);
+        $('#vkeInventarioInfo').text('Inventario para '+selModelo+': '+total+' unidades disponibles en '+colors.length+' colores.');
+      }
+    }
+    $('#vkeModelo').on('change', refreshColors);
+    if(r.modelo) refreshColors();
+
+    $('#vkeGuardar').on('click', function(){
+      var payload = {
+        id:             r.id,
+        nombre:         $('#vkeNombre').val().trim(),
+        telefono:       $('#vkeTelefono').val().trim(),
+        email:          $('#vkeEmail').val().trim(),
+        modelo:         $('#vkeModelo').val(),
+        color:          $('#vkeColor').val(),
+        precio_contado: parseFloat($('#vkePrecio').val())||0,
+      };
+      if(!payload.modelo || !payload.color){
+        $('#vkeMsg').html('<span style="color:#b91c1c;">Modelo y color son obligatorios.</span>');
+        return;
+      }
+      $('#vkeGuardar').prop('disabled', true).text('Guardando...');
+      ADApp.api('ventas/actualizar-vksc.php', payload).done(function(resp){
+        if(resp.ok){
+          $('#vkeMsg').html('<span style="color:#059669;">✓ Actualizada. '+resp.updated_fields+' campos guardados.</span>');
+          setTimeout(function(){ ADApp.closeModal(); loadData(); }, 900);
+        } else {
+          $('#vkeMsg').html('<span style="color:#b91c1c;">Error: '+(resp.error||'desconocido')+'</span>');
+          $('#vkeGuardar').prop('disabled', false).text('Guardar');
+        }
+      }).fail(function(){
+        $('#vkeMsg').html('<span style="color:#b91c1c;">Error de conexión.</span>');
+        $('#vkeGuardar').prop('disabled', false).text('Guardar');
+      });
+    });
+  }
+
+  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc };
 })();
