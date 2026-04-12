@@ -58,6 +58,12 @@ try {
 // sale falls through the cracks. Match by telefono (most reliable — both
 // tables have it, and enganche+contract+autopago share the phone).
 try {
+    // Orphan detection: a subscripciones_credito row is an orphan when NO
+    // transacciones row exists for the same customer. We match by telefono
+    // OR email (whichever is available) to tolerate NULL/empty fields.
+    // The previous version required modelo to also match, but modelo is
+    // often NULL/"" on legacy rows, and SQL's `NULL = NULL` is false, so
+    // recovered rows were still appearing as orphans.
     $stmt = $pdo->query("
         SELECT s.id, s.cliente_id, s.telefono, s.email, s.modelo, s.color,
                s.precio_contado, s.monto_semanal, s.plazo_semanas,
@@ -65,10 +71,12 @@ try {
                c.nombre AS cliente_nombre
         FROM subscripciones_credito s
         LEFT JOIN clientes c ON c.id = s.cliente_id
-        LEFT JOIN transacciones t
-               ON t.telefono = s.telefono
-              AND t.modelo   = s.modelo
-        WHERE t.id IS NULL
+        WHERE NOT EXISTS (
+            SELECT 1 FROM transacciones t
+            WHERE (t.telefono <> '' AND t.telefono = s.telefono)
+               OR (t.email    <> '' AND t.email    = s.email)
+               OR (t.pedido   =  CONCAT('SC-', s.id))
+        )
         ORDER BY s.freg DESC
         LIMIT 100
     ");
@@ -103,10 +111,15 @@ try {
 // confirmar-orden.php writes here when the main INSERT into transacciones
 // fails. The admin needs to see these so the sale can be recovered manually.
 try {
+    // Only show errors that HAVE NOT been recovered yet. After recuperar-lote
+    // or recuperar-orden promotes an error into transacciones, recuperado_tx_id
+    // is set (to the new tx id, or -1 if skipped as duplicate). Both cases
+    // should disappear from the dashboard.
     $stmt = $pdo->query("
         SELECT id, nombre, email, telefono, modelo, color, total,
                stripe_pi, error_msg, freg
         FROM transacciones_errores
+        WHERE recuperado_tx_id IS NULL
         ORDER BY freg DESC
         LIMIT 100
     ");
