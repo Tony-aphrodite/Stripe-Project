@@ -35,14 +35,14 @@ html,body { overflow-x:hidden; max-width:100%; }
   <a href="dealer-panel.html" style="color:rgba(255,255,255,.8);text-decoration:none;font-size:13px;">← Panel</a>
   <img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'">
   <h1>CEDIS — Control de Inventario</h1>
-  <button onclick="doLogout()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:12px;cursor:pointer;">🚪 Salir</button>
+  <button onclick="doLogout()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Salir</button>
 </div>
 
 <div class="cedis-tabs">
-  <div class="cedis-tab active" onclick="switchCedisTab('inventario')">📋 Inventario</div>
-  <div class="cedis-tab" onclick="switchCedisTab('puntos')">📍 Puntos</div>
-  <div class="cedis-tab" onclick="switchCedisTab('pagos')">💳 Pagos</div>
-  <div class="cedis-tab" onclick="switchCedisTab('import')">📥 Importar</div>
+  <div class="cedis-tab active" onclick="switchCedisTab('inventario')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg> Inventario</div>
+  <div class="cedis-tab" onclick="switchCedisTab('puntos')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Puntos</div>
+  <div class="cedis-tab" onclick="switchCedisTab('pagos')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Pagos</div>
+  <div class="cedis-tab" onclick="switchCedisTab('import')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg> Importar</div>
 </div>
 
 <div class="cedis-content" id="cedis-content">
@@ -61,7 +61,7 @@ html,body { overflow-x:hidden; max-width:100%; }
     <div class="modal-body" id="modal-detalle-moto-body">Cargando...</div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-detalle-moto')">Cerrar</button>
-      <button class="btn btn-primary btn-sm" id="btn-detalle-checklist" onclick="">📋 Ver Checklist</button>
+      <button class="btn btn-primary btn-sm" id="btn-detalle-checklist" onclick="">Ver Checklist</button>
     </div>
   </div>
 </div>
@@ -70,13 +70,13 @@ html,body { overflow-x:hidden; max-width:100%; }
 <div id="modal-mover" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-mover')">
   <div class="modal" style="max-width:420px;">
     <div class="modal-header">
-      <span class="modal-title">📍 Mover a Punto</span>
+      <span class="modal-title">Mover a Punto</span>
       <button class="modal-close" onclick="closeModal('modal-mover')">×</button>
     </div>
     <div class="modal-body" id="mover-body">Cargando...</div>
     <div style="padding:0 20px 16px;">
       <div style="margin-top:12px;border-top:1px solid var(--vka-border);padding-top:12px;">
-        <label style="font-size:12px;font-weight:600;color:var(--vka-blue-dark);display:block;margin-bottom:4px;">🔒 Fecha estimada de recogida por el cliente</label>
+        <label style="font-size:12px;font-weight:600;color:var(--vka-blue-dark);display:block;margin-bottom:4px;">Fecha estimada de recogida por el cliente</label>
         <input type="date" id="mover-fecha-recogida" style="width:100%;padding:8px;border:1.5px solid var(--vka-border);border-radius:8px;font-size:13px;">
         <p style="font-size:11px;color:var(--vka-grey);margin-top:6px;">La fecha de llegada al punto la proporciona envia.com automáticamente. Si el cliente tiene email, recibirá notificación.</p>
       </div>
@@ -92,7 +92,7 @@ html,body { overflow-x:hidden; max-width:100%; }
 <div id="modal-asignar" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-asignar')">
   <div class="modal" style="max-width:400px;">
     <div class="modal-header">
-      <span class="modal-title">💳 Asignar Pago</span>
+      <span class="modal-title">Asignar Pago</span>
       <button class="modal-close" onclick="closeModal('modal-asignar')">×</button>
     </div>
     <div class="modal-body" id="asignar-body">Cargando...</div>
@@ -162,7 +162,7 @@ function renderInventario() {
     const clOk = m.checklist_bloqueado == 1;
     const clBadge = clOk
       ? `<div style="font-size:11px;color:#059669;font-weight:700;margin-bottom:6px;">✅ Checklist de Origen completo</div>`
-      : `<div style="font-size:11px;color:#d97706;font-weight:700;margin-bottom:6px;">⚠️ Checklist de Origen pendiente</div>`;
+      : `<div style="font-size:11px;color:#d97706;font-weight:700;margin-bottom:6px;">Checklist de Origen pendiente</div>`;
     // Product line: modelo + color + año + potencia
     const productLine = [esc(m.modelo), esc(m.color), m.anio_modelo ? esc(m.anio_modelo) : '', m.potencia ? esc(m.potencia) : ''].filter(Boolean).join(' · ');
     html += `<div class="cedis-card" data-search="${(m.vin+m.modelo+(m.cliente_nombre||'')+(m.cliente_telefono||'')+(m.pedido_num||'')).toLowerCase()}">
@@ -183,19 +183,19 @@ function renderInventario() {
           : `<div style="font-size:12px;color:#f59e0b;font-weight:600;">Sin cliente asignado</div>`}
         ${m.cliente_telefono ? `<div style="font-size:11px;color:#333;">📞 ${esc(m.cliente_telefono)}</div>` : ''}
         ${m.cliente_email    ? `<div style="font-size:11px;color:#555;word-break:break-all;">✉️ ${esc(m.cliente_email)}</div>` : ''}
-        ${m.pedido_num       ? `<div style="font-size:11px;color:var(--vka-grey);margin-top:2px;">📋 ${esc(m.pedido_num)}</div>` : ''}
+        ${m.pedido_num       ? `<div style="font-size:11px;color:var(--vka-grey);margin-top:2px;">${esc(m.pedido_num)}</div>` : ''}
       </div>
 
       <div style="font-size:11px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span>📍 ${esc(m.punto_nombre || 'CEDIS (sin asignar)')}</span>
+        <span>${esc(m.punto_nombre || 'CEDIS (sin asignar)')}</span>
         <span style="color:${payColor};font-weight:700;">${payIcon} ${m.pago_estado || '—'}</span>
       </div>
       ${clBadge}
       <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-        <button class="btn btn-ghost btn-sm" onclick="abrirMover(${m.id})" style="font-size:10px;">📍 Mover</button>
-        <button class="btn btn-ghost btn-sm" onclick="abrirAsignar(${m.id})" style="font-size:10px;">💳 Pago</button>
-        <button class="btn btn-ghost btn-sm" onclick="verificarPago(${m.id})" style="font-size:10px;">🔄 Stripe</button>
-        <button class="btn btn-ghost btn-sm" onclick="verChecklist(${m.id})" style="font-size:10px;">📋 Checklist</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirMover(${m.id})" style="font-size:10px;">Mover</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirAsignar(${m.id})" style="font-size:10px;">Pago</button>
+        <button class="btn btn-ghost btn-sm" onclick="verificarPago(${m.id})" style="font-size:10px;">Stripe</button>
+        <button class="btn btn-ghost btn-sm" onclick="verChecklist(${m.id})" style="font-size:10px;">Checklist</button>
       </div>
     </div>`;
   });
@@ -237,7 +237,7 @@ async function loadPuntos() {
     const r = await fetch('php/admin-cedis.php?vista=puntos');
     const d = await r.json();
     allPuntos = d.puntos || [];
-    let html = '<h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">📍 Puntos Voltika</h3>';
+    let html = '<h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">Puntos Voltika</h3>';
     if (!allPuntos.length) { html += '<p style="color:var(--vka-grey);">No hay puntos registrados</p>'; }
     else {
       allPuntos.forEach(p => {
@@ -339,7 +339,7 @@ function renderPuntoDetalle(dealerId, puntoNombre, stats, punto) {
         ${m.cliente_nombre ? `<div style="background:var(--vka-grey-light);border-radius:6px;padding:6px 8px;margin-bottom:6px;">
           <div style="font-size:12px;font-weight:700;color:#1a1a1a;">👤 ${esc(m.cliente_nombre)}</div>
           ${m.cliente_telefono?`<div style="font-size:11px;color:#555;">📞 ${esc(m.cliente_telefono)}</div>`:''}
-          ${m.pedido_num?`<div style="font-size:11px;color:var(--vka-grey);">📋 ${esc(m.pedido_num)}</div>`:''}
+          ${m.pedido_num?`<div style="font-size:11px;color:var(--vka-grey);">${esc(m.pedido_num)}</div>`:''}
         </div>` : ''}
         <div style="display:flex;justify-content:space-between;font-size:11px;align-items:center;">
           <span style="color:${payColor};font-weight:700;">${m.pago_estado==='pagada'?'✅':'⏳'} ${m.pago_estado||'—'}</span>
@@ -399,7 +399,7 @@ function filtroPunto(estado) {
       ${m.cliente_nombre ? `<div style="background:var(--vka-grey-light);border-radius:6px;padding:6px 8px;margin-bottom:6px;">
         <div style="font-size:12px;font-weight:700;color:#1a1a1a;">👤 ${esc(m.cliente_nombre)}</div>
         ${m.cliente_telefono?`<div style="font-size:11px;color:#555;">📞 ${esc(m.cliente_telefono)}</div>`:''}
-        ${m.pedido_num?`<div style="font-size:11px;color:var(--vka-grey);">📋 ${esc(m.pedido_num)}</div>`:''}
+        ${m.pedido_num?`<div style="font-size:11px;color:var(--vka-grey);">${esc(m.pedido_num)}</div>`:''}
       </div>` : ''}
       <div style="display:flex;justify-content:space-between;font-size:11px;align-items:center;">
         <span style="color:${payColor};font-weight:700;">${m.pago_estado==='pagada'?'✅':'⏳'} ${m.pago_estado||'—'}</span>
@@ -420,7 +420,7 @@ async function loadPagos() {
     const r = await fetch('php/admin-cedis.php?vista=transacciones_pendientes');
     const d = await r.json();
     allTx = d.transacciones || [];
-    let html = '<h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">💳 Transacciones sin moto asignada</h3>';
+    let html = '<h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">Transacciones sin moto asignada</h3>';
     if (!allTx.length) { html += '<p style="color:var(--vka-grey);">Todas las transacciones tienen moto asignada</p>'; }
     else {
       html += '<div class="cedis-card" style="padding:0;">';
@@ -443,7 +443,7 @@ async function loadPagos() {
 function showImport() {
   const el = document.getElementById('cedis-content');
   el.innerHTML = `
-    <h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">📥 Importar desde Excel</h3>
+    <h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">Importar desde Excel</h3>
     <div class="excel-drop" onclick="document.getElementById('excel-file').click()">
       <div style="font-size:36px;margin-bottom:8px;">📄</div>
       <div style="font-size:14px;font-weight:700;color:var(--vka-blue-dark);">Haz clic para seleccionar archivo Excel</div>
@@ -642,7 +642,7 @@ function showChecklistRequerido(motoId, moto) {
   btnConfirmar.style.display = 'none';
   body.innerHTML = `
     <div style="text-align:center;padding:16px 0;">
-      <div style="font-size:40px;margin-bottom:10px;">🔒</div>
+      <div style="margin-bottom:10px;"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#92400e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
       <div style="font-size:15px;font-weight:800;color:#92400e;margin-bottom:8px;">Checklist de Origen requerido</div>
       <div style="font-size:13px;color:#555;margin-bottom:16px;line-height:1.5;">
         Antes de transferir <strong>${esc(moto ? moto.vin : '')}</strong> a un punto,
@@ -650,7 +650,7 @@ function showChecklistRequerido(motoId, moto) {
       </div>
       <button class="btn btn-primary" onclick="closeModal('modal-mover');verChecklist(${motoId});"
         style="width:100%;padding:12px;font-size:14px;">
-        📋 Llenar Checklist de Origen
+        Llenar Checklist de Origen
       </button>
     </div>`;
   openModal('modal-mover');

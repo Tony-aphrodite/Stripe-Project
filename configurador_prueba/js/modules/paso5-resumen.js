@@ -9,7 +9,7 @@ var PasoResumen = {
 
     init: function(app) {
         this.app = app;
-        // Check real-time inventory before rendering
+        // Check real-time inventory for the exact modelo+color selected
         var self = this;
         var modelo = app.getModelo(app.state.modeloSeleccionado);
         var color = app.state.colorSeleccionado || (modelo ? modelo.colorDefault : '');
@@ -17,7 +17,9 @@ var PasoResumen = {
         if (modelo) {
             $.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre) + '&color=' + encodeURIComponent(color))
             .done(function(r) {
-                modelo.enInventario = r.ok && r.total > 0;
+                // Store color-specific inventory state on app.state, not on modelo
+                app.state._invColorTotal = r.ok ? (r.total || 0) : 0;
+                app.state._invColorEnStock = r.ok && r.total > 0;
             })
             .always(function() {
                 self.render();
@@ -30,9 +32,9 @@ var PasoResumen = {
     },
 
     _calcFechaEntrega: function() {
-        var modelo = this.app ? this.app.getModelo(this.app.state.modeloSeleccionado) : null;
+        var state = this.app ? this.app.state : {};
         var config = (typeof VOLTIKA_PRODUCTOS !== 'undefined') ? VOLTIKA_PRODUCTOS.config : {};
-        var enInventario = modelo ? (modelo.enInventario !== false) : true;
+        var enInventario = state._invColorEnStock !== undefined ? state._invColorEnStock : true;
         var dias = enInventario ? (config.entregaDiasInventario || 15) : (config.entregaDiasSinInventario || 70);
         var d = new Date();
         d.setDate(d.getDate() + dias);
@@ -177,8 +179,8 @@ var PasoResumen = {
 
         jQuery('#vk-resumen-container').html(html);
 
-        // Load inventory availability badge async
-        this._loadInventoryBadge(modelo.id || modelo.nombre, color);
+        // Load inventory availability badge async (use modelo.nombre for DB match)
+        this._loadInventoryBadge(modelo.nombre, color);
     },
 
     _loadInventoryBadge: function(modeloId, color) {
@@ -191,7 +193,7 @@ var PasoResumen = {
             if (total > 3) {
                 badge.html('<span style="display:inline-block;background:#d1fae5;color:#065f46;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;">&#10004; ' + total + ' unidades disponibles</span>');
             } else if (total > 0) {
-                badge.html('<span style="display:inline-block;background:#fef3c7;color:#92400e;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;">&#9888; \u00daltimas ' + total + ' unidade' + (total === 1 ? '' : 's') + ' disponible' + (total === 1 ? '' : 's') + '</span>');
+                badge.html('<span style="display:inline-block;background:#fef3c7;color:#92400e;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;">&#9888; \u00daltimas ' + total + ' unidad' + (total === 1 ? '' : 'es') + ' disponible' + (total === 1 ? '' : 's') + '</span>');
             } else {
                 badge.html('');
             }

@@ -21,7 +21,7 @@ if (!$moto['cliente_telefono']) puntoJsonOut(['error' => 'Moto no tiene cliente 
 // Allowed: 'pagada' (cash/MSI) or 'pagada_completa'. 'parcial' (credito with enganche only) requires
 // the credit plan to be fully paid before release. Anything else blocks delivery.
 $pagoEstado = strtolower(trim($moto['pago_estado'] ?? ''));
-$pagoOk = in_array($pagoEstado, ['pagada', 'pagada_completa', 'completo', 'completado'], true);
+$pagoOk = in_array($pagoEstado, ['pagada'], true);
 
 if (!$pagoOk && $pagoEstado === 'parcial') {
     // Credito flow — allow only if the subscription is current and has no overdue cycles.
@@ -34,7 +34,7 @@ if (!$pagoOk && $pagoEstado === 'parcial') {
         $subId = $sq->fetchColumn();
         if ($subId) {
             $vq = $pdo->prepare("SELECT COUNT(*) FROM ciclos_pago
-                WHERE subscripcion_id = ? AND estado IN ('vencido','pendiente')
+                WHERE subscripcion_id = ? AND estado IN ('overdue','pending')
                   AND fecha_vencimiento < CURDATE()");
             $vq->execute([(int)$subId]);
             $vencidos = (int)$vq->fetchColumn();
@@ -55,7 +55,7 @@ $otp = puntoGenOTP();
 $expires = date('Y-m-d H:i:s', time() + 600);
 
 // Upsert entrega record
-$pdo->prepare("INSERT INTO entregas (moto_id, pedido_num, cliente_name, cliente_email, cliente_telefono,
+$pdo->prepare("INSERT INTO entregas (moto_id, pedido_num, cliente_nombre, cliente_email, cliente_telefono,
     otp_code, otp_expires, estado, dealer_id)
     VALUES (?,?,?,?,?,?,?,'otp_enviado',?)
     ON DUPLICATE KEY UPDATE otp_code=VALUES(otp_code), otp_expires=VALUES(otp_expires), estado='otp_enviado'")

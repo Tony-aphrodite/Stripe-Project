@@ -9,6 +9,18 @@ var Paso2 = {
         this.app = app;
         this.render();
         this.bindEvents();
+
+        // Pre-fetch inventory for selected color
+        var modelo = app.getModelo(app.state.modeloSeleccionado);
+        var color = app.state.colorSeleccionado || (modelo ? modelo.colorDefault : '');
+        var base = window.VK_BASE_PATH || '';
+        if (modelo && color) {
+            jQuery.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre) + '&color=' + encodeURIComponent(color))
+            .done(function(r) {
+                app.state._invColorTotal = r.ok ? (r.total || 0) : 0;
+                app.state._invColorEnStock = r.ok && r.total > 0;
+            });
+        }
     },
 
     render: function() {
@@ -126,6 +138,16 @@ var Paso2 = {
                 var newImg = VkUI.getImagenMoto(modeloActual.id, color);
                 var imgEl = document.querySelector('#vk-paso2-imagen img');
                 if (imgEl) imgEl.src = newImg;
+
+                // Pre-fetch color-specific inventory for delivery date accuracy
+                var base = window.VK_BASE_PATH || '';
+                if (modeloActual) {
+                    jQuery.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modeloActual.nombre) + '&color=' + encodeURIComponent(color))
+                    .done(function(r) {
+                        self.app.state._invColorTotal = r.ok ? (r.total || 0) : 0;
+                        self.app.state._invColorEnStock = r.ok && r.total > 0;
+                    });
+                }
             });
         });
     },

@@ -3,7 +3,7 @@
  * GET — Real-time KPIs for dashboard top bar
  */
 require_once __DIR__ . '/../bootstrap.php';
-adminRequireAuth(['admin','cedis']);
+adminRequireAuth(['admin','cedis','operador']);
 
 $pdo = getDB();
 $today = date('Y-m-d');
@@ -42,10 +42,10 @@ $carteraVencida = (int)$safeScalar("SELECT COUNT(DISTINCT cliente_id) FROM ciclo
 // Inventory
 $inv = $safeRow("SELECT
     SUM(estado IN ('recibida','lista_para_entrega')) as disponible,
-    SUM(cliente_nombre IS NOT NULL AND cliente_nombre<>'' AND estado NOT IN ('entregada')) as apartadas,
-    SUM(estado='por_llegar') as en_transito,
-    SUM(estado='por_validar_entrega') as entregas_pendientes
-    FROM inventario_motos");
+    SUM(cliente_nombre IS NOT NULL AND cliente_nombre<>'' AND estado NOT IN ('entregada','retenida','por_llegar')) as apartadas,
+    SUM(estado = 'por_llegar') as en_transito,
+    SUM(estado IN ('lista_para_entrega','por_validar_entrega')) as pendientes_entrega_clientes
+    FROM inventario_motos WHERE activo = 1");
 
 // Expected cash flow (pending cycles this week)
 $flujo = (float)$safeScalar("SELECT COALESCE(SUM(monto),0) FROM ciclos_pago
@@ -62,5 +62,5 @@ adminJsonOut([
     'inventario_disponible' => (int)($inv['disponible'] ?? 0),
     'unidades_apartadas' => (int)($inv['apartadas'] ?? 0),
     'en_transito' => (int)($inv['en_transito'] ?? 0),
-    'entregas_pendientes' => (int)($inv['entregas_pendientes'] ?? 0),
+    'pendientes_entrega_clientes' => (int)($inv['pendientes_entrega_clientes'] ?? 0),
 ]);

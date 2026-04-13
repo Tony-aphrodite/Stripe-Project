@@ -4,7 +4,7 @@
  * Filters: ?tipo=contado|msi|credito&estado=&page=
  */
 require_once __DIR__ . '/../bootstrap.php';
-adminRequireAuth(['admin','cedis']);
+adminRequireAuth(['admin','cedis','operador']);
 
 $pdo = getDB();
 $page  = max(1, (int)($_GET['page'] ?? 1));
@@ -29,7 +29,7 @@ try {
     $tipo = $_GET['tipo'] ?? '';
     if ($tipo === 'credito' && $hasSub && $subStatusCol) {
         $sql = "SELECT 'credito' as fuente, s.id,
-                '' as pedido_num, s.nombre, s.email, s.telefono,
+                '' as pedido_num, COALESCE(s.nombre, cl.nombre, '') as nombre, s.email, s.telefono,
                 " . (in_array('modelo', $subCols) ? 's.modelo' : "'' as modelo") . ",
                 " . (in_array('color', $subCols) ? 's.color' : "'' as color") . ",
                 'credito' as tipo_pago,
@@ -37,6 +37,7 @@ try {
                 {$subStripeExpr} as stripe_pi,
                 s.{$subStatusCol} as pago_estado, s.freg
                 FROM subscripciones_credito s
+                LEFT JOIN clientes cl ON s.cliente_id = cl.id
                 ORDER BY s.freg DESC LIMIT $limit OFFSET $offset";
         $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     } else {

@@ -20,10 +20,15 @@ var PasoCreditoLoading = {
 
         html += '<div class="vk-loading-screen">';
 
+        // Loading GIF — large, top position, blended into background
+        html += '<div style="text-align:center;margin-bottom:20px;">';
+        html += '<img src="' + base + 'img/loading.gif" alt="Cargando..." style="width:380px;max-width:95%;height:auto;border-radius:16px;mix-blend-mode:screen;">';
+        html += '</div>';
+
         // Voltika logo (white)
-        html += '<div class="vk-loading-screen__moto" style="display:flex;align-items:center;justify-content:center;">';
+        html += '<div style="text-align:center;margin-bottom:16px;">';
         html += '<img src="' + base + 'img/voltika_logo.svg" alt="Voltika" ' +
-            'style="width:220px;max-width:80%;filter:brightness(0) invert(1);">';
+            'style="width:160px;max-width:60%;filter:brightness(0) invert(1);">';
         html += '</div>';
 
         // Text
@@ -33,13 +38,6 @@ var PasoCreditoLoading = {
         html += '</div>';
 
         html += '<div class="vk-loading-screen__hint">Esto toma solo unos segundos</div>';
-
-        // Progress dots
-        html += '<div class="vk-loading-screen__dots">';
-        html += '<span class="vk-loading-dot"></span>';
-        html += '<span class="vk-loading-dot"></span>';
-        html += '<span class="vk-loading-dot"></span>';
-        html += '</div>';
 
         html += '</div>';
 

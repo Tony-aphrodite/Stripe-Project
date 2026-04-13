@@ -82,7 +82,7 @@ try {
 
     $stmt = $pdo->prepare("
         UPDATE subscripciones_credito
-        SET status                   = 'active',
+        SET estado                   = 'activa',
             stripe_payment_method_id = COALESCE(NULLIF(:pm, ''), stripe_payment_method_id),
             monto_semanal            = COALESCE(:monto, monto_semanal),
             nombre                   = COALESCE(NULLIF(:nombre, ''), nombre),
@@ -118,11 +118,11 @@ try {
                 (nombre, email, telefono,
                  stripe_customer_id, stripe_setup_intent_id, stripe_payment_method_id,
                  modelo, color, precio_contado, plazo_meses, monto_semanal,
-                 status, factivacion)
+                 estado, factivacion)
             VALUES (?, ?, ?,
                     ?, ?, ?,
                     ?, ?, ?, ?, ?,
-                    'active', NOW())
+                    'activa', NOW())
             ON DUPLICATE KEY UPDATE
                 stripe_payment_method_id = VALUES(stripe_payment_method_id),
                 monto_semanal            = VALUES(monto_semanal),
@@ -130,7 +130,7 @@ try {
                 color                    = COALESCE(NULLIF(VALUES(color),  ''), color),
                 precio_contado           = COALESCE(NULLIF(VALUES(precio_contado), 0), precio_contado),
                 plazo_meses              = COALESCE(NULLIF(VALUES(plazo_meses), 0),    plazo_meses),
-                status                   = 'active',
+                estado                   = 'activa',
                 factivacion              = NOW()
         ");
         $insert->execute([

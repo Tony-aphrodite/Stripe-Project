@@ -76,21 +76,76 @@ html,body{
   box-shadow:0 4px 20px rgba(3,159,225,.45);
   transform:translateX(0);
 }
-.ad-nav button span{font-size:18px;width:24px;text-align:center;display:flex;align-items:center;justify-content:center}
+.ad-nav button span{font-size:18px;width:24px;text-align:center;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ad-nav button span img{width:22px;height:22px;object-fit:contain;filter:brightness(0) invert(1);opacity:.7;transition:opacity .25s}
 .ad-nav button:hover span img,.ad-nav button.active span img{opacity:1}
+.ad-nav button span svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.7;transition:opacity .25s;flex-shrink:0}
+.ad-nav button:hover span svg,.ad-nav button.active span svg{opacity:1}
+
+/* ── Collapsible nav groups ── */
+.ad-nav-group{margin:2px 0}
+.ad-nav-group-toggle{
+  background:none;border:0;width:100%;
+  color:rgba(255,255,255,.4);
+  text-align:left;padding:10px 16px;
+  border-radius:var(--ad-radius-sm);
+  font-size:11px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  transition:all .25s ease;
+  text-transform:uppercase;letter-spacing:.8px;
+}
+.ad-nav-group-toggle:hover{color:rgba(255,255,255,.7);background:rgba(255,255,255,.04)}
+.ad-nav-group-toggle span{width:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ad-nav-group-toggle span svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.5}
+.ad-nav-chevron{
+  width:14px!important;height:14px!important;
+  stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  margin-left:auto;opacity:.4;
+  transition:transform .25s ease;flex-shrink:0;
+}
+.ad-nav-group.open .ad-nav-chevron{transform:rotate(180deg)}
+.ad-nav-sub{
+  display:none;
+  flex-direction:column;gap:1px;
+  padding-left:10px;
+  margin-top:2px;
+  border-left:2px solid rgba(255,255,255,.06);
+  margin-left:18px;
+}
+.ad-nav-group.open .ad-nav-sub{display:flex}
+.ad-nav-sub button{
+  background:none;border:0;
+  color:rgba(255,255,255,.5);
+  text-align:left;padding:9px 14px;
+  border-radius:8px;
+  font-size:13px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  transition:all .25s ease;
+}
+.ad-nav-sub button:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85)}
+.ad-nav-sub button.active{background:linear-gradient(135deg,#039fe1,#0280b5);color:#fff;box-shadow:0 3px 14px rgba(3,159,225,.4)}
+.ad-nav-sub button span{width:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ad-nav-sub button span svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.65}
+.ad-nav-sub button:hover span svg,.ad-nav-sub button.active span svg{opacity:1}
 .ad-user{
   font-size:12px;color:rgba(255,255,255,.45);
   padding:12px 10px 4px;
   border-top:1px solid rgba(255,255,255,.06);
   margin-top:16px;line-height:1.6;
 }
+.ad-change-pass{
+  background:none;border:none;
+  color:rgba(255,255,255,.5);
+  padding:8px;cursor:pointer;font-size:11px;font-weight:600;
+  transition:color .2s ease;width:100%;text-align:center;
+}
+.ad-change-pass:hover{color:rgba(255,255,255,.85)}
 .ad-logout{
   background:rgba(255,255,255,.05);
   border:1px solid rgba(255,255,255,.1);
   color:rgba(255,255,255,.7);
   padding:11px;border-radius:var(--ad-radius-sm);
-  cursor:pointer;font-size:12px;font-weight:600;margin-top:10px;
+  cursor:pointer;font-size:12px;font-weight:600;margin-top:4px;
   transition:all .2s ease;
 }
 .ad-logout:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#fca5a5}
@@ -120,7 +175,7 @@ html,body{
   gap:16px;margin-bottom:24px;
 }
 .ad-kpi{
-  background:var(--ad-surface);
+  background:var(--ad-navy);
   border:none;
   border-radius:var(--ad-radius);
   padding:22px 20px;
@@ -128,27 +183,23 @@ html,body{
   transition:all .25s ease;
   position:relative;overflow:hidden;
 }
-.ad-kpi::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:4px;
-  background:var(--ad-border);border-radius:var(--ad-radius) var(--ad-radius) 0 0;
-  transition:background .25s ease;
-}
+.ad-kpi::before{display:none}
 .ad-kpi:hover{transform:translateY(-3px);box-shadow:var(--ad-shadow-lg)}
 .ad-kpi .label{
-  font-size:11px;color:var(--ad-dim);
+  font-size:11px;color:rgba(255,255,255,.7);
   text-transform:uppercase;letter-spacing:.8px;
   font-weight:700;margin-bottom:8px;
 }
-.ad-kpi .value{font-size:30px;font-weight:800;color:var(--ad-navy);line-height:1.1}
-.ad-kpi .value.green{color:var(--ad-success)}
-.ad-kpi .value.red{color:var(--ad-danger)}
-.ad-kpi .value.yellow{color:var(--ad-warn)}
-.ad-kpi .value.blue{color:var(--ad-primary)}
-/* Colored top stripe based on value color */
-.ad-kpi:has(.value.green)::before{background:var(--ad-success)}
-.ad-kpi:has(.value.red)::before{background:var(--ad-danger)}
-.ad-kpi:has(.value.yellow)::before{background:var(--ad-warn)}
-.ad-kpi:has(.value.blue)::before{background:var(--ad-primary)}
+.ad-kpi .value{font-size:clamp(18px,4vw,30px);font-weight:800;color:#fff;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-kpi .value.green{color:#fff}
+.ad-kpi .value.red{color:#fff}
+.ad-kpi .value.yellow{color:#fff}
+.ad-kpi .value.blue{color:#fff}
+/* Solid color backgrounds */
+.ad-kpi:has(.value.green){background:var(--ad-success)}
+.ad-kpi:has(.value.red){background:var(--ad-danger)}
+.ad-kpi:has(.value.yellow){background:var(--ad-warn)}
+.ad-kpi:has(.value.blue){background:var(--ad-primary)}
 
 /* ══════════════════════════════════════════════════════════════════════════
    TABLE — Clean with rounded wrapper
@@ -294,6 +345,7 @@ html,body{
   transition:all .2s ease;
 }
 .ad-modal-close:hover{background:#fee2e2;color:var(--ad-danger)}
+.adPD-error{text-align:center;padding:40px 20px;}
 
 /* ══════════════════════════════════════════════════════════════════════════
    CARD
@@ -329,6 +381,15 @@ html,body{
    TOOLBAR / ROW / BANNER
    ══════════════════════════════════════════════════════════════════════════ */
 .ad-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+.ad-back{
+  display:inline-flex;align-items:center;gap:6px;
+  background:none;border:none;color:var(--ad-primary);
+  font-size:13px;font-weight:600;cursor:pointer;
+  padding:6px 10px;border-radius:var(--ad-radius-sm);
+  transition:background .2s,color .2s;
+}
+.ad-back:hover{background:var(--ad-primary-soft);color:var(--ad-primary-2)}
+.ad-back svg{width:18px;height:18px}
 .ad-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--ad-border)}
 .ad-row:last-child{border-bottom:0}
 .ad-row .k{color:var(--ad-dim);font-size:13px;font-weight:600}
@@ -438,12 +499,15 @@ html,body{
   .ad-nav.open{display:flex}
   .ad-nav button{padding:12px 16px;font-size:14px;justify-content:flex-start;border-radius:var(--ad-radius-sm)}
   .ad-user{display:none}
+  .ad-change-pass{display:none;width:100%;order:10;margin-top:4px;text-align:center}
+  .ad-nav.open ~ .ad-change-pass{display:block}
   .ad-logout{display:none;width:100%;order:11;margin-top:4px;text-align:center}
   .ad-nav.open ~ .ad-logout{display:block}
   .ad-main{margin-left:0;padding:16px}
   .ad-kpis{grid-template-columns:repeat(2,1fr);gap:10px}
-  .ad-kpi{padding:16px}
-  .ad-kpi .value{font-size:24px}
+  .ad-kpi{padding:14px 12px}
+  .ad-kpi .value{font-size:22px}
+  .ad-kpi .label{font-size:10px;letter-spacing:.5px}
   .ad-table{font-size:12px;display:block;overflow-x:auto}
   .ad-h1{font-size:22px}
   .ad-toolbar{flex-direction:column;align-items:stretch}

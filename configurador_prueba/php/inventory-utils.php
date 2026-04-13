@@ -141,7 +141,8 @@ function asignarMotoFIFO(
 function contarDisponibles(PDO $pdo, string $modelo = '', string $color = ''): array {
     $where  = ["activo = 1", "estado NOT IN ('entregada','retenida')",
                "(pedido_num IS NULL OR pedido_num = '')",
-               "(cliente_email IS NULL OR cliente_email = '')"];
+               "(cliente_email IS NULL OR cliente_email = '')",
+               "vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'"];
     $params = [];
 
     if ($modelo) { $where[] = 'LOWER(TRIM(modelo)) = LOWER(TRIM(?))'; $params[] = $modelo; }

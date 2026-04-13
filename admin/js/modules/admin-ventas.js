@@ -1,31 +1,20 @@
 window.AD_ventas = (function(){
 
+  var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
+
   function render(){
     ADApp.render(
-      '<div class="ad-toolbar" style="display:flex;align-items:center;justify-content:space-between;">'+
+      _backBtn+
+      '<div class="ad-toolbar">'+
         '<div class="ad-h1">Ventas / Ordenes</div>'+
-        '<div style="display:flex;align-items:center;gap:10px;">'+
-          '<span id="vtLastUpdated" class="ad-dim" style="font-size:12px;"></span>'+
-          '<button id="vtRefreshBtn" class="ad-btn sm" style="padding:6px 12px;">Actualizar</button>'+
-        '</div>'+
       '</div>'+
       '<div id="vtKpis" class="ad-kpis" style="margin-bottom:14px;"></div>'+
       '<div id="vtTable">Cargando...</div>'
     );
-    $('#vtRefreshBtn').on('click', loadData);
     loadData();
   }
 
-  function _formatLastUpdated(){
-    var d = new Date();
-    var hh = String(d.getHours()).padStart(2,'0');
-    var mm = String(d.getMinutes()).padStart(2,'0');
-    var ss = String(d.getSeconds()).padStart(2,'0');
-    return 'Última actualización: '+hh+':'+mm+':'+ss;
-  }
-
   function loadData(){
-    $('#vtLastUpdated').text('Cargando...');
     ADApp.api('ventas/listar.php').done(function(r){
       if(!r.ok){ $('#vtTable').html('<div class="ad-card">Error al cargar</div>'); return; }
 
@@ -36,11 +25,11 @@ window.AD_ventas = (function(){
         kpi('Total ordenes', r.total, 'blue')+
         kpi('Moto asignada', r.asignadas, 'green')+
         kpi('Sin asignar', r.sin_asignar, r.sin_asignar > 0 ? 'red' : 'green')+
+        kpi('Ventas con Pago', r.con_pago||0, 'green')+
+        kpi('Ventas sin Pago', r.sin_pago||0, (r.sin_pago||0) > 0 ? 'red' : 'green')+
         kpi('Punto pendiente', pendingPunto, pendingPunto > 0 ? 'yellow' : 'green')+
         kpi('Huérfanos/errores', orfanos, orfanos > 0 ? 'red' : 'green')
       );
-      $('#vtLastUpdated').text(_formatLastUpdated());
-
       var rows = r.rows || [];
       _lastRows = rows;
       if(!rows.length){
@@ -50,7 +39,7 @@ window.AD_ventas = (function(){
 
       var html = '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
         '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Color</th>'+
-        '<th>Tipo</th><th>Monto</th><th>Punto</th><th>Fecha</th><th>Moto asignada</th><th>Accion</th>'+
+        '<th>Tipo</th><th>Monto</th><th>Estatus de Pago</th><th>Punto</th><th>Fecha</th><th>Moto asignada</th><th>Accion</th>'+
         '</tr></thead><tbody>';
 
       rows.forEach(function(r){
@@ -81,6 +70,7 @@ window.AD_ventas = (function(){
           '<td>'+(r.color||'-')+'</td>'+
           '<td><span class="ad-badge '+tipoBadge+'">'+(r.tipo||'-')+'</span></td>'+
           '<td>'+ADApp.money(r.monto)+'</td>'+
+          '<td>'+pagoEstadoBadge(r.pago_estado, r.tipo)+'</td>'+
           '<td>'+puntoHtml+'</td>'+
           '<td>'+(r.fecha?r.fecha.substring(0,10):'-')+'</td>';
 
@@ -105,21 +95,26 @@ window.AD_ventas = (function(){
           var needsEdit = isVksc && (!r.modelo || r.modelo==='-' || !r.color || r.color==='-');
           motoCell = '<span class="ad-badge yellow">'+(r.source==='transacciones_errores'?'Error':'Crédito huérfano')+'</span>';
           actions  = '';
-          if(needsEdit){
-            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#d97706;" '+
-                       'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar</button>';
+          if(ADApp.canWrite()){
+            if(needsEdit){
+              actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#d97706;" '+
+                         'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar</button>';
+            }
+            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#b91c1c;" '+
+                       'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button>';
           }
-          actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#b91c1c;" '+
-                     'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button>'+
-                     '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+          actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         } else if(asignada){
           motoCell = '<span class="ad-badge green">'+(r.moto_vin||'****')+'</span>';
           actions  = '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         } else {
           motoCell = '<span class="ad-badge red">Sin asignar</span>'+stockInfo;
-          actions  = '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
-                     'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>'+
-                     '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+          actions  = '';
+          if(ADApp.canWrite()){
+            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
+                       'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
+          }
+          actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         }
         html += '<td>'+motoCell+'</td>'+
                 '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
@@ -138,33 +133,38 @@ window.AD_ventas = (function(){
   function showAsignar(transId, modelo, color, pedido){
     ADApp.modal(
       '<div class="ad-h2">Asignar moto a '+pedido+'</div>'+
-      '<div class="ad-dim" style="margin-bottom:12px;">Modelo: <strong>'+modelo+'</strong> &middot; Color: <strong>'+color+'</strong></div>'+
+      '<div style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">'+
+        '<span style="font-size:18px;font-weight:800;color:var(--ad-navy);">'+modelo+'</span>'+
+        '<span style="font-size:16px;font-weight:700;color:var(--ad-primary);">'+color+'</span>'+
+      '</div>'+
       '<div id="vtMotos">Buscando motos disponibles...</div>'
     );
 
+    // First try exact model+color, then fallback to same model only (never show other models)
     var url = 'ventas/motos-disponibles.php?modelo='+encodeURIComponent(modelo)+'&color='+encodeURIComponent(color);
     ADApp.api(url).done(function(r){
       if(!r.ok || !r.motos.length){
-        // Show all bikes if none match model/color
-        ADApp.api('ventas/motos-disponibles.php').done(function(r2){
-          renderMotos(r2.motos||[], transId, pedido, true);
+        // Fallback: same model, any color — never show different models
+        var urlModelo = 'ventas/motos-disponibles.php?modelo='+encodeURIComponent(modelo);
+        ADApp.api(urlModelo).done(function(r2){
+          renderMotos(r2.motos||[], transId, pedido, true, modelo);
         });
         return;
       }
-      renderMotos(r.motos, transId, pedido, false);
+      renderMotos(r.motos, transId, pedido, false, modelo);
     });
   }
 
-  function renderMotos(motos, transId, pedido, showAll){
+  function renderMotos(motos, transId, pedido, showAll, modelo){
     if(!motos.length){
       var twoMonths = new Date(); twoMonths.setMonth(twoMonths.getMonth()+2);
       var eta = twoMonths.toISOString().slice(0,10);
       $('#vtMotos').html(
         '<div style="text-align:center;padding:20px;">'+
-          '<div style="color:var(--ad-dim);margin-bottom:8px;">No hay motos disponibles en inventario</div>'+
+          '<div style="color:var(--ad-dim);margin-bottom:8px;">No hay motos <strong>'+(modelo||'')+'</strong> disponibles en inventario</div>'+
           '<div style="font-size:13px;color:#b91c1c;background:#fde8e8;padding:10px;border-radius:8px;">'+
             'La orden quedará en estado <strong>"Pendiente de asignar"</strong> hasta que CEDIS registre '+
-            'nuevas motos en el inventario.<br>'+
+            'nuevas motos de este modelo en el inventario.<br>'+
             'Entrega estimada: <strong>'+eta+'</strong> (~2 meses)'+
           '</div>'+
         '</div>'
@@ -174,7 +174,7 @@ window.AD_ventas = (function(){
 
     var html = '';
     if(showAll){
-      html += '<div class="ad-banner warn" style="margin-bottom:10px;">No hay motos del mismo modelo/color. Mostrando todas las disponibles.</div>';
+      html += '<div class="ad-banner warn" style="margin-bottom:10px;">No hay motos del mismo color. Mostrando otras unidades del mismo modelo.</div>';
     }
 
     html += '<div style="max-height:350px;overflow-y:auto;">';
@@ -217,6 +217,31 @@ window.AD_ventas = (function(){
     return '<div class="ad-kpi"><div class="label">'+label+'</div><div class="value '+color+'">'+value+'</div></div>';
   }
 
+  function pagoEstadoBadge(estado, tipo){
+    estado = (estado||'pendiente').toLowerCase();
+    var tipoLabel = (tipo||'').toLowerCase();
+    // Map payment method labels
+    var metodo = '';
+    if(['contado','stripe','tarjeta'].indexOf(tipoLabel)>=0) metodo = 'Tarjeta';
+    else if(tipoLabel==='spei') metodo = 'SPEI';
+    else if(tipoLabel==='oxxo') metodo = 'OXXO';
+    else if(['credito','credito-orfano','enganche'].indexOf(tipoLabel)>=0) metodo = 'Crédito';
+    else if(tipoLabel==='msi') metodo = 'MSI';
+
+    if(estado==='pagada'){
+      var label = metodo ? 'Pagado · '+metodo : 'Pagado';
+      return '<span class="ad-badge green" style="font-size:11px;">'+label+'</span>';
+    } else if(estado==='parcial'){
+      var label2 = metodo ? 'Enganche · '+metodo : 'Parcial';
+      return '<span class="ad-badge yellow" style="font-size:11px;">'+label2+'</span>';
+    } else if(estado==='orfano' || estado==='error'){
+      return '<span class="ad-badge red" style="font-size:11px;">'+capitalize(estado)+'</span>';
+    } else {
+      var label3 = metodo ? 'Pendiente · '+metodo : 'Pendiente';
+      return '<span class="ad-badge red" style="font-size:11px;">'+label3+'</span>';
+    }
+  }
+
   function showDetalle(transId){
     var rows = _lastRows || [];
     var r = null;
@@ -224,32 +249,91 @@ window.AD_ventas = (function(){
     if(!r) return;
 
     var isPending = r.punto_id==='centro-cercano';
-    var html = '<div class="ad-h2">Orden VK-'+(r.pedido||r.id)+'</div>';
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
-    [['Cliente',r.nombre||'—'],['Email',r.email||'—'],['Teléfono',r.telefono||'—'],
-     ['Modelo',r.modelo||'—'],['Color',r.color||'—'],['Tipo pago',r.tipo||'—'],
-     ['Monto',ADApp.money(r.monto)],['Fecha',r.fecha?r.fecha.substring(0,10):'—'],
-     ['Stripe PI',r.stripe_pi||'—'],['Pago',r.pago_estado||'pendiente']].forEach(function(p){
-      html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
-    });
+
+    // ── Styled helpers (CEDIS pattern) ──
+    var secIx = 0;
+    function secHead(title, icon){
+      return '<div style="display:flex;align-items:center;gap:8px;margin:24px 0 12px;padding-bottom:10px;border-bottom:1px solid var(--ad-border);">'+
+        '<div style="color:var(--ad-primary);">'+icon+'</div>'+
+        '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ad-primary);">'+title+'</div></div>';
+    }
+    function fRow(label, value){
+      var bg = secIx++ % 2 === 0 ? 'background:var(--ad-surface-2);' : '';
+      return '<div style="'+bg+'padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,.04);">'+
+        '<span style="color:var(--ad-dim);font-size:12px;font-weight:500;white-space:nowrap;margin-right:12px;">'+label+'</span>'+
+        '<span style="font-size:13px;font-weight:600;color:var(--ad-navy);text-align:right;">'+(value||'—')+'</span></div>';
+    }
+
+    // ── Modal header (CEDIS pattern) ──
+    var pe = (r.pago_estado||'pendiente').toLowerCase();
+    var pagoColor = pe==='pagada' ? 'green' : (pe==='parcial' ? 'yellow' : 'red');
+    var pagoLabel = pe==='pagada' ? 'Pagado' : (pe==='parcial' ? 'Parcial' : 'Pendiente');
+
+    var html = '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:18px;border-bottom:2px solid var(--ad-border);">';
+    html += '<div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#039fe1,#0280b5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
+    html += '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>';
+    html += '<div style="flex:1;min-width:0;"><div style="font-size:20px;font-weight:800;color:var(--ad-navy);line-height:1.2;">VK-'+(r.pedido||r.id)+'</div>';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;"><span class="ad-badge '+pagoColor+'">'+pagoLabel+'</span>';
+    html += '<span style="font-size:13px;color:var(--ad-dim);">'+(r.modelo||'—')+' · '+(r.color||'—')+' · '+ADApp.money(r.monto)+'</span>';
+    html += '</div></div></div>';
+
+    // ── Section: Cliente ──
+    secIx = 0;
+    html += secHead('Cliente','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+    html += fRow('Nombre', r.nombre||'—');
+    html += fRow('Email', r.email ? '<a href="mailto:'+r.email+'" style="color:var(--ad-primary);text-decoration:none;">'+r.email+'</a>' : '—');
+    html += fRow('Teléfono', r.telefono||'—');
     html += '</div>';
-    // Punto info
-    html += '<div class="ad-h2" style="margin-top:12px;">Punto de entrega</div>';
+
+    // ── Section: Pedido ──
+    secIx = 0;
+    html += secHead('Pedido','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/></svg>');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+    html += fRow('Modelo', r.modelo||'—');
+    html += fRow('Color', r.color||'—');
+    html += fRow('Tipo de pago', '<span class="ad-badge blue" style="font-size:11px;">'+(r.tipo||'—')+'</span>');
+    html += fRow('Monto', '<span style="font-size:15px;font-weight:800;">'+ADApp.money(r.monto)+'</span>');
+    html += fRow('Fecha', r.fecha ? r.fecha.substring(0,10) : '—');
+    html += '</div>';
+
+    // ── Section: Stripe ──
+    secIx = 0;
+    html += secHead('Stripe','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H3a2 2 0 00-2 2v12a2 2 0 002 2h18a2 2 0 002-2V6a2 2 0 00-2-2z"/><path d="M1 10h22"/></svg>');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+    var piVal = r.stripe_pi
+      ? '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+r.stripe_pi+'</code>'
+      : '—';
+    html += fRow('Payment Intent', piVal);
+    html += fRow('Estado de pago', '<span class="ad-badge '+pagoColor+'">'+pagoLabel+'</span>');
+    html += '</div>';
+
+    // ── Section: Punto de entrega ──
+    secIx = 0;
+    html += secHead('Punto de entrega','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     if(isPending){
-      html += '<span class="ad-badge yellow">Pendiente de asignar punto</span>';
-      html += '<div style="font-size:12px;color:var(--ad-dim);margin-top:4px;">El cliente seleccionó "Centro Voltika cercano". Asignar manualmente.</div>';
+      html += fRow('Punto', '<span class="ad-badge yellow">Pendiente de asignar</span>');
+      html += fRow('Nota', '<span style="font-size:11px;color:var(--ad-dim);">El cliente seleccionó "Centro Voltika cercano"</span>');
     } else if(r.punto_nombre){
-      html += '<span class="ad-badge green">'+r.punto_nombre+'</span>';
+      html += fRow('Punto', '<span style="color:#059669;font-weight:700;">'+r.punto_nombre+'</span>');
     } else {
-      html += '<span class="ad-badge red">Sin punto seleccionado</span>';
+      html += fRow('Punto', '<span class="ad-badge red">Sin punto seleccionado</span>');
     }
-    // Moto info
-    html += '<div class="ad-h2" style="margin-top:12px;">Moto asignada</div>';
+    html += '</div>';
+
+    // ── Section: Moto asignada ──
+    secIx = 0;
+    html += secHead('Moto asignada','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     if(r.moto_id){
-      html += '<span class="ad-badge green">'+(r.moto_vin||'VIN ****')+'</span> · '+ADApp.badgeEstado(r.moto_estado||'—');
+      html += fRow('VIN', '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+(r.moto_vin||'****')+'</code>');
+      html += fRow('Estado', ADApp.badgeEstado(r.moto_estado||'—'));
     } else {
-      html += '<span class="ad-badge red">Sin moto asignada</span>';
+      html += fRow('Estado', '<span class="ad-badge red">Sin moto asignada</span>');
     }
+    html += '</div>';
+
     ADApp.modal(html);
   }
 
@@ -258,6 +342,7 @@ window.AD_ventas = (function(){
   function esc(s){
     return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
   }
+  function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : ''; }
 
   // Recuperar — promueve una orden huérfana (transacciones_errores) o
   // reconstruye desde Stripe PI a la tabla `transacciones`.

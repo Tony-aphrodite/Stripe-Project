@@ -1,5 +1,7 @@
 window.AD_envios = (function(){
 
+  var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
+
   function render(){
     ADApp.render('<div class="ad-h1">Envíos</div><div><span class="ad-spin"></span></div>');
     ADApp.api('envios/listar.php').done(paint);
@@ -7,7 +9,7 @@ window.AD_envios = (function(){
 
   function paint(r){
     var envios = r.envios||[];
-    var html = '<div class="ad-toolbar"><div class="ad-h1">Envíos</div>'+
+    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Envíos</div>'+
       '<button class="ad-btn primary" id="adNewEnvio">+ Crear envío</button>'+
       '</div>';
 

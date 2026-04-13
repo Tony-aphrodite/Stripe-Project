@@ -93,8 +93,8 @@
       <span class="header-punto" id="header-punto">Cargando...</span>
     </div>
     <div class="header-right">
-      <a href="https://wa.me/5213416370" target="_blank" class="btn-soporte">💬 Soporte</a>
-      <button class="btn-logout" onclick="doLogout()" title="Cerrar sesión">🚪 Salir</button>
+      <a href="https://wa.me/5213416370" target="_blank" class="btn-soporte"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Soporte</a>
+      <button class="btn-logout" onclick="doLogout()" title="Cerrar sesión"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Salir</button>
     </div>
   </header>
 
@@ -105,9 +105,9 @@
 
   <!-- Nav tabs -->
   <div class="nav-tabs-top">
-    <div class="nav-tab active" onclick="switchTab('dashboard')"><span class="tab-ico">🏠</span><span class="tab-txt"> Dashboard</span></div>
-    <div class="nav-tab" onclick="switchTab('entregas')"><span class="tab-ico">📦</span><span class="tab-txt"> Entregas</span></div>
-    <div class="nav-tab" onclick="switchTab('consignacion')"><span class="tab-ico">🏪</span><span class="tab-txt"> Consig.</span></div>
+    <div class="nav-tab active" onclick="switchTab('dashboard')"><span class="tab-ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><span class="tab-txt"> Dashboard</span></div>
+    <div class="nav-tab" onclick="switchTab('entregas')"><span class="tab-ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span><span class="tab-txt"> Entregas</span></div>
+    <div class="nav-tab" onclick="switchTab('consignacion')"><span class="tab-ico"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><span class="tab-txt"> Consig.</span></div>
     <button class="btn-qr-header" onclick="openQRModal()">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
         <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -157,7 +157,7 @@
 <div id="modal-qr" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-qr')">
   <div class="modal" style="max-width:440px;">
     <div class="modal-header">
-      <span class="modal-title">📷 Escanear QR</span>
+      <span class="modal-title">Escanear QR</span>
       <button class="modal-close" onclick="closeQRModal()">×</button>
     </div>
     <div class="modal-body">
@@ -188,7 +188,7 @@
 <div id="modal-checklist" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-checklist')">
   <div class="modal" style="max-width:520px;">
     <div class="modal-header">
-      <span class="modal-title">✅ Checklist Pre-Entrega</span>
+      <span class="modal-title">Checklist Pre-Entrega</span>
       <button class="modal-close" onclick="closeModal('modal-checklist')">×</button>
     </div>
     <div class="modal-body" id="checklist-body">
@@ -206,7 +206,7 @@
 <div id="modal-docs" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-docs')">
   <div class="modal" style="max-width:480px;">
     <div class="modal-header">
-      <span class="modal-title">📋 Documentos</span>
+      <span class="modal-title">Documentos</span>
       <button class="modal-close" onclick="closeModal('modal-docs')">×</button>
     </div>
     <div class="modal-body" id="docs-body">
@@ -222,7 +222,7 @@
 <div id="modal-face" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-face')">
   <div class="modal" style="max-width:480px;">
     <div class="modal-header">
-      <span class="modal-title">📸 Verificación de Entrega</span>
+      <span class="modal-title">Verificación de Entrega</span>
       <button class="modal-close" onclick="closeFaceModal()">×</button>
     </div>
     <div class="modal-body" id="face-body">
@@ -399,17 +399,17 @@ function updateStatsBar(stats) {
     el.innerHTML = `
       <div class="stat-pill">
         <span class="stat-pill-num">${stats.entregas_pendientes}</span>
-        <span class="stat-pill-lbl">⚡ Pendientes</span>
+        <span class="stat-pill-lbl"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Pendientes</span>
       </div>
       <div class="stat-pill">
         <span class="stat-pill-num">${stats.unidades_en_piso}</span>
-        <span class="stat-pill-lbl">🏍️ En piso</span>
+        <span class="stat-pill-lbl"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg> En piso</span>
       </div>
       <div class="stat-pill">
         <span class="stat-pill-num">${stats.en_ensamble}</span>
-        <span class="stat-pill-lbl">⚙️ Ensamble</span>
+        <span class="stat-pill-lbl"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Ensamble</span>
       </div>
-      <div class="stat-refresh" onclick="loadDashboard()">🔄</div>
+      <div class="stat-refresh" onclick="loadDashboard()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></div>
     `;
   } else {
     el.className = 'stats-bar';
@@ -417,13 +417,13 @@ function updateStatsBar(stats) {
     el.innerHTML = `
       <strong>Hoy:</strong> ${hoy}
       <span class="stats-dot"></span>
-      <span>⚡ <strong>${stats.entregas_pendientes}</strong> entrega${stats.entregas_pendientes!==1?'s':''} pendiente${stats.entregas_pendientes!==1?'s':''}</span>
+      <span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <strong>${stats.entregas_pendientes}</strong> entrega${stats.entregas_pendientes!==1?'s':''} pendiente${stats.entregas_pendientes!==1?'s':''}</span>
       <span class="stats-dot"></span>
-      <span>🏍️ <strong>${stats.unidades_en_piso}</strong> unidad${stats.unidades_en_piso!==1?'es':''} en piso</span>
+      <span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg> <strong>${stats.unidades_en_piso}</strong> unidad${stats.unidades_en_piso!==1?'es':''} en piso</span>
       <span class="stats-dot"></span>
-      <span>⚙️ <strong>${stats.en_ensamble}</strong> en ensamble</span>
+      <span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> <strong>${stats.en_ensamble}</strong> en ensamble</span>
       <span style="margin-left:auto;">
-        <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">🔄 Actualizar</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadDashboard()"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Actualizar</button>
       </span>
     `;
   }
@@ -434,7 +434,7 @@ function renderDashboard(data) {
   const all = [...data.voltika_entrega, ...data.consignacion];
   if (!all.length) {
     el.innerHTML = `<div class="empty-state">
-      <div class="empty-state-icon">🏍️</div>
+      <div class="empty-state-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
       <p>No hay unidades activas en este punto.</p>
       <a href="inventario.html" class="dealer-inventario-link" style="margin-top:12px;">Ver inventario completo</a>
     </div>`;
@@ -452,7 +452,7 @@ function renderDashboard(data) {
     'Disponibles para venta en punto', data.consignacion, 'consignacion');
 
   html += `<div style="text-align:center;padding:16px 0;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
-    <a href="inventario.html" class="dealer-inventario-link">📋 Ver inventario</a>
+    <a href="inventario.html" class="dealer-inventario-link"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg> Ver inventario</a>
     ${dealer && ['admin','cedis'].includes(dealer.rol) ? '<a href="cedis.html" class="dealer-inventario-link" style="border-color:#0f172a;color:#0f172a;">🏭 CEDIS Control</a>' : ''}
   </div>`;
 
@@ -483,7 +483,7 @@ function renderSection(titulo, subtitulo, motos, tipo) {
 function renderEntregas(motos) {
   const el = document.getElementById('entregas-content');
   if (!motos.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div>
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
       <p>Sin entregas pendientes asignadas por Voltika.</p></div>`;
     return;
   }
@@ -501,7 +501,7 @@ function renderEntregas(motos) {
 function renderConsignacion(motos) {
   const el = document.getElementById('consignacion-content');
   if (!motos.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏪</div>
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
       <p>Sin unidades en consignación.</p></div>`;
     return;
   }
@@ -592,32 +592,32 @@ function renderMotoCard(m) {
   let checklistBtn = '';
   if (m.estado === 'por_llegar') {
     checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
-      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=origen'">📦 Checklist Origen</button>`;
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=origen'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg> Checklist Origen</button>`;
   } else if (['recibida','por_ensamblar','en_ensamble'].includes(m.estado)) {
     checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
-      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=ensamble'">⚙️ Checklist Ensamble</button>`;
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=ensamble'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9"/></svg> Checklist Ensamble</button>`;
   } else if (['lista_para_entrega','por_validar_entrega'].includes(m.estado)) {
     checklistBtn = `<button class="btn-accion-sec" style="border-color:var(--vka-blue);color:var(--vka-blue);"
-      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=entrega'">🏍️ Checklist Entrega</button>`;
+      onclick="window.location.href='checklist.html?moto_id=${m.id}&type=entrega'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Checklist Entrega</button>`;
   }
 
   // Face verification / delivery photo button
   const faceBtn = ['lista_para_entrega','por_validar_entrega'].includes(m.estado)
     ? `<button class="btn-accion-sec" style="border-color:#7c3aed;color:#7c3aed;"
-         onclick="openFaceCompare(${m.id},'${esc(m.tipo_asignacion || 'voltika_entrega')}')">📸 Foto de entrega</button>`
+         onclick="openFaceCompare(${m.id},'${esc(m.tipo_asignacion || 'voltika_entrega')}')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> Foto de entrega</button>`
     : '';
 
   // Identity verification button — show on delivery states
   const identidadBtn = ['lista_para_entrega','por_validar_entrega'].includes(m.estado)
     ? `<button class="btn-accion-sec" style="border-color:#7c3aed;color:#7c3aed;"
-         onclick="openIdentidad(${m.id})">📸 Verificar identidad</button>`
+         onclick="openIdentidad(${m.id})"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Verificar identidad</button>`
     : '';
 
   // Retener / Liberar
   const secBtn = m.estado === 'retenida'
-    ? `<button class="btn-accion-sec" onclick="prepareAccion(${m.id},'liberar','Liberar moto','¿Confirmas liberar esta unidad?')">🔓 Liberar</button>`
+    ? `<button class="btn-accion-sec" onclick="prepareAccion(${m.id},'liberar','Liberar moto','¿Confirmas liberar esta unidad?')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg> Liberar</button>`
     : m.estado !== 'entregada'
-    ? `<button class="btn-accion-sec" onclick="prepareAccion(${m.id},'retener','Retener moto','¿Confirmas retener esta unidad?')">🔒 Retener</button>`
+    ? `<button class="btn-accion-sec" onclick="prepareAccion(${m.id},'retener','Retener moto','¿Confirmas retener esta unidad?')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Retener</button>`
     : '';
 
   return `
@@ -650,20 +650,20 @@ function renderMotoCard(m) {
 
 function getCardAccion(m) {
   const map = {
-    'por_llegar':          { label: '📥 Registrar llegada',   cls: 'accion-llegar',    accion: 'recibir',            msg: '¿Confirmas que la moto llegó al punto?' },
-    'recibida':            { label: '🔧 Iniciar ensamble',    cls: 'accion-ensamblar', accion: 'por_ensamblar',      msg: '¿Confirmas que la moto está lista para ensamble?' },
-    'por_ensamblar':       { label: '⚙️ Iniciar ensamble',   cls: 'accion-ensamble',  accion: 'iniciar_ensamble',   msg: '¿Confirmas que el ensamble ha iniciado?' },
-    'en_ensamble':         { label: '✅ Terminar ensamble',   cls: 'accion-ensamble',  accion: 'terminar_ensamble',  msg: '¿Confirmas que el ensamble está completado?' },
-    'lista_para_entrega':  { label: '🔒 Iniciar validación', cls: 'accion-validar',   accion: 'iniciar_validacion', msg: '¿Confirmas que iniciarás el proceso de validación de entrega?' },
-    'por_validar_entrega': { label: '🔒 En validación',      cls: 'accion-validar',   accion: null,                 msg: '' },
-    'retenida':            { label: '🔒 Retenida',           cls: 'accion-retener',   accion: null,                 msg: '' },
-    'entregada':           { label: '🏍️ Entregada',          cls: 'accion-entregada', accion: null,                 msg: '' },
+    'por_llegar':          { label: 'Registrar llegada',   cls: 'accion-llegar',    accion: 'recibir',            msg: '¿Confirmas que la moto llegó al punto?' },
+    'recibida':            { label: 'Iniciar ensamble',    cls: 'accion-ensamblar', accion: 'por_ensamblar',      msg: '¿Confirmas que la moto está lista para ensamble?' },
+    'por_ensamblar':       { label: 'Iniciar ensamble',   cls: 'accion-ensamble',  accion: 'iniciar_ensamble',   msg: '¿Confirmas que el ensamble ha iniciado?' },
+    'en_ensamble':         { label: 'Terminar ensamble',   cls: 'accion-ensamble',  accion: 'terminar_ensamble',  msg: '¿Confirmas que el ensamble está completado?' },
+    'lista_para_entrega':  { label: 'Iniciar validación', cls: 'accion-validar',   accion: 'iniciar_validacion', msg: '¿Confirmas que iniciarás el proceso de validación de entrega?' },
+    'por_validar_entrega': { label: 'En validación',      cls: 'accion-validar',   accion: null,                 msg: '' },
+    'retenida':            { label: 'Retenida',           cls: 'accion-retener',   accion: null,                 msg: '' },
+    'entregada':           { label: 'Entregada',          cls: 'accion-entregada', accion: null,                 msg: '' },
   };
 
   // Override for consignacion
   if (m.tipo_asignacion === 'consignacion') {
     if (m.estado === 'lista_para_entrega') {
-      return { btnLabel: '💰 Iniciar venta', btnClass: 'accion-venta', accion: 'iniciar_venta', btnMsg: '¿Confirmas que iniciarás el proceso de venta en punto?' };
+      return { btnLabel: 'Iniciar venta', btnClass: 'accion-venta', accion: 'iniciar_venta', btnMsg: '¿Confirmas que iniciarás el proceso de venta en punto?' };
     }
   }
 
@@ -788,8 +788,8 @@ function openFaceCompare(motoId, tipoAsignacion) {
 
     <!-- Buttons -->
     <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" id="face-btn-capture" onclick="capturePhoto()" style="flex:1;">📷 Tomar foto</button>
-      <button class="btn btn-ghost" id="face-btn-retake" onclick="retakePhoto()" style="flex:1;display:none;">🔄 Otra vez</button>
+      <button class="btn btn-primary" id="face-btn-capture" onclick="capturePhoto()" style="flex:1;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> Tomar foto</button>
+      <button class="btn btn-ghost" id="face-btn-retake" onclick="retakePhoto()" style="flex:1;display:none;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Otra vez</button>
     </div>
     <button class="btn btn-success" id="face-btn-send" onclick="sendFaceCompare()" style="width:100%;margin-top:8px;display:none;">
       ${isCredit ? '🔍 Comparar caras' : '💾 Guardar foto'}

@@ -246,12 +246,12 @@ try {
 try {
     $rows = $pdo->query("
         SELECT s.id, s.nombre, s.email, s.telefono, s.modelo, s.color,
-               s.precio_contado, s.stripe_customer_id, s.freg, s.status
+               s.precio_contado, s.stripe_customer_id, s.freg, s.estado
         FROM subscripciones_credito s
         LEFT JOIN transacciones t
                ON t.telefono = s.telefono AND t.modelo = s.modelo
         WHERE t.id IS NULL
-          AND s.status IN ('active','activa')
+          AND s.estado IN ('activa','active')
         ORDER BY s.freg ASC
     ")->fetchAll(PDO::FETCH_ASSOC);
     foreach ($rows as $r) {

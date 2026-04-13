@@ -27,7 +27,9 @@ var PasoCreditoContrato = {
         if (modelo) {
             $.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre) + '&color=' + encodeURIComponent(color))
             .done(function(r) {
-                modelo.enInventario = r.ok && r.total > 0;
+                // Store color-specific inventory state on app.state, not on modelo
+                app.state._invColorTotal = r.ok ? (r.total || 0) : 0;
+                app.state._invColorEnStock = r.ok && r.total > 0;
             })
             .always(function() {
                 self.render();
@@ -40,9 +42,9 @@ var PasoCreditoContrato = {
     },
 
     _calcFechaEntregaShort: function() {
-        var modelo = this.app ? this.app.getModelo(this.app.state.modeloSeleccionado) : null;
+        var state = this.app ? this.app.state : {};
         var config = (typeof VOLTIKA_PRODUCTOS !== 'undefined') ? VOLTIKA_PRODUCTOS.config : {};
-        var enInventario = modelo ? (modelo.enInventario !== false) : true;
+        var enInventario = state._invColorEnStock !== undefined ? state._invColorEnStock : true;
         var dias = enInventario ? (config.entregaDiasInventario || 15) : (config.entregaDiasSinInventario || 70);
         var d = new Date();
         d.setDate(d.getDate() + dias);

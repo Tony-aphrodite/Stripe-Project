@@ -1,49 +1,90 @@
 window.AD_inventario = (function(){
   var filters = {};
+  var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
   function render(){
-    ADApp.render('<div class="ad-h1">Inventario</div><div><span class="ad-spin"></span> Cargando...</div>');
+    ADApp.render('<div class="ad-h1">CEDIS</div><div><span class="ad-spin"></span> Cargando...</div>');
     load();
   }
   function load(){
     ADApp.api('inventario/listar.php?' + $.param(filters)).done(paint);
   }
   function paint(r){
-    var html = '<div class="ad-toolbar"><div class="ad-h1">Inventario</div>'+
-      '<div style="display:flex;gap:6px">'+
-      '<button class="ad-btn primary" id="adNewMoto">+ Nueva moto</button>'+
-      '<button class="ad-btn ghost" id="adImportExcel">Importar Excel</button>'+
-      '</div></div>';
-    // Summary
+    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">CEDIS</div>';
+    if(ADApp.isAdmin()){
+      html += '<div style="display:flex;gap:6px">'+
+        '<button class="ad-btn primary" id="adNewMoto">+ Nueva moto</button>'+
+        '<button class="ad-btn ghost" id="adImportExcel">Importar Excel</button>'+
+        '</div>';
+    }
+    html += '</div>';
+    // Summary KPIs
     var s = r.resumen||{};
     html += '<div class="ad-kpis">';
-    [{l:'Total',v:s.total},{l:'Disponible',v:s.disponible,c:'green'},{l:'Reservado',v:s.reservado,c:'yellow'},
+    [{l:'Total',v:s.total,c:'blue'},{l:'Existencias',v:s.disponible,c:'green'},{l:'Reservado',v:s.reservado,c:'yellow'},
      {l:'Entregado',v:s.entregado,c:'green'},{l:'En tránsito',v:s.en_transito,c:'blue'},
-     {l:'En ensamble',v:s.en_ensamble,c:'yellow'},{l:'Bloqueado',v:s.bloqueado,c:'red'}].forEach(function(k){
+     {l:'En ensamble',v:s.en_ensamble,c:'yellow'},{l:'Total en puntos',v:s.en_puntos,c:'blue'},
+     {l:'Bloqueado',v:s.bloqueado,c:'red'}].forEach(function(k){
       html += '<div class="ad-kpi"><div class="label">'+k.l+'</div><div class="value '+(k.c||'')+'">'+Number(k.v||0)+'</div></div>';
     });
     html += '</div>';
+    // Model summary
+    var pm = r.por_modelo||[];
+    if(pm.length){
+      html += '<div style="margin-bottom:16px;"><div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--ad-navy);">Unidades por modelo</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+      pm.forEach(function(m){
+        html += '<div style="background:var(--ad-surface);border:1px solid var(--ad-border);border-radius:var(--ad-radius-sm);padding:10px 16px;text-align:center;min-width:100px;">'+
+          '<div style="font-size:22px;font-weight:800;color:var(--ad-navy);">'+m.cnt+'</div>'+
+          '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);text-transform:uppercase;">'+m.modelo+'</div>'+
+        '</div>';
+      });
+      html += '</div></div>';
+    }
     // Filters
+    var modeloOpts = '<option value="">Modelo</option>';
+    (r.modelos||[]).forEach(function(m){ modeloOpts += '<option value="'+m+'"'+(filters.modelo===m?' selected':'')+'>'+m+'</option>'; });
     html += '<div class="ad-filters">'+
-      '<input class="ad-input" style="width:160px" placeholder="Buscar VIN..." id="adFVin">'+
+      '<input class="ad-input" style="width:160px" placeholder="Buscar VIN..." id="adFVin" value="'+(filters.vin||'')+'">'+
+      '<select class="ad-select" id="adFModelo">'+modeloOpts+'</select>'+
       '<select class="ad-select" id="adFEstado"><option value="">Estado</option>'+
         ['por_llegar','recibida','por_ensamblar','en_ensamble','lista_para_entrega','por_validar_entrega','entregada','retenida']
-        .map(function(e){return '<option>'+e+'</option>';}).join('')+'</select>'+
+        .map(function(e){return '<option'+(filters.estado===e?' selected':'')+'>'+e+'</option>';}).join('')+'</select>'+
+      '<select class="ad-select" id="adFChecklist"><option value="">Checklist</option>'+
+        '<option value="sin"'+(filters.checklist==='sin'?' selected':'')+'>Sin checklist</option>'+
+        '<option value="origen"'+(filters.checklist==='origen'?' selected':'')+'>Con origen</option>'+
+        '<option value="ensamble"'+(filters.checklist==='ensamble'?' selected':'')+'>Con ensamble</option>'+
+        '<option value="completo"'+(filters.checklist==='completo'?' selected':'')+'>Completo</option>'+
+      '</select>'+
       '<button class="ad-btn sm ghost" id="adFApply">Filtrar</button>'+
     '</div>';
-    // Table
-    html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>VIN</th><th>Modelo</th><th>Color</th><th>Estado</th><th>Punto</th><th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
-    (r.motos||[]).forEach(function(m){
-      html += '<tr>'+
-        '<td>'+( m.vin_display||m.vin||'—')+'</td>'+
-        '<td>'+m.modelo+'</td><td>'+m.color+'</td>'+
-        '<td>'+ADApp.badgeEstado(m.estado)+'</td>'+
-        '<td>'+(m.punto_voltika_nombre||'—')+'</td>'+
-        '<td>'+(m.cliente_nombre||'—')+'</td>'+
-        '<td>'+ADApp.badgeEstado(m.pago_estado||'—')+'</td>'+
-        '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
-      '</tr>';
+    // Group motos by model
+    var motos = r.motos||[];
+    var groups = {};
+    var modelOrder = [];
+    motos.forEach(function(m){
+      var mod = m.modelo||'Sin modelo';
+      if(!groups[mod]){ groups[mod] = []; modelOrder.push(mod); }
+      groups[mod].push(m);
     });
-    html += '</tbody></table></div>';
+    modelOrder.sort();
+    // Render grouped tables
+    modelOrder.forEach(function(mod){
+      html += '<div style="margin-bottom:20px;">';
+      html += '<div style="font-weight:700;font-size:15px;color:var(--ad-navy);margin-bottom:6px;padding-left:4px;">'+mod+' <span style="font-weight:400;color:var(--ad-dim);font-size:13px;">('+groups[mod].length+')</span></div>';
+      html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>VIN</th><th>Color</th><th>Estado</th><th>Punto</th><th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
+      groups[mod].forEach(function(m){
+        html += '<tr>'+
+          '<td>'+(m.vin_display||m.vin||'—')+'</td>'+
+          '<td>'+m.color+'</td>'+
+          '<td>'+ADApp.badgeEstado(m.estado)+'</td>'+
+          '<td>'+(m.punto_voltika_nombre||'—')+'</td>'+
+          '<td>'+(m.cliente_nombre||'—')+'</td>'+
+          '<td>'+ADApp.badgeEstado(m.pago_estado||'—')+'</td>'+
+          '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
+        '</tr>';
+      });
+      html += '</tbody></table></div></div>';
+    });
     // Pagination
     if(r.pages>1){
       html += '<div class="ad-pagination">';
@@ -51,7 +92,14 @@ window.AD_inventario = (function(){
       html += '</div>';
     }
     ADApp.render(html);
-    $('#adFApply').on('click',function(){ filters.vin=$('#adFVin').val(); filters.estado=$('#adFEstado').val(); load(); });
+    $('#adFApply').on('click',function(){
+      filters.vin=$('#adFVin').val();
+      filters.modelo=$('#adFModelo').val();
+      filters.estado=$('#adFEstado').val();
+      filters.checklist=$('#adFChecklist').val();
+      filters.page=1;
+      load();
+    });
     $('.adDetail').on('click',function(){ showDetail($(this).data('id')); });
     $('.adPage').on('click',function(){ filters.page=$(this).data('p'); load(); });
     $('#adNewMoto').on('click', showNewForm);
@@ -60,82 +108,143 @@ window.AD_inventario = (function(){
   function showDetail(id){
     ADApp.api('inventario/detalle.php?id='+id).done(function(r){
       var m=r.moto; if(!m) return;
-      var html = '<div class="ad-h2">'+m.modelo+' — '+m.color+'</div>';
 
-      // Vehicle info
-      html += '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);margin:10px 0 4px;text-transform:uppercase;">Vehículo</div>';
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
-      [['VIN',m.vin_display||m.vin],['Año modelo',m.anio_modelo||'—'],['Núm. motor',m.num_motor||'—'],
-       ['Potencia',m.potencia||'—'],['Baterías',m.config_baterias||'—'],['Hecho en',m.hecho_en||'—'],
-       ['Estado',m.estado],['Tipo asignación',m.tipo_asignacion||'—']].forEach(function(p){
-        html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
-      });
+      // ── Styled helpers ──
+      var secIx = 0;
+      function secHead(title, icon){
+        return '<div style="display:flex;align-items:center;gap:8px;margin:24px 0 12px;padding-bottom:10px;border-bottom:1px solid var(--ad-border);">'+
+          '<div style="color:var(--ad-primary);">'+icon+'</div>'+
+          '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ad-primary);">'+title+'</div></div>';
+      }
+      function fRow(label, value){
+        var bg = secIx++ % 2 === 0 ? 'background:var(--ad-surface-2);' : '';
+        return '<div style="'+bg+'padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,.04);">'+
+          '<span style="color:var(--ad-dim);font-size:12px;font-weight:500;white-space:nowrap;margin-right:12px;">'+label+'</span>'+
+          '<span style="font-size:13px;font-weight:600;color:var(--ad-navy);text-align:right;">'+(value||'—')+'</span></div>';
+      }
+
+      // ── Modal header ──
+      var estadoColor = {por_llegar:'blue',recibida:'green',por_ensamblar:'yellow',en_ensamble:'yellow',lista_para_entrega:'green',entregada:'green',retenida:'red'}[m.estado]||'gray';
+      var html = '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:18px;border-bottom:2px solid var(--ad-border);">';
+      html += '<div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#039fe1,#0280b5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
+      html += '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>';
+      html += '<div style="flex:1;min-width:0;"><div style="font-size:20px;font-weight:800;color:var(--ad-navy);line-height:1.2;">'+m.modelo+' — '+m.color+'</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;"><span class="ad-badge '+estadoColor+'">'+m.estado+'</span>';
+      if(m.vin_display||m.vin) html += '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 8px;border-radius:4px;">'+( m.vin_display||m.vin)+'</code>';
+      html += '</div></div></div>';
+
+      // ── Vehículo ──
+      secIx = 0;
+      html += secHead('Vehículo','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>');
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+      html += fRow('VIN', '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+(m.vin_display||m.vin)+'</code>');
+      html += fRow('Año modelo', m.anio_modelo||'—');
+      html += fRow('Núm. motor', m.num_motor||'—');
+      html += fRow('Potencia', m.potencia||'—');
+      html += fRow('Baterías', m.config_baterias||'—');
+      html += fRow('Hecho en', m.hecho_en||'—');
+      html += fRow('Tipo asignación', m.tipo_asignacion||'—');
       html += '</div>';
 
-      // Import info
+      // ── Importación ──
       if(m.num_pedimento || m.aduana || m.cedis_origen){
-        html += '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);margin:10px 0 4px;text-transform:uppercase;">Importación</div>';
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
-        [['Pedimento',m.num_pedimento||'—'],['Aduana',m.aduana||'—'],
-         ['Ingreso país',m.fecha_ingreso_pais||'—'],['CEDIS origen',m.cedis_origen||'—']].forEach(function(p){
-          html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
-        });
+        secIx = 0;
+        html += secHead('Importación','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>');
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+        html += fRow('Pedimento', m.num_pedimento||'—');
+        html += fRow('Aduana', m.aduana||'—');
+        html += fRow('Ingreso país', m.fecha_ingreso_pais||'—');
+        html += fRow('CEDIS origen', m.cedis_origen||'—');
         html += '</div>';
       }
 
-      // Customer & order info
-      html += '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);margin:10px 0 4px;text-transform:uppercase;">Cliente / Pedido</div>';
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
-      [['Cliente',m.cliente_nombre||'—'],['Email',m.cliente_email||'—'],['Teléfono',m.cliente_telefono||'—'],
-       ['Pedido',m.pedido_num||'—'],['Pago',m.pago_estado||'—'],['Punto',m.punto_voltika_nombre||'—'],
-       ['Método pago',r.transaccion?r.transaccion.tpago:'—'],['Monto',r.transaccion?ADApp.money(r.transaccion.total):'—'],
-       ['Stripe PI',m.stripe_pi||'—'],['Precio venta',m.precio_venta?ADApp.money(m.precio_venta):'—']].forEach(function(p){
-        html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
-      });
+      // ── Cliente / Pedido ──
+      secIx = 0;
+      html += secHead('Cliente / Pedido','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>');
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+      html += fRow('Cliente', m.cliente_nombre||'—');
+      html += fRow('Email', m.cliente_email||'—');
+      html += fRow('Teléfono', m.cliente_telefono||'—');
+      html += fRow('Pedido', m.pedido_num||'—');
+      html += fRow('Pago', m.pago_estado ? '<span class="ad-badge '+(m.pago_estado==='pagada'?'green':'yellow')+'">'+m.pago_estado+'</span>' : '—');
+      html += fRow('Punto', m.punto_voltika_nombre||'—');
+      html += fRow('Método pago', r.transaccion ? '<span style="display:inline-block;padding:2px 10px;border-radius:20px;background:rgba(3,159,225,.08);color:#039fe1;font-size:12px;font-weight:600;">'+r.transaccion.tpago+'</span>' : '—');
+      html += fRow('Monto', r.transaccion ? '<span style="font-size:15px;font-weight:800;">'+ADApp.money(r.transaccion.total)+'</span>' : '—');
+      html += fRow('Stripe PI', m.stripe_pi ? '<code style="font-size:10px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+m.stripe_pi+'</code>' : '—');
+      html += fRow('Precio venta', m.precio_venta ? '<span style="font-weight:700;">'+ADApp.money(m.precio_venta)+'</span>' : '—');
       html += '</div>';
 
-      // Dates
-      html += '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);margin:10px 0 4px;text-transform:uppercase;">Fechas</div>';
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
-      [['Llegada',m.fecha_llegada||'—'],['Estimada llegada',m.fecha_estimada_llegada||'—'],
-       ['Estimada entrega',m.fecha_entrega_estimada||'—'],['Último cambio estado',m.fecha_estado||'—'],
-       ['Días en paso',m.dias_en_paso||'0'],['Recepción',m.recepcion_completada?'Completada':'Pendiente']].forEach(function(p){
-        html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
-      });
+      // ── Fechas ──
+      secIx = 0;
+      html += secHead('Fechas','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>');
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+      html += fRow('Llegada', m.fecha_llegada||'—');
+      html += fRow('Estimada llegada', m.fecha_estimada_llegada||'—');
+      html += fRow('Estimada entrega', m.fecha_entrega_estimada||'—');
+      html += fRow('Último cambio estado', m.fecha_estado||'—');
+      html += fRow('Días en paso', '<span style="font-weight:700;color:'+(parseInt(m.dias_en_paso||0)>5?'var(--ad-danger)':'var(--ad-navy)')+';">'+(m.dias_en_paso||'0')+'</span>');
+      html += fRow('Recepción', m.recepcion_completada
+        ? '<span style="display:inline-flex;align-items:center;gap:4px;color:#059669;font-weight:600;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#059669" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Completada</span>'
+        : '<span style="color:var(--ad-warning);font-weight:600;">Pendiente</span>');
       html += '</div>';
 
-      // Notes
+      // ── Notas ──
       if(m.notas){
-        html += '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);margin:10px 0 4px;text-transform:uppercase;">Notas</div>';
-        html += '<div style="font-size:13px;padding:8px;background:var(--ad-bg);border-radius:6px;">'+m.notas+'</div>';
+        html += secHead('Notas','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>');
+        html += '<div style="font-size:13px;padding:12px 16px;background:var(--ad-surface-2);border-radius:8px;border-left:3px solid var(--ad-primary);line-height:1.6;color:var(--ad-navy);">'+m.notas+'</div>';
       }
-      // Checklists status
-      html += '<div class="ad-h2">Checklists</div>';
-      html += '<div style="display:flex;gap:8px">';
-      html += '<span class="ad-badge '+(r.checklist_origen&&r.checklist_origen.completado?'green':'yellow')+'">'+(r.checklist_origen?'Origen ✓':'Origen ✗')+'</span>';
-      html += '<span class="ad-badge '+(r.checklist_ensamble&&r.checklist_ensamble.completado?'green':'yellow')+'">'+(r.checklist_ensamble?'Ensamble ✓':'Ensamble ✗')+'</span>';
-      html += '<span class="ad-badge '+(r.checklist_entrega&&r.checklist_entrega.completado?'green':'yellow')+'">'+(r.checklist_entrega?'Entrega ✓':'Entrega ✗')+'</span>';
+
+      // ── Checklists ──
+      html += secHead('Checklists','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>');
+      html += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
+      var clItems = [
+        {key:'checklist_origen',   label:'Origen'},
+        {key:'checklist_ensamble', label:'Ensamble'},
+        {key:'checklist_entrega',  label:'Entrega'}
+      ];
+      clItems.forEach(function(cl){
+        var done = r[cl.key] && r[cl.key].completado;
+        var bg = done ? 'background:rgba(5,150,105,.08);border:1.5px solid rgba(5,150,105,.25);color:#059669;' : 'background:rgba(234,179,8,.08);border:1.5px solid rgba(234,179,8,.25);color:#92400e;';
+        var icon = done
+          ? '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#059669" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>'
+          : '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#92400e" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+        html += '<div style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;'+bg+'">'+icon+' '+cl.label+'</div>';
+      });
       html += '</div>';
-      // Envios
+
+      // ── Envíos ──
       if(r.envios&&r.envios.length){
-        html += '<div class="ad-h2">Envíos</div>';
+        html += secHead('Envíos','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>');
         r.envios.forEach(function(e){
-          html += '<div class="ad-card" style="padding:10px;font-size:12px">→ '+e.punto_nombre+' · '+ADApp.badgeEstado(e.estado)+' · '+(e.fecha_envio||'sin fecha')+'</div>';
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--ad-surface-2);border-radius:8px;margin-bottom:6px;font-size:13px;">';
+          html += '<span style="font-weight:600;color:var(--ad-navy);">'+e.punto_nombre+'</span>';
+          html += '<span style="display:flex;align-items:center;gap:8px;">'+ADApp.badgeEstado(e.estado)+'<span style="font-size:11px;color:var(--ad-dim);">'+(e.fecha_envio||'sin fecha')+'</span></span>';
+          html += '</div>';
         });
       }
-      // Assign to point action
+
+      // ── Acciones ──
       var origenOk = r.checklist_origen && r.checklist_origen.completado;
-      html += '<div class="ad-h2">Acciones</div>';
-      if(!origenOk){
-        html += '<div style="padding:10px;border-radius:8px;background:rgba(239,68,68,.08);color:#b91c1c;font-size:12px;margin-bottom:8px;">⚠ El checklist de origen debe estar completo antes de asignar a un punto.</div>';
+      if(ADApp.canWrite()){
+        html += secHead('Acciones','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>');
+        if(!origenOk){
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:8px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);color:#b91c1c;font-size:12px;margin-bottom:12px;">';
+          html += '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#b91c1c" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+          html += 'El checklist de origen debe estar completo antes de asignar a un punto.</div>';
+        }
+        html += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
+        html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'" '+(origenOk?'':'disabled style="opacity:.5;cursor:not-allowed;"')+'>Asignar a punto</button>';
+        html += '<button class="ad-btn ghost" id="adVerifyPay" data-id="'+m.id+'">Verificar pago</button>';
+        html += '</div>';
       }
-      html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'" '+(origenOk?'':'disabled style="opacity:.5;cursor:not-allowed;"')+'>📍 Asignar a punto</button> ';
-      html += '<button class="ad-btn ghost" id="adVerifyPay" data-id="'+m.id+'">💳 Verificar pago</button>';
       ADApp.modal(html);
       $('#adAssign').on('click',function(){ if(!origenOk) return; assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
       $('#adVerifyPay').on('click',function(){
         ADApp.api('pagos/verificar.php',{moto_id:m.id}).done(function(r2){
-          alert(r2.verificado?'✅ Pago verificado':'⚠️ No verificado: '+(r2.stripe_status||'sin Stripe PI'));
+          var msg = r2.verificado ? 'Pago verificado correctamente' : 'No verificado: '+(r2.stripe_status||'sin Stripe PI');
+          var bg = r2.verificado ? 'rgba(5,150,105,.08)' : 'rgba(239,68,68,.08)';
+          var clr = r2.verificado ? '#059669' : '#b91c1c';
+          ADApp.modal('<div style="text-align:center;padding:30px 20px;">'+(r2.verificado?'<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#059669" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>':'<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#b91c1c" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>')+'<div style="margin-top:12px;font-size:15px;font-weight:700;color:'+clr+';">'+msg+'</div></div>');
         });
       });
     });

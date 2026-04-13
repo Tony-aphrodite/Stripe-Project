@@ -3,7 +3,7 @@
  * GET — List all Puntos Voltika
  */
 require_once __DIR__ . '/../bootstrap.php';
-adminRequireAuth(['admin','cedis']);
+adminRequireAuth(['admin','cedis','operador']);
 
 $pdo = getDB();
 $rows = $pdo->query("SELECT pv.*,

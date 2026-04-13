@@ -1,7 +1,7 @@
 window.PV_inicio = (function(){
   function render(){
     var p = PVApp.state.punto || {};
-    PVApp.render('<div class="ad-h1">👋 '+(PVApp.state.user.nombre||'')+'</div><div>Cargando...</div>');
+    PVApp.render('<div class="ad-h1">'+(PVApp.state.user.nombre||'')+'</div><div>Cargando...</div>');
     $.when(
       PVApp.api('inventario/listar.php'),
       PVApp.api('recepcion/envios-pendientes.php')
@@ -27,9 +27,9 @@ window.PV_inicio = (function(){
 
     html += '<div class="ad-h2">Acciones rápidas</div>';
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-    html += '<button class="ad-btn primary" onclick="PVApp.go(\'recepcion\')"><img src="../configurador_prueba/img/entrega.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:brightness(0) invert(1);"> Recibir moto</button>';
-    html += '<button class="ad-btn ghost" onclick="PVApp.go(\'entrega\')"><img src="../configurador_prueba/img/delivery_icon.jpg" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:4px;"> Entregar al cliente</button>';
-    html += '<button class="ad-btn ghost" onclick="PVApp.go(\'venta\')"><img src="../configurador_prueba/img/iconos-03.svg" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:4px;"> Venta por referido</button>';
+    html += '<button class="ad-btn primary" onclick="PVApp.go(\'recepcion\')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg> Recibir moto</button>';
+    html += '<button class="ad-btn ghost" onclick="PVApp.go(\'entrega\')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg> Entregar al cliente</button>';
+    html += '<button class="ad-btn ghost" onclick="PVApp.go(\'venta\')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> Venta por referido</button>';
     html += '</div>';
 
     PVApp.render(html);
