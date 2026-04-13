@@ -34,11 +34,9 @@ var PasoCreditoLoading = {
 
         html += '<div class="vk-loading-screen__hint">Esto toma solo unos segundos</div>';
 
-        // Progress dots
-        html += '<div class="vk-loading-screen__dots">';
-        html += '<span class="vk-loading-dot"></span>';
-        html += '<span class="vk-loading-dot"></span>';
-        html += '<span class="vk-loading-dot"></span>';
+        // Loading animation
+        html += '<div style="text-align:center;margin-top:16px;">';
+        html += '<img src="' + base + 'img/loading.gif" alt="Cargando..." style="width:60px;height:60px;">';
         html += '</div>';
 
         html += '</div>';

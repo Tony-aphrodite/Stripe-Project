@@ -112,6 +112,14 @@ function handlePaymentSucceeded($paymentIntent) {
     try {
         $pdo = getDB();
 
+        // Ensure pago_estado column exists (may be missing on older schemas)
+        try {
+            $cols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('pago_estado', $cols, true)) {
+                $pdo->exec("ALTER TABLE transacciones ADD COLUMN pago_estado VARCHAR(20) NULL");
+            }
+        } catch (PDOException $ignore) {}
+
         $stmt = $pdo->prepare("
             SELECT nombre, email, telefono, modelo, color, ciudad, estado, cp,
                    tpago, precio, total, pedido, stripe_pi
@@ -124,6 +132,20 @@ function handlePaymentSucceeded($paymentIntent) {
 
         if ($order) {
             webhookLog("Found order in transacciones: pedido #{$order['pedido']} for {$order['email']}");
+
+            // Mark payment as completed now that SPEI/OXXO funds arrived
+            try {
+                $upd = $pdo->prepare("UPDATE transacciones SET pago_estado = 'pagada' WHERE stripe_pi = ? AND (pago_estado IS NULL OR pago_estado IN ('pendiente',''))");
+                $upd->execute([$piId]);
+                if ($upd->rowCount() > 0) {
+                    webhookLog("Updated pago_estado to 'pagada' for PI $piId");
+                }
+                // Also update inventario_motos if a bike is already assigned
+                $updMoto = $pdo->prepare("UPDATE inventario_motos SET pago_estado = 'pagada' WHERE stripe_pi = ? AND (pago_estado IS NULL OR pago_estado IN ('pendiente',''))");
+                $updMoto->execute([$piId]);
+            } catch (PDOException $e) {
+                webhookLog("pago_estado update error: " . $e->getMessage());
+            }
 
             // Bike assignment is now manual via Admin → Ventas panel
             webhookLog("Pedido VK-{$order['pedido']} awaiting manual bike assignment in admin panel");

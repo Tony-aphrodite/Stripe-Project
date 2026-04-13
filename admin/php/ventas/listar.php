@@ -18,6 +18,7 @@ try {
                t.modelo, t.color, t.tpago, t.total, t.stripe_pi, t.freg,
                t.punto_id, t.punto_nombre, t.folio_contrato,
                t.fecha_estimada_entrega,
+               t.pago_estado AS tx_pago_estado,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
                m.pago_estado
         FROM transacciones t
@@ -44,7 +45,15 @@ try {
             'moto_id'     => $r['moto_id'] ? (int)$r['moto_id'] : null,
             'moto_vin'    => $r['moto_vin'],
             'moto_estado' => $r['moto_estado'],
-            'pago_estado' => $r['pago_estado'] ?: 'pendiente',
+            'pago_estado' => $r['pago_estado']
+                ?: ($r['tx_pago_estado'] ?? '')
+                ?: (
+                    !empty($r['stripe_pi'])
+                        ? (in_array(strtolower(trim($r['tpago'] ?? '')), ['credito', 'enganche', 'parcial', 'spei', 'oxxo'], true)
+                            ? (in_array(strtolower(trim($r['tpago'] ?? '')), ['spei', 'oxxo'], true) ? 'pendiente' : 'parcial')
+                            : 'pagada')
+                        : 'pendiente'
+                ),
             'punto_id'    => $r['punto_id'] ?? null,
             'punto_nombre'=> $r['punto_nombre'] ?? null,
             'folio_contrato' => $r['folio_contrato'] ?? null,

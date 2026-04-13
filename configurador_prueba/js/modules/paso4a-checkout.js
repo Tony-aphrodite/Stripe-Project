@@ -29,7 +29,9 @@ var Paso4A = {
         if (modelo) {
             $.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre) + '&color=' + encodeURIComponent(color))
             .done(function(r) {
-                modelo.enInventario = r.ok && r.total > 0;
+                // Store color-specific inventory state on app.state, not on modelo
+                app.state._invColorTotal = r.ok ? (r.total || 0) : 0;
+                app.state._invColorEnStock = r.ok && r.total > 0;
             })
             .always(function() {
                 self.render();
@@ -55,7 +57,7 @@ var Paso4A = {
         var msiPago     = Math.round(msiPagoExact);
         var ciudad      = (state.ciudad && state.estado) ? state.ciudad + ', ' + state.estado : (state.ciudad || '--');
         var _config = VOLTIKA_PRODUCTOS.config || {};
-        var _enInventario = modelo ? (modelo.enInventario !== false) : true;
+        var _enInventario = state._invColorEnStock !== undefined ? state._invColorEnStock : true;
         var _diasEntrega = _enInventario ? (_config.entregaDiasInventario || 15) : (_config.entregaDiasSinInventario || 70);
         var _fd = new Date(); _fd.setDate(_fd.getDate() + _diasEntrega);
         var _meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -313,19 +315,59 @@ var Paso4A = {
             }
         });
 
-        // Continuar buttons (SPEI/OXXO) — go to post-payment OTP
+        // Continuar buttons (SPEI/OXXO) — save order to transacciones, then OTP
         $(document).off('click', '.vk-contado-continuar');
         $(document).on('click', '.vk-contado-continuar', function() {
+            var $btn = $(this);
+            if ($btn.prop('disabled')) return;
+            $btn.prop('disabled', true).css('opacity', '0.6').text('Guardando orden...');
+
             var _modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
-            var _costoLog = self.app.state.costoLogistico || 0;
-            self.app.state.totalPagado = _modelo ? _modelo.precioContado : 0;
+            var _total = _modelo ? _modelo.precioContado : 0;
+            self.app.state.totalPagado = _total;
             self.app.state.pagoCompletado = true;
-            self.app.state._pagoTipo = self._pagoTipo || 'unico';
+            self.app.state._pagoTipo = self._pendingPaymentMethod || self._pagoTipo || 'unico';
             self.app.state._pagoPendiente = true; // SPEI/OXXO: payment not yet confirmed
             self.app.state.nombre = self.app.state.nombre || $('#vk-nombre').val() || '';
             self.app.state.email = self.app.state.email || $('#vk-email').val() || '';
             self.app.state.telefono = self.app.state.telefono || $('#vk-telefono').val() || '';
-            self._showPostPaymentOTP();
+
+            var centro = self.app.state.centroEntrega || {};
+            var refData = self.app.state.referidoData || null;
+
+            // Save order to transacciones (same as card flow)
+            $.ajax({
+                url: self.ORDER_CONFIRM_URL,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    paymentIntentId: self._pendingPaymentIntentId || '',
+                    pagoTipo:  self._pendingPaymentMethod || 'spei',
+                    nombre:    self._fullName(self.app.state) || self.app.state.nombre,
+                    email:     self.app.state.email,
+                    telefono:  self.app.state.telefono,
+                    modelo:    _modelo ? _modelo.nombre : '',
+                    color:     self.app.state.colorSeleccionado || '',
+                    ciudad:    self.app.state.ciudad || '',
+                    estado:    self.app.state.estado || '',
+                    cp:        self.app.state.cp || '',
+                    total:     _total,
+                    msiPago:   0,
+                    msiMeses:  0,
+                    asesoriaPlacas: self.app.state.asesoriaPlacos || false,
+                    seguroQualitas: self.app.state.seguro || false,
+                    punto_id:      centro.id || '',
+                    punto_nombre:  centro.nombre || '',
+                    punto_tipo:    centro.tipo || '',
+                    codigo_referido: self.app.state.codigoReferido || '',
+                    referido_id:     refData ? refData.id : null,
+                    referido_tipo:   refData ? refData.tipo : ''
+                }),
+                complete: function() {
+                    $btn.prop('disabled', false).css('opacity', '1');
+                    self._showPostPaymentOTP();
+                }
+            });
         });
 
         // SPEI contado
@@ -734,6 +776,8 @@ var Paso4A = {
             success: function(response) {
                 $('#vk-contado-spei').prop('disabled', false).css('opacity', '1');
                 if (response && response.speiData) {
+                    self._pendingPaymentIntentId = response.paymentIntentId || '';
+                    self._pendingPaymentMethod = 'spei';
                     var sd = response.speiData;
                     var html = '<div style="background:#E8F4FD;border-radius:10px;padding:16px;border:1px solid #B3D4FC;">';
                     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
@@ -799,6 +843,8 @@ var Paso4A = {
             success: function(response) {
                 $('#vk-contado-oxxo').prop('disabled', false).css('opacity', '1');
                 if (response && response.oxxoData) {
+                    self._pendingPaymentIntentId = response.paymentIntentId || '';
+                    self._pendingPaymentMethod = 'oxxo';
                     var refs = Array.isArray(response.oxxoData) ? response.oxxoData : [response.oxxoData];
                     var html = '<div style="background:#FFF8E1;border-radius:10px;padding:16px;border:1px solid #FFE082;">';
                     html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';

@@ -23,7 +23,8 @@ var Paso3 = {
 
     _calcFechaEntrega: function(modelo) {
         var config = VOLTIKA_PRODUCTOS.config;
-        var enInventario = modelo ? (modelo.enInventario !== false) : true;
+        var state = this.app ? this.app.state : {};
+        var enInventario = state._invColorEnStock !== undefined ? state._invColorEnStock : (modelo ? (modelo.enInventario !== false) : true);
         var dias = enInventario ? (config.entregaDiasInventario || 15) : (config.entregaDiasSinInventario || 70);
         var d = new Date();
         d.setDate(d.getDate() + dias);
@@ -33,6 +34,8 @@ var Paso3 = {
     },
 
     _isEnInventario: function(modelo) {
+        var state = this.app ? this.app.state : {};
+        if (state._invColorEnStock !== undefined) return state._invColorEnStock;
         return modelo ? (modelo.enInventario !== false) : true;
     },
 

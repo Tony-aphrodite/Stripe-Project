@@ -306,7 +306,7 @@ try {
 
         $intent = \Stripe\PaymentIntent::create($intentData);
 
-        $response = ['clientSecret' => $intent->client_secret];
+        $response = ['clientSecret' => $intent->client_secret, 'paymentIntentId' => $intent->id];
 
         // Extract bank transfer details
         if ($intent->next_action && isset($intent->next_action->display_bank_transfer_instructions)) {
@@ -439,14 +439,16 @@ try {
                     'number'             => $oxxo->number ?? '',
                     'amount'             => $oxxoAmount,
                     'expires_after'      => $oxxo->expires_after ?? 0,
-                    'hosted_voucher_url' => $oxxo->hosted_voucher_url ?? ''
+                    'hosted_voucher_url' => $oxxo->hosted_voucher_url ?? '',
+                    'paymentIntentId'    => $intent->id
                 ];
             }
         }
 
         $response = [
             'oxxoData' => $oxxoRefs,
-            'totalRefs' => count($oxxoRefs)
+            'totalRefs' => count($oxxoRefs),
+            'paymentIntentId' => !empty($oxxoRefs) ? $oxxoRefs[0]['paymentIntentId'] : ''
         ];
 
         // Send OXXO reminder email with full reference data

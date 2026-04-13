@@ -156,15 +156,26 @@ try {
     // Backfill columns on pre-existing tables
     ensureTransaccionesColumns($pdo);
 
+    // Determine initial pago_estado based on payment type:
+    // - Card (unico/msi): payment already confirmed → 'pagada'
+    // - SPEI/OXXO: payment pending bank transfer → 'pendiente'
+    // - Credito/enganche: partial payment → 'parcial'
+    $pagoEstadoInit = 'pagada';
+    if (in_array($pagoTipo, ['spei', 'oxxo'], true)) {
+        $pagoEstadoInit = 'pendiente';
+    } elseif (in_array($pagoTipo, ['credito', 'enganche', 'parcial'], true)) {
+        $pagoEstadoInit = 'parcial';
+    }
+
     $stmt = $pdo->prepare("
         INSERT INTO transacciones
             (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago,
              precio, total, freg, pedido, stripe_pi,
              asesoria_placas, seguro_qualitas, punto_id, punto_nombre,
              msi_meses, msi_pago, referido, referido_id, referido_tipo, caso,
-             folio_contrato)
+             folio_contrato, pago_estado)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     // Defensive defaults — pass '' / 0 instead of NULL for optional columns.
     // If the production schema still has legacy NOT NULL constraints (the
@@ -196,6 +207,7 @@ try {
         $referidoTipo ?: '',
         $caso ?: 1,
         $folioContrato ?: '',
+        $pagoEstadoInit,
     ]);
     $dbSaveOk = true;
 
@@ -534,6 +546,8 @@ function ensureTransaccionesColumns(PDO $pdo): void {
         'referido_tipo'   => "ADD COLUMN referido_tipo   VARCHAR(20)   NULL AFTER referido_id",
         'caso'            => "ADD COLUMN caso            TINYINT       NULL AFTER referido_tipo",
         'folio_contrato'  => "ADD COLUMN folio_contrato  VARCHAR(40)   NULL AFTER caso",
+        'pago_estado'     => "ADD COLUMN pago_estado     VARCHAR(20)   NULL AFTER folio_contrato",
+        'fecha_estimada_entrega' => "ADD COLUMN fecha_estimada_entrega DATE NULL AFTER pago_estado",
     ];
     try {
         $existing = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
