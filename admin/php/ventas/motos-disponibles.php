@@ -14,6 +14,7 @@ $where  = [
     "(m.pedido_num IS NULL OR m.pedido_num = '')",
     "(m.cliente_email IS NULL OR m.cliente_email = '')",
     "m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'",
+    "m.estado IN ('recibida','lista_para_entrega')",
 ];
 $params = [];
 
