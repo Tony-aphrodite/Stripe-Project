@@ -250,84 +250,89 @@ window.AD_ventas = (function(){
 
     var isPending = r.punto_id==='centro-cercano';
 
-    function sec(title, icon){
-      return '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;margin:0 -20px;background:#f1f5f9;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">'+
-        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+icon+'</svg>'+
-        '<span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#475569;">'+title+'</span></div>';
+    // ── Styled helpers (CEDIS pattern) ──
+    var secIx = 0;
+    function secHead(title, icon){
+      return '<div style="display:flex;align-items:center;gap:8px;margin:24px 0 12px;padding-bottom:10px;border-bottom:1px solid var(--ad-border);">'+
+        '<div style="color:var(--ad-primary);">'+icon+'</div>'+
+        '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ad-primary);">'+title+'</div></div>';
     }
-    function row(label, value, idx){
-      var bg = idx % 2 === 0 ? '#fff' : '#f8fafc';
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;margin:0 -20px;background:'+bg+';min-height:36px;">'+
-        '<span style="font-size:13px;color:#64748b;flex-shrink:0;margin-right:12px;">'+label+'</span>'+
-        '<span style="font-size:13px;font-weight:600;color:#1e293b;text-align:right;word-break:break-all;">'+value+'</span></div>';
+    function fRow(label, value){
+      var bg = secIx++ % 2 === 0 ? 'background:var(--ad-surface-2);' : '';
+      return '<div style="'+bg+'padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,.04);">'+
+        '<span style="color:var(--ad-dim);font-size:12px;font-weight:500;white-space:nowrap;margin-right:12px;">'+label+'</span>'+
+        '<span style="font-size:13px;font-weight:600;color:var(--ad-navy);text-align:right;">'+(value||'—')+'</span></div>';
     }
 
-    // Header
-    var pagoBadge = '';
+    // ── Modal header (CEDIS pattern) ──
     var pe = (r.pago_estado||'pendiente').toLowerCase();
-    if(pe==='pagada') pagoBadge = '<span style="background:#059669;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">Pagado</span>';
-    else if(pe==='parcial') pagoBadge = '<span style="background:#d97706;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">Parcial</span>';
-    else pagoBadge = '<span style="background:#dc2626;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">Pendiente</span>';
+    var pagoColor = pe==='pagada' ? 'green' : (pe==='parcial' ? 'yellow' : 'red');
+    var pagoLabel = pe==='pagada' ? 'Pagado' : (pe==='parcial' ? 'Parcial' : 'Pendiente');
 
-    var html = '<div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);margin:-20px -20px 0;padding:24px 24px 20px;border-radius:12px 12px 0 0;">'+
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
-        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>'+
-        '<span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-.3px;">VK-'+(r.pedido||r.id)+'</span>'+
-        pagoBadge+
-      '</div>'+
-      '<div style="font-size:13px;color:#94a3b8;">'+(r.modelo||'—')+' · '+(r.color||'—')+' · '+ADApp.money(r.monto)+'</div>'+
-    '</div>';
+    var html = '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:18px;border-bottom:2px solid var(--ad-border);">';
+    html += '<div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#039fe1,#0280b5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
+    html += '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>';
+    html += '<div style="flex:1;min-width:0;"><div style="font-size:20px;font-weight:800;color:var(--ad-navy);line-height:1.2;">VK-'+(r.pedido||r.id)+'</div>';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;"><span class="ad-badge '+pagoColor+'">'+pagoLabel+'</span>';
+    html += '<span style="font-size:13px;color:var(--ad-dim);">'+(r.modelo||'—')+' · '+(r.color||'—')+' · '+ADApp.money(r.monto)+'</span>';
+    html += '</div></div></div>';
 
-    // Section: Cliente
-    var n = 0;
-    html += sec('Cliente','<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>');
-    html += row('Nombre', r.nombre||'—', n++);
-    html += row('Email', r.email ? '<a href="mailto:'+r.email+'" style="color:#2563eb;text-decoration:none;">'+r.email+'</a>' : '—', n++);
-    html += row('Teléfono', r.telefono||'—', n++);
+    // ── Section: Cliente ──
+    secIx = 0;
+    html += secHead('Cliente','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+    html += fRow('Nombre', r.nombre||'—');
+    html += fRow('Email', r.email ? '<a href="mailto:'+r.email+'" style="color:var(--ad-primary);text-decoration:none;">'+r.email+'</a>' : '—');
+    html += fRow('Teléfono', r.telefono||'—');
+    html += '</div>';
 
-    // Section: Pedido
-    html += sec('Pedido','<rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/>');
-    html += row('Modelo', r.modelo||'—', n++);
-    html += row('Color', r.color||'—', n++);
-    html += row('Tipo de pago', '<span class="ad-badge blue" style="font-size:11px;">'+(r.tipo||'—')+'</span>', n++);
-    html += row('Monto', '<span style="font-size:15px;font-weight:700;">'+ADApp.money(r.monto)+'</span>', n++);
-    html += row('Fecha', r.fecha ? r.fecha.substring(0,10) : '—', n++);
+    // ── Section: Pedido ──
+    secIx = 0;
+    html += secHead('Pedido','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/></svg>');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+    html += fRow('Modelo', r.modelo||'—');
+    html += fRow('Color', r.color||'—');
+    html += fRow('Tipo de pago', '<span class="ad-badge blue" style="font-size:11px;">'+(r.tipo||'—')+'</span>');
+    html += fRow('Monto', '<span style="font-size:15px;font-weight:800;">'+ADApp.money(r.monto)+'</span>');
+    html += fRow('Fecha', r.fecha ? r.fecha.substring(0,10) : '—');
+    html += '</div>';
 
-    // Section: Stripe
-    html += sec('Stripe','<path d="M21 4H3a2 2 0 00-2 2v12a2 2 0 002 2h18a2 2 0 002-2V6a2 2 0 00-2-2z"/><path d="M1 10h22"/>');
+    // ── Section: Stripe ──
+    secIx = 0;
+    html += secHead('Stripe','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H3a2 2 0 00-2 2v12a2 2 0 002 2h18a2 2 0 002-2V6a2 2 0 00-2-2z"/><path d="M1 10h22"/></svg>');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     var piVal = r.stripe_pi
-      ? '<code style="font-size:11px;background:#f1f5f9;padding:3px 8px;border-radius:4px;color:#334155;letter-spacing:.3px;">'+r.stripe_pi+'</code>'
-      : '<span style="color:#94a3b8;">—</span>';
-    html += row('Payment Intent', piVal, n++);
-    html += row('Estado de pago', pagoBadge, n++);
+      ? '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+r.stripe_pi+'</code>'
+      : '—';
+    html += fRow('Payment Intent', piVal);
+    html += fRow('Estado de pago', '<span class="ad-badge '+pagoColor+'">'+pagoLabel+'</span>');
+    html += '</div>';
 
-    // Section: Punto de entrega
-    html += sec('Punto de entrega','<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>');
+    // ── Section: Punto de entrega ──
+    secIx = 0;
+    html += secHead('Punto de entrega','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     if(isPending){
-      html += '<div style="padding:12px 16px;margin:0 -20px;background:#fffbeb;">'+
-        '<span style="display:inline-block;background:#fbbf24;color:#92400e;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;">Pendiente de asignar</span>'+
-        '<div style="font-size:12px;color:#92400e;margin-top:6px;">El cliente seleccionó "Centro Voltika cercano". Asignar manualmente.</div>'+
-      '</div>';
+      html += fRow('Punto', '<span class="ad-badge yellow">Pendiente de asignar</span>');
+      html += fRow('Nota', '<span style="font-size:11px;color:var(--ad-dim);">El cliente seleccionó "Centro Voltika cercano"</span>');
     } else if(r.punto_nombre){
-      html += row('Punto', '<span style="color:#059669;font-weight:700;">'+r.punto_nombre+'</span>', n++);
+      html += fRow('Punto', '<span style="color:#059669;font-weight:700;">'+r.punto_nombre+'</span>');
     } else {
-      html += '<div style="padding:12px 16px;margin:0 -20px;background:#fef2f2;">'+
-        '<span style="display:inline-block;background:#fecaca;color:#991b1b;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;">Sin punto seleccionado</span>'+
-      '</div>';
+      html += fRow('Punto', '<span class="ad-badge red">Sin punto seleccionado</span>');
     }
+    html += '</div>';
 
-    // Section: Moto asignada
-    html += sec('Moto asignada','<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/>');
+    // ── Section: Moto asignada ──
+    secIx = 0;
+    html += secHead('Moto asignada','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     if(r.moto_id){
-      html += '<div style="padding:12px 16px;margin:0 -20px;background:#f0fdf4;">'+
-        '<span style="display:inline-block;background:#059669;color:#fff;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;margin-right:8px;">'+(r.moto_vin||'VIN ****')+'</span>'+
-        ADApp.badgeEstado(r.moto_estado||'—')+
-      '</div>';
+      html += fRow('VIN', '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+(r.moto_vin||'****')+'</code>');
+      html += fRow('Estado', ADApp.badgeEstado(r.moto_estado||'—'));
     } else {
-      html += '<div style="padding:12px 16px;margin:0 -20px;background:#fef2f2;">'+
-        '<span style="display:inline-block;background:#fecaca;color:#991b1b;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;">Sin moto asignada</span>'+
-      '</div>';
+      html += fRow('Estado', '<span class="ad-badge red">Sin moto asignada</span>');
     }
+    html += '</div>';
 
     ADApp.modal(html);
   }
