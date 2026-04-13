@@ -2,14 +2,14 @@ window.AD_inventario = (function(){
   var filters = {};
   var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
   function render(){
-    ADApp.render('<div class="ad-h1">Inventario</div><div><span class="ad-spin"></span> Cargando...</div>');
+    ADApp.render('<div class="ad-h1">CEDIS</div><div><span class="ad-spin"></span> Cargando...</div>');
     load();
   }
   function load(){
     ADApp.api('inventario/listar.php?' + $.param(filters)).done(paint);
   }
   function paint(r){
-    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Inventario</div>';
+    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">CEDIS</div>';
     if(ADApp.isAdmin()){
       html += '<div style="display:flex;gap:6px">'+
         '<button class="ad-btn primary" id="adNewMoto">+ Nueva moto</button>'+
@@ -17,37 +17,74 @@ window.AD_inventario = (function(){
         '</div>';
     }
     html += '</div>';
-    // Summary
+    // Summary KPIs
     var s = r.resumen||{};
     html += '<div class="ad-kpis">';
-    [{l:'Total',v:s.total,c:'blue'},{l:'Disponible',v:s.disponible,c:'green'},{l:'Reservado',v:s.reservado,c:'yellow'},
+    [{l:'Total',v:s.total,c:'blue'},{l:'Existencias',v:s.disponible,c:'green'},{l:'Reservado',v:s.reservado,c:'yellow'},
      {l:'Entregado',v:s.entregado,c:'green'},{l:'En tránsito',v:s.en_transito,c:'blue'},
-     {l:'En ensamble',v:s.en_ensamble,c:'yellow'},{l:'Bloqueado',v:s.bloqueado,c:'red'}].forEach(function(k){
+     {l:'En ensamble',v:s.en_ensamble,c:'yellow'},{l:'Total en puntos',v:s.en_puntos,c:'blue'},
+     {l:'Bloqueado',v:s.bloqueado,c:'red'}].forEach(function(k){
       html += '<div class="ad-kpi"><div class="label">'+k.l+'</div><div class="value '+(k.c||'')+'">'+Number(k.v||0)+'</div></div>';
     });
     html += '</div>';
+    // Model summary
+    var pm = r.por_modelo||[];
+    if(pm.length){
+      html += '<div style="margin-bottom:16px;"><div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--ad-navy);">Unidades por modelo</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+      pm.forEach(function(m){
+        html += '<div style="background:var(--ad-surface);border:1px solid var(--ad-border);border-radius:var(--ad-radius-sm);padding:10px 16px;text-align:center;min-width:100px;">'+
+          '<div style="font-size:22px;font-weight:800;color:var(--ad-navy);">'+m.cnt+'</div>'+
+          '<div style="font-size:11px;font-weight:600;color:var(--ad-dim);text-transform:uppercase;">'+m.modelo+'</div>'+
+        '</div>';
+      });
+      html += '</div></div>';
+    }
     // Filters
+    var modeloOpts = '<option value="">Modelo</option>';
+    (r.modelos||[]).forEach(function(m){ modeloOpts += '<option value="'+m+'"'+(filters.modelo===m?' selected':'')+'>'+m+'</option>'; });
     html += '<div class="ad-filters">'+
-      '<input class="ad-input" style="width:160px" placeholder="Buscar VIN..." id="adFVin">'+
+      '<input class="ad-input" style="width:160px" placeholder="Buscar VIN..." id="adFVin" value="'+(filters.vin||'')+'">'+
+      '<select class="ad-select" id="adFModelo">'+modeloOpts+'</select>'+
       '<select class="ad-select" id="adFEstado"><option value="">Estado</option>'+
         ['por_llegar','recibida','por_ensamblar','en_ensamble','lista_para_entrega','por_validar_entrega','entregada','retenida']
-        .map(function(e){return '<option>'+e+'</option>';}).join('')+'</select>'+
+        .map(function(e){return '<option'+(filters.estado===e?' selected':'')+'>'+e+'</option>';}).join('')+'</select>'+
+      '<select class="ad-select" id="adFChecklist"><option value="">Checklist</option>'+
+        '<option value="sin"'+(filters.checklist==='sin'?' selected':'')+'>Sin checklist</option>'+
+        '<option value="origen"'+(filters.checklist==='origen'?' selected':'')+'>Con origen</option>'+
+        '<option value="ensamble"'+(filters.checklist==='ensamble'?' selected':'')+'>Con ensamble</option>'+
+        '<option value="completo"'+(filters.checklist==='completo'?' selected':'')+'>Completo</option>'+
+      '</select>'+
       '<button class="ad-btn sm ghost" id="adFApply">Filtrar</button>'+
     '</div>';
-    // Table
-    html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>VIN</th><th>Modelo</th><th>Color</th><th>Estado</th><th>Punto</th><th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
-    (r.motos||[]).forEach(function(m){
-      html += '<tr>'+
-        '<td>'+( m.vin_display||m.vin||'—')+'</td>'+
-        '<td>'+m.modelo+'</td><td>'+m.color+'</td>'+
-        '<td>'+ADApp.badgeEstado(m.estado)+'</td>'+
-        '<td>'+(m.punto_voltika_nombre||'—')+'</td>'+
-        '<td>'+(m.cliente_nombre||'—')+'</td>'+
-        '<td>'+ADApp.badgeEstado(m.pago_estado||'—')+'</td>'+
-        '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
-      '</tr>';
+    // Group motos by model
+    var motos = r.motos||[];
+    var groups = {};
+    var modelOrder = [];
+    motos.forEach(function(m){
+      var mod = m.modelo||'Sin modelo';
+      if(!groups[mod]){ groups[mod] = []; modelOrder.push(mod); }
+      groups[mod].push(m);
     });
-    html += '</tbody></table></div>';
+    modelOrder.sort();
+    // Render grouped tables
+    modelOrder.forEach(function(mod){
+      html += '<div style="margin-bottom:20px;">';
+      html += '<div style="font-weight:700;font-size:15px;color:var(--ad-navy);margin-bottom:6px;padding-left:4px;">'+mod+' <span style="font-weight:400;color:var(--ad-dim);font-size:13px;">('+groups[mod].length+')</span></div>';
+      html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>VIN</th><th>Color</th><th>Estado</th><th>Punto</th><th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
+      groups[mod].forEach(function(m){
+        html += '<tr>'+
+          '<td>'+(m.vin_display||m.vin||'—')+'</td>'+
+          '<td>'+m.color+'</td>'+
+          '<td>'+ADApp.badgeEstado(m.estado)+'</td>'+
+          '<td>'+(m.punto_voltika_nombre||'—')+'</td>'+
+          '<td>'+(m.cliente_nombre||'—')+'</td>'+
+          '<td>'+ADApp.badgeEstado(m.pago_estado||'—')+'</td>'+
+          '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
+        '</tr>';
+      });
+      html += '</tbody></table></div></div>';
+    });
     // Pagination
     if(r.pages>1){
       html += '<div class="ad-pagination">';
@@ -55,7 +92,14 @@ window.AD_inventario = (function(){
       html += '</div>';
     }
     ADApp.render(html);
-    $('#adFApply').on('click',function(){ filters.vin=$('#adFVin').val(); filters.estado=$('#adFEstado').val(); load(); });
+    $('#adFApply').on('click',function(){
+      filters.vin=$('#adFVin').val();
+      filters.modelo=$('#adFModelo').val();
+      filters.estado=$('#adFEstado').val();
+      filters.checklist=$('#adFChecklist').val();
+      filters.page=1;
+      load();
+    });
     $('.adDetail').on('click',function(){ showDetail($(this).data('id')); });
     $('.adPage').on('click',function(){ filters.page=$(this).data('p'); load(); });
     $('#adNewMoto').on('click', showNewForm);

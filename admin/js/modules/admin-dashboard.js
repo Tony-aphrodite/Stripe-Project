@@ -27,7 +27,7 @@ window.AD_dashboard = (function(){
     var imgBase = '../configurador_prueba/img/';
     var actions = [
       {img:'iconos-03.svg',label:'Ventas',route:'ventas',bg:'linear-gradient(135deg,#e0f4fd,#fff)'},
-      {img:'iconos-02.svg',label:'Inventario',route:'inventario',bg:'linear-gradient(135deg,#dcfce7,#fff)'},
+      {img:'iconos-02.svg',label:'CEDIS',route:'inventario',bg:'linear-gradient(135deg,#dcfce7,#fff)'},
       {img:'entrega.png',label:'Envíos',route:'envios',bg:'linear-gradient(135deg,#fef3c7,#fff)'},
       {img:'garantia.png',label:'Pagos',route:'pagos',bg:'linear-gradient(135deg,#e0e7ff,#fff)'},
       {img:'asesor_icon.jpg',label:'Puntos',route:'puntos',bg:'linear-gradient(135deg,#fce7f3,#fff)'},

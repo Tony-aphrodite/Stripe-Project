@@ -34,7 +34,7 @@ $asset = function(string $rel): string {
     <div class="ad-nav">
       <button data-route="dashboard" class="active"><span><img src="../configurador_prueba/img/iconos-01.svg" alt=""></span> Dashboard</button>
       <button data-route="ventas"><span><img src="../configurador_prueba/img/iconos-03.svg" alt=""></span> Ventas</button>
-      <button data-route="inventario"><span><img src="../configurador_prueba/img/iconos-02.svg" alt=""></span> Inventario</button>
+      <button data-route="inventario"><span><img src="../configurador_prueba/img/iconos-02.svg" alt=""></span> CEDIS</button>
       <button data-route="envios"><span><img src="../configurador_prueba/img/entrega.png" alt=""></span> Envíos</button>
       <button data-route="pagos"><span><img src="../configurador_prueba/img/garantia.png" alt=""></span> Pagos</button>
       <button data-route="puntos"><span><img src="../configurador_prueba/img/asesor_icon.jpg" alt=""></span> Puntos Voltika</button>
