@@ -149,33 +149,38 @@ window.AD_ventas = (function(){
   function showAsignar(transId, modelo, color, pedido){
     ADApp.modal(
       '<div class="ad-h2">Asignar moto a '+pedido+'</div>'+
-      '<div class="ad-dim" style="margin-bottom:12px;">Modelo: <strong>'+modelo+'</strong> &middot; Color: <strong>'+color+'</strong></div>'+
+      '<div style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">'+
+        '<span style="font-size:18px;font-weight:800;color:var(--ad-navy);">'+modelo+'</span>'+
+        '<span style="font-size:16px;font-weight:700;color:var(--ad-primary);">'+color+'</span>'+
+      '</div>'+
       '<div id="vtMotos">Buscando motos disponibles...</div>'
     );
 
+    // First try exact model+color, then fallback to same model only (never show other models)
     var url = 'ventas/motos-disponibles.php?modelo='+encodeURIComponent(modelo)+'&color='+encodeURIComponent(color);
     ADApp.api(url).done(function(r){
       if(!r.ok || !r.motos.length){
-        // Show all bikes if none match model/color
-        ADApp.api('ventas/motos-disponibles.php').done(function(r2){
-          renderMotos(r2.motos||[], transId, pedido, true);
+        // Fallback: same model, any color — never show different models
+        var urlModelo = 'ventas/motos-disponibles.php?modelo='+encodeURIComponent(modelo);
+        ADApp.api(urlModelo).done(function(r2){
+          renderMotos(r2.motos||[], transId, pedido, true, modelo);
         });
         return;
       }
-      renderMotos(r.motos, transId, pedido, false);
+      renderMotos(r.motos, transId, pedido, false, modelo);
     });
   }
 
-  function renderMotos(motos, transId, pedido, showAll){
+  function renderMotos(motos, transId, pedido, showAll, modelo){
     if(!motos.length){
       var twoMonths = new Date(); twoMonths.setMonth(twoMonths.getMonth()+2);
       var eta = twoMonths.toISOString().slice(0,10);
       $('#vtMotos').html(
         '<div style="text-align:center;padding:20px;">'+
-          '<div style="color:var(--ad-dim);margin-bottom:8px;">No hay motos disponibles en inventario</div>'+
+          '<div style="color:var(--ad-dim);margin-bottom:8px;">No hay motos <strong>'+(modelo||'')+'</strong> disponibles en inventario</div>'+
           '<div style="font-size:13px;color:#b91c1c;background:#fde8e8;padding:10px;border-radius:8px;">'+
             'La orden quedará en estado <strong>"Pendiente de asignar"</strong> hasta que CEDIS registre '+
-            'nuevas motos en el inventario.<br>'+
+            'nuevas motos de este modelo en el inventario.<br>'+
             'Entrega estimada: <strong>'+eta+'</strong> (~2 meses)'+
           '</div>'+
         '</div>'
@@ -185,7 +190,7 @@ window.AD_ventas = (function(){
 
     var html = '';
     if(showAll){
-      html += '<div class="ad-banner warn" style="margin-bottom:10px;">No hay motos del mismo modelo/color. Mostrando todas las disponibles.</div>';
+      html += '<div class="ad-banner warn" style="margin-bottom:10px;">No hay motos del mismo color. Mostrando otras unidades del mismo modelo.</div>';
     }
 
     html += '<div style="max-height:350px;overflow-y:auto;">';
