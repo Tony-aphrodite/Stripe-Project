@@ -5,30 +5,16 @@ window.AD_ventas = (function(){
   function render(){
     ADApp.render(
       _backBtn+
-      '<div class="ad-toolbar" style="display:flex;align-items:center;justify-content:space-between;">'+
+      '<div class="ad-toolbar">'+
         '<div class="ad-h1">Ventas / Ordenes</div>'+
-        '<div style="display:flex;align-items:center;gap:10px;">'+
-          '<span id="vtLastUpdated" class="ad-dim" style="font-size:12px;"></span>'+
-          '<button id="vtRefreshBtn" class="ad-btn sm" style="padding:6px 12px;">Actualizar</button>'+
-        '</div>'+
       '</div>'+
       '<div id="vtKpis" class="ad-kpis" style="margin-bottom:14px;"></div>'+
       '<div id="vtTable">Cargando...</div>'
     );
-    $('#vtRefreshBtn').on('click', loadData);
     loadData();
   }
 
-  function _formatLastUpdated(){
-    var d = new Date();
-    var hh = String(d.getHours()).padStart(2,'0');
-    var mm = String(d.getMinutes()).padStart(2,'0');
-    var ss = String(d.getSeconds()).padStart(2,'0');
-    return 'Última actualización: '+hh+':'+mm+':'+ss;
-  }
-
   function loadData(){
-    $('#vtLastUpdated').text('Cargando...');
     ADApp.api('ventas/listar.php').done(function(r){
       if(!r.ok){ $('#vtTable').html('<div class="ad-card">Error al cargar</div>'); return; }
 
@@ -44,8 +30,6 @@ window.AD_ventas = (function(){
         kpi('Punto pendiente', pendingPunto, pendingPunto > 0 ? 'yellow' : 'green')+
         kpi('Huérfanos/errores', orfanos, orfanos > 0 ? 'red' : 'green')
       );
-      $('#vtLastUpdated').text(_formatLastUpdated());
-
       var rows = r.rows || [];
       _lastRows = rows;
       if(!rows.length){

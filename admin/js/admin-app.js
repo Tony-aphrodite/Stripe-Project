@@ -81,7 +81,7 @@ window.ADApp = (function(){
     };
     return '<span class="ad-badge '+(map[est]||'gray')+'">'+est+'</span>';
   }
-  function money(n) { return '$' + Number(n||0).toLocaleString('es-MX', {minimumFractionDigits:0}); }
+  function money(n) { return '$' + Number(n||0).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 
   function showChangePasswordModal() {
     modal(

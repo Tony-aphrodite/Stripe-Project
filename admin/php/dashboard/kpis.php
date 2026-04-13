@@ -42,10 +42,10 @@ $carteraVencida = (int)$safeScalar("SELECT COUNT(DISTINCT cliente_id) FROM ciclo
 // Inventory
 $inv = $safeRow("SELECT
     SUM(estado IN ('recibida','lista_para_entrega')) as disponible,
-    SUM(cliente_nombre IS NOT NULL AND cliente_nombre<>'' AND estado NOT IN ('entregada')) as apartadas,
+    SUM(cliente_nombre IS NOT NULL AND cliente_nombre<>'' AND estado NOT IN ('entregada','retenida','por_llegar')) as apartadas,
     SUM(estado = 'por_llegar') as en_transito,
     SUM(estado IN ('lista_para_entrega','por_validar_entrega')) as pendientes_entrega_clientes
-    FROM inventario_motos");
+    FROM inventario_motos WHERE activo = 1");
 
 // Expected cash flow (pending cycles this week)
 $flujo = (float)$safeScalar("SELECT COALESCE(SUM(monto),0) FROM ciclos_pago
