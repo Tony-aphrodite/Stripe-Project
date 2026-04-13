@@ -34,11 +34,11 @@ $sharedV = file_exists($sharedAdminCssPath) ? filemtime($sharedAdminCssPath) : t
     <div class="ad-logo"><img src="../configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'"></div>
     <button class="ad-hamburger" id="pvHamburger">&#9776;</button>
     <div class="ad-nav">
-      <button data-route="inicio" class="active"><span>🏠</span> Inicio</button>
-      <button data-route="inventario"><span>🛵</span> Inventario</button>
-      <button data-route="recepcion"><span>📦</span> Recepción</button>
-      <button data-route="entrega"><span>🎁</span> Entregas</button>
-      <button data-route="venta"><span>💰</span> Venta referido</button>
+      <button data-route="inicio" class="active"><span><img src="../configurador_prueba/img/iconos-01.svg" alt=""></span> Inicio</button>
+      <button data-route="inventario"><span><img src="../configurador_prueba/img/iconos-02.svg" alt=""></span> Inventario</button>
+      <button data-route="recepcion"><span><img src="../configurador_prueba/img/entrega.png" alt=""></span> Recepción</button>
+      <button data-route="entrega"><span><img src="../configurador_prueba/img/delivery_icon.jpg" alt=""></span> Entregas</button>
+      <button data-route="venta"><span><img src="../configurador_prueba/img/iconos-03.svg" alt=""></span> Venta referido</button>
     </div>
     <div class="ad-user" id="pvUser"></div>
     <button class="ad-logout" id="pvLogout">Cerrar sesión</button>

@@ -32,14 +32,14 @@ $asset = function(string $rel): string {
     <div class="ad-logo"><img src="../configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'"></div>
     <button class="ad-hamburger" id="adHamburger">&#9776;</button>
     <div class="ad-nav">
-      <button data-route="dashboard" class="active"><span>📊</span> Dashboard</button>
-      <button data-route="ventas"><span>🛒</span> Ventas</button>
-      <button data-route="inventario"><span>🏭</span> Inventario</button>
-      <button data-route="envios"><span>🚚</span> Envíos</button>
-      <button data-route="pagos"><span>💳</span> Pagos</button>
-      <button data-route="puntos"><span>📍</span> Puntos Voltika</button>
-      <button data-route="checklists"><span>✅</span> Checklists</button>
-      <button data-route="buro"><span>📋</span> Buro CDC</button>
+      <button data-route="dashboard" class="active"><span><img src="../configurador_prueba/img/iconos-01.svg" alt=""></span> Dashboard</button>
+      <button data-route="ventas"><span><img src="../configurador_prueba/img/iconos-03.svg" alt=""></span> Ventas</button>
+      <button data-route="inventario"><span><img src="../configurador_prueba/img/iconos-02.svg" alt=""></span> Inventario</button>
+      <button data-route="envios"><span><img src="../configurador_prueba/img/entrega.png" alt=""></span> Envíos</button>
+      <button data-route="pagos"><span><img src="../configurador_prueba/img/garantia.png" alt=""></span> Pagos</button>
+      <button data-route="puntos"><span><img src="../configurador_prueba/img/asesor_icon.jpg" alt=""></span> Puntos Voltika</button>
+      <button data-route="checklists"><span><img src="../configurador_prueba/img/aprobado.png" alt=""></span> Checklists</button>
+      <button data-route="buro"><span><img src="../configurador_prueba/img/faceid.png" alt=""></span> Buro CDC</button>
     </div>
     <div class="ad-user" id="adUser"></div>
     <button class="ad-logout" id="adLogout">Cerrar sesión</button>

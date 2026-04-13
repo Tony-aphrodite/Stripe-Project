@@ -27,9 +27,9 @@ window.PV_inicio = (function(){
 
     html += '<div class="ad-h2">Acciones rápidas</div>';
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-    html += '<button class="ad-btn primary" onclick="PVApp.go(\'recepcion\')">📦 Recibir moto</button>';
-    html += '<button class="ad-btn ghost" onclick="PVApp.go(\'entrega\')">🎁 Entregar al cliente</button>';
-    html += '<button class="ad-btn ghost" onclick="PVApp.go(\'venta\')">💰 Venta por referido</button>';
+    html += '<button class="ad-btn primary" onclick="PVApp.go(\'recepcion\')"><img src="../configurador_prueba/img/entrega.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:brightness(0) invert(1);"> Recibir moto</button>';
+    html += '<button class="ad-btn ghost" onclick="PVApp.go(\'entrega\')"><img src="../configurador_prueba/img/delivery_icon.jpg" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:4px;"> Entregar al cliente</button>';
+    html += '<button class="ad-btn ghost" onclick="PVApp.go(\'venta\')"><img src="../configurador_prueba/img/iconos-03.svg" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:4px;"> Venta por referido</button>';
     html += '</div>';
 
     PVApp.render(html);

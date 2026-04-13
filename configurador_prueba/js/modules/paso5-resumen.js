@@ -9,8 +9,24 @@ var PasoResumen = {
 
     init: function(app) {
         this.app = app;
-        this.render();
-        this.bindEvents();
+        // Check real-time inventory before rendering
+        var self = this;
+        var modelo = app.getModelo(app.state.modeloSeleccionado);
+        var color = app.state.colorSeleccionado || (modelo ? modelo.colorDefault : '');
+        var base = window.VK_BASE_PATH || '';
+        if (modelo) {
+            $.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre) + '&color=' + encodeURIComponent(color))
+            .done(function(r) {
+                modelo.enInventario = r.ok && r.total > 0;
+            })
+            .always(function() {
+                self.render();
+                self.bindEvents();
+            });
+        } else {
+            this.render();
+            this.bindEvents();
+        }
     },
 
     _calcFechaEntrega: function() {

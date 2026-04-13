@@ -28,13 +28,13 @@ $asset = function(string $rel): string {
 <div id="vkApp" class="vk-app">
   <div id="vkScreen" class="vk-screen"></div>
   <nav id="vkTabbar" class="vk-tabbar" style="display:none">
-    <button data-route="inicio"><span class="ic">🏠</span><em>Inicio</em></button>
-    <button data-route="pagos"><span class="ic">💳</span><em>Pagos</em></button>
-    <button data-route="entrega"><span class="ic">🚚</span><em>Entrega</em></button>
-    <button data-route="documentos"><span class="ic">📄</span><em>Documentos</em></button>
-    <button data-route="mivoltika"><span class="ic">⚡</span><em>Mi Voltika</em></button>
-    <button data-route="cuenta"><span class="ic">👤</span><em>Cuenta</em></button>
-    <button data-route="ayuda"><span class="ic">❓</span><em>Ayuda</em></button>
+    <button data-route="inicio"><span class="ic"><img src="../configurador_prueba/img/iconos-01.svg" alt="" style="width:22px;height:22px;object-fit:contain;"></span><em>Inicio</em></button>
+    <button data-route="pagos"><span class="ic"><img src="../configurador_prueba/img/garantia.png" alt="" style="width:22px;height:22px;object-fit:contain;"></span><em>Pagos</em></button>
+    <button data-route="entrega"><span class="ic"><img src="../configurador_prueba/img/entrega.png" alt="" style="width:22px;height:22px;object-fit:contain;"></span><em>Entrega</em></button>
+    <button data-route="documentos"><span class="ic"><img src="../configurador_prueba/img/faceid.png" alt="" style="width:22px;height:22px;object-fit:contain;"></span><em>Documentos</em></button>
+    <button data-route="mivoltika"><span class="ic"><img src="../configurador_prueba/img/iconos-01.svg" alt="" style="width:22px;height:22px;object-fit:contain;"></span><em>Mi Voltika</em></button>
+    <button data-route="cuenta"><span class="ic"><img src="../configurador_prueba/img/asesor_icon.jpg" alt="" style="width:22px;height:22px;object-fit:contain;"></span><em>Cuenta</em></button>
+    <button data-route="ayuda"><span class="ic"><img src="../configurador_prueba/img/QR.jpeg" alt="" style="width:22px;height:22px;object-fit:contain;"></span><em>Ayuda</em></button>
   </nav>
 </div>
 <script src="<?= $asset('js/app.js') ?>"></script>

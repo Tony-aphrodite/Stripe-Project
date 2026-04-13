@@ -20,11 +20,27 @@ var Paso4A = {
         this._cardElement = null;
         // Set _pagoTipo based on what user chose in PASO 1
         this._pagoTipo = (app.state.metodoPago === 'msi') ? 'msi' : 'unico';
-        this.render();
-        this.bindEvents();
-        // Mount Stripe (OTP moved to post-payment)
+
+        // Check real-time inventory before rendering
         var self = this;
-        setTimeout(function() { self._mountStripe(); }, 300);
+        var modelo = app.getModelo(app.state.modeloSeleccionado);
+        var color = app.state.colorSeleccionado || (modelo ? modelo.colorDefault : '');
+        var base = window.VK_BASE_PATH || '';
+        if (modelo) {
+            $.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre) + '&color=' + encodeURIComponent(color))
+            .done(function(r) {
+                modelo.enInventario = r.ok && r.total > 0;
+            })
+            .always(function() {
+                self.render();
+                self.bindEvents();
+                setTimeout(function() { self._mountStripe(); }, 300);
+            });
+        } else {
+            this.render();
+            this.bindEvents();
+            setTimeout(function() { self._mountStripe(); }, 300);
+        }
     },
 
     render: function() {
@@ -38,7 +54,10 @@ var Paso4A = {
         var msiPagoExact = modelo.tieneMSI ? (modelo.precioMSI * 9 + costoLog) / 9 : totalMSI / 9;
         var msiPago     = Math.round(msiPagoExact);
         var ciudad      = (state.ciudad && state.estado) ? state.ciudad + ', ' + state.estado : (state.ciudad || '--');
-        var _fd = new Date(); _fd.setDate(_fd.getDate() + 15);
+        var _config = VOLTIKA_PRODUCTOS.config || {};
+        var _enInventario = modelo ? (modelo.enInventario !== false) : true;
+        var _diasEntrega = _enInventario ? (_config.entregaDiasInventario || 15) : (_config.entregaDiasSinInventario || 70);
+        var _fd = new Date(); _fd.setDate(_fd.getDate() + _diasEntrega);
         var _meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
         var fechaEntrega = _fd.getDate() + ' de ' + _meses[_fd.getMonth()] + ' de ' + _fd.getFullYear();
         var color       = state.colorSeleccionado || modelo.colorDefault || '';
