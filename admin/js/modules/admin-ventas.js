@@ -265,32 +265,86 @@ window.AD_ventas = (function(){
     if(!r) return;
 
     var isPending = r.punto_id==='centro-cercano';
-    var html = '<div class="ad-h2">Orden VK-'+(r.pedido||r.id)+'</div>';
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
-    [['Cliente',r.nombre||'—'],['Email',r.email||'—'],['Teléfono',r.telefono||'—'],
-     ['Modelo',r.modelo||'—'],['Color',r.color||'—'],['Tipo pago',r.tipo||'—'],
-     ['Monto',ADApp.money(r.monto)],['Fecha',r.fecha?r.fecha.substring(0,10):'—'],
-     ['Stripe PI',r.stripe_pi||'—'],['Pago',r.pago_estado||'pendiente']].forEach(function(p){
-      html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
-    });
-    html += '</div>';
-    // Punto info
-    html += '<div class="ad-h2" style="margin-top:12px;">Punto de entrega</div>';
+
+    function sec(title, icon){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;margin:0 -20px;background:#f1f5f9;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">'+
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+icon+'</svg>'+
+        '<span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#475569;">'+title+'</span></div>';
+    }
+    function row(label, value, idx){
+      var bg = idx % 2 === 0 ? '#fff' : '#f8fafc';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;margin:0 -20px;background:'+bg+';min-height:36px;">'+
+        '<span style="font-size:13px;color:#64748b;flex-shrink:0;margin-right:12px;">'+label+'</span>'+
+        '<span style="font-size:13px;font-weight:600;color:#1e293b;text-align:right;word-break:break-all;">'+value+'</span></div>';
+    }
+
+    // Header
+    var pagoBadge = '';
+    var pe = (r.pago_estado||'pendiente').toLowerCase();
+    if(pe==='pagada') pagoBadge = '<span style="background:#059669;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">Pagado</span>';
+    else if(pe==='parcial') pagoBadge = '<span style="background:#d97706;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">Parcial</span>';
+    else pagoBadge = '<span style="background:#dc2626;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">Pendiente</span>';
+
+    var html = '<div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);margin:-20px -20px 0;padding:24px 24px 20px;border-radius:12px 12px 0 0;">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
+        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>'+
+        '<span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-.3px;">VK-'+(r.pedido||r.id)+'</span>'+
+        pagoBadge+
+      '</div>'+
+      '<div style="font-size:13px;color:#94a3b8;">'+(r.modelo||'—')+' · '+(r.color||'—')+' · '+ADApp.money(r.monto)+'</div>'+
+    '</div>';
+
+    // Section: Cliente
+    var n = 0;
+    html += sec('Cliente','<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>');
+    html += row('Nombre', r.nombre||'—', n++);
+    html += row('Email', r.email ? '<a href="mailto:'+r.email+'" style="color:#2563eb;text-decoration:none;">'+r.email+'</a>' : '—', n++);
+    html += row('Teléfono', r.telefono||'—', n++);
+
+    // Section: Pedido
+    html += sec('Pedido','<rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/>');
+    html += row('Modelo', r.modelo||'—', n++);
+    html += row('Color', r.color||'—', n++);
+    html += row('Tipo de pago', '<span class="ad-badge blue" style="font-size:11px;">'+(r.tipo||'—')+'</span>', n++);
+    html += row('Monto', '<span style="font-size:15px;font-weight:700;">'+ADApp.money(r.monto)+'</span>', n++);
+    html += row('Fecha', r.fecha ? r.fecha.substring(0,10) : '—', n++);
+
+    // Section: Stripe
+    html += sec('Stripe','<path d="M21 4H3a2 2 0 00-2 2v12a2 2 0 002 2h18a2 2 0 002-2V6a2 2 0 00-2-2z"/><path d="M1 10h22"/>');
+    var piVal = r.stripe_pi
+      ? '<code style="font-size:11px;background:#f1f5f9;padding:3px 8px;border-radius:4px;color:#334155;letter-spacing:.3px;">'+r.stripe_pi+'</code>'
+      : '<span style="color:#94a3b8;">—</span>';
+    html += row('Payment Intent', piVal, n++);
+    html += row('Estado de pago', pagoBadge, n++);
+
+    // Section: Punto de entrega
+    html += sec('Punto de entrega','<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>');
     if(isPending){
-      html += '<span class="ad-badge yellow">Pendiente de asignar punto</span>';
-      html += '<div style="font-size:12px;color:var(--ad-dim);margin-top:4px;">El cliente seleccionó "Centro Voltika cercano". Asignar manualmente.</div>';
+      html += '<div style="padding:12px 16px;margin:0 -20px;background:#fffbeb;">'+
+        '<span style="display:inline-block;background:#fbbf24;color:#92400e;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;">Pendiente de asignar</span>'+
+        '<div style="font-size:12px;color:#92400e;margin-top:6px;">El cliente seleccionó "Centro Voltika cercano". Asignar manualmente.</div>'+
+      '</div>';
     } else if(r.punto_nombre){
-      html += '<span class="ad-badge green">'+r.punto_nombre+'</span>';
+      html += row('Punto', '<span style="color:#059669;font-weight:700;">'+r.punto_nombre+'</span>', n++);
     } else {
-      html += '<span class="ad-badge red">Sin punto seleccionado</span>';
+      html += '<div style="padding:12px 16px;margin:0 -20px;background:#fef2f2;">'+
+        '<span style="display:inline-block;background:#fecaca;color:#991b1b;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;">Sin punto seleccionado</span>'+
+      '</div>';
     }
-    // Moto info
-    html += '<div class="ad-h2" style="margin-top:12px;">Moto asignada</div>';
+
+    // Section: Moto asignada
+    html += sec('Moto asignada','<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/>');
     if(r.moto_id){
-      html += '<span class="ad-badge green">'+(r.moto_vin||'VIN ****')+'</span> · '+ADApp.badgeEstado(r.moto_estado||'—');
+      html += '<div style="padding:12px 16px;margin:0 -20px;background:#f0fdf4;">'+
+        '<span style="display:inline-block;background:#059669;color:#fff;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;margin-right:8px;">'+(r.moto_vin||'VIN ****')+'</span>'+
+        ADApp.badgeEstado(r.moto_estado||'—')+
+      '</div>';
     } else {
-      html += '<span class="ad-badge red">Sin moto asignada</span>';
+      html += '<div style="padding:12px 16px;margin:0 -20px;background:#fef2f2;">'+
+        '<span style="display:inline-block;background:#fecaca;color:#991b1b;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;">Sin moto asignada</span>'+
+      '</div>';
     }
+
     ADApp.modal(html);
   }
 
