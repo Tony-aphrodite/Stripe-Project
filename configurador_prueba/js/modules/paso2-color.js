@@ -74,25 +74,30 @@ var Paso2 = {
             '<img src="' + img + '" alt="' + modelo.nombre + ' ' + colorActual + '">' +
             '</div>';
 
+        // ETA date for out-of-stock colors (~2 months)
+        var _etaDate = new Date(); _etaDate.setMonth(_etaDate.getMonth() + 2);
+        var _meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        var _etaStr = _etaDate.getDate() + ' de ' + _meses[_etaDate.getMonth()];
+
         html += '<div class="vk-color-picker">';
         for (var i = 0; i < modelo.colores.length; i++) {
             var c = modelo.colores[i];
-            var stock = invMap[c.id] || 0;
-            var isAvailable = stock > 0;
             var activeCls = c.id === colorActual ? ' vk-color-swatch--active' : '';
-            var stockLabel = isAvailable
-                ? '<span style="color:#2e7d32;font-weight:600;">' + stock + ' disponible' + (stock > 1 ? 's' : '') + '</span>'
-                : '<span style="color:#b91c1c;font-weight:600;">Agotado</span>';
 
             html += '<div class="vk-color-swatch' + activeCls + '" data-color="' + c.id + '">' +
                 '<div class="vk-color-swatch__circle" style="background:' + c.hex + ';"></div>' +
                 '<div class="vk-color-swatch__label">' + c.nombre + '</div>' +
-                '<div style="font-size:11px;margin-top:2px;">' + stockLabel + '</div>' +
                 '</div>';
         }
         html += '</div>';
 
-        html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:6px 0 16px;">' +
+        // Stock info for selected color (single shared line below picker)
+        var selStock = invMap[colorActual] || 0;
+        var stockInfoHtml = selStock > 0
+            ? '<span style="color:#2e7d32;">&#10003; ' + selStock + ' disponible' + (selStock > 1 ? 's' : '') + '</span>'
+            : '<span style="color:#9A3412;">Entrega antes del <strong>' + _etaStr + '</strong></span>';
+        html += '<div id="vk-stock-info" style="font-size:13px;font-weight:600;text-align:center;margin:6px 0 4px;">' + stockInfoHtml + '</div>';
+        html += '<p style="font-size:11px;color:var(--vk-text-muted);text-align:center;margin:0 0 16px;">' +
             'Colores sujetos a inventario' +
             '</p>';
 
@@ -123,9 +128,6 @@ var Paso2 = {
         html += '</div>';
 
         // Out-of-stock notice (hidden by default, shown via JS)
-        var _etaDate = new Date(); _etaDate.setMonth(_etaDate.getMonth() + 2);
-        var _meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-        var _etaStr = _etaDate.getDate() + ' de ' + _meses[_etaDate.getMonth()];
         html += '<div id="vk-stock-notice" style="display:none;margin:0 20px 12px;padding:12px 14px;border-radius:10px;background:#FFF7ED;border:1px solid #FDBA74;font-size:13px;color:#9A3412;">' +
             'Entrega antes del <strong>' + _etaStr + '</strong>' +
             '</div>';
@@ -172,6 +174,14 @@ var Paso2 = {
                 var stock = (self._invMap || {})[color] || 0;
                 self.app.state._invColorTotal = stock;
                 self.app.state._invColorEnStock = stock > 0;
+
+                // Update stock info line below picker
+                var _d = new Date(); _d.setMonth(_d.getMonth() + 2);
+                var _m = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+                var infoHtml = stock > 0
+                    ? '<span style="color:#2e7d32;">&#10003; ' + stock + ' disponible' + (stock > 1 ? 's' : '') + '</span>'
+                    : '<span style="color:#9A3412;">Entrega antes del <strong>' + _d.getDate() + ' de ' + _m[_d.getMonth()] + '</strong></span>';
+                jQuery('#vk-stock-info').html(infoHtml);
 
                 // Toggle out-of-stock notice
                 if (stock > 0) {
