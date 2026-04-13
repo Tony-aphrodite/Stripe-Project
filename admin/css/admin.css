@@ -345,6 +345,7 @@ html,body{
   transition:all .2s ease;
 }
 .ad-modal-close:hover{background:#fee2e2;color:var(--ad-danger)}
+.adPD-error{text-align:center;padding:40px 20px;}
 
 /* ══════════════════════════════════════════════════════════════════════════
    CARD
