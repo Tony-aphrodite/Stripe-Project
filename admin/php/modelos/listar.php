@@ -34,6 +34,19 @@ try {
     error_log('modelos/listar: ' . $e->getMessage());
 }
 
+// Auto-populate from inventory if modelos table is empty
+if (empty($rows)) {
+    try {
+        $distinct = $pdo->query("SELECT DISTINCT modelo FROM inventario_motos WHERE modelo IS NOT NULL AND modelo != '' ORDER BY modelo")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($distinct as $nombre) {
+            $pdo->prepare("INSERT IGNORE INTO modelos (nombre) VALUES (?)")->execute([$nombre]);
+        }
+        if (!empty($distinct)) {
+            $rows = $pdo->query("SELECT * FROM modelos ORDER BY activo DESC, nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
+        }
+    } catch (Throwable $e) {}
+}
+
 // Also get inventory count per model
 $stock = [];
 try {

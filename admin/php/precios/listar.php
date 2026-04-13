@@ -45,4 +45,18 @@ try {
     $modelos = $pdo->query("SELECT id, nombre FROM modelos WHERE activo=1 ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {}
 
+// Fallback: if modelos table is empty, auto-populate from existing inventory
+if (empty($modelos)) {
+    try {
+        $distinct = $pdo->query("SELECT DISTINCT modelo FROM inventario_motos WHERE modelo IS NOT NULL AND modelo != '' ORDER BY modelo")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($distinct as $nombre) {
+            $ins = $pdo->prepare("INSERT IGNORE INTO modelos (nombre) VALUES (?)");
+            $ins->execute([$nombre]);
+        }
+        if (!empty($distinct)) {
+            $modelos = $pdo->query("SELECT id, nombre FROM modelos WHERE activo=1 ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+        }
+    } catch (Throwable $e) {}
+}
+
 adminJsonOut(['ok' => true, 'precios' => $rows, 'modelos' => $modelos]);
