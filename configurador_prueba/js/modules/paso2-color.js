@@ -40,16 +40,7 @@ var Paso2 = {
         if (!modelo) return;
 
         var colorActual = state.colorSeleccionado || modelo.colorDefault;
-        // If selected color is out of stock, auto-select first available
         var invMap = this._invMap || {};
-        if (!invMap[colorActual]) {
-            for (var ci = 0; ci < modelo.colores.length; ci++) {
-                if (invMap[modelo.colores[ci].id] > 0) {
-                    colorActual = modelo.colores[ci].id;
-                    break;
-                }
-            }
-        }
         state.colorSeleccionado = colorActual;
 
         var img = VkUI.getImagenMoto(modelo.id, colorActual);
@@ -89,14 +80,12 @@ var Paso2 = {
             var stock = invMap[c.id] || 0;
             var isAvailable = stock > 0;
             var activeCls = c.id === colorActual ? ' vk-color-swatch--active' : '';
-            var disabledCls = !isAvailable ? ' vk-color-swatch--disabled' : '';
-            var opacity = !isAvailable ? 'opacity:.45;pointer-events:none;' : '';
             var stockLabel = isAvailable
                 ? '<span style="color:#2e7d32;font-weight:600;">' + stock + ' disponible' + (stock > 1 ? 's' : '') + '</span>'
                 : '<span style="color:#b91c1c;font-weight:600;">Agotado</span>';
 
-            html += '<div class="vk-color-swatch' + activeCls + disabledCls + '" data-color="' + c.id + '" style="' + opacity + '">' +
-                '<div class="vk-color-swatch__circle" style="background:' + c.hex + ';' + (!isAvailable ? 'filter:grayscale(.7);' : '') + '"></div>' +
+            html += '<div class="vk-color-swatch' + activeCls + '" data-color="' + c.id + '">' +
+                '<div class="vk-color-swatch__circle" style="background:' + c.hex + ';"></div>' +
                 '<div class="vk-color-swatch__label">' + c.nombre + '</div>' +
                 '<div style="font-size:11px;margin-top:2px;">' + stockLabel + '</div>' +
                 '</div>';
@@ -133,12 +122,12 @@ var Paso2 = {
         html += '</div>';
         html += '</div>';
 
-        var selectedStock = invMap[colorActual] || 0;
-        if (selectedStock > 0) {
-            html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">' + btnTexto + '</button>';
-        } else {
-            html += '<button class="vk-btn vk-btn--primary" disabled style="opacity:.5;cursor:not-allowed;">Sin disponibilidad</button>';
-        }
+        // Out-of-stock notice (hidden by default, shown via JS)
+        html += '<div id="vk-stock-notice" style="display:none;margin:0 20px 12px;padding:12px 14px;border-radius:10px;background:#FFF7ED;border:1px solid #FDBA74;font-size:13px;color:#9A3412;">' +
+            '<strong>&#9888; Alta demanda</strong> — Este color no está disponible de momento. ' +
+            'Puedes continuar y recibirás tu moto en aproximadamente <strong>~2 meses</strong>.' +
+            '</div>';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">' + btnTexto + '</button>';
 
         html += '<p class="vk-card__footer-note">' +
             'Solo falta confirmar tu <strong>punto de entrega.</strong>' +
@@ -154,12 +143,13 @@ var Paso2 = {
 
         jQuery('#vk-color-container').html(html);
 
+        // Show/hide stock notice for initial color
+        var initStock = invMap[colorActual] || 0;
+        if (initStock <= 0) jQuery('#vk-stock-notice').show();
+
         // Attach color click handlers directly to elements (avoids delegation conflicts)
         jQuery('#vk-paso-2 .vk-color-swatch').each(function() {
             this.addEventListener('click', function() {
-                // Skip disabled (out-of-stock) swatches
-                if (this.classList.contains('vk-color-swatch--disabled')) return;
-
                 var color = this.getAttribute('data-color');
                 self.app.state.colorSeleccionado = color;
 
@@ -180,6 +170,13 @@ var Paso2 = {
                 var stock = (self._invMap || {})[color] || 0;
                 self.app.state._invColorTotal = stock;
                 self.app.state._invColorEnStock = stock > 0;
+
+                // Toggle out-of-stock notice
+                if (stock > 0) {
+                    jQuery('#vk-stock-notice').slideUp(150);
+                } else {
+                    jQuery('#vk-stock-notice').slideDown(150);
+                }
             });
         });
     },

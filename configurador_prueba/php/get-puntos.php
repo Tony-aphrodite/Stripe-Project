@@ -21,8 +21,24 @@ try {
         ORDER BY FIELD(tipo, 'center', 'certificado', 'entrega'), nombre
     ")->fetchAll(PDO::FETCH_ASSOC);
 
+    // Estado normalization for consistent matching with configurador JS
+    $estadoNorm = [
+        'Ciudad de México' => 'CDMX', 'Ciudad de Mexico' => 'CDMX',
+        'Distrito Federal' => 'CDMX', 'D.F.' => 'CDMX', 'DF' => 'CDMX',
+        'Estado de México' => 'México', 'Estado de Mexico' => 'México',
+    ];
+
     $puntos = [];
     foreach ($rows as $r) {
+        $est = trim($r['estado'] ?? '');
+        // If estado is empty, try to infer from ciudad
+        if (!$est) {
+            $c = trim($r['ciudad'] ?? '');
+            if (stripos($c, 'CDMX') !== false || stripos($c, 'Ciudad de M') !== false) $est = 'CDMX';
+        }
+        // Normalize estado
+        if (isset($estadoNorm[$est])) $est = $estadoNorm[$est];
+
         $puntos[] = [
             'id'          => $r['slug'] ?: ('punto-' . $r['id']),
             'db_id'       => (int)$r['id'],
@@ -30,9 +46,9 @@ try {
             'tipo'        => $r['tipo'] ?: 'entrega',
             'direccion'   => $r['direccion'] ?: '',
             'colonia'     => $r['colonia'] ?: '',
-            'ubicacion'   => trim(($r['ciudad'] ?: '') . ' – ' . ($r['estado'] ?: ''), ' –'),
+            'ubicacion'   => trim(($r['ciudad'] ?: '') . ' – ' . ($est ?: ''), ' –'),
             'ciudad'      => $r['ciudad'] ?: '',
-            'estado'      => $r['estado'] ?: '',
+            'estado'      => $est,
             'cp'          => $r['cp'] ?: '',
             'telefono'    => $r['telefono'] ?: '',
             'email'       => $r['email'] ?: '',
