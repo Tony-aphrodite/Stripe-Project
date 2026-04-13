@@ -48,8 +48,13 @@ html,body{
   display:flex;flex-direction:column;
   position:fixed;top:0;left:0;bottom:0;z-index:10;
   box-shadow:6px 0 30px rgba(10,30,61,.25);
-  overflow-y:auto;
+  overflow-y:auto;scrollbar-width:thin;scrollbar-color:transparent transparent;
 }
+.ad-sidebar:hover{scrollbar-color:rgba(255,255,255,.15) transparent}
+.ad-sidebar::-webkit-scrollbar{width:5px}
+.ad-sidebar::-webkit-scrollbar-track{background:transparent}
+.ad-sidebar::-webkit-scrollbar-thumb{background:transparent;border-radius:3px}
+.ad-sidebar:hover::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15)}
 .ad-logo{
   margin-bottom:32px;padding:0 10px;
   display:flex;align-items:center;min-height:40px;
@@ -153,7 +158,13 @@ html,body{
 /* ══════════════════════════════════════════════════════════════════════════
    MAIN CONTENT
    ══════════════════════════════════════════════════════════════════════════ */
-.ad-main{flex:1;margin-left:260px;padding:28px 32px;min-width:0}
+.ad-main{flex:1;margin-left:260px;padding:28px 32px;min-width:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:transparent transparent}
+.ad-main:hover{scrollbar-color:rgba(12,35,64,.2) transparent}
+.ad-main::-webkit-scrollbar{width:6px}
+.ad-main::-webkit-scrollbar-track{background:transparent}
+.ad-main::-webkit-scrollbar-thumb{background:transparent;border-radius:3px;transition:background .3s}
+.ad-main:hover::-webkit-scrollbar-thumb{background:rgba(12,35,64,.2)}
+.ad-main::-webkit-scrollbar-thumb:hover{background:rgba(12,35,64,.35)}
 .ad-sidebar[style*="display: none"] + .ad-main,
 .ad-sidebar[style*="display:none"] + .ad-main{margin-left:0}
 
@@ -171,7 +182,7 @@ html,body{
    ══════════════════════════════════════════════════════════════════════════ */
 .ad-kpis{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
   gap:16px;margin-bottom:24px;
 }
 .ad-kpi{
@@ -188,9 +199,9 @@ html,body{
 .ad-kpi .label{
   font-size:11px;color:rgba(255,255,255,.7);
   text-transform:uppercase;letter-spacing:.8px;
-  font-weight:700;margin-bottom:8px;
+  font-weight:700;margin-bottom:8px;text-align:center;
 }
-.ad-kpi .value{font-size:clamp(18px,4vw,30px);font-weight:800;color:#fff;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-kpi .value{font-size:clamp(16px,2.5vw,26px);font-weight:800;color:#fff;line-height:1.1;white-space:nowrap;text-align:center}
 .ad-kpi .value.green{color:#fff}
 .ad-kpi .value.red{color:#fff}
 .ad-kpi .value.yellow{color:#fff}
@@ -253,7 +264,7 @@ html,body{
 .ad-btn{
   border:0;border-radius:var(--ad-radius-sm);
   padding:11px 22px;font-size:13px;font-weight:700;
-  cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;
   transition:all .25s ease;font-family:inherit;letter-spacing:.1px;
 }
 .ad-btn.primary{
