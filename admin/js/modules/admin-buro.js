@@ -1,7 +1,10 @@
 window.AD_buro = (function(){
 
+  var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
+
   function render(){
     ADApp.render(
+      _backBtn+
       '<div class="ad-toolbar">'+
         '<div class="ad-h1">Consultas Buro de Credito</div>'+
         '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'+

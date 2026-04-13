@@ -1,5 +1,6 @@
 window.AD_pagos = (function(){
   var filtro = {};
+  var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
   function render(){
     ADApp.render('<div class="ad-h1">Pagos y Órdenes</div><div><span class="ad-spin"></span></div>');
     load();
@@ -9,7 +10,7 @@ window.AD_pagos = (function(){
   }
   function paint(r){
     var ro=r.resumen_ordenes||{}, rc=r.resumen_credito||{};
-    var html = '<div class="ad-toolbar"><div class="ad-h1">Pagos y Órdenes</div></div>';
+    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Pagos y Órdenes</div></div>';
     html += '<div class="ad-kpis">';
     html += '<div class="ad-kpi"><div class="label">Total órdenes</div><div class="value blue">'+(ro.total_ordenes||0)+'</div></div>';
     html += '<div class="ad-kpi"><div class="label">Ingresos ordenes</div><div class="value green">'+ADApp.money(ro.total_ingresos)+'</div></div>';

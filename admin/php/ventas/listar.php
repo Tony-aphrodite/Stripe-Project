@@ -203,6 +203,8 @@ $total      = count($rows);
 $asignadas  = count(array_filter($rows, fn($r) => $r['moto_id'] !== null));
 $sinAsignar = $total - $asignadas;
 $orfanos    = count(array_filter($rows, fn($r) => ($r['source'] ?? '') !== ''));
+$conPago    = count(array_filter($rows, fn($r) => ($r['pago_estado'] ?? '') === 'pagada'));
+$sinPago    = count(array_filter($rows, fn($r) => in_array($r['pago_estado'] ?? '', ['pendiente', 'parcial', 'error', 'orfano'], true)));
 
 adminJsonOut([
     'ok'    => true,
@@ -211,5 +213,7 @@ adminJsonOut([
     'asignadas'   => $asignadas,
     'sin_asignar' => $sinAsignar,
     'orfanos'     => $orfanos,
+    'con_pago'    => $conPago,
+    'sin_pago'    => $sinPago,
     'generated_at'=> date('c'),
 ]);

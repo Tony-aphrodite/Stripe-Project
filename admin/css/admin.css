@@ -332,6 +332,15 @@ html,body{
    TOOLBAR / ROW / BANNER
    ══════════════════════════════════════════════════════════════════════════ */
 .ad-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+.ad-back{
+  display:inline-flex;align-items:center;gap:6px;
+  background:none;border:none;color:var(--ad-primary);
+  font-size:13px;font-weight:600;cursor:pointer;
+  padding:6px 10px;border-radius:var(--ad-radius-sm);
+  transition:background .2s,color .2s;
+}
+.ad-back:hover{background:var(--ad-primary-soft);color:var(--ad-primary-2)}
+.ad-back svg{width:18px;height:18px}
 .ad-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--ad-border)}
 .ad-row:last-child{border-bottom:0}
 .ad-row .k{color:var(--ad-dim);font-size:13px;font-weight:600}

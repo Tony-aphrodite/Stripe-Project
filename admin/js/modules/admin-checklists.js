@@ -90,6 +90,7 @@ window.AD_checklists = (function(){
 
   // ── Main list render ─────────────────────────────────────────────────────
   var currentFilter = '';
+  var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
 
   function render(){
     ADApp.render('<div class="ad-h1">Checklists</div><div><span class="ad-spin"></span> Cargando...</div>');
@@ -102,7 +103,7 @@ window.AD_checklists = (function(){
 
   function paint(r){
     var s = r.resumen||{};
-    var html = '<div class="ad-toolbar"><div class="ad-h1">Checklists</div></div>';
+    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Checklists</div></div>';
 
     // KPIs
     html += '<div class="ad-kpis">';

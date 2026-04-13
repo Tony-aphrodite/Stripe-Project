@@ -1,5 +1,6 @@
 window.AD_inventario = (function(){
   var filters = {};
+  var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
   function render(){
     ADApp.render('<div class="ad-h1">Inventario</div><div><span class="ad-spin"></span> Cargando...</div>');
     load();
@@ -8,7 +9,7 @@ window.AD_inventario = (function(){
     ADApp.api('inventario/listar.php?' + $.param(filters)).done(paint);
   }
   function paint(r){
-    var html = '<div class="ad-toolbar"><div class="ad-h1">Inventario</div>';
+    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Inventario</div>';
     if(ADApp.isAdmin()){
       html += '<div style="display:flex;gap:6px">'+
         '<button class="ad-btn primary" id="adNewMoto">+ Nueva moto</button>'+

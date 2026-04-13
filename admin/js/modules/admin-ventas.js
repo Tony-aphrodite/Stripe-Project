@@ -1,7 +1,10 @@
 window.AD_ventas = (function(){
 
+  var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
+
   function render(){
     ADApp.render(
+      _backBtn+
       '<div class="ad-toolbar" style="display:flex;align-items:center;justify-content:space-between;">'+
         '<div class="ad-h1">Ventas / Ordenes</div>'+
         '<div style="display:flex;align-items:center;gap:10px;">'+
@@ -36,6 +39,8 @@ window.AD_ventas = (function(){
         kpi('Total ordenes', r.total, 'blue')+
         kpi('Moto asignada', r.asignadas, 'green')+
         kpi('Sin asignar', r.sin_asignar, r.sin_asignar > 0 ? 'red' : 'green')+
+        kpi('Ventas con Pago', r.con_pago||0, 'green')+
+        kpi('Ventas sin Pago', r.sin_pago||0, (r.sin_pago||0) > 0 ? 'red' : 'green')+
         kpi('Punto pendiente', pendingPunto, pendingPunto > 0 ? 'yellow' : 'green')+
         kpi('Huérfanos/errores', orfanos, orfanos > 0 ? 'red' : 'green')
       );
@@ -50,7 +55,7 @@ window.AD_ventas = (function(){
 
       var html = '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
         '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Color</th>'+
-        '<th>Tipo</th><th>Monto</th><th>Punto</th><th>Fecha</th><th>Moto asignada</th><th>Accion</th>'+
+        '<th>Tipo</th><th>Monto</th><th>Estatus de Pago</th><th>Punto</th><th>Fecha</th><th>Moto asignada</th><th>Accion</th>'+
         '</tr></thead><tbody>';
 
       rows.forEach(function(r){
@@ -81,6 +86,7 @@ window.AD_ventas = (function(){
           '<td>'+(r.color||'-')+'</td>'+
           '<td><span class="ad-badge '+tipoBadge+'">'+(r.tipo||'-')+'</span></td>'+
           '<td>'+ADApp.money(r.monto)+'</td>'+
+          '<td>'+pagoEstadoBadge(r.pago_estado, r.tipo)+'</td>'+
           '<td>'+puntoHtml+'</td>'+
           '<td>'+(r.fecha?r.fecha.substring(0,10):'-')+'</td>';
 
@@ -222,6 +228,31 @@ window.AD_ventas = (function(){
     return '<div class="ad-kpi"><div class="label">'+label+'</div><div class="value '+color+'">'+value+'</div></div>';
   }
 
+  function pagoEstadoBadge(estado, tipo){
+    estado = (estado||'pendiente').toLowerCase();
+    var tipoLabel = (tipo||'').toLowerCase();
+    // Map payment method labels
+    var metodo = '';
+    if(['contado','stripe','tarjeta'].indexOf(tipoLabel)>=0) metodo = 'Tarjeta';
+    else if(tipoLabel==='spei') metodo = 'SPEI';
+    else if(tipoLabel==='oxxo') metodo = 'OXXO';
+    else if(['credito','credito-orfano','enganche'].indexOf(tipoLabel)>=0) metodo = 'Crédito';
+    else if(tipoLabel==='msi') metodo = 'MSI';
+
+    if(estado==='pagada'){
+      var label = metodo ? 'Pagado · '+metodo : 'Pagado';
+      return '<span class="ad-badge green" style="font-size:11px;">'+label+'</span>';
+    } else if(estado==='parcial'){
+      var label2 = metodo ? 'Enganche · '+metodo : 'Parcial';
+      return '<span class="ad-badge yellow" style="font-size:11px;">'+label2+'</span>';
+    } else if(estado==='orfano' || estado==='error'){
+      return '<span class="ad-badge red" style="font-size:11px;">'+capitalize(estado)+'</span>';
+    } else {
+      var label3 = metodo ? 'Pendiente · '+metodo : 'Pendiente';
+      return '<span class="ad-badge red" style="font-size:11px;">'+label3+'</span>';
+    }
+  }
+
   function showDetalle(transId){
     var rows = _lastRows || [];
     var r = null;
@@ -263,6 +294,7 @@ window.AD_ventas = (function(){
   function esc(s){
     return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
   }
+  function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : ''; }
 
   // Recuperar — promueve una orden huérfana (transacciones_errores) o
   // reconstruye desde Stripe PI a la tabla `transacciones`.
