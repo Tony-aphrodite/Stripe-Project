@@ -8,13 +8,13 @@ window.AD_dashboard = (function(){
       {label:'Ventas hoy', value:k.ventas_hoy, cls:'green'},
       {label:'Ventas semana', value:k.ventas_semana, cls:'green'},
       {label:'Cobrado hoy', value:ADApp.money(k.cobrado_hoy), cls:'green'},
-      {label:'Flujo esperado', value:ADApp.money(k.flujo_esperado), cls:'blue'},
+      {label:'Ingresos esperados esta semana', value:ADApp.money(k.flujo_esperado), cls:'blue'},
       {label:'Cartera al corriente', value:k.cartera_corriente, cls:'green'},
       {label:'Cartera vencida', value:k.cartera_vencida, cls:k.cartera_vencida>0?'red':'green'},
       {label:'Inventario disponible', value:k.inventario_disponible, cls:'blue'},
-      {label:'Unidades apartadas', value:k.unidades_apartadas, cls:'yellow'},
-      {label:'En tránsito', value:k.en_transito, cls:'blue'},
-      {label:'Entregas pendientes', value:k.entregas_pendientes, cls:'yellow'},
+      {label:'Apartadas por pago', value:k.unidades_apartadas, cls:'yellow'},
+      {label:'Pendientes de envío', value:k.en_transito, cls:'yellow'},
+      {label:'Pendientes de entrega a clientes', value:k.pendientes_entrega_clientes, cls:'yellow'},
     ];
     var html = '<div class="ad-h1">Dashboard</div><div class="ad-kpis">';
     kpis.forEach(function(kpi){
@@ -30,7 +30,8 @@ window.AD_dashboard = (function(){
       {img:'iconos-02.svg',label:'Inventario',route:'inventario',bg:'linear-gradient(135deg,#dcfce7,#fff)'},
       {img:'entrega.png',label:'Envíos',route:'envios',bg:'linear-gradient(135deg,#fef3c7,#fff)'},
       {img:'garantia.png',label:'Pagos',route:'pagos',bg:'linear-gradient(135deg,#e0e7ff,#fff)'},
-      {img:'asesor_icon.jpg',label:'Puntos',route:'puntos',bg:'linear-gradient(135deg,#fce7f3,#fff)'}
+      {img:'asesor_icon.jpg',label:'Puntos',route:'puntos',bg:'linear-gradient(135deg,#fce7f3,#fff)'},
+      {img:'entrega.png',label:'Entregas',route:'envios',bg:'linear-gradient(135deg,#dcfce7,#e0fdf0)'}
     ];
     actions.forEach(function(a){
       html += '<div class="ad-card" style="cursor:pointer;text-align:center;padding:28px 16px;background:'+a.bg+';border:1.5px solid var(--ad-border);" onclick="ADApp.go(\''+a.route+'\')" onmouseover="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 30px rgba(12,35,64,.12)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'\'">';

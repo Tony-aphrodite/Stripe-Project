@@ -106,7 +106,7 @@ window.AD_checklists = (function(){
 
     // KPIs
     html += '<div class="ad-kpis">';
-    [{l:'Total motos',v:s.total},{l:'Con origen',v:s.con_origen,c:'blue'},
+    [{l:'Total motos',v:s.total,c:'blue'},{l:'Con origen',v:s.con_origen,c:'blue'},
      {l:'Con ensamble',v:s.con_ensamble,c:'yellow'},{l:'Con entrega',v:s.con_entrega,c:'green'},
      {l:'Completos',v:s.completos,c:'green'}].forEach(function(k){
       html += '<div class="ad-kpi"><div class="label">'+k.l+'</div><div class="value '+(k.c||'')+'">'+Number(k.v||0)+'</div></div>';

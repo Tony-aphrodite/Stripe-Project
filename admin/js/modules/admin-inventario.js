@@ -19,7 +19,7 @@ window.AD_inventario = (function(){
     // Summary
     var s = r.resumen||{};
     html += '<div class="ad-kpis">';
-    [{l:'Total',v:s.total},{l:'Disponible',v:s.disponible,c:'green'},{l:'Reservado',v:s.reservado,c:'yellow'},
+    [{l:'Total',v:s.total,c:'blue'},{l:'Disponible',v:s.disponible,c:'green'},{l:'Reservado',v:s.reservado,c:'yellow'},
      {l:'Entregado',v:s.entregado,c:'green'},{l:'En tránsito',v:s.en_transito,c:'blue'},
      {l:'En ensamble',v:s.en_ensamble,c:'yellow'},{l:'Bloqueado',v:s.bloqueado,c:'red'}].forEach(function(k){
       html += '<div class="ad-kpi"><div class="label">'+k.l+'</div><div class="value '+(k.c||'')+'">'+Number(k.v||0)+'</div></div>';

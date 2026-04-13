@@ -51,39 +51,16 @@ $cuerpo = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="
 </table></td></tr></table></body></html>';
 
 $mailSent = false;
-$mailDebug = '';
 try {
     $mailSent = sendMail($user['email'], $user['nombre'], 'Voltika — Código de recuperación', $cuerpo);
-    $mailDebug = $mailSent ? 'sendMail returned true' : 'sendMail returned false';
 } catch (Throwable $e) {
-    $mailDebug = 'Exception: ' . $e->getMessage();
     error_log('recovery-request email error: ' . $e->getMessage());
 }
 
-// Check PHPMailer availability
-$autoloadPath = realpath(__DIR__ . '/../../..' . '/configurador_prueba/php/vendor/autoload.php');
-$hasAutoload = file_exists(__DIR__ . '/../../../configurador_prueba/php/vendor/autoload.php');
-$hasClass = class_exists('PHPMailer\PHPMailer\PHPMailer');
-
-adminLog('recovery_request', [
-    'email' => $email,
-    'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
-    'mail_sent' => $mailSent,
-    'debug' => $mailDebug
-]);
+adminLog('recovery_request', ['email' => $email, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '', 'mail_sent' => $mailSent]);
 
 if (!$mailSent) {
-    adminJsonOut([
-        'error' => 'No se pudo enviar el correo. Debug: ' . $mailDebug,
-        'debug' => [
-            'vendor_autoload_exists' => $hasAutoload,
-            'phpmailer_class_exists' => $hasClass,
-            'smtp_host' => SMTP_HOST,
-            'smtp_port' => SMTP_PORT,
-            'smtp_user' => SMTP_USER,
-            'to' => $user['email'],
-        ]
-    ], 500);
+    adminJsonOut(['error' => 'No se pudo enviar el correo. Intenta de nuevo o contacta al administrador.'], 500);
 }
 
 adminJsonOut(['ok' => true, 'message' => 'Código enviado correctamente.']);

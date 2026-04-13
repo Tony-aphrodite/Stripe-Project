@@ -11,7 +11,7 @@ window.AD_pagos = (function(){
     var ro=r.resumen_ordenes||{}, rc=r.resumen_credito||{};
     var html = '<div class="ad-toolbar"><div class="ad-h1">Pagos y Órdenes</div></div>';
     html += '<div class="ad-kpis">';
-    html += '<div class="ad-kpi"><div class="label">Total órdenes</div><div class="value">'+(ro.total_ordenes||0)+'</div></div>';
+    html += '<div class="ad-kpi"><div class="label">Total órdenes</div><div class="value blue">'+(ro.total_ordenes||0)+'</div></div>';
     html += '<div class="ad-kpi"><div class="label">Ingresos ordenes</div><div class="value green">'+ADApp.money(ro.total_ingresos)+'</div></div>';
     html += '<div class="ad-kpi"><div class="label">Créditos activos</div><div class="value blue">'+(rc.total_creditos||0)+'</div></div>';
     html += '<div class="ad-kpi"><div class="label">Monto financiado</div><div class="value blue">'+ADApp.money(rc.total_credito_monto)+'</div></div>';

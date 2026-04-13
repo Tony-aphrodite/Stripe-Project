@@ -30,6 +30,7 @@ window.ADApp = (function(){
     $('#adModalClose').on('click', closeModal);
     $('#adModal').on('click', function(e) { if (e.target === this) closeModal(); });
     $('.ad-hamburger').on('click', function() { $('.ad-nav').toggleClass('open'); });
+    $('.ad-logo').on('click', function() { go('dashboard'); }).css('cursor','pointer');
     $('.ad-nav').on('click', 'button', function() { $('.ad-nav').removeClass('open'); go($(this).data('route')); });
     $('#adLogout').on('click', function() {
       api('auth/logout.php', {}).always(function() { state.user = null; $sidebar.hide(); AD_login.render(); });

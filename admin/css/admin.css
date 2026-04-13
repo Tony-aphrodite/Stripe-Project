@@ -127,7 +127,7 @@ html,body{
   gap:16px;margin-bottom:24px;
 }
 .ad-kpi{
-  background:var(--ad-surface);
+  background:var(--ad-navy);
   border:none;
   border-radius:var(--ad-radius);
   padding:22px 20px;
@@ -135,27 +135,23 @@ html,body{
   transition:all .25s ease;
   position:relative;overflow:hidden;
 }
-.ad-kpi::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:4px;
-  background:var(--ad-border);border-radius:var(--ad-radius) var(--ad-radius) 0 0;
-  transition:background .25s ease;
-}
+.ad-kpi::before{display:none}
 .ad-kpi:hover{transform:translateY(-3px);box-shadow:var(--ad-shadow-lg)}
 .ad-kpi .label{
-  font-size:11px;color:var(--ad-dim);
+  font-size:11px;color:rgba(255,255,255,.7);
   text-transform:uppercase;letter-spacing:.8px;
   font-weight:700;margin-bottom:8px;
 }
-.ad-kpi .value{font-size:30px;font-weight:800;color:var(--ad-navy);line-height:1.1}
-.ad-kpi .value.green{color:var(--ad-success)}
-.ad-kpi .value.red{color:var(--ad-danger)}
-.ad-kpi .value.yellow{color:var(--ad-warn)}
-.ad-kpi .value.blue{color:var(--ad-primary)}
-/* Colored top stripe based on value color */
-.ad-kpi:has(.value.green)::before{background:var(--ad-success)}
-.ad-kpi:has(.value.red)::before{background:var(--ad-danger)}
-.ad-kpi:has(.value.yellow)::before{background:var(--ad-warn)}
-.ad-kpi:has(.value.blue)::before{background:var(--ad-primary)}
+.ad-kpi .value{font-size:30px;font-weight:800;color:#fff;line-height:1.1}
+.ad-kpi .value.green{color:#fff}
+.ad-kpi .value.red{color:#fff}
+.ad-kpi .value.yellow{color:#fff}
+.ad-kpi .value.blue{color:#fff}
+/* Solid color backgrounds */
+.ad-kpi:has(.value.green){background:var(--ad-success)}
+.ad-kpi:has(.value.red){background:var(--ad-danger)}
+.ad-kpi:has(.value.yellow){background:var(--ad-warn)}
+.ad-kpi:has(.value.blue){background:var(--ad-primary)}
 
 /* ══════════════════════════════════════════════════════════════════════════
    TABLE — Clean with rounded wrapper
@@ -451,8 +447,9 @@ html,body{
   .ad-nav.open ~ .ad-logout{display:block}
   .ad-main{margin-left:0;padding:16px}
   .ad-kpis{grid-template-columns:repeat(2,1fr);gap:10px}
-  .ad-kpi{padding:16px}
-  .ad-kpi .value{font-size:24px}
+  .ad-kpi{padding:14px 12px}
+  .ad-kpi .value{font-size:22px}
+  .ad-kpi .label{font-size:10px;letter-spacing:.5px}
   .ad-table{font-size:12px;display:block;overflow-x:auto}
   .ad-h1{font-size:22px}
   .ad-toolbar{flex-direction:column;align-items:stretch}
