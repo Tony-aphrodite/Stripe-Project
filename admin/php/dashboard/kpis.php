@@ -3,7 +3,7 @@
  * GET — Real-time KPIs for dashboard top bar
  */
 require_once __DIR__ . '/../bootstrap.php';
-adminRequireAuth(['admin','cedis']);
+adminRequireAuth(['admin','cedis','operador']);
 
 $pdo = getDB();
 $today = date('Y-m-d');

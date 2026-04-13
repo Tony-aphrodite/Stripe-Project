@@ -42,6 +42,7 @@ $asset = function(string $rel): string {
       <button data-route="buro"><span><img src="../configurador_prueba/img/faceid.png" alt=""></span> Buro CDC</button>
     </div>
     <div class="ad-user" id="adUser"></div>
+    <button class="ad-change-pass" id="adChangePass">Cambiar contraseña</button>
     <button class="ad-logout" id="adLogout">Cerrar sesión</button>
   </nav>
   <main id="adMain" class="ad-main">

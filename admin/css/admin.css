@@ -85,12 +85,19 @@ html,body{
   border-top:1px solid rgba(255,255,255,.06);
   margin-top:16px;line-height:1.6;
 }
+.ad-change-pass{
+  background:none;border:none;
+  color:rgba(255,255,255,.5);
+  padding:8px;cursor:pointer;font-size:11px;font-weight:600;
+  transition:color .2s ease;width:100%;text-align:center;
+}
+.ad-change-pass:hover{color:rgba(255,255,255,.85)}
 .ad-logout{
   background:rgba(255,255,255,.05);
   border:1px solid rgba(255,255,255,.1);
   color:rgba(255,255,255,.7);
   padding:11px;border-radius:var(--ad-radius-sm);
-  cursor:pointer;font-size:12px;font-weight:600;margin-top:10px;
+  cursor:pointer;font-size:12px;font-weight:600;margin-top:4px;
   transition:all .2s ease;
 }
 .ad-logout:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#fca5a5}
@@ -438,6 +445,8 @@ html,body{
   .ad-nav.open{display:flex}
   .ad-nav button{padding:12px 16px;font-size:14px;justify-content:flex-start;border-radius:var(--ad-radius-sm)}
   .ad-user{display:none}
+  .ad-change-pass{display:none;width:100%;order:10;margin-top:4px;text-align:center}
+  .ad-nav.open ~ .ad-change-pass{display:block}
   .ad-logout{display:none;width:100%;order:11;margin-top:4px;text-align:center}
   .ad-nav.open ~ .ad-logout{display:block}
   .ad-main{margin-left:0;padding:16px}

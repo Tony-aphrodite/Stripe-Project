@@ -5,7 +5,7 @@
  * with info about whether a bike is assigned or not.
  */
 require_once __DIR__ . '/../bootstrap.php';
-adminRequireAuth(['admin','cedis']);
+adminRequireAuth(['admin','cedis','operador']);
 
 $pdo = getDB();
 

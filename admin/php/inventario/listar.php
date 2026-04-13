@@ -4,7 +4,7 @@
  * Params: ?modelo=&color=&estado=&punto_id=&vin=&page=&limit=
  */
 require_once __DIR__ . '/../bootstrap.php';
-adminRequireAuth(['admin','cedis']);
+adminRequireAuth(['admin','cedis','operador']);
 
 $pdo = getDB();
 $where = ["m.activo = 1"]; $params = [];

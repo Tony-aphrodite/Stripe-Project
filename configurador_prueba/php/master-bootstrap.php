@@ -27,7 +27,7 @@ function voltikaEnsureSchema(): void {
         password_hash VARCHAR(255) NOT NULL,
         punto_nombre  VARCHAR(200),
         punto_id      VARCHAR(100),
-        rol           ENUM('dealer','admin') DEFAULT 'dealer',
+        rol           ENUM('dealer','admin','cedis','operador') DEFAULT 'operador',
         activo        TINYINT DEFAULT 1,
         freg          DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -244,6 +244,24 @@ function voltikaEnsureSchema(): void {
         ip VARCHAR(45),
         freg DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Admin OTP for password recovery
+    $pdo->exec("CREATE TABLE IF NOT EXISTS admin_otp (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        usuario_id INT NOT NULL,
+        codigo VARCHAR(6) NOT NULL,
+        expira DATETIME NOT NULL,
+        usado TINYINT DEFAULT 0,
+        ip VARCHAR(45),
+        freg DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_usuario (usuario_id),
+        INDEX idx_expira (expira)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Expand rol ENUM on existing tables (safe migration)
+    try {
+        $pdo->exec("ALTER TABLE dealer_usuarios MODIFY COLUMN rol ENUM('dealer','admin','cedis','operador') DEFAULT 'operador'");
+    } catch (Throwable $e) {}
 
     // Ciclos de pago (shared admin + portal)
     $pdo->exec("CREATE TABLE IF NOT EXISTS ciclos_pago (

@@ -3,7 +3,7 @@
  * POST — Create or import new moto(s) into inventory
  */
 require_once __DIR__ . '/../bootstrap.php';
-$uid = adminRequireAuth(['admin','cedis']);
+$uid = adminRequireAuth(['admin']); // Only admin can add/remove inventory
 
 $d = adminJsonIn();
 $pdo = getDB();

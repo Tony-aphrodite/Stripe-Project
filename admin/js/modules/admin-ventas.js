@@ -105,21 +105,26 @@ window.AD_ventas = (function(){
           var needsEdit = isVksc && (!r.modelo || r.modelo==='-' || !r.color || r.color==='-');
           motoCell = '<span class="ad-badge yellow">'+(r.source==='transacciones_errores'?'Error':'Crédito huérfano')+'</span>';
           actions  = '';
-          if(needsEdit){
-            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#d97706;" '+
-                       'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar</button>';
+          if(ADApp.canWrite()){
+            if(needsEdit){
+              actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#d97706;" '+
+                         'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar</button>';
+            }
+            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#b91c1c;" '+
+                       'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button>';
           }
-          actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#b91c1c;" '+
-                     'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button>'+
-                     '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+          actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         } else if(asignada){
           motoCell = '<span class="ad-badge green">'+(r.moto_vin||'****')+'</span>';
           actions  = '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         } else {
           motoCell = '<span class="ad-badge red">Sin asignar</span>'+stockInfo;
-          actions  = '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
-                     'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>'+
-                     '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+          actions  = '';
+          if(ADApp.canWrite()){
+            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
+                       'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
+          }
+          actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         }
         html += '<td>'+motoCell+'</td>'+
                 '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+

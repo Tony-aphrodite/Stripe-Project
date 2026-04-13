@@ -4,7 +4,7 @@
  * Filters: ?tipo=contado|msi|credito&estado=&page=
  */
 require_once __DIR__ . '/../bootstrap.php';
-adminRequireAuth(['admin','cedis']);
+adminRequireAuth(['admin','cedis','operador']);
 
 $pdo = getDB();
 $page  = max(1, (int)($_GET['page'] ?? 1));

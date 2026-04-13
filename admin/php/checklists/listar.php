@@ -4,7 +4,7 @@
  * Optional filters: ?estado=&vin=&page=
  */
 require_once __DIR__ . '/../bootstrap.php';
-adminRequireAuth(['admin','cedis']);
+adminRequireAuth(['admin','cedis','operador']);
 
 $pdo = getDB();
 

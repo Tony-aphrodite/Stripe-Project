@@ -8,11 +8,14 @@ window.AD_inventario = (function(){
     ADApp.api('inventario/listar.php?' + $.param(filters)).done(paint);
   }
   function paint(r){
-    var html = '<div class="ad-toolbar"><div class="ad-h1">Inventario</div>'+
-      '<div style="display:flex;gap:6px">'+
-      '<button class="ad-btn primary" id="adNewMoto">+ Nueva moto</button>'+
-      '<button class="ad-btn ghost" id="adImportExcel">Importar Excel</button>'+
-      '</div></div>';
+    var html = '<div class="ad-toolbar"><div class="ad-h1">Inventario</div>';
+    if(ADApp.isAdmin()){
+      html += '<div style="display:flex;gap:6px">'+
+        '<button class="ad-btn primary" id="adNewMoto">+ Nueva moto</button>'+
+        '<button class="ad-btn ghost" id="adImportExcel">Importar Excel</button>'+
+        '</div>';
+    }
+    html += '</div>';
     // Summary
     var s = r.resumen||{};
     html += '<div class="ad-kpis">';
@@ -125,12 +128,14 @@ window.AD_inventario = (function(){
       }
       // Assign to point action
       var origenOk = r.checklist_origen && r.checklist_origen.completado;
-      html += '<div class="ad-h2">Acciones</div>';
-      if(!origenOk){
-        html += '<div style="padding:10px;border-radius:8px;background:rgba(239,68,68,.08);color:#b91c1c;font-size:12px;margin-bottom:8px;">⚠ El checklist de origen debe estar completo antes de asignar a un punto.</div>';
+      if(ADApp.canWrite()){
+        html += '<div class="ad-h2">Acciones</div>';
+        if(!origenOk){
+          html += '<div style="padding:10px;border-radius:8px;background:rgba(239,68,68,.08);color:#b91c1c;font-size:12px;margin-bottom:8px;">El checklist de origen debe estar completo antes de asignar a un punto.</div>';
+        }
+        html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'" '+(origenOk?'':'disabled style="opacity:.5;cursor:not-allowed;"')+'>Asignar a punto</button> ';
+        html += '<button class="ad-btn ghost" id="adVerifyPay" data-id="'+m.id+'">Verificar pago</button>';
       }
-      html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'" '+(origenOk?'':'disabled style="opacity:.5;cursor:not-allowed;"')+'>📍 Asignar a punto</button> ';
-      html += '<button class="ad-btn ghost" id="adVerifyPay" data-id="'+m.id+'">💳 Verificar pago</button>';
       ADApp.modal(html);
       $('#adAssign').on('click',function(){ if(!origenOk) return; assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
       $('#adVerifyPay').on('click',function(){
