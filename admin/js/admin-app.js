@@ -19,8 +19,14 @@ window.ADApp = (function(){
   }
   function closeModal() { $('#adModal').hide(); }
   function go(route) {
+    if (!route) return;
     state.route = route;
-    $('.ad-nav button').removeClass('active').filter('[data-route="'+route+'"]').addClass('active');
+    // Clear all active states (top-level + sub-buttons)
+    $('.ad-nav button').removeClass('active');
+    var $btn = $('.ad-nav button[data-route="'+route+'"]').addClass('active');
+    // Auto-expand the parent group if the target is inside a collapsible section
+    var $group = $btn.closest('.ad-nav-group');
+    if ($group.length) $group.addClass('open');
     var mod = window['AD_' + route];
     if (mod && mod.render) mod.render();
   }
@@ -31,7 +37,18 @@ window.ADApp = (function(){
     $('#adModal').on('click', function(e) { if (e.target === this) closeModal(); });
     $('.ad-hamburger').on('click', function() { $('.ad-nav').toggleClass('open'); });
     $('.ad-logo').on('click', function() { go('dashboard'); }).css('cursor','pointer');
-    $('.ad-nav').on('click', 'button', function() { $('.ad-nav').removeClass('open'); go($(this).data('route')); });
+    // Collapsible nav group toggles
+    $('.ad-nav').on('click', '.ad-nav-group-toggle', function(e) {
+      e.stopPropagation();
+      $(this).closest('.ad-nav-group').toggleClass('open');
+    });
+    // Route navigation (skip group toggle buttons which have no data-route)
+    $('.ad-nav').on('click', 'button:not(.ad-nav-group-toggle)', function() {
+      var route = $(this).data('route');
+      if (!route) return;
+      $('.ad-nav').removeClass('open');
+      go(route);
+    });
     $('#adLogout').on('click', function() {
       api('auth/logout.php', {}).always(function() { state.user = null; $sidebar.hide(); AD_login.render(); });
     });

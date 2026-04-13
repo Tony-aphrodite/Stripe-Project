@@ -81,6 +81,52 @@ html,body{
 .ad-nav button:hover span img,.ad-nav button.active span img{opacity:1}
 .ad-nav button span svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.7;transition:opacity .25s;flex-shrink:0}
 .ad-nav button:hover span svg,.ad-nav button.active span svg{opacity:1}
+
+/* ── Collapsible nav groups ── */
+.ad-nav-group{margin:2px 0}
+.ad-nav-group-toggle{
+  background:none;border:0;width:100%;
+  color:rgba(255,255,255,.4);
+  text-align:left;padding:10px 16px;
+  border-radius:var(--ad-radius-sm);
+  font-size:11px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  transition:all .25s ease;
+  text-transform:uppercase;letter-spacing:.8px;
+}
+.ad-nav-group-toggle:hover{color:rgba(255,255,255,.7);background:rgba(255,255,255,.04)}
+.ad-nav-group-toggle span{width:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ad-nav-group-toggle span svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.5}
+.ad-nav-chevron{
+  width:14px!important;height:14px!important;
+  stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  margin-left:auto;opacity:.4;
+  transition:transform .25s ease;flex-shrink:0;
+}
+.ad-nav-group.open .ad-nav-chevron{transform:rotate(180deg)}
+.ad-nav-sub{
+  display:none;
+  flex-direction:column;gap:1px;
+  padding-left:10px;
+  margin-top:2px;
+  border-left:2px solid rgba(255,255,255,.06);
+  margin-left:18px;
+}
+.ad-nav-group.open .ad-nav-sub{display:flex}
+.ad-nav-sub button{
+  background:none;border:0;
+  color:rgba(255,255,255,.5);
+  text-align:left;padding:9px 14px;
+  border-radius:8px;
+  font-size:13px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  transition:all .25s ease;
+}
+.ad-nav-sub button:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85)}
+.ad-nav-sub button.active{background:linear-gradient(135deg,#039fe1,#0280b5);color:#fff;box-shadow:0 3px 14px rgba(3,159,225,.4)}
+.ad-nav-sub button span{width:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ad-nav-sub button span svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.65}
+.ad-nav-sub button:hover span svg,.ad-nav-sub button.active span svg{opacity:1}
 .ad-user{
   font-size:12px;color:rgba(255,255,255,.45);
   padding:12px 10px 4px;
