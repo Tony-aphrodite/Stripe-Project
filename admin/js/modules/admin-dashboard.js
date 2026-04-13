@@ -31,7 +31,9 @@ window.AD_dashboard = (function(){
       {img:'entrega.png',label:'Envíos',route:'envios',bg:'linear-gradient(135deg,#fef3c7,#fff)'},
       {img:'garantia.png',label:'Pagos',route:'pagos',bg:'linear-gradient(135deg,#e0e7ff,#fff)'},
       {img:'asesor_icon.jpg',label:'Puntos',route:'puntos',bg:'linear-gradient(135deg,#fce7f3,#fff)'},
-      {img:'entrega.png',label:'Entregas',route:'envios',bg:'linear-gradient(135deg,#dcfce7,#e0fdf0)'}
+      {img:'entrega.png',label:'Entregas',route:'envios',bg:'linear-gradient(135deg,#dcfce7,#e0fdf0)'},
+      {img:'garantia.png',label:'Cobranza',route:'cobranza',bg:'linear-gradient(135deg,#fee2e2,#fff)'},
+      {img:'iconos-01.svg',label:'Buscar',route:'buscar',bg:'linear-gradient(135deg,#f0f4f8,#fff)'}
     ];
     actions.forEach(function(a){
       html += '<div class="ad-card" style="cursor:pointer;text-align:center;padding:28px 16px;background:'+a.bg+';border:1.5px solid var(--ad-border);" onclick="ADApp.go(\''+a.route+'\')" onmouseover="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 30px rgba(12,35,64,.12)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'\'">';

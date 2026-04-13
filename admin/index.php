@@ -37,9 +37,21 @@ $asset = function(string $rel): string {
       <button data-route="inventario"><span><img src="../configurador_prueba/img/iconos-02.svg" alt=""></span> CEDIS</button>
       <button data-route="envios"><span><img src="../configurador_prueba/img/entrega.png" alt=""></span> Envíos</button>
       <button data-route="pagos"><span><img src="../configurador_prueba/img/garantia.png" alt=""></span> Pagos</button>
+      <button data-route="cobranza"><span><img src="../configurador_prueba/img/garantia.png" alt=""></span> Cobranza</button>
       <button data-route="puntos"><span><img src="../configurador_prueba/img/asesor_icon.jpg" alt=""></span> Puntos Voltika</button>
       <button data-route="checklists"><span><img src="../configurador_prueba/img/aprobado.png" alt=""></span> Checklists</button>
+      <button data-route="modelos"><span><img src="../configurador_prueba/img/iconos-02.svg" alt=""></span> Modelos</button>
+      <button data-route="precios"><span><img src="../configurador_prueba/img/garantia.png" alt=""></span> Precios</button>
+      <button data-route="documentos"><span><img src="../configurador_prueba/img/aprobado.png" alt=""></span> Documentos</button>
+      <button data-route="analytics"><span><img src="../configurador_prueba/img/iconos-03.svg" alt=""></span> Analítica</button>
+      <button data-route="alertas"><span><img src="../configurador_prueba/img/aprobado.png" alt=""></span> Alertas</button>
+      <button data-route="reportes"><span><img src="../configurador_prueba/img/iconos-01.svg" alt=""></span> Reportes</button>
       <button data-route="buro"><span><img src="../configurador_prueba/img/faceid.png" alt=""></span> Buro CDC</button>
+      <button data-route="entregas"><span><img src="../configurador_prueba/img/entrega.png" alt=""></span> Tiempos Entrega</button>
+      <button data-route="roles"><span><img src="../configurador_prueba/img/faceid.png" alt=""></span> Roles</button>
+      <button data-route="notificaciones"><span><img src="../configurador_prueba/img/iconos-01.svg" alt=""></span> Notificaciones</button>
+      <button data-route="puntosperf"><span><img src="../configurador_prueba/img/asesor_icon.jpg" alt=""></span> Rendimiento Puntos</button>
+      <button data-route="buscar"><span><img src="../configurador_prueba/img/iconos-01.svg" alt=""></span> Buscar</button>
     </div>
     <div class="ad-user" id="adUser"></div>
     <button class="ad-change-pass" id="adChangePass">Cambiar contraseña</button>
@@ -66,6 +78,18 @@ $asset = function(string $rel): string {
 <script src="<?= $asset('js/modules/admin-ventas.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-checklists.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-buro.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-cobranza.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-buscar.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-analytics.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-alertas.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-reportes.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-modelos.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-precios.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-documentos.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-entregas.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-roles.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-notificaciones.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-puntos-performance.js') ?>"></script>
 <script>$(function(){ ADApp.start(); });</script>
 </body>
 </html>
