@@ -16,10 +16,10 @@ if (!empty($_GET['punto_id'])) { $where[] = "m.punto_voltika_id=?"; $params[] = 
 if (!empty($_GET['vin']))      { $where[] = "(m.vin LIKE ? OR m.vin_display LIKE ?)"; $params[] = '%'.$_GET['vin'].'%'; $params[] = '%'.$_GET['vin'].'%'; }
 if (!empty($_GET['checklist'])) {
     $ck = $_GET['checklist'];
-    if ($ck === 'sin')       $where[] = "NOT EXISTS (SELECT 1 FROM checklists_origen co WHERE co.moto_id = m.id)";
-    elseif ($ck === 'origen') $where[] = "EXISTS (SELECT 1 FROM checklists_origen co WHERE co.moto_id = m.id AND co.completado = 1)";
-    elseif ($ck === 'ensamble') $where[] = "EXISTS (SELECT 1 FROM checklists_ensamble ce WHERE ce.moto_id = m.id AND ce.completado = 1)";
-    elseif ($ck === 'completo') $where[] = "EXISTS (SELECT 1 FROM checklists_entrega ct WHERE ct.moto_id = m.id AND ct.completado = 1)";
+    if ($ck === 'sin')       $where[] = "NOT EXISTS (SELECT 1 FROM checklist_origen co WHERE co.moto_id = m.id)";
+    elseif ($ck === 'origen') $where[] = "EXISTS (SELECT 1 FROM checklist_origen co WHERE co.moto_id = m.id AND co.completado = 1)";
+    elseif ($ck === 'ensamble') $where[] = "EXISTS (SELECT 1 FROM checklist_ensamble ce WHERE ce.moto_id = m.id AND ce.completado = 1)";
+    elseif ($ck === 'completo') $where[] = "EXISTS (SELECT 1 FROM checklist_entrega_v2 ct WHERE ct.moto_id = m.id AND ct.completado = 1)";
 }
 
 $sql = "SELECT m.*, pv.nombre AS punto_voltika_nombre FROM inventario_motos m
