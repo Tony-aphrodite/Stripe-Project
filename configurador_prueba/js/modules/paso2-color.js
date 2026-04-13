@@ -123,9 +123,11 @@ var Paso2 = {
         html += '</div>';
 
         // Out-of-stock notice (hidden by default, shown via JS)
+        var _etaDate = new Date(); _etaDate.setMonth(_etaDate.getMonth() + 2);
+        var _meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        var _etaStr = _etaDate.getDate() + ' de ' + _meses[_etaDate.getMonth()];
         html += '<div id="vk-stock-notice" style="display:none;margin:0 20px 12px;padding:12px 14px;border-radius:10px;background:#FFF7ED;border:1px solid #FDBA74;font-size:13px;color:#9A3412;">' +
-            '<strong>&#9888; Alta demanda</strong> — Este color no está disponible de momento. ' +
-            'Puedes continuar y recibirás tu moto en aproximadamente <strong>~2 meses</strong>.' +
+            'Entrega antes del <strong>' + _etaStr + '</strong>' +
             '</div>';
         html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">' + btnTexto + '</button>';
 
