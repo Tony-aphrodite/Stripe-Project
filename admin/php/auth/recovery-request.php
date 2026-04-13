@@ -16,8 +16,7 @@ $stmt->execute([$email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$user) {
-    // Don't reveal whether the email exists
-    adminJsonOut(['ok' => true, 'message' => 'Si el email existe, recibirás un código de verificación.']);
+    adminJsonOut(['error' => 'No se encontró una cuenta activa con ese email.'], 404);
 }
 
 // Generate 6-digit OTP
@@ -51,11 +50,40 @@ $cuerpo = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="
 </td></tr>
 </table></td></tr></table></body></html>';
 
+$mailSent = false;
+$mailDebug = '';
 try {
-    sendMail($user['email'], $user['nombre'], 'Voltika — Código de recuperación', $cuerpo);
+    $mailSent = sendMail($user['email'], $user['nombre'], 'Voltika — Código de recuperación', $cuerpo);
+    $mailDebug = $mailSent ? 'sendMail returned true' : 'sendMail returned false';
 } catch (Throwable $e) {
+    $mailDebug = 'Exception: ' . $e->getMessage();
     error_log('recovery-request email error: ' . $e->getMessage());
 }
 
-adminLog('recovery_request', ['email' => $email, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
-adminJsonOut(['ok' => true, 'message' => 'Si el email existe, recibirás un código de verificación.']);
+// Check PHPMailer availability
+$autoloadPath = realpath(__DIR__ . '/../../..' . '/configurador_prueba/php/vendor/autoload.php');
+$hasAutoload = file_exists(__DIR__ . '/../../../configurador_prueba/php/vendor/autoload.php');
+$hasClass = class_exists('PHPMailer\PHPMailer\PHPMailer');
+
+adminLog('recovery_request', [
+    'email' => $email,
+    'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+    'mail_sent' => $mailSent,
+    'debug' => $mailDebug
+]);
+
+if (!$mailSent) {
+    adminJsonOut([
+        'error' => 'No se pudo enviar el correo. Debug: ' . $mailDebug,
+        'debug' => [
+            'vendor_autoload_exists' => $hasAutoload,
+            'phpmailer_class_exists' => $hasClass,
+            'smtp_host' => SMTP_HOST,
+            'smtp_port' => SMTP_PORT,
+            'smtp_user' => SMTP_USER,
+            'to' => $user['email'],
+        ]
+    ], 500);
+}
+
+adminJsonOut(['ok' => true, 'message' => 'Código enviado correctamente.']);
