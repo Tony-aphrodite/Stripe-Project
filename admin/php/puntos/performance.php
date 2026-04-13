@@ -23,36 +23,36 @@ foreach ($puntos as &$p) {
 
     // Inventory at this punto
     try {
-        $st = $pdo->prepare("SELECT COUNT(*) FROM inventario_motos WHERE punto_nombre=? AND estado IN ('recibida','lista_para_entrega')");
-        $st->execute([$pNombre]);
+        $st = $pdo->prepare("SELECT COUNT(*) FROM inventario_motos WHERE punto_voltika_id=? AND estado IN ('recibida','lista_para_entrega')");
+        $st->execute([$pid]);
         $p['inventario_disponible'] = (int)$st->fetchColumn();
     } catch (Throwable $e) { $p['inventario_disponible'] = 0; }
 
     // Deliveries completed
     try {
-        $st = $pdo->prepare("SELECT COUNT(*) FROM inventario_motos WHERE punto_nombre=? AND estado='entregada'");
-        $st->execute([$pNombre]);
+        $st = $pdo->prepare("SELECT COUNT(*) FROM inventario_motos WHERE punto_voltika_id=? AND estado='entregada'");
+        $st->execute([$pid]);
         $p['entregas_completadas'] = (int)$st->fetchColumn();
     } catch (Throwable $e) { $p['entregas_completadas'] = 0; }
 
     // Pending deliveries
     try {
-        $st = $pdo->prepare("SELECT COUNT(*) FROM inventario_motos WHERE punto_nombre=? AND estado IN ('lista_para_entrega','por_validar_entrega')");
-        $st->execute([$pNombre]);
+        $st = $pdo->prepare("SELECT COUNT(*) FROM inventario_motos WHERE punto_voltika_id=? AND estado IN ('lista_para_entrega','por_validar_entrega')");
+        $st->execute([$pid]);
         $p['entregas_pendientes'] = (int)$st->fetchColumn();
     } catch (Throwable $e) { $p['entregas_pendientes'] = 0; }
 
     // Sales this month (via ventas_log or transacciones)
     try {
-        $st = $pdo->prepare("SELECT COUNT(*) FROM inventario_motos WHERE punto_nombre=? AND estado='entregada' AND fecha_cambio_estado >= DATE_FORMAT(?, '%Y-%m-01')");
-        $st->execute([$pNombre, $today]);
+        $st = $pdo->prepare("SELECT COUNT(*) FROM inventario_motos WHERE punto_voltika_id=? AND estado='entregada' AND fecha_estado >= DATE_FORMAT(?, '%Y-%m-01')");
+        $st->execute([$pid, $today]);
         $p['ventas_mes'] = (int)$st->fetchColumn();
     } catch (Throwable $e) { $p['ventas_mes'] = 0; }
 
     // Incoming shipments
     try {
-        $st = $pdo->prepare("SELECT COUNT(*) FROM envios WHERE punto_destino_nombre=? AND estado IN ('lista_para_enviar','enviada')");
-        $st->execute([$pNombre]);
+        $st = $pdo->prepare("SELECT COUNT(*) FROM envios WHERE punto_destino_id=? AND estado IN ('lista_para_enviar','enviada')");
+        $st->execute([$pid]);
         $p['envios_pendientes'] = (int)$st->fetchColumn();
     } catch (Throwable $e) { $p['envios_pendientes'] = 0; }
 }

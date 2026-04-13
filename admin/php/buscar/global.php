@@ -49,12 +49,13 @@ try {
 
 // ── Credit subscriptions ──
 try {
-    $stmt = $pdo->prepare("SELECT id, nombre, email, telefono, modelo, color,
-        monto_semanal, plazo_semanas, stripe_customer_id, freg
-        FROM subscripciones_credito
-        WHERE nombre LIKE ? OR email LIKE ? OR telefono LIKE ?
-        ORDER BY freg DESC LIMIT 20");
-    $stmt->execute([$like, $like, $like]);
+    $stmt = $pdo->prepare("SELECT s.id, COALESCE(s.nombre, cl.nombre, '') as nombre, s.email, s.telefono, s.modelo, s.color,
+        s.monto_semanal, s.plazo_semanas, s.stripe_customer_id, s.freg
+        FROM subscripciones_credito s
+        LEFT JOIN clientes cl ON s.cliente_id = cl.id
+        WHERE s.nombre LIKE ? OR cl.nombre LIKE ? OR s.email LIKE ? OR s.telefono LIKE ?
+        ORDER BY s.freg DESC LIMIT 20");
+    $stmt->execute([$like, $like, $like, $like]);
     $results['creditos'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {}
 

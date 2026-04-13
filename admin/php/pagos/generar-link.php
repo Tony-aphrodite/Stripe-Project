@@ -14,9 +14,10 @@ if (!$cicloId) adminJsonOut(['error' => 'ciclo_id requerido'], 400);
 $pdo = getDB();
 
 $stmt = $pdo->prepare("
-    SELECT c.*, s.stripe_customer_id, s.nombre, s.email, s.telefono
+    SELECT c.*, s.stripe_customer_id, COALESCE(s.nombre, cl.nombre, '') as nombre, s.email, s.telefono
     FROM ciclos_pago c
     LEFT JOIN subscripciones_credito s ON c.subscripcion_id = s.id
+    LEFT JOIN clientes cl ON c.cliente_id = cl.id
     WHERE c.id = ?
 ");
 $stmt->execute([$cicloId]);
@@ -38,7 +39,7 @@ $postData = [
     'payment_method_types[0]'     => 'card',
     'payment_method_types[1]'     => 'oxxo',
     'line_items[0][price_data][currency]'     => 'mxn',
-    'line_items[0][price_data][product_data][name]' => 'Voltika - Pago ciclo #' . $ciclo['numero_ciclo'],
+    'line_items[0][price_data][product_data][name]' => 'Voltika - Pago ciclo #' . $ciclo['semana_num'],
     'line_items[0][price_data][unit_amount]'  => $amount,
     'line_items[0][quantity]'     => 1,
     'metadata[ciclo_id]'          => $cicloId,

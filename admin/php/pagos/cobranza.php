@@ -47,7 +47,7 @@ $bucket30plus = (int)$safeScalar(
 
 // ── Failed payments (Stripe PI with failed status) ──
 $pagosRechazados = (int)$safeScalar(
-    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue' AND stripe_pi IS NOT NULL AND stripe_pi <> ''"
+    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue' AND stripe_payment_intent IS NOT NULL AND stripe_payment_intent <> ''"
 );
 
 // ── Customers without active card ──
@@ -89,12 +89,13 @@ if ($bucket === '1-7') {
 $rows = [];
 try {
     $sql = "SELECT c.id, c.subscripcion_id, c.cliente_id, c.monto, c.fecha_vencimiento,
-                c.estado, c.stripe_pi, c.fecha_pago, c.numero_ciclo,
-                s.nombre, s.email, s.telefono, s.modelo, s.color,
+                c.estado, c.stripe_payment_intent, c.fecha_pago, c.semana_num,
+                COALESCE(cl.nombre, '') as nombre, s.email, s.telefono, s.modelo, s.color,
                 s.stripe_customer_id, s.stripe_payment_method_id,
                 DATEDIFF('{$today}', c.fecha_vencimiento) as dias_atraso
             FROM ciclos_pago c
             LEFT JOIN subscripciones_credito s ON c.subscripcion_id = s.id
+            LEFT JOIN clientes cl ON c.cliente_id = cl.id
             WHERE {$where}
             ORDER BY c.fecha_vencimiento ASC
             LIMIT {$limit} OFFSET {$offset}";

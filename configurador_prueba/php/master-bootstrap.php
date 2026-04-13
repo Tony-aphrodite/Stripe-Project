@@ -27,7 +27,8 @@ function voltikaEnsureSchema(): void {
         password_hash VARCHAR(255) NOT NULL,
         punto_nombre  VARCHAR(200),
         punto_id      VARCHAR(100),
-        rol           ENUM('dealer','admin','cedis','operador') DEFAULT 'operador',
+        rol           ENUM('dealer','admin','cedis','operador','cobranza','documentos','logistica') DEFAULT 'operador',
+        permisos      JSON DEFAULT NULL,
         activo        TINYINT DEFAULT 1,
         freg          DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -50,7 +51,7 @@ function voltikaEnsureSchema(): void {
         aduana             VARCHAR(100),
         cedis_origen       VARCHAR(100),
         tipo_asignacion    ENUM('voltika_entrega','consignacion') DEFAULT 'voltika_entrega',
-        estado             ENUM('por_llegar','recibida','por_ensamblar','en_ensamble','lista_para_entrega','por_validar_entrega','entregada','retenida') DEFAULT 'por_llegar',
+        estado             ENUM('por_llegar','recibida','por_ensamblar','en_ensamble','lista_para_entrega','por_validar_entrega','entregada','retenida','en_envio','en_punto') DEFAULT 'por_llegar',
         dealer_id          INT,
         punto_voltika_id   INT,
         punto_nombre       VARCHAR(200),
@@ -70,6 +71,11 @@ function voltikaEnsureSchema(): void {
         notas              TEXT,
         log_estados        JSON,
         precio_venta       DECIMAL(12,2),
+        stripe_verified_at DATETIME NULL,
+        cliente_acta_firmada TINYINT DEFAULT 0,
+        fecha_estimada_recogida DATE NULL,
+        envia_tracking_number VARCHAR(100) NULL,
+        envia_tracking_url VARCHAR(255) NULL,
         activo             TINYINT DEFAULT 1,
         freg               DATETIME DEFAULT CURRENT_TIMESTAMP,
         fmod               DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -112,7 +118,10 @@ function voltikaEnsureSchema(): void {
         punto_id        VARCHAR(80)  NULL,
         punto_nombre    VARCHAR(200) NULL,
         msi_meses       INT          NULL,
-        msi_pago        DECIMAL(12,2) NULL
+        msi_pago        DECIMAL(12,2) NULL,
+        folio_contrato  VARCHAR(50)  NULL,
+        fecha_estimada_entrega DATE NULL,
+        pago_estado     VARCHAR(30)  NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
     // Pedidos
@@ -138,6 +147,7 @@ function voltikaEnsureSchema(): void {
     $pdo->exec("CREATE TABLE IF NOT EXISTS subscripciones_credito (
         id INT AUTO_INCREMENT PRIMARY KEY,
         cliente_id INT NULL,
+        nombre VARCHAR(200) NULL,
         telefono VARCHAR(20) NULL,
         email VARCHAR(150) NULL,
         modelo VARCHAR(200) NULL,
@@ -151,10 +161,14 @@ function voltikaEnsureSchema(): void {
         fecha_entrega DATE NULL,
         stripe_customer_id VARCHAR(100) NULL,
         stripe_payment_method_id VARCHAR(100) NULL,
+        stripe_setup_intent_id VARCHAR(100) NULL,
+        inventario_moto_id INT NULL,
         estado VARCHAR(30) DEFAULT 'activa',
+        factivacion DATETIME NULL,
         freg DATETIME DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_cliente (cliente_id),
-        INDEX idx_telefono (telefono)
+        INDEX idx_telefono (telefono),
+        INDEX idx_moto (inventario_moto_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
     // ── 2. Admin/CEDIS tables ───────────────────────────────────────────────
@@ -194,6 +208,7 @@ function voltikaEnsureSchema(): void {
         moto_id INT NOT NULL,
         punto_destino_id INT NOT NULL,
         estado ENUM('lista_para_enviar','enviada','recibida') DEFAULT 'lista_para_enviar',
+        envio_tipo VARCHAR(50) NULL,
         fecha_envio DATE,
         fecha_estimada_llegada DATE,
         fecha_recepcion DATETIME,
@@ -260,7 +275,7 @@ function voltikaEnsureSchema(): void {
 
     // Expand rol ENUM on existing tables (safe migration)
     try {
-        $pdo->exec("ALTER TABLE dealer_usuarios MODIFY COLUMN rol ENUM('dealer','admin','cedis','operador') DEFAULT 'operador'");
+        $pdo->exec("ALTER TABLE dealer_usuarios MODIFY COLUMN rol ENUM('dealer','admin','cedis','operador','cobranza','documentos','logistica') DEFAULT 'operador'");
     } catch (Throwable $e) {}
 
     // Ciclos de pago (shared admin + portal)
@@ -274,6 +289,7 @@ function voltikaEnsureSchema(): void {
         estado ENUM('pending','paid_manual','paid_auto','overdue','skipped') DEFAULT 'pending',
         transaccion_id INT NULL,
         stripe_payment_intent VARCHAR(100) NULL,
+        fecha_pago DATETIME DEFAULT NULL,
         origen VARCHAR(30) NULL,
         freg DATETIME DEFAULT CURRENT_TIMESTAMP,
         fupd DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -609,6 +625,29 @@ function voltikaEnsureSchema(): void {
         "ALTER TABLE inventario_motos ADD COLUMN stripe_pi VARCHAR(100) NULL",
         "ALTER TABLE inventario_motos ADD COLUMN stripe_payment_status VARCHAR(30) NULL",
         "ALTER TABLE inventario_motos ADD COLUMN transaccion_id INT NULL",
+        "ALTER TABLE ciclos_pago ADD COLUMN fecha_pago DATETIME DEFAULT NULL AFTER stripe_payment_intent",
+        "ALTER TABLE inventario_motos ADD COLUMN cliente_id INT NULL",
+        // inventario_motos: new columns for CEDIS flow + verification
+        "ALTER TABLE inventario_motos ADD COLUMN stripe_verified_at DATETIME NULL",
+        "ALTER TABLE inventario_motos ADD COLUMN cliente_acta_firmada TINYINT DEFAULT 0",
+        "ALTER TABLE inventario_motos ADD COLUMN fecha_estimada_recogida DATE NULL",
+        "ALTER TABLE inventario_motos ADD COLUMN envia_tracking_number VARCHAR(100) NULL",
+        "ALTER TABLE inventario_motos ADD COLUMN envia_tracking_url VARCHAR(255) NULL",
+        "ALTER TABLE inventario_motos MODIFY COLUMN estado ENUM('por_llegar','recibida','por_ensamblar','en_ensamble','lista_para_entrega','por_validar_entrega','entregada','retenida','en_envio','en_punto') DEFAULT 'por_llegar'",
+        // subscripciones_credito: missing columns
+        "ALTER TABLE subscripciones_credito ADD COLUMN nombre VARCHAR(200) NULL AFTER cliente_id",
+        "ALTER TABLE subscripciones_credito ADD COLUMN stripe_setup_intent_id VARCHAR(100) NULL",
+        "ALTER TABLE subscripciones_credito ADD COLUMN inventario_moto_id INT NULL",
+        "ALTER TABLE subscripciones_credito ADD COLUMN factivacion DATETIME NULL",
+        // dealer_usuarios: permisos + expanded rol
+        "ALTER TABLE dealer_usuarios ADD COLUMN permisos JSON DEFAULT NULL",
+        "ALTER TABLE dealer_usuarios MODIFY COLUMN rol ENUM('dealer','admin','cedis','operador','cobranza','documentos','logistica') DEFAULT 'operador'",
+        // envios: envio_tipo
+        "ALTER TABLE envios ADD COLUMN envio_tipo VARCHAR(50) NULL",
+        // transacciones: runtime columns used by ventas
+        "ALTER TABLE transacciones ADD COLUMN folio_contrato VARCHAR(50) NULL",
+        "ALTER TABLE transacciones ADD COLUMN fecha_estimada_entrega DATE NULL",
+        "ALTER TABLE transacciones ADD COLUMN pago_estado VARCHAR(30) NULL",
     ];
     foreach ($alters as $sql) {
         try { $pdo->exec($sql); } catch (Throwable $e) {}

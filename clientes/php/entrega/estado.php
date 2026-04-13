@@ -20,7 +20,7 @@ try {
         FROM inventario_motos im
         LEFT JOIN puntos_voltika pv ON pv.id = im.punto_voltika_id
         WHERE im.cliente_id = ?
-          AND im.estado IN ('asignada','en_transito','recibida','retenida','en_entrega','entregada')
+          AND im.estado IN ('recibida','lista_para_entrega','por_validar_entrega','en_ensamble','por_ensamblar','retenida','entregada')
         ORDER BY im.id DESC LIMIT 1");
     $stmt->execute([$cid]);
     $moto = $stmt->fetch(PDO::FETCH_ASSOC);

@@ -256,7 +256,7 @@ if ($writeMode && $pdo) {
             stripe_customer_id       VARCHAR(100),
             stripe_setup_intent_id   VARCHAR(100) UNIQUE,
             stripe_payment_method_id VARCHAR(100) NULL,
-            status                   VARCHAR(20) DEFAULT 'pending',
+            estado                   VARCHAR(30) DEFAULT 'pendiente',
             monto_semanal            DECIMAL(12,2) NULL,
             inventario_moto_id       INT NULL,
             freg                     DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -267,24 +267,24 @@ if ($writeMode && $pdo) {
         $sid = 'seti_test_diag_' . uniqid();
         $stmt = $pdo->prepare("
             INSERT INTO subscripciones_credito
-                (nombre, email, stripe_customer_id, stripe_setup_intent_id, status)
-            VALUES (?, ?, ?, ?, 'pending')
+                (nombre, email, stripe_customer_id, stripe_setup_intent_id, estado)
+            VALUES (?, ?, ?, ?, 'pendiente')
         ");
         $stmt->execute(['TEST', 'test@diag.local', 'cus_test', $sid]);
 
         $upd = $pdo->prepare("
             UPDATE subscripciones_credito
-            SET status='active', stripe_payment_method_id=?, monto_semanal=?, factivacion=NOW()
+            SET estado='activa', stripe_payment_method_id=?, monto_semanal=?, factivacion=NOW()
             WHERE stripe_setup_intent_id=?
         ");
         $upd->execute(['pm_test_diag', 850.00, $sid]);
 
-        $row = $pdo->query("SELECT status, stripe_payment_method_id, monto_semanal FROM subscripciones_credito WHERE stripe_setup_intent_id='$sid'")->fetch(PDO::FETCH_ASSOC);
+        $row = $pdo->query("SELECT estado, stripe_payment_method_id, monto_semanal FROM subscripciones_credito WHERE stripe_setup_intent_id='$sid'")->fetch(PDO::FETCH_ASSOC);
         $pdo->rollBack();
 
-        $ok = $row && $row['status'] === 'active' && $row['stripe_payment_method_id'] === 'pm_test_diag';
+        $ok = $row && $row['estado'] === 'activa' && $row['stripe_payment_method_id'] === 'pm_test_diag';
         check('5. Smoke INSERT', 'subscripciones_credito (rolled back)', $ok,
-              $ok ? "status=active monto={$row['monto_semanal']}" : 'pending→active flow failed');
+              $ok ? "estado=activa monto={$row['monto_semanal']}" : 'pendiente→activa flow failed');
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         check('5. Smoke INSERT', 'subscripciones_credito', false, $e->getMessage());

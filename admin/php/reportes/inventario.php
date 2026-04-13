@@ -24,7 +24,7 @@ $porModelo = $safeAll(
             SUM(estado IN ('recibida','lista_para_entrega')) as disponible,
             SUM(cliente_nombre IS NOT NULL AND cliente_nombre<>'' AND estado NOT IN ('entregada')) as reservado,
             SUM(estado='entregada') as entregado,
-            SUM(estado IN ('por_llegar','lista_para_enviar','enviada')) as en_transito,
+            SUM(estado = 'por_llegar') as en_transito,
             COUNT(*) as total
      FROM inventario_motos
      WHERE modelo IS NOT NULL AND modelo <> ''
@@ -43,7 +43,7 @@ $porPunto = $safeAll(
 
 // Turnover: delivered in last 30 days vs current stock
 $entregadas30 = (int)$safeScalar(
-    "SELECT COUNT(*) FROM inventario_motos WHERE estado='entregada' AND fecha_cambio_estado >= DATE_SUB(?, INTERVAL 30 DAY)",
+    "SELECT COUNT(*) FROM inventario_motos WHERE estado='entregada' AND fecha_estado >= DATE_SUB(?, INTERVAL 30 DAY)",
     [$today]
 );
 $stockActual = (int)$safeScalar(

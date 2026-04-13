@@ -164,13 +164,13 @@ if (!$sub || $info['state'] === 'no_subscription') {
         // Try to get punto details from puntos_voltika
         if (!empty($moto['punto_voltika_id'])) {
             try {
-                $pStmt = $pdo->prepare("SELECT nombre, direccion, horario FROM puntos_voltika WHERE id = ?");
+                $pStmt = $pdo->prepare("SELECT nombre, direccion, horarios FROM puntos_voltika WHERE id = ?");
                 $pStmt->execute([$moto['punto_voltika_id']]);
                 $pv = $pStmt->fetch(PDO::FETCH_ASSOC);
                 if ($pv) {
                     $entrega['punto']['nombre']    = $pv['nombre'] ?: $entrega['punto']['nombre'];
                     $entrega['punto']['direccion']  = $pv['direccion'] ?? null;
-                    $entrega['punto']['horario']    = $pv['horario'] ?? null;
+                    $entrega['punto']['horario']    = $pv['horarios'] ?? null;
                 }
             } catch (Throwable $e) {}
         }

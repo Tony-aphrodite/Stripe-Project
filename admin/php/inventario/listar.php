@@ -48,7 +48,7 @@ $summary = $pdo->query("SELECT
     SUM(estado='recibida' OR estado='lista_para_entrega') as disponible,
     SUM(estado='por_validar_entrega' OR (estado<>'entregada' AND cliente_nombre IS NOT NULL AND cliente_nombre<>'')) as reservado,
     SUM(estado='entregada') as entregado,
-    SUM(estado IN ('por_llegar','lista_para_enviar','enviada')) as en_transito,
+    SUM(estado = 'por_llegar') as en_transito,
     SUM(estado='en_ensamble' OR estado='por_ensamblar') as en_ensamble,
     SUM(estado='retenida') as bloqueado,
     SUM(punto_voltika_id IS NOT NULL AND estado NOT IN ('entregada','por_llegar','retenida')) as en_puntos

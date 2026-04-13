@@ -37,7 +37,7 @@ $motoRow = $pdo->prepare("SELECT * FROM inventario_motos WHERE id=?");
 $motoRow->execute([$motoId]);
 $m = $motoRow->fetch(PDO::FETCH_ASSOC);
 
-$pdo->prepare("INSERT INTO ventas_log (moto_id, tipo, dealer_id, cliente_name, cliente_email, cliente_telefono,
+$pdo->prepare("INSERT INTO ventas_log (moto_id, tipo, dealer_id, cliente_nombre, cliente_email, cliente_telefono,
     pedido_num, modelo, color, vin, monto) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
     ->execute([
         $motoId, 'entrega_voltika', $ctx['user_id'],

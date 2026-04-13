@@ -15,9 +15,10 @@ $pdo = getDB();
 
 // Get cycle + subscription data
 $stmt = $pdo->prepare("
-    SELECT c.*, s.stripe_customer_id, s.stripe_payment_method_id, s.nombre, s.email
+    SELECT c.*, s.stripe_customer_id, s.stripe_payment_method_id, COALESCE(s.nombre, cl.nombre, '') as nombre, s.email
     FROM ciclos_pago c
     LEFT JOIN subscripciones_credito s ON c.subscripcion_id = s.id
+    LEFT JOIN clientes cl ON c.cliente_id = cl.id
     WHERE c.id = ?
 ");
 $stmt->execute([$cicloId]);
@@ -49,7 +50,7 @@ curl_setopt_array($ch, [
         'payment_method'       => $ciclo['stripe_payment_method_id'],
         'off_session'          => 'true',
         'confirm'              => 'true',
-        'description'          => 'Voltika ciclo #' . $ciclo['numero_ciclo'] . ' - ' . ($ciclo['nombre'] ?? ''),
+        'description'          => 'Voltika ciclo #' . $ciclo['semana_num'] . ' - ' . ($ciclo['nombre'] ?? ''),
         'metadata[ciclo_id]'   => $cicloId,
         'metadata[tipo]'       => 'cobro_admin',
     ]),
@@ -62,7 +63,7 @@ $resp = json_decode($raw, true);
 
 if ($httpCode >= 200 && $httpCode < 300 && ($resp['status'] ?? '') === 'succeeded') {
     // Update cycle as paid
-    $pdo->prepare("UPDATE ciclos_pago SET estado='paid_auto', stripe_pi=?, fecha_pago=NOW() WHERE id=?")
+    $pdo->prepare("UPDATE ciclos_pago SET estado='paid_auto', stripe_payment_intent=?, fecha_pago=NOW() WHERE id=?")
         ->execute([$resp['id'], $cicloId]);
 
     adminLog('cobrar_ahora', [

@@ -62,7 +62,7 @@ window.AD_cobranza = (function(){
         var tieneTarjeta = c.stripe_payment_method_id && c.stripe_payment_method_id !== '';
 
         html += '<tr>';
-        html += '<td><strong>#' + c.numero_ciclo + '</strong></td>';
+        html += '<td><strong>#' + c.semana_num + '</strong></td>';
         html += '<td>' + esc(c.nombre || '—') + '<br><small class="ad-dim">' + esc(c.telefono || '') + '</small></td>';
         html += '<td>' + esc(c.modelo || '') + ' ' + esc(c.color || '') + '</td>';
         html += '<td><strong>' + ADApp.money(c.monto) + '</strong></td>';

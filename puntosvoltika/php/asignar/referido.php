@@ -74,7 +74,7 @@ $pdo->prepare("UPDATE inventario_motos SET cliente_nombre=?, cliente_email=?, cl
     ]);
 
 // Log sale — tipo='venta_showroom' distinguishes CASE 4 from online referral sales (CASE 3)
-$pdo->prepare("INSERT INTO ventas_log (moto_id, tipo, dealer_id, cliente_name, cliente_email, cliente_telefono,
+$pdo->prepare("INSERT INTO ventas_log (moto_id, tipo, dealer_id, cliente_nombre, cliente_email, cliente_telefono,
     modelo, color, vin, monto, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
     ->execute([
         $motoId, 'venta_showroom', $ctx['user_id'],

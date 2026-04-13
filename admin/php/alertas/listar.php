@@ -80,7 +80,7 @@ if ($overdueLastWeek > 5) {
 // ── 4. Failed payments spike ──
 $failedRecent = (int)$safeScalar(
     "SELECT COUNT(*) FROM ciclos_pago
-     WHERE estado='overdue' AND stripe_pi IS NOT NULL AND stripe_pi <> ''
+     WHERE estado='overdue' AND stripe_payment_intent IS NOT NULL AND stripe_payment_intent <> ''
      AND fecha_vencimiento >= DATE_SUB(?, INTERVAL 7 DAY)",
     [$today]
 );
@@ -96,10 +96,10 @@ if ($failedRecent > 3) {
 
 // ── 5. Stuck units (in same state > 14 days) ──
 $stuckUnits = $safeAll(
-    "SELECT id, vin_display, modelo, color, estado, DATEDIFF(?, COALESCE(fecha_cambio_estado, freg)) as dias_en_estado
+    "SELECT id, vin_display, modelo, color, estado, DATEDIFF(?, COALESCE(fecha_estado, freg)) as dias_en_estado
      FROM inventario_motos
      WHERE estado NOT IN ('entregada','retenida')
-     AND DATEDIFF(?, COALESCE(fecha_cambio_estado, freg)) > 14
+     AND DATEDIFF(?, COALESCE(fecha_estado, freg)) > 14
      ORDER BY dias_en_estado DESC LIMIT 10",
     [$today, $today]
 );

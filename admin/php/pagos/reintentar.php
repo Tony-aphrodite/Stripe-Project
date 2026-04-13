@@ -15,9 +15,10 @@ if (!$cicloId) adminJsonOut(['error' => 'ciclo_id requerido'], 400);
 $pdo = getDB();
 
 $stmt = $pdo->prepare("
-    SELECT c.*, s.stripe_customer_id, s.stripe_payment_method_id, s.nombre
+    SELECT c.*, s.stripe_customer_id, s.stripe_payment_method_id, COALESCE(s.nombre, cl.nombre, '') as nombre
     FROM ciclos_pago c
     LEFT JOIN subscripciones_credito s ON c.subscripcion_id = s.id
+    LEFT JOIN clientes cl ON c.cliente_id = cl.id
     WHERE c.id = ?
 ");
 $stmt->execute([$cicloId]);
@@ -37,8 +38,8 @@ if (!$stripeKey) adminJsonOut(['error' => 'Stripe no configurado'], 500);
 $result = null;
 
 // If there's an existing PI, try to confirm it
-if (!empty($ciclo['stripe_pi'])) {
-    $ch = curl_init('https://api.stripe.com/v1/payment_intents/' . $ciclo['stripe_pi'] . '/confirm');
+if (!empty($ciclo['stripe_payment_intent'])) {
+    $ch = curl_init('https://api.stripe.com/v1/payment_intents/' . $ciclo['stripe_payment_intent'] . '/confirm');
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_RETURNTRANSFER => true,
@@ -68,7 +69,7 @@ if (!$result || !in_array($result['status'] ?? '', ['succeeded','processing'])) 
             'payment_method'       => $ciclo['stripe_payment_method_id'],
             'off_session'          => 'true',
             'confirm'              => 'true',
-            'description'          => 'Voltika reintento ciclo #' . $ciclo['numero_ciclo'] . ' - ' . ($ciclo['nombre'] ?? ''),
+            'description'          => 'Voltika reintento ciclo #' . $ciclo['semana_num'] . ' - ' . ($ciclo['nombre'] ?? ''),
             'metadata[ciclo_id]'   => $cicloId,
             'metadata[tipo]'       => 'reintento_admin',
         ]),
@@ -79,7 +80,7 @@ if (!$result || !in_array($result['status'] ?? '', ['succeeded','processing'])) 
 }
 
 if (($result['status'] ?? '') === 'succeeded') {
-    $pdo->prepare("UPDATE ciclos_pago SET estado='paid_auto', stripe_pi=?, fecha_pago=NOW() WHERE id=?")
+    $pdo->prepare("UPDATE ciclos_pago SET estado='paid_auto', stripe_payment_intent=?, fecha_pago=NOW() WHERE id=?")
         ->execute([$result['id'], $cicloId]);
 
     adminLog('reintentar_pago', [

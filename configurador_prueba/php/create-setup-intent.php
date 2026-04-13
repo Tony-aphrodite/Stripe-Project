@@ -140,13 +140,13 @@ function saveSubscripcionPending(array $data): void {
             stripe_customer_id       VARCHAR(100),
             stripe_setup_intent_id   VARCHAR(100) UNIQUE,
             stripe_payment_method_id VARCHAR(100) NULL,
-            status                   VARCHAR(20) DEFAULT 'pending',
+            estado                   VARCHAR(30) DEFAULT 'pendiente',
             monto_semanal            DECIMAL(12,2) NULL,
             inventario_moto_id       INT NULL,
             freg                     DATETIME DEFAULT CURRENT_TIMESTAMP,
             factivacion              DATETIME NULL,
             INDEX idx_email    (email),
-            INDEX idx_status   (status),
+            INDEX idx_estado   (estado),
             INDEX idx_customer (stripe_customer_id)
         )");
         // Backfill optional columns on legacy tables
@@ -164,9 +164,9 @@ function saveSubscripcionPending(array $data): void {
         }
         $stmt = $pdo->prepare("
             INSERT IGNORE INTO subscripciones_credito
-                (nombre, email, telefono, stripe_customer_id, stripe_setup_intent_id, status,
+                (nombre, email, telefono, stripe_customer_id, stripe_setup_intent_id, estado,
                  modelo, color, precio_contado, plazo_meses, monto_semanal)
-            VALUES (?, ?, ?, ?, ?, 'pending',
+            VALUES (?, ?, ?, ?, ?, 'pendiente',
                     ?, ?, ?, ?, ?)
         ");
         $stmt->execute([

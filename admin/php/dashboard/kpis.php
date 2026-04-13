@@ -43,7 +43,7 @@ $carteraVencida = (int)$safeScalar("SELECT COUNT(DISTINCT cliente_id) FROM ciclo
 $inv = $safeRow("SELECT
     SUM(estado IN ('recibida','lista_para_entrega')) as disponible,
     SUM(cliente_nombre IS NOT NULL AND cliente_nombre<>'' AND estado NOT IN ('entregada')) as apartadas,
-    SUM(estado IN ('por_llegar','lista_para_enviar','enviada')) as en_transito,
+    SUM(estado = 'por_llegar') as en_transito,
     SUM(estado IN ('lista_para_entrega','por_validar_entrega')) as pendientes_entrega_clientes
     FROM inventario_motos");
 
