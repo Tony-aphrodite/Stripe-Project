@@ -184,7 +184,7 @@ $response = [
     'cliente' => [
         'id' => $cid,
         'nombre' => $nombre,
-        'nombrePila' => $cliente['nombre'] ?? 'Cliente',
+        'nombrePila' => trim(explode(' ', $nombre ?: ($cliente['nombre'] ?? 'Cliente'))[0]) ?: 'Cliente',
         'email' => $cliente['email'] ?? null,
         'telefono' => $cliente['telefono'] ?? null,
     ],

@@ -15,9 +15,13 @@ if (!$motoId) adminJsonOut(['error' => 'moto_id requerido'], 400);
 $pdo = getDB();
 
 // Verify moto
-$stmt = $pdo->prepare("SELECT id FROM inventario_motos WHERE id=?");
+$stmt = $pdo->prepare("SELECT id, bloqueado_venta, bloqueado_motivo FROM inventario_motos WHERE id=?");
 $stmt->execute([$motoId]);
-if (!$stmt->fetch()) adminJsonOut(['error' => 'Moto no encontrada'], 404);
+$moto = $stmt->fetch(PDO::FETCH_ASSOC);
+if (!$moto) adminJsonOut(['error' => 'Moto no encontrada'], 404);
+if (!empty($moto['bloqueado_venta'])) {
+    adminJsonOut(['error' => 'Esta moto está bloqueada. Motivo: ' . ($moto['bloqueado_motivo'] ?? 'Sin motivo') . '. Desbloquéala primero.'], 403);
+}
 
 // Check existing record
 $existing = $pdo->prepare("SELECT id, completado, fase_actual FROM checklist_ensamble WHERE moto_id=? ORDER BY freg DESC LIMIT 1");

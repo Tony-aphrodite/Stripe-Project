@@ -42,7 +42,8 @@ window.AD_precios = (function(){
       html += '<td>'+promoHtml+'</td>';
       html += '<td>';
       if (ADApp.isAdmin()) {
-        html += '<button class="ad-btn sm ghost prEditar" data-mid="'+p.modelo_id+'">Editar</button>';
+        html += '<button class="ad-btn sm ghost prEditar" data-mid="'+p.modelo_id+'">Editar</button> ';
+        html += '<button class="ad-btn sm danger prEliminar" data-mid="'+p.modelo_id+'" data-nombre="'+esc(p.modelo_nombre||'')+'">Eliminar</button>';
       }
       html += '</td></tr>';
     });
@@ -57,6 +58,16 @@ window.AD_precios = (function(){
       var mid = $(this).data('mid');
       var p = (r.precios||[]).find(function(x){ return x.modelo_id == mid; });
       showForm(p||{modelo_id:mid}, r.modelos||[]);
+    });
+    $('.prEliminar').on('click', function(){
+      var mid = $(this).data('mid');
+      var nombre = $(this).data('nombre');
+      if (confirm('Eliminar condiciones de precio para "' + nombre + '"?')) {
+        ADApp.api('precios/eliminar.php', {modelo_id: mid}).done(function(res){
+          if (res.ok) load();
+          else alert(res.error || 'Error al eliminar');
+        });
+      }
     });
   }
 

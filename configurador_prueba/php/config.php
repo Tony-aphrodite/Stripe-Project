@@ -91,6 +91,14 @@ if (!defined('CINCEL_API_URL'))  define('CINCEL_API_URL',  getenv('CINCEL_API_UR
 if (!defined('CINCEL_EMAIL'))    define('CINCEL_EMAIL',    getenv('CINCEL_EMAIL')    ?: 'test@riactor.com');
 if (!defined('CINCEL_PASSWORD')) define('CINCEL_PASSWORD', getenv('CINCEL_PASSWORD') ?: 'Prueba2026_');
 
+// WhatsApp (Meta Cloud API)
+if (!defined('WHATSAPP_API_TOKEN')) define('WHATSAPP_API_TOKEN', getenv('WHATSAPP_API_TOKEN') ?: '');
+if (!defined('WHATSAPP_PHONE_ID')) define('WHATSAPP_PHONE_ID', getenv('WHATSAPP_PHONE_ID') ?: '');
+
+// Cron Jobs
+if (!defined('VOLTIKA_CRON_TOKEN')) define('VOLTIKA_CRON_TOKEN', getenv('VOLTIKA_CRON_TOKEN') ?: '');
+if (!defined('VOLTIKA_BASE_URL'))   define('VOLTIKA_BASE_URL',   getenv('VOLTIKA_BASE_URL')   ?: 'https://voltika.mx');
+
 // ── Shared DB connection ────────────────────────────────────────────────────
 function getDB() {
     static $pdo = null;

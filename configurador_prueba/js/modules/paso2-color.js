@@ -88,7 +88,7 @@ var Paso2 = {
             html += '<div class="vk-color-swatch' + activeCls + '" data-color="' + c.id + '">' +
                 '<div class="vk-color-swatch__circle" style="background:' + c.hex + ';"></div>' +
                 '<div class="vk-color-swatch__label">' + c.nombre + '</div>' +
-                (stock > 0 ? '<div style="font-size:10px;margin-top:2px;color:#2e7d32;font-weight:600;">' + stock + ' disponible' + (stock > 1 ? 's' : '') + '</div>' : '<div style="font-size:10px;margin-top:2px;color:#b91c1c;font-weight:600;">Agotado</div>') +
+                (stock > 0 ? '' : '<div style="font-size:10px;margin-top:2px;color:#b91c1c;font-weight:600;">Agotado</div>') +
                 '</div>';
         }
         html += '</div>';

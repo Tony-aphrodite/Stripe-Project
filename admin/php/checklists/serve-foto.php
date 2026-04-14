@@ -12,12 +12,18 @@ if (!$filename) {
     exit;
 }
 
-$storageDir = sys_get_temp_dir() . '/voltika_checklists/';
+$storageDir = __DIR__ . '/../../uploads/checklists/';
 $filePath = $storageDir . $filename;
 
+// Fallback: check legacy temp directory for older photos
 if (!file_exists($filePath)) {
-    http_response_code(404);
-    exit;
+    $legacyPath = sys_get_temp_dir() . '/voltika_checklists/' . $filename;
+    if (file_exists($legacyPath)) {
+        $filePath = $legacyPath;
+    } else {
+        http_response_code(404);
+        exit;
+    }
 }
 
 $finfo = new finfo(FILEINFO_MIME_TYPE);

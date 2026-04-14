@@ -22,11 +22,12 @@ window.AD_analytics = (function(){
     html += '<span class="ad-dim" style="font-size:12px;">' + r.fecha_inicio + ' — ' + r.fecha_fin + '</span></div>';
 
     // ── Filters ──
-    html += '<div class="ad-filters">';
+    html += '<div class="ad-filters" style="flex-wrap:wrap;">';
     html += '<div class="ad-tabs" style="margin:0;box-shadow:none;padding:0;">';
     html += periodBtn('day','Hoy');
     html += periodBtn('week','Semana');
     html += periodBtn('month','Mes');
+    html += periodBtn('custom','Personalizado');
     html += '</div>';
     html += '<select class="ad-select" id="anModelo"><option value="">Todos los modelos</option>';
     (r.filtros.modelos||[]).forEach(function(m){ html += '<option value="'+esc(m)+'"'+(m===(_filters.modelo||'')?'selected':'')+'>'+esc(m)+'</option>'; });
@@ -35,6 +36,11 @@ window.AD_analytics = (function(){
     (r.filtros.tipos_pago||[]).forEach(function(t){ html += '<option value="'+esc(t)+'"'+(t===(_filters.tipo_pago||'')?'selected':'')+'>'+esc(t)+'</option>'; });
     html += '</select>';
     html += '<button class="ad-btn sm primary" id="anFilter">Filtrar</button>';
+    html += '</div>';
+    html += '<div id="anCustomDates" style="display:'+(_filters.periodo==='custom'?'flex':'none')+';gap:8px;align-items:center;margin:8px 0;font-size:13px;">';
+    html += '<label>Desde <input type="date" class="ad-input" id="anFechaInicio" value="'+(_filters.fecha_inicio||r.fecha_inicio||'')+'"></label>';
+    html += '<label>Hasta <input type="date" class="ad-input" id="anFechaFin" value="'+(_filters.fecha_fin||r.fecha_fin||'')+'"></label>';
+    html += '<button class="ad-btn sm primary" id="anApplyDates">Aplicar</button>';
     html += '</div>';
 
     // ── KPIs ──
@@ -110,9 +116,18 @@ window.AD_analytics = (function(){
     // Bindings
     $('.anPeriod').on('click', function(){
       _filters.periodo = $(this).data('p');
-      delete _filters.fecha_inicio;
-      delete _filters.fecha_fin;
-      load();
+      if (_filters.periodo !== 'custom') {
+        delete _filters.fecha_inicio;
+        delete _filters.fecha_fin;
+        load();
+      } else {
+        $('#anCustomDates').show();
+      }
+    });
+    $('#anApplyDates').on('click', function(){
+      _filters.fecha_inicio = $('#anFechaInicio').val();
+      _filters.fecha_fin = $('#anFechaFin').val();
+      if (_filters.fecha_inicio && _filters.fecha_fin) load();
     });
     $('#anFilter').on('click', function(){
       _filters.modelo = $('#anModelo').val();

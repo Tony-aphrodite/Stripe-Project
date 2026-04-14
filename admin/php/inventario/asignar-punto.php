@@ -30,6 +30,11 @@ $stmt->execute([$motoId]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$moto) adminJsonOut(['error' => 'Moto no encontrada'], 404);
 
+// Rule: locked motos cannot be assigned
+if (!empty($moto['bloqueado_venta'])) {
+    adminJsonOut(['error' => 'Esta moto está bloqueada. Motivo: ' . ($moto['bloqueado_motivo'] ?? 'Sin motivo') . '. Desbloquéala primero.'], 403);
+}
+
 // Rule: checklist_origen must be complete
 $co = $pdo->prepare("SELECT completado FROM checklist_origen WHERE moto_id=? ORDER BY freg DESC LIMIT 1");
 $co->execute([$motoId]);

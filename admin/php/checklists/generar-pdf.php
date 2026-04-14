@@ -155,6 +155,17 @@ header('Content-Type: text/html; charset=UTF-8');
 <?php
 // Show photos
 $fotoCols = [];
+$fotoLabels = [
+    'fotos'           => 'Fotos de evidencia',
+    'fotos_fase1'     => 'Fotos de recepción',
+    'fotos_base'      => 'Fotos base y asiento',
+    'fotos_manubrio'  => 'Fotos manubrio',
+    'fotos_llanta'    => 'Fotos llanta delantera',
+    'fotos_espejos'   => 'Fotos espejos',
+    'fotos_fase3'     => 'Fotos validación final',
+    'fotos_identidad' => 'Fotos de identidad',
+    'fotos_unidad'    => 'Fotos de la unidad',
+];
 foreach ($cl as $k => $v) {
     if (strpos($k, 'fotos') === 0 && $v) {
         $fotos = json_decode($v, true);
@@ -165,7 +176,7 @@ if ($fotoCols): ?>
 <div class="section">
   <h3>Evidencia fotográfica</h3>
   <?php foreach ($fotoCols as $col => $urls): ?>
-  <div style="font-size:11px;color:#666;margin-top:4px;"><?= htmlspecialchars($col) ?>:</div>
+  <div style="font-size:11px;color:#666;margin-top:4px;"><?= htmlspecialchars($fotoLabels[$col] ?? $col) ?>:</div>
   <div class="photos">
     <?php foreach ($urls as $url): ?>
     <img src="../../<?= htmlspecialchars($url) ?>" alt="foto">

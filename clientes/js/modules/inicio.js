@@ -59,7 +59,7 @@ window.VK_inicio = (function(){
     html += '<div style="display:flex;gap:12px"><span style="font-size:18px;cursor:pointer" onclick="VKApp.go(\'notificaciones\')" title="Notificaciones">&#128276;</span><span style="font-size:18px;cursor:pointer" onclick="VKApp.go(\'cuenta\')" title="Mi cuenta">&#128100;</span></div>';
     html += '</div>';
 
-    html += '<div class="vk-h1" style="margin-bottom:2px">¡Hola, '+nombre+'! &#128075;</div>';
+    html += '<div class="vk-h1" style="margin-bottom:2px">¡Hola, '+nombre+'!</div>';
     html += pill(e.state||'compra_confirmada');
 
     // ── Dynamic message based on delivery step ──
@@ -115,10 +115,10 @@ window.VK_inicio = (function(){
       var enTransito = !!envio.fecha_envio && !envio.fecha_recepcion;
       html += '<div class="vk-delivery-card vk-delivery-prep">';
       if (enTransito) {
-        html += '<div class="vk-delivery-title">Tu VOLTIKA va en camino &#128666;</div>';
+        html += '<div class="vk-delivery-title">Tu VOLTIKA va en camino</div>';
         html += '<div class="vk-delivery-sub">'+ (etaArrival ? 'Llegada estimada al punto: '+etaArrival : 'En tránsito hacia tu punto.') +'</div>';
       } else {
-        html += '<div class="vk-delivery-title">Tu VOLTIKA esta en preparacion &#128640;</div>';
+        html += '<div class="vk-delivery-title">Tu VOLTIKA esta en preparacion</div>';
         html += '<div class="vk-delivery-sub">Estamos asignando tu punto de entrega y fecha estimada.</div>';
       }
 
@@ -206,7 +206,7 @@ window.VK_inicio = (function(){
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
         '<div><div class="vk-muted">Bienvenido</div><div class="vk-h1">¡Hola, '+nombre+'!</div></div>'+
         '<div style="display:flex;align-items:center;gap:10px">'+
-          '<span style="font-size:20px;cursor:pointer" onclick="VKApp.go(\'notificaciones\')" title="Notificaciones">&#128276;</span>'+
+          '<span style="cursor:pointer" onclick="VKApp.go(\'notificaciones\')" title="Notificaciones"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></span>'+
           pill(e.state||'no_subscription')+
         '</div>'+
       '</div>'+

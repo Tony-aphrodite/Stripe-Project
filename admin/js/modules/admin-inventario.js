@@ -79,8 +79,9 @@ window.AD_inventario = (function(){
           var dpC = dp <= 7 ? '#059669' : dp <= 30 ? '#d97706' : '#dc2626';
           diasCell = '<span style="font-weight:700;color:'+dpC+';">'+dp+'d</span>';
         }
+        var lockBadge = parseInt(m.bloqueado_venta) ? ' <span class="ad-badge red" style="font-size:10px;">BLOQUEADA</span>' : '';
         html += '<tr>'+
-          '<td>'+(m.vin_display||m.vin||'—')+'</td>'+
+          '<td>'+(m.vin_display||m.vin||'—')+lockBadge+'</td>'+
           '<td>'+m.color+'</td>'+
           '<td>'+ADApp.badgeEstado(m.estado)+'</td>'+
           '<td>'+(m.punto_voltika_nombre||'—')+'</td>'+
@@ -235,6 +236,26 @@ window.AD_inventario = (function(){
         });
       }
 
+      // ── Bloqueo de venta ──
+      var isBloqueada = parseInt(m.bloqueado_venta) === 1;
+      if(ADApp.canWrite()){
+        html += secHead('Bloqueo de venta','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>');
+        if(isBloqueada){
+          html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-radius:8px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);margin-bottom:12px;">';
+          html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#b91c1c" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';
+          html += '<div><div style="font-weight:700;color:#b91c1c;font-size:13px;">Moto bloqueada para venta</div>';
+          html += '<div style="font-size:12px;color:#b91c1c;margin-top:4px;">Motivo: '+(m.bloqueado_motivo||'Sin motivo')+'</div>';
+          if(m.bloqueado_fecha) html += '<div style="font-size:11px;color:var(--ad-dim);margin-top:2px;">Fecha: '+m.bloqueado_fecha+'</div>';
+          html += '</div></div>';
+          html += '<button class="ad-btn ghost" id="adUnlockMoto" data-id="'+m.id+'" style="color:#059669;border-color:#059669;">Desbloquear moto</button>';
+        } else {
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.15);color:#059669;font-size:12px;margin-bottom:12px;">';
+          html += '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#059669" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>';
+          html += 'Moto disponible para venta (no bloqueada)</div>';
+          html += '<button class="ad-btn ghost" id="adLockMoto" data-id="'+m.id+'" style="color:#b91c1c;border-color:#b91c1c;">Bloquear moto</button>';
+        }
+      }
+
       // ── Acciones ──
       var origenOk = r.checklist_origen && r.checklist_origen.completado;
       if(ADApp.canWrite()){
@@ -244,13 +265,21 @@ window.AD_inventario = (function(){
           html += '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#b91c1c" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
           html += 'El checklist de origen debe estar completo antes de asignar a un punto.</div>';
         }
+        if(isBloqueada){
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:8px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);color:#b91c1c;font-size:12px;margin-bottom:12px;">';
+          html += '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#b91c1c" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';
+          html += 'Esta moto está bloqueada para venta. Desbloquéala primero para poder asignarla.</div>';
+        }
+        var canAssign = origenOk && !isBloqueada;
         html += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
-        html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'" '+(origenOk?'':'disabled style="opacity:.5;cursor:not-allowed;"')+'>Asignar a punto</button>';
+        html += '<button class="ad-btn primary" id="adAssign" data-id="'+m.id+'" '+(canAssign?'':'disabled style="opacity:.5;cursor:not-allowed;"')+'>Asignar a punto</button>';
         html += '<button class="ad-btn ghost" id="adVerifyPay" data-id="'+m.id+'">Verificar pago</button>';
         html += '</div>';
       }
       ADApp.modal(html);
-      $('#adAssign').on('click',function(){ if(!origenOk) return; assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
+      $('#adAssign').on('click',function(){ if(!origenOk || isBloqueada) return; assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
+      $('#adLockMoto').on('click',function(){ showLockModal(m.id); });
+      $('#adUnlockMoto').on('click',function(){ unlockMoto(m.id); });
       $('#adVerifyPay').on('click',function(){
         ADApp.api('pagos/verificar.php',{moto_id:m.id}).done(function(r2){
           var msg = r2.verificado ? 'Pago verificado correctamente' : 'No verificado: '+(r2.stripe_status||'sin Stripe PI');
@@ -592,7 +621,7 @@ window.AD_inventario = (function(){
   function showImportForm(){
     ADApp.modal(
       '<div class="ad-h2">Importar motos desde Excel</div>'+
-      '<div class="ad-dim" style="margin-bottom:12px;">Formato: CSV o XLSX con columnas VIN, Modelo, Color, Año, Num_motor, Potencia, Config_baterias, Hecho_en, Num_pedimento, Aduana, CEDIS_origen, Notas</div>'+
+      '<div class="ad-dim" style="margin-bottom:12px;">Formato: CSV o XLSX con columnas No de serie, Modelo, Color, Año Modelo, No de Motor, Potencia, Posicion, Fecha entrada pais, Puerto entrada, No pedimento, CEDIS Origen, Fecha Entrada Almacen, Fecha Salida Almacen, Punto aliado, Estatus, No de Orden, No de factura</div>'+
       '<div style="margin-bottom:12px;">'+
         '<a href="#" id="adDlTemplate" style="color:var(--ad-primary);font-size:13px;">Descargar plantilla CSV</a>'+
       '</div>'+
@@ -604,7 +633,7 @@ window.AD_inventario = (function(){
 
     $('#adDlTemplate').on('click', function(e){
       e.preventDefault();
-      var csv = 'VIN,Modelo,Color,Año,Num_motor,Potencia,Config_baterias,Hecho_en,Num_pedimento,Aduana,CEDIS_origen,Notas\n';
+      var csv = 'No de serie,Modelo,Año Modelo,Color,No de Motor,Potencia del motor,Posicion en inventario,Fecha de entrada al pais,Puerto de entrada,No de pedimento,CEDIS ORIGEN,Fecha Entrada Almacen,Fecha Salida Almacen,Punto aliado/Entrega asignado,Estatus,No de Orden,No de factura,Notas\n';
       var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -689,6 +718,56 @@ window.AD_inventario = (function(){
         $('#adImportResult').html('<div style="padding:12px;border-radius:8px;background:#FFEBEE;color:#C62828;">Error de conexion</div>').show();
         $btn.html('Importar').prop('disabled', false);
       });
+    });
+  }
+
+  // ── Lock / Unlock moto ─────────────────────────────────────────────────
+  function showLockModal(motoId){
+    var html = '<div class="ad-h2">Bloquear moto para venta</div>'+
+      '<div class="ad-dim" style="margin-bottom:12px;">Esta moto no podrá ser vendida ni asignada mientras esté bloqueada.</div>'+
+      '<label class="ad-label">Motivo del bloqueo *</label>'+
+      '<textarea id="adLockMotivo" class="ad-input" placeholder="Ej. Pendiente revisión técnica, daño en transporte, etc." style="width:100%;min-height:80px;"></textarea>'+
+      '<button class="ad-btn primary" id="adLockSave" style="width:100%;margin-top:12px;">Bloquear moto</button>';
+    ADApp.modal(html);
+    $('#adLockSave').on('click', function(){
+      var motivo = $('#adLockMotivo').val().trim();
+      if(!motivo){ alert('El motivo es obligatorio'); return; }
+      $(this).prop('disabled',true).html('<span class="ad-spin"></span> Bloqueando...');
+      ADApp.api('inventario/bloquear-venta.php', {
+        moto_id: motoId,
+        bloqueado: 1,
+        motivo: motivo
+      }).done(function(r){
+        if(r.ok){
+          ADApp.closeModal();
+          alert('Moto bloqueada para venta');
+          load();
+        } else {
+          alert(r.error||'Error');
+          $('#adLockSave').prop('disabled',false).html('Bloquear moto');
+        }
+      }).fail(function(x){
+        alert((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
+        $('#adLockSave').prop('disabled',false).html('Bloquear moto');
+      });
+    });
+  }
+  function unlockMoto(motoId){
+    if(!confirm('¿Desbloquear esta moto para venta?')) return;
+    ADApp.api('inventario/bloquear-venta.php', {
+      moto_id: motoId,
+      bloqueado: 0,
+      motivo: ''
+    }).done(function(r){
+      if(r.ok){
+        ADApp.closeModal();
+        alert('Moto desbloqueada para venta');
+        load();
+      } else {
+        alert(r.error||'Error');
+      }
+    }).fail(function(x){
+      alert((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
     });
   }
 

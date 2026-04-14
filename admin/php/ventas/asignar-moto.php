@@ -67,6 +67,13 @@ if (!$coRow || !$coRow['completado']) {
     ], 403);
 }
 
+// Rule: sale-locked motos cannot be assigned.
+if (!empty($moto['bloqueado_venta'])) {
+    adminJsonOut([
+        'error' => 'Esta moto está bloqueada para venta. Motivo: ' . ($moto['bloqueado_motivo'] ?? 'Sin motivo') . '. Desbloquéala primero.'
+    ], 403);
+}
+
 // Block phantom VINs created by the old confirmar-orden.php auto-INSERT.
 // These are virtual records (VK-{MODEL}-{timestamp}-{hex}), not real bikes.
 if (preg_match('/^VK-[A-Z0-9]+-\d+-[a-f0-9]+$/i', $moto['vin'] ?? '')) {

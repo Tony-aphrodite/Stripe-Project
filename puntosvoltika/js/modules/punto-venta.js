@@ -12,7 +12,7 @@ window.PV_venta = (function(){
       html += '<div class="ad-card">'+
         '<div style="font-weight:700">'+m.modelo+' · '+m.color+'</div>'+
         '<div style="font-size:12px;color:var(--ad-dim)">VIN: '+(m.vin_display||m.vin)+'</div>'+
-        '<button class="ad-btn primary sm pvSell" data-id="'+m.id+'" data-modelo="'+m.modelo+'" style="margin-top:8px">💰 Asignar a venta</button>'+
+        '<button class="ad-btn primary sm pvSell" data-id="'+m.id+'" data-modelo="'+m.modelo+'" style="margin-top:8px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Asignar a venta</button>'+
       '</div>';
     });
     PVApp.render(html);
@@ -44,7 +44,7 @@ window.PV_venta = (function(){
         cliente_nombre: $('#pvVN').val(), cliente_email: $('#pvVE').val(),
         cliente_telefono: $('#pvVT').val(), precio: parseFloat($('#pvVP').val())||0
       }).done(function(r){
-        if(r.ok){ PVApp.closeModal(); PVApp.toast('✅ Venta registrada'); render(); }
+        if(r.ok){ PVApp.closeModal(); PVApp.toast('Venta registrada'); render(); }
       }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
     });
   }

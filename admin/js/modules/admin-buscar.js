@@ -1,6 +1,18 @@
 window.AD_buscar = (function(){
   var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
 
+  var RECENT_KEY = 'voltika_recent_searches';
+
+  function getRecent(){
+    try { return JSON.parse(localStorage.getItem(RECENT_KEY)||'[]'); } catch(e){ return []; }
+  }
+  function saveRecent(q){
+    var list = getRecent().filter(function(x){ return x !== q; });
+    list.unshift(q);
+    if (list.length > 10) list = list.slice(0, 10);
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch(e){}
+  }
+
   function render(query){
     var q = query || '';
     var html = _backBtn;
@@ -11,6 +23,24 @@ window.AD_buscar = (function(){
     html += '</div>';
     html += '<div id="adSearchResults"></div>';
     ADApp.render(html);
+
+    // Show recent searches if no query
+    if (!q) {
+      var recent = getRecent();
+      if (recent.length) {
+        var rhtml = '<div style="margin:16px 0;"><div class="ad-dim" style="font-size:12px;margin-bottom:8px;">Búsquedas recientes</div>';
+        rhtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+        recent.forEach(function(s){
+          rhtml += '<button class="ad-btn sm ghost adRecentSearch">' + esc(s) + '</button>';
+        });
+        rhtml += '</div></div>';
+        $('#adSearchResults').html(rhtml);
+        $('.adRecentSearch').on('click', function(){
+          $('#adSearchInput').val($(this).text());
+          doSearch();
+        });
+      }
+    }
 
     $('#adSearchBtn').on('click', doSearch);
     $('#adSearchInput').on('keypress', function(e){ if(e.which===13) doSearch(); });
@@ -25,6 +55,7 @@ window.AD_buscar = (function(){
     }
     $('#adSearchResults').html('<div style="text-align:center;padding:30px;"><span class="ad-spin"></span> Buscando...</div>');
 
+    saveRecent(q);
     ADApp.api('buscar/global.php?q=' + encodeURIComponent(q)).done(function(r){
       if (!r.ok) {
         $('#adSearchResults').html('<div class="ad-banner err">' + esc(r.error || 'Error') + '</div>');
@@ -60,7 +91,7 @@ window.AD_buscar = (function(){
     if (r.results.ordenes.length) {
       html += '<div class="ad-h2">Órdenes (' + r.results.ordenes.length + ')</div>';
       html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>';
-      html += '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Tipo</th><th>Monto</th><th>Fecha</th>';
+      html += '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Tipo</th><th>Monto</th><th>Fecha</th><th></th>';
       html += '</tr></thead><tbody>';
       r.results.ordenes.forEach(function(o){
         html += '<tr>';
@@ -70,6 +101,7 @@ window.AD_buscar = (function(){
         html += '<td><span class="ad-badge blue">' + esc(o.tipo_pago || '') + '</span></td>';
         html += '<td>' + ADApp.money(o.monto) + '</td>';
         html += '<td>' + (o.freg || '—').substring(0, 10) + '</td>';
+        html += '<td><button class="ad-btn sm ghost srVerOrden" data-id="'+(o.pedido||o.id)+'">Ver</button></td>';
         html += '</tr>';
       });
       html += '</tbody></table></div></div>';
@@ -79,7 +111,7 @@ window.AD_buscar = (function(){
     if (r.results.inventario.length) {
       html += '<div class="ad-h2">Inventario (' + r.results.inventario.length + ')</div>';
       html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>';
-      html += '<th>VIN</th><th>Modelo</th><th>Color</th><th>Estado</th><th>Cliente</th><th>Punto</th>';
+      html += '<th>VIN</th><th>Modelo</th><th>Color</th><th>Estado</th><th>Cliente</th><th>Punto</th><th></th>';
       html += '</tr></thead><tbody>';
       r.results.inventario.forEach(function(m){
         html += '<tr>';
@@ -89,6 +121,7 @@ window.AD_buscar = (function(){
         html += '<td>' + ADApp.badgeEstado(m.estado || '') + '</td>';
         html += '<td>' + esc(m.cliente_nombre || '—') + '</td>';
         html += '<td>' + esc(m.punto_nombre || '—') + '</td>';
+        html += '<td><button class="ad-btn sm ghost srVerMoto" data-id="'+(m.id||'')+'">Ver</button></td>';
         html += '</tr>';
       });
       html += '</tbody></table></div></div>';
@@ -114,10 +147,16 @@ window.AD_buscar = (function(){
     }
 
     if (r.total === 0) {
-      html += '<div class="ad-empty"><span class="ic">&#128269;</span>No se encontraron resultados para "<strong>' + esc(r.query) + '</strong>"</div>';
+      html += '<div class="ad-empty">No se encontraron resultados para "<strong>' + esc(r.query) + '</strong>"</div>';
     }
 
     $('#adSearchResults').html(html);
+    $('.srVerOrden').on('click', function(){
+      ADApp.go('pedidos', $(this).data('id'));
+    });
+    $('.srVerMoto').on('click', function(){
+      ADApp.go('inventario', $(this).data('id'));
+    });
   }
 
   function esc(s){ return $('<span>').text(s||'').html(); }

@@ -11,7 +11,7 @@ window.PV_entrega = (function(){
           '<div style="font-weight:700">'+m.modelo+' · '+m.color+'</div>'+
           '<div style="font-size:12px">Cliente: '+(m.cliente_nombre||'—')+'</div>'+
           '<div style="font-size:11px;color:var(--ad-dim)">'+(m.cliente_telefono||'')+' · '+(m.cliente_email||'')+'</div>'+
-          '<button class="ad-btn primary sm pvStart" data-id="'+m.id+'" data-nombre="'+m.cliente_nombre+'" data-tel="'+m.cliente_telefono+'" style="margin-top:8px">🎁 Iniciar entrega</button>'+
+          '<button class="ad-btn primary sm pvStart" data-id="'+m.id+'" data-nombre="'+m.cliente_nombre+'" data-tel="'+m.cliente_telefono+'" style="margin-top:8px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg> Iniciar entrega</button>'+
         '</div>';
       });
       PVApp.render(html);
@@ -98,7 +98,7 @@ window.PV_entrega = (function(){
     }
     // CREDITO — match confirmed by Truora
     if (r.match === true) {
-      PVApp.toast('✅ Rostro coincide con el crédito'+(r.face_score!=null?' ('+r.face_score+'%)':''));
+      PVApp.toast('Rostro coincide con el crédito'+(r.face_score!=null?' ('+r.face_score+'%)':''));
       step4();
       return;
     }
@@ -171,13 +171,13 @@ window.PV_entrega = (function(){
       steps(4)+
       '<div class="ad-h2">5. Firma del ACTA DE ENTREGA</div>'+
       '<div class="ad-card" style="color:var(--ad-warn)">'+
-        '📱 Pide al cliente que ingrese al portal <strong>voltika.mx/clientes</strong> desde su celular, revise el acta y la firme.'+
+        'Pide al cliente que ingrese al portal <strong>voltika.mx/clientes</strong> desde su celular, revise el acta y la firme.'+
       '</div>'+
       '<button id="pvS5" class="ad-btn primary" style="width:100%">Finalizar entrega</button>'
     );
     $('#pvS5').on('click', function(){
       PVApp.api('entrega/finalizar.php',{moto_id:ctx.moto_id}).done(function(r){
-        if(r.ok){ PVApp.closeModal(); PVApp.toast('✅ '+r.mensaje); render(); }
+        if(r.ok){ PVApp.closeModal(); PVApp.toast(r.mensaje); render(); }
       }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
     });
   }

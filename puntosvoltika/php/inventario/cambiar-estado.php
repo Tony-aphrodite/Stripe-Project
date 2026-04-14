@@ -37,6 +37,10 @@ $stmt->execute([$motoId, $ctx['punto_id']]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$moto) puntoJsonOut(['error' => 'Moto no encontrada en tu inventario'], 404);
 
+if (!empty($moto['bloqueado_venta'])) {
+    puntoJsonOut(['error' => 'Esta moto está bloqueada. Motivo: ' . ($moto['bloqueado_motivo'] ?? 'Sin motivo') . '. Contacta a CEDIS para desbloquearla.'], 403);
+}
+
 $estadoActual = $moto['estado'] ?? '';
 
 // Transition rules
