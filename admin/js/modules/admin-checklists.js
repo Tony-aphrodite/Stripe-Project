@@ -336,12 +336,10 @@ window.AD_checklists = (function(){
     $('#clComplete').on('click', function(){
       var checked = countChecked();
       if(checked < TOTAL_ORIGEN){
-        if(!confirm('Faltan '+(TOTAL_ORIGEN-checked)+' items por marcar. ¿Desea completar de todos modos?\n\n(No podrá editarlo después)')){
-          return;
-        }
-      } else {
-        if(!confirm('¿Completar y bloquear este checklist? No se podrá modificar después.')) return;
+        alert('Faltan '+(TOTAL_ORIGEN-checked)+' items por marcar antes de completar el checklist.');
+        return;
       }
+      if(!confirm('¿Completar y bloquear este checklist? No se podrá modificar después.')) return;
       saveOrigen(motoId, true);
     });
 
@@ -387,8 +385,10 @@ window.AD_checklists = (function(){
         alert(r.error||'Error al guardar');
         $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
       }
-    }).fail(function(){
-      alert('Error de conexión');
+    }).fail(function(xhr){
+      var msg = 'Error de conexión';
+      if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+      alert(msg);
       $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
     });
   }
@@ -588,10 +588,10 @@ window.AD_checklists = (function(){
     $('#clEnsComplete').on('click', function(){
       var checked = countChecked();
       if(checked < TOTAL_ENSAMBLE){
-        if(!confirm('Faltan '+(TOTAL_ENSAMBLE-checked)+' items. Completar de todos modos?\n\n(No podrá editarlo después)')) return;
-      } else {
-        if(!confirm('Completar y bloquear este checklist?')) return;
+        alert('Faltan '+(TOTAL_ENSAMBLE-checked)+' items por marcar antes de completar el checklist.');
+        return;
       }
+      if(!confirm('Completar y bloquear este checklist?')) return;
       saveEnsamble(motoId, true);
     });
     $('#clEnsBack').on('click', function(){ ADApp.closeModal(); showMotoChecklists(motoId); });
@@ -620,8 +620,10 @@ window.AD_checklists = (function(){
         alert(r.error||'Error al guardar');
         $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
       }
-    }).fail(function(){
-      alert('Error de conexión');
+    }).fail(function(xhr){
+      var msg = 'Error de conexión';
+      if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+      alert(msg);
       $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
     });
   }
@@ -837,8 +839,10 @@ window.AD_checklists = (function(){
           $('#clOtpStatus').text(r.error||'Error').css('color','#F44336');
         }
         $btn.prop('disabled',false).html('Enviar OTP al cliente');
-      }).fail(function(){
-        $('#clOtpStatus').text('Error de conexión').css('color','#F44336');
+      }).fail(function(xhr){
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        $('#clOtpStatus').text(msg).css('color','#F44336');
         $btn.prop('disabled',false).html('Enviar OTP al cliente');
       });
     });
@@ -856,8 +860,10 @@ window.AD_checklists = (function(){
           alert(r.error||'Código incorrecto');
           $btn.prop('disabled',false).html('Verificar');
         }
-      }).fail(function(){
-        alert('Error de conexión');
+      }).fail(function(xhr){
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        alert(msg);
         $btn.prop('disabled',false).html('Verificar');
       });
     });
@@ -887,8 +893,10 @@ window.AD_checklists = (function(){
         } else {
           $('#clFaceStatus').html(r.error||'Error').css('color','#F44336');
         }
-      }).fail(function(){
-        $('#clFaceStatus').html('Error de conexión').css('color','#F44336');
+      }).fail(function(xhr){
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        $('#clFaceStatus').html(msg).css('color','#F44336');
       });
     });
 
@@ -907,10 +915,10 @@ window.AD_checklists = (function(){
     $('#clEntComplete').on('click', function(){
       var checked = countChecked();
       if(checked < TOTAL_ENTREGA){
-        if(!confirm('Faltan '+(TOTAL_ENTREGA-checked)+' items. Completar de todos modos?\n\n(No podrá editarlo después)')) return;
-      } else {
-        if(!confirm('Completar y bloquear este checklist?')) return;
+        alert('Faltan '+(TOTAL_ENTREGA-checked)+' items por marcar antes de completar el checklist.');
+        return;
       }
+      if(!confirm('Completar y bloquear este checklist?')) return;
       saveEntrega(motoId, true);
     });
     $('#clEntBack').on('click', function(){ ADApp.closeModal(); showMotoChecklists(motoId); });
@@ -946,8 +954,10 @@ window.AD_checklists = (function(){
         alert(r.error||'Error al guardar');
         $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
       }
-    }).fail(function(){
-      alert('Error de conexión');
+    }).fail(function(xhr){
+      var msg = 'Error de conexión';
+      if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+      alert(msg);
       $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
     });
     }); // end firmaPromise
@@ -982,8 +992,8 @@ window.AD_checklists = (function(){
     var done = countChecked();
     var pct = total > 0 ? Math.round(done/total*100) : 0;
     $('#clProgressBar').css('width', pct+'%');
-    $('#clProgressBar').closest('div').prev().find('span:first strong').text(done+'/'+total);
-    $('#clProgressBar').closest('div').prev().find('span:last strong').text(pct+'%');
+    $('#clProgressBar').parent().prev().find('span:first strong').text(done+'/'+total);
+    $('#clProgressBar').parent().prev().find('span:last strong').text(pct+'%');
   }
 
   // ── Signature canvas ──────────────────────────────────────────────────────
@@ -1117,9 +1127,11 @@ window.AD_checklists = (function(){
               $('#'+placeholderId).remove();
               alert(r.error||'Error al subir foto');
             }
-          }).fail(function(){
+          }).fail(function(xhr){
             $('#'+placeholderId).remove();
-            alert('Error de conexión al subir foto');
+            var msg = 'Error de conexión al subir foto';
+            if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+            alert(msg);
           });
         })(files[i]);
       }
@@ -1150,9 +1162,11 @@ window.AD_checklists = (function(){
       }).done(function(r){
         if(r.ok) $thumb.remove();
         else { $thumb.css('opacity','1'); alert(r.error||'Error'); }
-      }).fail(function(){
+      }).fail(function(xhr){
         $thumb.css('opacity','1');
-        alert('Error de conexión');
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        alert(msg);
       });
     });
   }
