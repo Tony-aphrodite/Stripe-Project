@@ -80,11 +80,18 @@ $filename = $tipo . '_' . $motoId . '_' . $campo . '_' . time() . '_' . mt_rand(
 
 $uploadDir = __DIR__ . '/../../uploads/checklists/';
 if (!is_dir($uploadDir)) {
-    if (!@mkdir($uploadDir, 0775, true)) {
-        error_log('subir-foto: No se pudo crear directorio ' . $uploadDir);
-        http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => 'No se pudo crear directorio de almacenamiento']);
-        exit;
+    @mkdir($uploadDir, 0775, true);
+}
+// Fallback to temp directory if permanent storage is not available
+if (!is_dir($uploadDir) || !is_writable($uploadDir)) {
+    $uploadDir = sys_get_temp_dir() . '/voltika_checklists/';
+    if (!is_dir($uploadDir)) {
+        if (!@mkdir($uploadDir, 0775, true)) {
+            error_log('subir-foto: No se pudo crear directorio ' . $uploadDir);
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'error' => 'No se pudo crear directorio de almacenamiento']);
+            exit;
+        }
     }
 }
 
