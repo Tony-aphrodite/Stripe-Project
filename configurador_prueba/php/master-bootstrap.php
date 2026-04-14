@@ -611,6 +611,8 @@ function voltikaEnsureSchema(): void {
         acta_aceptada TINYINT DEFAULT 0, clausula_identidad TINYINT DEFAULT 0,
         clausula_medios TINYINT DEFAULT 0, clausula_uso_info TINYINT DEFAULT 0,
         firma_digital TINYINT DEFAULT 0, firma_data MEDIUMTEXT NULL,
+        firma_acta_data MEDIUMTEXT NULL, firma_pagare_data MEDIUMTEXT NULL,
+        firma_pagare_timestamp DATETIME NULL, firma_pagare_cincel_id VARCHAR(255) NULL,
         pdf_acta_url VARCHAR(255),
         fase5_completada TINYINT DEFAULT 0, fase5_fecha DATETIME,
         completado TINYINT DEFAULT 0, bloqueado TINYINT DEFAULT 0, notas TEXT,
@@ -648,6 +650,11 @@ function voltikaEnsureSchema(): void {
         "ALTER TABLE transacciones ADD COLUMN folio_contrato VARCHAR(50) NULL",
         "ALTER TABLE transacciones ADD COLUMN fecha_estimada_entrega DATE NULL",
         "ALTER TABLE transacciones ADD COLUMN pago_estado VARCHAR(30) NULL",
+        // checklist_entrega_v2: dual signatures
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN firma_acta_data MEDIUMTEXT NULL AFTER firma_data",
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN firma_pagare_data MEDIUMTEXT NULL AFTER firma_acta_data",
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN firma_pagare_timestamp DATETIME NULL AFTER firma_pagare_data",
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN firma_pagare_cincel_id VARCHAR(255) NULL AFTER firma_pagare_timestamp",
     ];
     foreach ($alters as $sql) {
         try { $pdo->exec($sql); } catch (Throwable $e) {}

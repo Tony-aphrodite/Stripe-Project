@@ -780,27 +780,55 @@ window.AD_checklists = (function(){
         html += '</div>';
       }
 
-      // ── Fase 5: Signature canvas ──
+      // ── Fase 5: Dual signatures ──
       if(ph.key === 'fase5'){
-        html += '<div style="margin-top:10px;">';
-        html += sectionTitle('Firma digital del cliente');
-        if(data.firma_data){
-          html += '<div style="border:1px solid #ddd;border-radius:8px;padding:8px;display:inline-block;">'+
-            '<img src="'+data.firma_data+'" style="max-width:300px;height:auto;"></div>';
-          html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;">Firma capturada</div>';
+
+        // ── Firma 1: Acta de entrega ──
+        html += '<div style="margin-top:10px;padding:16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;margin-bottom:14px;">';
+        html += '<div style="font-weight:700;font-size:14px;color:#0369a1;margin-bottom:4px;">1. Confirma la entrega</div>';
+        html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Acta de entrega — OTP ya confirmado</div>';
+        if(data.firma_acta_data){
+          html += '<div style="border:1px solid #ddd;border-radius:8px;padding:8px;display:inline-block;background:#fff;">'+
+            '<img src="'+data.firma_acta_data+'" style="max-width:300px;height:auto;"></div>';
+          html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;font-weight:600;">Firma de entrega capturada</div>';
         } else if(!isLocked){
-          html += '<div id="clFirmaWrapper" style="border:2px dashed #ccc;border-radius:8px;position:relative;background:#fafafa;">';
-          html += '<canvas id="clFirmaCanvas" style="width:100%;height:120px;display:block;cursor:crosshair;"></canvas>';
-          html += '<div id="clFirmaPlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:13px;pointer-events:none;">Firmar aquí</div>';
+          html += '<div id="clFirmaActaWrapper" style="border:2px dashed #0ea5e9;border-radius:8px;position:relative;background:#fff;">';
+          html += '<canvas id="clFirmaActaCanvas" style="width:100%;height:120px;display:block;cursor:crosshair;"></canvas>';
+          html += '<div id="clFirmaActaPlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:13px;pointer-events:none;">Firmar aquí</div>';
           html += '</div>';
           html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">';
-          html += '<span id="clFirmaStatus" style="font-size:12px;color:#999;">Pendiente de firma</span>';
-          html += '<button class="ad-btn sm ghost" id="clFirmaClear">Limpiar</button>';
+          html += '<span id="clFirmaActaStatus" style="font-size:12px;color:#999;">Pendiente de firma</span>';
+          html += '<button class="ad-btn sm ghost" id="clFirmaActaClear">Limpiar</button>';
           html += '</div>';
         } else {
           html += '<div style="font-size:13px;color:var(--ad-dim);">Sin firma registrada</div>';
         }
         html += '</div>';
+
+        // ── Firma 2: Pagaré (CINCEL) ──
+        html += '<div style="padding:16px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;">';
+        html += '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">2. Finaliza tu compra</div>';
+        html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Firma pagaré — Certificación NOM-151</div>';
+        if(data.firma_pagare_data){
+          html += '<div style="border:1px solid #ddd;border-radius:8px;padding:8px;display:inline-block;background:#fff;">'+
+            '<img src="'+data.firma_pagare_data+'" style="max-width:300px;height:auto;"></div>';
+          html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;font-weight:600;">Firma pagaré capturada</div>';
+          if(data.firma_pagare_timestamp) html += '<div style="font-size:11px;color:#64748b;margin-top:2px;">Timestamp: '+data.firma_pagare_timestamp+'</div>';
+          if(data.firma_pagare_cincel_id) html += '<div style="font-size:11px;color:#64748b;">CINCEL ID: <code>'+data.firma_pagare_cincel_id+'</code></div>';
+        } else if(!isLocked){
+          html += '<div id="clFirmaPagareWrapper" style="border:2px dashed #f59e0b;border-radius:8px;position:relative;background:#fff;">';
+          html += '<canvas id="clFirmaPagareCanvas" style="width:100%;height:120px;display:block;cursor:crosshair;"></canvas>';
+          html += '<div id="clFirmaPagarePlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:13px;pointer-events:none;">Firmar aquí</div>';
+          html += '</div>';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">';
+          html += '<span id="clFirmaPagareStatus" style="font-size:12px;color:#999;">Pendiente de firma</span>';
+          html += '<button class="ad-btn sm ghost" id="clFirmaPagareClear">Limpiar</button>';
+          html += '</div>';
+        } else {
+          html += '<div style="font-size:13px;color:var(--ad-dim);">Sin firma registrada</div>';
+        }
+        html += '</div>';
+
       }
 
       html += '</div>';
@@ -941,11 +969,13 @@ window.AD_checklists = (function(){
     var $btn = completar ? $('#clEntComplete') : $('#clEntSave');
     $btn.prop('disabled',true).html('<span class="ad-spin"></span>');
 
-    // Save signature first if canvas has data
-    var firmaData = getSignatureData();
-    var firmaPromise = firmaData
-      ? ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, firma_data: firmaData })
-      : $.Deferred().resolve({ok:true});
+    // Save both signatures if canvas has data
+    var firmaActa = getSignatureData('acta');
+    var firmaPagare = getSignatureData('pagare');
+    var promises = [];
+    if(firmaActa) promises.push(ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, tipo: 'acta', firma_data: firmaActa }));
+    if(firmaPagare) promises.push(ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, tipo: 'pagare', firma_data: firmaPagare }));
+    var firmaPromise = promises.length ? $.when.apply($, promises) : $.Deferred().resolve({ok:true});
 
     firmaPromise.always(function(){
     ADApp.api('checklists/guardar-entrega.php', payload).done(function(r){
@@ -1022,56 +1052,47 @@ window.AD_checklists = (function(){
 
   // ── Signature canvas ──────────────────────────────────────────────────────
 
-  var _sigCanvas = null, _sigCtx = null, _sigDrawing = false, _sigHasSigned = false;
+  // Dual signature state
+  var _sigState = { acta: { canvas:null, ctx:null, drawing:false, signed:false }, pagare: { canvas:null, ctx:null, drawing:false, signed:false } };
 
-  function initSignatureCanvas(){
-    var canvas = document.getElementById('clFirmaCanvas');
+  function _initOneCanvas(tipo, canvasId, wrapperId, placeholderId, statusId, clearBtnId, borderColor){
+    var canvas = document.getElementById(canvasId);
     if(!canvas) return;
-
     var rect = canvas.getBoundingClientRect();
     var w = rect.width > 0 ? rect.width : (canvas.parentElement ? canvas.parentElement.clientWidth : 320);
     var h = 120;
-    canvas.width = w;
-    canvas.height = h;
-    canvas.style.height = h + 'px';
-
+    canvas.width = w; canvas.height = h; canvas.style.height = h+'px';
     var ctx = canvas.getContext('2d');
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#111827';
-
-    _sigCanvas = canvas;
-    _sigCtx = ctx;
-    _sigHasSigned = false;
-
-    function getPos(e){
-      var r = canvas.getBoundingClientRect();
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
-    }
-
-    canvas.addEventListener('mousedown', function(e){ _sigDrawing = true; var p=getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); $('#clFirmaPlaceholder').hide(); });
-    canvas.addEventListener('mousemove', function(e){ if(!_sigDrawing) return; var p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); _sigHasSigned=true; $('#clFirmaStatus').text('Firma capturada').css('color','#4CAF50'); $('#clFirmaWrapper').css('border-color','#4CAF50'); });
-    canvas.addEventListener('mouseup', function(){ _sigDrawing=false; });
-    canvas.addEventListener('mouseleave', function(){ _sigDrawing=false; });
-
-    canvas.addEventListener('touchstart', function(e){ e.preventDefault(); _sigDrawing=true; var p=getPos(e.touches[0]); ctx.beginPath(); ctx.moveTo(p.x,p.y); $('#clFirmaPlaceholder').hide(); }, {passive:false});
-    canvas.addEventListener('touchmove', function(e){ e.preventDefault(); if(!_sigDrawing) return; var p=getPos(e.touches[0]); ctx.lineTo(p.x,p.y); ctx.stroke(); _sigHasSigned=true; $('#clFirmaStatus').text('Firma capturada').css('color','#4CAF50'); $('#clFirmaWrapper').css('border-color','#4CAF50'); }, {passive:false});
-    canvas.addEventListener('touchend', function(){ _sigDrawing=false; });
-
-    $('#clFirmaClear').on('click', function(){
-      if(!_sigCtx || !_sigCanvas) return;
-      _sigCtx.clearRect(0, 0, _sigCanvas.width, _sigCanvas.height);
-      _sigHasSigned = false;
-      $('#clFirmaPlaceholder').show();
-      $('#clFirmaStatus').text('Pendiente de firma').css('color','#999');
-      $('#clFirmaWrapper').css('border-color','#ccc');
+    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111827';
+    var st = _sigState[tipo];
+    st.canvas = canvas; st.ctx = ctx; st.signed = false;
+    function getPos(e){ var r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+    canvas.addEventListener('mousedown', function(e){ st.drawing=true; var p=getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); $('#'+placeholderId).hide(); });
+    canvas.addEventListener('mousemove', function(e){ if(!st.drawing) return; var p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); st.signed=true; $('#'+statusId).text('Firma capturada').css('color','#4CAF50'); $('#'+wrapperId).css('border-color', borderColor); });
+    canvas.addEventListener('mouseup', function(){ st.drawing=false; });
+    canvas.addEventListener('mouseleave', function(){ st.drawing=false; });
+    canvas.addEventListener('touchstart', function(e){ e.preventDefault(); st.drawing=true; var p=getPos(e.touches[0]); ctx.beginPath(); ctx.moveTo(p.x,p.y); $('#'+placeholderId).hide(); }, {passive:false});
+    canvas.addEventListener('touchmove', function(e){ e.preventDefault(); if(!st.drawing) return; var p=getPos(e.touches[0]); ctx.lineTo(p.x,p.y); ctx.stroke(); st.signed=true; $('#'+statusId).text('Firma capturada').css('color','#4CAF50'); $('#'+wrapperId).css('border-color', borderColor); }, {passive:false});
+    canvas.addEventListener('touchend', function(){ st.drawing=false; });
+    $('#'+clearBtnId).on('click', function(){
+      if(!st.ctx||!st.canvas) return;
+      st.ctx.clearRect(0,0,st.canvas.width,st.canvas.height);
+      st.signed=false;
+      $('#'+placeholderId).show();
+      $('#'+statusId).text('Pendiente de firma').css('color','#999');
+      $('#'+wrapperId).css('border-color','#ccc');
     });
   }
 
-  function getSignatureData(){
-    if(!_sigCanvas || !_sigHasSigned) return null;
-    return _sigCanvas.toDataURL('image/png');
+  function initSignatureCanvas(){
+    _initOneCanvas('acta','clFirmaActaCanvas','clFirmaActaWrapper','clFirmaActaPlaceholder','clFirmaActaStatus','clFirmaActaClear','#0ea5e9');
+    _initOneCanvas('pagare','clFirmaPagareCanvas','clFirmaPagareWrapper','clFirmaPagarePlaceholder','clFirmaPagareStatus','clFirmaPagareClear','#f59e0b');
+  }
+
+  function getSignatureData(tipo){
+    var st = _sigState[tipo||'acta'];
+    if(!st.canvas || !st.signed) return null;
+    return st.canvas.toDataURL('image/png');
   }
 
   // ── Photo upload helpers ──────────────────────────────────────────────────
