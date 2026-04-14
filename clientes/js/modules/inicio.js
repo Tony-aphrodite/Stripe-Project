@@ -59,7 +59,7 @@ window.VK_inicio = (function(){
     html += '<div style="display:flex;gap:12px"><span style="font-size:18px;cursor:pointer" onclick="VKApp.go(\'notificaciones\')" title="Notificaciones">&#128276;</span><span style="font-size:18px;cursor:pointer" onclick="VKApp.go(\'cuenta\')" title="Mi cuenta">&#128100;</span></div>';
     html += '</div>';
 
-    html += '<div class="vk-h1" style="margin-bottom:2px">¡Hola, '+nombre+'! &#128075;</div>';
+    html += '<div class="vk-h1" style="margin-bottom:2px">¡Hola, '+nombre+'!</div>';
     html += pill(e.state||'compra_confirmada');
 
     // ── Dynamic message based on delivery step ──
@@ -115,10 +115,10 @@ window.VK_inicio = (function(){
       var enTransito = !!envio.fecha_envio && !envio.fecha_recepcion;
       html += '<div class="vk-delivery-card vk-delivery-prep">';
       if (enTransito) {
-        html += '<div class="vk-delivery-title">Tu VOLTIKA va en camino &#128666;</div>';
+        html += '<div class="vk-delivery-title">Tu VOLTIKA va en camino</div>';
         html += '<div class="vk-delivery-sub">'+ (etaArrival ? 'Llegada estimada al punto: '+etaArrival : 'En tránsito hacia tu punto.') +'</div>';
       } else {
-        html += '<div class="vk-delivery-title">Tu VOLTIKA esta en preparacion &#128640;</div>';
+        html += '<div class="vk-delivery-title">Tu VOLTIKA esta en preparacion</div>';
         html += '<div class="vk-delivery-sub">Estamos asignando tu punto de entrega y fecha estimada.</div>';
       }
 

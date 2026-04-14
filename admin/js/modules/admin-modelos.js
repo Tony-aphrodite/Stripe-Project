@@ -55,7 +55,7 @@ window.AD_modelos = (function(){
     html += '</div>';
 
     if (!r.modelos || !r.modelos.length) {
-      html += '<div class="ad-empty"><span class="ic">&#128736;</span>No hay modelos registrados. Crea el primero.</div>';
+      html += '<div class="ad-empty">No hay modelos registrados. Crea el primero.</div>';
     }
 
     ADApp.render(html);

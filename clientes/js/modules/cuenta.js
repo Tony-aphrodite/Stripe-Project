@@ -102,44 +102,44 @@ window.VK_cuenta = (function(){
         '<div>'+
           '<div class="vk-h2" style="margin:0 0 10px">Preferencias</div>'+
           '<div class="vk-shortcut-item" data-go="notif">'+
-            '<span class="vk-sc-icon">🔔</span>'+
+            '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Notificaciones</div><div class="vk-sc-sub">Elige cómo y cuándo te contactamos.</div></div>'+
             '<span class="vk-sc-arrow">›</span>'+
           '</div>'+
           '<div class="vk-shortcut-item" data-go="cuenta">'+
-            '<span class="vk-sc-icon">💳</span>'+
+            '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Métodos de pago</div><div class="vk-sc-sub">Administra tus tarjetas y cuentas.</div></div>'+
             '<span class="vk-sc-arrow">›</span>'+
           '</div>'+
           '<div class="vk-shortcut-item" data-go="cuenta">'+
-            '<span class="vk-sc-icon">🔒</span>'+
+            '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Seguridad</div><div class="vk-sc-sub">Cambia tu contraseña y revisa tus sesiones.</div></div>'+
             '<span class="vk-sc-arrow">›</span>'+
           '</div>'+
           '<div class="vk-shortcut-item vk-sc-disabled">'+
-            '<span class="vk-sc-icon">🌐</span>'+
+            '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Idioma</div><div class="vk-sc-sub">Español</div></div>'+
           '</div>'+
         '</div>'+
         '<div>'+
           '<div class="vk-h2" style="margin:0 0 10px">Accesos rápidos</div>'+
           '<div class="vk-shortcut-item" data-go="pagos">'+
-            '<span class="vk-sc-icon">💰</span>'+
+            '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Mis pagos</div><div class="vk-sc-sub">Ver historial y próximos pagos.</div></div>'+
             '<span class="vk-sc-arrow">›</span>'+
           '</div>'+
           '<div class="vk-shortcut-item" data-go="documentos">'+
-            '<span class="vk-sc-icon">📄</span>'+
+            '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Mis documentos</div><div class="vk-sc-sub">Descarga tus documentos.</div></div>'+
             '<span class="vk-sc-arrow">›</span>'+
           '</div>'+
           '<div class="vk-shortcut-item" data-go="ayuda">'+
-            '<span class="vk-sc-icon">💬</span>'+
+            '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Ayuda y soporte</div><div class="vk-sc-sub">Estamos para ayudarte.</div></div>'+
             '<span class="vk-sc-arrow">›</span>'+
           '</div>'+
           '<div class="vk-shortcut-item vk-sc-danger" id="vkLogout">'+
-            '<span class="vk-sc-icon">🚪</span>'+
+            '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Cerrar sesión</div><div class="vk-sc-sub">Salir de tu cuenta.</div></div>'+
           '</div>'+
         '</div>'+

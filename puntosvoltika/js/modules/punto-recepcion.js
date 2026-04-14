@@ -12,7 +12,7 @@ window.PV_recepcion = (function(){
         '<div style="font-weight:700">'+e.modelo+' · '+e.color+'</div>'+
         '<div style="font-size:12px;color:var(--ad-dim)">VIN esperado: '+(e.vin_display||e.vin)+'</div>'+
         '<div style="font-size:11px"><span class="ad-badge '+(e.estado==='enviada'?'yellow':'blue')+'">'+e.estado+'</span></div>'+
-        '<button class="ad-btn primary sm pvReceive" data-env="'+e.id+'" data-moto="'+e.moto_id+'" data-vin="'+e.vin+'" style="margin-top:8px">📦 Recibir moto</button>'+
+        '<button class="ad-btn primary sm pvReceive" data-env="'+e.id+'" data-moto="'+e.moto_id+'" data-vin="'+e.vin+'" style="margin-top:8px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg> Recibir moto</button>'+
       '</div>';
     });
     PVApp.render(html);
@@ -22,7 +22,7 @@ window.PV_recepcion = (function(){
   }
   function showReceiveForm(envioId, motoId, vinEsperado){
     PVApp.modal(
-      '<div class="ad-h2">📦 Recibir moto</div>'+
+      '<div class="ad-h2"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg> Recibir moto</div>'+
       '<div style="color:var(--ad-dim);font-size:12px;margin-bottom:10px">VIN esperado: <code>'+vinEsperado+'</code></div>'+
       '<label class="ad-label">Escanear o escribir VIN</label>'+
       '<input id="pvRVin" class="ad-input" placeholder="VIN escaneado" style="margin-bottom:14px">'+
@@ -46,7 +46,7 @@ window.PV_recepcion = (function(){
         notas: $('#pvRNotas').val()
       };
       PVApp.api('recepcion/recibir.php', data).done(function(r){
-        if(r.ok){ PVApp.closeModal(); PVApp.toast('✅ Moto recibida'); render(); }
+        if(r.ok){ PVApp.closeModal(); PVApp.toast('Moto recibida'); render(); }
       }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
     });
   }

@@ -147,7 +147,7 @@ window.AD_buscar = (function(){
     }
 
     if (r.total === 0) {
-      html += '<div class="ad-empty"><span class="ic">&#128269;</span>No se encontraron resultados para "<strong>' + esc(r.query) + '</strong>"</div>';
+      html += '<div class="ad-empty">No se encontraron resultados para "<strong>' + esc(r.query) + '</strong>"</div>';
     }
 
     $('#adSearchResults').html(html);

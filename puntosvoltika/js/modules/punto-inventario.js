@@ -12,7 +12,7 @@ window.PV_inventario = (function(){
     // arrives.
     var ventasPendientes = r.ventas_referido_pendientes || [];
     if (ventasPendientes.length) {
-      html += '<div class="ad-h2">🛒 Ventas por referido · pendientes de asignación ('+ventasPendientes.length+')</div>';
+      html += '<div class="ad-h2"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg> Ventas por referido · pendientes de asignación ('+ventasPendientes.length+')</div>';
       html += '<div style="font-size:12px;color:var(--ad-dim);margin:2px 0 8px 2px">'+
         'Órdenes realizadas con el código de este punto. CEDIS debe asignar una moto y enviarla.</div>';
       ventasPendientes.forEach(function(v){ html += ventaReferidoCard(v); });
@@ -23,7 +23,7 @@ window.PV_inventario = (function(){
     var porLlegarShowroom = r.inventario_por_llegar_showroom || [];
     var totalPorLlegar = porLlegarEntrega.length + porLlegarShowroom.length;
     if (totalPorLlegar > 0) {
-      html += '<div class="ad-h2">🚚 Por llegar ('+totalPorLlegar+')</div>';
+      html += '<div class="ad-h2"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg> Por llegar ('+totalPorLlegar+')</div>';
       if (porLlegarEntrega.length) {
         html += '<div style="font-size:12px;color:var(--ad-dim);margin:4px 0 4px 2px">Para entrega a cliente</div>';
         porLlegarEntrega.forEach(function(m){ html += bikeCard(m, 'por_llegar_entrega'); });
@@ -101,12 +101,12 @@ window.PV_inventario = (function(){
     if (tipo === 'entrega') {
       if (m.estado === 'recibida') {
         h += '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">';
-        h += '<button class="ad-btn ghost sm pv-estado-btn" data-id="'+m.id+'" data-action="ensamble">🔧 Iniciar ensamble</button>';
-        h += '<button class="ad-btn primary sm pv-estado-btn" data-id="'+m.id+'" data-action="lista">✅ Marcar lista para entrega</button>';
+        h += '<button class="ad-btn ghost sm pv-estado-btn" data-id="'+m.id+'" data-action="ensamble"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> Iniciar ensamble</button>';
+        h += '<button class="ad-btn primary sm pv-estado-btn" data-id="'+m.id+'" data-action="lista"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg> Marcar lista para entrega</button>';
         h += '</div>';
       } else if (m.estado === 'en_ensamble') {
         h += '<div style="margin-top:8px">';
-        h += '<button class="ad-btn primary sm pv-estado-btn" data-id="'+m.id+'" data-action="lista">✅ Marcar lista para entrega</button>';
+        h += '<button class="ad-btn primary sm pv-estado-btn" data-id="'+m.id+'" data-action="lista"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg> Marcar lista para entrega</button>';
         h += '</div>';
       }
     }
@@ -121,7 +121,7 @@ window.PV_inventario = (function(){
       moto_id: motoId,
       nuevo_estado: 'en_ensamble'
     }).done(function(r){
-      if (r.ok) { PVApp.toast('🔧 Moto en ensamble'); render(); }
+      if (r.ok) { PVApp.toast('Moto en ensamble'); render(); }
     }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
   }
   function marcarLista(motoId){
@@ -131,7 +131,7 @@ window.PV_inventario = (function(){
     var dflt = d.toISOString().slice(0,10);
     var minDate = new Date().toISOString().slice(0,10);
     PVApp.modal(
-      '<div class="ad-h2">✅ Lista para entrega</div>'+
+      '<div class="ad-h2">Lista para entrega</div>'+
       '<div style="color:var(--ad-dim);font-size:13px;margin-bottom:12px">'+
         'Selecciona la fecha estimada en la que el cliente puede recoger su moto. '+
         'Le enviaremos un SMS con esta fecha.'+
@@ -153,7 +153,7 @@ window.PV_inventario = (function(){
       }).done(function(r){
         if (r.ok) {
           PVApp.closeModal();
-          PVApp.toast('✅ Cliente notificado · recolección: '+fecha);
+          PVApp.toast('Cliente notificado · recolección: '+fecha);
           render();
         }
       }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
