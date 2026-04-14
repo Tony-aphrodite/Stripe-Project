@@ -19,13 +19,22 @@ if (!$motoId) adminJsonOut(['error' => 'moto_id requerido'], 400);
 
 $pdo = getDB();
 
-// ── 1. Get checklist ────────────────────────────────────────────────────
+// ── 1. Get checklist (auto-create if not exists) ────────────────────────
 $stmt = $pdo->prepare("SELECT id, completado, otp_code, otp_timestamp,
         fase4_completada, fase4_fecha
     FROM checklist_entrega_v2 WHERE moto_id=? ORDER BY freg DESC LIMIT 1");
 $stmt->execute([$motoId]);
 $cl = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$cl) adminJsonOut(['error' => 'Checklist de entrega no encontrado'], 404);
+
+if (!$cl) {
+    // Auto-create checklist record so PDF preview works before first save
+    $pdo->prepare("INSERT INTO checklist_entrega_v2 (moto_id, dealer_id, fase_actual) VALUES (?, ?, 'fase1')")
+        ->execute([$motoId, $uid]);
+    $newId = (int)$pdo->lastInsertId();
+    $cl = ['id' => $newId, 'completado' => 0, 'otp_code' => null, 'otp_timestamp' => null,
+           'fase4_completada' => 0, 'fase4_fecha' => null];
+}
+
 if ($cl['completado']) adminJsonOut(['error' => 'Checklist ya completado'], 403);
 $checkId = $cl['id'];
 
@@ -107,11 +116,18 @@ $fechaEmision = date('d/m/Y');
 $lugarEmision = 'Ciudad de México, CDMX';
 
 // ── 4. Generate PDF ─────────────────────────────────────────────────────
-$fpdfPath = __DIR__ . '/../../../configurador_prueba/php/vendor/fpdf/fpdf.php';
-if (!file_exists($fpdfPath)) {
-    adminJsonOut(['error' => 'FPDF library not found'], 500);
+$fpdfPaths = [
+    __DIR__ . '/../lib/fpdf.php',
+    __DIR__ . '/../../../configurador_prueba/php/vendor/fpdf/fpdf.php',
+    __DIR__ . '/../../../configurador_prueba/php/vendor/setasign/fpdf/fpdf.php',
+];
+$fpdfFound = false;
+foreach ($fpdfPaths as $fp) {
+    if (file_exists($fp)) { require_once $fp; $fpdfFound = true; break; }
 }
-require_once $fpdfPath;
+if (!$fpdfFound) {
+    adminJsonOut(['error' => 'FPDF library not found. Upload fpdf.php to admin/php/lib/'], 500);
+}
 
 $storageDir = sys_get_temp_dir() . '/voltika_pagares/';
 if (!is_dir($storageDir)) @mkdir($storageDir, 0777, true);
