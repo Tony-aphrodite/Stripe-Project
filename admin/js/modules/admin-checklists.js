@@ -582,7 +582,10 @@ window.AD_checklists = (function(){
     });
 
     // Progress update
-    $('.clCheck').on('change', function(){ updateProgressGeneric(ALL_ENSAMBLE_FIELDS, TOTAL_ENSAMBLE); });
+    $('.clCheck').on('change', function(){
+      updateProgressGeneric(ALL_ENSAMBLE_FIELDS, TOTAL_ENSAMBLE);
+      updateTabCounters(ENSAMBLE_PHASES, '.clEnsTab');
+    });
 
     $('#clEnsSave').on('click', function(){ saveEnsamble(motoId, false); });
     $('#clEnsComplete').on('click', function(){
@@ -907,9 +910,14 @@ window.AD_checklists = (function(){
       $(this).removeClass('ghost').addClass('primary');
       $('.clEntPane').hide();
       $('.clEntPane[data-fase="'+f+'"]').show();
+      // Re-init signature canvas when F5 becomes visible
+      if(f === 'fase5') initSignatureCanvas();
     });
 
-    $('.clCheck').on('change', function(){ updateProgressGeneric(ALL_ENTREGA_FIELDS, TOTAL_ENTREGA); });
+    $('.clCheck').on('change', function(){
+      updateProgressGeneric(ALL_ENTREGA_FIELDS, TOTAL_ENTREGA);
+      updateTabCounters(ENTREGA_PHASES, '.clEntTab');
+    });
 
     $('#clEntSave').on('click', function(){ saveEntrega(motoId, false); });
     $('#clEntComplete').on('click', function(){
@@ -994,6 +1002,22 @@ window.AD_checklists = (function(){
     $('#clProgressBar').css('width', pct+'%');
     $('#clProgressBar').parent().prev().find('span:first strong').text(done+'/'+total);
     $('#clProgressBar').parent().prev().find('span:last strong').text(pct+'%');
+
+  }
+
+  function updateTabCounters(phases, tabSelector){
+    $(tabSelector).each(function(i){
+      var ph = phases[i];
+      if(!ph) return;
+      var phDone = 0, phTotal = 0;
+      ph.sections.forEach(function(s){
+        s.fields.forEach(function(f){
+          phTotal++;
+          if($('.clCheck[data-key="'+f.key+'"]').is(':checked')) phDone++;
+        });
+      });
+      $(this).find('span').text('('+phDone+'/'+phTotal+')');
+    });
   }
 
   // ── Signature canvas ──────────────────────────────────────────────────────
