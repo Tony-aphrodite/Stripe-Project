@@ -78,43 +78,62 @@ if ($file['size'] > 10 * 1024 * 1024) {
 $ext = $allowedMimes[$mime];
 $filename = $tipo . '_' . $motoId . '_' . $campo . '_' . time() . '_' . mt_rand(100,999) . '.' . $ext;
 
-$uploadDir = __DIR__ . '/../../uploads/checklists/';
+$uploadDir = sys_get_temp_dir() . '/voltika_checklists/';
 if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0755, true);
+    if (!@mkdir($uploadDir, 0775, true)) {
+        error_log('subir-foto: No se pudo crear directorio ' . $uploadDir);
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'No se pudo crear directorio de almacenamiento']);
+        exit;
+    }
 }
 
 $destPath = $uploadDir . $filename;
 if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+    $lastErr = error_get_last();
+    error_log('subir-foto: move_uploaded_file falló — dest: ' . $destPath . ' error: ' . ($lastErr['message'] ?? 'desconocido'));
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Error al guardar archivo']);
     exit;
 }
 
 // Update the JSON array in the corresponding checklist table
-$pdo = getDB();
-$tableMap = ['origen' => 'checklist_origen', 'ensamble' => 'checklist_ensamble', 'entrega' => 'checklist_entrega_v2'];
-$table = $tableMap[$tipo];
+try {
+    $pdo = getDB();
+    $tableMap = ['origen' => 'checklist_origen', 'ensamble' => 'checklist_ensamble', 'entrega' => 'checklist_entrega_v2'];
+    $table = $tableMap[$tipo];
 
-// Get existing record
-$stmt = $pdo->prepare("SELECT id, $campo FROM $table WHERE moto_id=? ORDER BY freg DESC LIMIT 1");
-$stmt->execute([$motoId]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Get existing record
+    $stmt = $pdo->prepare("SELECT id, `$campo` FROM `$table` WHERE moto_id=? ORDER BY freg DESC LIMIT 1");
+    $stmt->execute([$motoId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$relativeUrl = 'uploads/checklists/' . $filename;
+    $relativeUrl = 'php/checklists/serve-foto.php?f=' . $filename;
 
-if ($row) {
-    // Append to existing JSON array
-    $existing = json_decode($row[$campo] ?: '[]', true) ?: [];
-    $existing[] = $relativeUrl;
-    $pdo->prepare("UPDATE $table SET $campo=? WHERE id=?")->execute([
-        json_encode($existing, JSON_UNESCAPED_UNICODE),
-        $row['id']
+    if ($row) {
+        // Append to existing JSON array
+        $existing = json_decode($row[$campo] ?: '[]', true) ?: [];
+        $existing[] = $relativeUrl;
+        $pdo->prepare("UPDATE `$table` SET `$campo`=? WHERE id=?")->execute([
+            json_encode($existing, JSON_UNESCAPED_UNICODE),
+            $row['id']
+        ]);
+    } else {
+        // Create minimal record so photo is linked
+        $fotos = json_encode([$relativeUrl], JSON_UNESCAPED_UNICODE);
+        $pdo->prepare("INSERT INTO `$table` (moto_id, dealer_id, `$campo`) VALUES (?,?,?)")
+            ->execute([$motoId, $uid, $fotos]);
+    }
+} catch (Throwable $e) {
+    error_log('subir-foto DB error: ' . $e->getMessage());
+    // File was saved successfully, just DB link failed — return success with warning
+    echo json_encode([
+        'ok'       => true,
+        'url'      => 'php/checklists/serve-foto.php?f=' . $filename,
+        'filename' => $filename,
+        'warning'  => 'Foto guardada pero no se pudo vincular al checklist: ' . $e->getMessage(),
     ]);
-} else {
-    // Create minimal record so photo is linked
-    $fotos = json_encode([$relativeUrl], JSON_UNESCAPED_UNICODE);
-    $pdo->prepare("INSERT INTO $table (moto_id, dealer_id, $campo) VALUES (?,?,?)")
-        ->execute([$motoId, $uid, $fotos]);
+    exit;
 }
 
 adminLog('checklist_foto', ['tipo' => $tipo, 'moto_id' => $motoId, 'campo' => $campo, 'file' => $filename]);

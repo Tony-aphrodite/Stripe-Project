@@ -28,8 +28,8 @@ if (strpos($mime, 'image/') !== 0) {
 }
 
 // Save uploaded photo
-$uploadDir = __DIR__ . '/../../uploads/checklists/';
-if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+$uploadDir = sys_get_temp_dir() . '/voltika_checklists/';
+if (!is_dir($uploadDir)) @mkdir($uploadDir, 0775, true);
 
 $ext = ['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'][$mime] ?? 'jpg';
 $filename = 'face_' . $motoId . '_' . time() . '.' . $ext;
@@ -83,7 +83,7 @@ if (!$originalSelfie) {
     echo json_encode([
         'ok' => true, 'comparison' => false,
         'message' => 'No se encontró selfie original del cliente. Se requiere verificación visual.',
-        'foto' => 'uploads/checklists/' . $filename,
+        'foto' => 'php/checklists/serve-foto.php?f=' . $filename,
     ]);
     exit;
 }
@@ -120,7 +120,7 @@ if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
     echo json_encode([
         'ok' => true, 'comparison' => false,
         'message' => 'No se pudo realizar la comparación automática. Verificar visualmente.',
-        'foto' => 'uploads/checklists/' . $filename,
+        'foto' => 'php/checklists/serve-foto.php?f=' . $filename,
     ]);
     exit;
 }
@@ -147,5 +147,5 @@ echo json_encode([
     'message' => $isMatch
         ? 'Las caras coinciden (' . round($similarity*100, 1) . '%).'
         : 'Las caras NO coinciden. Verificar identidad manualmente.',
-    'foto' => 'uploads/checklists/' . $filename,
+    'foto' => 'php/checklists/serve-foto.php?f=' . $filename,
 ]);
