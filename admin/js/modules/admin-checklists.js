@@ -1088,7 +1088,7 @@ window.AD_checklists = (function(){
   function photoZone(id, tipo, motoId, campo, existing, disabled){
     var photos = existing || [];
     var html = '<div class="clPhotoZone" id="'+id+'" data-tipo="'+tipo+'" data-moto="'+motoId+'" data-campo="'+campo+'" style="margin:8px 0 14px;">';
-    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:4px;">Evidencia fotográfica:</div>';
+    html += '';
     html += '<div class="clPhotoGrid" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">';
     photos.forEach(function(url){
       html += photoThumb(url, disabled);

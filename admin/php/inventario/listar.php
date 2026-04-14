@@ -22,7 +22,10 @@ if (!empty($_GET['checklist'])) {
     elseif ($ck === 'completo') $where[] = "EXISTS (SELECT 1 FROM checklist_entrega_v2 ct WHERE ct.moto_id = m.id AND ct.completado = 1)";
 }
 
-$sql = "SELECT m.*, pv.nombre AS punto_voltika_nombre FROM inventario_motos m
+$sql = "SELECT m.*, pv.nombre AS punto_voltika_nombre,
+    CASE WHEN m.punto_voltika_id IS NOT NULL AND m.estado NOT IN ('entregada','por_llegar','retenida')
+         THEN DATEDIFF(CURDATE(), COALESCE(m.fecha_estado, m.freg)) ELSE NULL END AS dias_en_punto
+    FROM inventario_motos m
     LEFT JOIN puntos_voltika pv ON pv.id = m.punto_voltika_id
     WHERE " . implode(' AND ', $where);
 $sql .= " ORDER BY m.fmod DESC";

@@ -11,7 +11,10 @@ if (!$id) adminJsonOut(['error' => 'ID requerido'], 400);
 $pdo = getDB();
 
 // Moto
-$stmt = $pdo->prepare("SELECT m.*, pv.nombre AS punto_voltika_nombre
+$stmt = $pdo->prepare("SELECT m.*, pv.nombre AS punto_voltika_nombre,
+    DATEDIFF(CURDATE(), COALESCE(m.fecha_estado, m.freg)) AS dias_en_estado,
+    CASE WHEN m.punto_voltika_id IS NOT NULL AND m.estado NOT IN ('entregada','por_llegar','retenida')
+         THEN DATEDIFF(CURDATE(), COALESCE(m.fecha_estado, m.freg)) ELSE NULL END AS dias_en_punto
     FROM inventario_motos m LEFT JOIN puntos_voltika pv ON pv.id=m.punto_voltika_id WHERE m.id=?");
 $stmt->execute([$id]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
