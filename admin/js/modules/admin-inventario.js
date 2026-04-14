@@ -621,7 +621,7 @@ window.AD_inventario = (function(){
   function showImportForm(){
     ADApp.modal(
       '<div class="ad-h2">Importar motos desde Excel</div>'+
-      '<div class="ad-dim" style="margin-bottom:12px;">Formato: CSV o XLSX con columnas VIN, Modelo, Color, Año, Num_motor, Potencia, Config_baterias, Hecho_en, Num_pedimento, Aduana, CEDIS_origen, Notas</div>'+
+      '<div class="ad-dim" style="margin-bottom:12px;">Formato: CSV o XLSX con columnas No de serie, Modelo, Color, Año Modelo, No de Motor, Potencia, Posicion, Fecha entrada pais, Puerto entrada, No pedimento, CEDIS Origen, Fecha Entrada Almacen, Fecha Salida Almacen, Punto aliado, Estatus, No de Orden, No de factura</div>'+
       '<div style="margin-bottom:12px;">'+
         '<a href="#" id="adDlTemplate" style="color:var(--ad-primary);font-size:13px;">Descargar plantilla CSV</a>'+
       '</div>'+
@@ -633,7 +633,7 @@ window.AD_inventario = (function(){
 
     $('#adDlTemplate').on('click', function(e){
       e.preventDefault();
-      var csv = 'VIN,Modelo,Color,Año,Num_motor,Potencia,Config_baterias,Hecho_en,Num_pedimento,Aduana,CEDIS_origen,Notas\n';
+      var csv = 'No de serie,Modelo,Año Modelo,Color,No de Motor,Potencia del motor,Posicion en inventario,Fecha de entrada al pais,Puerto de entrada,No de pedimento,CEDIS ORIGEN,Fecha Entrada Almacen,Fecha Salida Almacen,Punto aliado/Entrega asignado,Estatus,No de Orden,No de factura,Notas\n';
       var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);

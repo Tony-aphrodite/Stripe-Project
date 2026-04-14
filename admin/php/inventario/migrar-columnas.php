@@ -26,6 +26,10 @@ $columnsToAdd = [
     'fecha_estimada_llegada' => "DATE NULL AFTER fecha_llegada",
     'fecha_entrega_estimada' => "DATE NULL AFTER fecha_estimada_llegada",
     'recepcion_completada' => "TINYINT DEFAULT 0 AFTER dias_en_paso",
+    'num_factura'          => "VARCHAR(50) NULL AFTER num_pedimento",
+    'posicion_inventario'  => "VARCHAR(20) NULL AFTER cedis_origen",
+    'fecha_entrada_almacen'=> "DATE NULL AFTER fecha_ingreso_pais",
+    'fecha_salida_almacen' => "DATE NULL AFTER fecha_entrada_almacen",
 ];
 
 // Get existing columns
