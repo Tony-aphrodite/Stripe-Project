@@ -78,7 +78,7 @@ if ($file['size'] > 10 * 1024 * 1024) {
 $ext = $allowedMimes[$mime];
 $filename = $tipo . '_' . $motoId . '_' . $campo . '_' . time() . '_' . mt_rand(100,999) . '.' . $ext;
 
-$uploadDir = sys_get_temp_dir() . '/voltika_checklists/';
+$uploadDir = __DIR__ . '/../../uploads/checklists/';
 if (!is_dir($uploadDir)) {
     if (!@mkdir($uploadDir, 0775, true)) {
         error_log('subir-foto: No se pudo crear directorio ' . $uploadDir);

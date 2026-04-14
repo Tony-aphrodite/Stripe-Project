@@ -28,7 +28,7 @@ if (strpos($mime, 'image/') !== 0) {
 }
 
 // Save uploaded photo
-$uploadDir = sys_get_temp_dir() . '/voltika_checklists/';
+$uploadDir = __DIR__ . '/../../uploads/checklists/';
 if (!is_dir($uploadDir)) @mkdir($uploadDir, 0775, true);
 
 $ext = ['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'][$mime] ?? 'jpg';

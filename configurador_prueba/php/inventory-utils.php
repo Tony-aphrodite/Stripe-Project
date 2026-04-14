@@ -35,7 +35,7 @@ function asignarMotoFIFO(
         WHERE m.activo = 1
           AND LOWER(TRIM(m.modelo)) = LOWER(TRIM(?))
           AND LOWER(TRIM(m.color))  = LOWER(TRIM(?))
-          AND m.estado IN ('recibida', 'lista_para_entrega')
+          AND m.estado IN ('recibida', 'lista_para_entrega', 'en_punto')
           AND (m.pedido_num IS NULL OR m.pedido_num = '')
           AND (m.cliente_email IS NULL OR m.cliente_email = '')
           AND (m.bloqueado_venta = 0 OR m.bloqueado_venta IS NULL)
@@ -129,7 +129,7 @@ function asignarMotoFIFO(
  * @return array  [['modelo'=>'M05','color'=>'negro','disponibles'=>3], ...]
  */
 function contarDisponibles(PDO $pdo, string $modelo = '', string $color = ''): array {
-    $where  = ["m.activo = 1", "m.estado IN ('recibida','lista_para_entrega')",
+    $where  = ["m.activo = 1", "m.estado IN ('recibida','lista_para_entrega','en_punto')",
                "(m.pedido_num IS NULL OR m.pedido_num = '')",
                "(m.cliente_email IS NULL OR m.cliente_email = '')",
                "m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'",

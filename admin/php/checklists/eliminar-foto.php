@@ -44,9 +44,13 @@ if (strpos($url, 'serve-foto.php?f=') !== false) {
 }
 $fname = basename($fname); // security: only filename, no path traversal
 if ($fname) {
-    $filePath = sys_get_temp_dir() . '/voltika_checklists/' . $fname;
+    $filePath = __DIR__ . '/../../uploads/checklists/' . $fname;
     if (file_exists($filePath)) {
         @unlink($filePath);
+    } else {
+        // Fallback: try legacy temp directory
+        $legacyPath = sys_get_temp_dir() . '/voltika_checklists/' . $fname;
+        if (file_exists($legacyPath)) @unlink($legacyPath);
     }
 }
 
