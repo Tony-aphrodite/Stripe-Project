@@ -42,9 +42,24 @@ try {
 $docs[] = ['tipo' => 'comprobantes', 'titulo' => 'Comprobantes de pago',
            'subtitulo' => "Historial completo ($nPagos pagos)", 'disponible' => $nPagos > 0];
 
-// Pagaré
+// Pagaré — check if PDF actually exists
+$pagareDisponible = false;
+$pagareSubtitulo = 'Pendiente de generación';
+try {
+    $stmt = $pdo->prepare("SELECT ce.pagare_pdf_path, ce.firma_pagare_timestamp, ce.firma_pagare_cincel_id
+        FROM checklist_entrega_v2 ce
+        JOIN inventario_motos m ON m.id = ce.moto_id
+        WHERE m.cliente_id = ? AND ce.pagare_pdf_path IS NOT NULL
+        ORDER BY ce.freg DESC LIMIT 1");
+    $stmt->execute([$cid]);
+    if ($pr = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $pagareDisponible = true;
+        $pagareSubtitulo = 'Documento firmado digitalmente';
+        if ($pr['firma_pagare_cincel_id']) $pagareSubtitulo .= ' — NOM-151';
+    }
+} catch (Throwable $e) {}
 $docs[] = ['tipo' => 'pagare', 'titulo' => 'Pagaré',
-           'subtitulo' => 'Documento de tu operación', 'disponible' => true];
+           'subtitulo' => $pagareSubtitulo, 'disponible' => $pagareDisponible];
 
 // Carta factura (gated)
 $docs[] = [

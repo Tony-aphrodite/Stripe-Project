@@ -808,13 +808,27 @@ window.AD_checklists = (function(){
         // ── Firma 2: Pagaré (CINCEL) ──
         html += '<div style="padding:16px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;">';
         html += '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">2. Finaliza tu compra</div>';
-        html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Firma pagaré — Certificación NOM-151</div>';
+        html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Firma pagaré — Documento PDF inmutable + Certificación NOM-151</div>';
+
+        // Pagaré PDF status area
+        html += '<div id="clPagareInfo" style="margin-bottom:10px;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;">';
+        if(data.pagare_pdf_path){
+          html += '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré generado</div>';
+          if(data.pagare_pdf_hash) html += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+data.pagare_pdf_hash+'</div>';
+          html += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(data.pagare_pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF</a>';
+        } else if(!isLocked){
+          html += '<div style="font-size:12px;color:#92400e;">El PDF del pagaré se generará automáticamente al firmar.</div>';
+          html += '<button class="ad-btn sm ghost" id="clPagarePreview" style="margin-top:6px;font-size:11px;border-color:#f59e0b;color:#92400e;">Vista previa del pagaré</button>';
+        }
+        html += '</div>';
+
         if(data.firma_pagare_data){
           html += '<div style="border:1px solid #ddd;border-radius:8px;padding:8px;display:inline-block;background:#fff;">'+
             '<img src="'+data.firma_pagare_data+'" style="max-width:300px;height:auto;"></div>';
           html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;font-weight:600;">Firma pagaré capturada</div>';
           if(data.firma_pagare_timestamp) html += '<div style="font-size:11px;color:#64748b;margin-top:2px;">Timestamp: '+data.firma_pagare_timestamp+'</div>';
           if(data.firma_pagare_cincel_id) html += '<div style="font-size:11px;color:#64748b;">CINCEL ID: <code>'+data.firma_pagare_cincel_id+'</code></div>';
+          if(data.pagare_pdf_hash) html += '<div style="font-size:11px;color:#64748b;">PDF Hash: <code style="font-size:10px;">'+data.pagare_pdf_hash+'</code></div>';
         } else if(!isLocked){
           html += '<div id="clFirmaPagareWrapper" style="border:2px dashed #f59e0b;border-radius:8px;position:relative;background:#fff;">';
           html += '<canvas id="clFirmaPagareCanvas" style="width:100%;height:120px;display:block;cursor:crosshair;"></canvas>';
@@ -942,6 +956,31 @@ window.AD_checklists = (function(){
       if(f === 'fase5') initSignatureCanvas();
     });
 
+    // Pagaré preview button
+    $('#clPagarePreview').on('click', function(){
+      var $btn = $(this);
+      $btn.prop('disabled',true).html('<span class="ad-spin"></span> Generando...');
+      ADApp.api('checklists/generar-pagare.php', {moto_id: motoId}).done(function(r){
+        if(r.ok){
+          var infoHtml = '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré generado (vista previa)</div>';
+          if(r.datos && r.datos.nombre) infoHtml += '<div style="font-size:11px;color:#64748b;margin-top:2px;">Cliente: '+r.datos.nombre+'</div>';
+          if(r.datos && r.datos.monto_fmt) infoHtml += '<div style="font-size:11px;color:#64748b;">Monto: '+r.datos.monto_fmt+'</div>';
+          if(r.pdf_hash) infoHtml += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+r.pdf_hash+'</div>';
+          infoHtml += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(r.pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF</a>';
+          infoHtml += '<div style="font-size:11px;color:#92400e;margin-top:4px;">El PDF final se generará con la firma al guardar.</div>';
+          $('#clPagareInfo').html(infoHtml);
+        } else {
+          alert(r.error||'Error generando vista previa');
+          $btn.prop('disabled',false).html('Vista previa del pagaré');
+        }
+      }).fail(function(xhr){
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        alert(msg);
+        $btn.prop('disabled',false).html('Vista previa del pagaré');
+      });
+    });
+
     $('.clCheck').on('change', function(){
       updateProgressGeneric(ALL_ENTREGA_FIELDS, TOTAL_ENTREGA);
       updateTabCounters(ENTREGA_PHASES, '.clEntTab');
@@ -969,36 +1008,61 @@ window.AD_checklists = (function(){
     var $btn = completar ? $('#clEntComplete') : $('#clEntSave');
     $btn.prop('disabled',true).html('<span class="ad-spin"></span>');
 
-    // Save both signatures if canvas has data
+    // Save both signatures sequentially: acta first, then pagaré (pagaré generates PDF + CINCEL)
     var firmaActa = getSignatureData('acta');
     var firmaPagare = getSignatureData('pagare');
-    var promises = [];
-    if(firmaActa) promises.push(ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, tipo: 'acta', firma_data: firmaActa }));
-    if(firmaPagare) promises.push(ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, tipo: 'pagare', firma_data: firmaPagare }));
-    var firmaPromise = promises.length ? $.when.apply($, promises) : $.Deferred().resolve({ok:true});
 
-    firmaPromise.always(function(){
-    ADApp.api('checklists/guardar-entrega.php', payload).done(function(r){
-      if(r.ok){
-        if(completar){
-          ADApp.closeModal();
-          alert('Checklist de entrega completado exitosamente');
-          showMotoChecklists(motoId);
-        } else {
-          alert('Borrador guardado (Fase: '+r.fase_actual+')');
-          $btn.prop('disabled',false).html('Guardar borrador');
-        }
+    // Step 1: Save acta signature
+    var actaPromise = firmaActa
+      ? ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, tipo: 'acta', firma_data: firmaActa })
+      : $.Deferred().resolve({ok:true});
+
+    actaPromise.always(function(){
+      // Step 2: Save pagaré signature (this triggers PDF generation + CINCEL)
+      var pagarePromise;
+      if(firmaPagare){
+        $('#clFirmaPagareStatus').text('Generando PDF y sellando NOM-151...').css('color','#92400e');
+        pagarePromise = ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, tipo: 'pagare', firma_data: firmaPagare });
       } else {
-        alert(r.error||'Error al guardar');
-        $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
+        pagarePromise = $.Deferred().resolve({ok:true});
       }
-    }).fail(function(xhr){
-      var msg = 'Error de conexión';
-      if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
-      alert(msg);
-      $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
-    });
-    }); // end firmaPromise
+
+      pagarePromise.done(function(pagareResp){
+        // Show pagaré result
+        if(pagareResp && pagareResp.pdf_hash){
+          var infoHtml = '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré firmado y sellado</div>';
+          if(pagareResp.pdf_hash) infoHtml += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+pagareResp.pdf_hash+'</div>';
+          if(pagareResp.cincel_id) infoHtml += '<div style="font-size:11px;color:#64748b;">CINCEL ID: <code>'+pagareResp.cincel_id+'</code></div>';
+          if(pagareResp.pdf_path) infoHtml += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(pagareResp.pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF firmado</a>';
+          $('#clPagareInfo').html(infoHtml);
+        }
+        if(pagareResp && pagareResp.cincel_warning){
+          $('#clFirmaPagareStatus').text('Firma guardada (CINCEL: '+pagareResp.cincel_warning+')').css('color','#FF9800');
+        }
+      }).always(function(){
+        // Step 3: Save checklist data
+        ADApp.api('checklists/guardar-entrega.php', payload).done(function(r){
+          if(r.ok){
+            if(completar){
+              ADApp.closeModal();
+              alert('Checklist de entrega completado exitosamente');
+              showMotoChecklists(motoId);
+            } else {
+              alert('Borrador guardado (Fase: '+r.fase_actual+')');
+              $btn.prop('disabled',false).html('Guardar borrador');
+            }
+          } else {
+            alert(r.error||'Error al guardar');
+            $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
+          }
+        }).fail(function(xhr){
+          var msg = 'Error de conexión';
+          if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+          alert(msg);
+          $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
+        });
+      }); // end pagarePromise.always
+    }); // end actaPromise
   }
 
   // ── Shared UI helpers ────────────────────────────────────────────────────
