@@ -31,31 +31,36 @@ var VOLTIKA_CENTROS = [];
 
 /* Estado name normalization map for matching */
 var _ESTADO_ALIAS = {
-    'Ciudad de México': 'CDMX',
-    'Ciudad de Mexico': 'CDMX',
-    'Distrito Federal': 'CDMX',
-    'Estado de México': 'México',
-    'Estado de Mexico': 'México',
-    'Mexico': 'México'
+    'ciudad de méxico': 'CDMX',
+    'ciudad de mexico': 'CDMX',
+    'distrito federal': 'CDMX',
+    'cdmx': 'CDMX',
+    'd.f.': 'CDMX',
+    'df': 'CDMX',
+    'estado de méxico': 'México',
+    'estado de mexico': 'México',
+    'mexico': 'México'
 };
 
 function _normEstado(e) {
     if (!e) return '';
-    return _ESTADO_ALIAS[e] || e;
+    var key = e.trim().toLowerCase();
+    return _ESTADO_ALIAS[key] || e.trim();
 }
 
 /* Utility: find matching centers by estado (state) */
 VOLTIKA_CENTROS.buscar = function(cp, estado) {
     if (!estado && (!cp || cp.length < 2)) return [];
 
-    // If estado provided, match by estado
+    // If estado provided, match by estado or ciudad
     if (estado) {
         var normEst = _normEstado(estado);
         var results = [];
         for (var i = 0; i < this.length; i++) {
             var centro = this[i];
             var centroEst = _normEstado(centro.estado);
-            if (centroEst === normEst) {
+            var centroCiudad = _normEstado(centro.ciudad);
+            if (centroEst === normEst || centroCiudad === normEst) {
                 results.push(centro);
             }
         }

@@ -71,13 +71,20 @@ window.AD_inventario = (function(){
     modelOrder.forEach(function(mod){
       html += '<div style="margin-bottom:20px;">';
       html += '<div style="font-weight:700;font-size:15px;color:var(--ad-navy);margin-bottom:6px;padding-left:4px;">'+mod+' <span style="font-weight:400;color:var(--ad-dim);font-size:13px;">('+groups[mod].length+')</span></div>';
-      html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>VIN</th><th>Color</th><th>Estado</th><th>Punto</th><th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
+      html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>VIN</th><th>Color</th><th>Estado</th><th>Punto</th><th>Días</th><th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
       groups[mod].forEach(function(m){
+        var diasCell = '—';
+        if(m.dias_en_punto !== null && m.dias_en_punto !== undefined){
+          var dp = parseInt(m.dias_en_punto);
+          var dpC = dp <= 7 ? '#059669' : dp <= 30 ? '#d97706' : '#dc2626';
+          diasCell = '<span style="font-weight:700;color:'+dpC+';">'+dp+'d</span>';
+        }
         html += '<tr>'+
           '<td>'+(m.vin_display||m.vin||'—')+'</td>'+
           '<td>'+m.color+'</td>'+
           '<td>'+ADApp.badgeEstado(m.estado)+'</td>'+
           '<td>'+(m.punto_voltika_nombre||'—')+'</td>'+
+          '<td>'+diasCell+'</td>'+
           '<td>'+(m.cliente_nombre||'—')+'</td>'+
           '<td>'+ADApp.badgeEstado(m.pago_estado||'—')+'</td>'+
           '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
@@ -168,6 +175,11 @@ window.AD_inventario = (function(){
       html += fRow('Pedido', m.pedido_num||'—');
       html += fRow('Pago', m.pago_estado ? '<span class="ad-badge '+(m.pago_estado==='pagada'?'green':'yellow')+'">'+m.pago_estado+'</span>' : '—');
       html += fRow('Punto', m.punto_voltika_nombre||'—');
+      if(m.dias_en_punto !== null && m.dias_en_punto !== undefined){
+        var dp = parseInt(m.dias_en_punto);
+        var dpColor = dp <= 7 ? '#059669' : dp <= 30 ? '#d97706' : '#dc2626';
+        html += fRow('Días en punto', '<span style="font-weight:700;font-size:15px;color:'+dpColor+';">'+dp+' día'+(dp!==1?'s':'')+'</span>');
+      }
       html += fRow('Método pago', r.transaccion ? '<span style="display:inline-block;padding:2px 10px;border-radius:20px;background:rgba(3,159,225,.08);color:#039fe1;font-size:12px;font-weight:600;">'+r.transaccion.tpago+'</span>' : '—');
       html += fRow('Monto', r.transaccion ? '<span style="font-size:15px;font-weight:800;">'+ADApp.money(r.transaccion.total)+'</span>' : '—');
       html += fRow('Stripe PI', m.stripe_pi ? '<code style="font-size:10px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+m.stripe_pi+'</code>' : '—');

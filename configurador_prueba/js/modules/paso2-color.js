@@ -7,19 +7,29 @@ var Paso2 = {
 
     init: function(app) {
         this.app = app;
-        this.render();
-        this.bindEvents();
+        this._invMap = {}; // color → count
 
-        // Pre-fetch inventory for selected color
+        // Fetch inventory for ALL colors of this model, then render
+        var self = this;
         var modelo = app.getModelo(app.state.modeloSeleccionado);
-        var color = app.state.colorSeleccionado || (modelo ? modelo.colorDefault : '');
         var base = window.VK_BASE_PATH || '';
-        if (modelo && color) {
-            jQuery.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre) + '&color=' + encodeURIComponent(color))
+        if (modelo) {
+            jQuery.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre))
             .done(function(r) {
-                app.state._invColorTotal = r.ok ? (r.total || 0) : 0;
-                app.state._invColorEnStock = r.ok && r.total > 0;
+                if (r.ok && r.mapa && r.mapa[modelo.nombre]) {
+                    self._invMap = r.mapa[modelo.nombre];
+                }
+                var color = app.state.colorSeleccionado || modelo.colorDefault;
+                app.state._invColorTotal = self._invMap[color] || 0;
+                app.state._invColorEnStock = app.state._invColorTotal > 0;
+            })
+            .always(function() {
+                self.render();
+                self.bindEvents();
             });
+        } else {
+            this.render();
+            this.bindEvents();
         }
     },
 
@@ -30,6 +40,7 @@ var Paso2 = {
         if (!modelo) return;
 
         var colorActual = state.colorSeleccionado || modelo.colorDefault;
+        var invMap = this._invMap || {};
         state.colorSeleccionado = colorActual;
 
         var img = VkUI.getImagenMoto(modelo.id, colorActual);
@@ -63,13 +74,21 @@ var Paso2 = {
             '<img src="' + img + '" alt="' + modelo.nombre + ' ' + colorActual + '">' +
             '</div>';
 
+        // ETA date for out-of-stock colors (~2 months)
+        var _etaDate = new Date(); _etaDate.setMonth(_etaDate.getMonth() + 2);
+        var _meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        var _etaStr = _etaDate.getDate() + ' de ' + _meses[_etaDate.getMonth()];
+
         html += '<div class="vk-color-picker">';
         for (var i = 0; i < modelo.colores.length; i++) {
             var c = modelo.colores[i];
+            var stock = invMap[c.id] || 0;
             var activeCls = c.id === colorActual ? ' vk-color-swatch--active' : '';
+
             html += '<div class="vk-color-swatch' + activeCls + '" data-color="' + c.id + '">' +
                 '<div class="vk-color-swatch__circle" style="background:' + c.hex + ';"></div>' +
                 '<div class="vk-color-swatch__label">' + c.nombre + '</div>' +
+                (stock > 0 ? '<div style="font-size:10px;margin-top:2px;color:#2e7d32;font-weight:600;">' + stock + ' disponible' + (stock > 1 ? 's' : '') + '</div>' : '<div style="font-size:10px;margin-top:2px;color:#b91c1c;font-weight:600;">Agotado</div>') +
                 '</div>';
         }
         html += '</div>';
@@ -104,6 +123,10 @@ var Paso2 = {
         html += '</div>';
         html += '</div>';
 
+        // Out-of-stock notice (hidden by default, shown via JS)
+        html += '<div id="vk-stock-notice" style="display:none;margin:0 20px 12px;padding:12px 14px;border-radius:10px;background:#FFF7ED;border:1px solid #FDBA74;font-size:13px;color:#9A3412;">' +
+            'Este color no está disponible de momento. Puedes continuar y recibirás tu moto el <strong>' + _etaStr + '</strong>, o seleccionar otro color.' +
+            '</div>';
         html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">' + btnTexto + '</button>';
 
         html += '<p class="vk-card__footer-note">' +
@@ -119,6 +142,10 @@ var Paso2 = {
         html += '</div>'; // end card
 
         jQuery('#vk-color-container').html(html);
+
+        // Show/hide stock notice for initial color
+        var initStock = invMap[colorActual] || 0;
+        if (initStock <= 0) jQuery('#vk-stock-notice').show();
 
         // Attach color click handlers directly to elements (avoids delegation conflicts)
         jQuery('#vk-paso-2 .vk-color-swatch').each(function() {
@@ -139,14 +166,16 @@ var Paso2 = {
                 var imgEl = document.querySelector('#vk-paso2-imagen img');
                 if (imgEl) imgEl.src = newImg;
 
-                // Pre-fetch color-specific inventory for delivery date accuracy
-                var base = window.VK_BASE_PATH || '';
-                if (modeloActual) {
-                    jQuery.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modeloActual.nombre) + '&color=' + encodeURIComponent(color))
-                    .done(function(r) {
-                        self.app.state._invColorTotal = r.ok ? (r.total || 0) : 0;
-                        self.app.state._invColorEnStock = r.ok && r.total > 0;
-                    });
+                // Update inventory state from cached map
+                var stock = (self._invMap || {})[color] || 0;
+                self.app.state._invColorTotal = stock;
+                self.app.state._invColorEnStock = stock > 0;
+
+                // Toggle out-of-stock notice
+                if (stock > 0) {
+                    jQuery('#vk-stock-notice').slideUp(150);
+                } else {
+                    jQuery('#vk-stock-notice').slideDown(150);
                 }
             });
         });

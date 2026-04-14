@@ -36,10 +36,18 @@ $pdo->prepare("UPDATE $table SET $campo=? WHERE id=?")->execute([
     $row['id']
 ]);
 
-// Delete file from disk
-$filePath = __DIR__ . '/../../' . $url;
-if (file_exists($filePath)) {
-    @unlink($filePath);
+// Delete file from disk — extract filename from proxy URL or direct path
+$fname = $url;
+if (strpos($url, 'serve-foto.php?f=') !== false) {
+    parse_str(parse_url($url, PHP_URL_QUERY) ?: '', $qp);
+    $fname = $qp['f'] ?? '';
+}
+$fname = basename($fname); // security: only filename, no path traversal
+if ($fname) {
+    $filePath = sys_get_temp_dir() . '/voltika_checklists/' . $fname;
+    if (file_exists($filePath)) {
+        @unlink($filePath);
+    }
 }
 
 adminLog('checklist_foto_eliminar', ['tipo' => $tipo, 'moto_id' => $motoId, 'campo' => $campo, 'url' => $url]);

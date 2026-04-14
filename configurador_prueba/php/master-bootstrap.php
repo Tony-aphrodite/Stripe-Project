@@ -611,6 +611,11 @@ function voltikaEnsureSchema(): void {
         acta_aceptada TINYINT DEFAULT 0, clausula_identidad TINYINT DEFAULT 0,
         clausula_medios TINYINT DEFAULT 0, clausula_uso_info TINYINT DEFAULT 0,
         firma_digital TINYINT DEFAULT 0, firma_data MEDIUMTEXT NULL,
+        firma_acta_data MEDIUMTEXT NULL, firma_pagare_data MEDIUMTEXT NULL,
+        firma_pagare_timestamp DATETIME NULL, firma_pagare_cincel_id VARCHAR(255) NULL,
+        pagare_pdf_path VARCHAR(255) NULL, pagare_pdf_hash CHAR(64) NULL,
+        pagare_ip VARCHAR(64) NULL, pagare_user_agent VARCHAR(500) NULL,
+        pagare_evidencia JSON NULL,
         pdf_acta_url VARCHAR(255),
         fase5_completada TINYINT DEFAULT 0, fase5_fecha DATETIME,
         completado TINYINT DEFAULT 0, bloqueado TINYINT DEFAULT 0, notas TEXT,
@@ -648,6 +653,17 @@ function voltikaEnsureSchema(): void {
         "ALTER TABLE transacciones ADD COLUMN folio_contrato VARCHAR(50) NULL",
         "ALTER TABLE transacciones ADD COLUMN fecha_estimada_entrega DATE NULL",
         "ALTER TABLE transacciones ADD COLUMN pago_estado VARCHAR(30) NULL",
+        // checklist_entrega_v2: dual signatures
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN firma_acta_data MEDIUMTEXT NULL AFTER firma_data",
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN firma_pagare_data MEDIUMTEXT NULL AFTER firma_acta_data",
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN firma_pagare_timestamp DATETIME NULL AFTER firma_pagare_data",
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN firma_pagare_cincel_id VARCHAR(255) NULL AFTER firma_pagare_timestamp",
+        // pagaré PDF evidence columns
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN pagare_pdf_path VARCHAR(255) NULL AFTER firma_pagare_cincel_id",
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN pagare_pdf_hash CHAR(64) NULL AFTER pagare_pdf_path",
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN pagare_ip VARCHAR(64) NULL AFTER pagare_pdf_hash",
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN pagare_user_agent VARCHAR(500) NULL AFTER pagare_ip",
+        "ALTER TABLE checklist_entrega_v2 ADD COLUMN pagare_evidencia JSON NULL AFTER pagare_user_agent",
     ];
     foreach ($alters as $sql) {
         try { $pdo->exec($sql); } catch (Throwable $e) {}

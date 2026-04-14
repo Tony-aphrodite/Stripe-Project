@@ -336,12 +336,10 @@ window.AD_checklists = (function(){
     $('#clComplete').on('click', function(){
       var checked = countChecked();
       if(checked < TOTAL_ORIGEN){
-        if(!confirm('Faltan '+(TOTAL_ORIGEN-checked)+' items por marcar. ¿Desea completar de todos modos?\n\n(No podrá editarlo después)')){
-          return;
-        }
-      } else {
-        if(!confirm('¿Completar y bloquear este checklist? No se podrá modificar después.')) return;
+        alert('Faltan '+(TOTAL_ORIGEN-checked)+' items por marcar antes de completar el checklist.');
+        return;
       }
+      if(!confirm('¿Completar y bloquear este checklist? No se podrá modificar después.')) return;
       saveOrigen(motoId, true);
     });
 
@@ -387,8 +385,10 @@ window.AD_checklists = (function(){
         alert(r.error||'Error al guardar');
         $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
       }
-    }).fail(function(){
-      alert('Error de conexión');
+    }).fail(function(xhr){
+      var msg = 'Error de conexión';
+      if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+      alert(msg);
       $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
     });
   }
@@ -582,16 +582,19 @@ window.AD_checklists = (function(){
     });
 
     // Progress update
-    $('.clCheck').on('change', function(){ updateProgressGeneric(ALL_ENSAMBLE_FIELDS, TOTAL_ENSAMBLE); });
+    $('.clCheck').on('change', function(){
+      updateProgressGeneric(ALL_ENSAMBLE_FIELDS, TOTAL_ENSAMBLE);
+      updateTabCounters(ENSAMBLE_PHASES, '.clEnsTab');
+    });
 
     $('#clEnsSave').on('click', function(){ saveEnsamble(motoId, false); });
     $('#clEnsComplete').on('click', function(){
       var checked = countChecked();
       if(checked < TOTAL_ENSAMBLE){
-        if(!confirm('Faltan '+(TOTAL_ENSAMBLE-checked)+' items. Completar de todos modos?\n\n(No podrá editarlo después)')) return;
-      } else {
-        if(!confirm('Completar y bloquear este checklist?')) return;
+        alert('Faltan '+(TOTAL_ENSAMBLE-checked)+' items por marcar antes de completar el checklist.');
+        return;
       }
+      if(!confirm('Completar y bloquear este checklist?')) return;
       saveEnsamble(motoId, true);
     });
     $('#clEnsBack').on('click', function(){ ADApp.closeModal(); showMotoChecklists(motoId); });
@@ -620,8 +623,10 @@ window.AD_checklists = (function(){
         alert(r.error||'Error al guardar');
         $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
       }
-    }).fail(function(){
-      alert('Error de conexión');
+    }).fail(function(xhr){
+      var msg = 'Error de conexión';
+      if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+      alert(msg);
       $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
     });
   }
@@ -663,13 +668,13 @@ window.AD_checklists = (function(){
         {key:'otp_validado', label:'OTP validado correctamente'}
       ]}
     ]},
-    { key:'fase5', title:'Fase 5 — Acta legal de entrega', sections:[
-      { title:'Documento legal', fields:[
-        {key:'acta_aceptada', label:'Acta de entrega aceptada'},
-        {key:'clausula_identidad', label:'Cláusula de identidad aceptada'},
-        {key:'clausula_medios', label:'Cláusula de medios de pago aceptada'},
-        {key:'clausula_uso_info', label:'Cláusula de uso de información aceptada'},
-        {key:'firma_digital', label:'Firma digital registrada'}
+    { key:'fase5', title:'Fase 5 — Finaliza tu compra', sections:[
+      { title:'Pagaré electrónico', fields:[
+        {key:'acta_aceptada', label:'Acta de entrega aceptada', auto:true},
+        {key:'clausula_identidad', label:'Cláusula de identidad', auto:true},
+        {key:'clausula_medios', label:'Cláusula de medios de pago', auto:true},
+        {key:'clausula_uso_info', label:'Cláusula de uso de información', auto:true},
+        {key:'firma_digital', label:'Firma digital registrada', auto:true}
       ]}
     ]}
   ];
@@ -719,12 +724,22 @@ window.AD_checklists = (function(){
       html += '<div style="font-weight:700;font-size:14px;margin-bottom:10px;">'+ph.title+'</div>';
 
       ph.sections.forEach(function(section){
-        html += '<div style="margin-bottom:14px;">';
-        html += sectionTitle(section.title);
-        section.fields.forEach(function(f){
-          html += checkItem(f.key, f.label, data[f.key], isLocked);
+        // Fase 5: auto fields are hidden (no checkboxes per customer request — only "Finaliza tu compra")
+        var visibleFields = section.fields.filter(function(f){ return !f.auto; });
+        var autoFields = section.fields.filter(function(f){ return f.auto; });
+
+        if(visibleFields.length > 0){
+          html += '<div style="margin-bottom:14px;">';
+          html += sectionTitle(section.title);
+          visibleFields.forEach(function(f){
+            html += checkItem(f.key, f.label, data[f.key], isLocked);
+          });
+          html += '</div>';
+        }
+        // Auto fields: hidden inputs, auto-checked when signatures are saved
+        autoFields.forEach(function(f){
+          html += '<input type="checkbox" class="clCheck" data-key="'+f.key+'" '+(data[f.key]?'checked':'')+' style="display:none;">';
         });
-        html += '</div>';
       });
 
       // Phase photos
@@ -775,27 +790,69 @@ window.AD_checklists = (function(){
         html += '</div>';
       }
 
-      // ── Fase 5: Signature canvas ──
+      // ── Fase 5: Dual signatures ──
       if(ph.key === 'fase5'){
-        html += '<div style="margin-top:10px;">';
-        html += sectionTitle('Firma digital del cliente');
-        if(data.firma_data){
-          html += '<div style="border:1px solid #ddd;border-radius:8px;padding:8px;display:inline-block;">'+
-            '<img src="'+data.firma_data+'" style="max-width:300px;height:auto;"></div>';
-          html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;">Firma capturada</div>';
+
+        // ── Firma 1: Acta de entrega ──
+        html += '<div style="margin-top:10px;padding:16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;margin-bottom:14px;">';
+        html += '<div style="font-weight:700;font-size:14px;color:#0369a1;margin-bottom:4px;">1. Confirma la entrega</div>';
+        html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Acta de entrega — OTP ya confirmado</div>';
+        if(data.firma_acta_data){
+          html += '<div style="border:1px solid #ddd;border-radius:8px;padding:8px;display:inline-block;background:#fff;">'+
+            '<img src="'+data.firma_acta_data+'" style="max-width:300px;height:auto;"></div>';
+          html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;font-weight:600;">Firma de entrega capturada</div>';
         } else if(!isLocked){
-          html += '<div id="clFirmaWrapper" style="border:2px dashed #ccc;border-radius:8px;position:relative;background:#fafafa;">';
-          html += '<canvas id="clFirmaCanvas" style="width:100%;height:120px;display:block;cursor:crosshair;"></canvas>';
-          html += '<div id="clFirmaPlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:13px;pointer-events:none;">Firmar aquí</div>';
+          html += '<div id="clFirmaActaWrapper" style="border:2px dashed #0ea5e9;border-radius:8px;position:relative;background:#fff;">';
+          html += '<canvas id="clFirmaActaCanvas" style="width:100%;height:120px;display:block;cursor:crosshair;"></canvas>';
+          html += '<div id="clFirmaActaPlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:13px;pointer-events:none;">Firmar aquí</div>';
           html += '</div>';
           html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">';
-          html += '<span id="clFirmaStatus" style="font-size:12px;color:#999;">Pendiente de firma</span>';
-          html += '<button class="ad-btn sm ghost" id="clFirmaClear">Limpiar</button>';
+          html += '<span id="clFirmaActaStatus" style="font-size:12px;color:#999;">Pendiente de firma</span>';
+          html += '<button class="ad-btn sm ghost" id="clFirmaActaClear">Limpiar</button>';
           html += '</div>';
         } else {
           html += '<div style="font-size:13px;color:var(--ad-dim);">Sin firma registrada</div>';
         }
         html += '</div>';
+
+        // ── Firma 2: Pagaré (CINCEL) ──
+        html += '<div style="padding:16px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;">';
+        html += '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">2. Finaliza tu compra</div>';
+        html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Firma pagaré — Documento PDF inmutable + Certificación NOM-151</div>';
+
+        // Pagaré PDF status area
+        html += '<div id="clPagareInfo" style="margin-bottom:10px;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;">';
+        if(data.pagare_pdf_path){
+          html += '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré generado</div>';
+          if(data.pagare_pdf_hash) html += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+data.pagare_pdf_hash+'</div>';
+          html += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(data.pagare_pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF</a>';
+        } else if(!isLocked){
+          html += '<div style="font-size:12px;color:#92400e;">El PDF del pagaré se generará automáticamente al firmar.</div>';
+          html += '<button class="ad-btn sm ghost" id="clPagarePreview" style="margin-top:6px;font-size:11px;border-color:#f59e0b;color:#92400e;">Vista previa del pagaré</button>';
+        }
+        html += '</div>';
+
+        if(data.firma_pagare_data){
+          html += '<div style="border:1px solid #ddd;border-radius:8px;padding:8px;display:inline-block;background:#fff;">'+
+            '<img src="'+data.firma_pagare_data+'" style="max-width:300px;height:auto;"></div>';
+          html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;font-weight:600;">Firma pagaré capturada</div>';
+          if(data.firma_pagare_timestamp) html += '<div style="font-size:11px;color:#64748b;margin-top:2px;">Timestamp: '+data.firma_pagare_timestamp+'</div>';
+          if(data.firma_pagare_cincel_id) html += '<div style="font-size:11px;color:#64748b;">CINCEL ID: <code>'+data.firma_pagare_cincel_id+'</code></div>';
+          if(data.pagare_pdf_hash) html += '<div style="font-size:11px;color:#64748b;">PDF Hash: <code style="font-size:10px;">'+data.pagare_pdf_hash+'</code></div>';
+        } else if(!isLocked){
+          html += '<div id="clFirmaPagareWrapper" style="border:2px dashed #f59e0b;border-radius:8px;position:relative;background:#fff;">';
+          html += '<canvas id="clFirmaPagareCanvas" style="width:100%;height:120px;display:block;cursor:crosshair;"></canvas>';
+          html += '<div id="clFirmaPagarePlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:13px;pointer-events:none;">Firmar aquí</div>';
+          html += '</div>';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">';
+          html += '<span id="clFirmaPagareStatus" style="font-size:12px;color:#999;">Pendiente de firma</span>';
+          html += '<button class="ad-btn sm ghost" id="clFirmaPagareClear">Limpiar</button>';
+          html += '</div>';
+        } else {
+          html += '<div style="font-size:13px;color:var(--ad-dim);">Sin firma registrada</div>';
+        }
+        html += '</div>';
+
       }
 
       html += '</div>';
@@ -837,8 +894,10 @@ window.AD_checklists = (function(){
           $('#clOtpStatus').text(r.error||'Error').css('color','#F44336');
         }
         $btn.prop('disabled',false).html('Enviar OTP al cliente');
-      }).fail(function(){
-        $('#clOtpStatus').text('Error de conexión').css('color','#F44336');
+      }).fail(function(xhr){
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        $('#clOtpStatus').text(msg).css('color','#F44336');
         $btn.prop('disabled',false).html('Enviar OTP al cliente');
       });
     });
@@ -856,8 +915,10 @@ window.AD_checklists = (function(){
           alert(r.error||'Código incorrecto');
           $btn.prop('disabled',false).html('Verificar');
         }
-      }).fail(function(){
-        alert('Error de conexión');
+      }).fail(function(xhr){
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        alert(msg);
         $btn.prop('disabled',false).html('Verificar');
       });
     });
@@ -887,8 +948,10 @@ window.AD_checklists = (function(){
         } else {
           $('#clFaceStatus').html(r.error||'Error').css('color','#F44336');
         }
-      }).fail(function(){
-        $('#clFaceStatus').html('Error de conexión').css('color','#F44336');
+      }).fail(function(xhr){
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        $('#clFaceStatus').html(msg).css('color','#F44336');
       });
     });
 
@@ -899,24 +962,63 @@ window.AD_checklists = (function(){
       $(this).removeClass('ghost').addClass('primary');
       $('.clEntPane').hide();
       $('.clEntPane[data-fase="'+f+'"]').show();
+      // Re-init signature canvas when F5 becomes visible
+      if(f === 'fase5') initSignatureCanvas();
     });
 
-    $('.clCheck').on('change', function(){ updateProgressGeneric(ALL_ENTREGA_FIELDS, TOTAL_ENTREGA); });
+    // Pagaré preview button
+    $('#clPagarePreview').on('click', function(){
+      var $btn = $(this);
+      $btn.prop('disabled',true).html('<span class="ad-spin"></span> Generando...');
+      ADApp.api('checklists/generar-pagare.php', {moto_id: motoId}).done(function(r){
+        if(r.ok){
+          var infoHtml = '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré generado (vista previa)</div>';
+          if(r.datos && r.datos.nombre) infoHtml += '<div style="font-size:11px;color:#64748b;margin-top:2px;">Cliente: '+r.datos.nombre+'</div>';
+          if(r.datos && r.datos.monto_fmt) infoHtml += '<div style="font-size:11px;color:#64748b;">Monto: '+r.datos.monto_fmt+'</div>';
+          if(r.pdf_hash) infoHtml += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+r.pdf_hash+'</div>';
+          infoHtml += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(r.pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF</a>';
+          infoHtml += '<div style="font-size:11px;color:#92400e;margin-top:4px;">El PDF final se generará con la firma al guardar.</div>';
+          $('#clPagareInfo').html(infoHtml);
+        } else {
+          alert(r.error||'Error generando vista previa');
+          $btn.prop('disabled',false).html('Vista previa del pagaré');
+        }
+      }).fail(function(xhr){
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        alert(msg);
+        $btn.prop('disabled',false).html('Vista previa del pagaré');
+      });
+    });
+
+    $('.clCheck').on('change', function(){
+      updateProgressGeneric(ALL_ENTREGA_FIELDS, TOTAL_ENTREGA);
+      updateTabCounters(ENTREGA_PHASES, '.clEntTab');
+    });
 
     $('#clEntSave').on('click', function(){ saveEntrega(motoId, false); });
     $('#clEntComplete').on('click', function(){
       var checked = countChecked();
       if(checked < TOTAL_ENTREGA){
-        if(!confirm('Faltan '+(TOTAL_ENTREGA-checked)+' items. Completar de todos modos?\n\n(No podrá editarlo después)')) return;
-      } else {
-        if(!confirm('Completar y bloquear este checklist?')) return;
+        alert('Faltan '+(TOTAL_ENTREGA-checked)+' items por marcar antes de completar el checklist.');
+        return;
       }
+      if(!confirm('Completar y bloquear este checklist?')) return;
       saveEntrega(motoId, true);
     });
     $('#clEntBack').on('click', function(){ ADApp.closeModal(); showMotoChecklists(motoId); });
   }
 
   function saveEntrega(motoId, completar){
+    // Auto-check fase5 hidden fields when signatures exist
+    var firmaActa = getSignatureData('acta');
+    var firmaPagare = getSignatureData('pagare');
+    if(firmaActa || firmaPagare){
+      ['acta_aceptada','clausula_identidad','clausula_medios','clausula_uso_info','firma_digital'].forEach(function(k){
+        $('.clCheck[data-key="'+k+'"]').prop('checked', true);
+      });
+    }
+
     var payload = { moto_id: motoId };
     $('.clCheck').each(function(){ payload[$(this).data('key')] = $(this).is(':checked') ? 1 : 0; });
     payload.notas = $('#clEntNotas').val();
@@ -925,32 +1027,57 @@ window.AD_checklists = (function(){
     var $btn = completar ? $('#clEntComplete') : $('#clEntSave');
     $btn.prop('disabled',true).html('<span class="ad-spin"></span>');
 
-    // Save signature first if canvas has data
-    var firmaData = getSignatureData();
-    var firmaPromise = firmaData
-      ? ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, firma_data: firmaData })
+    // Step 1: Save acta signature
+    var actaPromise = firmaActa
+      ? ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, tipo: 'acta', firma_data: firmaActa })
       : $.Deferred().resolve({ok:true});
 
-    firmaPromise.always(function(){
-    ADApp.api('checklists/guardar-entrega.php', payload).done(function(r){
-      if(r.ok){
-        if(completar){
-          ADApp.closeModal();
-          alert('Checklist de entrega completado exitosamente');
-          showMotoChecklists(motoId);
-        } else {
-          alert('Borrador guardado (Fase: '+r.fase_actual+')');
-          $btn.prop('disabled',false).html('Guardar borrador');
-        }
+    actaPromise.always(function(){
+      // Step 2: Save pagaré signature (this triggers PDF generation + CINCEL)
+      var pagarePromise;
+      if(firmaPagare){
+        $('#clFirmaPagareStatus').text('Generando PDF y sellando NOM-151...').css('color','#92400e');
+        pagarePromise = ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, tipo: 'pagare', firma_data: firmaPagare });
       } else {
-        alert(r.error||'Error al guardar');
-        $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
+        pagarePromise = $.Deferred().resolve({ok:true});
       }
-    }).fail(function(){
-      alert('Error de conexión');
-      $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
-    });
-    }); // end firmaPromise
+
+      pagarePromise.done(function(pagareResp){
+        // Show pagaré result
+        if(pagareResp && pagareResp.pdf_hash){
+          var infoHtml = '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré firmado y sellado</div>';
+          if(pagareResp.pdf_hash) infoHtml += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+pagareResp.pdf_hash+'</div>';
+          if(pagareResp.cincel_id) infoHtml += '<div style="font-size:11px;color:#64748b;">CINCEL ID: <code>'+pagareResp.cincel_id+'</code></div>';
+          if(pagareResp.pdf_path) infoHtml += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(pagareResp.pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF firmado</a>';
+          $('#clPagareInfo').html(infoHtml);
+        }
+        if(pagareResp && pagareResp.cincel_warning){
+          $('#clFirmaPagareStatus').text('Firma guardada (CINCEL: '+pagareResp.cincel_warning+')').css('color','#FF9800');
+        }
+      }).always(function(){
+        // Step 3: Save checklist data
+        ADApp.api('checklists/guardar-entrega.php', payload).done(function(r){
+          if(r.ok){
+            if(completar){
+              ADApp.closeModal();
+              alert('Checklist de entrega completado exitosamente');
+              showMotoChecklists(motoId);
+            } else {
+              alert('Borrador guardado (Fase: '+r.fase_actual+')');
+              $btn.prop('disabled',false).html('Guardar borrador');
+            }
+          } else {
+            alert(r.error||'Error al guardar');
+            $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
+          }
+        }).fail(function(xhr){
+          var msg = 'Error de conexión';
+          if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+          alert(msg);
+          $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
+        });
+      }); // end pagarePromise.always
+    }); // end actaPromise
   }
 
   // ── Shared UI helpers ────────────────────────────────────────────────────
@@ -982,62 +1109,69 @@ window.AD_checklists = (function(){
     var done = countChecked();
     var pct = total > 0 ? Math.round(done/total*100) : 0;
     $('#clProgressBar').css('width', pct+'%');
-    $('#clProgressBar').closest('div').prev().find('span:first strong').text(done+'/'+total);
-    $('#clProgressBar').closest('div').prev().find('span:last strong').text(pct+'%');
+    $('#clProgressBar').parent().prev().find('span:first strong').text(done+'/'+total);
+    $('#clProgressBar').parent().prev().find('span:last strong').text(pct+'%');
+
+  }
+
+  function updateTabCounters(phases, tabSelector){
+    $(tabSelector).each(function(i){
+      var ph = phases[i];
+      if(!ph) return;
+      var phDone = 0, phTotal = 0;
+      ph.sections.forEach(function(s){
+        s.fields.forEach(function(f){
+          phTotal++;
+          if($('.clCheck[data-key="'+f.key+'"]').is(':checked')) phDone++;
+        });
+      });
+      $(this).find('span').text('('+phDone+'/'+phTotal+')');
+    });
   }
 
   // ── Signature canvas ──────────────────────────────────────────────────────
 
-  var _sigCanvas = null, _sigCtx = null, _sigDrawing = false, _sigHasSigned = false;
+  // Dual signature state
+  var _sigState = { acta: { canvas:null, ctx:null, drawing:false, signed:false }, pagare: { canvas:null, ctx:null, drawing:false, signed:false } };
 
-  function initSignatureCanvas(){
-    var canvas = document.getElementById('clFirmaCanvas');
+  function _initOneCanvas(tipo, canvasId, wrapperId, placeholderId, statusId, clearBtnId, borderColor){
+    var canvas = document.getElementById(canvasId);
     if(!canvas) return;
-
     var rect = canvas.getBoundingClientRect();
     var w = rect.width > 0 ? rect.width : (canvas.parentElement ? canvas.parentElement.clientWidth : 320);
     var h = 120;
-    canvas.width = w;
-    canvas.height = h;
-    canvas.style.height = h + 'px';
-
+    canvas.width = w; canvas.height = h; canvas.style.height = h+'px';
     var ctx = canvas.getContext('2d');
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#111827';
-
-    _sigCanvas = canvas;
-    _sigCtx = ctx;
-    _sigHasSigned = false;
-
-    function getPos(e){
-      var r = canvas.getBoundingClientRect();
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
-    }
-
-    canvas.addEventListener('mousedown', function(e){ _sigDrawing = true; var p=getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); $('#clFirmaPlaceholder').hide(); });
-    canvas.addEventListener('mousemove', function(e){ if(!_sigDrawing) return; var p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); _sigHasSigned=true; $('#clFirmaStatus').text('Firma capturada').css('color','#4CAF50'); $('#clFirmaWrapper').css('border-color','#4CAF50'); });
-    canvas.addEventListener('mouseup', function(){ _sigDrawing=false; });
-    canvas.addEventListener('mouseleave', function(){ _sigDrawing=false; });
-
-    canvas.addEventListener('touchstart', function(e){ e.preventDefault(); _sigDrawing=true; var p=getPos(e.touches[0]); ctx.beginPath(); ctx.moveTo(p.x,p.y); $('#clFirmaPlaceholder').hide(); }, {passive:false});
-    canvas.addEventListener('touchmove', function(e){ e.preventDefault(); if(!_sigDrawing) return; var p=getPos(e.touches[0]); ctx.lineTo(p.x,p.y); ctx.stroke(); _sigHasSigned=true; $('#clFirmaStatus').text('Firma capturada').css('color','#4CAF50'); $('#clFirmaWrapper').css('border-color','#4CAF50'); }, {passive:false});
-    canvas.addEventListener('touchend', function(){ _sigDrawing=false; });
-
-    $('#clFirmaClear').on('click', function(){
-      if(!_sigCtx || !_sigCanvas) return;
-      _sigCtx.clearRect(0, 0, _sigCanvas.width, _sigCanvas.height);
-      _sigHasSigned = false;
-      $('#clFirmaPlaceholder').show();
-      $('#clFirmaStatus').text('Pendiente de firma').css('color','#999');
-      $('#clFirmaWrapper').css('border-color','#ccc');
+    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111827';
+    var st = _sigState[tipo];
+    st.canvas = canvas; st.ctx = ctx; st.signed = false;
+    function getPos(e){ var r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+    canvas.addEventListener('mousedown', function(e){ st.drawing=true; var p=getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); $('#'+placeholderId).hide(); });
+    canvas.addEventListener('mousemove', function(e){ if(!st.drawing) return; var p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); st.signed=true; $('#'+statusId).text('Firma capturada').css('color','#4CAF50'); $('#'+wrapperId).css('border-color', borderColor); });
+    canvas.addEventListener('mouseup', function(){ st.drawing=false; });
+    canvas.addEventListener('mouseleave', function(){ st.drawing=false; });
+    canvas.addEventListener('touchstart', function(e){ e.preventDefault(); st.drawing=true; var p=getPos(e.touches[0]); ctx.beginPath(); ctx.moveTo(p.x,p.y); $('#'+placeholderId).hide(); }, {passive:false});
+    canvas.addEventListener('touchmove', function(e){ e.preventDefault(); if(!st.drawing) return; var p=getPos(e.touches[0]); ctx.lineTo(p.x,p.y); ctx.stroke(); st.signed=true; $('#'+statusId).text('Firma capturada').css('color','#4CAF50'); $('#'+wrapperId).css('border-color', borderColor); }, {passive:false});
+    canvas.addEventListener('touchend', function(){ st.drawing=false; });
+    $('#'+clearBtnId).on('click', function(){
+      if(!st.ctx||!st.canvas) return;
+      st.ctx.clearRect(0,0,st.canvas.width,st.canvas.height);
+      st.signed=false;
+      $('#'+placeholderId).show();
+      $('#'+statusId).text('Pendiente de firma').css('color','#999');
+      $('#'+wrapperId).css('border-color','#ccc');
     });
   }
 
-  function getSignatureData(){
-    if(!_sigCanvas || !_sigHasSigned) return null;
-    return _sigCanvas.toDataURL('image/png');
+  function initSignatureCanvas(){
+    _initOneCanvas('acta','clFirmaActaCanvas','clFirmaActaWrapper','clFirmaActaPlaceholder','clFirmaActaStatus','clFirmaActaClear','#0ea5e9');
+    _initOneCanvas('pagare','clFirmaPagareCanvas','clFirmaPagareWrapper','clFirmaPagarePlaceholder','clFirmaPagareStatus','clFirmaPagareClear','#f59e0b');
+  }
+
+  function getSignatureData(tipo){
+    var st = _sigState[tipo||'acta'];
+    if(!st.canvas || !st.signed) return null;
+    return st.canvas.toDataURL('image/png');
   }
 
   // ── Photo upload helpers ──────────────────────────────────────────────────
@@ -1054,7 +1188,7 @@ window.AD_checklists = (function(){
   function photoZone(id, tipo, motoId, campo, existing, disabled){
     var photos = existing || [];
     var html = '<div class="clPhotoZone" id="'+id+'" data-tipo="'+tipo+'" data-moto="'+motoId+'" data-campo="'+campo+'" style="margin:8px 0 14px;">';
-    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:4px;">Evidencia fotográfica:</div>';
+    html += '';
     html += '<div class="clPhotoGrid" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">';
     photos.forEach(function(url){
       html += photoThumb(url, disabled);
@@ -1117,9 +1251,11 @@ window.AD_checklists = (function(){
               $('#'+placeholderId).remove();
               alert(r.error||'Error al subir foto');
             }
-          }).fail(function(){
+          }).fail(function(xhr){
             $('#'+placeholderId).remove();
-            alert('Error de conexión al subir foto');
+            var msg = 'Error de conexión al subir foto';
+            if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+            alert(msg);
           });
         })(files[i]);
       }
@@ -1150,9 +1286,11 @@ window.AD_checklists = (function(){
       }).done(function(r){
         if(r.ok) $thumb.remove();
         else { $thumb.css('opacity','1'); alert(r.error||'Error'); }
-      }).fail(function(){
+      }).fail(function(xhr){
         $thumb.css('opacity','1');
-        alert('Error de conexión');
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        alert(msg);
       });
     });
   }

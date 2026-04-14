@@ -178,7 +178,7 @@ try {
           AND (pedido_num IS NULL OR pedido_num = '')
           AND (cliente_email IS NULL OR cliente_email = '')
           AND vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
-          AND estado NOT IN ('entregada','retenida')
+          AND estado IN ('recibida','lista_para_entrega')
         GROUP BY modelo, color
     ")->fetchAll(PDO::FETCH_ASSOC);
     foreach ($inv as $i) {
@@ -187,11 +187,27 @@ try {
     }
 } catch (Throwable $e) {}
 
+// In-transit count per modelo+color (por_llegar)
+$enTransito = [];
+try {
+    $inv2 = $pdo->query("
+        SELECT modelo, color, COUNT(*) AS cnt
+        FROM inventario_motos
+        WHERE activo = 1 AND estado = 'por_llegar'
+        GROUP BY modelo, color
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($inv2 as $i) {
+        $key = strtolower(trim($i['modelo'])) . '|' . strtolower(trim($i['color']));
+        $enTransito[$key] = (int)$i['cnt'];
+    }
+} catch (Throwable $e) {}
+
 $twoMonths = date('Y-m-d', strtotime('+2 months'));
 foreach ($rows as &$row) {
     $key = strtolower(trim($row['modelo'] ?? '')) . '|' . strtolower(trim($row['color'] ?? ''));
     $stock = $disponibles[$key] ?? 0;
     $row['inventario_disponible'] = $stock;
+    $row['inventario_en_transito'] = $enTransito[$key] ?? 0;
     if (!$row['moto_id'] && $stock === 0) {
         $row['fecha_estimada_entrega'] = $row['fecha_estimada_entrega'] ?? $twoMonths;
     }
