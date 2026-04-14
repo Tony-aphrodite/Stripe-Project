@@ -53,7 +53,7 @@ $summary = $pdo->query("SELECT
     SUM(estado='entregada') as entregado,
     SUM(estado = 'por_llegar') as en_transito,
     SUM(estado='en_ensamble' OR estado='por_ensamblar') as en_ensamble,
-    SUM(estado='retenida') as bloqueado,
+    SUM(estado='retenida' OR bloqueado_venta=1) as bloqueado,
     SUM(punto_voltika_id IS NOT NULL AND estado NOT IN ('entregada','por_llegar','retenida')) as en_puntos
     FROM inventario_motos WHERE activo = 1")->fetch(PDO::FETCH_ASSOC);
 

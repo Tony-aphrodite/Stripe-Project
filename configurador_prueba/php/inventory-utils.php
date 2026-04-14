@@ -8,16 +8,9 @@
 /**
  * Find and assign the oldest available moto (FIFO) matching model + color.
  *
- * @param PDO    $pdo
- * @param string $modelo         e.g. "M05"
- * @param string $color          e.g. "negro"
- * @param string $clienteNombre
- * @param string $clienteEmail
- * @param string $clienteTelefono
- * @param string $pedidoNum      e.g. "VK-ABC123"
- * @param string $stripePi       Stripe PaymentIntent ID (optional)
- * @param string $tpago          "contado" | "msi" | "credito"
- * @param float  $total
+ * Only considers motos that:
+ * - Have completed checklist_origen
+ * - Are not sale-locked (bloqueado_venta = 0)
  *
  * @return int|null  moto_id if assigned, null if no match found
  */
@@ -35,28 +28,32 @@ function asignarMotoFIFO(
 ): ?int {
 
     // ── Find best FIFO match ─────────────────────────────────────────────────
-    // Unassigned = no pedido_num set yet, not delivered
-    // Priority order: fecha_ingreso_pais ASC (oldest first), then freg ASC
+    // Must have: completed origin checklist, not sale-locked
     $stmt = $pdo->prepare("
-        SELECT id, vin, modelo, color, estado
-        FROM inventario_motos
-        WHERE activo = 1
-          AND LOWER(TRIM(modelo)) = LOWER(TRIM(?))
-          AND LOWER(TRIM(color))  = LOWER(TRIM(?))
-          AND estado IN ('recibida', 'lista_para_entrega')
-          AND (pedido_num IS NULL OR pedido_num = '')
-          AND (cliente_email IS NULL OR cliente_email = '')
+        SELECT m.id, m.vin, m.modelo, m.color, m.estado
+        FROM inventario_motos m
+        WHERE m.activo = 1
+          AND LOWER(TRIM(m.modelo)) = LOWER(TRIM(?))
+          AND LOWER(TRIM(m.color))  = LOWER(TRIM(?))
+          AND m.estado IN ('recibida', 'lista_para_entrega')
+          AND (m.pedido_num IS NULL OR m.pedido_num = '')
+          AND (m.cliente_email IS NULL OR m.cliente_email = '')
+          AND (m.bloqueado_venta = 0 OR m.bloqueado_venta IS NULL)
+          AND EXISTS (
+              SELECT 1 FROM checklist_origen co
+              WHERE co.moto_id = m.id AND co.completado = 1
+          )
         ORDER BY
-            CASE WHEN fecha_ingreso_pais IS NOT NULL THEN 0 ELSE 1 END,
-            fecha_ingreso_pais ASC,
-            freg ASC
+            CASE WHEN m.fecha_ingreso_pais IS NOT NULL THEN 0 ELSE 1 END,
+            m.fecha_ingreso_pais ASC,
+            m.freg ASC
         LIMIT 1
     ");
     $stmt->execute([$modelo, $color]);
     $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$moto) {
-        return null; // No matching unit available
+        return null;
     }
 
     $motoId = (int)$moto['id'];
@@ -99,9 +96,7 @@ function asignarMotoFIFO(
             )
             WHERE id = ?
         ")->execute([$logEntry, $motoId]);
-    } catch (PDOException $e) {
-        // JSON_ARRAY_APPEND may fail on older MySQL — ignore log error
-    }
+    } catch (PDOException $e) {}
 
     // ── Register in ventas_log ───────────────────────────────────────────────
     try {
@@ -122,37 +117,34 @@ function asignarMotoFIFO(
             $total ?: null,
             "Asignación automática FIFO — $tpago",
         ]);
-    } catch (PDOException $e) {
-        // ventas_log may not exist — ignore
-    }
+    } catch (PDOException $e) {}
 
     return $motoId;
 }
 
 /**
  * Count available (unassigned) motos by model and color.
- *
- * @param PDO    $pdo
- * @param string $modelo  (optional, empty = all models)
- * @param string $color   (optional, empty = all colors)
+ * Only counts motos with completed origin checklist and not sale-locked.
  *
  * @return array  [['modelo'=>'M05','color'=>'negro','disponibles'=>3], ...]
  */
 function contarDisponibles(PDO $pdo, string $modelo = '', string $color = ''): array {
-    $where  = ["activo = 1", "estado IN ('recibida','lista_para_entrega')",
-               "(pedido_num IS NULL OR pedido_num = '')",
-               "(cliente_email IS NULL OR cliente_email = '')",
-               "vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'"];
+    $where  = ["m.activo = 1", "m.estado IN ('recibida','lista_para_entrega')",
+               "(m.pedido_num IS NULL OR m.pedido_num = '')",
+               "(m.cliente_email IS NULL OR m.cliente_email = '')",
+               "m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'",
+               "(m.bloqueado_venta = 0 OR m.bloqueado_venta IS NULL)",
+               "EXISTS (SELECT 1 FROM checklist_origen co WHERE co.moto_id = m.id AND co.completado = 1)"];
     $params = [];
 
-    if ($modelo) { $where[] = 'LOWER(TRIM(modelo)) = LOWER(TRIM(?))'; $params[] = $modelo; }
-    if ($color)  { $where[] = 'LOWER(TRIM(color))  = LOWER(TRIM(?))'; $params[] = $color; }
+    if ($modelo) { $where[] = 'LOWER(TRIM(m.modelo)) = LOWER(TRIM(?))'; $params[] = $modelo; }
+    if ($color)  { $where[] = 'LOWER(TRIM(m.color))  = LOWER(TRIM(?))'; $params[] = $color; }
 
-    $sql  = "SELECT modelo, color, COUNT(*) AS disponibles
-             FROM inventario_motos
+    $sql  = "SELECT m.modelo, m.color, COUNT(*) AS disponibles
+             FROM inventario_motos m
              WHERE " . implode(' AND ', $where) . "
-             GROUP BY modelo, color
-             ORDER BY modelo, color";
+             GROUP BY m.modelo, m.color
+             ORDER BY m.modelo, m.color";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -81,6 +81,12 @@ window.PV_inventario = (function(){
       h += '<div style="font-size:12px">Cliente: <strong>'+m.cliente_nombre+'</strong></div>';
       h += '<div style="font-size:11px;color:var(--ad-dim)">'+(m.cliente_telefono||'')+'</div>';
     }
+    if (parseInt(m.bloqueado_venta)) {
+      h += '<div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding:6px 10px;border-radius:6px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);">';
+      h += '<span class="ad-badge red" style="font-size:10px;">BLOQUEADA</span>';
+      h += '<span style="font-size:11px;color:#b91c1c;">'+(m.bloqueado_motivo||'')+'</span>';
+      h += '</div>';
+    }
     var badgeColor = 'blue';
     if (m.estado === 'lista_para_entrega') badgeColor = 'green';
     else if (m.estado === 'en_ensamble')   badgeColor = 'yellow';
@@ -166,7 +172,72 @@ window.PV_inventario = (function(){
         html += '<div><span style="color:var(--ad-dim)">'+p[0]+':</span> <strong>'+p[1]+'</strong></div>';
       });
       html += '</div>';
+
+      // ── Bloqueo de venta ──
+      var isBloq = parseInt(m.bloqueado_venta) === 1;
+      html += '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--ad-border,#eee);">';
+      html += '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ad-primary,#039fe1);margin-bottom:10px;">Bloqueo de venta</div>';
+      if(isBloq){
+        html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:10px 14px;border-radius:8px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);margin-bottom:10px;">';
+        html += '<div style="font-size:12px;color:#b91c1c;"><strong>Bloqueada</strong><br>Motivo: '+(m.bloqueado_motivo||'Sin motivo')+'</div></div>';
+        html += '<button class="ad-btn ghost" id="pvUnlockMoto" style="color:#059669;border-color:#059669;width:100%;">Desbloquear moto</button>';
+      } else {
+        html += '<div style="font-size:12px;color:#059669;margin-bottom:10px;">Moto disponible (no bloqueada)</div>';
+        html += '<button class="ad-btn ghost" id="pvLockMoto" style="color:#b91c1c;border-color:#b91c1c;width:100%;">Bloquear moto</button>';
+      }
+      html += '</div>';
+
       PVApp.modal(html);
+      $('#pvLockMoto').on('click', function(){ showPuntoLockModal(m.id); });
+      $('#pvUnlockMoto').on('click', function(){ puntoUnlockMoto(m.id); });
+    });
+  }
+  function showPuntoLockModal(motoId){
+    var html = '<div class="ad-h2">Bloquear moto para venta</div>'+
+      '<div style="color:var(--ad-dim,#888);margin-bottom:12px;font-size:13px;">Esta moto no podrá ser vendida mientras esté bloqueada.</div>'+
+      '<label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Motivo del bloqueo *</label>'+
+      '<textarea id="pvLockMotivo" class="ad-input" placeholder="Ej. Pendiente revisión, daño detectado, etc." style="width:100%;min-height:80px;"></textarea>'+
+      '<button class="ad-btn primary" id="pvLockSave" style="width:100%;margin-top:12px;">Bloquear moto</button>';
+    PVApp.modal(html);
+    $('#pvLockSave').on('click', function(){
+      var motivo = $('#pvLockMotivo').val().trim();
+      if(!motivo){ alert('El motivo es obligatorio'); return; }
+      $(this).prop('disabled',true).html('<span class="ad-spin"></span> Bloqueando...');
+      PVApp.api('inventario/bloquear-venta.php', {
+        moto_id: motoId,
+        bloqueado: 1,
+        motivo: motivo
+      }).done(function(r){
+        if(r.ok){
+          PVApp.closeModal();
+          PVApp.toast('Moto bloqueada para venta');
+          render();
+        } else {
+          alert(r.error||'Error');
+          $('#pvLockSave').prop('disabled',false).html('Bloquear moto');
+        }
+      }).fail(function(x){
+        alert((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
+        $('#pvLockSave').prop('disabled',false).html('Bloquear moto');
+      });
+    });
+  }
+  function puntoUnlockMoto(motoId){
+    if(!confirm('¿Desbloquear esta moto para venta?')) return;
+    PVApp.api('inventario/bloquear-venta.php', {
+      moto_id: motoId,
+      bloqueado: 0,
+      motivo: ''
+    }).done(function(r){
+      if(r.ok){
+        PVApp.closeModal();
+        PVApp.toast('Moto desbloqueada para venta');
+        render();
+      } else {
+        alert(r.error||'Error');
+      }
+    }).fail(function(x){
+      alert((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
     });
   }
   return { render:render };

@@ -76,6 +76,10 @@ function voltikaEnsureSchema(): void {
         fecha_estimada_recogida DATE NULL,
         envia_tracking_number VARCHAR(100) NULL,
         envia_tracking_url VARCHAR(255) NULL,
+        bloqueado_venta    TINYINT DEFAULT 0,
+        bloqueado_motivo   TEXT NULL,
+        bloqueado_por      INT NULL,
+        bloqueado_fecha    DATETIME NULL,
         activo             TINYINT DEFAULT 1,
         freg               DATETIME DEFAULT CURRENT_TIMESTAMP,
         fmod               DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -664,6 +668,11 @@ function voltikaEnsureSchema(): void {
         "ALTER TABLE checklist_entrega_v2 ADD COLUMN pagare_ip VARCHAR(64) NULL AFTER pagare_pdf_hash",
         "ALTER TABLE checklist_entrega_v2 ADD COLUMN pagare_user_agent VARCHAR(500) NULL AFTER pagare_ip",
         "ALTER TABLE checklist_entrega_v2 ADD COLUMN pagare_evidencia JSON NULL AFTER pagare_user_agent",
+        // inventario_motos: sale lock
+        "ALTER TABLE inventario_motos ADD COLUMN bloqueado_venta TINYINT DEFAULT 0",
+        "ALTER TABLE inventario_motos ADD COLUMN bloqueado_motivo TEXT NULL",
+        "ALTER TABLE inventario_motos ADD COLUMN bloqueado_por INT NULL",
+        "ALTER TABLE inventario_motos ADD COLUMN bloqueado_fecha DATETIME NULL",
     ];
     foreach ($alters as $sql) {
         try { $pdo->exec($sql); } catch (Throwable $e) {}
