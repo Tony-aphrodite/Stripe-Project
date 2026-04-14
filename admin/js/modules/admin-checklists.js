@@ -668,13 +668,13 @@ window.AD_checklists = (function(){
         {key:'otp_validado', label:'OTP validado correctamente'}
       ]}
     ]},
-    { key:'fase5', title:'Fase 5 — Acta legal de entrega', sections:[
-      { title:'Documento legal', fields:[
-        {key:'acta_aceptada', label:'Acta de entrega aceptada'},
-        {key:'clausula_identidad', label:'Cláusula de identidad aceptada'},
-        {key:'clausula_medios', label:'Cláusula de medios de pago aceptada'},
-        {key:'clausula_uso_info', label:'Cláusula de uso de información aceptada'},
-        {key:'firma_digital', label:'Firma digital registrada'}
+    { key:'fase5', title:'Fase 5 — Finaliza tu compra', sections:[
+      { title:'Pagaré electrónico', fields:[
+        {key:'acta_aceptada', label:'Acta de entrega aceptada', auto:true},
+        {key:'clausula_identidad', label:'Cláusula de identidad', auto:true},
+        {key:'clausula_medios', label:'Cláusula de medios de pago', auto:true},
+        {key:'clausula_uso_info', label:'Cláusula de uso de información', auto:true},
+        {key:'firma_digital', label:'Firma digital registrada', auto:true}
       ]}
     ]}
   ];
@@ -724,12 +724,22 @@ window.AD_checklists = (function(){
       html += '<div style="font-weight:700;font-size:14px;margin-bottom:10px;">'+ph.title+'</div>';
 
       ph.sections.forEach(function(section){
-        html += '<div style="margin-bottom:14px;">';
-        html += sectionTitle(section.title);
-        section.fields.forEach(function(f){
-          html += checkItem(f.key, f.label, data[f.key], isLocked);
+        // Fase 5: auto fields are hidden (no checkboxes per customer request — only "Finaliza tu compra")
+        var visibleFields = section.fields.filter(function(f){ return !f.auto; });
+        var autoFields = section.fields.filter(function(f){ return f.auto; });
+
+        if(visibleFields.length > 0){
+          html += '<div style="margin-bottom:14px;">';
+          html += sectionTitle(section.title);
+          visibleFields.forEach(function(f){
+            html += checkItem(f.key, f.label, data[f.key], isLocked);
+          });
+          html += '</div>';
+        }
+        // Auto fields: hidden inputs, auto-checked when signatures are saved
+        autoFields.forEach(function(f){
+          html += '<input type="checkbox" class="clCheck" data-key="'+f.key+'" '+(data[f.key]?'checked':'')+' style="display:none;">';
         });
-        html += '</div>';
       });
 
       // Phase photos
@@ -1000,6 +1010,15 @@ window.AD_checklists = (function(){
   }
 
   function saveEntrega(motoId, completar){
+    // Auto-check fase5 hidden fields when signatures exist
+    var firmaActa = getSignatureData('acta');
+    var firmaPagare = getSignatureData('pagare');
+    if(firmaActa || firmaPagare){
+      ['acta_aceptada','clausula_identidad','clausula_medios','clausula_uso_info','firma_digital'].forEach(function(k){
+        $('.clCheck[data-key="'+k+'"]').prop('checked', true);
+      });
+    }
+
     var payload = { moto_id: motoId };
     $('.clCheck').each(function(){ payload[$(this).data('key')] = $(this).is(':checked') ? 1 : 0; });
     payload.notas = $('#clEntNotas').val();
@@ -1007,10 +1026,6 @@ window.AD_checklists = (function(){
 
     var $btn = completar ? $('#clEntComplete') : $('#clEntSave');
     $btn.prop('disabled',true).html('<span class="ad-spin"></span>');
-
-    // Save both signatures sequentially: acta first, then pagaré (pagaré generates PDF + CINCEL)
-    var firmaActa = getSignatureData('acta');
-    var firmaPagare = getSignatureData('pagare');
 
     // Step 1: Save acta signature
     var actaPromise = firmaActa

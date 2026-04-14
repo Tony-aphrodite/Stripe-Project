@@ -1,12 +1,11 @@
 <?php
 /**
  * POST — Generate immutable Pagaré PDF with auto-populated client data
- * Body: { moto_id, firma_data (base64 PNG, optional — added later by guardar-firma) }
+ * Body: { moto_id, firma_data (base64 PNG, optional) }
  * Returns: { ok, pdf_path, pdf_hash, folio }
  *
- * Flow: Called from Fase 5 before or during signature capture.
- * If firma_data is provided, it's embedded in the PDF.
- * The PDF is saved to temp storage and its SHA-256 hash recorded for NOM-151.
+ * Uses the official "Pagaré electrónico Voltika" legal template.
+ * Auto-fills: Truora name, CURP, address, OTP phone, Pago total a plazos.
  */
 require_once __DIR__ . '/../bootstrap.php';
 $uid = adminRequireAuth(['admin','cedis']);
@@ -27,7 +26,6 @@ $stmt->execute([$motoId]);
 $cl = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$cl) {
-    // Auto-create checklist record so PDF preview works before first save
     $pdo->prepare("INSERT INTO checklist_entrega_v2 (moto_id, dealer_id, fase_actual) VALUES (?, ?, 'fase1')")
         ->execute([$motoId, $uid]);
     $newId = (int)$pdo->lastInsertId();
@@ -47,21 +45,20 @@ $stmt->execute([$motoId]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$moto) adminJsonOut(['error' => 'Moto no encontrada'], 404);
 
-// Get transaction data for credit details
+// Transaction data
 $trans = null;
 if (!empty($moto['transaccion_id'])) {
     $stmt = $pdo->prepare("SELECT * FROM transacciones WHERE id = ?");
     $stmt->execute([$moto['transaccion_id']]);
     $trans = $stmt->fetch(PDO::FETCH_ASSOC);
 }
-// Fallback: search by client email
 if (!$trans && !empty($moto['cliente_email'])) {
     $stmt = $pdo->prepare("SELECT * FROM transacciones WHERE email = ? ORDER BY freg DESC LIMIT 1");
     $stmt->execute([$moto['cliente_email']]);
     $trans = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-// Get subscription/credit details
+// Credit/subscription details
 $credito = null;
 if (!empty($moto['cliente_id'])) {
     $stmt = $pdo->prepare("SELECT * FROM subscripciones_credito WHERE cliente_id = ? AND inventario_moto_id = ? ORDER BY freg DESC LIMIT 1");
@@ -76,7 +73,7 @@ if (!$credito && !empty($moto['cliente_email'])) {
     $credito = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-// Get client master data
+// Client master data (Truora-verified)
 $cliente = null;
 if (!empty($moto['cliente_id'])) {
     $stmt = $pdo->prepare("SELECT * FROM clientes WHERE id = ?");
@@ -90,6 +87,10 @@ if ($cliente) {
     $parts = array_filter([$cliente['nombre'] ?? '', $cliente['apellido_paterno'] ?? '', $cliente['apellido_materno'] ?? '']);
     if ($parts) $nombreCompleto = implode(' ', $parts);
 }
+
+$curp = $cliente['curp'] ?? '';
+$domicilio = $cliente['domicilio'] ?? ($trans['domicilio'] ?? '');
+$telCliente = $moto['cliente_telefono'] ?? ($cliente['telefono'] ?? '');
 
 $montoTotal = 0;
 $enganche = 0;
@@ -111,9 +112,16 @@ if (!$montoTotal && $moto['precio_venta']) {
     $montoTotal = floatval($moto['precio_venta']);
 }
 
+// "Pago total a plazos" = enganche + (pago semanal × num pagos)
+$pagoTotalPlazos = $enganche + ($pagoSemanal * $numPagos);
+if (!$pagoTotalPlazos && $montoTotal) $pagoTotalPlazos = $montoTotal;
+
+$montoLetra = numberToSpanishWords($pagoTotalPlazos);
+$montoNum = '$' . number_format($pagoTotalPlazos, 2) . ' MXN';
+
 $folio = 'PAG-' . $motoId . '-' . date('Ymd-His');
-$fechaEmision = date('d/m/Y');
-$lugarEmision = 'Ciudad de México, CDMX';
+$fechaSuscripcion = date('d/m/Y');
+$lugarSuscripcion = 'Ciudad de México, CDMX';
 
 // ── 4. Generate PDF ─────────────────────────────────────────────────────
 $fpdfPaths = [
@@ -143,217 +151,247 @@ if ($firmaB64 && strpos($firmaB64, 'data:image/png;base64,') === 0) {
     file_put_contents($firmaImgPath, $firmaData);
 }
 
-// Helper functions
+// Helper
 $enc = function($s) { return iconv('UTF-8', 'ISO-8859-1//TRANSLIT//IGNORE', (string)$s); };
-$fmt = function($n) { return '$' . number_format((float)$n, 2) . ' MXN'; };
 
 $pdf = new FPDF();
-$pdf->SetAutoPageBreak(true, 20);
+$pdf->SetAutoPageBreak(true, 15);
 
-// ── Page 1: Pagaré ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// PAGE 1 — PAGARÉ header + legal text
+// ═══════════════════════════════════════════════════════════════════════
 $pdf->AddPage();
 
-// Header
-$pdf->SetFont('Arial', 'B', 18);
+// Title
+$pdf->SetFont('Arial', 'B', 20);
 $pdf->Cell(0, 12, $enc('PAGARÉ'), 0, 1, 'C');
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell(0, 5, $enc('Documento con valor legal — LGTOC Art. 170'), 0, 1, 'C');
 $pdf->Ln(2);
 
-// Folio and date bar
-$pdf->SetFillColor(240, 240, 240);
-$pdf->SetFont('Arial', 'B', 8);
-$pdf->Cell(95, 6, $enc('  Folio: ' . $folio), 1, 0, 'L', true);
-$pdf->Cell(95, 6, $enc('  Fecha de emisión: ' . $fechaEmision), 1, 1, 'L', true);
+// Amount line — number + letter
+$pdf->SetFont('Arial', 'B', 10);
+$pdf->Cell(0, 7, $enc('Por la cantidad de ' . $montoNum), 0, 1, 'C');
+$pdf->SetFont('Arial', '', 9);
+$pdf->Cell(0, 6, $enc('(' . $montoLetra . ')'), 0, 1, 'C');
 $pdf->Ln(3);
 
-// ── Company info (acreedor) ─────────────────────────────────────────────
-$w1 = 45; $w2 = 145; $h = 6;
-
-$pdf->SetFont('Arial', 'B', 10);
-$pdf->Cell(0, 7, $enc('ACREEDOR (BENEFICIARIO):'), 0, 1);
-
-$acreedorRows = [
-    ['Denominación', 'MTECH GEARS S.A. DE C.V.'],
-    ['RFC', 'MGE230316KA2'],
-    ['Domicilio', 'Jaime Balmes 71 Int 101, Despacho C, Col. Polanco, Miguel Hidalgo, CDMX C.P. 11510'],
-    ['Correo', 'legal@voltika.mx'],
-];
-foreach ($acreedorRows as $row) {
-    $pdf->SetFont('Arial', 'B', 8);
-    $pdf->Cell($w1, $h, $enc($row[0] . ':'), 1);
-    $pdf->SetFont('Arial', '', 8);
-    $pdf->Cell($w2, $h, $enc($row[1]), 1, 1);
-}
-
+// Place and date
+$pdf->SetFont('Arial', '', 9);
+$pdf->Cell(95, 6, $enc('Lugar de suscripción: ' . $lugarSuscripcion), 0, 0);
+$pdf->Cell(95, 6, $enc('Fecha de suscripción: ' . $fechaSuscripcion), 0, 1, 'R');
 $pdf->Ln(3);
 
-// ── Client info (deudor) ────────────────────────────────────────────────
-$pdf->SetFont('Arial', 'B', 10);
-$pdf->Cell(0, 7, $enc('DEUDOR (SUSCRIPTOR):'), 0, 1);
-
-$curp = $cliente['curp'] ?? '';
-$domicilio = $cliente['domicilio'] ?? ($trans['domicilio'] ?? '');
-$emailCliente = $moto['cliente_email'] ?? ($cliente['email'] ?? '');
-$telCliente = $moto['cliente_telefono'] ?? ($cliente['telefono'] ?? '');
-
-$deudorRows = [
-    ['Nombre completo', $nombreCompleto ?: 'Por confirmar'],
-    ['CURP', $curp ?: 'Por confirmar'],
-    ['Domicilio', $domicilio ?: 'Por confirmar'],
-    ['Correo electrónico', $emailCliente],
-    ['Teléfono', '+52 ' . $telCliente],
-];
-foreach ($deudorRows as $row) {
-    $pdf->SetFont('Arial', 'B', 8);
-    $pdf->Cell($w1, $h, $enc($row[0] . ':'), 1);
-    $pdf->SetFont('Arial', '', 8);
-    $pdf->Cell($w2, $h, $enc($row[1]), 1, 1);
-}
-
+// ── Main obligation text ────────────────────────────────────────────────
+$pdf->SetFont('Arial', '', 8.5);
+$pdf->MultiCell(0, 4.5, $enc(
+    'DEBO Y PAGARÉ incondicionalmente a la orden de MTECH GEARS, S.A. DE C.V. (VOLTIKA), '
+    . 'la cantidad señalada en el presente documento, obligándome a cubrirla en el domicilio del '
+    . 'acreedor o en el lugar que éste designe.'
+));
+$pdf->Ln(1);
+$pdf->MultiCell(0, 4.5, $enc(
+    'La obligación consignada en este pagaré es líquida, cierta, exigible y de plazo vencido en '
+    . 'los términos aquí establecidos, constituyendo una obligación directa, autónoma e independiente '
+    . 'conforme a la Ley General de Títulos y Operaciones de Crédito.'
+));
+$pdf->Ln(1);
+$pdf->MultiCell(0, 4.5, $enc(
+    'El presente pagaré se suscribe con motivo de una operación de compraventa a plazos celebrada '
+    . 'entre las partes; sin embargo, su validez, existencia y exigibilidad no dependen de dicho '
+    . 'contrato ni de documento alguno.'
+));
 $pdf->Ln(3);
 
-// ── Vehicle info ────────────────────────────────────────────────────────
-$pdf->SetFont('Arial', 'B', 10);
-$pdf->Cell(0, 7, $enc('VEHÍCULO RELACIONADO:'), 0, 1);
-
-$vehiculoRows = [
-    ['Marca / Modelo', 'VOLTIKA ' . ($moto['modelo'] ?? '')],
-    ['Color', $moto['color'] ?? ''],
-    ['VIN/NIV', $moto['vin_display'] ?? $moto['vin'] ?? 'Por asignar'],
-    ['Año-modelo', '2026'],
-];
-foreach ($vehiculoRows as $row) {
-    $pdf->SetFont('Arial', 'B', 8);
-    $pdf->Cell($w1, $h, $enc($row[0] . ':'), 1);
-    $pdf->SetFont('Arial', '', 8);
-    $pdf->Cell($w2, $h, $enc($row[1]), 1, 1);
-}
-
+// ── VENCIMIENTO ANTICIPADO ──────────────────────────────────────────────
+$pdf->SetDrawColor(180, 180, 180);
+$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
+$pdf->Ln(2);
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(0, 6, $enc('VENCIMIENTO ANTICIPADO'), 0, 1);
+$pdf->SetFont('Arial', '', 8.5);
+$pdf->MultiCell(0, 4.5, $enc(
+    'En caso de incumplimiento en cualquiera de los pagos pactados, el saldo insoluto del presente '
+    . 'pagaré se considerará vencido anticipadamente y será exigible en su totalidad de forma inmediata, '
+    . 'sin necesidad de requerimiento, aviso previo, interpelación judicial o extrajudicial.'
+));
 $pdf->Ln(3);
 
-// ── Financial details (MONTO) ───────────────────────────────────────────
-$pdf->SetFont('Arial', 'B', 10);
-$pdf->Cell(0, 7, $enc('MONTO Y CONDICIONES DE PAGO:'), 0, 1);
+// ── INTERESES MORATORIOS ────────────────────────────────────────────────
+$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
+$pdf->Ln(2);
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(0, 6, $enc('INTERESES MORATORIOS'), 0, 1);
+$pdf->SetFont('Arial', '', 8.5);
+$pdf->MultiCell(0, 4.5, $enc(
+    'En caso de incumplimiento, el suscriptor se obliga a pagar un interés moratorio sobre el saldo '
+    . 'insoluto a una tasa del 3.5% (tres punto cinco por ciento) mensual, calculado desde la fecha de '
+    . 'incumplimiento y hasta la total liquidación del adeudo.'
+));
+$pdf->Ln(1);
+$pdf->MultiCell(0, 4.5, $enc(
+    'Dicha tasa constituye una estimación razonable de los daños y perjuicios derivados del '
+    . 'incumplimiento, incluyendo costos administrativos, operativos y de recuperación.'
+));
+$pdf->Ln(1);
+$pdf->MultiCell(0, 4.5, $enc(
+    'El suscriptor reconoce y acepta expresamente la tasa pactada.'
+));
+$pdf->Ln(1);
+$pdf->MultiCell(0, 4.5, $enc(
+    'Los intereses moratorios no se capitalizarán ni generarán intereses sobre intereses.'
+));
+$pdf->Ln(3);
 
-$montoRows = [
-    ['Precio de contado', $fmt($montoTotal)],
-    ['Enganche pagado', $fmt($enganche)],
-    ['Monto financiado', $fmt($montoFinanciado)],
-    ['Número de pagos', $numPagos . ' semanales'],
-    ['Monto por pago', $fmt($pagoSemanal)],
-];
+// ── APLICACIÓN DE PAGOS ─────────────────────────────────────────────────
+$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
+$pdf->Ln(2);
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(0, 6, $enc('APLICACIÓN DE PAGOS'), 0, 1);
+$pdf->SetFont('Arial', '', 8.5);
+$pdf->MultiCell(0, 4.5, $enc(
+    'Todos los pagos que realice el suscriptor serán aplicados al presente pagaré, reduciendo el '
+    . 'saldo exigible en la proporción correspondiente, sin afectar la validez ni exigibilidad del mismo.'
+));
+$pdf->Ln(3);
 
-$totalAPlazo = $enganche + ($pagoSemanal * $numPagos);
-$montoRows[] = ['MONTO TOTAL A PAGAR', $fmt($totalAPlazo)];
+// ── RENUNCIA Y JURISDICCIÓN ─────────────────────────────────────────────
+$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
+$pdf->Ln(2);
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(0, 6, $enc('RENUNCIA Y JURISDICCIÓN'), 0, 1);
+$pdf->SetFont('Arial', '', 8.5);
+$pdf->MultiCell(0, 4.5, $enc(
+    'El suscriptor renuncia expresamente a cualquier fuero que pudiera corresponderle por razón de su '
+    . 'domicilio presente o futuro, sometiéndose irrevocablemente a la jurisdicción y competencia de '
+    . 'los tribunales de la Ciudad de México.'
+));
 
-foreach ($montoRows as $i => $row) {
-    $isLast = ($i === count($montoRows) - 1);
-    $pdf->SetFont('Arial', 'B', $isLast ? 9 : 8);
-    $pdf->Cell(80, $h, $enc($row[0] . ':'), 1);
-    $pdf->SetFont('Arial', $isLast ? 'B' : '', $isLast ? 9 : 8);
-    $pdf->Cell(110, $h, $enc($row[1]), 1, 1, 'R');
-}
-
-// ── Page 2: Legal text + Signature ──────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// PAGE 2 — Declaration + Signature + Evidence
+// ═══════════════════════════════════════════════════════════════════════
 $pdf->AddPage();
 
-$pdf->SetFont('Arial', 'B', 10);
-$pdf->Cell(0, 7, $enc('TEXTO LEGAL DEL PAGARÉ:'), 0, 1);
+// ── DECLARACIÓN EXPRESA DEL SUSCRIPTOR ──────────────────────────────────
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(0, 6, $enc('DECLARACIÓN EXPRESA DEL SUSCRIPTOR'), 0, 1);
+$pdf->Ln(1);
+$pdf->SetFont('Arial', '', 8.5);
+$pdf->MultiCell(0, 4.5, $enc('El suscriptor declara bajo protesta de decir verdad que:'));
+$pdf->Ln(1);
+
+$declaraciones = [
+    'Ha leído, comprendido y aceptado íntegramente el contenido del presente pagaré.',
+    'Reconoce de manera expresa una obligación incondicional de pago por la cantidad total consignada en este documento.',
+    'Reconoce que la obligación es exigible por la vía ejecutiva mercantil.',
+    'Firma electrónicamente de forma libre, informada y voluntaria, con plena validez jurídica conforme al Código de Comercio, la Ley General de Títulos y Operaciones de Crédito y demás legislación aplicable.',
+    'Reconoce que este pagaré constituye un título de crédito autónomo, independiente de cualquier otro documento o contrato.',
+];
+foreach ($declaraciones as $decl) {
+    $pdf->SetFont('Arial', 'B', 8);
+    $pdf->Cell(5, 4.5, $enc('•'), 0, 0);
+    $pdf->SetFont('Arial', '', 8.5);
+    $pdf->MultiCell(0, 4.5, $enc($decl));
+    $pdf->Ln(0.5);
+}
+$pdf->Ln(3);
+
+// ── FIRMA ELECTRÓNICA Y EVIDENCIA DIGITAL ───────────────────────────────
+$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
 $pdf->Ln(2);
-
-$pdf->SetFont('Arial', '', 8);
-
-$montoLetra = numberToSpanishWords($montoFinanciado ?: $totalAPlazo);
-$montoNum = $fmt($montoFinanciado ?: $totalAPlazo);
-
-$legalText = "Debo(emos) y pagaré(mos) incondicionalmente a la orden de MTECH GEARS S.A. DE C.V., "
-    . "en {$lugarEmision}, la cantidad de {$montoNum} ({$montoLetra}), "
-    . "valor recibido a mi(nuestra) entera satisfacción. "
-    . "Este pagaré forma parte de una serie de {$numPagos} pagarés, todos de esta misma fecha, "
-    . "y es pagadero en pagos semanales conforme a la tabla de amortización acordada.\n\n"
-    . "En caso de falta de pago oportuno, el suscriptor se obliga a pagar intereses moratorios "
-    . "a razón del 2% mensual sobre saldos insolutos, sin que por ello se entienda concedida prórroga alguna.\n\n"
-    . "El suscriptor renuncia expresamente al beneficio de orden y excusión, "
-    . "así como al fuero de su domicilio, sometiéndose a la jurisdicción de los tribunales "
-    . "competentes de la Ciudad de México.\n\n"
-    . "Este documento ha sido generado de forma electrónica y firmado digitalmente de conformidad "
-    . "con lo establecido en la Ley de Firma Electrónica Avanzada (NOM-151-SCFI), "
-    . "teniendo plena validez jurídica.\n\n"
-    . "Lugar de emisión: {$lugarEmision}\n"
-    . "Fecha de emisión: {$fechaEmision}";
-
-$pdf->MultiCell(0, 4.5, $enc($legalText));
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(0, 6, $enc('FIRMA ELECTRÓNICA Y EVIDENCIA DIGITAL'), 0, 1);
+$pdf->SetFont('Arial', '', 8.5);
+$pdf->MultiCell(0, 4.5, $enc(
+    'El presente pagaré podrá ser firmado mediante medios electrónicos a través de la plataforma '
+    . 'CINCEL u otra herramienta de firma electrónica avanzada, garantizando:'
+));
+$pdf->Ln(1);
+$garantias = [
+    'Identificación plena del firmante',
+    'Integridad del documento',
+    'Autenticidad de la firma',
+    'Conservación conforme a NOM-151',
+];
+foreach ($garantias as $g) {
+    $pdf->Cell(8, 4.5, $enc('- '), 0, 0);
+    $pdf->Cell(0, 4.5, $enc($g), 0, 1);
+}
+$pdf->Ln(1);
+$pdf->MultiCell(0, 4.5, $enc(
+    'El suscriptor acepta que los registros electrónicos asociados a la firma, incluyendo dirección IP, '
+    . 'fecha, hora, geolocalización, dispositivo y validación mediante código OTP, constituyen prueba '
+    . 'plena en cualquier procedimiento judicial o extrajudicial.'
+));
 $pdf->Ln(4);
 
-// ── Signature area ──────────────────────────────────────────────────────
-$pdf->SetFont('Arial', 'B', 10);
-$pdf->Cell(0, 7, $enc('FIRMA DEL SUSCRIPTOR (DEUDOR):'), 0, 1);
+// ── DATOS DEL SUSCRIPTOR (auto-filled) ──────────────────────────────────
+$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
 $pdf->Ln(2);
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(0, 6, $enc('DATOS DEL SUSCRIPTOR (CLIENTE)'), 0, 1);
+$pdf->Ln(1);
+
+$w1 = 40; $h = 7;
+$suscriptorRows = [
+    ['Nombre completo', $nombreCompleto ?: '________________________________'],
+    ['CURP', $curp ?: '________________________________'],
+    ['Domicilio', $domicilio ?: '________________________________'],
+    ['Teléfono', $telCliente ? ('+52 ' . $telCliente) : '________________________________'],
+];
+foreach ($suscriptorRows as $row) {
+    $pdf->SetFont('Arial', 'B', 8.5);
+    $pdf->Cell($w1, $h, $enc($row[0] . ':'), 0, 0);
+    $pdf->SetFont('Arial', '', 8.5);
+    $pdf->Cell(0, $h, $enc($row[1]), 'B', 1);
+}
+$pdf->Ln(5);
+
+// ── FIRMA DEL SUSCRIPTOR ────────────────────────────────────────────────
+$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
+$pdf->Ln(2);
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(0, 6, $enc('FIRMA DEL SUSCRIPTOR'), 0, 1);
+$pdf->Ln(1);
 
 if ($firmaImgPath && file_exists($firmaImgPath)) {
     $pdf->Image($firmaImgPath, $pdf->GetX() + 30, $pdf->GetY(), 80, 30);
     $pdf->Ln(32);
 } else {
-    // Empty signature box
-    $pdf->SetDrawColor(180, 180, 180);
-    $pdf->Rect($pdf->GetX() + 30, $pdf->GetY(), 120, 30);
-    $pdf->Ln(32);
-    $pdf->SetDrawColor(0, 0, 0);
+    $pdf->SetFont('Arial', '', 8);
+    $pdf->Cell(0, 6, $enc('Firma electrónica: ________________________________'), 0, 1);
+    $pdf->Ln(2);
 }
-
-$pdf->SetFont('Arial', '', 8);
-$pdf->Cell(0, 5, $enc('Nombre: ' . ($nombreCompleto ?: '____________________________')), 0, 1, 'C');
-$pdf->Cell(0, 5, $enc('Fecha: ' . $fechaEmision), 0, 1, 'C');
-
+$pdf->SetFont('Arial', 'I', 8);
+$pdf->Cell(0, 5, $enc('(Validación mediante CINCEL y/o código OTP)'), 0, 1, 'C');
 $pdf->Ln(5);
 
-// ── Evidence metadata ───────────────────────────────────────────────────
+// ── ACREEDOR ────────────────────────────────────────────────────────────
+$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
+$pdf->Ln(2);
 $pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('EVIDENCIA DE FIRMA ELECTRÓNICA:'), 0, 1);
-$pdf->SetFont('Arial', '', 7);
-$pdf->SetFillColor(245, 245, 245);
+$pdf->Cell(0, 6, $enc('ACREEDOR'), 0, 1);
+$pdf->SetFont('Arial', '', 9);
+$pdf->Cell(0, 6, $enc('MTECH GEARS, S.A. DE C.V.'), 0, 1);
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(0, 6, $enc('(VOLTIKA)'), 0, 1);
+$pdf->Ln(3);
 
+// ── Evidence metadata (small footer) ────────────────────────────────────
 $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'N/A';
 if ($ip !== 'N/A') $ip = explode(',', $ip)[0];
 $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'N/A';
 $otpInfo = $cl['fase4_completada'] ? ('Validado — ' . ($cl['otp_timestamp'] ?? $cl['fase4_fecha'] ?? 'N/A')) : 'Pendiente';
 
-$evidRows = [
-    ['IP del dispositivo', $ip],
-    ['Dispositivo', substr($ua, 0, 80)],
-    ['Fecha y hora', date('Y-m-d H:i:s')],
-    ['OTP validación', $otpInfo],
-    ['VIN relacionado', $moto['vin_display'] ?? $moto['vin'] ?? 'Por asignar'],
-    ['Moto ID', (string)$motoId],
-    ['Folio pagaré', $folio],
-];
-foreach ($evidRows as $row) {
-    $pdf->SetFont('Arial', 'B', 7);
-    $pdf->Cell(40, 5, $enc($row[0] . ':'), 1, 0, 'L', true);
-    $pdf->SetFont('Arial', '', 7);
-    $pdf->Cell(150, 5, $enc($row[1]), 1, 1, 'L', true);
-}
-
-$pdf->Ln(3);
-
-// NOM-151 placeholder
-$pdf->SetFont('Arial', 'I', 7);
-$pdf->MultiCell(0, 4, $enc('Sellado NOM-151 y hash de integridad serán incorporados al completar la firma digital mediante CINCEL.'));
-
-// ── Legal footer ────────────────────────────────────────────────────────
-$pdf->Ln(4);
-$pdf->SetFont('Arial', 'B', 8);
-$pdf->MultiCell(0, 4, $enc('La presente carátula forma parte integral del contrato de compraventa a plazos, '
-    . 'términos y condiciones, pagaré y acta de entrega firmados entre las partes.'));
+$pdf->SetFont('Arial', '', 6.5);
+$pdf->SetTextColor(120, 120, 120);
+$pdf->Cell(0, 4, $enc('Folio: ' . $folio . '  |  IP: ' . $ip . '  |  OTP: ' . $otpInfo . '  |  VIN: ' . ($moto['vin_display'] ?? $moto['vin'] ?? 'N/A')), 0, 1);
+$pdf->Cell(0, 4, $enc('Generado: ' . date('Y-m-d H:i:s') . '  |  Dispositivo: ' . substr($ua, 0, 90)), 0, 1);
+$pdf->SetTextColor(0, 0, 0);
 
 // ── Output PDF ──────────────────────────────────────────────────────────
 $pdf->Output('F', $filepath);
 
-// Clean up temp signature image
 if ($firmaImgPath && file_exists($firmaImgPath)) @unlink($firmaImgPath);
 
-// Calculate hash of the generated PDF
 $pdfHash = hash_file('sha256', $filepath);
 
 // ── 5. Save to DB ───────────────────────────────────────────────────────
@@ -389,8 +427,8 @@ adminJsonOut([
     'pdf_hash' => $pdfHash,
     'datos' => [
         'nombre' => $nombreCompleto,
-        'monto' => $montoFinanciado ?: $totalAPlazo,
-        'monto_fmt' => $fmt($montoFinanciado ?: $totalAPlazo),
+        'monto' => $pagoTotalPlazos,
+        'monto_fmt' => $montoNum,
         'vin' => $moto['vin_display'] ?? $moto['vin'] ?? '',
     ],
 ]);
@@ -410,57 +448,24 @@ function numberToSpanishWords(float $num): string {
     $convertGroup = function(int $n) use ($unidades, $especiales, $decenas, $centenas): string {
         if ($n === 0) return '';
         if ($n === 100) return 'cien';
-
         $result = '';
-        if ($n >= 100) {
-            $result .= $centenas[(int)($n / 100)] . ' ';
-            $n %= 100;
-        }
-        if ($n >= 10 && $n <= 19) {
-            $result .= $especiales[$n - 10];
-            return trim($result);
-        }
-        if ($n >= 20 && $n <= 29) {
-            $result .= 'veinti' . $unidades[$n - 20];
-            return trim($result);
-        }
-        if ($n >= 30) {
-            $result .= $decenas[(int)($n / 10)];
-            $n %= 10;
-            if ($n > 0) $result .= ' y ' . $unidades[$n];
-            return trim($result);
-        }
-        if ($n > 0) {
-            $result .= $unidades[$n];
-        }
+        if ($n >= 100) { $result .= $centenas[(int)($n / 100)] . ' '; $n %= 100; }
+        if ($n >= 10 && $n <= 19) { $result .= $especiales[$n - 10]; return trim($result); }
+        if ($n >= 20 && $n <= 29) { $result .= 'veinti' . $unidades[$n - 20]; return trim($result); }
+        if ($n >= 30) { $result .= $decenas[(int)($n / 10)]; $n %= 10; if ($n > 0) $result .= ' y ' . $unidades[$n]; return trim($result); }
+        if ($n > 0) $result .= $unidades[$n];
         return trim($result);
     };
 
-    if ($entero === 0) {
-        $texto = 'cero';
-    } else {
+    if ($entero === 0) { $texto = 'cero'; }
+    else {
         $texto = '';
-        if ($entero >= 1000000) {
-            $millones = (int)($entero / 1000000);
-            $texto .= ($millones === 1 ? 'un millón' : $convertGroup($millones) . ' millones') . ' ';
-            $entero %= 1000000;
-        }
-        if ($entero >= 1000) {
-            $miles = (int)($entero / 1000);
-            $texto .= ($miles === 1 ? 'mil' : $convertGroup($miles) . ' mil') . ' ';
-            $entero %= 1000;
-        }
-        if ($entero > 0) {
-            $texto .= $convertGroup($entero);
-        }
+        if ($entero >= 1000000) { $m = (int)($entero / 1000000); $texto .= ($m === 1 ? 'un millón' : $convertGroup($m) . ' millones') . ' '; $entero %= 1000000; }
+        if ($entero >= 1000) { $k = (int)($entero / 1000); $texto .= ($k === 1 ? 'mil' : $convertGroup($k) . ' mil') . ' '; $entero %= 1000; }
+        if ($entero > 0) $texto .= $convertGroup($entero);
     }
 
     $texto = trim($texto) . ' pesos';
-    if ($centavos > 0) {
-        $texto .= ' ' . str_pad((string)$centavos, 2, '0') . '/100 M.N.';
-    } else {
-        $texto .= ' 00/100 M.N.';
-    }
-
+    $texto .= ' ' . str_pad((string)(int)$centavos, 2, '0', STR_PAD_LEFT) . '/100 M.N.';
     return mb_strtoupper($texto);
 }
