@@ -47,6 +47,7 @@ window.AD_modelos = (function(){
         html += '<div style="margin-top:12px;display:flex;gap:6px;">';
         html += '<button class="ad-btn sm ghost mdEditar" data-id="'+m.id+'">Editar</button>';
         html += '<button class="ad-btn sm '+(m.activo?'danger':'success')+' mdToggle" data-id="'+m.id+'">'+(m.activo?'Desactivar':'Activar')+'</button>';
+        html += '<button class="ad-btn sm danger mdEliminar" data-id="'+m.id+'" data-nombre="'+esc(m.nombre)+'" data-stock="'+(m.stock_total||0)+'">Eliminar</button>';
         html += '</div>';
       }
       html += '</div>';
@@ -67,6 +68,25 @@ window.AD_modelos = (function(){
     $('.mdToggle').on('click', function(){
       var id = $(this).data('id');
       ADApp.api('modelos/toggle.php', {id: id}).done(function(){ load(); });
+    });
+    $('.mdEliminar').on('click', function(){
+      var id = $(this).data('id');
+      var nombre = $(this).data('nombre');
+      var stock = parseInt($(this).data('stock'))||0;
+      function doDelete(force){
+        ADApp.api('modelos/eliminar.php', {id: id, force: force}).done(function(res){
+          if (res.warn && !force) {
+            if (confirm(res.message)) doDelete(true);
+          } else if (res.ok) {
+            load();
+          } else {
+            alert(res.error || 'Error al eliminar');
+          }
+        });
+      }
+      var msg = 'Eliminar modelo "' + nombre + '"?';
+      if (stock > 0) msg += '\n(Tiene ' + stock + ' unidades en inventario)';
+      if (confirm(msg)) doDelete(false);
     });
   }
 

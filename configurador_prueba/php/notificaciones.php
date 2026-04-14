@@ -587,6 +587,151 @@ function notifListaParaEntrega(int $motoId): bool {
 
 // ─── Safe email send wrapper (handles dry-run + logging) ────────────────────
 
+// ─── WhatsApp Real Implementation (Meta Cloud API + SMSMasivos fallback) ────
+
+/**
+ * Send a WhatsApp template message via Meta Cloud API.
+ * Falls back to SMSMasivos WhatsApp endpoint if Meta credentials are missing
+ * but SMSMasivos is configured.
+ *
+ * @param string $telefono       E.164 format (+52...)
+ * @param string $templateName   Pre-approved Meta template name
+ * @param array  $variables      Ordered list of {{1}}, {{2}}, ... values
+ * @return bool
+ */
+function enviarWhatsAppReal(string $telefono, string $templateName, array $variables): bool {
+    if (NOTIF_DRY_RUN) {
+        notifLog("DRY-RUN WhatsApp skipped: $templateName → $telefono | vars=" . json_encode($variables, JSON_UNESCAPED_UNICODE));
+        return true;
+    }
+
+    // ── Primary: Meta Cloud API ────────────────────────────────────────────
+    if (defined('WHATSAPP_API_TOKEN') && WHATSAPP_API_TOKEN !== '') {
+        if (!defined('WHATSAPP_PHONE_ID') || WHATSAPP_PHONE_ID === '') {
+            notifLog("WhatsApp ERROR: WHATSAPP_API_TOKEN is set but WHATSAPP_PHONE_ID is missing");
+            return false;
+        }
+
+        $url = 'https://graph.facebook.com/v18.0/' . WHATSAPP_PHONE_ID . '/messages';
+
+        // Build template components — body parameters from $variables
+        $bodyParams = [];
+        foreach ($variables as $val) {
+            $bodyParams[] = [
+                'type' => 'text',
+                'text' => (string)$val,
+            ];
+        }
+
+        $payload = [
+            'messaging_product' => 'whatsapp',
+            'to'                => preg_replace('/[^0-9]/', '', $telefono),
+            'type'              => 'template',
+            'template'          => [
+                'name'     => $templateName,
+                'language' => ['code' => 'es_MX'],
+                'components' => [
+                    [
+                        'type'       => 'body',
+                        'parameters' => $bodyParams,
+                    ],
+                ],
+            ],
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . WHATSAPP_API_TOKEN,
+                'Content-Type: application/json',
+            ],
+            CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlErr) {
+            notifLog("WhatsApp META CURL ERROR: $curlErr | template=$templateName tel=$telefono");
+            return false;
+        }
+
+        $decoded = json_decode($response, true);
+
+        if ($httpCode >= 200 && $httpCode < 300 && !empty($decoded['messages'][0]['id'])) {
+            $msgId = $decoded['messages'][0]['id'];
+            notifLog("WhatsApp META OK: template=$templateName tel=$telefono msgId=$msgId");
+            return true;
+        }
+
+        $errMsg = $decoded['error']['message'] ?? ($response ?: "HTTP $httpCode");
+        notifLog("WhatsApp META FAIL (HTTP $httpCode): $errMsg | template=$templateName tel=$telefono");
+        return false;
+    }
+
+    // ── Fallback: SMSMasivos WhatsApp API ──────────────────────────────────
+    if (defined('SMSMASIVOS_API_KEY') && SMSMASIVOS_API_KEY !== '') {
+        $url = 'https://api.smsmasivos.com.mx/whatsapp/send';
+
+        // Build a readable text message from template variables
+        $lineas = [];
+        foreach ($variables as $i => $val) {
+            $lineas[] = (string)$val;
+        }
+        $mensaje = "[$templateName] " . implode(' | ', $lineas);
+
+        $postData = [
+            'apikey'  => SMSMASIVOS_API_KEY,
+            'numero'  => preg_replace('/[^0-9]/', '', $telefono),
+            'mensaje' => $mensaje,
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_POSTFIELDS     => json_encode($postData, JSON_UNESCAPED_UNICODE),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlErr) {
+            notifLog("WhatsApp SMSMASIVOS CURL ERROR: $curlErr | template=$templateName tel=$telefono");
+            return false;
+        }
+
+        $decoded = json_decode($response, true);
+        $success = ($httpCode >= 200 && $httpCode < 300) && (($decoded['status'] ?? '') === 'ok' || ($decoded['success'] ?? false));
+
+        if ($success) {
+            notifLog("WhatsApp SMSMASIVOS OK: template=$templateName tel=$telefono");
+            return true;
+        }
+
+        $errMsg = $decoded['message'] ?? $decoded['error'] ?? ($response ?: "HTTP $httpCode");
+        notifLog("WhatsApp SMSMASIVOS FAIL (HTTP $httpCode): $errMsg | template=$templateName tel=$telefono");
+        return false;
+    }
+
+    // ── No provider configured ─────────────────────────────────────────────
+    notifLog("WhatsApp SKIPPED (no provider configured): template=$templateName tel=$telefono");
+    return false;
+}
+
+// ─── Safe email send wrapper (handles dry-run + logging) ────────────────────
+
 function enviarEmailSeguro(string $to, string $toName, string $subject, string $html, string $contexto): bool {
     if (NOTIF_DRY_RUN) {
         notifLog("DRY-RUN email skipped [$contexto] → $to | subject: $subject");
