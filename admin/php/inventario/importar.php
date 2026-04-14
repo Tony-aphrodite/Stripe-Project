@@ -176,9 +176,8 @@ for ($i = 1; $i < count($rows); $i++) {
     $pedido    = getVal($row, $colMap['pedido_num']);
     $vinDisp   = strtoupper($vin);
 
-    // Map estatus from Excel (numeric or text) to system estado
-    $estadoRaw = getVal($row, $colMap['estado']);
-    $estado    = 'por_llegar'; // default
+    // Imported motos go directly to 'recibida' (in stock)
+    $estado = 'recibida';
 
     $log = json_encode([[
         'estado'  => $estado,
@@ -196,6 +195,15 @@ for ($i = 1; $i < count($rows); $i++) {
             $cedis ?: null, $fEntAlm, $fSalAlm, $punto ?: null,
             $pedido ?: null, $log,
         ]);
+
+        // Auto-create completed checklist_origen so moto shows as available
+        $motoId = (int)$pdo->lastInsertId();
+        try {
+            $pdo->prepare("INSERT INTO checklist_origen (moto_id, dealer_id, vin, modelo, color, completado, bloqueado, hash_registro)
+                VALUES (?, ?, ?, ?, ?, 1, 1, ?)")
+                ->execute([$motoId, $uid, $vin, $modelo, $color, hash('sha256', "import-$motoId-" . date('c'))]);
+        } catch (Throwable $ignore) {}
+
         $created++;
     } catch (Throwable $e) {
         $errores++;
