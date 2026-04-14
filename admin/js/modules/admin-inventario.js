@@ -740,7 +740,7 @@ window.AD_inventario = (function(){
       }).done(function(r){
         if(r.ok){
           ADApp.closeModal();
-          ADApp.toast('Moto bloqueada para venta');
+          alert('Moto bloqueada para venta');
           load();
         } else {
           alert(r.error||'Error');
@@ -761,7 +761,7 @@ window.AD_inventario = (function(){
     }).done(function(r){
       if(r.ok){
         ADApp.closeModal();
-        ADApp.toast('Moto desbloqueada para venta');
+        alert('Moto desbloqueada para venta');
         load();
       } else {
         alert(r.error||'Error');

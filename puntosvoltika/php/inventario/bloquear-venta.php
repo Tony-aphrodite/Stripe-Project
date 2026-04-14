@@ -13,7 +13,8 @@ $bloqueado = (int)($d['bloqueado'] ?? 0);
 $motivo    = trim($d['motivo'] ?? '');
 
 if (!$motoId) puntoJsonOut(['error' => 'moto_id requerido'], 400);
-if ($bloqueado && !$motivo) puntoJsonOut(['error' => 'Motivo de bloqueo requerido'], 400);
+if (!$bloqueado) puntoJsonOut(['error' => 'El punto solo puede bloquear motos. Para desbloquear, contacta a CEDIS.'], 403);
+if (!$motivo) puntoJsonOut(['error' => 'Motivo de bloqueo requerido'], 400);
 
 $pdo = getDB();
 
@@ -28,22 +29,17 @@ if ((int)$moto['punto_voltika_id'] !== $ctx['punto_id']) {
     puntoJsonOut(['error' => 'Esta moto no pertenece a tu punto'], 403);
 }
 
-if ($bloqueado) {
-    $pdo->prepare("UPDATE inventario_motos SET bloqueado_venta=1, bloqueado_motivo=?, bloqueado_por=?, bloqueado_fecha=NOW() WHERE id=?")
-        ->execute([$motivo, $ctx['user_id'], $motoId]);
-} else {
-    $pdo->prepare("UPDATE inventario_motos SET bloqueado_venta=0, bloqueado_motivo=NULL, bloqueado_por=NULL, bloqueado_fecha=NULL WHERE id=?")
-        ->execute([$motoId]);
-}
+$pdo->prepare("UPDATE inventario_motos SET bloqueado_venta=1, bloqueado_motivo=?, bloqueado_por=?, bloqueado_fecha=NOW() WHERE id=?")
+    ->execute([$motivo, $ctx['user_id'], $motoId]);
 
-puntoLog($bloqueado ? 'moto_bloqueada_venta' : 'moto_desbloqueada_venta', [
+puntoLog('moto_bloqueada', [
     'moto_id' => $motoId,
     'vin' => $moto['vin_display'] ?? $moto['vin'],
-    'motivo' => $bloqueado ? $motivo : 'Desbloqueado',
+    'motivo' => $motivo,
 ]);
 
 puntoJsonOut([
     'ok' => true,
-    'bloqueado_venta' => $bloqueado,
-    'message' => $bloqueado ? 'Moto bloqueada para venta' : 'Moto desbloqueada para venta',
+    'bloqueado_venta' => 1,
+    'message' => 'Moto bloqueada — solo CEDIS puede desbloquearla',
 ]);

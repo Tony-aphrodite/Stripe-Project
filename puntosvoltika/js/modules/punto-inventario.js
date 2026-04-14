@@ -173,14 +173,14 @@ window.PV_inventario = (function(){
       });
       html += '</div>';
 
-      // ── Bloqueo de venta ──
+      // ── Bloqueo ──
       var isBloq = parseInt(m.bloqueado_venta) === 1;
       html += '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--ad-border,#eee);">';
-      html += '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ad-primary,#039fe1);margin-bottom:10px;">Bloqueo de venta</div>';
+      html += '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ad-primary,#039fe1);margin-bottom:10px;">Bloqueo</div>';
       if(isBloq){
         html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:10px 14px;border-radius:8px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);margin-bottom:10px;">';
-        html += '<div style="font-size:12px;color:#b91c1c;"><strong>Bloqueada</strong><br>Motivo: '+(m.bloqueado_motivo||'Sin motivo')+'</div></div>';
-        html += '<button class="ad-btn ghost" id="pvUnlockMoto" style="color:#059669;border-color:#059669;width:100%;">Desbloquear moto</button>';
+        html += '<div style="font-size:12px;color:#b91c1c;"><strong>Moto bloqueada</strong><br>Motivo: '+(m.bloqueado_motivo||'Sin motivo')+'</div></div>';
+        html += '<div style="font-size:11px;color:var(--ad-dim,#888);">Para desbloquear esta moto, contacta a CEDIS.</div>';
       } else {
         html += '<div style="font-size:12px;color:#059669;margin-bottom:10px;">Moto disponible (no bloqueada)</div>';
         html += '<button class="ad-btn ghost" id="pvLockMoto" style="color:#b91c1c;border-color:#b91c1c;width:100%;">Bloquear moto</button>';
@@ -189,7 +189,6 @@ window.PV_inventario = (function(){
 
       PVApp.modal(html);
       $('#pvLockMoto').on('click', function(){ showPuntoLockModal(m.id); });
-      $('#pvUnlockMoto').on('click', function(){ puntoUnlockMoto(m.id); });
     });
   }
   function showPuntoLockModal(motoId){
@@ -220,24 +219,6 @@ window.PV_inventario = (function(){
         alert((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
         $('#pvLockSave').prop('disabled',false).html('Bloquear moto');
       });
-    });
-  }
-  function puntoUnlockMoto(motoId){
-    if(!confirm('¿Desbloquear esta moto para venta?')) return;
-    PVApp.api('inventario/bloquear-venta.php', {
-      moto_id: motoId,
-      bloqueado: 0,
-      motivo: ''
-    }).done(function(r){
-      if(r.ok){
-        PVApp.closeModal();
-        PVApp.toast('Moto desbloqueada para venta');
-        render();
-      } else {
-        alert(r.error||'Error');
-      }
-    }).fail(function(x){
-      alert((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
     });
   }
   return { render:render };
