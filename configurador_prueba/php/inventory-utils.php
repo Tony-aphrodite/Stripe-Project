@@ -140,11 +140,11 @@ function contarDisponibles(PDO $pdo, string $modelo = '', string $color = ''): a
     if ($modelo) { $where[] = 'LOWER(TRIM(m.modelo)) = LOWER(TRIM(?))'; $params[] = $modelo; }
     if ($color)  { $where[] = 'LOWER(TRIM(m.color))  = LOWER(TRIM(?))'; $params[] = $color; }
 
-    $sql  = "SELECT m.modelo, m.color, COUNT(*) AS disponibles
+    $sql  = "SELECT m.modelo, LOWER(TRIM(m.color)) AS color, COUNT(*) AS disponibles
              FROM inventario_motos m
              WHERE " . implode(' AND ', $where) . "
-             GROUP BY m.modelo, m.color
-             ORDER BY m.modelo, m.color";
+             GROUP BY m.modelo, LOWER(TRIM(m.color))
+             ORDER BY m.modelo, color";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
