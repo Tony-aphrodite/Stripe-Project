@@ -349,7 +349,8 @@ $cuerpo = '<!DOCTYPE html>
 <!-- Body -->
 <tr><td style="padding:28px;">
 
-<h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Tu Voltika está confirmada.</h2>
+<h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Hola, ' . htmlspecialchars($nombre) . ' 👋</h2>
+<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika está confirmada.</h3>
 <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">Gracias por tu compra. Hemos recibido tu pago correctamente y tu orden ya está en proceso.</p>
 <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dará seguimiento a tu entrega para que recibas tu moto de forma segura y sin complicaciones.</p>
 
@@ -453,7 +454,8 @@ if ($esCredito) {
 
 <tr><td style="padding:28px;">
 
-<h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Tu Voltika está confirmada.</h2>
+<h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Hola, ' . htmlspecialchars($nombre) . ' 👋</h2>
+<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika está confirmada.</h3>
 <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">Gracias por tu compra. Tu crédito Voltika ha sido aprobado y tu orden ya está en proceso.</p>
 <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dará seguimiento a tu entrega paso a paso para que recibas tu moto de forma segura y sin complicaciones.</p>
 

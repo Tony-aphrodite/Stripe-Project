@@ -247,7 +247,8 @@ function sendConfirmationEmail($order, $methodLabel) {
 <!-- Body -->
 <tr><td style="padding:28px;">
 
-<h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Tu Voltika est&aacute; confirmada.</h2>
+<h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Hola, ' . htmlspecialchars($nombre) . ' 👋</h2>
+<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika est&aacute; confirmada.</h3>
 <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">Gracias por tu compra. Hemos recibido tu pago correctamente y tu orden ya est&aacute; en proceso.</p>
 <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dar&aacute; seguimiento a tu entrega para que recibas tu moto de forma segura y sin complicaciones.</p>
 
