@@ -266,11 +266,9 @@ window.AD_inventario = (function(){
         html += '<div style="font-weight:700;font-size:13px;color:'+(isVentaPublico?'#059669':'#6b7280')+';">'+(isVentaPublico?'Disponible en configurador':'No visible en configurador')+'</div>';
         html += '<div style="font-size:11px;color:var(--ad-dim);margin-top:2px;">Permite que esta moto aparezca como disponible para compra en l\u00ednea.</div>';
         html += '</div>';
-        html += '<label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer;">';
-        html += '<input type="checkbox" id="adToggleVentaPublico" data-id="'+m.id+'" '+(isVentaPublico?'checked':'')+' style="opacity:0;width:0;height:0;">';
-        html += '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:'+(isVentaPublico?'#059669':'#ccc')+';border-radius:24px;transition:.3s;"></span>';
-        html += '<span style="position:absolute;content:\'\';height:18px;width:18px;left:'+(isVentaPublico?'23px':'3px')+';bottom:3px;background:white;border-radius:50%;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>';
-        html += '</label>';
+        html += '<div id="adToggleVentaPublico" data-id="'+m.id+'" data-val="'+(isVentaPublico?'0':'1')+'" style="width:44px;height:24px;border-radius:24px;background:'+(isVentaPublico?'#059669':'#ccc')+';position:relative;cursor:pointer;flex-shrink:0;transition:background .3s;">';
+        html += '<div style="position:absolute;height:18px;width:18px;left:'+(isVentaPublico?'23px':'3px')+';top:3px;background:white;border-radius:50%;transition:left .3s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></div>';
+        html += '</div>';
         html += '</div>';
       }
 
@@ -298,13 +296,14 @@ window.AD_inventario = (function(){
       $('#adAssign').on('click',function(){ if(!origenOk || isBloqueada) return; assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
       $('#adLockMoto').on('click',function(){ showLockModal(m.id); });
       $('#adUnlockMoto').on('click',function(){ unlockMoto(m.id); });
-      $('#adToggleVentaPublico').on('change',function(){
-        var val = this.checked ? 1 : 0;
-        var $toggle = $(this);
+      $('#adToggleVentaPublico').on('click',function(){
+        var $t = $(this);
+        var val = parseInt($t.data('val'));
+        $t.css('pointer-events','none');
         ADApp.api('inventario/toggle-venta-publico.php',{moto_id:m.id,venta_publico:val}).done(function(res){
-          if(res.ok){ ADApp.toast(res.message); showDetalle(m.id); }
-          else { alert(res.error||'Error'); $toggle.prop('checked',!val); }
-        }).fail(function(){ alert('Error de conexión'); $toggle.prop('checked',!val); });
+          if(res.ok){ showDetail(m.id); }
+          else { alert(res.error||'Error'); $t.css('pointer-events',''); }
+        }).fail(function(){ alert('Error de conexión'); $t.css('pointer-events',''); });
       });
       $('#adVerifyPay').on('click',function(){
         ADApp.api('pagos/verificar.php',{moto_id:m.id}).done(function(r2){
