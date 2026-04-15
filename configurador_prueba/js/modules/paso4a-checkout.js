@@ -136,11 +136,16 @@ var Paso4A = {
             '</label>';
         html += '</div>';
 
-        // Contact fields
+        // Contact fields — first + last name
         html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">Nombre completo</label>';
-        html += '<input type="text" class="vk-form-input" id="vk-nombre" placeholder="Juan P\u00e9rez" autocomplete="name">';
+        html += '<label class="vk-form-label">Nombre(s)</label>';
+        html += '<input type="text" class="vk-form-input" id="vk-nombre-pila" placeholder="Juan" autocomplete="given-name">';
         html += '</div>';
+        html += '<div class="vk-form-group">';
+        html += '<label class="vk-form-label">Apellidos</label>';
+        html += '<input type="text" class="vk-form-input" id="vk-apellidos" placeholder="P\u00e9rez L\u00f3pez" autocomplete="family-name">';
+        html += '</div>';
+        html += '<input type="hidden" id="vk-nombre" value="">';
 
         html += '<div class="vk-form-group">';
         html += '<label class="vk-form-label">Correo electr\u00f3nico</label>';
@@ -485,8 +490,14 @@ var Paso4A = {
             return;
         }
 
+        // Combine first + last name into hidden vk-nombre field
+        var _np = ($('#vk-nombre-pila').val()||'').trim();
+        var _ap = ($('#vk-apellidos').val()||'').trim();
+        $('#vk-nombre').val((_np + ' ' + _ap).trim());
+
         var valid = true;
-        valid = VkValidacion.validarCampo($('#vk-nombre'),   VkValidacion.nombre,   'Ingresa tu nombre completo') && valid;
+        valid = VkValidacion.validarCampo($('#vk-nombre-pila'), VkValidacion.nombre, 'Ingresa tu nombre') && valid;
+        valid = VkValidacion.validarCampo($('#vk-apellidos'),   VkValidacion.nombre, 'Ingresa tus apellidos') && valid;
         valid = VkValidacion.validarCampo($('#vk-email'),    VkValidacion.email,    'Ingresa un correo valido')   && valid;
         valid = VkValidacion.validarCampo($('#vk-telefono'), VkValidacion.telefono, 'Ingresa un telefono valido (10 digitos)') && valid;
         if (!valid) return;

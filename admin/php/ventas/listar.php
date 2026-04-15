@@ -20,12 +20,17 @@ try {
                t.fecha_estimada_entrega,
                t.pago_estado AS tx_pago_estado,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
-               m.pago_estado
+               m.pago_estado,
+               p.direccion AS punto_direccion, p.colonia AS punto_colonia,
+               p.ciudad AS punto_ciudad, p.estado AS punto_estado,
+               p.cp AS punto_cp, p.telefono AS punto_telefono
         FROM transacciones t
         LEFT JOIN inventario_motos m
                ON m.pedido_num = CONCAT('VK-', t.pedido)
               AND m.activo = 1
               AND m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
+        LEFT JOIN puntos_voltika p
+               ON p.nombre = t.punto_nombre AND p.activo = 1
         ORDER BY t.freg DESC
         LIMIT 100
     ");
@@ -56,6 +61,12 @@ try {
                 ),
             'punto_id'    => $r['punto_id'] ?? null,
             'punto_nombre'=> $r['punto_nombre'] ?? null,
+            'punto_direccion' => $r['punto_direccion'] ?? null,
+            'punto_colonia'   => $r['punto_colonia'] ?? null,
+            'punto_ciudad'    => $r['punto_ciudad'] ?? null,
+            'punto_estado'    => $r['punto_estado'] ?? null,
+            'punto_cp'        => $r['punto_cp'] ?? null,
+            'punto_telefono'  => $r['punto_telefono'] ?? null,
             'ciudad'      => $r['ciudad'] ?? null,
             'estado'      => $r['estado'] ?? null,
             'cp'          => $r['cp'] ?? null,

@@ -359,6 +359,12 @@ window.AD_ventas = (function(){
       html += fRow('Nota', '<span style="font-size:11px;color:var(--ad-dim);">El cliente seleccionó "Centro Voltika cercano"</span>');
     } else if(r.punto_nombre){
       html += fRow('Punto', '<span style="color:#059669;font-weight:700;">'+r.punto_nombre+'</span>');
+      // Full address from puntos_voltika
+      var pAddr = [r.punto_direccion, r.punto_colonia].filter(function(v){return v;}).join(', ');
+      var pLoc  = [r.punto_ciudad, r.punto_estado, r.punto_cp].filter(function(v){return v;}).join(', ');
+      if(pAddr) html += fRow('Dirección', pAddr);
+      if(pLoc)  html += fRow('Ubicación', pLoc);
+      if(r.punto_telefono) html += fRow('Teléfono punto', '<a href="tel:'+r.punto_telefono+'" style="color:var(--ad-primary);text-decoration:none;">'+r.punto_telefono+'</a>');
     } else {
       html += fRow('Punto', '<span class="ad-badge red">Sin punto seleccionado</span>');
     }
@@ -415,8 +421,8 @@ window.AD_ventas = (function(){
         '<label>Modelo<input id="rcvModelo" class="ad-input" value="'+esc(r.modelo||'')+'"></label>'+
         '<label>Color<input id="rcvColor" class="ad-input" value="'+esc(r.color||'')+'"></label>'+
         '<label>Total MXN<input id="rcvTotal" class="ad-input" type="number" value="'+(r.monto||0)+'"></label>'+
-        '<label>Folio contrato<input id="rcvFolio" class="ad-input" placeholder="VK-YYYYMMDD-XXX"></label>'+
-        '<label>Stripe PI<input id="rcvStripePi" class="ad-input" value="'+esc(stripePi||r.stripe_pi||'')+'" '+(isErr?'readonly':'')+'></label>'+
+        '<label>Folio contrato<input id="rcvFolio" class="ad-input" placeholder="VK-YYYYMMDD-XXX" readonly style="background:#f0f4f8;cursor:not-allowed;" value="'+esc(r.folio_contrato||'')+'"></label>'+
+        '<label>Stripe PI<input id="rcvStripePi" class="ad-input" value="'+esc(stripePi||r.stripe_pi||'')+'" readonly style="background:#f0f4f8;cursor:not-allowed;"></label>'+
       '</div>'+
       '<div style="margin-top:14px;text-align:right;">'+
         '<button class="ad-btn ghost" onclick="ADApp.closeModal()">Cancelar</button> '+
