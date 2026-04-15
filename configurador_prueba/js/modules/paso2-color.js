@@ -334,6 +334,27 @@ var Paso2 = {
                 var color = app.state.colorSeleccionado || modelo.colorDefault;
                 app.state._invColorTotal = self._invMap[color] || 0;
                 app.state._invColorEnStock = app.state._invColorTotal > 0;
+
+                // Refresh color badge UI (Agotado labels)
+                jQuery('#vk-paso-2 .vk-color-swatch').each(function() {
+                    var cId = this.getAttribute('data-color');
+                    var stock = self._invMap[cId] || 0;
+                    var $agotado = jQuery(this).find('div').filter(function() {
+                        return jQuery(this).text() === 'Agotado';
+                    });
+                    if (stock > 0) {
+                        $agotado.remove();
+                    } else if (!$agotado.length) {
+                        jQuery(this).append('<div style="font-size:10px;margin-top:2px;color:#b91c1c;font-weight:600;">Agotado</div>');
+                    }
+                });
+
+                // Update stock notice for current color
+                if (app.state._invColorTotal > 0) {
+                    jQuery('#vk-stock-notice').slideUp(150);
+                } else {
+                    jQuery('#vk-stock-notice').slideDown(150);
+                }
             }
         });
     }
