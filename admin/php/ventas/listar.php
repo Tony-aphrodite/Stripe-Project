@@ -80,8 +80,8 @@ try {
 
         if (!$where) continue;
 
-        $sql = "SELECT s.enganche, s.monto_semanal, s.plazo_semanas, s.plazo_meses,
-                       s.precio_contado, s.monto_financiado, s.nombre, s.email, s.telefono
+        $sql = "SELECT s.monto_semanal, s.plazo_semanas, s.plazo_meses,
+                       s.precio_contado, s.nombre, s.email, s.telefono
                 FROM subscripciones_credito s
                 WHERE (" . implode(' OR ', $where) . ")
                 ORDER BY s.id DESC LIMIT 1";
@@ -89,13 +89,17 @@ try {
         $sc->execute($params);
         $cr = $sc->fetch(PDO::FETCH_ASSOC);
         if ($cr) {
+            $precioContado = (float)($cr['precio_contado'] ?? 0);
+            $enganche      = $row['monto']; // transacciones.total = enganche paid
+            $financiado    = $precioContado > 0 ? $precioContado - $enganche : 0;
+
             $row['credito'] = [
-                'enganche'         => (float)($cr['enganche'] ?? 0),
+                'enganche'         => $enganche,
                 'monto_semanal'    => (float)($cr['monto_semanal'] ?? 0),
                 'plazo_semanas'    => (int)($cr['plazo_semanas'] ?? 0),
                 'plazo_meses'      => (int)($cr['plazo_meses'] ?? 0),
-                'precio_contado'   => (float)($cr['precio_contado'] ?? 0),
-                'monto_financiado' => (float)($cr['monto_financiado'] ?? 0),
+                'precio_contado'   => $precioContado,
+                'monto_financiado' => $financiado,
             ];
             // Backfill empty client info from subscripciones_credito
             if (empty($row['nombre']) && !empty($cr['nombre']))     $row['nombre']   = $cr['nombre'];
