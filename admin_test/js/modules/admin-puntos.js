@@ -9,8 +9,9 @@ window.AD_puntos = (function(){
 
   function paint(r){
     puntosData = r.puntos||[];
-    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Puntos Voltika</div>'+
-      '<button class="ad-btn primary" id="adNewPunto">+ Nuevo punto</button></div>';
+    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Puntos Voltika</div><div style="display:flex;gap:8px;">'+
+      '<button class="ad-btn" id="adImportPuntos" style="background:#f0f4f8;color:var(--ad-navy);">Importar Excel</button>'+
+      '<button class="ad-btn primary" id="adNewPunto">+ Nuevo punto</button></div></div>';
 
     html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
       '<th>Nombre</th><th>Tipo</th><th>Ciudad</th><th>Inventario</th>'+
@@ -35,6 +36,7 @@ window.AD_puntos = (function(){
 
     ADApp.render(html);
     $('#adNewPunto').on('click',function(){ showForm({}); });
+    $('#adImportPuntos').on('click', showImportForm);
     $('.adEditP').on('click',function(){
       var id=$(this).data('id');
       var p = puntosData.find(function(x){return x.id==id;});
@@ -233,6 +235,109 @@ window.AD_puntos = (function(){
 
   function esc(s){
     return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Import from Excel ───────────────────────────────────────────────────
+  function showImportForm(){
+    ADApp.modal(
+      '<div class="ad-h2">Importar puntos desde Excel</div>'+
+      '<div class="ad-dim" style="margin-bottom:12px;">Formato: CSV o XLSX con columnas Nombre, Tipo, Dirección, Colonia, Ciudad, Estado, CP, Teléfono, Email, Latitud, Longitud, Horarios, Capacidad, Descripción</div>'+
+      '<div style="margin-bottom:12px;">'+
+        '<a href="#" id="adDlPuntosTemplate" style="color:var(--ad-primary);font-size:13px;">Descargar plantilla CSV</a>'+
+      '</div>'+
+      '<input type="file" id="adImportPuntosFile" accept=".csv,.xlsx,.txt" class="ad-input" style="margin-bottom:12px">'+
+      '<div id="adImportPuntosPreview" style="display:none;margin-bottom:12px;max-height:200px;overflow-y:auto;font-size:12px;"></div>'+
+      '<div id="adImportPuntosResult" style="display:none;margin-bottom:12px;"></div>'+
+      '<button class="ad-btn primary" id="adImportPuntosBtn" disabled>Importar</button>'
+    );
+
+    $('#adDlPuntosTemplate').on('click', function(e){
+      e.preventDefault();
+      var csv = 'Nombre,Tipo,Dirección,Colonia,Ciudad,Estado,CP,Teléfono,Email,Latitud,Longitud,Horarios,Capacidad,Descripción\n';
+      csv += 'Punto Ejemplo,entrega,Av. Reforma 123,Juárez,Ciudad de México,CDMX,06600,5551234567,punto@ejemplo.com,19.4326,-99.1332,Lun-Vie 9:00-18:00,20,Punto de entrega ejemplo\n';
+      var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'plantilla_puntos.csv';
+      a.click();
+    });
+
+    $('#adImportPuntosFile').on('change', function(){
+      var file = this.files[0];
+      if(!file) return;
+      if(file.name.match(/\.(csv|txt)$/i)){
+        var reader = new FileReader();
+        reader.onload = function(e){
+          var lines = e.target.result.split('\n').filter(function(l){return l.trim();});
+          if(lines.length < 2){ $('#adImportPuntosPreview').html('<div style="color:red;">Archivo vacío</div>').show(); return; }
+          var html = '<strong>' + (lines.length-1) + ' puntos detectados</strong><br>';
+          html += '<table class="ad-table" style="font-size:11px"><thead><tr>';
+          var headers = lines[0].split(',');
+          headers.forEach(function(h){ html += '<th>'+h.trim()+'</th>'; });
+          html += '</tr></thead><tbody>';
+          var max = Math.min(lines.length, 6);
+          for(var i=1; i<max; i++){
+            html += '<tr>';
+            lines[i].split(',').forEach(function(c){ html += '<td>'+c.trim()+'</td>'; });
+            html += '</tr>';
+          }
+          if(lines.length > 6) html += '<tr><td colspan="'+headers.length+'" style="text-align:center">... y ' + (lines.length-6) + ' más</td></tr>';
+          html += '</tbody></table>';
+          $('#adImportPuntosPreview').html(html).show();
+          $('#adImportPuntosBtn').prop('disabled', false);
+        };
+        reader.readAsText(file);
+      } else {
+        $('#adImportPuntosPreview').html('<strong>Archivo: </strong>' + file.name + ' (' + Math.round(file.size/1024) + ' KB)').show();
+        $('#adImportPuntosBtn').prop('disabled', false);
+      }
+    });
+
+    $('#adImportPuntosBtn').on('click', function(){
+      var file = $('#adImportPuntosFile')[0].files[0];
+      if(!file) return;
+      var $btn = $(this);
+      $btn.prop('disabled', true).html('<span class="ad-spin"></span> Importando...');
+
+      var fd = new FormData();
+      fd.append('archivo', file);
+
+      $.ajax({
+        url: 'php/puntos/importar.php',
+        method: 'POST',
+        data: fd,
+        processData: false,
+        contentType: false,
+        xhrFields: { withCredentials: true },
+        dataType: 'json'
+      }).done(function(r){
+        if(r.ok){
+          var html = '<div style="padding:12px;border-radius:8px;background:#E8F5E9;color:#2E7D32;">'+
+            '<strong>Importación completada</strong><br>'+
+            'Creados: <strong>'+r.creados+'</strong> · '+
+            'Duplicados: '+r.duplicados+' · '+
+            'Errores: '+r.errores+' · '+
+            'Total filas: '+r.total_filas+
+            '</div>';
+          if(r.detalle && r.detalle.length){
+            html += '<div style="margin-top:8px;font-size:11px;color:#666;">';
+            r.detalle.forEach(function(d){ html += d + '<br>'; });
+            html += '</div>';
+          }
+          $('#adImportPuntosResult').html(html).show();
+          $btn.html('Cerrar').prop('disabled',false).off('click').on('click',function(){
+            ADApp.closeModal();
+            render();
+          });
+        } else {
+          $('#adImportPuntosResult').html('<div style="padding:12px;border-radius:8px;background:#FFEBEE;color:#C62828;">'+r.error+'</div>').show();
+          $btn.html('Importar').prop('disabled', false);
+        }
+      }).fail(function(){
+        $('#adImportPuntosResult').html('<div style="padding:12px;border-radius:8px;background:#FFEBEE;color:#C62828;">Error de conexión</div>').show();
+        $btn.html('Importar').prop('disabled', false);
+      });
+    });
   }
 
   return { render:render };
