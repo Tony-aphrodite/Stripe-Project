@@ -134,6 +134,7 @@ function contarDisponibles(PDO $pdo, string $modelo = '', string $color = ''): a
                "(m.cliente_email IS NULL OR m.cliente_email = '')",
                "m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'",
                "(m.bloqueado_venta = 0 OR m.bloqueado_venta IS NULL)",
+               "(m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0)",
                "EXISTS (SELECT 1 FROM checklist_origen co WHERE co.moto_id = m.id AND co.completado = 1)"];
     $params = [];
 

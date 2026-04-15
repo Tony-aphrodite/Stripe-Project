@@ -166,6 +166,11 @@ for ($i = 1; $i < count($rows); $i++) {
     $potencia  = getVal($row, $colMap['potencia']);
     $posicion  = getVal($row, $colMap['posicion_inventario']);
     $fechaIng  = parseDate(getVal($row, $colMap['fecha_ingreso_pais']));
+    if (!$fechaIng) {
+        $errores++;
+        $detalle[] = "Fila " . ($i + 1) . ": Fecha de ingreso al país es obligatoria (VIN: $vin)";
+        continue;
+    }
     $aduana    = getVal($row, $colMap['aduana']);
     $pedimento = getVal($row, $colMap['num_pedimento']);
     $factura   = getVal($row, $colMap['num_factura']);

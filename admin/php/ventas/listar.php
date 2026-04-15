@@ -227,6 +227,7 @@ try {
           AND (cliente_email IS NULL OR cliente_email = '')
           AND vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
           AND estado IN ('recibida','lista_para_entrega')
+          AND (punto_voltika_id IS NULL OR punto_voltika_id = 0)
         GROUP BY modelo, color
     ")->fetchAll(PDO::FETCH_ASSOC);
     foreach ($inv as $i) {

@@ -22,6 +22,11 @@ foreach ($motos as $m) {
     $vin = trim($m['vin'] ?? '');
     if (!$vin) continue;
 
+    $fechaIng = trim($m['fecha_ingreso_pais'] ?? '');
+    if (!$fechaIng) {
+        adminJsonOut(['error' => 'Fecha de ingreso al país es obligatoria (VIN: ' . $vin . ')'], 400);
+    }
+
     // Check duplicate
     $chk = $pdo->prepare("SELECT id FROM inventario_motos WHERE vin=? LIMIT 1");
     $chk->execute([$vin]);

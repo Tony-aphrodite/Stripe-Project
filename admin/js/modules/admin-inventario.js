@@ -151,7 +151,8 @@ window.AD_inventario = (function(){
       html += fRow('Potencia', m.potencia||'—');
       html += fRow('Baterías', m.config_baterias||'—');
       html += fRow('Hecho en', m.hecho_en||'—');
-      html += fRow('Tipo asignación', m.tipo_asignacion||'—');
+      var tipoAsigLabel = {'voltika_entrega':'Entrega con orden','consignacion':'Consignación'}[m.tipo_asignacion] || m.tipo_asignacion || '—';
+      html += fRow('Tipo asignación', tipoAsigLabel);
       html += '</div>';
 
       // ── Importación ──
@@ -541,7 +542,7 @@ window.AD_inventario = (function(){
       {id:'nmBaterias', label:'Config. baterías',   ph:'', type:'select', opts:['1','2']},
       {id:'nmHecho',    label:'Hecho en',           ph:'País de fabricación'},
       {id:'nmPedimento',label:'Núm. pedimento',     ph:'Número de pedimento'},
-      {id:'nmFechaIng', label:'Fecha ingreso país', ph:'', type:'date'},
+      {id:'nmFechaIng', label:'Fecha ingreso país *', ph:'', type:'date'},
       {id:'nmAduana',   label:'Aduana',             ph:'Aduana de ingreso'},
       {id:'nmCedis',    label:'CEDIS origen',       ph:'Centro de distribución'},
     ];
@@ -594,8 +595,9 @@ window.AD_inventario = (function(){
       var vin = $('#nmVin').val().trim();
       var modelo = $('#nmModelo').val();
       var color = $('#nmColor').val();
-      if(!vin || !modelo || !color){
-        alert('VIN, Modelo y Color son obligatorios');
+      var fechaIng = $('#nmFechaIng').val();
+      if(!vin || !modelo || !color || !fechaIng){
+        alert('VIN, Modelo, Color y Fecha ingreso país son obligatorios');
         return;
       }
       $(this).prop('disabled',true).html('<span class="ad-spin"></span> Guardando...');
