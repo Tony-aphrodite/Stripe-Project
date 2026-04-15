@@ -4,7 +4,25 @@
  * Used for MSI/contado full payment check and credito enganche check
  */
 require_once __DIR__ . '/../bootstrap.php';
-require_once __DIR__ . '/../../../configurador_prueba_test/php/config.php';
+if (!defined('STRIPE_SECRET_KEY')) {
+    require_once __DIR__ . '/../../../configurador_prueba_test/php/config.php';
+}
+if (!defined('STRIPE_SECRET_KEY') || STRIPE_SECRET_KEY === '') {
+    $envPath = __DIR__ . '/../../../configurador_prueba_test/.env';
+    if (file_exists($envPath)) {
+        foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $ln) {
+            $ln = trim($ln);
+            if ($ln === '' || $ln[0] === '#' || strpos($ln, '=') === false) continue;
+            putenv($ln);
+        }
+        $isLive = strtolower(trim(getenv('APP_ENV') ?: 'test'));
+        $isLive = in_array($isLive, ['live', 'production']);
+        $sk = $isLive
+            ? (getenv('STRIPE_SECRET_KEY_LIVE') ?: '')
+            : (getenv('STRIPE_SECRET_KEY_TEST') ?: getenv('STRIPE_SECRET_KEY') ?: '');
+        if ($sk && !defined('STRIPE_SECRET_KEY')) define('STRIPE_SECRET_KEY', $sk);
+    }
+}
 $uid = adminRequireAuth(['admin','cedis']);
 
 $d = adminJsonIn();
@@ -17,7 +35,9 @@ $stmt->execute([$motoId]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$moto) adminJsonOut(['error' => 'Moto no encontrada'], 404);
 
-$stripeKey = defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : (getenv('STRIPE_SECRET_KEY') ?: '');
+$stripeKey = defined('STRIPE_SECRET_KEY') && STRIPE_SECRET_KEY !== ''
+    ? STRIPE_SECRET_KEY
+    : (getenv('STRIPE_SECRET_KEY_LIVE') ?: getenv('STRIPE_SECRET_KEY_TEST') ?: getenv('STRIPE_SECRET_KEY') ?: '');
 $result = ['moto_id' => $motoId, 'verificado' => false];
 
 // If moto has no stripe_pi, try to get it from transacciones
@@ -47,8 +67,6 @@ if (empty($stripePi)) {
     }
 }
 
-$result['debug_stripe_pi'] = $stripePi ?: null;
-$result['debug_pedido_num'] = $moto['pedido_num'] ?? null;
 
 // Check Stripe PaymentIntent if exists
 if ($stripePi && $stripeKey) {

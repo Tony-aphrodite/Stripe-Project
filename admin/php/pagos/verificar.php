@@ -73,12 +73,6 @@ if (empty($stripePi)) {
     }
 }
 
-$result['debug_stripe_pi'] = $stripePi ?: null;
-$result['debug_pedido_num'] = $moto['pedido_num'] ?? null;
-$result['debug_has_key'] = !empty($stripeKey);
-$result['debug_key_prefix'] = $stripeKey ? substr($stripeKey, 0, 8) . '...' : 'EMPTY';
-$result['debug_app_env'] = defined('APP_ENV') ? APP_ENV : 'undefined';
-$result['debug_env_file'] = file_exists(__DIR__ . '/../../../configurador_prueba/.env') ? 'exists' : 'missing';
 
 // Check Stripe PaymentIntent if exists
 if ($stripePi && $stripeKey) {
