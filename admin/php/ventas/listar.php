@@ -64,6 +64,50 @@ try {
     error_log('ventas/listar transacciones: ' . $e->getMessage());
 }
 
+// ── Enrich enganche/credito rows with subscripciones_credito data ───────
+try {
+    foreach ($rows as &$row) {
+        if (!in_array($row['tipo'], ['enganche', 'credito'], true)) continue;
+        $tel = $row['telefono'] ?? '';
+        $em  = $row['email'] ?? '';
+        $ped = $row['pedido'] ?? '';
+
+        $where = [];
+        $params = [];
+        if ($tel) { $where[] = 's.telefono = ?'; $params[] = $tel; }
+        if ($em)  { $where[] = 's.email = ?';    $params[] = $em; }
+        if ($ped) { $where[] = 's.id = ?';       $params[] = preg_replace('/^SC-/', '', $ped); }
+
+        if (!$where) continue;
+
+        $sql = "SELECT s.enganche, s.monto_semanal, s.plazo_semanas, s.plazo_meses,
+                       s.precio_contado, s.monto_financiado, s.nombre, s.email, s.telefono
+                FROM subscripciones_credito s
+                WHERE (" . implode(' OR ', $where) . ")
+                ORDER BY s.id DESC LIMIT 1";
+        $sc = $pdo->prepare($sql);
+        $sc->execute($params);
+        $cr = $sc->fetch(PDO::FETCH_ASSOC);
+        if ($cr) {
+            $row['credito'] = [
+                'enganche'         => (float)($cr['enganche'] ?? 0),
+                'monto_semanal'    => (float)($cr['monto_semanal'] ?? 0),
+                'plazo_semanas'    => (int)($cr['plazo_semanas'] ?? 0),
+                'plazo_meses'      => (int)($cr['plazo_meses'] ?? 0),
+                'precio_contado'   => (float)($cr['precio_contado'] ?? 0),
+                'monto_financiado' => (float)($cr['monto_financiado'] ?? 0),
+            ];
+            // Backfill empty client info from subscripciones_credito
+            if (empty($row['nombre']) && !empty($cr['nombre']))     $row['nombre']   = $cr['nombre'];
+            if (empty($row['email']) && !empty($cr['email']))       $row['email']    = $cr['email'];
+            if (empty($row['telefono']) && !empty($cr['telefono'])) $row['telefono'] = $cr['telefono'];
+        }
+    }
+    unset($row);
+} catch (Throwable $e) {
+    error_log('ventas/listar credito enrich: ' . $e->getMessage());
+}
+
 // ── Credit subscriptions that have NO matching transacciones row ────────
 // These are orphans: customer reached the autopago step (SetupIntent saved to
 // subscripciones_credito) but either (a) the transacciones INSERT in

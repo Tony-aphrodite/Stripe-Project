@@ -301,6 +301,20 @@ window.AD_ventas = (function(){
     html += fRow('Fecha', r.fecha ? r.fecha.substring(0,10) : '—');
     html += '</div>';
 
+    // ── Section: Detalle del crédito (only for enganche/credito) ──
+    if(r.credito && (r.tipo==='enganche' || r.tipo==='credito')){
+      var cr = r.credito;
+      secIx = 0;
+      html += secHead('Detalle del crédito','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>');
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+      html += fRow('Precio contado', ADApp.money(cr.precio_contado));
+      html += fRow('Enganche', '<span style="color:#059669;font-weight:700;">'+ADApp.money(cr.enganche)+'</span>');
+      html += fRow('Monto financiado', ADApp.money(cr.monto_financiado));
+      html += fRow('Pago semanal', '<span style="font-size:15px;font-weight:800;">'+ADApp.money(cr.monto_semanal)+'</span>');
+      html += fRow('Plazo', (cr.plazo_semanas ? cr.plazo_semanas+' semanas' : (cr.plazo_meses ? cr.plazo_meses+' meses' : '—')));
+      html += '</div>';
+    }
+
     // ── Section: Stripe ──
     secIx = 0;
     html += secHead('Stripe','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H3a2 2 0 00-2 2v12a2 2 0 002 2h18a2 2 0 002-2V6a2 2 0 00-2-2z"/><path d="M1 10h22"/></svg>');
