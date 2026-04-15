@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirmar entrega — Voltika</title>
+<link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<link rel="stylesheet" href="css/admin.css">
+<style>
+body { background: var(--vka-blue-soft); }
+
+/* Steps indicator */
+.steps-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 20px 0 28px;
+}
+.step-ind {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+.step-ind:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: calc(50% + 14px);
+  top: 14px;
+  width: calc(100% - 8px);
+  height: 2px;
+  background: var(--vka-border);
+}
+.step-ind.done::after,
+.step-ind.active::after { background: var(--vka-blue); }
+.step-circle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--vka-border);
+  background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  color: var(--vka-grey);
+  z-index: 1;
+}
+.step-ind.done .step-circle  { background: var(--vka-blue); border-color: var(--vka-blue); color: #fff; }
+.step-ind.active .step-circle { background: var(--vka-blue-dark); border-color: var(--vka-blue-dark); color: #fff; box-shadow: 0 0 0 4px var(--vka-blue-light); }
+.step-label { font-size: 10px; color: var(--vka-grey); white-space: nowrap; }
+.step-ind.active .step-label  { color: var(--vka-blue-dark); font-weight: 700; }
+.step-ind.done .step-label    { color: var(--vka-blue); }
+
+/* OTP */
+.otp-hint { font-size: 13px; color: var(--vka-grey); text-align: center; margin-bottom: 8px; }
+.otp-resend {
+  text-align: center; margin-top: 12px;
+  font-size: 13px; color: var(--vka-grey);
+}
+.otp-resend a { color: var(--vka-blue); cursor: pointer; text-decoration: underline; }
+#resend-timer { font-weight: 600; }
+
+/* Success */
+.confetti { font-size: 40px; text-align: center; margin: 16px 0; }
+.success-details {
+  background: var(--vka-blue-soft);
+  border-radius: 10px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.success-details p { font-size: 13px; color: var(--vka-blue-dark); margin: 4px 0; }
+.success-details strong { font-weight: 700; }
+
+/* Info box */
+.info-box {
+  background: var(--vka-blue-light);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.info-box-icon { font-size: 20px; flex-shrink: 0; }
+.info-box p { font-size: 13px; color: var(--vka-blue-dark); margin: 0; line-height: 1.5; }
+.security-note {
+  background: var(--vka-orange-light);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #92400e;
+  margin-top: 16px;
+  border-left: 3px solid var(--vka-orange);
+}
+</style>
+</head>
+<body>
+
+<div class="entrega-screen">
+  <div class="entrega-card">
+
+    <!-- Header -->
+    <div class="entrega-header">
+      <img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <span style="display:none;font-size:24px;font-weight:900;">Voltika</span>
+      <h1>Confirmación de entrega</h1>
+      <p>Confirma la recepción de tu motocicleta</p>
+    </div>
+
+    <div class="entrega-body">
+
+      <!-- Steps indicator -->
+      <div class="steps-indicator" id="steps-indicator">
+        <div class="step-ind active" id="step-ind-1">
+          <div class="step-circle">1</div>
+          <div class="step-label">Pedido</div>
+        </div>
+        <div class="step-ind" id="step-ind-2">
+          <div class="step-circle">2</div>
+          <div class="step-label">OTP</div>
+        </div>
+        <div class="step-ind" id="step-ind-3">
+          <div class="step-circle">3</div>
+          <div class="step-label">Checklist</div>
+        </div>
+        <div class="step-ind" id="step-ind-4">
+          <div class="step-circle">4</div>
+          <div class="step-label">Acta</div>
+        </div>
+        <div class="step-ind" id="step-ind-5">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Completado</div>
+        </div>
+      </div>
+
+      <!-- ── PASO 1: Buscar pedido ─────────────────────────────────────── -->
+      <div class="entrega-step active" id="step-1">
+        <div class="info-box">
+          <div class="info-box-icon">🔍</div>
+          <p>Ingresa tu número de pedido para verificar tu entrega. Lo encontrarás en el correo de confirmación que recibiste al comprar.</p>
+        </div>
+
+        <div class="field" style="margin-bottom:16px;">
+          <label style="font-size:13px;font-weight:700;color:var(--vka-blue-dark);margin-bottom:6px;display:block;">
+            Número de pedido
+          </label>
+          <input type="text" id="input-pedido" class="form-group input"
+                 style="width:100%;padding:13px 14px;border:2px solid var(--vka-border);border-radius:10px;font-size:15px;outline:none;font-family:var(--vka-font);"
+                 placeholder="Ej: VK-ABC123 o 1234567890"
+                 onkeydown="if(event.key==='Enter')buscarPedido()">
+        </div>
+
+        <button class="btn btn-dark" style="width:100%;padding:13px;font-size:15px;" id="btn-buscar" onclick="buscarPedido()">
+          Buscar pedido
+        </button>
+
+        <div id="buscar-error" style="display:none;background:var(--vka-red-light);color:#991b1b;border-radius:8px;padding:10px 14px;margin-top:12px;font-size:13px;"></div>
+
+        <div class="security-note" style="margin-top:20px;">
+          🔒 <strong>Entrega segura:</strong> Para confirmar la recepción de tu moto necesitarás validar un código de seguridad enviado a tu número registrado.
+        </div>
+      </div>
+
+      <!-- ── PASO 2: OTP ────────────────────────────────────────────────── -->
+      <div class="entrega-step" id="step-2">
+        <!-- Order summary -->
+        <div class="order-summary" id="order-summary-box">
+          <div class="order-row"><span class="label">Cliente</span><span class="value" id="os-cliente">—</span></div>
+          <div class="order-row"><span class="label">Motocicleta</span><span class="value" id="os-moto">—</span></div>
+          <div class="order-row"><span class="label">VIN</span><span class="value" id="os-vin">—</span></div>
+          <div class="order-row" id="os-punto-row"><span class="label">Punto de entrega</span><span class="value" id="os-punto">—</span></div>
+        </div>
+
+        <p class="otp-hint" id="otp-hint-text">Un código de 6 dígitos ha sido enviado a tu número <strong id="tel-mask">****</strong></p>
+
+        <div class="otp-input-group" id="otp-inputs">
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" data-idx="0" onInput="moveOTP(this)" onKeydown="backOTP(event,this)">
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" data-idx="1" onInput="moveOTP(this)" onKeydown="backOTP(event,this)">
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" data-idx="2" onInput="moveOTP(this)" onKeydown="backOTP(event,this)">
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" data-idx="3" onInput="moveOTP(this)" onKeydown="backOTP(event,this)">
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" data-idx="4" onInput="moveOTP(this)" onKeydown="backOTP(event,this)">
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" data-idx="5" onInput="moveOTP(this)" onKeydown="backOTP(event,this)">
+        </div>
+
+        <div id="otp-error" style="display:none;text-align:center;color:var(--vka-red);font-size:13px;margin-bottom:8px;"></div>
+
+        <button class="btn btn-dark" style="width:100%;padding:13px;font-size:15px;" id="btn-verificar" onclick="verificarOTP()" disabled>
+          Confirmar entrega
+        </button>
+
+        <div class="otp-resend">
+          ¿No recibiste el código?
+          <a onclick="reenviarOTP()" id="link-reenviar">Reenviar código</a>
+          <span id="resend-timer" style="display:none;"></span>
+        </div>
+
+        <button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;" onclick="goStep(1)">
+          ← Volver a buscar pedido
+        </button>
+      </div>
+
+      <!-- ── PASO 3: Checklist del cliente ────────────────────────────── -->
+      <div class="entrega-step" id="step-3">
+        <h3 style="text-align:center;color:var(--vka-blue-dark);margin-bottom:12px;">Verifica tu motocicleta</h3>
+        <p style="text-align:center;font-size:13px;color:var(--vka-grey);margin-bottom:16px;">
+          Confirma que la unidad corresponde a tu pedido y está en buen estado.
+        </p>
+        <div id="client-checklist-items" style="background:#fff;border-radius:10px;border:1.5px solid var(--vka-border);padding:12px 14px;margin-bottom:16px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_vin_correcto" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">El VIN coincide con mi pedido</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_modelo_correcto" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">El modelo es correcto</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_color_correcto" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">El color es correcto</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_sin_danos" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Sin daños visibles</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_accesorios_completos" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Accesorios completos</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_llaves_recibidas" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Llaves recibidas</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_cargador_recibido" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Cargador recibido</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_manual_recibido" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Manual recibido</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;cursor:pointer;">
+            <input type="checkbox" class="cl-client-item" data-key="cl_funcionamiento_mostrado" style="width:20px;height:20px;accent-color:var(--vka-blue);margin-top:2px;">
+            <span style="font-size:13px;">Se me mostró el funcionamiento básico</span>
+          </label>
+        </div>
+        <button class="btn btn-primary" style="width:100%;padding:13px;font-size:15px;" id="btn-checklist-continuar" onclick="saveClientChecklist()" disabled>
+          Continuar al Acta de Entrega →
+        </button>
+      </div>
+
+      <!-- ── PASO 4: Acta de Entrega (firma) ─────────────────────────────── -->
+      <div class="entrega-step" id="step-4">
+        <h3 style="text-align:center;color:var(--vka-blue-dark);margin-bottom:12px;">Acta de Entrega</h3>
+        <div id="acta-content" style="background:#fff;border:2px solid var(--vka-blue-dark);border-radius:10px;padding:14px;margin-bottom:16px;font-size:11px;line-height:1.6;max-height:300px;overflow-y:auto;">
+          <div style="text-align:center;border-bottom:2px solid var(--vka-blue-dark);padding-bottom:10px;margin-bottom:12px;">
+            <div style="font-size:9px;color:var(--vka-grey);letter-spacing:1px;text-transform:uppercase;">Acta de Entrega de Motocicleta Eléctrica</div>
+            <div style="font-size:13px;font-weight:900;color:var(--vka-blue-dark);">VOLTIKA — MTECH GEARS, S.A. DE C.V.</div>
+          </div>
+          <p>En este acto, el cliente declara haber recibido la motocicleta eléctrica en condiciones óptimas de funcionamiento, completa y conforme a lo contratado.</p>
+          <p><strong>Declaro que:</strong></p>
+          <ul style="padding-left:16px;margin:4px 0;">
+            <li>Soy la persona titular del contrato de compraventa y/o crédito.</li>
+            <li>He verificado que la motocicleta corresponde a mi pedido.</li>
+            <li>La motocicleta se encuentra en buen estado físico.</li>
+            <li>Recibí todos los componentes y documentación.</li>
+            <li>Se me mostró el funcionamiento básico.</li>
+          </ul>
+          <p><strong>Acepto:</strong></p>
+          <ul style="padding-left:16px;margin:4px 0;">
+            <li>La entrega a mi entera satisfacción.</li>
+            <li>Libero a Voltika de responsabilidad por daños visibles o faltantes, salvo garantía.</li>
+            <li>Esta acta se firma mediante medios electrónicos con plena validez jurídica.</li>
+            <li>Autorizo el uso de información para fines legales (PROFECO, SAT, INAI).</li>
+          </ul>
+        </div>
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:#FFF8E1;border:1.5px solid #FFD54F;border-radius:10px;margin-bottom:16px;cursor:pointer;">
+          <input type="checkbox" id="acta-acepto" style="width:22px;height:22px;accent-color:var(--vka-blue);margin-top:2px;" onchange="document.getElementById('btn-firmar-acta').disabled=!this.checked">
+          <span style="font-size:13px;font-weight:700;color:#5D4037;">Acepto todos los términos del Acta de Entrega y confirmo la recepción de mi motocicleta.</span>
+        </label>
+        <button class="btn btn-success" style="width:100%;padding:14px;font-size:15px;font-weight:800;" id="btn-firmar-acta" onclick="firmarActa()" disabled>
+          ✍️ Firmar Acta de Entrega
+        </button>
+      </div>
+
+      <!-- ── PASO 5: Éxito + PDF ─────────────────────────────────────────── -->
+      <div class="entrega-step" id="step-5">
+        <div class="confetti">🎉</div>
+        <div class="success-check">
+          <div class="success-icon">✓</div>
+          <h2 style="color:var(--vka-blue-dark);margin:16px 0 8px;font-size:22px;">¡Entrega confirmada!</h2>
+          <p style="color:var(--vka-grey);font-size:14px;margin:0;">Tu Voltika ha sido recibida exitosamente.</p>
+        </div>
+
+        <div class="success-details" id="success-details">
+          <p>Cargando detalles...</p>
+        </div>
+
+        <div style="background:#f0fdf4;border-radius:10px;padding:14px 16px;margin-bottom:16px;border:1.5px solid #86efac;">
+          <p style="font-size:13px;color:#166534;margin:0;font-weight:600;">✅ Hemos enviado un correo de confirmación a tu email registrado.</p>
+        </div>
+
+        <div style="text-align:center;margin-top:8px;">
+          <p style="font-size:13px;color:var(--vka-grey);margin-bottom:12px;">¿Necesitas ayuda?</p>
+          <a href="https://wa.me/5213416370" target="_blank"
+             style="display:inline-block;background:var(--vka-blue-dark);color:#fff;padding:10px 24px;border-radius:24px;font-size:13px;font-weight:700;text-decoration:none;">
+            📱 Contactar soporte
+          </a>
+        </div>
+      </div>
+
+    </div><!-- /entrega-body -->
+
+    <!-- Footer -->
+    <div style="padding:16px 24px;text-align:center;border-top:1px solid var(--vka-border);">
+      <p style="font-size:11px;color:var(--vka-grey);margin:0;">
+        Voltika México · Mtech Gears, S.A. de C.V.<br>
+        <a href="https://voltika.mx" style="color:var(--vka-blue);">voltika.mx</a>
+      </p>
+    </div>
+
+  </div><!-- /entrega-card -->
+</div><!-- /entrega-screen -->
+
+<div id="toast-container"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let currentPedido = null;
+let resendCountdown = null;
+
+// ─── Pre-fill from URL ────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const pedidoParam = params.get('pedido');
+  if (pedidoParam) {
+    document.getElementById('input-pedido').value = pedidoParam;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PASO 1 — Buscar pedido
+// ═══════════════════════════════════════════════════════════════════════════════
+async function buscarPedido() {
+  const btn      = document.getElementById('btn-buscar');
+  const errEl    = document.getElementById('buscar-error');
+  const pedidoNum= document.getElementById('input-pedido').value.trim();
+
+  if (!pedidoNum) {
+    showBuscarError('Por favor ingresa tu número de pedido');
+    return;
+  }
+
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span> Buscando...';
+
+  try {
+    const r = await fetch('php/user-entrega-otp.php', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ accion:'buscar', pedido_num: pedidoNum })
+    });
+    const d = await r.json();
+
+    if (!d.ok) {
+      showBuscarError(d.error || 'Pedido no encontrado');
+      return;
+    }
+
+    // Found — now send OTP
+    currentPedido = { num: pedidoNum, data: d.data };
+    await enviarOTP(pedidoNum, d.data);
+
+  } catch {
+    showBuscarError('Error de conexión. Intenta de nuevo.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Buscar pedido';
+  }
+}
+
+function showBuscarError(msg) {
+  const el = document.getElementById('buscar-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ENVIAR OTP
+// ═══════════════════════════════════════════════════════════════════════════════
+async function enviarOTP(pedidoNum, motoData) {
+  try {
+    const r = await fetch('php/user-entrega-otp.php', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ accion:'enviar_otp', pedido_num: pedidoNum })
+    });
+    const d = await r.json();
+
+    if (!d.ok) {
+      showBuscarError(d.error || 'Error al enviar código');
+      return;
+    }
+
+    // Fill order summary
+    document.getElementById('os-cliente').textContent = motoData.cliente_nombre || '—';
+    document.getElementById('os-moto').textContent    = (motoData.modelo || '') + ' ' + (motoData.color || '');
+    document.getElementById('os-vin').textContent     = motoData.vin_display || '—';
+    document.getElementById('os-punto').textContent   = motoData.punto_nombre || '—';
+    document.getElementById('tel-mask').textContent   = d.telefono_mask || motoData.telefono_mask || '****';
+
+    // Hint
+    const canal = d.sms_sent ? 'SMS' : (d.email_sent ? 'correo electrónico' : 'tu número registrado');
+    document.getElementById('otp-hint-text').innerHTML =
+      `Hemos enviado un código de 6 dígitos por <strong>${canal}</strong> al número <strong>${d.telefono_mask || motoData.telefono_mask || '****'}</strong>`;
+
+    goStep(2);
+    clearOTPInputs();
+    startResendTimer(60);
+
+  } catch {
+    showBuscarError('Error al enviar código OTP. Intenta de nuevo.');
+  }
+}
+
+async function reenviarOTP() {
+  if (!currentPedido) return;
+  document.getElementById('link-reenviar').style.opacity = '.5';
+  await enviarOTP(currentPedido.num, currentPedido.data);
+  document.getElementById('link-reenviar').style.opacity = '1';
+  showToast('Código reenviado', 'success');
+}
+
+function startResendTimer(seconds) {
+  clearInterval(resendCountdown);
+  const link  = document.getElementById('link-reenviar');
+  const timer = document.getElementById('resend-timer');
+  link.style.display  = 'none';
+  timer.style.display = 'inline';
+  let s = seconds;
+  timer.textContent = `Reenviar en ${s}s`;
+  resendCountdown = setInterval(() => {
+    s--;
+    if (s <= 0) {
+      clearInterval(resendCountdown);
+      link.style.display  = 'inline';
+      timer.style.display = 'none';
+    } else {
+      timer.textContent = `Reenviar en ${s}s`;
+    }
+  }, 1000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OTP INPUT HANDLING
+// ═══════════════════════════════════════════════════════════════════════════════
+function moveOTP(input) {
+  const val = input.value.replace(/[^0-9]/g, '');
+  input.value = val.slice(-1);
+  input.classList.toggle('filled', !!input.value);
+
+  if (input.value && parseInt(input.dataset.idx) < 5) {
+    const nextIdx = parseInt(input.dataset.idx) + 1;
+    document.querySelector(`.otp-digit[data-idx="${nextIdx}"]`)?.focus();
+  }
+  checkOTPComplete();
+}
+
+function backOTP(e, input) {
+  if (e.key === 'Backspace' && !input.value && parseInt(input.dataset.idx) > 0) {
+    const prevIdx = parseInt(input.dataset.idx) - 1;
+    const prev = document.querySelector(`.otp-digit[data-idx="${prevIdx}"]`);
+    if (prev) { prev.value = ''; prev.classList.remove('filled'); prev.focus(); }
+    checkOTPComplete();
+  }
+}
+
+function checkOTPComplete() {
+  const digits  = [...document.querySelectorAll('.otp-digit')];
+  const complete = digits.every(d => d.value.length === 1);
+  document.getElementById('btn-verificar').disabled = !complete;
+}
+
+function clearOTPInputs() {
+  document.querySelectorAll('.otp-digit').forEach(d => { d.value = ''; d.classList.remove('filled'); });
+  document.getElementById('btn-verificar').disabled = true;
+  document.getElementById('otp-error').style.display = 'none';
+}
+
+function getOTPValue() {
+  return [...document.querySelectorAll('.otp-digit')].map(d => d.value).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VERIFICAR OTP
+// ═══════════════════════════════════════════════════════════════════════════════
+async function verificarOTP() {
+  if (!currentPedido) return;
+
+  const otp   = getOTPValue();
+  const btn   = document.getElementById('btn-verificar');
+  const errEl = document.getElementById('otp-error');
+
+  if (otp.length !== 6) { showOTPError('Ingresa los 6 dígitos'); return; }
+
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span> Verificando...';
+
+  try {
+    const r = await fetch('php/user-entrega-otp.php', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ accion:'verificar', pedido_num: currentPedido.num, otp })
+    });
+    const d = await r.json();
+
+    if (!d.ok) {
+      showOTPError(d.error || 'Código incorrecto');
+      // Shake animation
+      document.getElementById('otp-inputs').style.animation = 'shake .4s ease';
+      setTimeout(() => { document.getElementById('otp-inputs').style.animation = ''; }, 400);
+      return;
+    }
+
+    clearInterval(resendCountdown);
+    showSuccessStep(d.data);
+
+  } catch {
+    showOTPError('Error de conexión. Intenta de nuevo.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar entrega';
+  }
+}
+
+function showOTPError(msg) {
+  const el = document.getElementById('otp-error');
+  el.textContent = '❌ ' + msg;
+  el.style.display = 'block';
+}
+
+function showSuccessStep(data) {
+  const detailEl = document.getElementById('success-details');
+  detailEl.innerHTML = `
+    <p>👤 <strong>Cliente:</strong> ${esc(data.cliente_nombre || '—')}</p>
+    <p>🏍️ <strong>Moto:</strong> ${esc((data.modelo||'') + ' ' + (data.color||''))}</p>
+    <p>📍 <strong>Punto:</strong> ${esc(data.punto_nombre || '—')}</p>
+    <p>📅 <strong>Fecha de entrega:</strong> ${esc(data.fecha_entrega || new Date().toLocaleDateString('es-MX'))}</p>
+  `;
+  goStep(3); // Go to client checklist (not final step)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CLIENT CHECKLIST
+// ═══════════════════════════════════════════════════════════════════════════════
+// Enable continue button when all items checked
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('cl-client-item')) {
+    const all = document.querySelectorAll('.cl-client-item');
+    const checked = [...all].every(cb => cb.checked);
+    document.getElementById('btn-checklist-continuar').disabled = !checked;
+  }
+});
+
+async function saveClientChecklist() {
+  const items = {};
+  document.querySelectorAll('.cl-client-item').forEach(cb => {
+    items[cb.dataset.key] = cb.checked;
+  });
+
+  try {
+    const r = await fetch('php/cliente-acta.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ accion: 'checklist', pedido_num: currentPedido, items })
+    });
+    const d = await r.json();
+    if (d.ok && d.completado) {
+      goStep(4); // Go to Acta signing
+    } else {
+      showToast(d.message || 'Faltan items', 'warning');
+    }
+  } catch(e) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACTA SIGNING
+// ═══════════════════════════════════════════════════════════════════════════════
+async function firmarActa() {
+  const btn = document.getElementById('btn-firmar-acta');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span> Firmando...';
+
+  try {
+    const r = await fetch('php/cliente-acta.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ accion: 'firmar', pedido_num: currentPedido })
+    });
+    const d = await r.json();
+
+    if (d.ok && d.firmada) {
+      // Show PDF download link in success step
+      const pdfLink = d.pdf_url || '';
+      document.getElementById('success-details').innerHTML += `
+        <div style="margin-top:12px;text-align:center;">
+          <a href="${pdfLink}" target="_blank"
+            style="display:inline-block;padding:12px 24px;background:var(--vka-blue);color:#fff;border-radius:10px;font-weight:700;text-decoration:none;font-size:14px;">
+            📄 Descargar Acta de Entrega (PDF)
+          </a>
+        </div>`;
+      goStep(5); // Go to final success
+    } else {
+      showToast(d.error || 'Error al firmar', 'error');
+      btn.disabled = false;
+      btn.textContent = '✍️ Firmar Acta de Entrega';
+    }
+  } catch(e) {
+    showToast('Error de conexión', 'error');
+    btn.disabled = false;
+    btn.textContent = '✍️ Firmar Acta de Entrega';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════════
+function goStep(stepNum) {
+  // Steps content
+  [1,2,3,4,5].forEach(n => {
+    document.getElementById('step-' + n)?.classList.toggle('active', n === stepNum);
+  });
+  // Steps indicator
+  [1,2,3,4,5].forEach(n => {
+    const el = document.getElementById('step-ind-' + n);
+    if (!el) return;
+    el.classList.remove('active', 'done');
+    if (n < stepNum)      el.classList.add('done');
+    else if (n === stepNum) el.classList.add('active');
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════════════
+function showToast(msg, type='') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// OTP shake animation
+const style = document.createElement('style');
+style.textContent = `@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-6px)}
+  80%{transform:translateX(6px)}
+}`;
+document.head.appendChild(style);
+</script>
+</body>
+</html>
