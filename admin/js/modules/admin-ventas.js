@@ -296,7 +296,16 @@ window.AD_ventas = (function(){
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     html += fRow('Modelo', r.modelo||'—');
     html += fRow('Color', r.color||'—');
-    html += fRow('Tipo de pago', '<span class="ad-badge blue" style="font-size:11px;">'+(r.tipo||'—')+'</span>');
+    var tipoMap = {
+      'contado': {label:'Contado · Tarjeta', color:'green'},
+      'spei':    {label:'Contado · SPEI',    color:'green'},
+      'oxxo':    {label:'Contado · OXXO',    color:'green'},
+      'msi':     {label:'MSI · Tarjeta',     color:'blue'},
+      'enganche':{label:'Crédito · Enganche', color:'yellow'},
+      'credito': {label:'Crédito',            color:'yellow'}
+    };
+    var tm = tipoMap[(r.tipo||'').toLowerCase()] || {label:r.tipo||'—', color:'blue'};
+    html += fRow('Tipo de pago', '<span class="ad-badge '+tm.color+'" style="font-size:11px;">'+tm.label+'</span>');
     html += fRow('Monto', '<span style="font-size:15px;font-weight:800;">'+ADApp.money(r.monto)+'</span>');
     html += fRow('Fecha', r.fecha ? r.fecha.substring(0,10) : '—');
     html += '</div>';
