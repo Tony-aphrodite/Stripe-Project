@@ -15,7 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // ── Central config ───────────────────────────────────────────────────────────
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/master-bootstrap.php';
+voltikaEnsureSchema();
 
 // ── Request ───────────────────────────────────────────────────────────────────
 $json = json_decode(file_get_contents('php://input'), true);
