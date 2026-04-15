@@ -48,11 +48,14 @@ try {
     // 2) Puntos Voltika — only if the column exists on the table
     try {
         $cols = $pdo->query("SHOW COLUMNS FROM puntos_voltika")->fetchAll(PDO::FETCH_COLUMN);
-        if (in_array('codigo_referido', $cols, true)) {
+        // Support both column names: codigo_venta (current) and codigo_referido (legacy)
+        $colName = in_array('codigo_venta', $cols, true) ? 'codigo_venta'
+                 : (in_array('codigo_referido', $cols, true) ? 'codigo_referido' : null);
+        if ($colName) {
             $stmt = $pdo->prepare("
-                SELECT id, slug, nombre, tipo, codigo_referido
+                SELECT id, slug, nombre, tipo, $colName AS codigo
                 FROM puntos_voltika
-                WHERE activo = 1 AND UPPER(codigo_referido) = ?
+                WHERE activo = 1 AND UPPER($colName) = ?
                 LIMIT 1
             ");
             $stmt->execute([$codigo]);
@@ -65,7 +68,7 @@ try {
                     'nombre'      => $row['nombre'],
                     'punto_slug'  => $row['slug'] ?: ('punto-' . $row['id']),
                     'punto_tipo'  => $row['tipo'] ?: 'entrega',
-                    'codigo'      => $row['codigo_referido'],
+                    'codigo'      => $row['codigo'],
                 ], JSON_UNESCAPED_UNICODE);
                 exit;
             }

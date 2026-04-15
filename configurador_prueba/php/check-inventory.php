@@ -26,8 +26,9 @@ try {
     // If a punto referido code is provided, include its consignación inventory
     $referido = trim($_GET['referido'] ?? '');
     if ($referido) {
-        $rStmt = $pdo->prepare("SELECT id FROM puntos_voltika WHERE UPPER(codigo_referido) = UPPER(?) AND activo = 1 LIMIT 1");
-        $rStmt->execute([$referido]);
+        // Try codigo_venta first, then codigo_referido as fallback
+        $rStmt = $pdo->prepare("SELECT id FROM puntos_voltika WHERE (UPPER(codigo_venta) = UPPER(?) OR UPPER(codigo_referido) = UPPER(?)) AND activo = 1 LIMIT 1");
+        $rStmt->execute([$referido, $referido]);
         $puntoId = (int)($rStmt->fetchColumn() ?: 0);
     }
 
