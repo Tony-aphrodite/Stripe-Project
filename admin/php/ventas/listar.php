@@ -81,7 +81,8 @@ try {
         if (!$where) continue;
 
         $sql = "SELECT s.monto_semanal, s.plazo_semanas, s.plazo_meses,
-                       s.precio_contado, s.nombre, s.email, s.telefono
+                       s.precio_contado, s.nombre, s.email, s.telefono,
+                       s.modelo AS sc_modelo, s.color AS sc_color
                 FROM subscripciones_credito s
                 WHERE (" . implode(' OR ', $where) . ")
                 ORDER BY s.id DESC LIMIT 1";
@@ -102,9 +103,11 @@ try {
                 'monto_financiado' => $financiado,
             ];
             // Backfill empty client info from subscripciones_credito
-            if (empty($row['nombre']) && !empty($cr['nombre']))     $row['nombre']   = $cr['nombre'];
-            if (empty($row['email']) && !empty($cr['email']))       $row['email']    = $cr['email'];
-            if (empty($row['telefono']) && !empty($cr['telefono'])) $row['telefono'] = $cr['telefono'];
+            if (empty($row['nombre']) && !empty($cr['nombre']))       $row['nombre']   = $cr['nombre'];
+            if (empty($row['email']) && !empty($cr['email']))         $row['email']    = $cr['email'];
+            if (empty($row['telefono']) && !empty($cr['telefono']))   $row['telefono'] = $cr['telefono'];
+            if (empty($row['modelo']) && !empty($cr['sc_modelo']))    $row['modelo']   = $cr['sc_modelo'];
+            if (empty($row['color']) && !empty($cr['sc_color']))      $row['color']    = $cr['sc_color'];
         }
     }
     unset($row);
@@ -210,6 +213,98 @@ try {
     }
 } catch (Throwable $e) {
     // Table may not exist yet — fine, Plan B creates it on first error.
+}
+
+// ── Backfill empty fields from Stripe PaymentIntent metadata ────────────
+// For orders where nombre/telefono/modelo are missing (incomplete checkout),
+// retrieve the data from Stripe so the admin can contact the customer.
+try {
+    $needsBackfill = array_filter($rows, function($r) {
+        return !empty($r['stripe_pi'])
+            && str_starts_with($r['stripe_pi'], 'pi_')
+            && (empty($r['nombre']) || empty($r['telefono']) || empty($r['modelo']));
+    });
+    if ($needsBackfill) {
+        $stripePath = __DIR__ . '/../../../configurador_prueba/php/vendor/autoload.php';
+        if (file_exists($stripePath)) {
+            require_once $stripePath;
+            require_once __DIR__ . '/../../../configurador_prueba/php/config.php';
+            if (defined('STRIPE_SECRET_KEY') && STRIPE_SECRET_KEY) {
+                \Stripe\Stripe::setApiKey(STRIPE_SECRET_KEY);
+                foreach ($rows as &$row) {
+                    if (empty($row['stripe_pi']) || !str_starts_with($row['stripe_pi'], 'pi_')) continue;
+                    if (!empty($row['nombre']) && !empty($row['telefono']) && !empty($row['modelo'])) continue;
+                    try {
+                        $pi = \Stripe\PaymentIntent::retrieve($row['stripe_pi']);
+                        $meta = $pi->metadata ? $pi->metadata->toArray() : [];
+                        $custName = '';
+                        $custPhone = '';
+                        $custEmail = '';
+                        if ($pi->customer) {
+                            try {
+                                $cust = \Stripe\Customer::retrieve($pi->customer);
+                                $custName = $cust->name ?? '';
+                                $custPhone = $cust->phone ?? '';
+                                $custEmail = $cust->email ?? '';
+                            } catch (Throwable $e2) {}
+                        }
+                        if (empty($row['nombre']) && ($meta['nombre'] ?? $custName))
+                            $row['nombre'] = $meta['nombre'] ?: $custName;
+                        if (empty($row['email']) && $custEmail)
+                            $row['email'] = $custEmail;
+                        if (empty($row['telefono']) && ($meta['telefono'] ?? $custPhone))
+                            $row['telefono'] = $meta['telefono'] ?: $custPhone;
+                        if (empty($row['modelo']) && !empty($meta['modelo']))
+                            $row['modelo'] = $meta['modelo'];
+                        if (empty($row['color']) && !empty($meta['color']))
+                            $row['color'] = $meta['color'];
+                        // Parse modelo from PI description (format: "Voltika - M05")
+                        if (empty($row['modelo']) && !empty($pi->description)) {
+                            $desc = $pi->description;
+                            if (preg_match('/Voltika\s*-\s*(.+)/i', $desc, $dm)) {
+                                $parsed = trim($dm[1]);
+                                // Remove suffixes like "OXXO 1/2"
+                                $parsed = preg_replace('/\s*(OXXO|SPEI)\s*\d*\/?\d*$/i', '', $parsed);
+                                $parsed = trim($parsed);
+                                if ($parsed) $row['modelo'] = $parsed;
+                            }
+                        }
+                    } catch (Throwable $e) {
+                        // Stripe retrieval failed — skip silently
+                    }
+                }
+                unset($row);
+            }
+        }
+    }
+} catch (Throwable $e) {
+    error_log('ventas/listar stripe backfill: ' . $e->getMessage());
+}
+
+// ── Second pass: backfill modelo/color from subscripciones_credito ───────
+// After Stripe backfill, telefono/email are now available for matching.
+try {
+    foreach ($rows as &$row) {
+        if (!in_array($row['tipo'] ?? '', ['enganche', 'credito'], true)) continue;
+        if (!empty($row['modelo']) && !empty($row['color'])) continue;
+        $tel = $row['telefono'] ?? '';
+        $em  = $row['email'] ?? '';
+        $where2 = [];
+        $params2 = [];
+        if ($tel) { $where2[] = 's.telefono = ?'; $params2[] = $tel; }
+        if ($em)  { $where2[] = 's.email = ?';    $params2[] = $em; }
+        if (!$where2) continue;
+        $sc2 = $pdo->prepare("SELECT s.modelo, s.color FROM subscripciones_credito s WHERE (" . implode(' OR ', $where2) . ") AND (s.modelo IS NOT NULL AND s.modelo <> '') ORDER BY s.id DESC LIMIT 1");
+        $sc2->execute($params2);
+        $cr2 = $sc2->fetch(PDO::FETCH_ASSOC);
+        if ($cr2) {
+            if (empty($row['modelo']) && !empty($cr2['modelo'])) $row['modelo'] = $cr2['modelo'];
+            if (empty($row['color']) && !empty($cr2['color']))   $row['color']  = $cr2['color'];
+        }
+    }
+    unset($row);
+} catch (Throwable $e) {
+    error_log('ventas/listar sc backfill pass2: ' . $e->getMessage());
 }
 
 // Sort combined rows by fecha desc

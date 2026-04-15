@@ -261,6 +261,7 @@ try {
         'payment_method_types' => $paymentMethodTypes,
         'description'          => 'Voltika - ' . ($customer['modelo'] ?? 'Moto electrica'),
         'metadata'             => [
+            'nombre'   => $customer['nombre']    ?? '',
             'modelo'   => $customer['modelo']   ?? '',
             'color'    => $customer['color']     ?? '',
             'ciudad'   => $customer['ciudad']    ?? '',
