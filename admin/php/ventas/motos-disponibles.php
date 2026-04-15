@@ -15,9 +15,17 @@ $where  = [
     "(m.cliente_email IS NULL OR m.cliente_email = '')",
     "m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'",
     "m.estado IN ('recibida','lista_para_entrega')",
-    "(m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0)",
 ];
 $params = [];
+
+// Include CEDIS stock + optional punto consignación stock
+$puntoId = (int)($_GET['punto_id'] ?? 0);
+if ($puntoId > 0) {
+    $where[] = "((m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0) OR (m.punto_voltika_id = ? AND m.tipo_asignacion = 'consignacion'))";
+    $params[] = $puntoId;
+} else {
+    $where[] = "(m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0)";
+}
 
 if (!empty($_GET['modelo'])) {
     $where[]  = "m.modelo = ?";

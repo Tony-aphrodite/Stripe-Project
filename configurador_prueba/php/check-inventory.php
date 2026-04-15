@@ -21,8 +21,17 @@ try {
     $pdo    = getDB();
     $modelo = trim($_GET['modelo'] ?? '');
     $color  = trim($_GET['color']  ?? '');
+    $puntoId = 0;
 
-    $rows = contarDisponibles($pdo, $modelo, $color);
+    // If a punto referido code is provided, include its consignación inventory
+    $referido = trim($_GET['referido'] ?? '');
+    if ($referido) {
+        $rStmt = $pdo->prepare("SELECT id FROM puntos_voltika WHERE UPPER(codigo_referido) = UPPER(?) AND activo = 1 LIMIT 1");
+        $rStmt->execute([$referido]);
+        $puntoId = (int)($rStmt->fetchColumn() ?: 0);
+    }
+
+    $rows = contarDisponibles($pdo, $modelo, $color, $puntoId);
 
     // Build a convenient lookup map: modelo → color → count
     $map = [];

@@ -14,7 +14,12 @@ var Paso2 = {
         var modelo = app.getModelo(app.state.modeloSeleccionado);
         var base = window.VK_BASE_PATH || '';
         if (modelo) {
-            jQuery.getJSON(base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre))
+            var invUrl = base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre);
+            var existingRef = (app.state.codigoReferido || '').trim();
+            if (existingRef && app.state.referidoData && app.state.referidoData.tipo === 'punto') {
+                invUrl += '&referido=' + encodeURIComponent(existingRef);
+            }
+            jQuery.getJSON(invUrl)
             .done(function(r) {
                 if (r.ok && r.mapa && r.mapa[modelo.nombre]) {
                     self._invMap = r.mapa[modelo.nombre];
@@ -281,6 +286,10 @@ var Paso2 = {
                         self._setReferidoFeedback('ok', label);
                         self.app.state.referidoData = data;
                         self.app.state.codigoReferido = val;
+                        // Re-fetch inventory including punto's consignación stock
+                        if (data.tipo === 'punto') {
+                            self._refetchInventory(val);
+                        }
                     } else {
                         self._setReferidoFeedback('error', (data && data.error) || 'Código no válido');
                         self.app.state.referidoData = null;
@@ -308,6 +317,24 @@ var Paso2 = {
             timeout: 8000,
             success: function(data) { cb(data || {ok:false}); },
             error:   function()     { cb({ok:false, error:'Error de red'}); }
+        });
+    },
+
+    _refetchInventory: function(referidoCodigo) {
+        var self = this;
+        var app = this.app;
+        var modelo = app.getModelo(app.state.modeloSeleccionado);
+        if (!modelo) return;
+        var base = window.VK_BASE_PATH || '';
+        var url = base + 'php/check-inventory.php?modelo=' + encodeURIComponent(modelo.nombre)
+                + '&referido=' + encodeURIComponent(referidoCodigo);
+        jQuery.getJSON(url).done(function(r) {
+            if (r.ok && r.mapa && r.mapa[modelo.nombre]) {
+                self._invMap = r.mapa[modelo.nombre];
+                var color = app.state.colorSeleccionado || modelo.colorDefault;
+                app.state._invColorTotal = self._invMap[color] || 0;
+                app.state._invColorEnStock = app.state._invColorTotal > 0;
+            }
         });
     }
 };
