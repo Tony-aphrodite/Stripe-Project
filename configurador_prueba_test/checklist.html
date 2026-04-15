@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checklist — Voltika</title>
+<link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="css/admin.css">
+<style>
+html,body { overflow-x: hidden; max-width: 100%; }
+
+.cl-header {
+  background: linear-gradient(135deg,#1a3a5c,#039fe1);
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  color: #fff; position: sticky; top: 0; z-index: 100;
+}
+.cl-header img { height: 22px; }
+.cl-header h1 { font-size: 14px; font-weight: 800; flex: 1; }
+.cl-back { color: rgba(255,255,255,.8); text-decoration: none; font-size: 13px; }
+
+/* Type selector */
+.cl-type-bar {
+  display: flex; background: #fff; border-bottom: 2px solid var(--vka-border);
+  overflow-x: auto; scrollbar-width: none;
+}
+.cl-type-bar::-webkit-scrollbar { display: none; }
+.cl-type-tab {
+  flex: 1; text-align: center; padding: 12px 8px; font-size: 12px;
+  font-weight: 700; color: var(--vka-grey); cursor: pointer;
+  border-bottom: 3px solid transparent; white-space: nowrap;
+  transition: color .2s, border-color .2s;
+}
+.cl-type-tab.active { color: var(--vka-blue); border-bottom-color: var(--vka-blue); }
+
+/* Phase indicator */
+.cl-phases {
+  display: flex; align-items: center; padding: 12px 16px; background: #f8fafc;
+  border-bottom: 1px solid var(--vka-border); gap: 4px; overflow-x: auto;
+}
+.cl-phase-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; flex-shrink: 0;
+  border: 2px solid var(--vka-border); background: #fff; color: var(--vka-grey);
+}
+.cl-phase-dot.done { background: var(--vka-blue); border-color: var(--vka-blue); color: #fff; }
+.cl-phase-dot.active { background: var(--vka-blue-dark); border-color: var(--vka-blue-dark); color: #fff; box-shadow: 0 0 0 3px rgba(3,159,225,.25); }
+.cl-phase-line { flex: 1; height: 2px; background: var(--vka-border); min-width: 12px; }
+.cl-phase-line.done { background: var(--vka-blue); }
+.cl-phase-label { font-size: 9px; color: var(--vka-grey); text-align: center; margin-top: 2px; }
+
+/* Content */
+.cl-content { padding: 12px; max-width: 600px; margin: 0 auto; }
+
+/* Section */
+.cl-section {
+  background: #fff; border-radius: 10px; border: 1.5px solid var(--vka-border);
+  margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+.cl-section-head {
+  padding: 10px 14px; background: var(--vka-blue-soft);
+  font-size: 12px; font-weight: 800; color: var(--vka-blue-dark);
+  text-transform: uppercase; letter-spacing: .5px;
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; user-select: none;
+}
+.cl-section-head .cl-section-count {
+  margin-left: auto; font-size: 11px; font-weight: 600;
+  color: var(--vka-blue); background: var(--vka-blue-light);
+  padding: 2px 8px; border-radius: 20px;
+}
+.cl-section-body { padding: 8px 14px 12px; }
+
+/* Check item */
+.cl-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid #f3f4f6;
+}
+.cl-item:last-child { border-bottom: none; }
+.cl-item input[type="checkbox"] {
+  width: 20px; height: 20px; margin-top: 1px;
+  accent-color: var(--vka-blue); cursor: pointer; flex-shrink: 0;
+}
+.cl-item label { font-size: 13px; color: #333; cursor: pointer; flex: 1; line-height: 1.4; }
+.cl-item.critical label { color: #C62828; font-weight: 600; }
+
+/* Photo upload */
+.cl-photo-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px; margin-top: 8px;
+}
+.cl-photo-slot {
+  aspect-ratio: 1; border: 2px dashed var(--vka-border); border-radius: 8px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 10px; color: var(--vka-grey); text-align: center;
+  overflow: hidden; position: relative; background: #fafbfc;
+}
+.cl-photo-slot.has-photo { border-style: solid; border-color: var(--vka-green); }
+.cl-photo-slot img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+}
+.cl-photo-slot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* Declaration box */
+.cl-declaration {
+  background: #FFF8E1; border: 1.5px solid #FFD54F; border-radius: 10px;
+  padding: 14px; margin: 12px 0; font-size: 12px; color: #5D4037; line-height: 1.7;
+}
+
+/* Torque badge */
+.cl-torque {
+  display: inline-block; background: #EDE9FE; color: #5B21B6;
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  margin-left: 6px;
+}
+
+/* Progress bar */
+.cl-progress-wrap { padding: 0 16px 12px; }
+.cl-progress-bar {
+  height: 6px; background: #e5e7eb; border-radius: 20px; overflow: hidden;
+}
+.cl-progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--vka-blue-dark), var(--vka-blue));
+  border-radius: 20px; transition: width .4s;
+}
+.cl-progress-text {
+  font-size: 11px; color: var(--vka-grey); text-align: right; margin-top: 4px;
+}
+
+/* Action buttons */
+.cl-actions { padding: 12px 16px 24px; max-width: 600px; margin: 0 auto; }
+.cl-btn-save {
+  width: 100%; padding: 14px; border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 800; cursor: pointer; margin-bottom: 8px;
+  letter-spacing: .5px;
+}
+.cl-btn-save.primary { background: var(--vka-blue); color: #fff; }
+.cl-btn-save.success { background: var(--vka-green); color: #fff; }
+.cl-btn-save.ghost { background: transparent; color: var(--vka-grey); border: 1.5px solid var(--vka-border); }
+.cl-btn-save:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Locked overlay */
+.cl-locked {
+  background: #d1fae5; border: 2px solid #10b981; border-radius: 10px;
+  padding: 20px; text-align: center; margin: 16px;
+}
+.cl-locked-icon { font-size: 40px; margin-bottom: 8px; }
+.cl-locked-title { font-size: 18px; font-weight: 800; color: #065f46; }
+.cl-locked-msg { font-size: 13px; color: #555; margin-top: 6px; }
+
+/* Legal certificate */
+.cl-legal {
+  background: #fff; border: 2px solid var(--vka-blue-dark); border-radius: 10px;
+  padding: 16px; margin-bottom: 12px; font-size: 12px; color: #333; line-height: 1.7;
+  box-shadow: 0 2px 8px rgba(26,58,92,.1);
+}
+.cl-legal h4 {
+  font-size: 15px; font-weight: 900; color: var(--vka-blue-dark);
+  margin-bottom: 8px; text-align: center;
+}
+.cl-legal-clause {
+  background: #f8fafc; border-left: 3px solid var(--vka-blue);
+  padding: 10px 12px; margin: 8px 0; border-radius: 0 6px 6px 0;
+}
+.cl-legal table td { font-size: 12px; }
+
+@media (max-width: 480px) {
+  .cl-content { padding: 8px; }
+  .cl-section-body { padding: 6px 10px 10px; }
+  .cl-photo-grid { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body class="admin-body">
+
+<!-- Header -->
+<div class="cl-header">
+  <a href="dealer-panel.html" class="cl-back">← Panel</a>
+  <img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'">
+  <h1 id="cl-title">Checklist</h1>
+</div>
+
+<!-- Type selector -->
+<div class="cl-type-bar" id="cl-type-bar">
+  <div class="cl-type-tab active" onclick="switchType('origen')">📦 Origen</div>
+  <div class="cl-type-tab" onclick="switchType('ensamble')">⚙️ Ensamble</div>
+  <div class="cl-type-tab" onclick="switchType('entrega')">🏍️ Entrega</div>
+</div>
+
+<!-- Phase indicator (dynamic) -->
+<div class="cl-phases" id="cl-phases"></div>
+
+<!-- Progress -->
+<div class="cl-progress-wrap">
+  <div class="cl-progress-bar"><div class="cl-progress-fill" id="cl-progress-fill" style="width:0%"></div></div>
+  <div class="cl-progress-text" id="cl-progress-text">0 / 0</div>
+</div>
+
+<!-- Content -->
+<div class="cl-content" id="cl-content">
+  <div style="text-align:center;padding:40px;color:var(--vka-grey);">
+    <div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div>
+    <p style="margin-top:12px;">Cargando...</p>
+  </div>
+</div>
+
+<!-- Actions -->
+<div class="cl-actions" id="cl-actions"></div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let dealer = null;
+let motoId = null;
+let currentType = 'origen'; // 'origen' | 'ensamble' | 'entrega'
+let currentPhase = 'main';  // for ensamble/entrega: 'fase1','fase2',...
+let checklistData = null;
+let uploadedPhotos = {};
+let dashMotoCache = null;
+let readOnly = false; // true for punto dealers — view only, no editing
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHECKLIST DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+const ORIGEN_SECTIONS = [
+  { id: 'estructura', title: '1. Estructura Principal', items: [
+    { key: 'frame_completo', label: 'Frame completo' },
+    { key: 'chasis_sin_deformaciones', label: 'Chasis sin deformaciones' },
+    { key: 'soportes_estructurales', label: 'Soportes estructurales completos' },
+    { key: 'charola_trasera', label: 'Charola trasera instalada' },
+  ]},
+  { id: 'rodamiento', title: '2. Sistema de Rodamiento', items: [
+    { key: 'llanta_delantera', label: 'Llanta delantera' },
+    { key: 'llanta_trasera', label: 'Llanta trasera' },
+    { key: 'rines_sin_dano', label: 'Rines sin daño' },
+    { key: 'ejes_completos', label: 'Ejes completos' },
+  ]},
+  { id: 'direccion', title: '3. Dirección y Control', items: [
+    { key: 'manubrio', label: 'Manubrio' },
+    { key: 'soportes_completos', label: 'Soportes completos' },
+    { key: 'dashboard_incluido', label: 'Dashboard incluido' },
+    { key: 'controles_completos', label: 'Controles completos' },
+  ]},
+  { id: 'frenado', title: '4. Sistema de Frenado', items: [
+    { key: 'freno_delantero', label: 'Freno delantero completo' },
+    { key: 'freno_trasero', label: 'Freno trasero completo' },
+    { key: 'discos_sin_dano', label: 'Discos sin daño' },
+    { key: 'calipers_instalados', label: 'Calipers instalados' },
+    { key: 'lineas_completas', label: 'Líneas completas' },
+  ]},
+  { id: 'electrico', title: '5. Sistema Eléctrico', items: [
+    { key: 'cableado_completo', label: 'Cableado completo' },
+    { key: 'conectores_correctos', label: 'Conectores correctos' },
+    { key: 'controlador_instalado', label: 'Controlador instalado' },
+    { key: 'encendido_operativo', label: 'Encendido operativo' },
+  ]},
+  { id: 'motor', title: '6. Motor', items: [
+    { key: 'motor_instalado', label: 'Motor instalado' },
+    { key: 'motor_sin_dano', label: 'Motor sin daño' },
+    { key: 'motor_conexion', label: 'Conexión correcta' },
+  ]},
+  { id: 'baterias', title: '7. Baterías', items: [
+    { key: 'bateria_1', label: 'Batería 1' },
+    { key: 'bateria_2', label: 'Batería 2 (si aplica)' },
+    { key: 'baterias_sin_dano', label: 'Sin daño visible' },
+    { key: 'cargador_incluido', label: 'Cargador incluido' },
+  ]},
+  { id: 'accesorios', title: '8. Accesorios', items: [
+    { key: 'espejos', label: 'Espejos (2)' },
+    { key: 'tornilleria_completa', label: 'Tornillería completa' },
+    { key: 'birlos_completos', label: 'Birlos completos' },
+    { key: 'kit_herramientas', label: 'Kit herramientas' },
+  ]},
+  { id: 'complementos', title: '9. Complementos', items: [
+    { key: 'llaves_2', label: 'Llaves (2)' },
+    { key: 'manual_usuario', label: 'Manual usuario' },
+    { key: 'carnet_garantia', label: 'Carnet garantía' },
+  ]},
+  { id: 'val_electrica', title: '10. Validación Eléctrica (sin movimiento)', items: [
+    { key: 'sistema_enciende', label: 'Sistema enciende' },
+    { key: 'dashboard_funcional', label: 'Dashboard funcional' },
+    { key: 'indicador_bateria', label: 'Indicador batería' },
+    { key: 'luces_funcionando', label: 'Luces funcionando' },
+    { key: 'conectores_firmes', label: 'Conectores firmes' },
+    { key: 'cableado_sin_dano', label: 'Cableado sin daño' },
+  ]},
+  { id: 'artes', title: '11. Artes Decorativos y Acabados', items: [
+    { key: 'calcomanias_correctas', label: 'Calcomanías correctas' },
+    { key: 'alineacion_correcta', label: 'Alineación correcta' },
+    { key: 'sin_burbujas', label: 'Sin burbujas' },
+    { key: 'sin_desprendimientos', label: 'Sin desprendimientos' },
+    { key: 'sin_rayones', label: 'Sin rayones visibles' },
+    { key: 'acabados_correctos', label: 'Acabados estéticos correctos' },
+  ]},
+  { id: 'empaque', title: '12. Empaque', items: [
+    { key: 'embalaje_correcto', label: 'Embalaje correcto' },
+    { key: 'protecciones_colocadas', label: 'Protecciones colocadas' },
+    { key: 'caja_sin_dano', label: 'Caja sin daño' },
+    { key: 'sellos_colocados', label: 'Sellos colocados' },
+  ]},
+  { id: 'declaracion', title: '14-15. Declaración y Validación', items: [
+    { key: 'declaracion_aceptada', label: 'Declaro que la unidad fue revisada conforme a estándares Voltika', critical: true },
+    { key: 'validacion_final', label: 'Confirmo información correcta', critical: true },
+  ]},
+];
+
+const ORIGEN_PHOTOS = [
+  'Unidad completa','VIN','Tablero encendido','Batería',
+  'Contenido previo cierre','Caja cerrada','Sellos','Detalle calcomanías'
+];
+
+const ENSAMBLE_PHASES = {
+  fase1: {
+    title: 'Fase 1: Inicio de Ensamble',
+    sections: [
+      { id: 'confirmacion', title: 'Confirmación previa', items: [
+        { key: 'recepcion_validada', label: 'Recepción validada (caja + sellos)' },
+        { key: 'primera_apertura', label: 'Primera apertura realizada en este punto' },
+        { key: 'area_segura', label: 'Área de trabajo segura' },
+        { key: 'herramientas_disponibles', label: 'Herramientas disponibles' },
+        { key: 'equipo_proteccion', label: 'Equipo de protección utilizado' },
+      ]},
+      { id: 'decl1', title: 'Declaración', items: [
+        { key: 'declaracion_fase1', label: 'Confirmo que la unidad fue abierta por primera vez en este punto', critical: true },
+      ]},
+    ],
+    photos: ['Caja abierta por primera vez','Contenido general visible','Moto dentro de embalaje'],
+  },
+  fase2: {
+    title: 'Fase 2: Durante Ensamble',
+    sections: [
+      { id: 'desembalaje', title: '1. Desembalaje', items: [
+        { key: 'componentes_sin_dano', label: 'Componentes retirados sin daño' },
+        { key: 'accesorios_separados', label: 'Accesorios separados correctamente' },
+        { key: 'llanta_identificada', label: 'Llanta delantera identificada' },
+      ]},
+      { id: 'base', title: '2. Base y Asiento', items: [
+        { key: 'base_instalada', label: 'Base instalada correctamente' },
+        { key: 'asiento_instalado', label: 'Asiento instalado' },
+        { key: 'tornilleria_base', label: 'Tornillería completa' },
+        { key: 'torque_base_25', label: 'Torque aplicado', torque: '25 N·m' },
+      ]},
+      { id: 'manubrio', title: '3. Manubrio', items: [
+        { key: 'manubrio_instalado', label: 'Manubrio instalado' },
+        { key: 'cableado_sin_tension', label: 'Cableado sin tensión' },
+        { key: 'alineacion_manubrio', label: 'Alineación correcta' },
+        { key: 'torque_manubrio_25', label: 'Torque aplicado', torque: '25 N·m' },
+      ]},
+      { id: 'llanta', title: '4. Llanta Delantera', items: [
+        { key: 'buje_corto', label: 'Buje corto instalado' },
+        { key: 'buje_largo', label: 'Buje largo instalado' },
+        { key: 'disco_alineado', label: 'Disco alineado en cáliper' },
+        { key: 'eje_instalado', label: 'Eje instalado' },
+        { key: 'torque_llanta_50', label: 'Torque aplicado', torque: '50 N·m' },
+      ]},
+      { id: 'espejos', title: '5. Espejos', items: [
+        { key: 'espejo_izq', label: 'Espejo izquierdo instalado' },
+        { key: 'espejo_der', label: 'Espejo derecho instalado' },
+        { key: 'roscas_ok', label: 'Roscas en buen estado' },
+        { key: 'ajuste_espejos', label: 'Ajuste correcto' },
+      ]},
+    ],
+    photos: [],
+  },
+  fase3: {
+    title: 'Fase 3: Validación Final (Liberación)',
+    critical: true,
+    sections: [
+      { id: 'frenos', title: '1. Frenos', items: [
+        { key: 'freno_del_funcional', label: 'Freno delantero funcional', critical: true },
+        { key: 'freno_tras_funcional', label: 'Freno trasero funcional', critical: true },
+        { key: 'luz_freno_operativa', label: 'Luz de freno operativa', critical: true },
+      ]},
+      { id: 'iluminacion', title: '2. Iluminación', items: [
+        { key: 'direccionales_ok', label: 'Direccionales funcionando' },
+        { key: 'intermitentes_ok', label: 'Intermitentes funcionando' },
+        { key: 'luz_alta', label: 'Luz alta' },
+        { key: 'luz_baja', label: 'Luz baja' },
+      ]},
+      { id: 'electrico3', title: '3. Sistema Eléctrico', items: [
+        { key: 'claxon_ok', label: 'Claxon funcionando' },
+        { key: 'dashboard_ok', label: 'Dashboard funcional' },
+        { key: 'bateria_cargando', label: 'Batería cargando' },
+        { key: 'puerto_carga_ok', label: 'Puerto de carga funcionando' },
+      ]},
+      { id: 'motor3', title: '4. Motor y Modos', items: [
+        { key: 'modo_eco', label: 'Modo Eco' },
+        { key: 'modo_drive', label: 'Modo Drive' },
+        { key: 'modo_sport', label: 'Modo Sport' },
+        { key: 'reversa_ok', label: 'Reversa' },
+      ]},
+      { id: 'acceso', title: '5. Acceso', items: [
+        { key: 'nfc_ok', label: 'NFC funcionando' },
+        { key: 'control_remoto_ok', label: 'Control remoto operativo' },
+        { key: 'llaves_funcionales', label: 'Llaves funcionales' },
+      ]},
+      { id: 'mecanica', title: '6. Validación Mecánica', items: [
+        { key: 'sin_ruidos', label: 'Sin ruidos anormales' },
+        { key: 'sin_interferencias', label: 'Sin interferencias mecánicas' },
+        { key: 'torques_verificados', label: 'Torques verificados' },
+      ]},
+      { id: 'decl3', title: 'Declaración Final', items: [
+        { key: 'declaracion_fase3', label: 'Confirmo ensamble correcto con componentes originales Voltika', critical: true },
+      ]},
+    ],
+    photos: ['Lado derecho','Lado izquierdo','VIN','Tablero encendido','Odómetro','Unidad completa'],
+  },
+};
+
+const ENTREGA_PHASES = {
+  fase1: {
+    title: 'Fase 1: Validación de Identidad',
+    icon: '🔐',
+    sections: [
+      { id: 'identidad', title: 'Verificación obligatoria', items: [
+        { key: 'ine_presentada', label: 'INE / identificación oficial presentada', critical: true },
+        { key: 'nombre_coincide', label: 'Nombre coincide con pedido', critical: true },
+        { key: 'foto_coincide', label: 'Fotografía coincide con persona presente', critical: true },
+        { key: 'datos_confirmados', label: 'Cliente confirma datos personales' },
+      ]},
+      { id: 'doble_val', title: 'Validación doble (crítico)', items: [
+        { key: 'ultimos4_telefono', label: 'Últimos 4 dígitos del teléfono coinciden', critical: true },
+        { key: 'modelo_confirmado', label: 'Cliente confirma modelo comprado' },
+        { key: 'forma_pago_confirmada', label: 'Cliente confirma forma de pago' },
+      ]},
+    ],
+    photos: ['Cliente con la moto','INE frontal','Selfie cliente con moto'],
+    rule: 'Si no coincide identidad → NO ENTREGAR',
+  },
+  fase2: {
+    title: 'Fase 2: Validación de Pago',
+    icon: '💳',
+    sections: [
+      { id: 'pago', title: 'Confirmación de pago', items: [
+        { key: 'pago_confirmado', label: 'Pago confirmado en sistema', critical: true },
+        { key: 'enganche_validado', label: 'Enganche validado' },
+        { key: 'metodo_pago_registrado', label: 'Método de pago registrado' },
+        { key: 'domiciliacion_confirmada', label: 'Domiciliación confirmada (si aplica)' },
+      ]},
+    ],
+    photos: [],
+    rule: 'Si pago ≠ confirmado → BLOQUEAR ENTREGA',
+  },
+  fase3: {
+    title: 'Fase 3: Validación de Unidad',
+    icon: '🏍️',
+    sections: [
+      { id: 'unidad', title: 'Inspección de unidad', items: [
+        { key: 'vin_coincide', label: 'VIN coincide con pedido', critical: true },
+        { key: 'unidad_ensamblada', label: 'Unidad ensamblada y liberada' },
+        { key: 'estado_fisico_ok', label: 'Estado físico correcto' },
+        { key: 'sin_danos', label: 'Sin daños visibles' },
+        { key: 'unidad_completa', label: 'Unidad completa' },
+      ]},
+    ],
+    photos: ['Lado derecho','Lado izquierdo','VIN visible','Tablero encendido'],
+  },
+  fase4: {
+    title: 'Fase 4: Aceptación del Cliente',
+    icon: '🔐',
+    sections: [
+      { id: 'otp', title: 'Validación OTP', items: [
+        { key: 'otp_enviado', label: 'Código OTP enviado al cliente' },
+        { key: 'otp_validado', label: 'OTP validado correctamente', critical: true },
+      ]},
+    ],
+    photos: [],
+    rule: 'Sin OTP validado → NO ENTREGA',
+  },
+  fase5: null, // Dynamically set based on tipo_acta — see FASE5_CREDITO / FASE5_CONTADO
+};
+
+// ── Fase 5 for CRÉDITO ──────────────────────────────────────────────────────
+const FASE5_CREDITO = {
+  title: 'Fase 5: Acta de Entrega — Crédito',
+  icon: '📜',
+  sections: [
+    { id: 'acta_declaraciones', title: 'Declaraciones del Cliente', items: [
+      { key: 'decl_identidad', label: 'Declaro ser titular del contrato de compraventa y/o crédito con Mtech Gears, S.A. de C.V. (Voltika)', critical: true },
+      { key: 'decl_validacion', label: 'He verificado que la motocicleta corresponde al modelo, color y VIN de mi pedido', critical: true },
+      { key: 'decl_condicion', label: 'La motocicleta se encuentra en buen estado físico, sin daños visibles, completa y funcional', critical: true },
+      { key: 'decl_componentes', label: 'Confirmo que recibí todos los componentes, accesorios, llaves, cargador, manual y documentación', critical: true },
+      { key: 'decl_funcionamiento', label: 'Se me mostró el funcionamiento básico de la unidad', critical: true },
+    ]},
+    { id: 'acta_aceptacion', title: 'Aceptación de Entrega', items: [
+      { key: 'acta_aceptada', label: 'Acepto la entrega a mi entera satisfacción', critical: true },
+      { key: 'acta_liberacion', label: 'Libero a Voltika de responsabilidad posterior por daños visibles, faltantes o condiciones físicas, salvo garantía', critical: true },
+    ]},
+    { id: 'acta_legal', title: 'Validación Electrónica y Legal', items: [
+      { key: 'clausula_medios', label: 'Acepto firma mediante medios electrónicos con plena validez jurídica', critical: true },
+      { key: 'clausula_uso_info', label: 'Autorizo uso de información para defensa legal, contracargos y autoridades (PROFECO, SAT, INAI)', critical: true },
+    ]},
+    { id: 'acta_final', title: 'Validación Final', items: [
+      { key: 'acepta_terminos', label: 'Acepto todos los términos de entrega', critical: true },
+      { key: 'firma_digital', label: 'Firma digital / aceptación del cliente', critical: true },
+      { key: 'firma_punto', label: 'Firma del responsable del Punto Voltika', critical: true },
+    ]},
+  ],
+  photos: [],
+  legal: true,
+  legal_type: 'credito',
+};
+
+// ── Fase 5 for CONTADO / MSI / SPEI / OXXO ─────────────────────────────────
+const FASE5_CONTADO = {
+  title: 'Fase 5: Acta de Entrega — Compraventa',
+  icon: '📜',
+  sections: [
+    { id: 'acta_declaraciones', title: 'Declaraciones del Cliente', items: [
+      { key: 'decl_pago_total', label: 'He realizado el pago total del vehículo mediante el método seleccionado', critical: true },
+      { key: 'decl_validacion', label: 'He verificado que la motocicleta corresponde al modelo, color y VIN de mi compra', critical: true },
+      { key: 'decl_condicion', label: 'La motocicleta se encuentra en buen estado físico, sin daños visibles, completa y funcional', critical: true },
+      { key: 'decl_componentes', label: 'Confirmo que recibí todos los componentes, accesorios, cargador, llaves y documentación', critical: true },
+      { key: 'decl_funcionamiento', label: 'Se me explicó el funcionamiento básico de la unidad', critical: true },
+    ]},
+    { id: 'acta_aceptacion', title: 'Aceptación de Entrega', items: [
+      { key: 'acta_aceptada', label: 'Acepto la entrega a mi entera satisfacción', critical: true },
+      { key: 'acta_liberacion', label: 'Libero a Voltika de responsabilidad posterior por daños visibles, faltantes o condiciones físicas, salvo garantía', critical: true },
+    ]},
+    { id: 'acta_cumplimiento', title: 'Cumplimiento de la Operación Comercial', items: [
+      { key: 'cumpl_pago_confirmado', label: 'El pago total ha sido realizado y confirmado', critical: true },
+      { key: 'cumpl_entrega_total', label: 'La entrega constituye cumplimiento total de la operación por parte de Voltika', critical: true },
+      { key: 'cumpl_sin_obligacion', label: 'No existe obligación pendiente de entrega, devolución o prestación adicional', critical: true },
+      { key: 'cumpl_op_concluida', label: 'La operación se considera concluida en su totalidad', critical: true },
+    ]},
+    { id: 'acta_transferencia', title: 'Transferencia de Posesión y Responsabilidad', items: [
+      { key: 'transf_posesion', label: 'Asumo la posesión, uso y responsabilidad total del vehículo', critical: true },
+      { key: 'transf_uso_responsable', label: 'Cualquier uso indebido, accidente o infracción será mi responsabilidad exclusiva', critical: true },
+      { key: 'transf_voltika_libre', label: 'Voltika no será responsable por hechos posteriores a la entrega', critical: true },
+    ]},
+    { id: 'acta_renuncia', title: 'Renuncia a Desconocimiento de Cargos', items: [
+      { key: 'renuncia_pago_voluntario', label: 'El pago realizado fue voluntario y autorizado', critical: true },
+      { key: 'renuncia_cumplimiento', label: 'La entrega junto con esta acta constituye cumplimiento total', critical: true },
+      { key: 'renuncia_contracargos', label: 'Renuncio expresamente a desconocer cargos, incluyendo contracargos ante bancos o Stripe', critical: true },
+      { key: 'renuncia_registros_prueba', label: 'Reconozco que registros digitales, OTP, fotos y confirmaciones constituyen prueba suficiente', critical: true },
+    ]},
+    { id: 'acta_legal', title: 'Validación Electrónica y Legal', items: [
+      { key: 'clausula_medios', label: 'Acepto firma mediante medios electrónicos con plena validez jurídica', critical: true },
+      { key: 'clausula_uso_info', label: 'Autorizo uso de información, logs, IP y OTP para defensa legal y autoridades (PROFECO, SAT, INAI)', critical: true },
+    ]},
+    { id: 'acta_evidencia', title: 'Evidencia de Entrega (uso interno)', items: [
+      { key: 'evidencia_foto_cliente', label: 'Foto cliente + moto' },
+      { key: 'evidencia_foto_vin', label: 'Foto VIN' },
+      { key: 'evidencia_foto_entrega', label: 'Foto entrega' },
+      { key: 'evidencia_video', label: 'Video corto' },
+    ]},
+    { id: 'acta_final', title: 'Validación Final', items: [
+      { key: 'acepta_terminos', label: 'Acepto todos los términos de entrega', critical: true },
+      { key: 'telefono_validado', label: 'Teléfono validado', critical: true },
+      { key: 'firma_digital', label: 'Firma / aceptación digital del cliente', critical: true },
+      { key: 'firma_punto', label: 'Firma del responsable del Punto Voltika', critical: true },
+    ]},
+  ],
+  photos: ['Cliente + moto','VIN','Entrega','Video corto'],
+  legal: true,
+  legal_type: 'contado',
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Get moto_id from URL
+  const params = new URLSearchParams(window.location.search);
+  motoId = parseInt(params.get('moto_id')) || null;
+  currentType = params.get('type') || 'origen';
+
+  if (!motoId) {
+    document.getElementById('cl-content').innerHTML =
+      '<div style="text-align:center;padding:40px;color:var(--vka-red);">Error: moto_id no especificado.<br><a href="dealer-panel.html">Volver al panel</a></div>';
+    return;
+  }
+
+  // Auth check
+  fetch('php/admin-login.php', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ action: 'check' })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      dealer = d.dealer;
+      // Punto dealers can only VIEW the checklist, not edit it
+      readOnly = !['admin', 'cedis'].includes(dealer.rol);
+      if (readOnly) {
+        // Show readonly banner in header
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:8px 16px;font-size:12px;font-weight:700;color:#92400E;text-align:center;';
+        banner.textContent = '👁️ Modo solo lectura — Este checklist fue llenado por CEDIS';
+        document.querySelector('.cl-type-bar').before(banner);
+      }
+      switchType(currentType);
+    }
+    else { window.location.href = 'dealer-panel.html'; }
+  })
+  .catch(() => window.location.href = 'dealer-panel.html');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TYPE SWITCH
+// ═══════════════════════════════════════════════════════════════════════════════
+function switchType(type) {
+  currentType = type;
+  document.querySelectorAll('.cl-type-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.cl-type-tab').forEach(t => {
+    if (t.textContent.toLowerCase().includes(type)) t.classList.add('active');
+  });
+
+  if (type === 'origen') loadOrigen();
+  else if (type === 'ensamble') loadEnsamble();
+  else if (type === 'entrega') loadEntrega();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ORIGEN
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadOrigen() {
+  document.getElementById('cl-title').textContent = 'Checklist de Origen';
+  document.getElementById('cl-phases').innerHTML = '';
+  showLoading();
+
+  try {
+    const r = await fetch('php/admin-checklist-origen.php?moto_id=' + motoId);
+    const d = await r.json();
+    checklistData = d.checklist || {};
+    renderOrigen();
+  } catch(e) {
+    showError('Error al cargar checklist de origen');
+  }
+}
+
+function renderOrigen() {
+  if (checklistData && checklistData.bloqueado) {
+    showLocked('Checklist de Origen', checklistData.hash_registro);
+    return;
+  }
+
+  // Punto dealers: show read-only view even if checklist is not yet locked
+  if (readOnly) {
+    if (!checklistData || !checklistData.id) {
+      document.getElementById('cl-content').innerHTML = `
+        <div style="text-align:center;padding:40px 20px;">
+          <div style="font-size:48px;margin-bottom:12px;">📋</div>
+          <div style="font-size:16px;font-weight:800;color:#92400e;margin-bottom:8px;">Checklist pendiente</div>
+          <div style="font-size:13px;color:#555;line-height:1.6;">
+            CEDIS aún no ha completado el Checklist de Origen para esta motocicleta.<br>
+            La moto no puede ser recibida hasta que CEDIS complete la inspección.
+          </div>
+        </div>`;
+      document.getElementById('cl-actions').innerHTML = '';
+      return;
+    }
+    // Show read-only filled checklist
+    renderOrigenReadOnly();
+    return;
+  }
+
+  let html = '';
+  let totalItems = 0, checkedItems = 0;
+
+  ORIGEN_SECTIONS.forEach(section => {
+    const itemsHtml = section.items.map(item => {
+      totalItems++;
+      const checked = checklistData && checklistData[item.key];
+      if (checked) checkedItems++;
+      return renderItem(item, checked);
+    }).join('');
+
+    const count = section.items.filter(i => checklistData && checklistData[i.key]).length;
+    html += `
+      <div class="cl-section">
+        <div class="cl-section-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          ${section.title}
+          <span class="cl-section-count">${count}/${section.items.length}</span>
+        </div>
+        <div class="cl-section-body">${itemsHtml}</div>
+      </div>`;
+  });
+
+  // Photos section
+  html += `<div class="cl-section">
+    <div class="cl-section-head">📸 13. Evidencia Fotográfica</div>
+    <div class="cl-section-body">
+      <div class="cl-photo-grid">${ORIGEN_PHOTOS.map((p,i) => renderPhotoSlot('origen_' + i, p)).join('')}</div>
+    </div>
+  </div>`;
+
+  // Declaration
+  html += `<div class="cl-declaration">
+    <strong>REGLA DE ORO:</strong> Lo que no está validado en origen, no existe.
+  </div>`;
+
+  document.getElementById('cl-content').innerHTML = html;
+  updateProgress(checkedItems, totalItems);
+  renderOrigenActions(checkedItems === totalItems);
+}
+
+// Shared read-only renderer for ensamble / entrega phases (punto dealers)
+function renderReadOnlyPhase(phaseData, title) {
+  if (!phaseData) return;
+
+  if (!checklistData || !checklistData.id) {
+    document.getElementById('cl-content').innerHTML = `
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:48px;margin-bottom:12px;">📋</div>
+        <div style="font-size:16px;font-weight:800;color:#92400e;margin-bottom:8px;">Checklist pendiente</div>
+        <div style="font-size:13px;color:#555;line-height:1.6;">
+          CEDIS aún no ha completado el checklist <strong>${esc(title)}</strong> para esta motocicleta.
+        </div>
+      </div>`;
+    document.getElementById('cl-actions').innerHTML = '';
+    return;
+  }
+
+  let html = '';
+  let totalItems = 0, checkedItems = 0;
+
+  (phaseData.sections || []).forEach(section => {
+    const itemsHtml = section.items.map(item => {
+      totalItems++;
+      const checked = checklistData && checklistData[item.key];
+      if (checked) checkedItems++;
+      const cls = item.critical ? ' critical' : '';
+      const icon = checked ? '✅' : '❌';
+      return `<div class="cl-item${cls}" style="opacity:${checked ? 1 : 0.6};">
+        <span style="font-size:16px;flex-shrink:0;">${icon}</span>
+        <label style="cursor:default;">${item.label}</label>
+      </div>`;
+    }).join('');
+
+    const count = section.items.filter(i => checklistData && checklistData[i.key]).length;
+    html += `
+      <div class="cl-section">
+        <div class="cl-section-head">${section.title}<span class="cl-section-count">${count}/${section.items.length}</span></div>
+        <div class="cl-section-body">${itemsHtml}</div>
+      </div>`;
+  });
+
+  document.getElementById('cl-content').innerHTML = html;
+  updateProgress(checkedItems, totalItems);
+  document.getElementById('cl-actions').innerHTML = `
+    <div style="background:#f0fdf4;border:2px solid #10b981;border-radius:10px;padding:16px;text-align:center;">
+      <div style="font-size:13px;font-weight:700;color:#065f46;">
+        👁️ Vista de revisión — Solo CEDIS puede modificar este checklist
+      </div>
+    </div>`;
+}
+
+function renderOrigenReadOnly() {
+  let html = '';
+  let totalItems = 0, checkedItems = 0;
+
+  ORIGEN_SECTIONS.forEach(section => {
+    const itemsHtml = section.items.map(item => {
+      totalItems++;
+      const checked = checklistData && checklistData[item.key];
+      if (checked) checkedItems++;
+      const cls = item.critical ? ' critical' : '';
+      const icon = checked ? '✅' : '❌';
+      return `<div class="cl-item${cls}" style="opacity:${checked ? 1 : 0.6};">
+        <span style="font-size:16px;flex-shrink:0;">${icon}</span>
+        <label style="cursor:default;">${item.label}</label>
+      </div>`;
+    }).join('');
+
+    const count = section.items.filter(i => checklistData && checklistData[i.key]).length;
+    html += `
+      <div class="cl-section">
+        <div class="cl-section-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          ${section.title}
+          <span class="cl-section-count">${count}/${section.items.length}</span>
+        </div>
+        <div class="cl-section-body">${itemsHtml}</div>
+      </div>`;
+  });
+
+  if (checklistData && checklistData.notas) {
+    html += `<div class="cl-section"><div class="cl-section-head">📝 Notas</div>
+      <div class="cl-section-body"><p style="font-size:13px;color:#555;">${esc(checklistData.notas)}</p></div></div>`;
+  }
+
+  document.getElementById('cl-content').innerHTML = html;
+  updateProgress(checkedItems, totalItems);
+  document.getElementById('cl-actions').innerHTML = `
+    <div style="background:#f0fdf4;border:2px solid #10b981;border-radius:10px;padding:16px;text-align:center;">
+      <div style="font-size:13px;font-weight:700;color:#065f46;">
+        👁️ Vista de revisión — Solo CEDIS puede modificar este checklist
+      </div>
+    </div>`;
+}
+
+function renderOrigenActions(allDone) {
+  document.getElementById('cl-actions').innerHTML = `
+    <button class="cl-btn-save ghost" onclick="saveOrigen(false)">💾 Guardar progreso</button>
+    <button class="cl-btn-save success" onclick="saveOrigen(true)" ${allDone ? '' : 'disabled'}>
+      ⚡ GENERAR REGISTRO DE ORIGEN
+    </button>
+  `;
+}
+
+async function saveOrigen(completar) {
+  const items = collectItems();
+  try {
+    const r = await fetch('php/admin-checklist-origen.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ moto_id: motoId, items, notas: '', completar })
+    });
+    const d = await r.json();
+    showToast(d.message || (d.ok ? 'Guardado' : d.error), d.ok ? 'success' : 'error');
+    if (d.completado) loadOrigen();
+  } catch(e) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ENSAMBLE
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadEnsamble() {
+  document.getElementById('cl-title').textContent = 'Ensamble de Unidad';
+  showLoading();
+
+  try {
+    const r = await fetch('php/admin-checklist-ensamble.php?moto_id=' + motoId);
+    const d = await r.json();
+    checklistData = d.checklist || {};
+    currentPhase = checklistData.fase_actual || 'fase1';
+    renderEnsamblePhases();
+    renderEnsamble();
+  } catch(e) {
+    showError('Error al cargar checklist de ensamble');
+  }
+}
+
+function renderEnsamblePhases() {
+  const phases = ['fase1','fase2','fase3'];
+  const labels = ['Inicio','Ensamble','Liberación'];
+  let html = '';
+  phases.forEach((p, i) => {
+    const done = checklistData && checklistData[p + '_completada'];
+    const active = currentPhase === p;
+    html += `<div style="text-align:center;">
+      <div class="cl-phase-dot ${done ? 'done' : active ? 'active' : ''}" onclick="setEnsamblePhase('${p}')">${done ? '✓' : i + 1}</div>
+      <div class="cl-phase-label">${labels[i]}</div>
+    </div>`;
+    if (i < phases.length - 1) {
+      html += `<div class="cl-phase-line ${done ? 'done' : ''}"></div>`;
+    }
+  });
+  document.getElementById('cl-phases').innerHTML = html;
+}
+
+function setEnsamblePhase(phase) {
+  currentPhase = phase;
+  renderEnsamble();
+  renderEnsamblePhases();
+}
+
+function renderEnsamble() {
+  if (checklistData && checklistData.bloqueado) {
+    showLocked('Ensamble de Unidad');
+    return;
+  }
+
+  if (readOnly) {
+    renderReadOnlyPhase(ENSAMBLE_PHASES[currentPhase], 'Ensamble de Unidad');
+    return;
+  }
+
+  const phaseData = ENSAMBLE_PHASES[currentPhase];
+  if (!phaseData) return;
+
+  let html = '';
+  if (phaseData.critical) {
+    html += '<div style="text-align:center;padding:8px;background:#FEE2E2;border-radius:8px;margin-bottom:12px;font-size:12px;color:#991B1B;font-weight:700;">🔴 CRÍTICO — SI FALLA, NO SE LIBERA</div>';
+  }
+
+  let totalItems = 0, checkedItems = 0;
+
+  phaseData.sections.forEach(section => {
+    const itemsHtml = section.items.map(item => {
+      totalItems++;
+      const checked = checklistData && checklistData[item.key];
+      if (checked) checkedItems++;
+      return renderItem(item, checked);
+    }).join('');
+
+    const count = section.items.filter(i => checklistData && checklistData[i.key]).length;
+    html += `
+      <div class="cl-section">
+        <div class="cl-section-head">${section.title}<span class="cl-section-count">${count}/${section.items.length}</span></div>
+        <div class="cl-section-body">${itemsHtml}</div>
+      </div>`;
+  });
+
+  if (phaseData.photos && phaseData.photos.length) {
+    html += `<div class="cl-section">
+      <div class="cl-section-head">📸 Evidencia Fotográfica</div>
+      <div class="cl-section-body">
+        <div class="cl-photo-grid">${phaseData.photos.map((p,i) => renderPhotoSlot(currentPhase + '_' + i, p)).join('')}</div>
+      </div>
+    </div>`;
+  }
+
+  const btnLabel = currentPhase === 'fase3' ? '⚡ LIBERAR UNIDAD A DISPONIBLE' : '⚡ Completar ' + phaseData.title;
+
+  document.getElementById('cl-content').innerHTML = html;
+  updateProgress(checkedItems, totalItems);
+  document.getElementById('cl-actions').innerHTML = `
+    <button class="cl-btn-save ghost" onclick="saveEnsamble(false)">💾 Guardar progreso</button>
+    <button class="cl-btn-save success" onclick="saveEnsamble(true)" ${checkedItems === totalItems ? '' : 'disabled'}>${btnLabel}</button>
+  `;
+}
+
+async function saveEnsamble(completar) {
+  const items = collectItems();
+  try {
+    const r = await fetch('php/admin-checklist-ensamble.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ moto_id: motoId, fase: currentPhase, items, notas: '', completar_fase: completar })
+    });
+    const d = await r.json();
+    showToast(d.message || (d.ok ? 'Guardado' : d.error), d.ok ? 'success' : 'error');
+    if (d.fase_completada || d.completado) loadEnsamble();
+  } catch(e) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ENTREGA
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadEntrega() {
+  document.getElementById('cl-title').textContent = 'Entrega de Unidad';
+  showLoading();
+
+  try {
+    // Load checklist + moto data in parallel
+    const [clRes, motoRes] = await Promise.all([
+      fetch('php/admin-checklist-entrega-v2.php?moto_id=' + motoId),
+      fetch('php/admin-inventario.php?q=&estado=todos&tipo=&modelo=')
+    ]);
+    const clData = await clRes.json();
+    const motoData = await motoRes.json();
+
+    checklistData = clData.checklist || {};
+    currentPhase = checklistData.fase_actual || 'fase1';
+
+    // Set fase5 dynamically based on tipo_acta
+    const tipoActa = clData.tipo_acta || 'credito';
+    ENTREGA_PHASES.fase5 = (tipoActa === 'contado') ? FASE5_CONTADO : FASE5_CREDITO;
+
+    // Cache moto info for acta
+    if (motoData.ok && motoData.motos) {
+      dashMotoCache = motoData.motos.find(m => m.id === motoId) || null;
+    }
+
+    renderEntregaPhases();
+    renderEntrega();
+  } catch(e) {
+    showError('Error al cargar checklist de entrega');
+  }
+}
+
+function renderEntregaPhases() {
+  const phases = ['fase1','fase2','fase3','fase4','fase5'];
+  const icons = ['🔐','💳','🏍️','🔐','📜'];
+  let html = '';
+  phases.forEach((p, i) => {
+    const done = checklistData && checklistData[p + '_completada'];
+    const active = currentPhase === p;
+    html += `<div style="text-align:center;">
+      <div class="cl-phase-dot ${done ? 'done' : active ? 'active' : ''}" onclick="setEntregaPhase('${p}')">${done ? '✓' : icons[i]}</div>
+      <div class="cl-phase-label">F${i+1}</div>
+    </div>`;
+    if (i < phases.length - 1) html += `<div class="cl-phase-line ${done ? 'done' : ''}"></div>`;
+  });
+  document.getElementById('cl-phases').innerHTML = html;
+}
+
+function setEntregaPhase(phase) {
+  currentPhase = phase;
+  renderEntrega();
+  renderEntregaPhases();
+}
+
+function renderEntrega() {
+  if (checklistData && checklistData.bloqueado) {
+    showLocked('Entrega de Unidad', null, 'Sin identidad + OTP + acta firmada = NO EXISTE ENTREGA');
+    return;
+  }
+
+  if (readOnly) {
+    renderReadOnlyPhase(ENTREGA_PHASES[currentPhase], 'Entrega de Unidad');
+    return;
+  }
+
+  const phaseData = ENTREGA_PHASES[currentPhase];
+  if (!phaseData) return;
+
+  let html = '';
+  let totalItems = 0, checkedItems = 0;
+
+  // Legal certificate special render for fase5
+  if (phaseData.legal) {
+    // Fetch moto data for auto-fill
+    let motoData = { cliente_nombre: '—', modelo: '—', color: '—', vin: '—', pedido_num: '—', punto_nombre: '—' };
+    if (dashMotoCache) motoData = dashMotoCache;
+
+    const now = new Date();
+    const fechaEntrega = now.toLocaleDateString('es-MX', { day:'numeric', month:'long', year:'numeric' }) + ', ' +
+      now.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+
+    const isContado = phaseData.legal_type === 'contado';
+    const introText = isContado
+      ? 'En este acto, el cliente declara haber recibido la motocicleta eléctrica descrita en el presente documento, en condiciones óptimas de funcionamiento, completa y conforme a lo contratado, derivado de una operación de compraventa pagada en su totalidad.'
+      : 'En este acto, el cliente declara haber recibido la motocicleta eléctrica descrita en el presente documento, en condiciones óptimas de funcionamiento, completa y conforme a lo contratado.';
+    const docLabel = isContado ? 'Número de pedido / folio' : 'Número de contrato';
+
+    html += `<div class="cl-legal">
+      <div style="text-align:center;border-bottom:2px solid var(--vka-blue-dark);padding-bottom:14px;margin-bottom:16px;">
+        <div style="font-size:10px;color:var(--vka-grey);letter-spacing:1px;text-transform:uppercase;">Acta de Entrega de Motocicleta Eléctrica</div>
+        <h4 style="margin:4px 0;">VOLTIKA — MTECH GEARS, S.A. DE C.V.</h4>
+        <div style="font-size:11px;color:var(--vka-grey);">${introText}</div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:var(--vka-blue-dark);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Datos de la Operación</div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px;">
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);width:40%;">Nombre del cliente</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.cliente_nombre)}</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Modelo</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.modelo)}</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Color</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.color)}</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">VIN (NIV)</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.vin || motoData.vin_display || '—')}</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">${docLabel}</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.pedido_num)}</td></tr>
+        ${isContado ? `<tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Método de pago</td><td style="padding:6px 0;font-weight:600;">
+          <select id="acta-metodo-pago" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;">
+            <option value="tarjeta">Tarjeta (incluye MSI)</option>
+            <option value="spei">Transferencia SPEI</option>
+            <option value="oxxo">OXXO / pago referenciado</option>
+            <option value="otro">Otro</option>
+          </select></td></tr>` : ''}
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:6px 0;color:var(--vka-grey);">Fecha y hora de entrega</td><td style="padding:6px 0;font-weight:600;">${fechaEntrega}</td></tr>
+        <tr><td style="padding:6px 0;color:var(--vka-grey);">Lugar de entrega</td><td style="padding:6px 0;font-weight:600;">${esc(motoData.punto_nombre || '—')}</td></tr>
+      </table>
+    </div>`;
+  }
+
+  phaseData.sections.forEach(section => {
+    const itemsHtml = section.items.map(item => {
+      totalItems++;
+      const checked = checklistData && checklistData[item.key];
+      if (checked) checkedItems++;
+      return renderItem(item, checked);
+    }).join('');
+
+    const count = section.items.filter(i => checklistData && checklistData[i.key]).length;
+    html += `<div class="cl-section">
+      <div class="cl-section-head">${section.title}<span class="cl-section-count">${count}/${section.items.length}</span></div>
+      <div class="cl-section-body">${itemsHtml}</div>
+    </div>`;
+  });
+
+  if (phaseData.photos && phaseData.photos.length) {
+    html += `<div class="cl-section">
+      <div class="cl-section-head">📸 Evidencia</div>
+      <div class="cl-section-body">
+        <div class="cl-photo-grid">${phaseData.photos.map((p,i) => renderPhotoSlot(currentPhase + '_' + i, p)).join('')}</div>
+      </div>
+    </div>`;
+  }
+
+  if (phaseData.rule) {
+    html += `<div style="text-align:center;padding:10px;background:#FEE2E2;border-radius:8px;margin-top:8px;font-size:12px;color:#991B1B;font-weight:700;">⚠️ ${phaseData.rule}</div>`;
+  }
+
+  const btnLabel = currentPhase === 'fase5' ? '⚡ FINALIZAR ENTREGA' : '⚡ Completar ' + phaseData.title;
+
+  document.getElementById('cl-content').innerHTML = html;
+  updateProgress(checkedItems, totalItems);
+  document.getElementById('cl-actions').innerHTML = `
+    <button class="cl-btn-save ghost" onclick="saveEntrega(false)">💾 Guardar progreso</button>
+    <button class="cl-btn-save success" onclick="saveEntrega(true)" ${checkedItems === totalItems ? '' : 'disabled'}>${btnLabel}</button>
+  `;
+}
+
+async function saveEntrega(completar) {
+  const items = collectItems();
+  const payload = { moto_id: motoId, fase: currentPhase, items, notas: '', completar_fase: completar };
+
+  // Include metodo_pago for contado acta
+  const metodoPagoEl = document.getElementById('acta-metodo-pago');
+  if (metodoPagoEl) payload.metodo_pago_acta = metodoPagoEl.value;
+
+  try {
+    const r = await fetch('php/admin-checklist-entrega-v2.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    showToast(d.message || (d.ok ? 'Guardado' : d.error), d.ok ? 'success' : 'error');
+    if (d.fase_completada || d.completado) loadEntrega();
+  } catch(e) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SHARED RENDERERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderItem(item, checked) {
+  const cls = item.critical ? ' critical' : '';
+  const torque = item.torque ? `<span class="cl-torque">${item.torque}</span>` : '';
+  return `<div class="cl-item${cls}">
+    <input type="checkbox" id="ck-${item.key}" data-key="${item.key}" ${checked ? 'checked' : ''} onchange="onItemChange()">
+    <label for="ck-${item.key}">${item.label}${torque}</label>
+  </div>`;
+}
+
+function renderPhotoSlot(id, label) {
+  return `<div class="cl-photo-slot" id="photo-${id}">
+    <input type="file" accept="image/*" capture="environment" onchange="handlePhoto(this,'${id}')">
+    <span>📷</span>
+    <span>${label}</span>
+  </div>`;
+}
+
+function handlePhoto(input, id) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const slot = document.getElementById('photo-' + id);
+    slot.classList.add('has-photo');
+    slot.innerHTML = `<img src="${e.target.result}">
+      <input type="file" accept="image/*" capture="environment" onchange="handlePhoto(this,'${id}')">`;
+    uploadedPhotos[id] = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function collectItems() {
+  const items = {};
+  document.querySelectorAll('[data-key]').forEach(cb => {
+    items[cb.dataset.key] = cb.checked;
+  });
+  return items;
+}
+
+function onItemChange() {
+  // Re-count and update progress + button state
+  let total = 0, checked = 0;
+  document.querySelectorAll('[data-key]').forEach(cb => {
+    total++;
+    if (cb.checked) checked++;
+  });
+  updateProgress(checked, total);
+
+  // Enable/disable complete button
+  const successBtn = document.querySelector('.cl-btn-save.success');
+  if (successBtn) successBtn.disabled = (checked < total);
+
+  // Update section counts
+  document.querySelectorAll('.cl-section').forEach(sec => {
+    const items = sec.querySelectorAll('[data-key]');
+    const done = [...items].filter(i => i.checked).length;
+    const countEl = sec.querySelector('.cl-section-count');
+    if (countEl) countEl.textContent = `${done}/${items.length}`;
+  });
+}
+
+function updateProgress(checked, total) {
+  const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+  document.getElementById('cl-progress-fill').style.width = pct + '%';
+  document.getElementById('cl-progress-text').textContent = `${checked} / ${total} (${pct}%)`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+function showLoading() {
+  document.getElementById('cl-content').innerHTML =
+    '<div style="text-align:center;padding:40px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
+  document.getElementById('cl-actions').innerHTML = '';
+}
+
+function showError(msg) {
+  document.getElementById('cl-content').innerHTML =
+    `<div style="text-align:center;padding:40px;color:var(--vka-red);">${msg}</div>`;
+}
+
+function showLocked(title, hash, extra) {
+  const isEntrega = currentType === 'entrega';
+  const pdfLink = isEntrega
+    ? `<a href="php/admin-generar-acta-pdf.php?moto_id=${motoId}&key=voltika_acta_2026" target="_blank"
+        style="display:inline-block;margin-top:12px;padding:10px 20px;background:#039fe1;color:#fff;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;">
+        📄 Ver / Imprimir Acta de Entrega</a>`
+    : '';
+
+  document.getElementById('cl-content').innerHTML = `
+    <div class="cl-locked">
+      <div class="cl-locked-icon">🔒</div>
+      <div class="cl-locked-title">${title} — Completado</div>
+      <div class="cl-locked-msg">Este registro está bloqueado y no puede modificarse.</div>
+      ${hash ? `<div style="font-size:10px;color:var(--vka-grey);margin-top:8px;word-break:break-all;">Hash: ${hash}</div>` : ''}
+      ${extra ? `<div style="font-size:12px;color:#065f46;font-weight:700;margin-top:8px;">${extra}</div>` : ''}
+      ${pdfLink}
+    </div>`;
+  document.getElementById('cl-actions').innerHTML = '';
+}
+
+function showToast(msg, type) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + (type || '');
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+function esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+</script>
+</body>
+</html>

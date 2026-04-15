@@ -33,6 +33,16 @@ if (empty($cliente['nombre'])) {
         $nStmt->execute([$tel ?: $em]);
         $foundName = ($nStmt->fetchColumn()) ?: null;
     }
+    if (!$foundName) {
+        $nStmt = $pdo->prepare("SELECT nombre FROM subscripciones_credito WHERE cliente_id = ? AND nombre IS NOT NULL AND nombre != '' ORDER BY id DESC LIMIT 1");
+        $nStmt->execute([$cid]);
+        $foundName = ($nStmt->fetchColumn()) ?: null;
+    }
+    if (!$foundName && $em) {
+        $nStmt = $pdo->prepare("SELECT nombre FROM subscripciones_credito WHERE email = ? AND nombre IS NOT NULL AND nombre != '' ORDER BY id DESC LIMIT 1");
+        $nStmt->execute([$em]);
+        $foundName = ($nStmt->fetchColumn()) ?: null;
+    }
     if ($foundName) {
         $pdo->prepare("UPDATE clientes SET nombre = ? WHERE id = ? AND (nombre IS NULL OR nombre = '')")->execute([$foundName, $cid]);
         $cliente['nombre'] = $foundName;

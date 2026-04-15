@@ -682,10 +682,35 @@
     <!-- Ensure $ is jQuery before loading configurador scripts -->
     <script>if (typeof window.jQuery !== 'undefined') { window.$ = window.jQuery; }</script>
 
+    <!-- Voltika Environment Config (loaded before modules) -->
+    <script>
+    window.VOLTIKA_CONFIG = { env: 'test', stripe_publishable_key: '' };
+    (function(){
+      var base = window.VK_BASE_PATH || '';
+      $.ajax({
+        url: base + 'php/get-config.php',
+        dataType: 'json',
+        async: false,
+        timeout: 5000,
+        success: function(r) {
+          if (r.ok) {
+            window.VOLTIKA_CONFIG = r;
+            if (r.env === 'test') {
+              $(function(){
+                $('body').prepend('<div id="vk-test-banner" style="background:#ff9800;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:99999;">MODO DE PRUEBA — Los pagos no son reales</div>');
+                $('body').css('padding-top', '32px');
+              });
+            }
+          }
+        }
+      });
+    })();
+    </script>
+
     <!-- Voltika Configurador JS -->
     <script src="js/data/productos.js?v=20260322"></script>
     <script src="js/data/codigospostales.js?v=20260322"></script>
-    <script src="js/data/centros-entrega3.js?v=20260329"></script>
+    <script src="js/data/centros-entrega3.js?v=20260416"></script>
     <script src="js/data/caratula-texto.js"></script>
     <script src="js/data/contrato-texto.js"></script>
     <script src="js/modules/ui-components.js?v=20260322"></script>
