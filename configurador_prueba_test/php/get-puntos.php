@@ -15,10 +15,10 @@ try {
     $rows = $pdo->query("
         SELECT id, slug, nombre, tipo, direccion, colonia, ciudad, estado, cp,
                telefono, email, lat, lng, horarios, servicios, tags, zonas,
-               descripcion, autorizado
+               descripcion, autorizado, COALESCE(orden,0) AS orden
         FROM puntos_voltika
         WHERE activo = 1
-        ORDER BY FIELD(tipo, 'center', 'certificado', 'entrega'), nombre
+        ORDER BY COALESCE(orden,0) ASC, FIELD(tipo, 'center', 'certificado', 'entrega'), nombre
     ")->fetchAll(PDO::FETCH_ASSOC);
 
     // Estado normalization for consistent matching with configurador JS

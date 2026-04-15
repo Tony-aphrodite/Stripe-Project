@@ -84,6 +84,7 @@ window.AD_puntos = (function(){
     html += sectionTitle('Horario y capacidad');
     html += '<input class="ad-input" id="pfHorarios" placeholder="Ej: Lun-Vie 9:00-18:00" value="'+esc(p.horarios||'')+'" style="margin-bottom:8px">';
     html += '<input class="ad-input" id="pfCap" placeholder="Capacidad (motos)" type="number" value="'+(p.capacidad||0)+'" style="margin-bottom:8px">';
+    html += '<input class="ad-input" id="pfOrden" placeholder="Orden de aparición (menor = primero)" type="number" value="'+(p.orden||0)+'" style="margin-bottom:8px">';
 
     // ── Configurador fields ──
     html += sectionTitle('Configurador (visible al cliente)');
@@ -172,6 +173,7 @@ window.AD_puntos = (function(){
         email: $('#pfEmail').val(),
         horarios: $('#pfHorarios').val(),
         capacidad: parseInt($('#pfCap').val())||0,
+        orden: parseInt($('#pfOrden').val())||0,
         activo: $('#pfActivo').is(':checked')?1:0,
         descripcion: $('#pfDesc').val(),
         servicios: serviciosArr,

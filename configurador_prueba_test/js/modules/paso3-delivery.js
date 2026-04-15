@@ -809,9 +809,11 @@ var Paso3 = {
             return;
         }
 
-        // Sort: center first, then certificado, then entrega
+        // Sort: by orden first, then tipo priority (center > certificado > entrega)
         var tipoPriority = { 'center': 0, 'certificado': 1, 'entrega': 2 };
         centros.sort(function(a, b) {
+            var oa = (a.orden || 0), ob = (b.orden || 0);
+            if (oa !== ob) return oa - ob;
             var pa = tipoPriority[a.tipo] !== undefined ? tipoPriority[a.tipo] : 3;
             var pb = tipoPriority[b.tipo] !== undefined ? tipoPriority[b.tipo] : 3;
             return pa - pb;

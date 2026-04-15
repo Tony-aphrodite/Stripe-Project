@@ -11,7 +11,7 @@ $pdo = getDB();
 $id = (int)($d['id'] ?? 0);
 
 $fields = ['nombre','direccion','colonia','ciudad','estado','cp','telefono','email',
-           'lat','lng','horarios','capacidad','activo','tipo','descripcion','autorizado'];
+           'lat','lng','horarios','capacidad','activo','tipo','descripcion','autorizado','orden'];
 $vals = [];
 foreach ($fields as $f) {
     $vals[$f] = $d[$f] ?? null;

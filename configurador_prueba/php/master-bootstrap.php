@@ -201,6 +201,7 @@ function voltikaEnsureSchema(): void {
         descripcion TEXT NULL,
         autorizado TINYINT DEFAULT 1,
         activo TINYINT DEFAULT 1,
+        orden INT DEFAULT 0 COMMENT 'Display order (lower = first)',
         codigo_venta VARCHAR(20) UNIQUE COMMENT 'Codigo referido venta directa',
         codigo_electronico VARCHAR(20) UNIQUE COMMENT 'Codigo referido venta electronica',
         freg DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -701,6 +702,8 @@ function voltikaEnsureSchema(): void {
         "ALTER TABLE checklist_entrega_v2 ADD COLUMN pagare_user_agent VARCHAR(500) NULL AFTER pagare_ip",
         "ALTER TABLE checklist_entrega_v2 ADD COLUMN pagare_evidencia JSON NULL AFTER pagare_user_agent",
         // inventario_motos: sale lock
+        // puntos_voltika: display order
+        "ALTER TABLE puntos_voltika ADD COLUMN orden INT DEFAULT 0 COMMENT 'Display order (lower = first)'",
         // transacciones: environment tag (test/live)
         "ALTER TABLE transacciones ADD COLUMN environment VARCHAR(10) NOT NULL DEFAULT 'test'",
         // inventario_motos: sale lock

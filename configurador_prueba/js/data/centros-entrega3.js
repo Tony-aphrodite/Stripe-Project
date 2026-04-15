@@ -64,9 +64,18 @@ VOLTIKA_CENTROS.buscar = function(cp, estado) {
                 results.push(centro);
             }
         }
-        // Sort by tipo priority: center > certificado > entrega
+        // Deduplicate by id
+        var seen = {};
+        results = results.filter(function(c) {
+            if (seen[c.id]) return false;
+            seen[c.id] = true;
+            return true;
+        });
+        // Sort by orden first, then tipo priority: center > certificado > entrega
         var tipoPriority = { 'center': 0, 'certificado': 1, 'entrega': 2 };
         results.sort(function(a, b) {
+            var oa = (a.orden || 0), ob = (b.orden || 0);
+            if (oa !== ob) return oa - ob;
             var pa = tipoPriority[a.tipo] !== undefined ? tipoPriority[a.tipo] : 3;
             var pb = tipoPriority[b.tipo] !== undefined ? tipoPriority[b.tipo] : 3;
             return pa - pb;
