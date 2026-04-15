@@ -38,6 +38,12 @@ var Paso2 = {
         }
     },
 
+    _getEtaStr: function() {
+        var d = new Date(); d.setMonth(d.getMonth() + 2);
+        var m = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        return d.getDate() + ' de ' + m[d.getMonth()];
+    },
+
     render: function() {
         var self = this;
         var state = this.app.state;
@@ -49,10 +55,13 @@ var Paso2 = {
         state.colorSeleccionado = colorActual;
 
         var img = VkUI.getImagenMoto(modelo.id, colorActual);
+        var currentStock = invMap[colorActual] || 0;
+        var isAvailableNow = currentStock > 0;
+        var etaStr = this._getEtaStr();
 
         var html = '';
 
-        // Back button — credit: back to calculator (4B), others: back to model (1)
+        // Back button
         var backPaso = state.metodoPago === 'credito' ? 4 : 1;
         html += VkUI.renderBackButton(backPaso);
 
@@ -60,30 +69,20 @@ var Paso2 = {
         html += '<h2 class="vk-paso__titulo">Ya casi es tu Voltika <strong>' + modelo.nombre + '</strong></h2>';
         html += '<p style="font-size:14px;color:var(--vk-text-secondary);text-align:center;margin:-4px 0 8px;">Selecciona tu color para apartarla</p>';
 
-        var btnTexto = state.metodoPago === 'contado' ? 'PAGAR DE CONTADO' :
-                      state.metodoPago === 'msi'     ? 'QUIERO MIS 9 MSI \u203a' :
-                      'CONFIRMAR COLOR Y CONTINUAR';
-
         // Card
         html += '<div class="vk-card">';
 
-        // Subtitle bullets removed for all flows
-
-        // Desktop 2-col split (stacks on mobile)
+        // Desktop 2-col split
         html += '<div class="vk-desktop-split">';
 
-        // ── Left: visual ──────────────────────────────────────
+        // ── Left: visual ──
         html += '<div class="vk-desktop-split__left">';
 
         html += '<div class="vk-card__imagen" id="vk-paso2-imagen">' +
             '<img src="' + img + '" alt="' + modelo.nombre + ' ' + colorActual + '">' +
             '</div>';
 
-        // ETA date for out-of-stock colors (~2 months)
-        var _etaDate = new Date(); _etaDate.setMonth(_etaDate.getMonth() + 2);
-        var _meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-        var _etaStr = _etaDate.getDate() + ' de ' + _meses[_etaDate.getMonth()];
-
+        // Color picker with new status labels
         html += '<div class="vk-color-picker">';
         for (var i = 0; i < modelo.colores.length; i++) {
             var c = modelo.colores[i];
@@ -92,19 +91,23 @@ var Paso2 = {
 
             html += '<div class="vk-color-swatch' + activeCls + '" data-color="' + c.id + '">' +
                 '<div class="vk-color-swatch__circle" style="background:' + c.hex + ';"></div>' +
-                '<div class="vk-color-swatch__label">' + c.nombre + '</div>' +
-                (stock > 0 ? '' : '<div style="font-size:10px;margin-top:2px;color:#b91c1c;font-weight:600;">Agotado</div>') +
-                '</div>';
+                '<div class="vk-color-swatch__label">' + c.nombre + '</div>';
+            if (stock > 0) {
+                html += '<div class="vk-color-status" style="font-size:9px;margin-top:2px;color:#059669;font-weight:700;">Entrega inmediata</div>';
+            } else {
+                html += '<div class="vk-color-status" style="font-size:9px;margin-top:2px;color:#d97706;font-weight:700;">Pr\u00f3xima entrega</div>';
+            }
+            html += '</div>';
         }
         html += '</div>';
 
         html += '<p style="font-size:12px;color:var(--vk-text-muted);text-align:center;margin:6px 0 16px;">' +
-            'Colores sujetos a inventario' +
+            'Colores sujetos a disponibilidad y fecha de entrega.' +
             '</p>';
 
         html += '</div>'; // end left
 
-        // ── Right: purchase ───────────────────────────────────
+        // ── Right: purchase ──
         html += '<div class="vk-desktop-split__right">';
 
         html += '<div style="padding:16px 20px 0;text-align:center;">';
@@ -113,7 +116,7 @@ var Paso2 = {
         html += '</div>';
         html += '</div>';
 
-        // Código de referido (collapsible toggle for all flows)
+        // C\u00f3digo de referido
         html += '<div style="padding:0 20px;margin-top:20px;margin-bottom:12px;">';
         if (state.metodoPago === 'credito') {
             html += '<div style="font-size:13px;color:#2e7d32;margin-bottom:10px;"><span style="color:#2e7d32;">&#10003;</span> Entrega en tu ciudad</div>';
@@ -128,15 +131,25 @@ var Paso2 = {
         html += '</div>';
         html += '</div>';
 
-        // Out-of-stock notice (hidden by default, shown via JS)
-        html += '<div id="vk-stock-notice" style="display:none;margin:0 20px 12px;padding:12px 14px;border-radius:10px;background:#FFF7ED;border:1px solid #FDBA74;font-size:13px;color:#9A3412;">' +
-            'Este color no está disponible de momento. Puedes continuar y recibirás tu moto el <strong>' + _etaStr + '</strong>, o seleccionar otro color.' +
-            '</div>';
-        html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">' + btnTexto + '</button>';
+        // Info box for delayed delivery (hidden by default)
+        html += '<div id="vk-stock-notice" style="display:none;margin:0 20px 12px;padding:14px 16px;border-radius:12px;background:#FFF8F0;border:1px solid #FBBF24;font-size:14px;color:#92400E;">';
+        html += '<div style="font-weight:800;font-size:15px;margin-bottom:6px;">Alta demanda en este color</div>';
+        html += '<div>Puedes asegurar este color hoy y recibir tu moto el <strong id="vk-eta-date">' + etaStr + '</strong>.</div>';
+        html += '<div style="margin-top:4px;">Si prefieres entrega inmediata, selecciona otro color disponible.</div>';
+        html += '</div>';
+
+        // Dynamic CTA
+        var ctaText = isAvailableNow ? this._getImmediateCTA(state.metodoPago) : 'ASEGURAR ESTE COLOR';
+        html += '<button class="vk-btn vk-btn--primary" id="vk-paso2-continuar">' + ctaText + '</button>';
 
         html += '<p class="vk-card__footer-note">' +
             'Solo falta confirmar tu <strong>punto de entrega.</strong>' +
             '</p>';
+
+        // Secondary CTA for delayed colors (hidden by default)
+        html += '<div id="vk-secondary-cta" style="display:none;text-align:center;margin:-8px 20px 12px;">';
+        html += '<a href="#" id="vk-ver-inmediata" style="font-size:14px;font-weight:700;color:#039fe1;text-decoration:none;">Ver colores con entrega inmediata</a>';
+        html += '</div>';
 
         html += VkUI.renderTrustBadges(state.metodoPago || 'credito');
 
@@ -148,11 +161,10 @@ var Paso2 = {
 
         jQuery('#vk-color-container').html(html);
 
-        // Show/hide stock notice for initial color
-        var initStock = invMap[colorActual] || 0;
-        if (initStock <= 0) jQuery('#vk-stock-notice').show();
+        // Apply initial state for current color
+        this._updateColorState(colorActual);
 
-        // Attach color click handlers directly to elements (avoids delegation conflicts)
+        // Attach color click handlers
         jQuery('#vk-paso-2 .vk-color-swatch').each(function() {
             this.addEventListener('click', function() {
                 var color = this.getAttribute('data-color');
@@ -171,19 +183,39 @@ var Paso2 = {
                 var imgEl = document.querySelector('#vk-paso2-imagen img');
                 if (imgEl) imgEl.src = newImg;
 
-                // Update inventory state from cached map
+                // Update inventory state
                 var stock = (self._invMap || {})[color] || 0;
                 self.app.state._invColorTotal = stock;
                 self.app.state._invColorEnStock = stock > 0;
 
-                // Toggle out-of-stock notice
-                if (stock > 0) {
-                    jQuery('#vk-stock-notice').slideUp(150);
-                } else {
-                    jQuery('#vk-stock-notice').slideDown(150);
-                }
+                // Update UI state
+                self._updateColorState(color);
             });
         });
+    },
+
+    _getImmediateCTA: function(metodo) {
+        if (metodo === 'contado') return 'PAGAR DE CONTADO';
+        if (metodo === 'msi') return 'QUIERO MIS 9 MSI \u203a';
+        return 'CONFIRMAR COLOR Y CONTINUAR';
+    },
+
+    _updateColorState: function(color) {
+        var stock = (this._invMap || {})[color] || 0;
+        var isAvailable = stock > 0;
+        var state = this.app.state;
+
+        if (isAvailable) {
+            // CASE A: Entrega inmediata
+            jQuery('#vk-stock-notice').slideUp(150);
+            jQuery('#vk-secondary-cta').slideUp(150);
+            jQuery('#vk-paso2-continuar').text(this._getImmediateCTA(state.metodoPago));
+        } else {
+            // CASE B: Pr\u00f3xima entrega
+            jQuery('#vk-stock-notice').slideDown(150);
+            jQuery('#vk-secondary-cta').slideDown(150);
+            jQuery('#vk-paso2-continuar').text('ASEGURAR ESTE COLOR');
+        }
     },
 
     renderPaymentInfo: function(modelo, metodo) {
@@ -234,26 +266,23 @@ var Paso2 = {
     bindEvents: function() {
         var self = this;
 
-        // Continue: all methods → delivery (3)
-        // Credit flux: calculator already done before color selection
+        // Continue button
         jQuery(document).off('click', '#vk-paso2-continuar');
         jQuery(document).on('click', '#vk-paso2-continuar', function() {
             var referido = (jQuery('#vk-referido-input').val() || '').trim().toUpperCase();
             if (!referido) {
-                // Clear any previous referido state and advance
                 self.app.state.codigoReferido = '';
                 self.app.state.referidoData = null;
                 self.app.irAPaso(3);
                 return;
             }
-            // Validate before advancing — block on invalid code
             self._validarReferido(referido, function(data) {
                 if (data && data.ok) {
                     self.app.state.codigoReferido = referido;
                     self.app.state.referidoData = data;
                     self.app.irAPaso(3);
                 } else {
-                    self._setReferidoFeedback('error', (data && data.error) || 'Código no válido');
+                    self._setReferidoFeedback('error', (data && data.error) || 'C\u00f3digo no v\u00e1lido');
                     jQuery('#vk-referido-field').slideDown(0);
                     jQuery('#vk-referido-input').focus().css('border-color', '#D32F2F');
                     setTimeout(function(){ jQuery('#vk-referido-input').css('border-color',''); }, 3000);
@@ -261,13 +290,33 @@ var Paso2 = {
             });
         });
 
-        // Referido toggle (credit flow)
+        // "Ver colores con entrega inmediata" — scroll to first available color and select it
+        jQuery(document).off('click', '#vk-ver-inmediata');
+        jQuery(document).on('click', '#vk-ver-inmediata', function(e) {
+            e.preventDefault();
+            var modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
+            if (!modelo) return;
+            var invMap = self._invMap || {};
+            for (var i = 0; i < modelo.colores.length; i++) {
+                if ((invMap[modelo.colores[i].id] || 0) > 0) {
+                    // Trigger click on that swatch
+                    var $swatch = jQuery('#vk-paso-2 .vk-color-swatch[data-color="' + modelo.colores[i].id + '"]');
+                    if ($swatch.length) {
+                        $swatch[0].click();
+                        jQuery('html, body').animate({ scrollTop: $swatch.offset().top - 120 }, 300);
+                    }
+                    return;
+                }
+            }
+        });
+
+        // Referido toggle
         jQuery(document).off('click', '#vk-referido-toggle');
         jQuery(document).on('click', '#vk-referido-toggle', function() {
             jQuery('#vk-referido-field').slideToggle(200);
         });
 
-        // Referido input — debounced validation on typing + uppercase
+        // Referido input — debounced validation
         jQuery(document).off('input', '#vk-referido-input').off('blur', '#vk-referido-input');
         var debounceTimer = null;
         jQuery(document).on('input', '#vk-referido-input', function() {
@@ -281,17 +330,16 @@ var Paso2 = {
                 self._validarReferido(val, function(data) {
                     if (data && data.ok) {
                         var label = data.tipo === 'punto'
-                            ? 'Código válido · Punto: ' + data.nombre
-                            : 'Código válido · Referido: ' + data.nombre;
+                            ? 'C\u00f3digo v\u00e1lido \u00b7 Punto: ' + data.nombre
+                            : 'C\u00f3digo v\u00e1lido \u00b7 Referido: ' + data.nombre;
                         self._setReferidoFeedback('ok', label);
                         self.app.state.referidoData = data;
                         self.app.state.codigoReferido = val;
-                        // Re-fetch inventory including punto's consignación stock
                         if (data.tipo === 'punto') {
                             self._refetchInventory(val);
                         }
                     } else {
-                        self._setReferidoFeedback('error', (data && data.error) || 'Código no válido');
+                        self._setReferidoFeedback('error', (data && data.error) || 'C\u00f3digo no v\u00e1lido');
                         self.app.state.referidoData = null;
                     }
                 });
@@ -335,26 +383,20 @@ var Paso2 = {
                 app.state._invColorTotal = self._invMap[color] || 0;
                 app.state._invColorEnStock = app.state._invColorTotal > 0;
 
-                // Refresh color badge UI (Agotado labels)
+                // Refresh color status labels
                 jQuery('#vk-paso-2 .vk-color-swatch').each(function() {
                     var cId = this.getAttribute('data-color');
                     var stock = self._invMap[cId] || 0;
-                    var $agotado = jQuery(this).find('div').filter(function() {
-                        return jQuery(this).text() === 'Agotado';
-                    });
+                    var $status = jQuery(this).find('.vk-color-status');
                     if (stock > 0) {
-                        $agotado.remove();
-                    } else if (!$agotado.length) {
-                        jQuery(this).append('<div style="font-size:10px;margin-top:2px;color:#b91c1c;font-weight:600;">Agotado</div>');
+                        $status.text('Entrega inmediata').css('color', '#059669');
+                    } else {
+                        $status.text('Pr\u00f3xima entrega').css('color', '#d97706');
                     }
                 });
 
-                // Update stock notice for current color
-                if (app.state._invColorTotal > 0) {
-                    jQuery('#vk-stock-notice').slideUp(150);
-                } else {
-                    jQuery('#vk-stock-notice').slideDown(150);
-                }
+                // Update current color state
+                self._updateColorState(color);
             }
         });
     }
