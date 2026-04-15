@@ -4,6 +4,27 @@
  * Used for MSI/contado full payment check and credito enganche check
  */
 require_once __DIR__ . '/../bootstrap.php';
+// Load config.php which reads .env and defines STRIPE_SECRET_KEY
+if (!defined('STRIPE_SECRET_KEY')) {
+    require_once __DIR__ . '/../../../configurador_prueba/php/config.php';
+}
+// Fallback: if .env didn't have the key, try loading it directly
+if (!defined('STRIPE_SECRET_KEY') || STRIPE_SECRET_KEY === '') {
+    $envPath = __DIR__ . '/../../../configurador_prueba/.env';
+    if (file_exists($envPath)) {
+        foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $ln) {
+            $ln = trim($ln);
+            if ($ln === '' || $ln[0] === '#' || strpos($ln, '=') === false) continue;
+            putenv($ln);
+        }
+        $isLive = strtolower(trim(getenv('APP_ENV') ?: 'test'));
+        $isLive = in_array($isLive, ['live', 'production']);
+        $sk = $isLive
+            ? (getenv('STRIPE_SECRET_KEY_LIVE') ?: '')
+            : (getenv('STRIPE_SECRET_KEY_TEST') ?: getenv('STRIPE_SECRET_KEY') ?: '');
+        if ($sk && !defined('STRIPE_SECRET_KEY')) define('STRIPE_SECRET_KEY', $sk);
+    }
+}
 $uid = adminRequireAuth(['admin','cedis']);
 
 $d = adminJsonIn();
@@ -16,22 +37,48 @@ $stmt->execute([$motoId]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$moto) adminJsonOut(['error' => 'Moto no encontrada'], 404);
 
-$stripeKey = defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : (getenv('STRIPE_SECRET_KEY') ?: '');
+$stripeKey = defined('STRIPE_SECRET_KEY') && STRIPE_SECRET_KEY !== ''
+    ? STRIPE_SECRET_KEY
+    : (getenv('STRIPE_SECRET_KEY_LIVE') ?: getenv('STRIPE_SECRET_KEY_TEST') ?: getenv('STRIPE_SECRET_KEY') ?: '');
 $result = ['moto_id' => $motoId, 'verificado' => false];
 
-// If moto has no stripe_pi, try to get it from transacciones via pedido_num
+// If moto has no stripe_pi, try to get it from transacciones
 $stripePi = $moto['stripe_pi'] ?? '';
-if (empty($stripePi) && !empty($moto['pedido_num'])) {
-    $pedido = preg_replace('/^VK-/', '', $moto['pedido_num']);
-    $txStmt = $pdo->prepare("SELECT stripe_pi FROM transacciones WHERE pedido = ? AND stripe_pi IS NOT NULL AND stripe_pi <> '' LIMIT 1");
-    $txStmt->execute([$pedido]);
-    $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
-    if ($txRow) {
-        $stripePi = $txRow['stripe_pi'];
-        // Also update moto record so future lookups don't need this
+if (empty($stripePi)) {
+    // Try by pedido_num
+    if (!empty($moto['pedido_num'])) {
+        $pedido = preg_replace('/^VK-/', '', $moto['pedido_num']);
+        $txStmt = $pdo->prepare("SELECT stripe_pi FROM transacciones WHERE pedido = ? AND stripe_pi IS NOT NULL AND stripe_pi <> '' LIMIT 1");
+        $txStmt->execute([$pedido]);
+        $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
+        if ($txRow) $stripePi = $txRow['stripe_pi'];
+    }
+    // Try by cliente_email
+    if (empty($stripePi) && !empty($moto['cliente_email'])) {
+        $txStmt = $pdo->prepare("SELECT stripe_pi FROM transacciones WHERE email = ? AND stripe_pi IS NOT NULL AND stripe_pi <> '' ORDER BY freg DESC LIMIT 1");
+        $txStmt->execute([$moto['cliente_email']]);
+        $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
+        if ($txRow) $stripePi = $txRow['stripe_pi'];
+    }
+    // Try by cliente_telefono
+    if (empty($stripePi) && !empty($moto['cliente_telefono'])) {
+        $txStmt = $pdo->prepare("SELECT stripe_pi FROM transacciones WHERE telefono = ? AND stripe_pi IS NOT NULL AND stripe_pi <> '' ORDER BY freg DESC LIMIT 1");
+        $txStmt->execute([$moto['cliente_telefono']]);
+        $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
+        if ($txRow) $stripePi = $txRow['stripe_pi'];
+    }
+    // Update moto record if found
+    if (!empty($stripePi)) {
         $pdo->prepare("UPDATE inventario_motos SET stripe_pi = ? WHERE id = ?")->execute([$stripePi, $motoId]);
     }
 }
+
+$result['debug_stripe_pi'] = $stripePi ?: null;
+$result['debug_pedido_num'] = $moto['pedido_num'] ?? null;
+$result['debug_has_key'] = !empty($stripeKey);
+$result['debug_key_prefix'] = $stripeKey ? substr($stripeKey, 0, 8) . '...' : 'EMPTY';
+$result['debug_app_env'] = defined('APP_ENV') ? APP_ENV : 'undefined';
+$result['debug_env_file'] = file_exists(__DIR__ . '/../../../configurador_prueba/.env') ? 'exists' : 'missing';
 
 // Check Stripe PaymentIntent if exists
 if ($stripePi && $stripeKey) {

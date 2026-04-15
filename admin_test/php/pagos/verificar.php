@@ -4,6 +4,7 @@
  * Used for MSI/contado full payment check and credito enganche check
  */
 require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../../../configurador_prueba_test/php/config.php';
 $uid = adminRequireAuth(['admin','cedis']);
 
 $d = adminJsonIn();
@@ -19,18 +20,35 @@ if (!$moto) adminJsonOut(['error' => 'Moto no encontrada'], 404);
 $stripeKey = defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : (getenv('STRIPE_SECRET_KEY') ?: '');
 $result = ['moto_id' => $motoId, 'verificado' => false];
 
-// If moto has no stripe_pi, try to get it from transacciones via pedido_num
+// If moto has no stripe_pi, try to get it from transacciones
 $stripePi = $moto['stripe_pi'] ?? '';
-if (empty($stripePi) && !empty($moto['pedido_num'])) {
-    $pedido = preg_replace('/^VK-/', '', $moto['pedido_num']);
-    $txStmt = $pdo->prepare("SELECT stripe_pi FROM transacciones WHERE pedido = ? AND stripe_pi IS NOT NULL AND stripe_pi <> '' LIMIT 1");
-    $txStmt->execute([$pedido]);
-    $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
-    if ($txRow) {
-        $stripePi = $txRow['stripe_pi'];
+if (empty($stripePi)) {
+    if (!empty($moto['pedido_num'])) {
+        $pedido = preg_replace('/^VK-/', '', $moto['pedido_num']);
+        $txStmt = $pdo->prepare("SELECT stripe_pi FROM transacciones WHERE pedido = ? AND stripe_pi IS NOT NULL AND stripe_pi <> '' LIMIT 1");
+        $txStmt->execute([$pedido]);
+        $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
+        if ($txRow) $stripePi = $txRow['stripe_pi'];
+    }
+    if (empty($stripePi) && !empty($moto['cliente_email'])) {
+        $txStmt = $pdo->prepare("SELECT stripe_pi FROM transacciones WHERE email = ? AND stripe_pi IS NOT NULL AND stripe_pi <> '' ORDER BY freg DESC LIMIT 1");
+        $txStmt->execute([$moto['cliente_email']]);
+        $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
+        if ($txRow) $stripePi = $txRow['stripe_pi'];
+    }
+    if (empty($stripePi) && !empty($moto['cliente_telefono'])) {
+        $txStmt = $pdo->prepare("SELECT stripe_pi FROM transacciones WHERE telefono = ? AND stripe_pi IS NOT NULL AND stripe_pi <> '' ORDER BY freg DESC LIMIT 1");
+        $txStmt->execute([$moto['cliente_telefono']]);
+        $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
+        if ($txRow) $stripePi = $txRow['stripe_pi'];
+    }
+    if (!empty($stripePi)) {
         $pdo->prepare("UPDATE inventario_motos SET stripe_pi = ? WHERE id = ?")->execute([$stripePi, $motoId]);
     }
 }
+
+$result['debug_stripe_pi'] = $stripePi ?: null;
+$result['debug_pedido_num'] = $moto['pedido_num'] ?? null;
 
 // Check Stripe PaymentIntent if exists
 if ($stripePi && $stripeKey) {
