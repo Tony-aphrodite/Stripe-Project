@@ -27,7 +27,7 @@ try {
               AND m.activo = 1
               AND m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
         ORDER BY t.freg DESC
-        LIMIT 200
+        LIMIT 100
     ");
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $rows[] = [
@@ -219,14 +219,15 @@ try {
 }
 
 // ── Backfill empty fields from Stripe PaymentIntent metadata ────────────
-// For orders where nombre/telefono/modelo are missing (incomplete checkout),
-// retrieve the data from Stripe so the admin can contact the customer.
+// Skip by default for faster loading. Only run when explicitly requested
+// via ?backfill=1 or when there are error/orphan rows that need enrichment.
+$doBackfill = !empty($_GET['backfill']);
 try {
-    $needsBackfill = array_filter($rows, function($r) {
+    $needsBackfill = $doBackfill ? array_filter($rows, function($r) {
         return !empty($r['stripe_pi'])
             && str_starts_with($r['stripe_pi'], 'pi_')
             && (empty($r['nombre']) || empty($r['telefono']) || empty($r['modelo']));
-    });
+    }) : [];
     if ($needsBackfill) {
         $stripePath = __DIR__ . '/../../../configurador_prueba_test/php/vendor/autoload.php';
         if (file_exists($stripePath)) {

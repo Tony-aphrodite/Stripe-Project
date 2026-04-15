@@ -7,15 +7,30 @@ window.AD_ventas = (function(){
       _backBtn+
       '<div class="ad-toolbar">'+
         '<div class="ad-h1">Ventas / Ordenes</div>'+
+        '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<span id="vtLastUpdate" style="font-size:11px;color:var(--ad-dim);"></span>'+
+          '<button class="ad-btn" id="vtRefresh" style="background:#f0f4f8;color:var(--ad-navy);padding:6px 14px;font-size:13px;">'+
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;margin-right:4px;"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>'+
+            'Actualizar</button>'+
+        '</div>'+
       '</div>'+
       '<div id="vtKpis" class="ad-kpis" style="margin-bottom:14px;"></div>'+
-      '<div id="vtTable">Cargando...</div>'
+      '<div id="vtTable"><div style="text-align:center;padding:40px;"><span class="ad-spin"></span> Cargando ventas...</div></div>'
     );
     loadData();
+    $('#vtRefresh').on('click', function(){
+      $('#vtTable').html('<div style="text-align:center;padding:40px;"><span class="ad-spin"></span> Actualizando...</div>');
+      loadData();
+    });
   }
 
   function loadData(){
+    var _loadStart = Date.now();
     ADApp.api('ventas/listar.php').done(function(r){
+      var elapsed = ((Date.now() - _loadStart) / 1000).toFixed(1);
+      var now = new Date();
+      var timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+      $('#vtLastUpdate').html('Actualizado: ' + timeStr + ' (' + elapsed + 's)');
       if(!r.ok){ $('#vtTable').html('<div class="ad-card">Error al cargar</div>'); return; }
 
       // KPIs
