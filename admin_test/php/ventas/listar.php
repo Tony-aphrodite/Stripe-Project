@@ -16,7 +16,7 @@ try {
     $stmt = $pdo->query("
         SELECT t.id, t.pedido, t.nombre, t.email, t.telefono,
                t.modelo, t.color, t.tpago, t.total, t.stripe_pi, t.freg,
-               t.punto_id, t.punto_nombre, t.folio_contrato,
+               t.punto_id, t.punto_nombre, t.ciudad, t.estado, t.cp, t.folio_contrato,
                t.fecha_estimada_entrega,
                t.pago_estado AS tx_pago_estado,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
@@ -56,6 +56,9 @@ try {
                 ),
             'punto_id'    => $r['punto_id'] ?? null,
             'punto_nombre'=> $r['punto_nombre'] ?? null,
+            'ciudad'      => $r['ciudad'] ?? null,
+            'estado'      => $r['estado'] ?? null,
+            'cp'          => $r['cp'] ?? null,
             'folio_contrato' => $r['folio_contrato'] ?? null,
             'fecha_estimada_entrega' => $r['fecha_estimada_entrega'] ?? null,
         ];

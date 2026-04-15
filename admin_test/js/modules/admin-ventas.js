@@ -347,6 +347,11 @@ window.AD_ventas = (function(){
     } else {
       html += fRow('Punto', '<span class="ad-badge red">Sin punto seleccionado</span>');
     }
+    if(r.estado || r.ciudad || r.cp){
+      html += fRow('Estado', r.estado || '—');
+      html += fRow('Ciudad', r.ciudad || '—');
+      html += fRow('C.P.', r.cp || '—');
+    }
     html += '</div>';
 
     // ── Section: Moto asignada ──
