@@ -80,6 +80,21 @@ window.AD_pagos = (function(){
       if(o.punto_nombre) html += fieldRow('Punto', o.punto_nombre, 8);
       html += '</div>';
 
+      // ── Credit details section ──
+      if(fuente === 'credito' && (o.monto_semanal || o.plazo_meses || o.enganche)){
+        html += sectionHeader('Detalle del crédito', '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>');
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:24px;">';
+        var ci = 0;
+        if(o.precio_contado) html += fieldRow('Precio contado', '<span style="font-weight:700;">'+ADApp.money(o.precio_contado)+'</span>', ci++);
+        html += fieldRow('Enganche', '<span style="font-size:15px;font-weight:800;color:#059669;">'+ADApp.money(o.enganche||0)+'</span>', ci++);
+        if(o.monto_financiado) html += fieldRow('Monto financiado', ADApp.money(o.monto_financiado), ci++);
+        html += fieldRow('Pago semanal', '<span style="font-size:15px;font-weight:800;color:var(--ad-primary);">'+ADApp.money(o.monto_semanal||0)+'</span>', ci++);
+        html += fieldRow('Plazo', '<span style="font-weight:700;">'+(o.plazo_meses||'—')+' meses</span>'+(o.plazo_semanas?' <span style="font-size:11px;color:var(--ad-dim);">('+o.plazo_semanas+' semanas)</span>':''), ci++);
+        if(o.tasa_interna) html += fieldRow('Tasa interna', (o.tasa_interna*100).toFixed(2)+'%', ci++);
+        if(o.estado_credito) html += fieldRow('Estado crédito', '<span class="ad-badge '+(o.estado_credito==='activa'?'green':o.estado_credito==='pausada'?'yellow':'red')+'">'+o.estado_credito+'</span>', ci++);
+        html += '</div>';
+      }
+
       // ── Stripe info section ──
       if(s && !s.error){
         html += sectionHeader('Información de Stripe', '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 100 4 2 2 0 000-4z"/></svg>');

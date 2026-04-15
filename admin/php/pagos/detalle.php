@@ -142,7 +142,7 @@ if ($stripePi && $stripeKey) {
 $out = ['ok' => true];
 
 if ($local) {
-    $out['orden'] = [
+    $orden = [
         'id'        => (int)$local['id'],
         'pedido'    => $local['pedido'] ?? $local['pedido_num'] ?? '',
         'nombre'    => $local['nombre'] ?? '',
@@ -157,6 +157,20 @@ if ($local) {
         'punto_id'     => $local['punto_id'] ?? null,
         'punto_nombre' => $local['punto_nombre'] ?? null,
     ];
+
+    // Credit-specific fields
+    if ($fuente === 'credito') {
+        $orden['precio_contado']  = (float)($local['precio_contado'] ?? 0);
+        $orden['enganche']        = (float)($local['enganche'] ?? 0);
+        $orden['monto_semanal']   = (float)($local['monto_semanal'] ?? 0);
+        $orden['plazo_meses']     = (int)($local['plazo_meses'] ?? 0);
+        $orden['plazo_semanas']   = (int)($local['plazo_semanas'] ?? 0);
+        $orden['monto_financiado'] = (float)($local['monto_financiado'] ?? 0);
+        $orden['tasa_interna']    = (float)($local['tasa_interna'] ?? 0);
+        $orden['estado_credito']  = $local['estado'] ?? '';
+    }
+
+    $out['orden'] = $orden;
 }
 
 $out['stripe'] = $stripe;
