@@ -183,12 +183,23 @@ try {
     // or recuperar-orden promotes an error into transacciones, recuperado_tx_id
     // is set (to the new tx id, or -1 if skipped as duplicate). Both cases
     // should disappear from the dashboard.
+    // Filter: skip errors whose stripe_pi already exists in transacciones
+    // (payment was eventually saved successfully) and deduplicate by stripe_pi
+    // (same failed payment can generate multiple error rows on retries)
     $stmt = $pdo->query("
-        SELECT id, nombre, email, telefono, modelo, color, total,
-               stripe_pi, error_msg, freg
-        FROM transacciones_errores
-        WHERE recuperado_tx_id IS NULL
-        ORDER BY freg DESC
+        SELECT e.id, e.nombre, e.email, e.telefono, e.modelo, e.color, e.total,
+               e.stripe_pi, e.error_msg, e.freg
+        FROM transacciones_errores e
+        WHERE e.recuperado_tx_id IS NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM transacciones t
+              WHERE t.stripe_pi = e.stripe_pi AND t.stripe_pi <> '' AND t.stripe_pi IS NOT NULL
+          )
+          AND e.id = (
+              SELECT MAX(e2.id) FROM transacciones_errores e2
+              WHERE e2.stripe_pi = e.stripe_pi AND e2.recuperado_tx_id IS NULL
+          )
+        ORDER BY e.freg DESC
         LIMIT 100
     ");
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {

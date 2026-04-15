@@ -280,11 +280,15 @@ var PasoCreditoEnganche = {
         var self  = this;
         var state = self.app.state;
 
+        // Prevent double-submit
+        if (self._isProcessing) return;
+
         if (!self._stripe || !self._cardElement) {
             alert('El módulo de pago no está listo. Recarga la página.');
             return;
         }
 
+        self._isProcessing = true;
         self._setLoading(true);
         jQuery('#vk-enganche-error').hide();
 
@@ -321,6 +325,7 @@ var PasoCreditoEnganche = {
                 if (!response.clientSecret) {
                     self._showError('Error al iniciar el pago. Intenta de nuevo.');
                     self._setLoading(false);
+                    self._isProcessing = false;
                     return;
                 }
 
@@ -337,6 +342,7 @@ var PasoCreditoEnganche = {
                     if (result.error) {
                         self._showError(result.error.message);
                         self._setLoading(false);
+                        self._isProcessing = false;
                     } else if (result.paymentIntent.status === 'succeeded') {
                         self._confirmarEnganche(customerData, modelo, result.paymentIntent.id, enganche);
                     }
@@ -345,6 +351,7 @@ var PasoCreditoEnganche = {
             error: function() {
                 self._showError('Error de conexión. Verifica tu internet.');
                 self._setLoading(false);
+                self._isProcessing = false;
             }
         });
     },

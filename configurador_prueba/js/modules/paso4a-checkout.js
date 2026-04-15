@@ -477,6 +477,9 @@ var Paso4A = {
     _handleSubmit: function() {
         var self = this;
 
+        // Prevent double-submit (rapid clicks can create multiple PaymentIntents)
+        if (self._isProcessing) return;
+
         if (!$('#vk-terms-check').is(':checked')) {
             alert('Por favor acepta los terminos y condiciones.');
             return;
@@ -493,6 +496,7 @@ var Paso4A = {
             return;
         }
 
+        self._isProcessing = true;
         self._setLoading(true);
         $('#vk-pago-error').hide();
 
@@ -530,6 +534,7 @@ var Paso4A = {
                 if (!response.clientSecret) {
                     self._showError('Error al iniciar el pago. Intenta de nuevo.');
                     self._setLoading(false);
+                    self._isProcessing = false;
                     return;
                 }
 
@@ -546,6 +551,7 @@ var Paso4A = {
                     if (result.error) {
                         self._showError(result.error.message);
                         self._setLoading(false);
+                        self._isProcessing = false;
                     } else if (result.paymentIntent.status === 'succeeded') {
                         self._confirmarOrden(customerData, modelo, result.paymentIntent.id, total, msiPago);
                     }
@@ -554,6 +560,7 @@ var Paso4A = {
             error: function() {
                 self._showError('Error de conexion. Verifica tu internet e intenta de nuevo.');
                 self._setLoading(false);
+                self._isProcessing = false;
             }
         });
     },
