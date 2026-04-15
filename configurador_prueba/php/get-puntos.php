@@ -6,7 +6,7 @@
  */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Cache-Control: public, max-age=300'); // 5 min cache
+header('Cache-Control: no-cache, must-revalidate');
 
 require_once __DIR__ . '/config.php';
 $pdo = getDB();

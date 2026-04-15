@@ -27,7 +27,7 @@ window.AD_puntos = (function(){
         '<td>'+p.listas_entrega+'</td>'+
         '<td>'+p.envios_pendientes+'</td>'+
         '<td><code>'+(p.codigo_venta||'—')+'</code></td>'+
-        '<td>'+(p.activo?'<span class="ad-badge green">Sí</span>':'<span class="ad-badge red">No</span>')+'</td>'+
+        '<td>'+(Number(p.activo)?'<span class="ad-badge green">Sí</span>':'<span class="ad-badge red">No</span>')+'</td>'+
         '<td><button class="ad-btn sm ghost adEditP" data-id="'+p.id+'">Editar</button></td>'+
       '</tr>';
     });
@@ -61,7 +61,7 @@ window.AD_puntos = (function(){
         '<option value="certificado"'+(p.tipo==='certificado'?' selected':'')+'>Distribuidor Certificado</option>'+
         '<option value="entrega"'+(!p.tipo||p.tipo==='entrega'?' selected':'')+'>Punto de Entrega</option>'+
       '</select>'+
-      '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pfActivo" '+(p.activo!==0?'checked':'')+'> Activo</label>'+
+      '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pfActivo" '+(p.id&&Number(p.activo)===0?'':'checked')+'> Activo</label>'+
     '</div>';
 
     // ── Address ──

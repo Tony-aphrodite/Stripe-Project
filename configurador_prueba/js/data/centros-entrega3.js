@@ -10,7 +10,7 @@ var VOLTIKA_CENTROS = [];
 (function(){
     var basePath = window.VK_BASE_PATH || '';
     $.ajax({
-        url: basePath + 'php/get-puntos.php',
+        url: basePath + 'php/get-puntos.php?t=' + Date.now(),
         dataType: 'json',
         timeout: 10000,
         async: true,
