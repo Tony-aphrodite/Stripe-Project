@@ -131,6 +131,18 @@ function asignarMotoFIFO(
  * @return array  [['modelo'=>'M05','color'=>'negro','disponibles'=>3], ...]
  */
 function contarDisponibles(PDO $pdo, string $modelo = '', string $color = '', int $puntoId = 0): array {
+    // Ensure venta_publico column exists (idempotent)
+    static $colChecked = false;
+    if (!$colChecked) {
+        try {
+            $cols = $pdo->query("SHOW COLUMNS FROM inventario_motos LIKE 'venta_publico'")->fetchAll();
+            if (empty($cols)) {
+                $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN venta_publico TINYINT(1) NOT NULL DEFAULT 0");
+            }
+        } catch (Throwable $e) {}
+        $colChecked = true;
+    }
+
     $base  = ["m.activo = 1", "m.estado NOT IN ('entregada','retenida')",
                "(m.pedido_num IS NULL OR m.pedido_num = '')",
                "(m.cliente_email IS NULL OR m.cliente_email = '')",
@@ -139,9 +151,9 @@ function contarDisponibles(PDO $pdo, string $modelo = '', string $color = '', in
                "EXISTS (SELECT 1 FROM checklist_origen co WHERE co.moto_id = m.id AND co.completado = 1)"];
     $params = [];
 
-    // Location filter: CEDIS + optional punto consignación
+    // Location filter: CEDIS + optional punto consignación (only venta_publico=1)
     if ($puntoId > 0) {
-        $base[] = "((m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0) OR (m.punto_voltika_id = ? AND m.tipo_asignacion = 'consignacion'))";
+        $base[] = "((m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0) OR (m.punto_voltika_id = ? AND m.tipo_asignacion = 'consignacion' AND m.venta_publico = 1))";
         $params[] = $puntoId;
     } else {
         $base[] = "(m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0)";

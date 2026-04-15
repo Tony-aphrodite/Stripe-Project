@@ -84,7 +84,70 @@ var Paso3 = {
             html += '</div>';
         } // end if/else enInventario
 
-        // Postal code input with search icon
+        // ── Check if referido punto → locked delivery ──
+        var refData = state.referidoData;
+        var isPuntoReferido = refData && refData.ok && refData.tipo === 'punto';
+
+        if (isPuntoReferido) {
+            // Locked punto — skip CP input, show only the assigned punto
+            var lockedCentro = {
+                id: 'punto-' + refData.id,
+                nombre: refData.nombre || 'Punto Voltika',
+                direccion: 'Asignado por tu código de referido',
+                ciudad: '',
+                estado: '',
+                tipo: 'punto_referido'
+            };
+            state.centroEntrega = lockedCentro;
+            state.costoLogistico = esCredito ? 0 : (VOLTIKA_PRODUCTOS.config.costoLogistico || 0);
+
+            html += '<div class="vk-card" style="padding:20px;">';
+
+            // Locked punto card
+            html += '<div style="font-size:17px;font-weight:800;color:#1a3a5c;margin-bottom:12px;text-align:center;">Tu punto de entrega</div>';
+            html += '<div style="padding:16px;border:2px solid #039fe1;background:#E0F4FD;border-radius:14px;margin-bottom:14px;">';
+            html += '<div style="display:flex;align-items:flex-start;gap:10px;">';
+            html += '<span style="font-size:22px;">&#128205;</span>';
+            html += '<div style="flex:1;min-width:0;">';
+            html += '<div style="font-weight:800;font-size:17px;color:#1a3a5c;margin-bottom:4px;">' + lockedCentro.nombre + '</div>';
+            html += '<div style="font-size:13px;color:#1a3a5c;margin-bottom:6px;">Tu c\u00f3digo de referido <strong>' + (state.codigoReferido || '') + '</strong> te asigna autom\u00e1ticamente a este punto.</div>';
+            html += '<div style="font-size:12px;color:#2e7d32;font-weight:600;">&#10003; Punto de entrega asignado</div>';
+            html += '</div></div></div>';
+
+            // Centro Voltika Autorizado info
+            html += '<div style="background:var(--vk-bg-light);border-radius:10px;padding:16px;margin-bottom:14px;">';
+            html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
+            html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/voltika_shield.svg" alt="Voltika" style="width:30px;height:30px;flex-shrink:0;">';
+            html += '<div>';
+            html += '<div style="font-weight:800;font-size:17px;margin-bottom:6px;">Centro Voltika Autorizado</div>';
+            html += '<div style="font-size:14px;color:var(--vk-text-secondary);margin-bottom:4px;">&#10003; Revisi\u00f3n y activaci\u00f3n profesional</div>';
+            if (esCredito) {
+                html += '<div style="font-size:14px;color:var(--vk-green-primary);font-weight:600;">&#10003; Flete incluido en Cr\u00e9dito Voltika</div>';
+            } else {
+                html += '<div style="font-size:14px;color:var(--vk-green-primary);font-weight:600;">&#10003; Costo log\u00edstico: <s>$4,800 MXN</s> <span style="color:#C62828;font-weight:800;">Sin costo</span></div>';
+            }
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+
+            // Tu Asesor Voltika section
+            html += '<div style="background:var(--vk-bg-light);border-radius:10px;padding:16px;margin-bottom:14px;">';
+            html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
+            html += '<img src="' + (window.VK_BASE_PATH || '') + 'img/asesor_icon.jpg" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">';
+            html += '<div>';
+            html += '<div style="font-weight:800;font-size:17px;margin-bottom:4px;">Tu Asesor Voltika</div>';
+            html += '<div style="font-size:14px;color:var(--vk-text-secondary);">Tu asesor Voltika te acompa\u00f1ar\u00e1 en todo momento. En menos de <strong style="font-size:15px;">48 horas</strong> te confirmamos tu punto de entrega autorizado.</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '<p style="font-size:14px;font-weight:700;color:var(--vk-text-primary);margin:4px 0 14px;text-align:center;">Recibir\u00e1s confirmaci\u00f3n por <strong>WhatsApp</strong> y <strong>correo electr\u00f3nico</strong>.</p>';
+
+            html += '</div>'; // end card
+
+        } else {
+
+        // ── Normal flow: CP input + centro search ──
         html += '<div class="vk-card" style="padding:20px;">';
 
         html += '<div style="font-weight:700;font-size:16px;margin-bottom:10px;">Ingresa tu C\u00f3digo Postal</div>';
@@ -182,6 +245,8 @@ var Paso3 = {
         }
 
         html += '</div>'; // end card
+
+        } // end if/else isPuntoReferido
 
         // ── 2 Interactive Checkboxes (always visible) ──
         html += '<div style="margin-top:16px;">';
@@ -294,6 +359,13 @@ var Paso3 = {
 
         // Confirm
         $(document).on('click', '#vk-paso3-confirmar', function() {
+            // Punto referido — skip CP/colonia validation, centro already set
+            var _refData = self.app.state.referidoData;
+            if (_refData && _refData.ok && _refData.tipo === 'punto' && self.app.state.centroEntrega) {
+                self.app.irAPaso('resumen');
+                return;
+            }
+
             var cp = $('#vk-cp-input').val();
             var colonia = $('#vk-cp-colonia').val();
             if (!VkValidacion.codigoPostal(cp) || !self.app.state.ciudad) {

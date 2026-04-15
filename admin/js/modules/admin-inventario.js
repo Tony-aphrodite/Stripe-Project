@@ -257,6 +257,23 @@ window.AD_inventario = (function(){
         }
       }
 
+      // ── Venta al público ──
+      if(ADApp.canWrite() && m.punto_voltika_id && m.tipo_asignacion === 'consignacion'){
+        var isVentaPublico = parseInt(m.venta_publico) === 1;
+        html += secHead('Venta al p\u00fablico','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>');
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:8px;background:'+(isVentaPublico?'rgba(5,150,105,.06)':'rgba(107,114,128,.06)')+';border:1px solid '+(isVentaPublico?'rgba(5,150,105,.15)':'rgba(107,114,128,.15)')+';margin-bottom:12px;">';
+        html += '<div>';
+        html += '<div style="font-weight:700;font-size:13px;color:'+(isVentaPublico?'#059669':'#6b7280')+';">'+(isVentaPublico?'Disponible en configurador':'No visible en configurador')+'</div>';
+        html += '<div style="font-size:11px;color:var(--ad-dim);margin-top:2px;">Permite que esta moto aparezca como disponible para compra en l\u00ednea.</div>';
+        html += '</div>';
+        html += '<label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer;">';
+        html += '<input type="checkbox" id="adToggleVentaPublico" data-id="'+m.id+'" '+(isVentaPublico?'checked':'')+' style="opacity:0;width:0;height:0;">';
+        html += '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:'+(isVentaPublico?'#059669':'#ccc')+';border-radius:24px;transition:.3s;"></span>';
+        html += '<span style="position:absolute;content:\'\';height:18px;width:18px;left:'+(isVentaPublico?'23px':'3px')+';bottom:3px;background:white;border-radius:50%;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>';
+        html += '</label>';
+        html += '</div>';
+      }
+
       // ── Acciones ──
       var origenOk = r.checklist_origen && r.checklist_origen.completado;
       if(ADApp.canWrite()){
@@ -281,6 +298,14 @@ window.AD_inventario = (function(){
       $('#adAssign').on('click',function(){ if(!origenOk || isBloqueada) return; assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
       $('#adLockMoto').on('click',function(){ showLockModal(m.id); });
       $('#adUnlockMoto').on('click',function(){ unlockMoto(m.id); });
+      $('#adToggleVentaPublico').on('change',function(){
+        var val = this.checked ? 1 : 0;
+        var $toggle = $(this);
+        ADApp.api('inventario/toggle-venta-publico.php',{moto_id:m.id,venta_publico:val}).done(function(res){
+          if(res.ok){ ADApp.toast(res.message); showDetalle(m.id); }
+          else { alert(res.error||'Error'); $toggle.prop('checked',!val); }
+        }).fail(function(){ alert('Error de conexión'); $toggle.prop('checked',!val); });
+      });
       $('#adVerifyPay').on('click',function(){
         ADApp.api('pagos/verificar.php',{moto_id:m.id}).done(function(r2){
           var msg = r2.verificado ? 'Pago verificado correctamente' : 'No verificado: '+(r2.stripe_status||'sin Stripe PI');
