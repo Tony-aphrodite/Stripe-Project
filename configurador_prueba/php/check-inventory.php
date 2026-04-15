@@ -26,10 +26,27 @@ try {
     // If a punto referido code is provided, include its consignación inventory
     $referido = trim($_GET['referido'] ?? '');
     if ($referido) {
-        // Try codigo_venta first, then codigo_referido as fallback
-        $rStmt = $pdo->prepare("SELECT id FROM puntos_voltika WHERE (UPPER(codigo_venta) = UPPER(?) OR UPPER(codigo_referido) = UPPER(?)) AND activo = 1 LIMIT 1");
-        $rStmt->execute([$referido, $referido]);
-        $puntoId = (int)($rStmt->fetchColumn() ?: 0);
+        // Detect which column exists for punto referral codes
+        try {
+            $pvCols = $pdo->query("SHOW COLUMNS FROM puntos_voltika")->fetchAll(PDO::FETCH_COLUMN);
+            $conditions = [];
+            $rParams = [];
+            if (in_array('codigo_venta', $pvCols, true)) {
+                $conditions[] = "UPPER(codigo_venta) = UPPER(?)";
+                $rParams[] = $referido;
+            }
+            if (in_array('codigo_referido', $pvCols, true)) {
+                $conditions[] = "UPPER(codigo_referido) = UPPER(?)";
+                $rParams[] = $referido;
+            }
+            if ($conditions) {
+                $rStmt = $pdo->prepare("SELECT id FROM puntos_voltika WHERE (" . implode(' OR ', $conditions) . ") AND activo = 1 LIMIT 1");
+                $rStmt->execute($rParams);
+                $puntoId = (int)($rStmt->fetchColumn() ?: 0);
+            }
+        } catch (Throwable $e) {
+            error_log('check-inventory referido lookup: ' . $e->getMessage());
+        }
     }
 
     $rows = contarDisponibles($pdo, $modelo, $color, $puntoId);
