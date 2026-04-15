@@ -378,6 +378,37 @@ function voltikaEnsureSchema(): void {
         freg             DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+    // Comisiones por punto y modelo
+    $pdo->exec("CREATE TABLE IF NOT EXISTS punto_comisiones (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        punto_id         INT NOT NULL,
+        modelo_id        INT NOT NULL,
+        comision_venta_pct   DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Comision % por venta con referido',
+        comision_entrega_pct DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Comision % por entrega de moto',
+        fmod             DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_punto_modelo (punto_id, modelo_id),
+        INDEX idx_punto (punto_id),
+        FOREIGN KEY (punto_id) REFERENCES puntos_voltika(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Log de comisiones generadas
+    $pdo->exec("CREATE TABLE IF NOT EXISTS comisiones_log (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        punto_id         INT NULL,
+        referido_id      INT NULL,
+        transaccion_id   INT NULL,
+        pedido_num       VARCHAR(50),
+        modelo           VARCHAR(100),
+        monto_venta      DECIMAL(12,2) DEFAULT 0.00,
+        comision_pct     DECIMAL(5,2) DEFAULT 0.00,
+        comision_monto   DECIMAL(12,2) DEFAULT 0.00,
+        tipo             ENUM('venta','entrega') DEFAULT 'venta',
+        freg             DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_punto (punto_id),
+        INDEX idx_referido (referido_id),
+        INDEX idx_freg (freg)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // Consultas buro de credito
     $pdo->exec("CREATE TABLE IF NOT EXISTS consultas_buro (
         id               INT AUTO_INCREMENT PRIMARY KEY,

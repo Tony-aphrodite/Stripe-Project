@@ -250,6 +250,36 @@ try {
         }
     }
 
+    // ── Auto-calculate commission for punto referido sales ──
+    if ($puntoVoltikaId && $referidoTipo === 'punto' && $total > 0) {
+        try {
+            // Find modelo_id from modelos table
+            $mStmt = $pdo->prepare("SELECT id FROM modelos WHERE nombre = ? LIMIT 1");
+            $mStmt->execute([$modelo]);
+            $modeloDbId = $mStmt->fetchColumn();
+
+            if ($modeloDbId) {
+                $cStmt = $pdo->prepare("
+                    SELECT comision_venta_pct FROM punto_comisiones
+                    WHERE punto_id = ? AND modelo_id = ?
+                ");
+                $cStmt->execute([$puntoVoltikaId, $modeloDbId]);
+                $comPct = floatval($cStmt->fetchColumn());
+
+                if ($comPct > 0) {
+                    $comMonto = round($total * $comPct / 100, 2);
+                    $pdo->prepare("
+                        INSERT INTO comisiones_log
+                            (punto_id, referido_id, pedido_num, modelo, monto_venta, comision_pct, comision_monto, tipo)
+                        VALUES (?, NULL, ?, ?, ?, ?, ?, 'venta')
+                    ")->execute([$puntoVoltikaId, $pedidoNum, $modelo, $total, $comPct, $comMonto]);
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('Voltika comision auto-calc error: ' . $e->getMessage());
+        }
+    }
+
 } catch (PDOException $e) {
     // El pago ya se capturó en Stripe, así que NO podemos abortar sin dejar
     // una orden huérfana. Escribimos la orden a `transacciones_errores` para

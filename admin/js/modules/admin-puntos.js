@@ -106,6 +106,12 @@ window.AD_puntos = (function(){
       html += '</div>';
     }
 
+    // ── Commissions per model ──
+    if(!isNew){
+      html += sectionTitle('Comisiones por modelo');
+      html += '<div id="pfComisionesWrap"><span class="ad-spin"></span> Cargando modelos...</div>';
+    }
+
     // ── Coordinates ──
     html += sectionTitle('Ubicación (mapa)');
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
@@ -117,6 +123,34 @@ window.AD_puntos = (function(){
     html += '<button class="ad-btn primary" id="pfSave" style="width:100%;margin-top:12px;padding:10px;">Guardar</button>';
 
     ADApp.modal(html);
+
+    // Load commissions for existing punto
+    if(!isNew){
+      ADApp.api('puntos/comisiones.php?punto_id='+p.id).done(function(rc){
+        if(!rc.ok) return;
+        var modelos = rc.modelos||[];
+        var comMap = {};
+        (rc.comisiones||[]).forEach(function(c){ comMap[c.modelo_id] = c; });
+
+        var ch = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
+        ch += '<thead><tr style="border-bottom:1px solid #ddd;">'+
+          '<th style="text-align:left;padding:4px;">Modelo</th>'+
+          '<th style="text-align:center;padding:4px;">% Venta referido</th>'+
+          '<th style="text-align:center;padding:4px;">% Entrega</th></tr></thead><tbody>';
+
+        modelos.forEach(function(m){
+          var c = comMap[m.id]||{};
+          ch += '<tr data-mid="'+m.id+'" style="border-bottom:1px solid #f0f0f0;">'+
+            '<td style="padding:4px;font-weight:600;">'+esc(m.nombre)+'</td>'+
+            '<td style="padding:4px;text-align:center;"><input type="number" class="ad-input pfComVenta" step="0.5" min="0" max="100" value="'+(parseFloat(c.comision_venta_pct)||0)+'" style="width:70px;text-align:center;padding:4px;"></td>'+
+            '<td style="padding:4px;text-align:center;"><input type="number" class="ad-input pfComEntrega" step="0.5" min="0" max="100" value="'+(parseFloat(c.comision_entrega_pct)||0)+'" style="width:70px;text-align:center;padding:4px;"></td>'+
+          '</tr>';
+        });
+        ch += '</tbody></table>';
+        if(!modelos.length) ch = '<div style="color:#999;font-size:12px;">No hay modelos registrados.</div>';
+        $('#pfComisionesWrap').html(ch);
+      });
+    }
 
     $('#pfSave').on('click',function(){
       var serviciosArr = $('#pfServicios').val().split('\n').map(function(s){return s.trim();}).filter(Boolean);
@@ -146,10 +180,28 @@ window.AD_puntos = (function(){
         autorizado: 1
       };
 
+      // Collect commission data
+      var comisiones = [];
+      $('#pfComisionesWrap tr[data-mid]').each(function(){
+        var mid = $(this).data('mid');
+        comisiones.push({
+          modelo_id: mid,
+          comision_venta_pct: parseFloat($(this).find('.pfComVenta').val())||0,
+          comision_entrega_pct: parseFloat($(this).find('.pfComEntrega').val())||0
+        });
+      });
+
       $(this).prop('disabled',true).html('<span class="ad-spin"></span> Guardando...');
       ADApp.api('puntos/guardar.php', payload).done(function(r2){
-        if(r2.ok){ ADApp.closeModal(); render(); }
-        else{ alert(r2.error||'Error'); $('#pfSave').prop('disabled',false).html('Guardar'); }
+        if(!r2.ok){ alert(r2.error||'Error'); $('#pfSave').prop('disabled',false).html('Guardar'); return; }
+        var puntoId = r2.punto_id || p.id;
+        if(comisiones.length && puntoId){
+          ADApp.api('puntos/comisiones.php', {punto_id: puntoId, comisiones: comisiones}).done(function(){
+            ADApp.closeModal(); render();
+          }).fail(function(){ ADApp.closeModal(); render(); });
+        } else {
+          ADApp.closeModal(); render();
+        }
       }).fail(function(){
         alert('Error de conexión');
         $('#pfSave').prop('disabled',false).html('Guardar');
