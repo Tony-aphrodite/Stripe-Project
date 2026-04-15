@@ -26,9 +26,14 @@ try {
                p.cp AS punto_cp, p.telefono AS punto_telefono
         FROM transacciones t
         LEFT JOIN inventario_motos m
-               ON m.pedido_num = CONCAT('VK-', t.pedido)
-              AND m.activo = 1
-              AND m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
+               ON m.id = (
+                   SELECT m2.id FROM inventario_motos m2
+                   WHERE m2.pedido_num = CONCAT('VK-', t.pedido)
+                     AND m2.activo = 1
+                     AND m2.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
+                   ORDER BY m2.fmod DESC
+                   LIMIT 1
+               )
         LEFT JOIN puntos_voltika p
                ON p.nombre = t.punto_nombre AND p.activo = 1
         ORDER BY t.freg DESC

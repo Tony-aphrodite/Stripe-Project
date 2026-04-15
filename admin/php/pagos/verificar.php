@@ -19,9 +19,23 @@ if (!$moto) adminJsonOut(['error' => 'Moto no encontrada'], 404);
 $stripeKey = defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : (getenv('STRIPE_SECRET_KEY') ?: '');
 $result = ['moto_id' => $motoId, 'verificado' => false];
 
+// If moto has no stripe_pi, try to get it from transacciones via pedido_num
+$stripePi = $moto['stripe_pi'] ?? '';
+if (empty($stripePi) && !empty($moto['pedido_num'])) {
+    $pedido = preg_replace('/^VK-/', '', $moto['pedido_num']);
+    $txStmt = $pdo->prepare("SELECT stripe_pi FROM transacciones WHERE pedido = ? AND stripe_pi IS NOT NULL AND stripe_pi <> '' LIMIT 1");
+    $txStmt->execute([$pedido]);
+    $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
+    if ($txRow) {
+        $stripePi = $txRow['stripe_pi'];
+        // Also update moto record so future lookups don't need this
+        $pdo->prepare("UPDATE inventario_motos SET stripe_pi = ? WHERE id = ?")->execute([$stripePi, $motoId]);
+    }
+}
+
 // Check Stripe PaymentIntent if exists
-if ($moto['stripe_pi'] && $stripeKey) {
-    $ch = curl_init('https://api.stripe.com/v1/payment_intents/' . $moto['stripe_pi']);
+if ($stripePi && $stripeKey) {
+    $ch = curl_init('https://api.stripe.com/v1/payment_intents/' . $stripePi);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_USERPWD => $stripeKey . ':',

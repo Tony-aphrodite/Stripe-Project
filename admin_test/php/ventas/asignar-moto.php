@@ -49,6 +49,21 @@ if (!$pagoOk) {
     ], 403);
 }
 
+// ── Check order doesn't already have a bike assigned ────────────────────
+$pedidoCheck = 'VK-' . $order['pedido'];
+$existingMoto = $pdo->prepare("
+    SELECT id, vin_display FROM inventario_motos
+    WHERE pedido_num = ? AND activo = 1
+    LIMIT 1
+");
+$existingMoto->execute([$pedidoCheck]);
+$alreadyAssigned = $existingMoto->fetch(PDO::FETCH_ASSOC);
+if ($alreadyAssigned) {
+    adminJsonOut([
+        'error' => 'Esta orden ya tiene una moto asignada (VIN: ' . ($alreadyAssigned['vin_display'] ?? '?') . '). Desasígnala primero antes de asignar otra.'
+    ], 409);
+}
+
 // ── Fetch the bike ───────────────────────────────────────────────────────
 $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? AND activo = 1 LIMIT 1");
 $stmt->execute([$motoId]);
@@ -139,6 +154,26 @@ $pagoEstado = in_array($tpago, ['credito', 'enganche', 'parcial'], true)
     ? 'parcial'
     : 'pagada';
 
+// Resolve punto_voltika_id from order's punto_id or punto_nombre
+$puntoVoltId = null;
+$orderPuntoId = $order['punto_id'] ?? '';
+$orderPuntoNombre = $order['punto_nombre'] ?? '';
+if ($orderPuntoId && $orderPuntoId !== 'centro-cercano') {
+    if (is_numeric($orderPuntoId)) {
+        $puntoVoltId = (int)$orderPuntoId;
+    } else {
+        $pLook = $pdo->prepare("SELECT id FROM puntos_voltika WHERE nombre = ? AND activo = 1 LIMIT 1");
+        $pLook->execute([$orderPuntoNombre ?: $orderPuntoId]);
+        $pRow = $pLook->fetch(PDO::FETCH_ASSOC);
+        if ($pRow) $puntoVoltId = (int)$pRow['id'];
+    }
+} elseif ($orderPuntoNombre) {
+    $pLook = $pdo->prepare("SELECT id FROM puntos_voltika WHERE nombre = ? AND activo = 1 LIMIT 1");
+    $pLook->execute([$orderPuntoNombre]);
+    $pRow = $pLook->fetch(PDO::FETCH_ASSOC);
+    if ($pRow) $puntoVoltId = (int)$pRow['id'];
+}
+
 $stmt = $pdo->prepare("
     UPDATE inventario_motos SET
         cliente_nombre   = ?,
@@ -147,6 +182,8 @@ $stmt = $pdo->prepare("
         pedido_num       = ?,
         stripe_pi        = ?,
         pago_estado      = ?,
+        punto_voltika_id = ?,
+        tipo_asignacion  = 'entrega_con_orden',
         fecha_estado     = NOW(),
         fmod             = NOW()
     WHERE id = ?
@@ -158,6 +195,7 @@ $stmt->execute([
     $pedidoNum,
     $order['stripe_pi'] ?? '',
     $pagoEstado,
+    $puntoVoltId,
     $motoId,
 ]);
 
