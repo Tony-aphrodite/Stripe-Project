@@ -65,7 +65,7 @@
     <!-- Localhost fallback: replicates main.css navbar rules (not available on localhost) -->
     <!-- On production this block is redundant but harmless — main.css takes effect anyway -->
     <style>
-        .main-header { z-index: 999999999; -webkit-transition: all linear .3s; transition: all linear .3s; }
+        .main-header { z-index: 999999999; -webkit-transition: all linear .3s; transition: all linear .3s; top: 32px !important; }
         .main-header.header-white { background: #fff; }
         .main-header.header-white.sticky-nav { background: #fff; }
         .main-header .navbar { padding: 0; min-height: 6.063rem; position: relative; }
@@ -163,7 +163,8 @@
     </style>
 </head>
 
-<body>
+<body style="padding-top:32px">
+    <div id="vk-test-banner" style="background:#ff9800;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:9999999999;">MODO DE PRUEBA — Los pagos no son reales</div>
     <div class="preloader" id="pageLoad">
         <div class="holder">
             <img src="img/voltika_logo.svg" alt="Voltika" style="width:100%; max-width: 150px;">
@@ -695,10 +696,7 @@
         success: function(r) {
           if (r.ok) {
             window.VOLTIKA_CONFIG = r;
-            if (r.env === 'test') {
-              $('body').prepend('<div id="vk-test-banner" style="background:#ff9800;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:99999;">MODO DE PRUEBA — Los pagos no son reales</div>');
-              $('body').css('padding-top', '32px');
-            }
+            // Banner is hardcoded in <body> for test environment
           }
         }
       });

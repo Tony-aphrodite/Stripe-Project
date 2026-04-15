@@ -696,8 +696,10 @@
           if (r.ok) {
             window.VOLTIKA_CONFIG = r;
             if (r.env === 'test') {
-              $('body').prepend('<div id="vk-test-banner" style="background:#ff9800;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:99999;">MODO DE PRUEBA — Los pagos no son reales</div>');
-              $('body').css('padding-top', '32px');
+              $(function(){
+                $('body').prepend('<div id="vk-test-banner" style="background:#ff9800;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:99999;">MODO DE PRUEBA — Los pagos no son reales</div>');
+                $('body').css('padding-top', '32px');
+              });
             }
           }
         }
