@@ -9,9 +9,12 @@ window.PV_recepcion = (function(){
     if((r.envios||[]).length===0) html += '<div class="ad-card">No hay envíos pendientes</div>';
     (r.envios||[]).forEach(function(e){
       html += '<div class="ad-card">'+
+        (e.pedido_num ? '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:4px;">📋 '+e.pedido_num+'</div>' : '')+
         '<div style="font-weight:700">'+e.modelo+' · '+e.color+'</div>'+
         '<div style="font-size:12px;color:var(--ad-dim)">VIN esperado: '+(e.vin_display||e.vin)+'</div>'+
-        '<div style="font-size:11px"><span class="ad-badge '+(e.estado==='enviada'?'yellow':'blue')+'">'+e.estado+'</span></div>'+
+        (e.cliente_nombre ? '<div style="font-size:12px;margin-top:4px;">👤 Cliente: <strong>'+e.cliente_nombre+'</strong></div>' : '')+
+        '<div style="font-size:11px;margin-top:4px;"><span class="ad-badge '+(e.estado==='enviada'?'yellow':'blue')+'">'+e.estado+'</span>'+
+        (e.fecha_estimada_llegada ? ' <span style="font-size:11px;color:var(--ad-dim)">· ETA: '+e.fecha_estimada_llegada+'</span>' : '')+'</div>'+
         '<button class="ad-btn primary sm pvReceive" data-env="'+e.id+'" data-moto="'+e.moto_id+'" data-vin="'+e.vin+'" style="margin-top:8px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg> Recibir moto</button>'+
       '</div>';
     });

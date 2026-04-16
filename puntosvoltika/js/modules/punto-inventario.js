@@ -75,10 +75,13 @@ window.PV_inventario = (function(){
   function bikeCard(m, tipo){
     var h = '<div class="pv-bike-card" data-id="'+m.id+'" style="cursor:pointer">';
     h += '<div class="pv-info">';
+    if (m.pedido_num) {
+      h += '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:2px;">📋 '+m.pedido_num+'</div>';
+    }
     h += '<div style="font-weight:700">'+m.modelo+' · '+m.color+'</div>';
     h += '<div style="font-size:12px;color:var(--ad-dim)">VIN: '+(m.vin_display||m.vin)+'</div>';
-    if (tipo==='entrega' && m.cliente_nombre) {
-      h += '<div style="font-size:12px">Cliente: <strong>'+m.cliente_nombre+'</strong></div>';
+    if (m.cliente_nombre) {
+      h += '<div style="font-size:12px">👤 Cliente: <strong>'+m.cliente_nombre+'</strong></div>';
       h += '<div style="font-size:11px;color:var(--ad-dim)">'+(m.cliente_telefono||'')+'</div>';
     }
     if (parseInt(m.bloqueado_venta)) {
