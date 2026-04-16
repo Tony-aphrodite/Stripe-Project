@@ -10,6 +10,17 @@ adminRequireAuth(['admin']);
 
 $pdo = getDB();
 
+// Ensure all required models exist (auto-insert missing ones)
+$requiredModels = ['m03', 'Pesgo plus', 'mino B', 'MC10 Streetx'];
+$chkModel = $pdo->prepare("SELECT id FROM modelos WHERE nombre = ? LIMIT 1");
+$insModel = $pdo->prepare("INSERT INTO modelos (nombre, activo) VALUES (?, 1)");
+foreach ($requiredModels as $mName) {
+    $chkModel->execute([$mName]);
+    if (!$chkModel->fetch()) {
+        try { $insModel->execute([$mName]); } catch (Throwable $e) { /* ignore */ }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $puntoId = (int)($_GET['punto_id'] ?? 0);
     if (!$puntoId) adminJsonOut(['ok' => false, 'error' => 'punto_id requerido'], 400);

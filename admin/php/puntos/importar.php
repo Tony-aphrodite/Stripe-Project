@@ -61,6 +61,7 @@ $headerRow = array_map(function($h) {
 }, $rows[0]);
 
 $colMap = [
+    'accion'      => findCol($headerRow, ['accion', 'acción', 'action', 'operacion', 'operación']),
     'nombre'      => findCol($headerRow, ['nombre', 'name', 'nombrepunto', 'punto']),
     'tipo'        => findCol($headerRow, ['tipo', 'type', 'tipopunto']),
     'direccion'   => findCol($headerRow, ['direccion', 'dirección', 'address', 'calle', 'domicilio']),
@@ -122,13 +123,23 @@ function normalizeTipo(string $raw): string {
 }
 
 $stmtChk = $pdo->prepare("SELECT id FROM puntos_voltika WHERE nombre = ? AND cp = ? LIMIT 1");
+$stmtChkByName = $pdo->prepare("SELECT id FROM puntos_voltika WHERE nombre = ? LIMIT 1");
 $stmtIns = $pdo->prepare("INSERT INTO puntos_voltika
     (nombre, tipo, direccion, colonia, ciudad, estado, cp,
      telefono, email, lat, lng, horarios, capacidad, descripcion,
      activo, codigo_venta, codigo_electronico)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)");
 
+$stmtUpd = $pdo->prepare("UPDATE puntos_voltika SET
+    tipo=?, direccion=?, colonia=?, ciudad=?, estado=?, cp=?,
+    telefono=?, email=?, lat=?, lng=?, horarios=?, capacidad=?, descripcion=?
+    WHERE id=?");
+
+$stmtDel = $pdo->prepare("UPDATE puntos_voltika SET activo = 0 WHERE id = ?");
+
 $created = 0;
+$actualizados = 0;
+$eliminados = 0;
 $duplicados = 0;
 $errores = 0;
 $detalle = [];
@@ -138,20 +149,24 @@ function getVal(array $row, ?int $idx): string {
     return trim($row[$idx]);
 }
 
+// Normalize action value
+function normalizeAccion(string $raw): string {
+    $raw = strtolower(trim($raw));
+    $map = [
+        'agregar' => 'agregar', 'add' => 'agregar', 'crear' => 'agregar', 'create' => 'agregar', 'nuevo' => 'agregar', 'new' => 'agregar',
+        'actualizar' => 'actualizar', 'update' => 'actualizar', 'modificar' => 'actualizar', 'editar' => 'actualizar', 'edit' => 'actualizar',
+        'eliminar' => 'eliminar', 'delete' => 'eliminar', 'borrar' => 'eliminar', 'remove' => 'eliminar', 'desactivar' => 'eliminar',
+    ];
+    return $map[$raw] ?? 'agregar';
+}
+
 for ($i = 1; $i < count($rows); $i++) {
     $row = $rows[$i];
     $nombre = getVal($row, $colMap['nombre']);
     if ($nombre === '') { $errores++; $detalle[] = "Fila " . ($i + 1) . ": Nombre vacío"; continue; }
 
+    $accion = $colMap['accion'] !== null ? normalizeAccion(getVal($row, $colMap['accion'])) : 'agregar';
     $cp = getVal($row, $colMap['cp']);
-
-    // Check duplicate by nombre + cp
-    $stmtChk->execute([$nombre, $cp]);
-    if ($stmtChk->fetch()) {
-        $duplicados++;
-        $detalle[] = "Fila " . ($i + 1) . ": '$nombre' (CP: $cp) ya existe";
-        continue;
-    }
 
     $tipo       = normalizeTipo(getVal($row, $colMap['tipo']));
     $direccion  = getVal($row, $colMap['direccion']);
@@ -166,18 +181,65 @@ for ($i = 1; $i < count($rows); $i++) {
     $capacidad  = getVal($row, $colMap['capacidad']) !== '' ? (int)getVal($row, $colMap['capacidad']) : 0;
     $descripcion = getVal($row, $colMap['descripcion']);
 
-    $codVenta = generateCodigoVenta($pdo, $nombre);
-    $codElec  = generateCodigoElectronico($pdo, $nombre);
-
     try {
-        $stmtIns->execute([
-            $nombre, $tipo, $direccion ?: null, $colonia ?: null,
-            $ciudad ?: null, $estado ?: null, $cp ?: null,
-            $telefono ?: null, $email ?: null, $lat, $lng,
-            $horarios ?: null, $capacidad, $descripcion ?: null,
-            $codVenta, $codElec,
-        ]);
-        $created++;
+        if ($accion === 'eliminar') {
+            // Find by nombre+cp or just nombre
+            $stmtChk->execute([$nombre, $cp]);
+            $existing = $stmtChk->fetch(PDO::FETCH_ASSOC);
+            if (!$existing && $cp === '') {
+                $stmtChkByName->execute([$nombre]);
+                $existing = $stmtChkByName->fetch(PDO::FETCH_ASSOC);
+            }
+            if ($existing) {
+                $stmtDel->execute([$existing['id']]);
+                $eliminados++;
+                $detalle[] = "Fila " . ($i + 1) . ": '$nombre' desactivado";
+            } else {
+                $errores++;
+                $detalle[] = "Fila " . ($i + 1) . ": '$nombre' no encontrado para eliminar";
+            }
+        } elseif ($accion === 'actualizar') {
+            // Find by nombre+cp or just nombre
+            $stmtChk->execute([$nombre, $cp]);
+            $existing = $stmtChk->fetch(PDO::FETCH_ASSOC);
+            if (!$existing) {
+                $stmtChkByName->execute([$nombre]);
+                $existing = $stmtChkByName->fetch(PDO::FETCH_ASSOC);
+            }
+            if ($existing) {
+                $stmtUpd->execute([
+                    $tipo, $direccion ?: null, $colonia ?: null,
+                    $ciudad ?: null, $estado ?: null, $cp ?: null,
+                    $telefono ?: null, $email ?: null, $lat, $lng,
+                    $horarios ?: null, $capacidad, $descripcion ?: null,
+                    $existing['id']
+                ]);
+                $actualizados++;
+            } else {
+                $errores++;
+                $detalle[] = "Fila " . ($i + 1) . ": '$nombre' no encontrado para actualizar";
+            }
+        } else {
+            // agregar — check duplicate first
+            $stmtChk->execute([$nombre, $cp]);
+            if ($stmtChk->fetch()) {
+                $duplicados++;
+                $detalle[] = "Fila " . ($i + 1) . ": '$nombre' (CP: $cp) ya existe";
+                continue;
+            }
+
+            $codVenta = generateCodigoVenta($pdo, $nombre);
+            $codElec  = generateCodigoElectronico($pdo, $nombre);
+
+            $stmtIns->execute([
+                $nombre, $tipo, $direccion ?: null, $colonia ?: null,
+                $ciudad ?: null, $estado ?: null, $cp ?: null,
+                $telefono ?: null, $email ?: null, $lat, $lng,
+                $horarios ?: null, $capacidad, $descripcion ?: null,
+                $codVenta, $codElec,
+            ]);
+            $created++;
+        }
     } catch (Throwable $e) {
         $errores++;
         $detalle[] = "Fila " . ($i + 1) . ": " . $e->getMessage();
@@ -185,19 +247,23 @@ for ($i = 1; $i < count($rows); $i++) {
 }
 
 adminLog('puntos_importar', [
-    'archivo'    => $file['name'],
-    'creados'    => $created,
-    'duplicados' => $duplicados,
-    'errores'    => $errores,
+    'archivo'      => $file['name'],
+    'creados'      => $created,
+    'actualizados' => $actualizados,
+    'eliminados'   => $eliminados,
+    'duplicados'   => $duplicados,
+    'errores'      => $errores,
 ]);
 
 adminJsonOut([
-    'ok'         => true,
-    'creados'    => $created,
-    'duplicados' => $duplicados,
-    'errores'    => $errores,
-    'total_filas' => count($rows) - 1,
-    'detalle'    => array_slice($detalle, 0, 20),
+    'ok'           => true,
+    'creados'      => $created,
+    'actualizados' => $actualizados,
+    'eliminados'   => $eliminados,
+    'duplicados'   => $duplicados,
+    'errores'      => $errores,
+    'total_filas'  => count($rows) - 1,
+    'detalle'      => array_slice($detalle, 0, 20),
 ]);
 
 

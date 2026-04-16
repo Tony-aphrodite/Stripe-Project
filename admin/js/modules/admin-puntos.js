@@ -92,12 +92,25 @@ window.AD_puntos = (function(){
     // ── Configurador fields ──
     html += sectionTitle('Configurador (visible al cliente)');
     html += '<textarea class="ad-input" id="pfDesc" placeholder="Descripción del punto" style="margin-bottom:8px;min-height:60px;">'+esc(p.descripcion||'')+'</textarea>';
-    html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:2px;display:block;">Servicios (uno por línea):</label>';
-    html += '<textarea class="ad-input" id="pfServicios" placeholder="Exhibición de motos Voltika&#10;Pruebas de manejo&#10;Entrega y activación" style="margin-bottom:8px;min-height:70px;">'+servicios.join('\n')+'</textarea>';
+
+    // Servicios: multiple selection buttons with icons
+    html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:6px;display:block;">Servicios disponibles:</label>';
+    var servicioOpts = [
+      {key:'Entrega', icon:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="15" height="12" rx="2"/><path d="M16 10h4l3 4v4h-7V10z"/><circle cx="5.5" cy="20.5" r="1.5"/><circle cx="18.5" cy="20.5" r="1.5"/></svg>'},
+      {key:'Exhibición y venta', icon:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'},
+      {key:'Servicio Técnico', icon:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>'},
+      {key:'Pruebas de Manejo', icon:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>'},
+      {key:'Refacciones', icon:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'}
+    ];
+    html += '<div id="pfServiciosWrap" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">';
+    servicioOpts.forEach(function(opt){
+      var active = servicios.indexOf(opt.key) !== -1;
+      html += '<button type="button" class="pfServBtn" data-svc="'+esc(opt.key)+'" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:2px solid '+(active?'var(--ad-primary)':'#ddd')+';background:'+(active?'rgba(0,122,255,0.08)':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(active?'600':'400')+';color:'+(active?'var(--ad-primary)':'#555')+';transition:all .2s;">'+opt.icon+' '+opt.key+'</button>';
+    });
+    html += '</div>';
+
     html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:2px;display:block;">Tags / etiquetas (separados por coma):</label>';
     html += '<input class="ad-input" id="pfTags" placeholder="Exhibición, Prueba de manejo, Entrega" value="'+tags.join(', ')+'" style="margin-bottom:8px">';
-    html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:2px;display:block;">Zonas de cobertura (prefijos CP, separados por coma):</label>';
-    html += '<input class="ad-input" id="pfZonas" placeholder="01, 02, 03, 06, 11" value="'+zonas.join(', ')+'" style="margin-bottom:8px">';
 
     // ── Referido codes ──
     if(!isNew){
@@ -120,15 +133,30 @@ window.AD_puntos = (function(){
 
     // ── Coordinates ──
     html += sectionTitle('Ubicación (mapa)');
+    html += '<div style="background:#f0f7ff;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#336;">'+
+      '<strong>Instrucciones:</strong> Para agregar la ubicación exacta del punto, abre <a href="https://www.google.com/maps" target="_blank" style="color:var(--ad-primary);">Google Maps</a>, '+
+      'busca la dirección del punto, haz clic derecho sobre la ubicación y copia las coordenadas (latitud, longitud). Pégalas en los campos de abajo.'+
+    '</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
-      '<input class="ad-input" id="pfLat" placeholder="Latitud" value="'+(p.lat||'')+'">'+
-      '<input class="ad-input" id="pfLng" placeholder="Longitud" value="'+(p.lng||'')+'">'+
+      '<input class="ad-input" id="pfLat" placeholder="Ej: 20.5881" value="'+(p.lat||'')+'">'+
+      '<input class="ad-input" id="pfLng" placeholder="Ej: -100.3899" value="'+(p.lng||'')+'">'+
     '</div>';
 
     html += '</div>'; // end scroll container
     html += '<button class="ad-btn primary" id="pfSave" style="width:100%;margin-top:12px;padding:10px;">Guardar</button>';
 
     ADApp.modal(html);
+
+    // ── Servicios toggle buttons ──
+    $(document).off('click.pfServ').on('click.pfServ', '.pfServBtn', function(){
+      var $b = $(this);
+      var isActive = $b.css('border-color') !== 'rgb(221, 221, 221)';
+      if(isActive){
+        $b.css({border:'2px solid #ddd', background:'#fff', fontWeight:'400', color:'#555'});
+      } else {
+        $b.css({border:'2px solid var(--ad-primary)', background:'rgba(0,122,255,0.08)', fontWeight:'600', color:'var(--ad-primary)'});
+      }
+    });
 
     // ── CP autofill: Ciudad, Estado, Colonia ──
     $('#pfCP').on('input', function(){
@@ -166,15 +194,15 @@ window.AD_puntos = (function(){
         var ch = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
         ch += '<thead><tr style="border-bottom:1px solid #ddd;">'+
           '<th style="text-align:left;padding:4px;">Modelo</th>'+
-          '<th style="text-align:center;padding:4px;">% Venta referido</th>'+
-          '<th style="text-align:center;padding:4px;">% Entrega</th></tr></thead><tbody>';
+          '<th style="text-align:center;padding:4px;">$ Comisión venta</th>'+
+          '<th style="text-align:center;padding:4px;">$ Comisión entrega</th></tr></thead><tbody>';
 
         modelos.forEach(function(m){
           var c = comMap[m.id]||{};
           ch += '<tr data-mid="'+m.id+'" style="border-bottom:1px solid #f0f0f0;">'+
             '<td style="padding:4px;font-weight:600;">'+esc(m.nombre)+'</td>'+
-            '<td style="padding:4px;text-align:center;"><input type="number" class="ad-input pfComVenta" step="0.5" min="0" max="100" value="'+(parseFloat(c.comision_venta_pct)||0)+'" style="width:70px;text-align:center;padding:4px;"></td>'+
-            '<td style="padding:4px;text-align:center;"><input type="number" class="ad-input pfComEntrega" step="0.5" min="0" max="100" value="'+(parseFloat(c.comision_entrega_pct)||0)+'" style="width:70px;text-align:center;padding:4px;"></td>'+
+            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComVenta" step="50" min="0" value="'+(parseFloat(c.comision_venta_pct)||0)+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
+            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComEntrega" step="50" min="0" value="'+(parseFloat(c.comision_entrega_pct)||0)+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
           '</tr>';
         });
         ch += '</tbody></table>';
@@ -184,9 +212,14 @@ window.AD_puntos = (function(){
     }
 
     $('#pfSave').on('click',function(){
-      var serviciosArr = $('#pfServicios').val().split('\n').map(function(s){return s.trim();}).filter(Boolean);
+      // Collect selected servicios from toggle buttons
+      var serviciosArr = [];
+      $('.pfServBtn').each(function(){
+        var $b = $(this);
+        if($b.css('border-color') !== 'rgb(221, 221, 221)') serviciosArr.push($b.data('svc'));
+      });
       var tagsArr = $('#pfTags').val().split(',').map(function(s){return s.trim();}).filter(Boolean);
-      var zonasArr = $('#pfZonas').val().split(',').map(function(s){return s.trim();}).filter(Boolean);
+      var zonasArr = [];
 
       var payload = {
         id: p.id||undefined,
@@ -272,7 +305,11 @@ window.AD_puntos = (function(){
   function showImportForm(){
     ADApp.modal(
       '<div class="ad-h2">Importar puntos desde Excel</div>'+
-      '<div class="ad-dim" style="margin-bottom:12px;">Formato: CSV o XLSX con columnas Nombre, Tipo, Dirección, Colonia, Ciudad, Estado, CP, Teléfono, Email, Latitud, Longitud, Horarios, Capacidad, Descripción</div>'+
+      '<div class="ad-dim" style="margin-bottom:12px;">Formato: CSV o XLSX. Usa la columna <strong>Acción</strong> para controlar la operación:<br>'+
+        '<span style="color:#2E7D32;font-weight:600;">agregar</span> = crear nuevo punto, '+
+        '<span style="color:#1565C0;font-weight:600;">actualizar</span> = modificar existente (busca por Nombre+CP), '+
+        '<span style="color:#C62828;font-weight:600;">eliminar</span> = desactivar punto existente.<br>'+
+        'Si no se incluye la columna Acción, todos los registros se crean como nuevos.</div>'+
       '<div style="margin-bottom:12px;">'+
         '<a href="#" id="adDlPuntosTemplate" style="color:var(--ad-primary);font-size:13px;">Descargar plantilla CSV</a>'+
       '</div>'+
@@ -284,8 +321,10 @@ window.AD_puntos = (function(){
 
     $('#adDlPuntosTemplate').on('click', function(e){
       e.preventDefault();
-      var csv = 'Nombre,Tipo,Dirección,Colonia,Ciudad,Estado,CP,Teléfono,Email,Latitud,Longitud,Horarios,Capacidad,Descripción\n';
-      csv += 'Punto Ejemplo,entrega,Av. Reforma 123,Juárez,Ciudad de México,CDMX,06600,5551234567,punto@ejemplo.com,19.4326,-99.1332,Lun-Vie 9:00-18:00,20,Punto de entrega ejemplo\n';
+      var csv = 'Acción,Nombre,Tipo,Dirección,Colonia,Ciudad,Estado,CP,Teléfono,Email,Latitud,Longitud,Horarios,Capacidad,Descripción\n';
+      csv += 'agregar,Punto Ejemplo,entrega,Av. Reforma 123,Juárez,Ciudad de México,CDMX,06600,5551234567,punto@ejemplo.com,19.4326,-99.1332,Lun-Vie 9:00-18:00,20,Punto de entrega ejemplo\n';
+      csv += 'actualizar,Punto Existente,center,Blvd. Centro 456,Centro,Querétaro,QRO,76000,4421234567,centro@ejemplo.com,20.5881,-100.3899,Lun-Sab 10:00-20:00,50,Centro Voltika actualizado\n';
+      csv += 'eliminar,Punto A Eliminar,,,,,,76060,,,,,,,,\n';
       var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -346,6 +385,8 @@ window.AD_puntos = (function(){
           var html = '<div style="padding:12px;border-radius:8px;background:#E8F5E9;color:#2E7D32;">'+
             '<strong>Importación completada</strong><br>'+
             'Creados: <strong>'+r.creados+'</strong> · '+
+            'Actualizados: <strong>'+(r.actualizados||0)+'</strong> · '+
+            'Eliminados: <strong>'+(r.eliminados||0)+'</strong> · '+
             'Duplicados: '+r.duplicados+' · '+
             'Errores: '+r.errores+' · '+
             'Total filas: '+r.total_filas+
