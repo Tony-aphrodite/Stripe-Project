@@ -629,6 +629,38 @@ if ($esCredito) {
 
 $emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
 
+// ── WhatsApp / SMS notifications (post-purchase) ────────────────────────────
+// MSG 1 (punto defined) or MSG 2 (punto pending) — sent immediately
+// MSG 1B/1C/1D (portal access) — sent 5 minutes later via pending_notifications
+require_once __DIR__ . '/voltika-notify.php';
+
+$notifyData = [
+    'nombre'    => $nombre,
+    'modelo'    => $modelo,
+    'punto'     => $puntoNombre,
+    'ciudad'    => $ciudad . ($estado ? ', ' . $estado : ''),
+    'telefono'  => $telefono,
+    'email'     => $email,
+    'whatsapp'  => $telefono,
+    'cliente_id'=> null,
+];
+
+// MSG 1 or MSG 2 — immediate
+if ($tienePunto) {
+    voltikaNotify('compra_punto_definido', $notifyData);
+} else {
+    voltikaNotify('compra_punto_pendiente', $notifyData);
+}
+
+// MSG 1B/1C/1D — delayed 5 minutes based on purchase type
+if ($esCredito) {
+    voltikaNotifyDelayed('portal_plazos', $notifyData, 300);
+} elseif ($pagoTipo === 'msi') {
+    voltikaNotifyDelayed('portal_msi', $notifyData, 300);
+} else {
+    voltikaNotifyDelayed('portal_contado', $notifyData, 300);
+}
+
 echo json_encode([
     'status'    => $dbSaveOk ? 'ok' : 'ok_warn',
     'pedido'    => $pedidoNum,

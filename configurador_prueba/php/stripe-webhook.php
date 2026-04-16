@@ -65,6 +65,10 @@ switch ($eventType) {
         handlePaymentFailed($event->data->object);
         break;
 
+    case 'payment_intent.created':
+        handlePaymentPending($event->data->object);
+        break;
+
     default:
         webhookLog("Unhandled event type: $eventType");
         break;
@@ -122,7 +126,7 @@ function handlePaymentSucceeded($paymentIntent) {
 
         $stmt = $pdo->prepare("
             SELECT nombre, email, telefono, modelo, color, ciudad, estado, cp,
-                   tpago, precio, total, pedido, stripe_pi, punto_nombre
+                   tpago, precio, total, pedido, stripe_pi, punto_nombre, punto_id
             FROM transacciones
             WHERE stripe_pi = ?
             LIMIT 1
@@ -151,6 +155,10 @@ function handlePaymentSucceeded($paymentIntent) {
             webhookLog("Pedido VK-{$order['pedido']} awaiting manual bike assignment in admin panel");
 
             sendConfirmationEmail($order, $methodLabel);
+
+            // ── WhatsApp / SMS notification (MSG 1 or MSG 2) ────────────────
+            sendPurchaseWhatsApp($order);
+
             return;
         }
 
@@ -177,6 +185,7 @@ function handlePaymentSucceeded($paymentIntent) {
             if ($order) {
                 webhookLog("Found order in pedidos: pedido #{$order['pedido']} for {$order['email']}");
                 sendConfirmationEmail($order, $methodLabel);
+                sendPurchaseWhatsApp($order);
                 return;
             }
         }
@@ -384,27 +393,135 @@ function sendConfirmationEmail($order, $methodLabel) {
 }
 
 /**
+ * Handle payment_intent.created — mark ciclo as pending_manual for OXXO/SPEI.
+ * This prevents auto-cobro from charging the card while awaiting OXXO/SPEI acreditation.
+ */
+function handlePaymentPending($paymentIntent) {
+    $piId = $paymentIntent->id ?? '';
+    $pmTypes = $paymentIntent->payment_method_types ?? [];
+
+    $isOxxo = in_array('oxxo', $pmTypes);
+    $isSpei = in_array('customer_balance', $pmTypes);
+
+    if (!$isOxxo && !$isSpei) return;
+
+    $meta = (array)($paymentIntent->metadata ?? []);
+    $cicloId = (int)($meta['ciclo_id'] ?? 0);
+
+    if (!$cicloId) {
+        webhookLog("payment_intent.created for OXXO/SPEI but no ciclo_id in metadata: $piId");
+        return;
+    }
+
+    webhookLog("Marking ciclo #$cicloId as pending_manual (OXXO/SPEI payment pending): $piId");
+
+    try {
+        $pdo = getDB();
+        $pdo->prepare("
+            UPDATE ciclos_pago
+            SET estado = 'pending_manual', stripe_payment_intent = ?
+            WHERE id = ? AND estado IN ('pending','overdue')
+        ")->execute([$piId, $cicloId]);
+    } catch (PDOException $e) {
+        webhookLog("pending_manual update error: " . $e->getMessage());
+    }
+}
+
+/**
+ * Send WhatsApp/SMS purchase notification (MSG 1 or MSG 2) + delayed portal message.
+ * For OXXO/SPEI payments confirmed via webhook.
+ */
+function sendPurchaseWhatsApp($order) {
+    try {
+        require_once __DIR__ . '/voltika-notify.php';
+
+        $puntoNombre = trim($order['punto_nombre'] ?? '');
+        $tienePunto  = ($puntoNombre !== '');
+        $ciudad      = ($order['ciudad'] ?? '') . (($order['estado'] ?? '') ? ', ' . $order['estado'] : '');
+        $tpago       = $order['tpago'] ?? 'unico';
+
+        $notifyData = [
+            'nombre'    => $order['nombre'] ?? '',
+            'modelo'    => $order['modelo'] ?? '',
+            'punto'     => $puntoNombre,
+            'ciudad'    => $ciudad,
+            'telefono'  => $order['telefono'] ?? '',
+            'email'     => $order['email'] ?? '',
+            'whatsapp'  => $order['telefono'] ?? '',
+            'cliente_id'=> null,
+        ];
+
+        // MSG 1 or MSG 2
+        if ($tienePunto) {
+            voltikaNotify('compra_punto_definido', $notifyData);
+        } else {
+            voltikaNotify('compra_punto_pendiente', $notifyData);
+        }
+
+        // MSG 1B/1C/1D — delayed 5 minutes
+        $esCredito = in_array($tpago, ['credito', 'enganche', 'parcial'], true);
+        if ($esCredito) {
+            voltikaNotifyDelayed('portal_plazos', $notifyData, 300);
+        } elseif ($tpago === 'msi') {
+            voltikaNotifyDelayed('portal_msi', $notifyData, 300);
+        } else {
+            voltikaNotifyDelayed('portal_contado', $notifyData, 300);
+        }
+
+        webhookLog("WhatsApp/SMS notification sent for " . ($order['email'] ?? 'unknown'));
+    } catch (Throwable $e) {
+        webhookLog("WhatsApp notification error: " . $e->getMessage());
+    }
+}
+
+/**
  * Handle ciclos_pago update for subscription payments.
  * Reads subscripcion_id and ciclos from PaymentIntent metadata.
  * Previously handled by a separate portal webhook — now unified here.
+ *
+ * Determines payment type from metadata:
+ *   tipo=auto_cobro → paid_auto (from cron)
+ *   otherwise       → paid_manual (OXXO, SPEI, manual card, advance payment)
  */
 function handleCiclosPagoUpdate($paymentIntent) {
     $piId = $paymentIntent->id ?? '';
     $meta = (array)($paymentIntent->metadata ?? []);
-    $subId = (int)($meta['subscripcion_id'] ?? 0);
+    $subId  = (int)($meta['subscripcion_id'] ?? 0);
     $ciclos = $meta['ciclos'] ?? '';
 
+    // Also handle single ciclo_id from manual payment flows
+    $cicloId = (int)($meta['ciclo_id'] ?? 0);
+    if (!$subId && !$ciclos && !$cicloId) return;
+
+    $tipo = ($meta['tipo'] ?? '') === 'auto_cobro' ? 'paid_auto' : 'paid_manual';
+
+    // Single ciclo update (from manual payment / OXXO / SPEI)
+    if ($cicloId && !$ciclos) {
+        webhookLog("Updating single ciclo #$cicloId to $tipo, PI=$piId");
+        try {
+            $pdo = getDB();
+            $pdo->prepare("UPDATE ciclos_pago SET estado = ?, stripe_payment_intent = ?, fecha_pago = NOW()
+                WHERE id = ? AND estado NOT IN ('paid_manual','paid_auto')")
+                ->execute([$tipo, $piId, $cicloId]);
+            webhookLog("ciclo #$cicloId updated to $tipo");
+        } catch (PDOException $e) {
+            webhookLog("ciclo update DB ERROR: " . $e->getMessage());
+        }
+        return;
+    }
+
+    // Batch ciclos update (from auto-cobro or multi-week payment)
     if (!$subId || !$ciclos) return;
 
-    webhookLog("Updating ciclos_pago: subscripcion=$subId, ciclos=$ciclos, PI=$piId");
+    webhookLog("Updating ciclos_pago: subscripcion=$subId, ciclos=$ciclos, PI=$piId, tipo=$tipo");
 
     try {
         $pdo = getDB();
         $nums = array_map('intval', explode(',', $ciclos));
         $ph = implode(',', array_fill(0, count($nums), '?'));
-        $stmt = $pdo->prepare("UPDATE ciclos_pago SET estado = 'paid_auto', stripe_payment_intent = ?
+        $stmt = $pdo->prepare("UPDATE ciclos_pago SET estado = ?, stripe_payment_intent = ?, fecha_pago = NOW()
             WHERE subscripcion_id = ? AND semana_num IN ($ph) AND estado NOT IN ('paid_manual','paid_auto')");
-        $stmt->execute([$piId, $subId, ...$nums]);
+        $stmt->execute([$tipo, $piId, $subId, ...$nums]);
         $updated = $stmt->rowCount();
         webhookLog("ciclos_pago updated: $updated rows for subscripcion=$subId");
     } catch (PDOException $e) {
