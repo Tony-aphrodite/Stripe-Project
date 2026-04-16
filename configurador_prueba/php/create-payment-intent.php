@@ -119,15 +119,16 @@ function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPa
 
 <tr><td style="padding:28px;">
 
-<h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Tu Voltika te est&aacute; esperando.</h2>
+<h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Hola ' . $n . ', tu Voltika te est&aacute; esperando.</h2>
 <p style="margin:0 0 12px;font-size:14px;color:#555;line-height:1.7;">Ya elegiste tu modelo, tu color y tu forma de pago.<br>Tu moto est&aacute; lista para ti.</p>
 <p style="margin:0 0 24px;font-size:15px;color:#E53935;font-weight:700;">Solo falta completar tu pago para asegurarla.</p>
 
 <div ' . $section . '>TU VOLTIKA</div>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-<tr><td ' . $tdl . '>Orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
-<tr><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
+<tr><td ' . $tdl . '>Cliente</td><td ' . $td . '><strong>' . $n . '</strong></td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
+<tr><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Monto pendiente</td><td ' . $td . '><strong style="color:#E53935;">' . $montoFmt . '</strong></td></tr>
 <tr><td ' . $tdl . '>M&eacute;todo de pago</td><td ' . $td . '>' . htmlspecialchars($metodo) . '</td></tr>
 </table>
@@ -349,7 +350,7 @@ try {
 
         // Send SPEI reminder email
         $custEmail = $customer['email'] ?? '';
-        $custNombre = $customer['nombre'] ?? '';
+        $custNombre = trim(($customer['nombre'] ?? '') . ' ' . ($customer['apellidos'] ?? ''));
         if ($custEmail) {
             $speiInfo = [
                 'clabe'        => $clabe ?: '',
@@ -454,7 +455,7 @@ try {
 
         // Send OXXO reminder email with full reference data
         $custEmail = $customer['email'] ?? '';
-        $custNombre = $customer['nombre'] ?? '';
+        $custNombre = trim(($customer['nombre'] ?? '') . ' ' . ($customer['apellidos'] ?? ''));
         if ($custEmail) {
             _sendReminderEmail($custEmail, $custNombre, $customer, $amount / 100, 'Pago en OXXO', ['oxxoRefs' => $oxxoRefs]);
         }
