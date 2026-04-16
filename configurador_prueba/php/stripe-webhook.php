@@ -255,12 +255,13 @@ function sendConfirmationEmail($order, $methodLabel) {
 <!-- DETALLE DE TU COMPRA -->
 <div ' . $section . '>DETALLE DE TU COMPRA</div>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-<tr><td ' . $tdl . '>N&uacute;mero de orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
-<tr><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Ciudad de entrega</td><td ' . $td . '>' . $cd . '</td></tr>
-<tr><td ' . $tdl . '>Monto pagado</td><td ' . $td . '><strong style="color:#039fe1;">' . $montoFormateado . '</strong></td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>M&eacute;todo de pago</td><td ' . $td . '>' . htmlspecialchars($pagoDescripcion) . '</td></tr>
+<tr><td ' . $tdl . '>Cliente</td><td ' . $td . '><strong>' . $n . '</strong></td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>N&uacute;mero de orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
+<tr><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
+<tr><td ' . $tdl . '>Ciudad de entrega</td><td ' . $td . '>' . $cd . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Monto pagado</td><td ' . $td . '><strong style="color:#039fe1;">' . $montoFormateado . '</strong></td></tr>
+<tr><td ' . $tdl . '>M&eacute;todo de pago</td><td ' . $td . '>' . htmlspecialchars($pagoDescripcion) . '</td></tr>
 </table>
 
 <!-- QUE SIGUE -->
