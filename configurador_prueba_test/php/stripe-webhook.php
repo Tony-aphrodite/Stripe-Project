@@ -122,7 +122,7 @@ function handlePaymentSucceeded($paymentIntent) {
 
         $stmt = $pdo->prepare("
             SELECT nombre, email, telefono, modelo, color, ciudad, estado, cp,
-                   tpago, precio, total, pedido, stripe_pi
+                   tpago, precio, total, pedido, stripe_pi, punto_nombre
             FROM transacciones
             WHERE stripe_pi = ?
             LIMIT 1
@@ -203,20 +203,22 @@ function handlePaymentFailed($paymentIntent) {
  * Send confirmation email using the same template as confirmar-orden.php (contado).
  */
 function sendConfirmationEmail($order, $methodLabel) {
-    $nombre    = $order['nombre']  ?? '';
-    $email     = $order['email']   ?? '';
-    $modelo    = $order['modelo']  ?? '';
-    $color     = $order['color']   ?? '';
-    $ciudad    = $order['ciudad']  ?? '';
-    $estado    = $order['estado']  ?? '';
-    $total     = floatval($order['total'] ?? 0);
-    $pedidoNum = $order['pedido']  ?? time();
+    $nombre      = $order['nombre']       ?? '';
+    $email       = $order['email']        ?? '';
+    $modelo      = $order['modelo']       ?? '';
+    $color       = $order['color']        ?? '';
+    $ciudad      = $order['ciudad']       ?? '';
+    $estado      = $order['estado']       ?? '';
+    $total       = floatval($order['total'] ?? 0);
+    $pedidoNum   = $order['pedido']       ?? time();
+    $puntoNombre = trim($order['punto_nombre'] ?? '');
 
     if (empty($email)) {
         webhookLog("Cannot send email — no email address for pedido #$pedidoNum");
         return;
     }
 
+    $tienePunto = ($puntoNombre !== '');
     $montoFormateado = '$' . number_format($total, 0, '.', ',') . ' MXN';
     $pagoDescripcion = "Pago $methodLabel de $montoFormateado";
     $whatsapp = '+52 55 1341 6370';
@@ -248,9 +250,12 @@ function sendConfirmationEmail($order, $methodLabel) {
 <tr><td style="padding:28px;">
 
 <h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Hola, ' . htmlspecialchars($nombre) . ' 👋</h2>
-<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika est&aacute; confirmada.</h3>
+' . ($tienePunto
+    ? '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu compra ha sido confirmada correctamente.</h3>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">Tu Voltika ya est&aacute; en proceso.</p>'
+    : '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika est&aacute; confirmada.</h3>
 <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">Gracias por tu compra. Hemos recibido tu pago correctamente y tu orden ya est&aacute; en proceso.</p>
-<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dar&aacute; seguimiento a tu entrega para que recibas tu moto de forma segura y sin complicaciones.</p>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dar&aacute; seguimiento a tu entrega para que recibas tu moto de forma segura y sin complicaciones.</p>') . '
 
 <!-- DETALLE DE TU COMPRA -->
 <div ' . $section . '>DETALLE DE TU COMPRA</div>
@@ -264,6 +269,38 @@ function sendConfirmationEmail($order, $methodLabel) {
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>M&eacute;todo de pago</td><td ' . $td . '>' . htmlspecialchars($pagoDescripcion) . '</td></tr>
 </table>
 
+' . ($tienePunto ? '
+<!-- PUNTO CONFIRMADO -->
+<div ' . $section . '>PUNTO DE ENTREGA CONFIRMADO</div>
+<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin:12px 0 24px;border:1.5px solid #B3D4FC;">
+<p style="margin:0 0 6px;font-size:14px;color:#555;">Tu punto de entrega ha sido registrado correctamente:</p>
+<p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1a3a5c;">&#128073; ' . htmlspecialchars($puntoNombre) . '</p>
+<p style="margin:0 0 10px;font-size:15px;font-weight:700;color:#1a3a5c;">&#128073; ' . $cd . '</p>
+<p style="margin:0;font-size:13px;color:#555;">Tu punto de entrega ya est&aacute; confirmado. No es necesario realizar ning&uacute;n cambio ni contacto adicional.</p>
+</div>
+
+<div ' . $section . '>&iquest;QU&Eacute; SIGUE CON TU VOLTIKA?</div>
+<div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
+<p style="margin:12px 0 4px;"><strong style="color:#1a3a5c;">&#9989; 1. Preparaci&oacute;n de tu moto</strong></p>
+<p style="margin:0 0 4px;">Estamos preparando tu Voltika para enviarla al punto que seleccionaste.</p>
+<p style="margin:0 0 12px;">Esto incluye: revisi&oacute;n completa, preparaci&oacute;n log&iacute;stica y env&iacute;o seguro.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">&#128666; 2. Env&iacute;o al punto de entrega</strong></p>
+<p style="margin:0 0 4px;">Tu moto ser&aacute; enviada directamente al punto seleccionado.</p>
+<p style="margin:0 0 12px;">&#128233; Te notificaremos por correo y WhatsApp cuando tu moto llegue al punto.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">&#128295; 3. Preparaci&oacute;n en sitio</strong></p>
+<p style="margin:0 0 4px;">Una vez que tu moto llegue: se realiza revisi&oacute;n final y se deja lista para entrega.</p>
+<p style="margin:0 0 12px;">&#128233; Te avisaremos nuevamente cuando est&eacute; lista para recogerla.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">&#127949; 4. Entrega de tu Voltika</strong></p>
+<p style="margin:0;">Cuando recibas el aviso final: acudes al punto seleccionado, validas tu identidad y recibes tu moto lista para rodar.</p>
+</div>
+
+<div ' . $section . '>&iquest;CU&Aacute;NDO RECIBO MI VOLTIKA?</div>
+<div style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">
+<p style="margin:0 0 8px;">El tiempo de entrega depende de la disponibilidad y log&iacute;stica en tu zona.</p>
+<p style="margin:0 0 4px;">&#128073; No necesitas hacer nada.</p>
+<p style="margin:0;">&#128073; Nosotros te mantendremos informado en cada etapa.</p>
+</div>'
+: '
 <!-- QUE SIGUE -->
 <div ' . $section . '>&iquest;QU&Eacute; SIGUE?</div>
 <div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
@@ -277,7 +314,7 @@ function sendConfirmationEmail($order, $methodLabel) {
 
 <!-- CUANDO RECIBO -->
 <div ' . $section . '>&iquest;CU&Aacute;NDO RECIBO MI VOLTIKA?</div>
-<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y log&iacute;stica en tu zona.<br>Tu asesor Voltika te confirmar&aacute; la fecha exacta junto con el punto asignado.</p>
+<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y log&iacute;stica en tu zona.<br>Tu asesor Voltika te confirmar&aacute; la fecha exacta junto con el punto asignado.</p>') . '
 
 <!-- ENTREGA SEGURA -->
 <div ' . $section . '>ENTREGA SEGURA (IMPORTANTE)</div>
@@ -331,7 +368,9 @@ function sendConfirmationEmail($order, $methodLabel) {
 </body>
 </html>';
 
-    $asunto = 'Tu Voltika est&aacute; confirmada, Orden #' . $pedidoNum;
+    $asunto = $tienePunto
+        ? 'Tu Voltika ya est&aacute; en proceso &#128640; Orden #' . $pedidoNum
+        : 'Tu Voltika est&aacute; confirmada, Orden #' . $pedidoNum;
 
     try {
         $sent = sendMail($email, $nombre, $asunto, $cuerpo);

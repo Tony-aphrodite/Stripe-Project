@@ -332,6 +332,9 @@ $td = 'style="padding:10px 16px;border-bottom:1px solid #E5E7EB;font-size:14px;"
 $tdl = 'style="padding:10px 16px;border-bottom:1px solid #E5E7EB;font-size:14px;color:#6B7280;"';
 $section = 'style="margin:0 0 8px;padding:12px 0 6px;font-size:16px;font-weight:800;color:#1a3a5c;border-bottom:2px solid #039fe1;"';
 
+// Determine if customer selected a specific punto
+$tienePunto = ($puntoNombre !== '' && $puntoTipo !== 'cercano');
+
 $cuerpo = '<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tu Voltika está confirmada</title></head>
@@ -350,9 +353,12 @@ $cuerpo = '<!DOCTYPE html>
 <tr><td style="padding:28px;">
 
 <h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Hola, ' . htmlspecialchars($nombre) . ' 👋</h2>
-<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika está confirmada.</h3>
+' . ($tienePunto
+    ? '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu compra ha sido confirmada correctamente.</h3>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">Tu Voltika ya está en proceso.</p>'
+    : '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika está confirmada.</h3>
 <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">Gracias por tu compra. Hemos recibido tu pago correctamente y tu orden ya está en proceso.</p>
-<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dará seguimiento a tu entrega para que recibas tu moto de forma segura y sin complicaciones.</p>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dará seguimiento a tu entrega para que recibas tu moto de forma segura y sin complicaciones.</p>') . '
 
 <!-- DETALLE DE TU COMPRA -->
 <div ' . $section . '>DETALLE DE TU COMPRA</div>
@@ -369,6 +375,40 @@ $cuerpo = '<!DOCTYPE html>
 </table>
 <p style="font-size:10px;color:#999;line-height:1.5;margin:6px 0 16px;">Voltika solo sugiere gestores y seguros de terceros. No es responsable por su servicio, tiempos, costos ni cobertura. La contratación es responsabilidad del cliente.</p>
 
+' . ($tienePunto ? '
+<!-- PUNTO CONFIRMADO -->
+<div ' . $section . '>PUNTO DE ENTREGA CONFIRMADO</div>
+<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin:12px 0 24px;border:1.5px solid #B3D4FC;">
+<p style="margin:0 0 6px;font-size:14px;color:#555;">Tu punto de entrega ha sido registrado correctamente:</p>
+<p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1a3a5c;">👉 ' . htmlspecialchars($puntoNombre) . '</p>
+<p style="margin:0 0 10px;font-size:15px;font-weight:700;color:#1a3a5c;">👉 ' . $cd . '</p>
+<p style="margin:0;font-size:13px;color:#555;">Tu punto de entrega ya está confirmado. No es necesario realizar ningún cambio ni contacto adicional.</p>
+</div>
+
+<!-- QUÉ SIGUE -->
+<div ' . $section . '>¿QUÉ SIGUE CON TU VOLTIKA?</div>
+<div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
+<p style="margin:12px 0 4px;"><strong style="color:#1a3a5c;">✅ 1. Preparación de tu moto</strong></p>
+<p style="margin:0 0 4px;">Estamos preparando tu Voltika para enviarla al punto que seleccionaste.</p>
+<p style="margin:0 0 12px;">Esto incluye: revisión completa, preparación logística y envío seguro.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🚚 2. Envío al punto de entrega</strong></p>
+<p style="margin:0 0 4px;">Tu moto será enviada directamente al punto seleccionado.</p>
+<p style="margin:0 0 12px;">📩 Te notificaremos por correo y WhatsApp cuando tu moto llegue al punto.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🔧 3. Preparación en sitio</strong></p>
+<p style="margin:0 0 4px;">Una vez que tu moto llegue: se realiza revisión final y se deja lista para entrega.</p>
+<p style="margin:0 0 12px;">📩 Te avisaremos nuevamente cuando esté lista para recogerla.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🏍️ 4. Entrega de tu Voltika</strong></p>
+<p style="margin:0;">Cuando recibas el aviso final: acudes al punto seleccionado, validas tu identidad y recibes tu moto lista para rodar.</p>
+</div>
+
+<!-- CUÁNDO RECIBO -->
+<div ' . $section . '>¿CUÁNDO RECIBO MI VOLTIKA?</div>
+<div style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">
+<p style="margin:0 0 8px;">El tiempo de entrega depende de la disponibilidad y logística en tu zona.</p>
+<p style="margin:0 0 4px;">👉 No necesitas hacer nada.</p>
+<p style="margin:0;">👉 Nosotros te mantendremos informado en cada etapa.</p>
+</div>'
+: '
 <!-- QUÉ SIGUE -->
 <div ' . $section . '>¿QUÉ SIGUE?</div>
 <div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
@@ -382,7 +422,7 @@ $cuerpo = '<!DOCTYPE html>
 
 <!-- CUÁNDO RECIBO -->
 <div ' . $section . '>¿CUÁNDO RECIBO MI VOLTIKA?</div>
-<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y logística en tu zona.<br>Tu asesor Voltika te confirmará la fecha exacta junto con el punto asignado.</p>
+<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y logística en tu zona.<br>Tu asesor Voltika te confirmará la fecha exacta junto con el punto asignado.</p>') . '
 
 <!-- ENTREGA SEGURA -->
 <div ' . $section . '>ENTREGA SEGURA (IMPORTANTE)</div>
@@ -438,7 +478,9 @@ $cuerpo = '<!DOCTYPE html>
 
 // ── Crédito email template ────────────────────────────────────────────────────
 if ($esCredito) {
-    $asunto = 'Tu Voltika está confirmada a crédito, Orden #' . $pedidoNum;
+    $asunto = $tienePunto
+        ? 'Tu Voltika ya está en proceso 🚀 Orden #' . $pedidoNum
+        : 'Tu Voltika está confirmada a crédito, Orden #' . $pedidoNum;
 
     $cuerpo = '<!DOCTYPE html>
 <html lang="es">
@@ -456,9 +498,12 @@ if ($esCredito) {
 <tr><td style="padding:28px;">
 
 <h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Hola, ' . htmlspecialchars($nombre) . ' 👋</h2>
-<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika está confirmada.</h3>
+' . ($tienePunto
+    ? '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu compra ha sido confirmada correctamente.</h3>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">Tu Voltika ya está en proceso.</p>'
+    : '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika está confirmada.</h3>
 <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">Gracias por tu compra. Tu crédito Voltika ha sido aprobado y tu orden ya está en proceso.</p>
-<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dará seguimiento a tu entrega paso a paso para que recibas tu moto de forma segura y sin complicaciones.</p>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dará seguimiento a tu entrega paso a paso para que recibas tu moto de forma segura y sin complicaciones.</p>') . '
 
 <div ' . $section . '>DETALLE DE TU COMPRA</div>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
@@ -476,6 +521,38 @@ if ($esCredito) {
 </table>
 <p style="font-size:10px;color:#999;line-height:1.5;margin:6px 0 16px;">Voltika solo sugiere gestores y seguros de terceros. No es responsable por su servicio, tiempos, costos ni cobertura. La contratación es responsabilidad del cliente.</p>
 
+' . ($tienePunto ? '
+<!-- PUNTO CONFIRMADO -->
+<div ' . $section . '>PUNTO DE ENTREGA CONFIRMADO</div>
+<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin:12px 0 24px;border:1.5px solid #B3D4FC;">
+<p style="margin:0 0 6px;font-size:14px;color:#555;">Tu punto de entrega ha sido registrado correctamente:</p>
+<p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1a3a5c;">👉 ' . htmlspecialchars($puntoNombre) . '</p>
+<p style="margin:0 0 10px;font-size:15px;font-weight:700;color:#1a3a5c;">👉 ' . $cd . '</p>
+<p style="margin:0;font-size:13px;color:#555;">Tu punto de entrega ya está confirmado. No es necesario realizar ningún cambio ni contacto adicional.</p>
+</div>
+
+<div ' . $section . '>¿QUÉ SIGUE CON TU VOLTIKA?</div>
+<div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
+<p style="margin:12px 0 4px;"><strong style="color:#1a3a5c;">✅ 1. Preparación de tu moto</strong></p>
+<p style="margin:0 0 4px;">Estamos preparando tu Voltika para enviarla al punto que seleccionaste.</p>
+<p style="margin:0 0 12px;">Esto incluye: revisión completa, preparación logística y envío seguro.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🚚 2. Envío al punto de entrega</strong></p>
+<p style="margin:0 0 4px;">Tu moto será enviada directamente al punto seleccionado.</p>
+<p style="margin:0 0 12px;">📩 Te notificaremos por correo y WhatsApp cuando tu moto llegue al punto.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🔧 3. Preparación en sitio</strong></p>
+<p style="margin:0 0 4px;">Una vez que tu moto llegue: se realiza revisión final y se deja lista para entrega.</p>
+<p style="margin:0 0 12px;">📩 Te avisaremos nuevamente cuando esté lista para recogerla.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🏍️ 4. Entrega de tu Voltika</strong></p>
+<p style="margin:0;">Cuando recibas el aviso final: acudes al punto seleccionado, validas tu identidad y recibes tu moto lista para rodar.</p>
+</div>
+
+<div ' . $section . '>¿CUÁNDO RECIBO MI VOLTIKA?</div>
+<div style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">
+<p style="margin:0 0 8px;">El tiempo de entrega depende de la disponibilidad y logística en tu zona.</p>
+<p style="margin:0 0 4px;">👉 No necesitas hacer nada.</p>
+<p style="margin:0;">👉 Nosotros te mantendremos informado en cada etapa.</p>
+</div>'
+: '
 <div ' . $section . '>¿QUÉ SIGUE?</div>
 <div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
 <p style="margin:12px 0 4px;"><strong style="color:#1a3a5c;">1. Asignación de punto de entrega</strong></p>
@@ -487,7 +564,7 @@ if ($esCredito) {
 </div>
 
 <div ' . $section . '>¿CUÁNDO RECIBO MI VOLTIKA?</div>
-<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y logística en tu zona.<br>Tu asesor Voltika te confirmará la fecha exacta junto con el punto asignado.</p>
+<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y logística en tu zona.<br>Tu asesor Voltika te confirmará la fecha exacta junto con el punto asignado.</p>') . '
 
 <div ' . $section . '>ENTREGA SEGURA (IMPORTANTE)</div>
 <div style="background:#FFF8E1;border-radius:8px;padding:16px;margin:12px 0 24px;border-left:4px solid #FFB300;">
@@ -545,7 +622,9 @@ if ($esCredito) {
 </html>';
 
 } else {
-    $asunto = 'Tu Voltika está confirmada, Orden #' . $pedidoNum;
+    $asunto = $tienePunto
+        ? 'Tu Voltika ya está en proceso 🚀 Orden #' . $pedidoNum
+        : 'Tu Voltika está confirmada, Orden #' . $pedidoNum;
 }
 
 $emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
