@@ -85,7 +85,7 @@ window.VK_cuenta = (function(){
       '<div class="vk-card vk-moto-card">'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
           '<div class="vk-h2" style="margin:0">Mi Voltika</div>'+
-          '<a class="vk-link" style="font-size:12px">Ver detalles ›</a>'+
+          '<a class="vk-link vk-ver-detalles" style="font-size:12px;cursor:pointer">Ver detalles ›</a>'+
         '</div>'+
         '<div class="vk-moto-body">'+
           (img ? '<div class="vk-moto-img"><img src="'+img+'" alt="'+esc(m.modelo||'Voltika')+'"></div>' : '')+
@@ -101,17 +101,17 @@ window.VK_cuenta = (function(){
       '<div class="vk-shortcuts-grid">'+
         '<div>'+
           '<div class="vk-h2" style="margin:0 0 10px">Preferencias</div>'+
-          '<div class="vk-shortcut-item" data-go="notif">'+
+          '<div class="vk-shortcut-item" data-go="notificaciones">'+
             '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Notificaciones</div><div class="vk-sc-sub">Elige cómo y cuándo te contactamos.</div></div>'+
             '<span class="vk-sc-arrow">›</span>'+
           '</div>'+
-          '<div class="vk-shortcut-item" data-go="cuenta">'+
+          '<div class="vk-shortcut-item" data-action="metodo-pago">'+
             '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Métodos de pago</div><div class="vk-sc-sub">Administra tus tarjetas y cuentas.</div></div>'+
             '<span class="vk-sc-arrow">›</span>'+
           '</div>'+
-          '<div class="vk-shortcut-item" data-go="cuenta">'+
+          '<div class="vk-shortcut-item" data-action="seguridad">'+
             '<span class="vk-sc-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span>'+
             '<div class="vk-sc-body"><div class="vk-sc-title">Seguridad</div><div class="vk-sc-sub">Cambia tu contraseña y revisa tus sesiones.</div></div>'+
             '<span class="vk-sc-arrow">›</span>'+
@@ -148,7 +148,7 @@ window.VK_cuenta = (function(){
       // --- WhatsApp help ---
       '<div class="vk-wa-help">'+
         '<div class="vk-wa-text"><strong>¿Necesitas ayuda?</strong><br>Nuestro equipo está listo para apoyarte.</div>'+
-        '<a class="vk-wa-btn" href="https://wa.me/525500000000" target="_blank">💬 Chatear por WhatsApp</a>'+
+        '<a class="vk-wa-btn" href="https://api.whatsapp.com/send?phone=5214421198928" target="_blank">💬 Chatear por WhatsApp</a>'+
       '</div>'
     );
 
@@ -159,6 +159,13 @@ window.VK_cuenta = (function(){
     $('#vkEditCancel').on('click', closeEdit);
     $('#vkEditSend').on('click', sendOtp);
     $('#vkOtpVerify').on('click', verifyOtp);
+    $('.vk-ver-detalles').on('click', function(){ VKApp.go('mivoltika'); });
+    $('.vk-shortcut-item[data-action="metodo-pago"]').on('click', function(){
+      VKApp.toast('Métodos de pago: próximamente');
+    });
+    $('.vk-shortcut-item[data-action="seguridad"]').on('click', function(){
+      VKApp.toast('Seguridad: próximamente');
+    });
     $('.vk-moto-copy').on('click', function(){
       var serie = (p.moto||{}).serie||'';
       if(navigator.clipboard){ navigator.clipboard.writeText(serie); VKApp.toast('Serie copiada'); }

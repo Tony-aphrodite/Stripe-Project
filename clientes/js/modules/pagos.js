@@ -115,7 +115,7 @@ window.VK_pagos = (function(){
       '<div class="vk-card">'+
         '<div style="display:flex;justify-content:space-between;align-items:center">'+
           '<div class="vk-h2" style="margin:0">Historial de pagos</div>'+
-          '<a class="vk-link vk-descargar-link">Descargar <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle"><path d="M8 3v8M5 8l3 3 3-3"/><path d="M3 13h10"/></svg></a>'+
+          '<a class="vk-link vk-descargar-link" style="cursor:pointer">Descargar <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle"><path d="M8 3v8M5 8l3 3 3-3"/><path d="M3 13h10"/></svg></a>'+
         '</div>'+
         '<div class="vk-hist-list">'+(rows||'<div class="vk-muted" style="padding:14px 0">Sin pagos registrados</div>')+'</div>'+
       '</div>'+
@@ -128,6 +128,12 @@ window.VK_pagos = (function(){
           '</div>'
         : '')
     );
+
+    // Descargar link
+    $('.vk-descargar-link').on('click', function(e){
+      e.preventDefault();
+      window.open('php/documentos/descargar.php?tipo=comprobantes', '_blank');
+    });
   }
   return { render:render };
 })();
