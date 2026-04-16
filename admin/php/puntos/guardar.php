@@ -10,8 +10,13 @@ $d = adminJsonIn();
 $pdo = getDB();
 $id = (int)($d['id'] ?? 0);
 
-$fields = ['nombre','direccion','colonia','ciudad','estado','cp','telefono','email',
+$fields = ['nombre','responsable','direccion','colonia','ciudad','estado','cp','telefono','email',
            'lat','lng','horarios','capacidad','activo','tipo','descripcion','autorizado','orden'];
+
+// Ensure responsable column exists
+try {
+    $pdo->exec("ALTER TABLE puntos_voltika ADD COLUMN responsable VARCHAR(200) NULL AFTER nombre");
+} catch (Throwable $e) { /* already exists */ }
 $vals = [];
 foreach ($fields as $f) {
     $vals[$f] = $d[$f] ?? null;

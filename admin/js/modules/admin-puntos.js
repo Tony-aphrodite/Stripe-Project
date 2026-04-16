@@ -57,6 +57,7 @@ window.AD_puntos = (function(){
     // ── Basic info ──
     html += sectionTitle('Información básica');
     html += '<input class="ad-input" id="pfNombre" placeholder="Nombre del punto" value="'+esc(p.nombre||'')+'" style="margin-bottom:8px">';
+    html += '<input class="ad-input" id="pfResponsable" placeholder="Nombre del responsable" value="'+esc(p.responsable||'')+'" style="margin-bottom:8px">';
     html += '<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:8px">'+
       '<select class="ad-select" id="pfTipo" style="width:100%;">'+
         '<option value="center"'+(p.tipo==='center'?' selected':'')+'>Voltika Center</option>'+
@@ -83,8 +84,10 @@ window.AD_puntos = (function(){
     // ── Schedule & capacity ──
     html += sectionTitle('Horario y capacidad');
     html += '<input class="ad-input" id="pfHorarios" placeholder="Ej: Lun-Vie 9:00-18:00" value="'+esc(p.horarios||'')+'" style="margin-bottom:8px">';
-    html += '<input class="ad-input" id="pfCap" placeholder="Capacidad (motos)" type="number" value="'+(p.capacidad||0)+'" style="margin-bottom:8px">';
-    html += '<input class="ad-input" id="pfOrden" placeholder="Orden de aparición (menor = primero)" type="number" value="'+(p.orden||0)+'" style="margin-bottom:8px">';
+    html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:2px;display:block;">Capacidad (número de motos)</label>';
+    html += '<input class="ad-input" id="pfCap" placeholder="Ej: 10" type="number" value="'+(p.capacidad?p.capacidad:'')+'" style="margin-bottom:8px">';
+    html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:2px;display:block;">Orden de aparición (menor = primero)</label>';
+    html += '<input class="ad-input" id="pfOrden" placeholder="Ej: 1" type="number" value="'+(p.orden?p.orden:'')+'" style="margin-bottom:8px">';
 
     // ── Configurador fields ──
     html += sectionTitle('Configurador (visible al cliente)');
@@ -188,6 +191,7 @@ window.AD_puntos = (function(){
       var payload = {
         id: p.id||undefined,
         nombre: $('#pfNombre').val(),
+        responsable: $('#pfResponsable').val(),
         tipo: $('#pfTipo').val(),
         direccion: $('#pfDir').val(),
         colonia: $('#pfColonia').val(),
