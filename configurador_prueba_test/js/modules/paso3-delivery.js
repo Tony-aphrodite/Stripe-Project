@@ -533,21 +533,32 @@ var Paso3 = {
 
     _tagButton: function(tag) {
         var base = window.VK_BASE_PATH || '';
+        // Map service names to icon files (supports both old and new naming)
         var iconMap = {
             'Exhibici\u00f3n': base + 'img/iconos-01.svg',
+            'Exhibici\u00f3n y venta': base + 'img/iconos-01.svg',
             'Entrega': base + 'img/iconos-03.svg',
-            'Servicio t\u00e9cnico': base + 'img/iconos-02.svg'
+            'Servicio t\u00e9cnico': base + 'img/iconos-02.svg',
+            'Servicio T\u00e9cnico': base + 'img/iconos-02.svg'
+        };
+        // SVG icons for services without image files
+        var svgIcons = {
+            'Pruebas de manejo': '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1a3a5c" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+            'Pruebas de Manejo': '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1a3a5c" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+            'Refacciones': '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1a3a5c" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+            'Activaci\u00f3n': '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1a3a5c" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
+            'entrega y activaci\u00f3n': '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1a3a5c" stroke-width="2"><rect x="1" y="6" width="15" height="12" rx="2"/><path d="M16 10h4l3 4v4h-7V10z"/><circle cx="5.5" cy="20.5" r="1.5"/><circle cx="18.5" cy="20.5" r="1.5"/></svg>'
         };
         var iconSrc = iconMap[tag];
         var iconHtml;
         if (iconSrc) {
             iconHtml = '<img src="' + iconSrc + '" alt="" style="width:14px;height:14px;flex-shrink:0;">';
+        } else if (svgIcons[tag]) {
+            iconHtml = '<span style="display:inline-flex;align-items:center;flex-shrink:0;">' + svgIcons[tag] + '</span>';
         } else {
-            var symbols = { 'Activaci\u00f3n': '\u26A1', 'Pruebas de manejo': '\u26F5', 'Refacciones': '\u2699' };
-            var sym = symbols[tag] || '\u2022';
-            iconHtml = '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:7px;flex-shrink:0;">' + sym + '</span>';
+            iconHtml = '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:7px;flex-shrink:0;">\u2022</span>';
         }
-        return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;-webkit-text-size-adjust:none;text-size-adjust:none;font-weight:600;padding:3px 6px;border-radius:5px;background:#EDF2F7;color:#1a3a5c;border:1px solid #D0D8E0;white-space:nowrap;">' +
+        return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;-webkit-text-size-adjust:none;text-size-adjust:none;font-weight:600;padding:4px 8px;border-radius:6px;background:#EDF2F7;color:#1a3a5c;border:1px solid #D0D8E0;white-space:nowrap;">' +
             iconHtml + tag + '</span>';
     },
 
@@ -679,7 +690,7 @@ var Paso3 = {
         h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;padding-left:22px;">' + centro.direccion + '</div>';
 
         // Tags
-        h += '<div style="display:flex;flex-wrap:nowrap;gap:3px;margin-bottom:14px;-webkit-text-size-adjust:none;text-size-adjust:none;">';
+        h += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;-webkit-text-size-adjust:none;text-size-adjust:none;">';
         if (centro.tags && centro.tags.length) {
             for (var t = 0; t < centro.tags.length; t++) {
                 h += self._tagButton(centro.tags[t]);
