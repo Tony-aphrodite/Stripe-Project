@@ -69,14 +69,14 @@ window.AD_puntos = (function(){
     // ── Address ──
     html += sectionTitle('Dirección');
     html += '<input class="ad-input" id="pfDir" placeholder="Calle y número" value="'+esc(p.direccion||'')+'" style="margin-bottom:8px">';
-    html += '<input class="ad-input" id="pfColonia" placeholder="Colonia" value="'+esc(p.colonia||'')+'" style="margin-bottom:8px">';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
-      '<input class="ad-input" id="pfCiudad" placeholder="Ciudad" value="'+esc(p.ciudad||'')+'">'+
-      '<input class="ad-input" id="pfEstado" placeholder="Estado" value="'+esc(p.estado||'')+'">'+
-    '</div>';
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
-      '<input class="ad-input" id="pfCP" placeholder="Código postal" value="'+esc(p.cp||'')+'">'+
+      '<input class="ad-input" id="pfCP" placeholder="Código postal" value="'+esc(p.cp||'')+'" maxlength="5" inputmode="numeric">'+
       '<input class="ad-input" id="pfTel" placeholder="Teléfono" value="'+esc(p.telefono||'')+'">'+
+    '</div>';
+    html += '<input class="ad-input" id="pfColonia" placeholder="Colonia (se autocompleta con CP)" value="'+esc(p.colonia||'')+'" style="margin-bottom:8px">';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
+      '<input class="ad-input" id="pfCiudad" placeholder="Ciudad" value="'+esc(p.ciudad||'')+'" style="background:#f5f7fa;">'+
+      '<input class="ad-input" id="pfEstado" placeholder="Estado" value="'+esc(p.estado||'')+'" style="background:#f5f7fa;">'+
     '</div>';
     html += '<input class="ad-input" id="pfEmail" placeholder="Email" value="'+esc(p.email||'')+'" style="margin-bottom:8px">';
 
@@ -126,6 +126,31 @@ window.AD_puntos = (function(){
     html += '<button class="ad-btn primary" id="pfSave" style="width:100%;margin-top:12px;padding:10px;">Guardar</button>';
 
     ADApp.modal(html);
+
+    // ── CP autofill: Ciudad, Estado, Colonia ──
+    $('#pfCP').on('input', function(){
+      var cp = $(this).val().replace(/\D/g, '');
+      if(cp.length !== 5) return;
+      $.ajax({
+        url: '../configurador_prueba/php/buscar-colonias.php?cp=' + cp,
+        dataType: 'json'
+      }).done(function(r){
+        if(!r.ok) return;
+        if(r.estado)  $('#pfEstado').val(r.estado);
+        if(r.ciudad || r.municipio) $('#pfCiudad').val(r.ciudad || r.municipio);
+        var colonias = r.colonias || [];
+        if(colonias.length === 1){
+          $('#pfColonia').val(colonias[0]);
+        } else if(colonias.length > 1){
+          // Replace input with select dropdown
+          var sel = '<select class="ad-input" id="pfColonia" style="margin-bottom:8px">';
+          sel += '<option value="">— Seleccionar colonia —</option>';
+          colonias.forEach(function(c){ sel += '<option value="'+c+'">'+c+'</option>'; });
+          sel += '</select>';
+          $('#pfColonia').replaceWith(sel);
+        }
+      });
+    });
 
     // Load commissions for existing punto
     if(!isNew){
