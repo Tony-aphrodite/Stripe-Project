@@ -15,6 +15,7 @@ window.AD_ventas = (function(){
         '</div>'+
       '</div>'+
       '<div id="vtKpis" class="ad-kpis" style="margin-bottom:14px;"></div>'+
+      '<div id="vtTabs" style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--ad-border);"></div>'+
       '<div id="vtTable"><div style="text-align:center;padding:40px;"><span class="ad-spin"></span> Cargando ventas...</div></div>'
     );
     loadData();
@@ -47,106 +48,113 @@ window.AD_ventas = (function(){
       );
       var rows = r.rows || [];
       _lastRows = rows;
-      if(!rows.length){
-        $('#vtTable').html('<div class="ad-card" style="text-align:center;padding:32px;">No hay ordenes registradas</div>');
-        return;
-      }
-
-      var html = '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
-        '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Color</th>'+
-        '<th>Tipo</th><th>Monto</th><th>Estatus de Pago</th><th>Punto</th><th>Fecha</th><th>Moto asignada</th><th>Accion</th>'+
-        '</tr></thead><tbody>';
-
-      rows.forEach(function(r){
-        var asignada = r.moto_id ? true : false;
-        var isPendingPunto = r.punto_id === 'centro-cercano';
-        var puntoHtml = '';
-        if(isPendingPunto){
-          puntoHtml = '<span class="ad-badge yellow">Pendiente asignar</span>';
-        } else if(r.punto_nombre){
-          puntoHtml = '<span class="ad-badge green" style="font-size:11px;">'+r.punto_nombre+'</span>';
-        } else if(!r.punto_id){
-          puntoHtml = '<span class="ad-badge red">Sin punto</span>';
-        } else {
-          puntoHtml = '<span class="ad-badge gray">'+r.punto_id+'</span>';
-        }
-
-        var tipoBadge = 'blue';
-        if(r.tipo === 'credito-orfano') tipoBadge = 'yellow';
-        if(r.tipo === 'error-captura') tipoBadge = 'red';
-        var alertaHtml = r.alerta
-          ? '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">⚠ '+esc(r.alerta)+'</div>'
-          : '';
-
-        html += '<tr>'+
-          '<td><strong>VK-'+(r.pedido||r.id)+'</strong>'+alertaHtml+'</td>'+
-          '<td>'+(r.nombre||'-')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
-          '<td>'+(r.modelo||'-')+'</td>'+
-          '<td>'+(r.color||'-')+'</td>'+
-          '<td><span class="ad-badge '+tipoBadge+'">'+(r.tipo||'-')+'</span></td>'+
-          '<td>'+ADApp.money(r.monto)+'</td>'+
-          '<td>'+pagoEstadoBadge(r.pago_estado, r.tipo)+'</td>'+
-          '<td>'+puntoHtml+'</td>'+
-          '<td>'+(r.fecha?r.fecha.substring(0,10):'-')+'</td>';
-
-        // Inventory availability + delivery estimate info under the moto column
-        var stockInfo = '';
-        var stock = r.inventario_disponible;
-        var transit = r.inventario_en_transito || 0;
-        if(!r.moto_id && stock !== undefined){
-          if(stock === 0){
-            stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">Sin inventario</div>';
-            if(transit > 0){
-              stockInfo += '<div style="font-size:11px;color:#d97706;margin-top:1px;">'+transit+' en tránsito</div>';
-            }
-          } else {
-            stockInfo = '<div style="font-size:11px;color:#059669;margin-top:2px;">'+stock+' disponible'+(stock>1?'s':'')+'</div>';
-          }
-        }
-
-        // Action buttons are always wrapped in a horizontal flex container
-        // so they never stack vertically, regardless of how many appear.
-        var isOrphan = r.source === 'transacciones_errores' || r.source === 'subscripciones_credito';
-        var motoCell, actions;
-        var btnStyleBase = 'padding:5px 10px;font-size:12px;white-space:nowrap;';
-        if(isOrphan){
-          var isVksc = r.source === 'subscripciones_credito';
-          var needsEdit = isVksc && (!r.modelo || r.modelo==='-' || !r.color || r.color==='-');
-          motoCell = '<span class="ad-badge yellow">'+(r.source==='transacciones_errores'?'Error':'Crédito huérfano')+'</span>';
-          actions  = '';
-          if(ADApp.canWrite()){
-            if(needsEdit){
-              actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#d97706;" '+
-                         'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar</button>';
-            }
-            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#b91c1c;" '+
-                       'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button>';
-          }
-          actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
-        } else if(asignada){
-          motoCell = '<span class="ad-badge green">'+(r.moto_vin||'****')+'</span>';
-          actions  = '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
-        } else {
-          motoCell = '<span class="ad-badge red">Sin asignar</span>'+stockInfo;
-          actions  = '';
-          if(ADApp.canWrite()){
-            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
-                       'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
-          }
-          actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
-        }
-        html += '<td>'+motoCell+'</td>'+
-                '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
-                actions+
-                '</div></td>';
-        html += '</tr>';
-      });
-
-      html += '</tbody></table></div></div>';
-      $('#vtTable').html(html);
+      renderTable(rows);
     }).fail(function(){
       $('#vtTable').html('<div class="ad-card">Error de conexion</div>');
     });
+  }
+
+  function renderTable(allRows){
+    renderTabs(allRows);
+    var rows = filterRows(allRows);
+    if(!allRows.length){
+      $('#vtTable').html('<div class="ad-card" style="text-align:center;padding:32px;">No hay ordenes registradas</div>');
+      return;
+    }
+    if(!rows.length){
+      $('#vtTable').html('<div class="ad-card" style="text-align:center;padding:32px;color:var(--ad-dim);">No hay ordenes en esta categoría</div>');
+      return;
+    }
+
+    var html = '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
+      '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Color</th>'+
+      '<th>Tipo</th><th>Monto</th><th>Estatus de Pago</th><th>Punto</th><th>Fecha</th><th>Moto asignada</th><th>Accion</th>'+
+      '</tr></thead><tbody>';
+
+    rows.forEach(function(r){
+      var asignada = r.moto_id ? true : false;
+      var isPendingPunto = r.punto_id === 'centro-cercano';
+      var puntoHtml = '';
+      if(isPendingPunto){
+        puntoHtml = '<span class="ad-badge yellow">Pendiente asignar</span>';
+      } else if(r.punto_nombre){
+        puntoHtml = '<span class="ad-badge green" style="font-size:11px;">'+r.punto_nombre+'</span>';
+      } else if(!r.punto_id){
+        puntoHtml = '<span class="ad-badge red">Sin punto</span>';
+      } else {
+        puntoHtml = '<span class="ad-badge gray">'+r.punto_id+'</span>';
+      }
+
+      var tipoBadge = 'blue';
+      if(r.tipo === 'credito-orfano') tipoBadge = 'yellow';
+      if(r.tipo === 'error-captura') tipoBadge = 'red';
+      var alertaHtml = r.alerta
+        ? '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">⚠ '+esc(r.alerta)+'</div>'
+        : '';
+
+      html += '<tr>'+
+        '<td><strong>VK-'+(r.pedido||r.id)+'</strong>'+alertaHtml+'</td>'+
+        '<td>'+(r.nombre||'-')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
+        '<td>'+(r.modelo||'-')+'</td>'+
+        '<td>'+(r.color||'-')+'</td>'+
+        '<td><span class="ad-badge '+tipoBadge+'">'+(r.tipo||'-')+'</span></td>'+
+        '<td>'+ADApp.money(r.monto)+'</td>'+
+        '<td>'+pagoEstadoBadge(r.pago_estado, r.tipo)+'</td>'+
+        '<td>'+puntoHtml+'</td>'+
+        '<td>'+(r.fecha?r.fecha.substring(0,10):'-')+'</td>';
+
+      var stockInfo = '';
+      var stock = r.inventario_disponible;
+      var transit = r.inventario_en_transito || 0;
+      if(!r.moto_id && stock !== undefined){
+        if(stock === 0){
+          stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">Sin inventario</div>';
+          if(transit > 0){
+            stockInfo += '<div style="font-size:11px;color:#d97706;margin-top:1px;">'+transit+' en tránsito</div>';
+          }
+        } else {
+          stockInfo = '<div style="font-size:11px;color:#059669;margin-top:2px;">'+stock+' disponible'+(stock>1?'s':'')+'</div>';
+        }
+      }
+
+      var isOrphan = r.source === 'transacciones_errores' || r.source === 'subscripciones_credito';
+      var motoCell, actions;
+      var btnStyleBase = 'padding:5px 10px;font-size:12px;white-space:nowrap;';
+      if(isOrphan){
+        var isVksc = r.source === 'subscripciones_credito';
+        var needsEdit = isVksc && (!r.modelo || r.modelo==='-' || !r.color || r.color==='-');
+        motoCell = '<span class="ad-badge yellow">'+(r.source==='transacciones_errores'?'Error':'Crédito huérfano')+'</span>';
+        actions  = '';
+        if(ADApp.canWrite()){
+          if(needsEdit){
+            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#d97706;" '+
+                       'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar</button>';
+          }
+          actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#b91c1c;" '+
+                     'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button>';
+        }
+        actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+      } else if(asignada){
+        motoCell = '<span class="ad-badge green">'+(r.moto_vin||'****')+'</span>';
+        actions  = '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+      } else {
+        motoCell = '<span class="ad-badge red">Sin asignar</span>'+stockInfo;
+        actions  = '';
+        if(ADApp.canWrite()){
+          actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
+                     'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
+        }
+        actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+      }
+      html += '<td>'+motoCell+'</td>'+
+              '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
+              actions+
+              '</div></td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div></div>';
+    $('#vtTable').html(html);
   }
 
   function showAsignar(transId, modelo, color, pedido){
@@ -391,6 +399,54 @@ window.AD_ventas = (function(){
   }
 
   var _lastRows = [];
+  var _activeTab = 'todas';
+
+  function renderTabs(rows){
+    var counts = {todas:rows.length, completadas:0, en_proceso:0, pendientes:0, errores:0};
+    rows.forEach(function(r){
+      var cat = categorizePago(r);
+      counts[cat]++;
+    });
+    var tabs = [
+      {key:'todas',       label:'Todas'},
+      {key:'completadas', label:'Completadas'},
+      {key:'en_proceso',  label:'En proceso'},
+      {key:'pendientes',  label:'Pendientes'},
+      {key:'errores',     label:'Errores'}
+    ];
+    var html = '';
+    tabs.forEach(function(t){
+      var isActive = _activeTab === t.key;
+      var countColor = t.key==='errores' && counts[t.key]>0 ? '#b91c1c' : (t.key==='pendientes' && counts[t.key]>0 ? '#d97706' : 'var(--ad-dim)');
+      if(isActive) countColor = '#fff';
+      html += '<button class="vtTab" data-tab="'+t.key+'" style="'+
+        'padding:10px 18px;font-size:13px;font-weight:600;border:none;cursor:pointer;'+
+        'border-bottom:3px solid '+(isActive?'var(--ad-primary)':'transparent')+';'+
+        'background:'+(isActive?'var(--ad-primary)':'transparent')+';'+
+        'color:'+(isActive?'#fff':'var(--ad-dim)')+';'+
+        'border-radius:8px 8px 0 0;transition:all .2s;'+
+        '">'+t.label+' <span style="font-size:11px;font-weight:400;color:'+countColor+';">'+counts[t.key]+'</span></button>';
+    });
+    $('#vtTabs').html(html);
+    $('.vtTab').on('click', function(){
+      _activeTab = $(this).data('tab');
+      renderTable(_lastRows);
+    });
+  }
+
+  function categorizePago(r){
+    var pe = (r.pago_estado||'').toLowerCase();
+    var src = (r.source||'').toLowerCase();
+    if(src === 'transacciones_errores' || pe === 'error' || pe === 'orfano') return 'errores';
+    if(pe === 'pagada' && r.moto_id) return 'completadas';
+    if(pe === 'pagada' || pe === 'parcial') return 'en_proceso';
+    return 'pendientes';
+  }
+
+  function filterRows(rows){
+    if(_activeTab === 'todas') return rows;
+    return rows.filter(function(r){ return categorizePago(r) === _activeTab; });
+  }
 
   function esc(s){
     return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
