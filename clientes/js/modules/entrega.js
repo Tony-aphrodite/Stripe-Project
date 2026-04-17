@@ -73,13 +73,13 @@ window.VK_entrega = (function(){
       var etaFmt = fechaLarga(env.fecha_estimada_llegada);
       var enviadoFmt = fechaLarga(env.fecha_envio);
       var shipHtml = '<div class="vk-card">'+
-        '<div class="vk-h2">🚚 Envío</div>';
+        '<div class="vk-h2">Envío</div>';
       if (env.fecha_recepcion) {
-        shipHtml += '<div class="vk-row"><span class="k">Estado</span><span class="v" style="color:#22c55e">✅ Recibida en el punto</span></div>';
+        shipHtml += '<div class="vk-row"><span class="k">Estado</span><span class="v" style="color:#22c55e">Recibida en el punto</span></div>';
       } else if (env.fecha_envio) {
-        shipHtml += '<div class="vk-row"><span class="k">Estado</span><span class="v">🚚 En tránsito</span></div>';
+        shipHtml += '<div class="vk-row"><span class="k">Estado</span><span class="v">En tránsito</span></div>';
       } else {
-        shipHtml += '<div class="vk-row"><span class="k">Estado</span><span class="v">📦 Preparando envío</span></div>';
+        shipHtml += '<div class="vk-row"><span class="k">Estado</span><span class="v">Preparando envío</span></div>';
       }
       if (enviadoFmt) shipHtml += '<div class="vk-row"><span class="k">Enviado</span><span class="v">'+enviadoFmt+'</span></div>';
       if (etaFmt && !env.fecha_recepcion) shipHtml += '<div class="vk-row"><span class="k">Llegada estimada</span><span class="v"><strong>'+etaFmt+'</strong></span></div>';
@@ -97,8 +97,8 @@ window.VK_entrega = (function(){
     // State-specific actions
     if ((st === 'pendiente' || st === 'en_transito') && !data.fecha_recoleccion) {
       var etaMsg = (data.envio && data.envio.fecha_estimada_llegada)
-        ? '🚚 Tu moto está en tránsito al punto de entrega. Llegada estimada: <strong>'+fechaLarga(data.envio.fecha_estimada_llegada)+'</strong>.'
-        : '🚚 Tu moto está en tránsito al punto de entrega. Te avisaremos cuando esté lista para recogerla.';
+        ? 'Tu moto está en tránsito al punto de entrega. Llegada estimada: <strong>'+fechaLarga(data.envio.fecha_estimada_llegada)+'</strong>.'
+        : 'Tu moto está en tránsito al punto de entrega. Te avisaremos cuando esté lista para recogerla.';
       html += '<div class="vk-banner warn">'+etaMsg+'</div>';
     }
 
@@ -111,7 +111,7 @@ window.VK_entrega = (function(){
     }
 
     if (st === 'confirmado' || st === 'rostro_ok') {
-      html += '<div class="vk-banner ok">✅ Código verificado. El personal está revisando tu identificación y la moto.</div>';
+      html += '<div class="vk-banner ok">Código verificado. El personal está revisando tu identificación y la moto.</div>';
     }
 
     if (st === 'checklist_ok' && !data.acta_firmada) {
@@ -123,20 +123,20 @@ window.VK_entrega = (function(){
     }
 
     if (data.acta_firmada && st !== 'entregada') {
-      html += '<div class="vk-banner ok">✅ ACTA firmada el '+(data.acta_fecha||'')+'. El personal finalizará la entrega ahora.</div>';
+      html += '<div class="vk-banner ok">ACTA firmada el '+(data.acta_fecha||'')+'. El personal finalizará la entrega ahora.</div>';
     }
 
     if (st === 'entregada' && !data.recepcion_confirmada) {
       html += '<div class="vk-card hl">'+
-        '<div class="vk-h2">🎉 ¡Tu moto ya fue entregada!</div>'+
+        '<div class="vk-h2">¡Tu moto ya fue entregada!</div>'+
         '<div class="vk-muted">Confirma la recepción para cerrar el proceso.</div>'+
-        '<button id="vkConfirmarRecep" class="vk-btn primary" style="margin-top:10px">Confirmar recepción ✅</button>'+
-        '<button id="vkIncidencia" class="vk-btn ghost" style="margin-top:6px">Reportar incidencia ⚠️</button>'+
+        '<button id="vkConfirmarRecep" class="vk-btn primary" style="margin-top:10px">Confirmar recepción</button>'+
+        '<button id="vkIncidencia" class="vk-btn ghost" style="margin-top:6px">Reportar incidencia</button>'+
       '</div>';
     }
 
     if (st === 'entregada' && data.recepcion_confirmada) {
-      html += '<div class="vk-banner ok" style="font-size:15px">🎊 ¡Bienvenido a la familia Voltika! Tu moto fue recibida correctamente.</div>';
+      html += '<div class="vk-banner ok" style="font-size:15px">¡Bienvenido a la familia Voltika! Tu moto fue recibida correctamente.</div>';
     }
 
     VKApp.render(html);
@@ -181,7 +181,7 @@ window.VK_entrega = (function(){
         moto_id: data.moto_id,
         firma_nombre: $('#vkFirmaNombre').val().trim(),
       }).done(function(r){
-        if (r.ok) { VKApp.toast('✅ ACTA firmada'); render(); }
+        if (r.ok) { VKApp.toast('ACTA firmada'); render(); }
         else { $b.prop('disabled', false).text('Firmar ACTA'); VKApp.toast(r.error||'Error'); }
       }).fail(function(x){
         $b.prop('disabled', false).text('Firmar ACTA');
@@ -202,7 +202,7 @@ window.VK_entrega = (function(){
       incidencia: incidencia ? 1 : 0,
       comentario: comentario || null,
     }).done(function(r){
-      if (r.ok) { VKApp.toast('✅ '+r.mensaje); render(); }
+      if (r.ok) { VKApp.toast(r.mensaje); render(); }
     }).fail(function(x){
       VKApp.toast((x.responseJSON&&x.responseJSON.error)||'Error');
     });

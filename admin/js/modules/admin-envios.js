@@ -121,10 +121,10 @@ window.AD_envios = (function(){
             '<span class="ad-badge '+(o.tipo==='credito'||o.tipo==='enganche'?'yellow':(o.tipo==='msi'?'blue':'green'))+'">'+
               (o.tipo||'contado')+'</span>'+
           '</div>'+
-          '<div style="font-size:13px;margin-top:4px;">👤 '+(o.nombre||'Sin nombre')+'</div>'+
+          '<div style="font-size:13px;margin-top:4px;">Cliente: '+(o.nombre||'Sin nombre')+'</div>'+
           '<div style="font-size:12px;color:var(--ad-dim)">'+o.modelo+' · '+o.color+' · '+ADApp.money(o.monto)+'</div>'+
-          (o.punto_nombre?'<div style="font-size:12px;margin-top:2px;">📍 Punto: <strong>'+o.punto_nombre+'</strong></div>':
-            '<div style="font-size:11px;color:#E65100;margin-top:2px;">⚠ Sin punto asignado</div>')+
+          (o.punto_nombre?'<div style="font-size:12px;margin-top:2px;">Punto: <strong>'+o.punto_nombre+'</strong></div>':
+            '<div style="font-size:11px;color:#E65100;margin-top:2px;">Sin punto asignado</div>')+
         '</div>';
       });
       html += '</div>';
@@ -175,7 +175,7 @@ window.AD_envios = (function(){
       // Show order summary when creating for a specific order
       if (transId && orderInfo) {
         html += '<div style="padding:10px;background:#E8F4FD;border-radius:6px;margin-bottom:10px;font-size:12px;border:1px solid #B3D4FC;">'+
-          '<strong>📋 Orden: VK-'+(orderInfo.pedido||transId)+'</strong><br>'+
+          '<strong>Orden: VK-'+(orderInfo.pedido||transId)+'</strong><br>'+
           'Cliente: <strong>'+(orderInfo.nombre||'—')+'</strong><br>'+
           'Modelo: '+(orderInfo.modelo||'—')+' · Color: '+(orderInfo.color||'—')+' · '+ADApp.money(orderInfo.monto||0)+
           (orderInfo.punto_nombre ? '<br>Punto solicitado: <strong>'+orderInfo.punto_nombre+'</strong>' : '')+
@@ -191,12 +191,12 @@ window.AD_envios = (function(){
       html += '<option value="">— Seleccionar moto —</option>';
       motos.forEach(function(m){
         var label = (m.vin_display||m.vin)+' · '+m.modelo+' · '+m.color;
-        if (m.punto_nombre) label += ' · 📍 '+m.punto_nombre;
+        if (m.punto_nombre) label += ' · Punto: '+m.punto_nombre;
         html += '<option value="'+m.id+'">'+label+'</option>';
       });
       html += '</select>';
       if (transId && motos.length === 0) {
-        html += '<div style="padding:8px;background:#FFF3E0;border-radius:6px;font-size:12px;color:#E65100;margin:-6px 0 10px;">⚠️ No hay motos disponibles'+(orderInfo?' para '+orderInfo.modelo+' '+orderInfo.color:'')+'. Verifica el inventario en CEDIS.</div>';
+        html += '<div style="padding:8px;background:#FFF3E0;border-radius:6px;font-size:12px;color:#E65100;margin:-6px 0 10px;"><strong>Aviso:</strong> No hay motos disponibles'+(orderInfo?' para '+orderInfo.modelo+' '+orderInfo.color:'')+'. Verifica el inventario en CEDIS.</div>';
       }
 
       // Punto selector — auto-select if order has a punto already

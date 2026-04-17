@@ -18,7 +18,7 @@ window.PV_venta = (function(){
 
     // ───────────── Section 1: Pending online orders (CASE 3) ─────────────
     html += '<div style="background:#FFF3E0;border-left:4px solid #FB8C00;padding:10px 12px;border-radius:6px;margin-bottom:10px;">'+
-      '<strong style="color:#E65100;">🧾 Pedidos pendientes de asignar ('+pendientes.length+')</strong>'+
+      '<strong style="color:#E65100;">Pedidos pendientes de asignar ('+pendientes.length+')</strong>'+
       '<div style="font-size:12px;color:#795548;margin-top:2px;">Ventas online que usaron tu código de referido. Asigna una moto libre de tu inventario al pedido.</div>'+
     '</div>';
 
@@ -38,7 +38,7 @@ window.PV_venta = (function(){
 
     // ───────────── Section 2: Walk-in direct sales ─────────────
     html += '<div style="background:#E3F2FD;border-left:4px solid #1976D2;padding:10px 12px;border-radius:6px;margin:20px 0 10px;">'+
-      '<strong style="color:#0D47A1;">🛒 Venta directa en tienda ('+disponibles.length+')</strong>'+
+      '<strong style="color:#0D47A1;">Venta directa en tienda ('+disponibles.length+')</strong>'+
       '<div style="font-size:12px;color:#455A64;margin-top:2px;">Motos libres en tu inventario. Asígnalas directamente a un cliente que llegó a tu punto.</div>'+
     '</div>';
 
@@ -52,7 +52,7 @@ window.PV_venta = (function(){
         html += '<div style="font-weight:700">'+esc(m.modelo)+' · '+esc(m.color)+'</div>';
         html += '<div style="font-size:12px;color:var(--ad-dim)">VIN: <code>'+esc(m.vin_display||m.vin||'')+'</code></div>';
         html += '</div>';
-        html += '<button class="ad-btn primary sm pvSellDirect" data-id="'+m.id+'" data-modelo="'+esc(m.modelo||'')+'" data-color="'+esc(m.color||'')+'">💳 Venta directa</button>';
+        html += '<button class="ad-btn primary sm pvSellDirect" data-id="'+m.id+'" data-modelo="'+esc(m.modelo||'')+'" data-color="'+esc(m.color||'')+'">Venta directa</button>';
         html += '</div>';
         html += '</div>';
       });
@@ -60,7 +60,7 @@ window.PV_venta = (function(){
 
     // ───────────── Info ─────────────
     html += '<div style="background:#F5F5F5;padding:10px 12px;border-radius:6px;margin-top:20px;font-size:11px;color:#666;">'+
-      'ℹ️ Las motos ya reservadas en <strong>"Para entrega"</strong> no aparecen aquí — están asignadas a pedidos confirmados por CEDIS y no pueden revenderse.'+
+      'Las motos ya reservadas en <strong>"Para entrega"</strong> no aparecen aquí — están asignadas a pedidos confirmados por CEDIS y no pueden revenderse.'+
     '</div>';
 
     PVApp.render(html);
@@ -98,7 +98,7 @@ window.PV_venta = (function(){
 
     if (matches.length === 0) {
       html += '<div class="ad-card" style="background:#FDECEA;color:#C62828;">'+
-        '⚠ No hay motos <strong>'+esc(ord.modelo)+' '+esc(ord.color)+'</strong> disponibles en tu inventario.<br>'+
+        '<strong>Aviso:</strong> No hay motos <strong>'+esc(ord.modelo)+' '+esc(ord.color)+'</strong> disponibles en tu inventario.<br>'+
         '<small>Contacta a CEDIS para solicitar un envío.</small></div>';
       html += '<button class="ad-btn ghost" onclick="PVApp.closeModal()" style="width:100%;margin-top:10px;">Cerrar</button>';
       PVApp.modal(html);

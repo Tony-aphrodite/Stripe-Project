@@ -31,12 +31,12 @@ window.VK_inicio = (function(){
     var compras = e.compras || [];
     if (compras.length < 2) return '';
     var html = '<div style="background:#fff;border:1px solid #e3e7ed;border-radius:10px;padding:12px;margin-bottom:14px;">';
-    html += '<div style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:8px;">📦 Tus compras ('+compras.length+')</div>';
+    html += '<div style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:8px;">Tus compras ('+compras.length+')</div>';
     compras.forEach(function(c, i){
       var isFirst = i === 0;
-      var tipoLabel = c.tipo === 'credito' ? '💳 Crédito'
-                   : c.tipo === 'msi'     ? '📋 MSI'
-                   : '💰 Contado';
+      var tipoLabel = c.tipo === 'credito' ? 'Crédito'
+                   : c.tipo === 'msi'     ? 'MSI'
+                   : 'Contado';
       var montoLabel = c.tipo === 'credito'
         ? '$'+Number(c.pago_semanal||0).toLocaleString('es-MX')+'/sem · '+(c.plazo_meses||'—')+' meses'
         : '$'+Number(c.total||0).toLocaleString('es-MX');
@@ -50,7 +50,7 @@ window.VK_inicio = (function(){
       html += '</div>';
       html += '</div>';
     });
-    html += '<div style="font-size:11px;color:#666;margin-top:6px;">ℹ️ La vista abajo corresponde a tu compra más reciente. Contacta soporte para gestionar otras compras.</div>';
+    html += '<div style="font-size:11px;color:#666;margin-top:6px;">La vista abajo corresponde a tu compra más reciente. Contacta soporte para gestionar otras compras.</div>';
     html += '</div>';
     return html;
   }

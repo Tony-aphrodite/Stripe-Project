@@ -51,8 +51,8 @@ window.AD_roles = (function(){
       html += '<td>'+(Number(u.activo)?'<span class="ad-badge green">Activo</span>':'<span class="ad-badge red">Inactivo</span>')+'</td>';
       html += '<td style="white-space:nowrap;">'+
         '<button class="ad-btn sm ghost rlEditar" data-id="'+u.id+'" title="Editar rol y permisos">Rol</button> '+
-        '<button class="ad-btn sm ghost rlReset" data-id="'+u.id+'" title="Restablecer contraseña">🔑</button> '+
-        '<button class="ad-btn sm ghost rlToggle" data-id="'+u.id+'" data-activo="'+(Number(u.activo)?1:0)+'" title="'+(Number(u.activo)?'Desactivar':'Activar')+'">'+(Number(u.activo)?'⏸':'▶')+'</button>'+
+        '<button class="ad-btn sm ghost rlReset" data-id="'+u.id+'" title="Restablecer contraseña" style="padding:4px 10px;">Reset</button> '+
+        '<button class="ad-btn sm ghost rlToggle" data-id="'+u.id+'" data-activo="'+(Number(u.activo)?1:0)+'" title="'+(Number(u.activo)?'Desactivar':'Activar')+'" style="padding:4px 10px;">'+(Number(u.activo)?'Pausar':'Activar')+'</button>'+
       '</td>';
       html += '</tr>';
     });

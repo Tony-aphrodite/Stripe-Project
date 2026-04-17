@@ -92,7 +92,7 @@ window.VK_cuenta = (function(){
           '<div class="vk-moto-info">'+
             '<div class="vk-moto-model">'+esc(m.modelo||'Voltika')+' <span class="vk-doc-badge green">Activa</span></div>'+
             '<div class="vk-muted">Color: '+esc(m.color||'—')+'</div>'+
-            '<div class="vk-muted vk-moto-serie">Serie: '+esc(m.serie||'—')+' <span class="vk-moto-copy" title="Copiar">📋</span></div>'+
+            '<div class="vk-muted vk-moto-serie">Serie: '+esc(m.serie||'—')+' <span class="vk-moto-copy" title="Copiar" style="cursor:pointer;color:#039fe1;font-size:10px;margin-left:4px;">copiar</span></div>'+
           '</div>'+
         '</div>'+
       '</div>'+

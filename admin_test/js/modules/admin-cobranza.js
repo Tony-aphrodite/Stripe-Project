@@ -45,7 +45,7 @@ window.AD_cobranza = (function(){
     html += tabBtn('8-30', '8-30 días');
     html += tabBtn('30+', '30+ días');
     html += tabBtn('pending', 'Pendientes hoy');
-    html += tabBtn('paid', '✅ Pagados');
+    html += tabBtn('paid', 'Pagados');
     html += '</div>';
 
     // ── Table ──

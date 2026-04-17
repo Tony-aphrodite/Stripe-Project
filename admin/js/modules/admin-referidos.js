@@ -119,7 +119,7 @@ window.AD_referidos = (function(){
     html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código <small>(opcional — vacío = auto)</small></label>';
     html += '<div style="display:flex;gap:6px;margin-bottom:10px;">'+
       '<input class="ad-input" id="rfCodigo" placeholder="Ej: VOLT2026" value="'+esc(ref.codigo||'')+'" style="flex:1;text-transform:uppercase;">'+
-      '<button class="ad-btn sm ghost" id="rfCodigoGen" type="button" style="white-space:nowrap;">🎲 Generar</button>'+
+      '<button class="ad-btn sm ghost" id="rfCodigoGen" type="button" style="white-space:nowrap;">Generar</button>'+
     '</div>';
     html += '<button class="ad-btn primary" id="rfSave" style="width:100%;padding:10px;">Guardar</button>';
     ADApp.modal(html);

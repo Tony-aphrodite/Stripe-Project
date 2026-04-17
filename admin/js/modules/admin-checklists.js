@@ -343,7 +343,7 @@ window.AD_checklists = (function(){
           if(!Array.isArray(catPhotos)) catPhotos = [];
           html += '<div class="clPhotoCat" data-cat="'+cat.campo+'" style="margin-bottom:10px;padding:10px;background:#FAFBFC;border:1px solid #EAECEE;border-radius:8px;">';
           html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
-          html += '<span style="font-size:12.5px;font-weight:600;color:#37474F;">📸 '+esc(cat.label)+'</span>';
+          html += '<span style="font-size:12.5px;font-weight:600;color:#37474F;">'+esc(cat.label)+'</span>';
           html += '<span class="clPhotoCatCount" style="font-size:11px;color:'+(catPhotos.length?'#1e7e34':'#c0392b')+';font-weight:600;">'+catPhotos.length+' foto(s)</span>';
           html += '</div>';
           html += photoZone('clOrigenFoto_'+cat.campo, 'origen', motoId, cat.campo, catPhotos, isLocked);
@@ -366,7 +366,7 @@ window.AD_checklists = (function(){
     });
 
     // Regla de Oro banner
-    html += '<div style="background:linear-gradient(135deg,#FFC107,#FF9800);color:#3E2723;border-radius:10px;padding:14px 16px;margin:14px 0;text-align:center;font-weight:700;font-size:14px;box-shadow:0 2px 8px rgba(255,152,0,0.25);">⚡ REGLA DE ORO — '+esc(ORIGEN_REGLA_ORO)+'</div>';
+    html += '<div style="background:linear-gradient(135deg,#FFC107,#FF9800);color:#3E2723;border-radius:10px;padding:14px 16px;margin:14px 0;text-align:center;font-weight:700;font-size:14px;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(255,152,0,0.25);">REGLA DE ORO — '+esc(ORIGEN_REGLA_ORO)+'</div>';
 
     // Notas
     html += '<div style="margin-bottom:12px;">'+
@@ -427,7 +427,7 @@ window.AD_checklists = (function(){
       var missingPhotos = [];
       $('.clPhotoCat').each(function(){
         if($(this).find('.clThumb').length === 0){
-          var label = $(this).find('span').first().text().replace('📸','').trim();
+          var label = $(this).find('span').first().text().trim();
           missingPhotos.push(label);
         }
       });

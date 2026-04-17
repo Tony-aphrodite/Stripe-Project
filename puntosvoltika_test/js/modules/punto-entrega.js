@@ -8,9 +8,9 @@ window.PV_entrega = (function(){
       if (list.length===0) html += '<div class="ad-card">Sin motos para entregar</div>';
       list.forEach(function(m){
         html += '<div class="ad-card">'+
-          (m.pedido_num ? '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:4px;">📋 '+m.pedido_num+'</div>' : '')+
+          (m.pedido_num ? '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:4px;">'+m.pedido_num+'</div>' : '')+
           '<div style="font-weight:700">'+m.modelo+' · '+m.color+'</div>'+
-          '<div style="font-size:12px">👤 Cliente: <strong>'+(m.cliente_nombre||'—')+'</strong></div>'+
+          '<div style="font-size:12px">Cliente: <strong>'+(m.cliente_nombre||'—')+'</strong></div>'+
           '<div style="font-size:11px;color:var(--ad-dim)">'+(m.cliente_telefono||'')+' · '+(m.cliente_email||'')+'</div>'+
           '<button class="ad-btn primary sm pvStart" data-id="'+m.id+'" data-nombre="'+m.cliente_nombre+'" data-tel="'+m.cliente_telefono+'" data-pedido="'+(m.pedido_num||'')+'" style="margin-top:8px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg> Iniciar entrega</button>'+
         '</div>';
@@ -33,7 +33,7 @@ window.PV_entrega = (function(){
     PVApp.modal(
       steps(0)+
       '<div class="ad-h2">1. Enviar OTP al cliente</div>'+
-      (ctx.pedido ? '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:8px;">📋 '+ctx.pedido+'</div>' : '')+
+      (ctx.pedido ? '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:8px;">'+ctx.pedido+'</div>' : '')+
       '<div class="ad-card">Cliente: <strong>'+ctx.cliente+'</strong><br>Tel: '+ctx.tel+'</div>'+
       '<button id="pvS1" class="ad-btn primary" style="width:100%">Enviar código por SMS</button>'
     );
@@ -123,7 +123,7 @@ window.PV_entrega = (function(){
     }
     // CREDITO — manual review path (no original selfie on file or Truora unavailable)
     PVApp.modal(
-      '<div class="ad-h2" style="color:var(--ad-warn)">⚠️ Verificación manual requerida</div>'+
+      '<div class="ad-h2" style="color:var(--ad-warn)">Verificación manual requerida</div>'+
       '<div class="ad-card">'+
         (r.message || 'No se pudo comparar automáticamente con la selfie del crédito.')+'<br><br>'+
         '<strong>Compara visualmente</strong> la foto tomada hoy contra la identificación (INE). '+

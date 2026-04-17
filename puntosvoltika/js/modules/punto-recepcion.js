@@ -9,10 +9,10 @@ window.PV_recepcion = (function(){
     if((r.envios||[]).length===0) html += '<div class="ad-card">No hay envíos pendientes</div>';
     (r.envios||[]).forEach(function(e){
       html += '<div class="ad-card">'+
-        (e.pedido_num ? '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:4px;">📋 '+e.pedido_num+'</div>' : '')+
+        (e.pedido_num ? '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:4px;">'+e.pedido_num+'</div>' : '')+
         '<div style="font-weight:700">'+e.modelo+' · '+e.color+'</div>'+
         '<div style="font-size:12px;color:var(--ad-dim)">VIN esperado: '+(e.vin_display||e.vin)+'</div>'+
-        (e.cliente_nombre ? '<div style="font-size:12px;margin-top:4px;">👤 Cliente: <strong>'+e.cliente_nombre+'</strong></div>' : '')+
+        (e.cliente_nombre ? '<div style="font-size:12px;margin-top:4px;">Cliente: <strong>'+e.cliente_nombre+'</strong></div>' : '')+
         '<div style="font-size:11px;margin-top:4px;"><span class="ad-badge '+(e.estado==='enviada'?'yellow':'blue')+'">'+e.estado+'</span>'+
         (e.fecha_estimada_llegada ? ' <span style="font-size:11px;color:var(--ad-dim)">· ETA: '+e.fecha_estimada_llegada+'</span>' : '')+'</div>'+
         '<button class="ad-btn primary sm pvReceive" data-env="'+e.id+'" data-moto="'+e.moto_id+'" data-vin="'+e.vin+'" style="margin-top:8px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg> Recibir moto</button>'+
@@ -30,7 +30,7 @@ window.PV_recepcion = (function(){
       '<label class="ad-label">Escanear o escribir VIN</label>'+
       '<div style="display:flex;gap:6px;margin-bottom:14px;">'+
         '<input id="pvRVin" class="ad-input" placeholder="VIN escaneado" style="flex:1;">'+
-        '<button class="ad-btn sm primary" id="pvScanBtn" type="button" style="white-space:nowrap;">📷 Escanear</button>'+
+        '<button class="ad-btn sm primary" id="pvScanBtn" type="button" style="white-space:nowrap;">Escanear</button>'+
       '</div>'+
       '<div class="ad-h2">Checklist</div>'+
       '<label class="pv-check"><input type="checkbox" id="pvC1"> Estado físico OK</label>'+
@@ -67,7 +67,7 @@ window.PV_recepcion = (function(){
   var _scanState = { stream: null, video: null, detector: null, running: false };
 
   function openVinScanner(vinEsperado){
-    var html = '<div class="ad-h2">📷 Escanear VIN</div>'+
+    var html = '<div class="ad-h2">Escanear VIN</div>'+
       '<div style="color:#666;font-size:12px;margin-bottom:10px;">Apunta la cámara al código de barras o texto del VIN.</div>'+
       '<div id="pvScanErr" style="color:#c41e3a;font-size:12px;margin-bottom:8px;display:none;"></div>'+
       '<div style="position:relative;background:#000;border-radius:10px;overflow:hidden;margin-bottom:12px;">'+
@@ -120,11 +120,11 @@ window.PV_recepcion = (function(){
           });
           detectLoop(video);
         } catch(e){
-          errEl.innerHTML = '⚠ Detector de códigos no disponible. Podés escribir el VIN manualmente.';
+          errEl.innerHTML = 'Detector de códigos no disponible. Podés escribir el VIN manualmente.';
           errEl.style.display = 'block';
         }
       } else {
-        errEl.innerHTML = '⚠ Tu navegador no soporta lectura automática de códigos. Usa "Escribir manualmente" o abrí la app en Chrome de Android.';
+        errEl.innerHTML = 'Tu navegador no soporta lectura automática de códigos. Usa "Escribir manualmente" o abrí la app en Chrome de Android.';
         errEl.style.display = 'block';
       }
     }).catch(function(err){

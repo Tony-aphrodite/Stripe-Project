@@ -10,7 +10,7 @@ window.AD_puntos = (function(){
   function paint(r){
     puntosData = r.puntos||[];
     var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Puntos Voltika</div><div style="display:flex;gap:8px;flex-wrap:wrap;">'+
-      '<button class="ad-btn" id="adRecursos" style="background:#e8f5e9;color:#2e7d32;">📋 Recursos</button>'+
+      '<button class="ad-btn" id="adRecursos" style="background:#e8f5e9;color:#2e7d32;">Recursos</button>'+
       '<button class="ad-btn" id="adImportPuntos" style="background:#f0f4f8;color:var(--ad-navy);">Importar Excel</button>'+
       '<button class="ad-btn primary" id="adNewPunto">+ Nuevo punto</button></div></div>';
 
@@ -47,7 +47,7 @@ window.AD_puntos = (function(){
   }
 
   function showRecursosModal(){
-    var html = '<div class="ad-h2">📋 Recursos para Puntos Voltika</div>';
+    var html = '<div class="ad-h2">Recursos para Puntos Voltika</div>';
     html += '<div class="ad-dim" style="margin-bottom:14px;font-size:13px;">Descarga plantillas, manuales y contratos para agregar o capacitar nuevos puntos.</div>';
 
     // 1. CSV import template
@@ -186,14 +186,14 @@ window.AD_puntos = (function(){
     // ── Referido codes ──
     if(!isNew){
       html += sectionTitle('Códigos de referido');
-      html += '<div style="font-size:11px;color:var(--ad-dim);margin-bottom:6px;">Editá manualmente o apretá 🎲 para generar uno nuevo aleatorio.</div>';
+      html += '<div style="font-size:11px;color:var(--ad-dim);margin-bottom:6px;">Editá manualmente o apretá "Generar" para uno nuevo aleatorio.</div>';
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
       html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código venta en punto</label>'+
         '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodVenta" value="'+esc(p.codigo_venta||'')+'" placeholder="Ej: PVE4DCFC" style="flex:1;text-transform:uppercase;">'+
-        '<button class="ad-btn sm ghost pfRegen" data-field="codigo_venta" title="Generar aleatorio" style="padding:4px 8px;">🎲</button></div></div>';
+        '<button class="ad-btn sm ghost pfRegen" data-field="codigo_venta" title="Generar aleatorio" style="padding:4px 10px;font-size:11px;">Generar</button></div></div>';
       html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código venta online</label>'+
         '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodElec" value="'+esc(p.codigo_electronico||'')+'" placeholder="Ej: PE6AFC75" style="flex:1;text-transform:uppercase;">'+
-        '<button class="ad-btn sm ghost pfRegen" data-field="codigo_electronico" title="Generar aleatorio" style="padding:4px 8px;">🎲</button></div></div>';
+        '<button class="ad-btn sm ghost pfRegen" data-field="codigo_electronico" title="Generar aleatorio" style="padding:4px 10px;font-size:11px;">Generar</button></div></div>';
       html += '</div>';
     }
 
@@ -211,12 +211,12 @@ window.AD_puntos = (function(){
       '</div>';
       html += '<div id="pfUsuariosList"><span class="ad-spin"></span> Cargando usuarios...</div>';
       html += '<div style="background:#fafbfd;border:1px solid #e3e7ed;border-radius:8px;padding:12px;margin-top:12px;">';
-      html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#1a3a5c;">➕ Crear nuevo usuario</div>';
+      html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#1a3a5c;">Crear nuevo usuario</div>';
       html += '<input class="ad-input" id="pfCredNombre" placeholder="Nombre completo" style="margin-bottom:8px;">';
       html += '<input class="ad-input" id="pfCredEmail" placeholder="Email" type="email" style="margin-bottom:8px;">';
       html += '<div style="display:grid;grid-template-columns:1fr auto;gap:6px;margin-bottom:8px;">'+
         '<input class="ad-input" id="pfCredPass" placeholder="Contraseña (mín 6 chars)" type="text">'+
-        '<button class="ad-btn sm ghost" id="pfCredGen" type="button" style="white-space:nowrap;">🎲 Generar</button>'+
+        '<button class="ad-btn sm ghost" id="pfCredGen" type="button" style="white-space:nowrap;">Generar</button>'+
       '</div>';
       html += '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:10px;cursor:pointer;">'+
         '<input type="checkbox" id="pfCredNotif" checked> Notificar al usuario por WhatsApp + email'+
@@ -313,20 +313,20 @@ window.AD_puntos = (function(){
         }).done(function(r){
           if(r.ok){
             $msg.html('<div style="background:#e6f4ea;color:#1e7e34;padding:8px;border-radius:6px;margin-top:6px;">'+
-              '✅ Usuario creado. Contraseña: <code style="background:#fff;padding:2px 6px;border-radius:3px;">'+esc(pass)+'</code>'+
-              (notif ? '<br><small>Notificación enviada por WhatsApp/email.</small>' : '<br><small>⚠ Anotá la contraseña — no se mostrará de nuevo.</small>')+
+              '<strong>Usuario creado.</strong> Contraseña: <code style="background:#fff;padding:2px 6px;border-radius:3px;">'+esc(pass)+'</code>'+
+              (notif ? '<br><small>Notificación enviada por WhatsApp/email.</small>' : '<br><small>Anotá la contraseña — no se mostrará de nuevo.</small>')+
               '</div>');
             $('#pfCredNombre').val('');
             $('#pfCredEmail').val('');
             $('#pfCredPass').val('');
             loadPanelCreds(p.id);
           } else {
-            $msg.html('<span style="color:#c41e3a">❌ '+esc(r.error||'Error')+'</span>');
+            $msg.html('<span style="color:#c41e3a">'+esc(r.error||'Error')+'</span>');
           }
           $btn.prop('disabled', false).text('Crear credenciales');
         }).fail(function(xhr){
           var err = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de conexión';
-          $msg.html('<span style="color:#c41e3a">❌ '+esc(err)+'</span>');
+          $msg.html('<span style="color:#c41e3a">'+esc(err)+'</span>');
           $btn.prop('disabled', false).text('Crear credenciales');
         });
       });
@@ -504,8 +504,8 @@ window.AD_puntos = (function(){
             '<div style="font-weight:600;font-size:13px;color:#1a3a5c;">'+esc(u.nombre||'')+' '+statusBadge+'</div>'+
             '<div style="font-size:11px;color:#666;">'+esc(u.email||'')+' · rol: '+esc(u.rol||'dealer')+'</div>'+
           '</div>'+
-          '<button class="ad-btn sm ghost pfCredReset" data-user-id="'+u.id+'" type="button" title="Resetear contraseña" style="font-size:11px;">🔑</button>'+
-          '<button class="ad-btn sm ghost pfCredToggle" data-user-id="'+u.id+'" type="button" title="'+(isActive?'Bloquear':'Desbloquear')+'" style="font-size:11px;">'+(isActive?'🔒':'🔓')+'</button>'+
+          '<button class="ad-btn sm ghost pfCredReset" data-user-id="'+u.id+'" type="button" title="Resetear contraseña" style="font-size:11px;padding:4px 10px;">Reset</button>'+
+          '<button class="ad-btn sm ghost pfCredToggle" data-user-id="'+u.id+'" type="button" title="'+(isActive?'Bloquear':'Desbloquear')+'" style="font-size:11px;padding:4px 10px;">'+(isActive?'Bloquear':'Activar')+'</button>'+
         '</div>';
       });
       $wrap.html(h);
