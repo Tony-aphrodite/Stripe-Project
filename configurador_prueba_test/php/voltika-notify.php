@@ -313,7 +313,7 @@ function voltikaNotify(string $tipo, array $data): array {
               . '<hr><p style="font-size:11px;color:#888">Este mensaje fue enviado automáticamente por Voltika. No respondas a este correo.</p>'
               . '</div>';
         $ok = false;
-        try { $ok = (bool) @sendMail($data['email'], $subject, $html); } catch (Throwable $e) {}
+        try { $ok = (bool) @sendMail($data['email'], $data['nombre'] ?? '', $subject, $html); } catch (Throwable $e) { error_log('voltikaNotify email: ' . $e->getMessage()); }
         voltikaNotifyLog($clienteId, $tipo, 'email', $data['email'], $subject, $ok ? 'sent' : 'failed');
         $summary['channels']['email'] = $ok;
     }
