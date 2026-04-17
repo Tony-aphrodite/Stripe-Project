@@ -103,11 +103,19 @@ if ($prev) {
     $checkId = (int)$pdo->lastInsertId();
 }
 
-// If completed, generate hash
+// If completed, generate hash + advance moto state (por_llegar → recibida)
 if ($vals['completado']) {
     $hashData = json_encode($vals) . $checkId . date('c');
     $hash = hash('sha256', $hashData);
     $pdo->prepare("UPDATE checklist_origen SET hash_registro=? WHERE id=?")->execute([$hash, $checkId]);
+
+    $pdo->prepare("UPDATE inventario_motos SET
+            estado='recibida',
+            fecha_estado=NOW(),
+            fmod=NOW(),
+            log_estados=JSON_ARRAY_APPEND(COALESCE(log_estados,'[]'), '$', JSON_OBJECT('estado','recibida','fecha',NOW(),'usuario',?,'origen','checklist_origen_completado'))
+        WHERE id=? AND estado IN ('por_llegar')")
+        ->execute([$uid, $motoId]);
 }
 
 adminLog('checklist_origen_' . ($vals['completado'] ? 'completado' : 'guardado'), [

@@ -69,8 +69,20 @@ window.AD_inventario = (function(){
     modelOrder.sort();
     // Render grouped tables
     modelOrder.forEach(function(mod){
+      // Breakdown per estado so "2 Ukko S+" doesn't read the same as "2 disponibles"
+      var brk = {recibida:0, lista_para_entrega:0, por_llegar:0, en_ensamble:0, entregada:0, retenida:0};
+      groups[mod].forEach(function(m){ if(brk[m.estado] !== undefined) brk[m.estado]++; });
+      var disp = brk.recibida + brk.lista_para_entrega;
+      var trn  = brk.por_llegar;
+      var parts = [];
+      if(disp>0) parts.push('<span style="color:#059669;">'+disp+' disponible'+(disp>1?'s':'')+'</span>');
+      if(trn>0)  parts.push('<span style="color:#d97706;">'+trn+' por llegar</span>');
+      if(brk.en_ensamble>0) parts.push('<span style="color:#6366f1;">'+brk.en_ensamble+' en ensamble</span>');
+      if(brk.entregada>0)   parts.push('<span style="color:#6b7280;">'+brk.entregada+' entregada'+(brk.entregada>1?'s':'')+'</span>');
+      var brkHtml = parts.length ? ' &nbsp;•&nbsp; <span style="font-weight:500;font-size:12px;">'+parts.join(' &nbsp;•&nbsp; ')+'</span>' : '';
+
       html += '<div style="margin-bottom:20px;">';
-      html += '<div style="font-weight:700;font-size:15px;color:var(--ad-navy);margin-bottom:6px;padding-left:4px;">'+mod+' <span style="font-weight:400;color:var(--ad-dim);font-size:13px;">('+groups[mod].length+')</span></div>';
+      html += '<div style="font-weight:700;font-size:15px;color:var(--ad-navy);margin-bottom:6px;padding-left:4px;">'+mod+' <span style="font-weight:400;color:var(--ad-dim);font-size:13px;">('+groups[mod].length+')</span>'+brkHtml+'</div>';
       html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>VIN</th><th>Color</th><th>Estado</th><th>Punto</th><th>Días</th><th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
       groups[mod].forEach(function(m){
         var diasCell = '—';
@@ -560,6 +572,10 @@ window.AD_inventario = (function(){
 
     // Remaining fields
     var fields = [
+      {id:'nmEstado',   label:'Estado inicial *',   ph:'', type:'select', opts:[
+        {v:'recibida',   t:'Recibida (ya en inventario)'},
+        {v:'por_llegar', t:'Por llegar (en tránsito)'}
+      ]},
       {id:'nmAnio',     label:'Año modelo',        ph:new Date().getFullYear()},
       {id:'nmMotor',    label:'Núm. motor',        ph:'Número de motor'},
       {id:'nmPotencia', label:'Potencia',           ph:'500W, 1000W, etc.'},
@@ -575,7 +591,13 @@ window.AD_inventario = (function(){
       html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">'+f.label+'</label>';
       if(f.type === 'select'){
         html += '<select class="ad-input" id="'+f.id+'" style="width:100%">';
-        f.opts.forEach(function(o){ html += '<option value="'+o+'">'+o+'</option>'; });
+        f.opts.forEach(function(o){
+          if(typeof o === 'object'){
+            html += '<option value="'+o.v+'">'+o.t+'</option>';
+          } else {
+            html += '<option value="'+o+'">'+o+'</option>';
+          }
+        });
         html += '</select>';
       } else if(f.type === 'date'){
         html += '<input type="date" class="ad-input" id="'+f.id+'" style="width:100%">';
@@ -629,6 +651,7 @@ window.AD_inventario = (function(){
         vin: vin,
         modelo: modelo,
         color: color,
+        estado: $('#nmEstado').val() || 'recibida',
         anio_modelo: $('#nmAnio').val(),
         num_motor: $('#nmMotor').val(),
         potencia: $('#nmPotencia').val(),

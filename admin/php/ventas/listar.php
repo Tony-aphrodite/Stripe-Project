@@ -343,6 +343,34 @@ usort($rows, fn($a, $b) => strcmp((string)($b['fecha'] ?? ''), (string)($a['fech
 
 // ── Inventory availability per modelo+color ──────────────────────────────
 // Used by the dashboard to show "X disponibles" or "Sin inventario — 2 meses"
+//
+// Legacy orders stored color tokens inside modelo (e.g. "Ukko S+ negro"), while
+// inventario_motos keeps modelo and color in separate columns ("Ukko S+" / "Negro").
+// Normalize both sides so the key matches regardless of pollution.
+$colorTokens = ['negro','negra','blanco','blanca','rojo','roja','azul','gris','naranja',
+                'verde','amarillo','amarilla','plata','plateado','plateada','dorado','dorada',
+                'morado','morada','rosa','rosado','rosada','cafe','café','marron','marrón'];
+
+$buildInvKey = static function($modelo, $color) use ($colorTokens) {
+    $m = strtolower(trim((string)$modelo));
+    $c = strtolower(trim((string)$color));
+    $m = preg_replace('/\s+/', ' ', $m);
+    // Strip the known color (if present) and all generic color tokens from modelo
+    if ($c !== '') {
+        $m = preg_replace('/\b' . preg_quote($c, '/') . '\b/u', '', $m);
+    } else {
+        // Extract color from modelo when color column is empty
+        foreach ($colorTokens as $ct) {
+            if (preg_match('/\b' . preg_quote($ct, '/') . '\b/u', $m)) { $c = $ct; break; }
+        }
+    }
+    foreach ($colorTokens as $ct) {
+        $m = preg_replace('/\b' . preg_quote($ct, '/') . '\b/u', '', $m);
+    }
+    $m = preg_replace('/\s+/', ' ', trim($m));
+    return $m . '|' . $c;
+};
+
 $disponibles = [];
 try {
     $inv = $pdo->query("
@@ -357,8 +385,8 @@ try {
         GROUP BY modelo, color
     ")->fetchAll(PDO::FETCH_ASSOC);
     foreach ($inv as $i) {
-        $key = strtolower(trim($i['modelo'])) . '|' . strtolower(trim($i['color']));
-        $disponibles[$key] = (int)$i['cnt'];
+        $key = $buildInvKey($i['modelo'], $i['color']);
+        $disponibles[$key] = ($disponibles[$key] ?? 0) + (int)$i['cnt'];
     }
 } catch (Throwable $e) {}
 
@@ -372,14 +400,14 @@ try {
         GROUP BY modelo, color
     ")->fetchAll(PDO::FETCH_ASSOC);
     foreach ($inv2 as $i) {
-        $key = strtolower(trim($i['modelo'])) . '|' . strtolower(trim($i['color']));
-        $enTransito[$key] = (int)$i['cnt'];
+        $key = $buildInvKey($i['modelo'], $i['color']);
+        $enTransito[$key] = ($enTransito[$key] ?? 0) + (int)$i['cnt'];
     }
 } catch (Throwable $e) {}
 
 $twoMonths = date('Y-m-d', strtotime('+2 months'));
 foreach ($rows as &$row) {
-    $key = strtolower(trim($row['modelo'] ?? '')) . '|' . strtolower(trim($row['color'] ?? ''));
+    $key = $buildInvKey($row['modelo'] ?? '', $row['color'] ?? '');
     $stock = $disponibles[$key] ?? 0;
     $row['inventario_disponible'] = $stock;
     $row['inventario_en_transito'] = $enTransito[$key] ?? 0;

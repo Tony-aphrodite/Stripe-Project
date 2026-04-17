@@ -32,14 +32,20 @@ foreach ($motos as $m) {
     $chk->execute([$vin]);
     if ($chk->fetch()) continue;
 
-    $log = json_encode([['estado' => 'por_llegar', 'fecha' => date('Y-m-d H:i:s'), 'usuario' => $uid]]);
+    // Admin can register either physical stock (recibida) or upcoming shipment (por_llegar).
+    // Default 'recibida' so manually added motos appear as available inventory immediately.
+    $estadoInicial = in_array($m['estado'] ?? '', ['por_llegar','recibida'], true)
+        ? $m['estado']
+        : 'recibida';
+
+    $log = json_encode([['estado' => $estadoInicial, 'fecha' => date('Y-m-d H:i:s'), 'usuario' => $uid, 'origen' => 'inventario_crear_manual']]);
 
     $stmt->execute([
         $vin,
         $m['vin_display'] ?? strtoupper($vin),
         $m['modelo'] ?? '',
         $m['color'] ?? '',
-        'por_llegar',
+        $estadoInicial,
         $m['anio_modelo'] ?? date('Y'),
         $m['num_motor'] ?? '',
         $m['potencia'] ?? '',

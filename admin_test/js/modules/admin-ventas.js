@@ -107,13 +107,16 @@ window.AD_ventas = (function(){
       var stock = r.inventario_disponible;
       var transit = r.inventario_en_transito || 0;
       if(!r.moto_id && stock !== undefined){
+        var reqModelo = (r.modelo||'').replace(/\s+/g,' ').trim();
+        var reqColor  = (r.color||'').trim();
+        var reqLabel  = esc(reqModelo + (reqColor ? ' '+reqColor : '')) || 'modelo solicitado';
         if(stock === 0){
-          stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">Sin inventario</div>';
+          stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;" title="Se requiere exactamente: '+reqLabel+'">Sin '+reqLabel+' en stock</div>';
           if(transit > 0){
-            stockInfo += '<div style="font-size:11px;color:#d97706;margin-top:1px;">'+transit+' en tránsito</div>';
+            stockInfo += '<div style="font-size:11px;color:#d97706;margin-top:1px;">'+transit+' en tránsito (por llegar)</div>';
           }
         } else {
-          stockInfo = '<div style="font-size:11px;color:#059669;margin-top:2px;">'+stock+' disponible'+(stock>1?'s':'')+'</div>';
+          stockInfo = '<div style="font-size:11px;color:#059669;margin-top:2px;">'+stock+' '+reqLabel+' disponible'+(stock>1?'s':'')+'</div>';
         }
       }
 
