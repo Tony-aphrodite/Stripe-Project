@@ -89,10 +89,11 @@ if ($caso === 3 && $referidoTipo === 'punto' && $referidoId) {
 }
 
 // Entropy-enriched pedido number — plain time() collides when two users
-// confirm within the same second, which was making the second INSERT silently
-// fail on any future UNIQUE constraint and leaving the order invisible to
-// the admin dashboard (see listar.php).
-$pedidoNum = time() . '-' . substr(bin2hex(random_bytes(3)), 0, 4);
+// confirm within the same second. Four-hex-char entropy (16 bits) was not
+// enough in practice (duplicates observed when the same client retried the
+// flow multiple times within a single second). Eight hex chars (32 bits) makes
+// collisions statistically impossible even under heavy retry bursts.
+$pedidoNum = time() . '-' . bin2hex(random_bytes(4));
 $fecha     = date('Y-m-d H:i');
 
 // Folio de contrato — now generated BEFORE the DB insert so it can be
@@ -108,32 +109,74 @@ $dbSaveErr = '';
 try {
     $pdo = getDB();
 
-    // ── Idempotency guard ──────────────────────────────────────────────────
+    // ── Ensure UNIQUE INDEX on stripe_pi + pedido (DB-level dedup) ─────────
+    // Final line of defense against duplicate orders. If the admin already
+    // ran the cleanup tool, these ALTERs succeed and from now on MySQL
+    // physically rejects duplicate INSERTs. If duplicates still exist the
+    // ALTER throws — we catch, log, and rely on the GET_LOCK layer below.
+    try {
+        $idxCheck = $pdo->query("SHOW INDEX FROM transacciones WHERE Key_name='uniq_stripe_pi'")->fetchAll();
+        if (!$idxCheck) {
+            $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX uniq_stripe_pi (stripe_pi)");
+            error_log('confirmar-orden: UNIQUE INDEX uniq_stripe_pi created');
+        }
+    } catch (Throwable $e) {
+        error_log('confirmar-orden UNIQUE INDEX stripe_pi skipped: ' . $e->getMessage());
+    }
+    try {
+        $idxPedido = $pdo->query("SHOW INDEX FROM transacciones WHERE Key_name='uniq_pedido'")->fetchAll();
+        if (!$idxPedido) {
+            $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX uniq_pedido (pedido)");
+            error_log('confirmar-orden: UNIQUE INDEX uniq_pedido created');
+        }
+    } catch (Throwable $e) {
+        error_log('confirmar-orden UNIQUE INDEX pedido skipped: ' . $e->getMessage());
+    }
+
+    // ── Idempotency guard (race-safe) ──────────────────────────────────────
     // If the user clicks CONTINUAR COMPRA more than once (e.g. after a
     // factura-validation bounce, a network retry, or a double-tap), the same
-    // Stripe PaymentIntent can arrive 2+ times in quick succession. Without
-    // this check we INSERT the same order repeatedly, making the admin
-    // dashboard show phantom duplicates. Dedup by stripe_pi: if an order
-    // already exists, return its pedido instead of creating a new row.
+    // Stripe PaymentIntent can arrive 2+ times in quick succession. A plain
+    // SELECT-then-INSERT leaks a race where 3 concurrent requests all pass
+    // the duplicate check before any commits. We serialize using MySQL
+    // GET_LOCK keyed on the PaymentIntent id so only one request at a time
+    // can run the check + insert for a given order.
+    $confirmLock = null;
     if (!empty($paymentIntentId)) {
+        $confirmLock = 'vk_confirm_' . substr($paymentIntentId, 0, 60);
         try {
-            $dupStmt = $pdo->prepare("SELECT id, pedido FROM transacciones WHERE stripe_pi = ? ORDER BY id ASC LIMIT 1");
-            $dupStmt->execute([$paymentIntentId]);
-            $dupRow = $dupStmt->fetch(PDO::FETCH_ASSOC);
-            if ($dupRow) {
-                echo json_encode([
-                    'status'     => 'ok',
-                    'pedido'     => $dupRow['pedido'],
-                    'emailSent'  => false,
-                    'db_saved'   => true,
-                    'db_warning' => null,
-                    'deduped'    => true,
-                ]);
-                exit;
+            $lockStmt = $pdo->prepare("SELECT GET_LOCK(?, 10)");
+            $lockStmt->execute([$confirmLock]);
+            $acquired = (int)$lockStmt->fetchColumn();
+            if ($acquired !== 1) {
+                // Couldn't acquire lock in 10s — fall through without dedup
+                // rather than block the user. Duplicate risk remains but
+                // extremely unlikely given 10s timeout.
+                error_log('confirmar-orden GET_LOCK timeout for ' . $confirmLock);
+                $confirmLock = null;
+            } else {
+                $dupStmt = $pdo->prepare("SELECT id, pedido FROM transacciones WHERE stripe_pi = ? ORDER BY id ASC LIMIT 1");
+                $dupStmt->execute([$paymentIntentId]);
+                $dupRow = $dupStmt->fetch(PDO::FETCH_ASSOC);
+                if ($dupRow) {
+                    // Release lock before exit
+                    $pdo->prepare("SELECT RELEASE_LOCK(?)")->execute([$confirmLock]);
+                    echo json_encode([
+                        'status'     => 'ok',
+                        'pedido'     => $dupRow['pedido'],
+                        'emailSent'  => false,
+                        'db_saved'   => true,
+                        'db_warning' => null,
+                        'deduped'    => true,
+                    ]);
+                    exit;
+                }
+                // Hold the lock through INSERT below so concurrent requests
+                // wait and observe the newly-created row on their turn.
             }
         } catch (Throwable $e) {
-            // Table may not exist yet on first run — ignore and fall through.
             error_log('confirmar-orden dedup check: ' . $e->getMessage());
+            $confirmLock = null;
         }
     }
 
@@ -197,8 +240,11 @@ try {
         $pagoEstadoInit = 'parcial';
     }
 
+    // INSERT IGNORE so if UNIQUE INDEX catches a duplicate stripe_pi the row
+    // is silently skipped (we fetch the existing pedido afterwards). Without
+    // IGNORE, a UNIQUE violation would throw and land in transacciones_errores.
     $stmt = $pdo->prepare("
-        INSERT INTO transacciones
+        INSERT IGNORE INTO transacciones
             (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago,
              precio, total, freg, pedido, stripe_pi,
              asesoria_placas, seguro_qualitas, punto_id, punto_nombre,
@@ -225,7 +271,9 @@ try {
         $total,
         $fecha,
         $pedidoNum,
-        $paymentIntentId ?: '',
+        // stripe_pi: use NULL instead of '' so MySQL UNIQUE INDEX allows
+        // multiple empty/missing values (UNIQUE treats each NULL as distinct).
+        !empty($paymentIntentId) ? $paymentIntentId : null,
         $asesoriaPlacasInt,
         $seguroQualitasInt,
         $puntoId ?: '',
@@ -241,6 +289,23 @@ try {
         defined('APP_ENV') ? APP_ENV : 'test',
     ]);
     $dbSaveOk = true;
+
+    // If INSERT IGNORE silently dropped the row due to UNIQUE stripe_pi
+    // collision, rowCount() is 0. Fetch the existing pedido and return it so
+    // the client still gets a consistent response.
+    if ($stmt->rowCount() === 0 && !empty($paymentIntentId)) {
+        try {
+            $existingStmt = $pdo->prepare("SELECT pedido FROM transacciones WHERE stripe_pi = ? LIMIT 1");
+            $existingStmt->execute([$paymentIntentId]);
+            $existingPedido = $existingStmt->fetchColumn();
+            if ($existingPedido) {
+                $pedidoNum = $existingPedido; // use the original pedido for downstream email/notify
+                error_log('confirmar-orden: duplicate stripe_pi silently ignored, reusing pedido ' . $pedidoNum);
+            }
+        } catch (Throwable $e) {
+            error_log('confirmar-orden dedup fetch: ' . $e->getMessage());
+        }
+    }
 
     // Per dashboards_diagrams.pdf: a purchase NEVER creates a motorcycle in
     // inventario_motos. Physical bikes are added by CEDIS when they arrive at
@@ -331,6 +396,14 @@ try {
     } catch (Throwable $e2) {
         error_log('Voltika transacciones_errores fallback failed: ' . $e2->getMessage());
     }
+}
+
+// Release the idempotency lock so concurrent requests queued behind us can
+// run their dedup SELECT and find the row we just inserted.
+if (!empty($confirmLock)) {
+    try {
+        $pdo->prepare("SELECT RELEASE_LOCK(?)")->execute([$confirmLock]);
+    } catch (Throwable $e) { /* non-fatal */ }
 }
 
 // ── Enviar email de confirmacion ──────────────────────────────────────────────
