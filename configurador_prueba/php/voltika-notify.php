@@ -44,6 +44,17 @@ function voltikaNotifyEnsureTable(): void {
 function voltikaNotifyTemplates(): array {
     return [
         // ═══════════════════════════════════════════════════════════════════
+        // INTERNAL — DEALER/PUNTO CREDENTIALS
+        // ═══════════════════════════════════════════════════════════════════
+
+        // Sent to newly-created dealer/admin user with login credentials
+        'credenciales_punto' => [
+            'subject' => '🔐 Acceso al Panel Voltika — ' . '{punto}',
+            'body'    => "🔐 Hola {nombre},\n\nYa tienes acceso al Panel Voltika ({rol}).\n\n📍 Punto: {punto}\n🌐 URL: https://{url}\n\nTus credenciales:\n• Usuario: {email}\n• Contraseña: {password}\n\n⚠️ Por seguridad, cambia la contraseña en tu primer inicio de sesión.",
+            'sms'     => 'Voltika Panel: Usuario {email} Clave {password} URL https://{url}',
+        ],
+
+        // ═══════════════════════════════════════════════════════════════════
         // POST-PURCHASE MESSAGES
         // ═══════════════════════════════════════════════════════════════════
 

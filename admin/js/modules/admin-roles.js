@@ -3,7 +3,7 @@ window.AD_roles = (function(){
   var _data = null;
 
   function render(){
-    ADApp.render(_backBtn+'<div class="ad-h1">Roles y Permisos</div><div><span class="ad-spin"></span></div>');
+    ADApp.render(_backBtn+'<div class="ad-h1">Usuarios, Roles y Permisos</div><div><span class="ad-spin"></span></div>');
     load();
   }
 
@@ -12,13 +12,14 @@ window.AD_roles = (function(){
       _data = r;
       paint(r);
     }).fail(function(){
-      ADApp.render(_backBtn+'<div class="ad-h1">Roles</div><div class="ad-banner err">Error al cargar</div>');
+      ADApp.render(_backBtn+'<div class="ad-h1">Usuarios</div><div class="ad-banner err">Error al cargar</div>');
     });
   }
 
   function paint(r){
     var html = _backBtn;
-    html += '<div class="ad-h1">Roles y Permisos</div>';
+    html += '<div class="ad-toolbar"><div class="ad-h1">Usuarios, Roles y Permisos</div>'+
+      '<button class="ad-btn primary" id="rlNuevo">+ Nuevo usuario</button></div>';
 
     // Permission matrix overview
     html += '<div class="ad-h2">Matriz de permisos por rol</div>';
@@ -38,7 +39,7 @@ window.AD_roles = (function(){
     // Users list
     html += '<div class="ad-h2">Usuarios del sistema</div>';
     html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr>';
-    html += '<th>Nombre</th><th>Email</th><th>Rol</th><th>Punto</th><th>Estado</th><th></th>';
+    html += '<th>Nombre</th><th>Email</th><th>Rol</th><th>Punto</th><th>Estado</th><th>Acciones</th>';
     html += '</tr></thead><tbody>';
     (r.usuarios||[]).forEach(function(u){
       var rolBadge = u.rol === 'admin' ? 'red' : (u.rol === 'cedis' ? 'blue' : 'gray');
@@ -47,17 +48,156 @@ window.AD_roles = (function(){
       html += '<td>'+esc(u.email)+'</td>';
       html += '<td><span class="ad-badge '+rolBadge+'">'+u.rol+'</span></td>';
       html += '<td>'+esc(u.punto_nombre||'—')+'</td>';
-      html += '<td>'+(u.activo?'<span class="ad-badge green">Activo</span>':'<span class="ad-badge red">Inactivo</span>')+'</td>';
-      html += '<td><button class="ad-btn sm ghost rlEditar" data-id="'+u.id+'">Editar rol</button></td>';
+      html += '<td>'+(Number(u.activo)?'<span class="ad-badge green">Activo</span>':'<span class="ad-badge red">Inactivo</span>')+'</td>';
+      html += '<td style="white-space:nowrap;">'+
+        '<button class="ad-btn sm ghost rlEditar" data-id="'+u.id+'" title="Editar rol y permisos">Rol</button> '+
+        '<button class="ad-btn sm ghost rlReset" data-id="'+u.id+'" title="Restablecer contraseña">🔑</button> '+
+        '<button class="ad-btn sm ghost rlToggle" data-id="'+u.id+'" data-activo="'+(Number(u.activo)?1:0)+'" title="'+(Number(u.activo)?'Desactivar':'Activar')+'">'+(Number(u.activo)?'⏸':'▶')+'</button>'+
+      '</td>';
       html += '</tr>';
     });
     html += '</tbody></table></div>';
 
     ADApp.render(html);
+    $('#rlNuevo').on('click', showCreateForm);
     $('.rlEditar').on('click',function(){
       var uid = $(this).data('id');
       var u = (r.usuarios||[]).find(function(x){return x.id==uid;});
       if (u) showEditRole(u, r);
+    });
+    $('.rlReset').on('click',function(){
+      var uid = $(this).data('id');
+      var u = (r.usuarios||[]).find(function(x){return x.id==uid;});
+      if (u) showResetPassword(u);
+    });
+    $('.rlToggle').on('click',function(){
+      var uid = $(this).data('id');
+      var activo = $(this).data('activo') ? 0 : 1;
+      if (!confirm(activo ? '¿Activar usuario?' : '¿Desactivar usuario?')) return;
+      ADApp.api('roles/toggle-activo.php',{usuario_id:uid, activo:activo}).done(function(r){
+        if(r.ok) load();
+      });
+    });
+  }
+
+  function showCreateForm(){
+    var puntos = (_data && _data.puntos) || [];
+    var roles = (_data && _data.roles) || ['dealer','admin'];
+
+    var html = '<div class="ad-h2">Nuevo usuario</div>';
+    html += '<label class="ad-label">Nombre</label>'+
+      '<input class="ad-input" id="rlNomb" placeholder="Ej. Juan Pérez" style="margin-bottom:10px;">';
+    html += '<label class="ad-label">Email</label>'+
+      '<input class="ad-input" id="rlEmail" type="email" placeholder="correo@voltika.mx" style="margin-bottom:10px;">';
+    html += '<label class="ad-label">Contraseña temporal</label>'+
+      '<div style="display:flex;gap:6px;margin-bottom:10px;">'+
+        '<input class="ad-input" id="rlPass" type="text" placeholder="Mínimo 6 caracteres" style="flex:1;">'+
+        '<button class="ad-btn ghost sm" id="rlGen">Generar</button>'+
+      '</div>';
+    html += '<label class="ad-label">Rol</label>'+
+      '<select class="ad-input" id="rlRol" style="margin-bottom:10px;">';
+    roles.forEach(function(ro){
+      html += '<option value="'+ro+'"'+(ro==='dealer'?' selected':'')+'>'+ro+'</option>';
+    });
+    html += '</select>';
+    html += '<label class="ad-label">Punto Voltika (solo para rol "dealer")</label>'+
+      '<select class="ad-input" id="rlPunto" style="margin-bottom:10px;">'+
+      '<option value="">— Sin punto asignado —</option>';
+    puntos.forEach(function(p){
+      var label = esc(p.nombre) + (p.ciudad?' — '+esc(p.ciudad):'') +
+        ' [#'+p.id+(p.codigo_venta?' · '+esc(p.codigo_venta):'')+']';
+      html += '<option value="'+p.id+'">'+label+'</option>';
+    });
+    html += '</select>';
+    html += '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:12px;">'+
+      '<input type="checkbox" id="rlNotif" checked style="width:auto;"> Enviar credenciales por SMS/Email al punto</label>';
+    html += '<div style="text-align:right;"><button class="ad-btn ghost" onclick="ADApp.closeModal()">Cancelar</button> '+
+      '<button class="ad-btn primary" id="rlCrear">Crear usuario</button></div>';
+
+    ADApp.modal(html);
+
+    // Generate random password
+    $('#rlGen').on('click', function(e){
+      e.preventDefault();
+      var chars = 'abcdefghijkmnpqrstuvwxyz23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+      var p = '';
+      for (var i = 0; i < 10; i++) p += chars.charAt(Math.floor(Math.random()*chars.length));
+      $('#rlPass').val(p);
+    });
+
+    $('#rlCrear').on('click', function(){
+      var payload = {
+        nombre:    $('#rlNomb').val().trim(),
+        email:     $('#rlEmail').val().trim(),
+        password:  $('#rlPass').val(),
+        rol:       $('#rlRol').val(),
+        punto_id:  $('#rlPunto').val() || null,
+        notificar: $('#rlNotif').is(':checked') ? 1 : 0
+      };
+      if (!payload.nombre || !payload.email || payload.password.length < 6) {
+        alert('Completa todos los campos. Contraseña mínimo 6 caracteres.');
+        return;
+      }
+      var $b = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Creando...');
+      ADApp.api('roles/crear.php', payload).done(function(r){
+        if (r.ok) {
+          ADApp.closeModal();
+          alert('Usuario creado.\n\nEmail: '+payload.email+'\nContraseña: '+payload.password+
+            (r.notify === 'enviado' ? '\n\n✓ Credenciales enviadas por SMS/Email.' : ''));
+          load();
+        } else {
+          alert(r.error || 'Error al crear');
+          $b.prop('disabled', false).text('Crear usuario');
+        }
+      }).fail(function(x){
+        alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+        $b.prop('disabled', false).text('Crear usuario');
+      });
+    });
+  }
+
+  function showResetPassword(u){
+    var html = '<div class="ad-h2">Restablecer contraseña</div>';
+    html += '<div class="ad-card" style="margin-bottom:10px;">'+esc(u.nombre)+' — '+esc(u.email)+'</div>';
+    html += '<label class="ad-label">Nueva contraseña</label>'+
+      '<div style="display:flex;gap:6px;margin-bottom:10px;">'+
+        '<input class="ad-input" id="rlNewPass" type="text" placeholder="Mínimo 6 caracteres" style="flex:1;">'+
+        '<button class="ad-btn ghost sm" id="rlGen2">Generar</button>'+
+      '</div>';
+    html += '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:12px;">'+
+      '<input type="checkbox" id="rlNotif2" checked style="width:auto;"> Enviar nuevas credenciales por SMS/Email</label>';
+    html += '<div style="text-align:right;"><button class="ad-btn ghost" onclick="ADApp.closeModal()">Cancelar</button> '+
+      '<button class="ad-btn primary" id="rlResetDo">Restablecer</button></div>';
+
+    ADApp.modal(html);
+
+    $('#rlGen2').on('click', function(e){
+      e.preventDefault();
+      var chars = 'abcdefghijkmnpqrstuvwxyz23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+      var p = '';
+      for (var i = 0; i < 10; i++) p += chars.charAt(Math.floor(Math.random()*chars.length));
+      $('#rlNewPass').val(p);
+    });
+
+    $('#rlResetDo').on('click', function(){
+      var pass = $('#rlNewPass').val();
+      if (pass.length < 6) { alert('Contraseña mínimo 6 caracteres.'); return; }
+      var $b = $(this).prop('disabled', true).html('<span class="ad-spin"></span>');
+      ADApp.api('roles/reset-password.php', {
+        usuario_id: u.id,
+        password:   pass,
+        notificar:  $('#rlNotif2').is(':checked') ? 1 : 0
+      }).done(function(r){
+        if (r.ok) {
+          ADApp.closeModal();
+          alert('Contraseña actualizada.\n\nNueva contraseña: '+pass+
+            (r.notify === 'enviado' ? '\n\n✓ Enviada por SMS/Email.' : ''));
+          load();
+        } else {
+          alert(r.error || 'Error');
+          $b.prop('disabled', false).text('Restablecer');
+        }
+      });
     });
   }
 
@@ -67,7 +207,7 @@ window.AD_roles = (function(){
     if (!currentPermisos.length) currentPermisos = r.matriz[u.rol] || [];
 
     var html = '<div class="ad-h2">Editar rol — '+esc(u.nombre)+'</div>';
-    html += '<label style="font-size:13px;">Rol<select id="rlRol" class="ad-input" style="margin-bottom:12px;">';
+    html += '<label style="font-size:13px;">Rol<select id="rlRolE" class="ad-input" style="margin-bottom:12px;">';
     (r.roles||[]).forEach(function(rol){
       html += '<option value="'+rol+'"'+(rol===u.rol?' selected':'')+'>'+rol+'</option>';
     });
@@ -83,8 +223,7 @@ window.AD_roles = (function(){
 
     ADApp.modal(html);
 
-    // Auto-fill permisos on role change
-    $('#rlRol').on('change', function(){
+    $('#rlRolE').on('change', function(){
       var selRol = $(this).val();
       var defPerms = r.matriz[selRol] || [];
       $('.rlPerm').each(function(){
@@ -97,7 +236,7 @@ window.AD_roles = (function(){
       $('.rlPerm:checked').each(function(){ permisos.push($(this).val()); });
       ADApp.api('roles/guardar.php',{
         usuario_id: u.id,
-        rol: $('#rlRol').val(),
+        rol: $('#rlRolE').val(),
         permisos: permisos
       }).done(function(r){ if(r.ok){ADApp.closeModal();load();} });
     });
