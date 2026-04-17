@@ -6,24 +6,34 @@ window.PV_inventario = (function(){
   function paint(r){
     var html = '<div class="ad-h1">Inventario</div>';
 
-    // CASE 3: online referral sales waiting for CEDIS to assign a physical moto.
-    // These show at the top because the point staff can't act on them beyond
-    // confirming the client info — they are informational until a real bike
-    // arrives.
-    var ventasPendientes = r.ventas_referido_pendientes || [];
-    if (ventasPendientes.length) {
-      html += '<div class="ad-h2"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg> Ventas por referido · pendientes de asignación ('+ventasPendientes.length+')</div>';
+    // ── PENDIENTES DE ASIGNACIÓN ─────────────────────────────────────
+    // Unified section showing every purchase tied to this punto that is NOT
+    // yet physically in its possession. Two sources:
+    //   (a) ventas_referido_pendientes — online orders using this punto's
+    //       referral code, still waiting for CEDIS to pick a physical moto.
+    //   (b) inventario_pendiente_recepcion — motos already linked to this
+    //       punto but without a recepcion_punto record (physically at CEDIS,
+    //       or assigned via admin move before shipment).
+    // Punto staff can only inspect these — no assembly / ready buttons.
+    var ventasPendientes   = r.ventas_referido_pendientes     || [];
+    var motosPendienteRec  = r.inventario_pendiente_recepcion || [];
+    var totalPendientes    = ventasPendientes.length + motosPendienteRec.length;
+    if (totalPendientes > 0) {
+      html += '<div class="ad-h2"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Pendientes de asignación ('+totalPendientes+')</div>';
       html += '<div style="font-size:12px;color:var(--ad-dim);margin:2px 0 8px 2px">'+
-        'Órdenes realizadas con el código de este punto. CEDIS debe asignar una moto y enviarla.</div>';
+        'Compras vinculadas a este punto que <strong>aún no han sido recibidas físicamente</strong>. '+
+        'La moto está en CEDIS o en proceso de asignación — no pueden prepararse para entrega hasta ser recibidas en este punto.</div>';
       ventasPendientes.forEach(function(v){ html += ventaReferidoCard(v); });
+      motosPendienteRec.forEach(function(m){ html += pendienteRecepcionCard(m); });
     }
 
-    // Pending arrival — motos still in transit, split by showroom vs for-delivery
+    // ── POR LLEGAR (en tránsito desde CEDIS) ────────────────────────
     var porLlegarEntrega  = r.inventario_por_llegar_entrega  || [];
     var porLlegarShowroom = r.inventario_por_llegar_showroom || [];
     var totalPorLlegar = porLlegarEntrega.length + porLlegarShowroom.length;
     if (totalPorLlegar > 0) {
       html += '<div class="ad-h2"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg> Por llegar ('+totalPorLlegar+')</div>';
+      html += '<div style="font-size:12px;color:var(--ad-dim);margin:4px 0 8px 2px">En tránsito desde CEDIS. Recíbelas cuando lleguen escaneando el VIN.</div>';
       if (porLlegarEntrega.length) {
         html += '<div style="font-size:12px;color:var(--ad-dim);margin:4px 0 4px 2px">Para entrega a cliente</div>';
         porLlegarEntrega.forEach(function(m){ html += bikeCard(m, 'por_llegar_entrega'); });
@@ -59,16 +69,41 @@ window.PV_inventario = (function(){
     });
   }
   function ventaReferidoCard(v){
-    // Uses its own class (pv-venta-card) so the bike-card click handler
-    // doesn't fire — these rows are informational and have no detail page.
+    // Online order with this punto's referral code, awaiting CEDIS to link
+    // a real moto. Informational card — no detail page, no action buttons.
     var h = '<div class="pv-venta-card" style="background:#FFF8E1;border-left:3px solid #FFC107;padding:10px;margin-bottom:6px;border-radius:6px">';
     h += '<div class="pv-info">';
     h += '<div style="font-weight:700">VK-'+(v.pedido||v.id)+' · '+(v.modelo||'—')+' · '+(v.color||'—')+'</div>';
     h += '<div style="font-size:12px">Cliente: <strong>'+(v.nombre||'—')+'</strong></div>';
     h += '<div style="font-size:11px;color:var(--ad-dim)">'+(v.telefono||'')+(v.email?' · '+v.email:'')+'</div>';
-    h += '<div style="font-size:11px;margin-top:4px"><span class="ad-badge yellow">pendiente asignación</span>';
+    h += '<div style="font-size:11px;margin-top:4px"><span class="ad-badge yellow">PENDIENTE DE ASIGNACIÓN</span>';
+    h += ' <span style="font-size:11px;color:var(--ad-dim)">· referido</span>';
     if (v.tpago) h += ' <span style="font-size:11px;color:var(--ad-dim)">· '+v.tpago+'</span>';
     h += '</div>';
+    h += '</div></div>';
+    return h;
+  }
+
+  function pendienteRecepcionCard(m){
+    // Moto already linked in inventario_motos with this punto, but no
+    // recepcion_punto row — physically still at CEDIS (or pending ship).
+    // Deliberately NO action buttons, NO click-through to detalle (to prevent
+    // accidental state transitions on unreceived motos).
+    var h = '<div class="pv-venta-card" style="background:#FFF8E1;border-left:3px solid #FFC107;padding:10px;margin-bottom:6px;border-radius:6px">';
+    h += '<div class="pv-info">';
+    if (m.pedido_num) {
+      h += '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:2px;">'+m.pedido_num+'</div>';
+    }
+    h += '<div style="font-weight:700">'+(m.modelo||'—')+' · '+(m.color||'—')+'</div>';
+    var vinTxt = m.vin_display || m.vin || '—';
+    h += '<div style="font-size:12px;color:var(--ad-dim)">VIN: '+vinTxt+'</div>';
+    if (m.cliente_nombre) {
+      h += '<div style="font-size:12px">Cliente: <strong>'+m.cliente_nombre+'</strong></div>';
+      if (m.cliente_telefono) h += '<div style="font-size:11px;color:var(--ad-dim)">'+m.cliente_telefono+'</div>';
+    }
+    h += '<div style="font-size:11px;margin-top:6px;"><span class="ad-badge yellow">PENDIENTE DE ASIGNACIÓN</span>';
+    h += ' <span style="font-size:11px;color:var(--ad-dim)">· esperando envío desde CEDIS</span></div>';
+    h += '<div style="font-size:11px;color:#795548;margin-top:4px;">La moto aún no ha sido recibida en este punto. No es posible iniciar ensamble ni marcar lista para entrega hasta escanear el VIN en recepción.</div>';
     h += '</div></div>';
     return h;
   }
@@ -101,7 +136,9 @@ window.PV_inventario = (function(){
     h += '</div>';
 
     // State-transition action buttons (diagram: reception → assembly → lista_para_entrega)
-    if (tipo === 'entrega') {
+    // Safety gate: even in the 'entrega' bucket, require recepcion_id — protects
+    // against data where estado='recibida' was set without the physical receipt.
+    if (tipo === 'entrega' && m.recepcion_id) {
       if (m.estado === 'recibida') {
         h += '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">';
         h += '<button class="ad-btn ghost sm pv-estado-btn" data-id="'+m.id+'" data-action="ensamble"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> Iniciar ensamble</button>';

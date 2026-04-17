@@ -19,38 +19,53 @@ $stmt = $pdo->prepare("SELECT m.*,
 $stmt->execute([$pid]);
 $motos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Per dashboards_diagrams.pdf the Point Panel shows three buckets:
-//   1) "Pending arrival" — motos still in transit (estado='por_llegar'), split by
-//      showroom (tipo_asignacion='consignacion') vs for-delivery ('voltika_entrega')
-//   2) "Para entrega"   — motos at the point with a cliente/pedido (delivery pipeline)
-//   3) "Disponible para venta" — showroom stock at the point with no cliente yet
-$porLlegarEntrega  = [];
-$porLlegarShowroom = [];
-$paraEntrega       = [];
-$paraVenta         = [];
+// Per dashboards_diagrams.pdf the Point Panel shows these buckets:
+//   1) "Por llegar"             — motos in transit (estado='por_llegar'),
+//                                 split by showroom vs for-delivery
+//   2) "Pendiente de recepción" — motos assigned to this punto with a post-arrival
+//                                 estado BUT no recepcion_punto record yet.
+//                                 (Customer's feedback: the physical moto is still
+//                                 at CEDIS. Action buttons must NOT show here.)
+//   3) "Para entrega"           — motos physically received (recepcion_punto row
+//                                 exists) with a cliente/pedido
+//   4) "Disponible para venta"  — motos physically received, no cliente yet
+$porLlegarEntrega      = [];
+$porLlegarShowroom     = [];
+$pendienteRecepcion    = [];
+$paraEntrega           = [];
+$paraVenta             = [];
 
 foreach ($motos as $m) {
     $estado = $m['estado'] ?? '';
     $tipo   = $m['tipo_asignacion'] ?? 'voltika_entrega';
     $vin    = $m['vin'] ?? '';
-    $hasCliente = !empty($m['cliente_nombre']) || !empty($m['pedido_num']);
+    $hasCliente   = !empty($m['cliente_nombre']) || !empty($m['pedido_num']);
+    $hasRecepcion = !empty($m['recepcion_id']);
 
-    // Skip CASE 3 placeholder rows (auto-created by confirmar-orden.php with a
-    // synthetic VIN like "VK-MOD-0001"). These orders are already surfaced in
-    // the `ventas_referido_pendientes` bucket built from transacciones below,
-    // so showing the placeholder here would duplicate the same order in two
-    // lists. Once CEDIS links a real moto (different row, real VIN), the real
-    // moto enters the normal por_llegar/paraEntrega flow.
+    // Skip CASE 3 placeholder rows (synthetic VIN like "VK-MOD-0001" created by
+    // confirmar-orden.php). Surfaced via ventas_referido_pendientes below.
     if (strpos($vin, 'VK-') === 0) {
         continue;
     }
 
+    // In-transit (CEDIS has shipped, punto not yet received)
     if ($estado === 'por_llegar') {
         if ($tipo === 'consignacion') {
             $porLlegarShowroom[] = $m;
         } else {
             $porLlegarEntrega[] = $m;
         }
+        continue;
+    }
+
+    // Physical-presence gate: without a recepcion_punto row this moto is NOT
+    // physically at the punto. Block it out of the action pipeline (Para entrega /
+    // Disponible para venta) and show it as "pendiente de recepción" instead.
+    // This catches: data entered directly with estado='recibida', CEDIS
+    // pre-assignments, manual admin moves — anything that bypasses the
+    // canonical recepcion/recibir.php flow.
+    if (!$hasRecepcion) {
+        $pendienteRecepcion[] = $m;
         continue;
     }
 
@@ -92,6 +107,7 @@ try {
 puntoJsonOut([
     'punto_id'                       => $pid,
     'ventas_referido_pendientes'     => $ventasReferidoPendientes,
+    'inventario_pendiente_recepcion' => $pendienteRecepcion,
     'inventario_por_llegar_entrega'  => $porLlegarEntrega,
     'inventario_por_llegar_showroom' => $porLlegarShowroom,
     'inventario_entrega'             => $paraEntrega,

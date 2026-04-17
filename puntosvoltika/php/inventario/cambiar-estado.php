@@ -37,6 +37,19 @@ $stmt->execute([$motoId, $ctx['punto_id']]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$moto) puntoJsonOut(['error' => 'Moto no encontrada en tu inventario'], 404);
 
+// Physical-presence gate: block any lifecycle transition until the moto has a
+// recepcion_punto record. Without this the punto could mark "lista para entrega"
+// on a moto still at CEDIS (reported by customer 2026-04-18).
+$recStmt = $pdo->prepare("SELECT id FROM recepcion_punto WHERE moto_id=? ORDER BY freg DESC LIMIT 1");
+$recStmt->execute([$motoId]);
+$hasRecepcion = (bool)$recStmt->fetchColumn();
+if (!$hasRecepcion) {
+    puntoJsonOut([
+        'error' => 'Esta moto aún no ha sido recibida físicamente en tu punto. '
+                 . 'Escanea el VIN en el módulo de Recepción antes de cambiar su estado.'
+    ], 409);
+}
+
 if (!empty($moto['bloqueado_venta'])) {
     puntoJsonOut(['error' => 'Esta moto está bloqueada. Motivo: ' . ($moto['bloqueado_motivo'] ?? 'Sin motivo') . '. Contacta a CEDIS para desbloquearla.'], 403);
 }
@@ -100,7 +113,7 @@ puntoLog('cambiar_estado', [
 
 // On lista_para_entrega → notify the client with the pickup date
 if ($nuevoEstado === 'lista_para_entrega' && !empty($moto['cliente_telefono'])) {
-    require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
+    require_once __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php';
     try {
         $pq = $pdo->prepare("SELECT nombre, direccion, horarios FROM puntos_voltika WHERE id=?");
         $pq->execute([$ctx['punto_id']]);

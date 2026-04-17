@@ -37,6 +37,19 @@ $stmt->execute([$motoId, $ctx['punto_id']]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$moto) puntoJsonOut(['error' => 'Moto no encontrada en tu inventario'], 404);
 
+// Physical-presence gate: block any lifecycle transition until the moto has a
+// recepcion_punto record. Without this the punto could mark "lista para entrega"
+// on a moto still at CEDIS (reported by customer 2026-04-18).
+$recStmt = $pdo->prepare("SELECT id FROM recepcion_punto WHERE moto_id=? ORDER BY freg DESC LIMIT 1");
+$recStmt->execute([$motoId]);
+$hasRecepcion = (bool)$recStmt->fetchColumn();
+if (!$hasRecepcion) {
+    puntoJsonOut([
+        'error' => 'Esta moto aún no ha sido recibida físicamente en tu punto. '
+                 . 'Escanea el VIN en el módulo de Recepción antes de cambiar su estado.'
+    ], 409);
+}
+
 if (!empty($moto['bloqueado_venta'])) {
     puntoJsonOut(['error' => 'Esta moto está bloqueada. Motivo: ' . ($moto['bloqueado_motivo'] ?? 'Sin motivo') . '. Contacta a CEDIS para desbloquearla.'], 403);
 }
