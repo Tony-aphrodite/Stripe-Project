@@ -324,8 +324,8 @@ var Paso4A = {
         $(document).off('click', '.vk-contado-continuar');
         $(document).on('click', '.vk-contado-continuar', function() {
             var $btn = $(this);
-            if ($btn.prop('disabled')) return;
-            $btn.prop('disabled', true).css('opacity', '0.6').text('Guardando orden...');
+            if ($btn.prop('disabled') || $btn.data('submitted')) return;
+            $btn.prop('disabled', true).data('submitted', true).css('opacity', '0.6').text('Guardando orden...');
 
             var _modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
             var _total = _modelo ? _modelo.precioContado : 0;
@@ -368,9 +368,16 @@ var Paso4A = {
                     referido_id:     refData ? refData.id : null,
                     referido_tipo:   refData ? refData.tipo : ''
                 }),
-                complete: function() {
-                    $btn.prop('disabled', false).css('opacity', '1');
+                success: function() {
+                    // Keep the button disabled on success — dedup guard
+                    // against double-submit when user navigates back after
+                    // a downstream validation bounce (e.g. invalid RFC on
+                    // factura page). Re-enable ONLY on error below.
                     self._showPostPaymentOTP();
+                },
+                error: function() {
+                    $btn.prop('disabled', false).data('submitted', false).css('opacity', '1').text('CONTINUAR COMPRA');
+                    alert('No pudimos guardar la orden. Revisa tu conexión e intenta de nuevo.');
                 }
             });
         });

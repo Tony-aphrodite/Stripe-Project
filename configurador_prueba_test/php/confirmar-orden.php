@@ -108,6 +108,35 @@ $dbSaveErr = '';
 try {
     $pdo = getDB();
 
+    // ── Idempotency guard ──────────────────────────────────────────────────
+    // If the user clicks CONTINUAR COMPRA more than once (e.g. after a
+    // factura-validation bounce, a network retry, or a double-tap), the same
+    // Stripe PaymentIntent can arrive 2+ times in quick succession. Without
+    // this check we INSERT the same order repeatedly, making the admin
+    // dashboard show phantom duplicates. Dedup by stripe_pi: if an order
+    // already exists, return its pedido instead of creating a new row.
+    if (!empty($paymentIntentId)) {
+        try {
+            $dupStmt = $pdo->prepare("SELECT id, pedido FROM transacciones WHERE stripe_pi = ? ORDER BY id ASC LIMIT 1");
+            $dupStmt->execute([$paymentIntentId]);
+            $dupRow = $dupStmt->fetch(PDO::FETCH_ASSOC);
+            if ($dupRow) {
+                echo json_encode([
+                    'status'     => 'ok',
+                    'pedido'     => $dupRow['pedido'],
+                    'emailSent'  => false,
+                    'db_saved'   => true,
+                    'db_warning' => null,
+                    'deduped'    => true,
+                ]);
+                exit;
+            }
+        } catch (Throwable $e) {
+            // Table may not exist yet on first run — ignore and fall through.
+            error_log('confirmar-orden dedup check: ' . $e->getMessage());
+        }
+    }
+
     // Recovery table: any orphan orders we couldn't write to `transacciones`
     // land here so the admin dashboard can recover them manually. Previously
     // a failed INSERT was swallowed silently, making the sale invisible.
