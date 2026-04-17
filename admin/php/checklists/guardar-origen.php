@@ -71,6 +71,10 @@ $vals['completado']  = !empty($d['completado']) ? 1 : 0;
 
 // If marking complete, validate all required fields
 if ($vals['completado']) {
+    // When config_baterias = '1', bateria_2 is "si aplica" — auto-pass it
+    if ((string)$vals['config_baterias'] === '1') {
+        $vals['bateria_2'] = 1;
+    }
     $missing = [];
     foreach ($binaryFields as $f) {
         if (!$vals[$f]) $missing[] = $f;
@@ -80,6 +84,9 @@ if ($vals['completado']) {
             'error' => 'Faltan ' . count($missing) . ' items por completar para finalizar el checklist',
             'missing' => $missing,
         ], 400);
+    }
+    if (trim((string)$vals['num_motor']) === '') {
+        adminJsonOut(['error' => 'Falta el Número de motor en Identificación de unidad.'], 400);
     }
 }
 

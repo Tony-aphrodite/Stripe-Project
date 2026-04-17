@@ -1,6 +1,9 @@
 window.AD_checklists = (function(){
 
   // ── Section definitions for Checklist de Origen ──────────────────────────
+  var ORIGEN_LEGAL_TEXT = 'La unidad fue revisada, validada y empacada conforme a estándares Voltika. Se confirma que: contenido completo, sistema eléctrico funcional, estética en buen estado.';
+  var ORIGEN_REGLA_ORO  = 'Lo que no está validado en origen, no existe.';
+
   var ORIGEN_SECTIONS = [
     { title: '1. Estructura principal', fields: [
       {key:'frame_completo', label:'Frame completo'},
@@ -21,8 +24,8 @@ window.AD_checklists = (function(){
       {key:'controles_completos', label:'Controles completos'}
     ]},
     { title: '4. Sistema de frenado', fields: [
-      {key:'freno_delantero', label:'Freno delantero'},
-      {key:'freno_trasero', label:'Freno trasero'},
+      {key:'freno_delantero', label:'Freno delantero completo'},
+      {key:'freno_trasero', label:'Freno trasero completo'},
       {key:'discos_sin_dano', label:'Discos sin daño'},
       {key:'calipers_instalados', label:'Cálipers instalados'},
       {key:'lineas_completas', label:'Líneas completas'}
@@ -36,26 +39,26 @@ window.AD_checklists = (function(){
     { title: '6. Motor', fields: [
       {key:'motor_instalado', label:'Motor instalado'},
       {key:'motor_sin_dano', label:'Motor sin daño'},
-      {key:'motor_conexion', label:'Conexión correcta del motor'}
+      {key:'motor_conexion', label:'Conexión correcta'}
     ]},
     { title: '7. Baterías', fields: [
-      {key:'bateria_1', label:'Batería 1 presente'},
-      {key:'bateria_2', label:'Batería 2 presente'},
-      {key:'baterias_sin_dano', label:'Baterías sin daño'},
-      {key:'cargador_incluido', label:'Cargador incluido'}
+      {key:'bateria_1', label:'Batería 1'},
+      {key:'bateria_2', label:'Batería 2 (si aplica)', conditional:'bateria_2'},
+      {key:'baterias_sin_dano', label:'Sin daño visible'}
     ]},
     { title: '8. Accesorios', fields: [
-      {key:'espejos', label:'Espejos'},
+      {key:'espejos', label:'Espejos (2)'},
       {key:'tornilleria_completa', label:'Tornillería completa'},
       {key:'birlos_completos', label:'Birlos completos'},
-      {key:'kit_herramientas', label:'Kit de herramientas'}
+      {key:'kit_herramientas', label:'Kit de herramientas'},
+      {key:'cargador_incluido', label:'Cargador correspondiente'}
     ]},
     { title: '9. Complementos', fields: [
-      {key:'llaves_2', label:'2 llaves incluidas'},
+      {key:'llaves_2', label:'2 llaves con tarjetas NFC (si aplica)'},
       {key:'manual_usuario', label:'Manual de usuario'},
       {key:'carnet_garantia', label:'Carnet de garantía'}
     ]},
-    { title: '10. Validación eléctrica', fields: [
+    { title: '10. Validación eléctrica (sin movimiento)', nota:'Validación sin rodaje', fields: [
       {key:'sistema_enciende', label:'Sistema enciende'},
       {key:'dashboard_funcional', label:'Dashboard funcional'},
       {key:'indicador_bateria', label:'Indicador de batería'},
@@ -63,23 +66,25 @@ window.AD_checklists = (function(){
       {key:'conectores_firmes', label:'Conectores firmes'},
       {key:'cableado_sin_dano', label:'Cableado sin daño'}
     ]},
-    { title: '11. Artes decorativos', fields: [
-      {key:'calcomanias_correctas', label:'Calcomanías correctas'},
+    { title: '11. Artes decorativos y acabados', fields: [
+      {key:'calcomanias_correctas', label:'Calcomanías Voltika correctamente colocadas'},
       {key:'alineacion_correcta', label:'Alineación correcta'},
       {key:'sin_burbujas', label:'Sin burbujas'},
       {key:'sin_desprendimientos', label:'Sin desprendimientos'},
-      {key:'sin_rayones', label:'Sin rayones'},
-      {key:'acabados_correctos', label:'Acabados correctos'}
+      {key:'sin_rayones', label:'Sin rayones visibles'},
+      {key:'acabados_correctos', label:'Acabados estéticos correctos'}
     ]},
     { title: '12. Empaque', fields: [
-      {key:'embalaje_correcto', label:'Embalaje correcto'},
+      {key:'embalaje_correcto', label:'Embalaje correcto con etiquetas Voltika'},
       {key:'protecciones_colocadas', label:'Protecciones colocadas'},
       {key:'caja_sin_dano', label:'Caja sin daño'},
       {key:'sellos_colocados', label:'Sellos colocados'}
     ]},
-    { title: '13. Declaración y validación final', fields: [
-      {key:'declaracion_aceptada', label:'Declaración aceptada'},
-      {key:'validacion_final', label:'Validación final'}
+    { title: '14. Declaración legal', prologo: ORIGEN_LEGAL_TEXT, fields: [
+      {key:'declaracion_aceptada', label:'Acepto la declaración'}
+    ]},
+    { title: '15. Validación final', fields: [
+      {key:'validacion_final', label:'Confirmo información correcta'}
     ]}
   ];
 
@@ -210,7 +215,7 @@ window.AD_checklists = (function(){
       $('.clAction').on('click',function(){
         var tipo = $(this).data('tipo');
         var mid = $(this).data('mid');
-        if(tipo==='origen') openOrigenForm(mid, r.origen);
+        if(tipo==='origen') openOrigenForm(mid, r.origen, r.moto);
         else if(tipo==='ensamble') openEnsambleForm(mid, r.ensamble);
         else if(tipo==='entrega') openEntregaForm(mid, r.entrega);
       });
@@ -256,8 +261,9 @@ window.AD_checklists = (function(){
   }
 
   // ── Checklist de Origen Form ─────────────────────────────────────────────
-  function openOrigenForm(motoId, existing){
+  function openOrigenForm(motoId, existing, moto){
     var data = existing || {};
+    var m    = moto || {};
     var isLocked = data.completado == 1;
 
     var html = '<div class="ad-h2">Checklist de Origen</div>';
@@ -272,37 +278,58 @@ window.AD_checklists = (function(){
         'Este checklist fue completado y no se puede modificar. Hash: <code>'+(data.hash_registro||'')+'</code></div>';
     }
 
-    // Config baterias
-    html += '<div style="margin-bottom:12px;">'+
-      '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Configuración de baterías:</label>'+
-      '<select class="ad-select" id="clConfigBat" style="width:120px;"'+(isLocked?' disabled':'')+'>'+
-        '<option value="1"'+(data.config_baterias!=='2'?' selected':'')+'>1 batería</option>'+
-        '<option value="2"'+(data.config_baterias==='2'?' selected':'')+'>2 baterías</option>'+
+    // IDENTIFICACIÓN DE UNIDAD
+    html += sectionTitle('Identificación de unidad');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
+    html += identifField('VIN', esc(m.vin_display || m.vin || data.vin || ''));
+    html += identifInput('Número de motor', 'clNumMotor', esc(data.num_motor || ''), isLocked);
+    html += identifField('Modelo', esc(m.modelo || data.modelo || ''));
+    html += identifField('Color', esc(m.color || data.color || ''));
+    html += identifField('Año modelo', esc(m.anio_modelo || data.anio_modelo || ''));
+    html += '<div>'+
+      '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Configuración de baterías</label>'+
+      '<select class="ad-select" id="clConfigBat" style="width:100%;"'+(isLocked?' disabled':'')+'>'+
+        '<option value="1"'+(String(data.config_baterias)!=='2'?' selected':'')+'>1 batería</option>'+
+        '<option value="2"'+(String(data.config_baterias)==='2'?' selected':'')+'>2 baterías</option>'+
       '</select>'+
     '</div>';
+    html += '</div>';
 
-    // Sections with checkboxes
+    // Sections 1-12, 14, 15 with checkboxes
     ORIGEN_SECTIONS.forEach(function(section){
       html += '<div style="margin-bottom:14px;">';
       html += sectionTitle(section.title);
+      if(section.nota){
+        html += '<div style="background:#FFF3E0;border-left:3px solid #FB8C00;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#795548;"><strong>NOTA:</strong> '+esc(section.nota)+'</div>';
+      }
+      if(section.prologo){
+        html += '<div style="background:#F5F7FA;border:1px solid #e3e7ed;border-radius:6px;padding:10px 12px;margin-bottom:10px;font-size:12.5px;color:#37474F;line-height:1.5;">'+esc(section.prologo)+'</div>';
+      }
       section.fields.forEach(function(f){
         html += checkItem(f.key, f.label, data[f.key], isLocked);
       });
+      // Section 12 Empaque: append Número de sellos
+      if(section.title.indexOf('12.') === 0){
+        html += '<div style="margin-top:8px;">'+
+          '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Número de sellos:</label>'+
+          '<input type="number" class="ad-input" id="clNumSellos" value="'+(data.num_sellos||0)+'" style="width:100px;"'+(isLocked?' disabled':'')+'>'+
+        '</div>';
+      }
       html += '</div>';
+      // Insert section 13 (photos) between section 12 and section 14
+      if(section.title.indexOf('12.') === 0){
+        html += '<div style="margin-bottom:14px;">';
+        html += sectionTitle('13. Evidencia fotográfica');
+        var origenFotos = [];
+        try { origenFotos = JSON.parse(data.fotos||'[]'); } catch(e){}
+        if(!Array.isArray(origenFotos)) origenFotos = [];
+        html += photoZone('clOrigenFotos', 'origen', motoId, 'fotos', origenFotos, isLocked);
+        html += '</div>';
+      }
     });
 
-    // Num sellos
-    html += '<div style="margin-bottom:12px;">'+
-      '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Número de sellos:</label>'+
-      '<input type="number" class="ad-input" id="clNumSellos" value="'+(data.num_sellos||0)+'" style="width:100px;"'+(isLocked?' disabled':'')+'>'+
-    '</div>';
-
-    // Photos
-    html += sectionTitle('Evidencia fotográfica');
-    var origenFotos = [];
-    try { origenFotos = JSON.parse(data.fotos||'[]'); } catch(e){}
-    if(!Array.isArray(origenFotos)) origenFotos = [];
-    html += photoZone('clOrigenFotos', 'origen', motoId, 'fotos', origenFotos, isLocked);
+    // Regla de Oro banner
+    html += '<div style="background:linear-gradient(135deg,#FFC107,#FF9800);color:#3E2723;border-radius:10px;padding:14px 16px;margin:14px 0;text-align:center;font-weight:700;font-size:14px;box-shadow:0 2px 8px rgba(255,152,0,0.25);">⚡ REGLA DE ORO — '+esc(ORIGEN_REGLA_ORO)+'</div>';
 
     // Notas
     html += '<div style="margin-bottom:12px;">'+
@@ -324,6 +351,21 @@ window.AD_checklists = (function(){
     // Bind photo events
     bindPhotoEvents();
 
+    // Conditional bateria_2: auto-check & disable when config=1
+    function syncBateria2(){
+      var cfg = $('#clConfigBat').val();
+      var $b2 = $('.clCheck[data-key="bateria_2"]');
+      if(isLocked) return;
+      if(cfg === '1'){
+        $b2.prop('checked', true).prop('disabled', true);
+      } else {
+        $b2.prop('disabled', false);
+      }
+      updateProgressGeneric(ALL_ORIGEN_FIELDS, TOTAL_ORIGEN);
+    }
+    $('#clConfigBat').on('change', syncBateria2);
+    syncBateria2();
+
     // Update progress bar on checkbox change
     $('.clCheck').on('change', function(){ updateProgressGeneric(ALL_ORIGEN_FIELDS, TOTAL_ORIGEN); });
 
@@ -339,6 +381,11 @@ window.AD_checklists = (function(){
         alert('Faltan '+(TOTAL_ORIGEN-checked)+' items por marcar antes de completar el checklist.');
         return;
       }
+      if(!$('#clNumMotor').val().trim()){
+        alert('Falta el Número de motor en la sección Identificación de unidad.');
+        $('#clNumMotor').focus();
+        return;
+      }
       if(!confirm('¿Completar y bloquear este checklist? No se podrá modificar después.')) return;
       saveOrigen(motoId, true);
     });
@@ -347,6 +394,20 @@ window.AD_checklists = (function(){
       ADApp.closeModal();
       showMotoChecklists(motoId);
     });
+  }
+
+  function identifField(label, value){
+    return '<div>'+
+      '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">'+label+'</label>'+
+      '<div style="background:#f5f5f5;border:1px solid #e0e0e0;border-radius:6px;padding:8px 10px;font-size:13px;color:#333;min-height:18px;">'+(value||'—')+'</div>'+
+    '</div>';
+  }
+
+  function identifInput(label, id, value, disabled){
+    return '<div>'+
+      '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">'+label+'</label>'+
+      '<input type="text" class="ad-input" id="'+id+'" value="'+value+'" style="width:100%;"'+(disabled?' disabled':'')+' placeholder="Ingresar…">'+
+    '</div>';
   }
 
   function countChecked(){
@@ -364,6 +425,7 @@ window.AD_checklists = (function(){
     });
 
     payload.config_baterias = $('#clConfigBat').val();
+    payload.num_motor = ($('#clNumMotor').val() || '').trim();
     payload.num_sellos = parseInt($('#clNumSellos').val()) || 0;
     payload.notas = $('#clNotas').val();
     payload.completado = completar ? 1 : 0;
