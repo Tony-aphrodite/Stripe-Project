@@ -202,6 +202,29 @@ window.AD_puntos = (function(){
       html += '<div id="pfComisionesWrap"><span class="ad-spin"></span> Cargando modelos...</div>';
     }
 
+    // ── Panel login credentials (only for existing puntos) ──
+    if(!isNew){
+      html += sectionTitle('Credenciales del panel (puntosvoltika)');
+      html += '<div style="background:#f0f7ff;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#336;">'+
+        '<strong>Nota:</strong> Los usuarios creados aquí pueden ingresar a <code>voltika.mx/puntosvoltika</code> para gestionar recepción, inventario y entregas de este punto.'+
+      '</div>';
+      html += '<div id="pfUsuariosList"><span class="ad-spin"></span> Cargando usuarios...</div>';
+      html += '<div style="background:#fafbfd;border:1px solid #e3e7ed;border-radius:8px;padding:12px;margin-top:12px;">';
+      html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#1a3a5c;">➕ Crear nuevo usuario</div>';
+      html += '<input class="ad-input" id="pfCredNombre" placeholder="Nombre completo" style="margin-bottom:8px;">';
+      html += '<input class="ad-input" id="pfCredEmail" placeholder="Email" type="email" style="margin-bottom:8px;">';
+      html += '<div style="display:grid;grid-template-columns:1fr auto;gap:6px;margin-bottom:8px;">'+
+        '<input class="ad-input" id="pfCredPass" placeholder="Contraseña (mín 6 chars)" type="text">'+
+        '<button class="ad-btn sm ghost" id="pfCredGen" type="button" style="white-space:nowrap;">🎲 Generar</button>'+
+      '</div>';
+      html += '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:10px;cursor:pointer;">'+
+        '<input type="checkbox" id="pfCredNotif" checked> Notificar al usuario por WhatsApp + email'+
+      '</label>';
+      html += '<button class="ad-btn primary" id="pfCredCrear" type="button" style="width:100%;padding:10px;">Crear credenciales</button>';
+      html += '<div id="pfCredMsg" style="font-size:12px;margin-top:8px;"></div>';
+      html += '</div>';
+    }
+
     // ── Coordinates ──
     html += sectionTitle('Ubicación (mapa)');
     html += '<div style="background:#f0f7ff;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#336;">'+
@@ -253,6 +276,81 @@ window.AD_puntos = (function(){
         }
       });
     });
+
+    // Load panel credentials (users assigned to this punto)
+    if(!isNew){
+      loadPanelCreds(p.id);
+
+      // Password generator
+      $('#pfCredGen').on('click', function(){
+        $('#pfCredPass').val(generarPasswordAleatorio());
+      });
+
+      // Create new credentials
+      $('#pfCredCrear').on('click', function(){
+        var $btn = $(this);
+        var $msg = $('#pfCredMsg');
+        var nombre = $('#pfCredNombre').val().trim();
+        var email  = $('#pfCredEmail').val().trim().toLowerCase();
+        var pass   = $('#pfCredPass').val();
+        var notif  = $('#pfCredNotif').is(':checked');
+
+        if(!nombre){ $msg.html('<span style="color:#c41e3a">Nombre requerido</span>'); return; }
+        if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ $msg.html('<span style="color:#c41e3a">Email inválido</span>'); return; }
+        if(!pass || pass.length < 6){ $msg.html('<span style="color:#c41e3a">Contraseña mínimo 6 caracteres</span>'); return; }
+
+        $btn.prop('disabled', true).text('Creando...');
+        $msg.html('');
+
+        ADApp.api('roles/crear.php', {
+          nombre:   nombre,
+          email:    email,
+          password: pass,
+          rol:      'dealer',
+          punto_id: p.id,
+          notificar: notif
+        }).done(function(r){
+          if(r.ok){
+            $msg.html('<div style="background:#e6f4ea;color:#1e7e34;padding:8px;border-radius:6px;margin-top:6px;">'+
+              '✅ Usuario creado. Contraseña: <code style="background:#fff;padding:2px 6px;border-radius:3px;">'+esc(pass)+'</code>'+
+              (notif ? '<br><small>Notificación enviada por WhatsApp/email.</small>' : '<br><small>⚠ Anotá la contraseña — no se mostrará de nuevo.</small>')+
+              '</div>');
+            $('#pfCredNombre').val('');
+            $('#pfCredEmail').val('');
+            $('#pfCredPass').val('');
+            loadPanelCreds(p.id);
+          } else {
+            $msg.html('<span style="color:#c41e3a">❌ '+esc(r.error||'Error')+'</span>');
+          }
+          $btn.prop('disabled', false).text('Crear credenciales');
+        }).fail(function(xhr){
+          var err = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de conexión';
+          $msg.html('<span style="color:#c41e3a">❌ '+esc(err)+'</span>');
+          $btn.prop('disabled', false).text('Crear credenciales');
+        });
+      });
+
+      // Per-user actions (delegated — list is re-rendered asynchronously)
+      $(document).off('click.pfCred').on('click.pfCred', '.pfCredReset, .pfCredToggle', function(){
+        var $b = $(this);
+        var userId = $b.data('user-id');
+        if($b.hasClass('pfCredReset')){
+          var newPass = generarPasswordAleatorio();
+          if(!confirm('Resetear contraseña para este usuario?\n\nNueva contraseña: '+newPass+'\n\n(Se enviará por WhatsApp/email)')) return;
+          ADApp.api('roles/reset-password.php', { usuario_id: userId, password: newPass, notificar: true }).done(function(r){
+            if(r.ok){
+              alert('✓ Contraseña reseteada y enviada al usuario.\n\nNueva contraseña: '+newPass);
+            } else alert('Error: '+(r.error||'desconocido'));
+          });
+        } else if($b.hasClass('pfCredToggle')){
+          if(!confirm('Cambiar estado activo/inactivo de este usuario?')) return;
+          ADApp.api('roles/toggle-activo.php', { usuario_id: userId }).done(function(r){
+            if(r.ok) loadPanelCreds(p.id);
+            else alert('Error: '+(r.error||'desconocido'));
+          });
+        }
+      });
+    }
 
     // Load commissions for existing punto
     if(!isNew){
@@ -370,6 +468,50 @@ window.AD_puntos = (function(){
 
   function esc(s){
     return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Panel credentials helpers ───────────────────────────────────────────
+  function loadPanelCreds(puntoId){
+    var $wrap = $('#pfUsuariosList');
+    if(!$wrap.length) return;
+    ADApp.api('roles/listar-por-punto.php?punto_id='+puntoId).done(function(r){
+      if(!r.ok){
+        $wrap.html('<div style="color:#c41e3a;font-size:12px;">Error: '+esc(r.error||'desconocido')+'</div>');
+        return;
+      }
+      var users = r.users || [];
+      if(!users.length){
+        $wrap.html('<div style="background:#f5f7fa;padding:10px 12px;border-radius:6px;font-size:12px;color:#666;">Sin usuarios asignados a este punto.</div>');
+        return;
+      }
+      var h = '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:6px;">Usuarios asignados ('+users.length+'):</div>';
+      users.forEach(function(u){
+        var isActive = Number(u.activo) === 1;
+        var statusBadge = isActive
+          ? '<span style="background:#e6f4ea;color:#1e7e34;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">Activo</span>'
+          : '<span style="background:#fde8e8;color:#c41e3a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">Bloqueado</span>';
+        h += '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:1px solid #e3e7ed;border-radius:6px;margin-bottom:6px;">'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-weight:600;font-size:13px;color:#1a3a5c;">'+esc(u.nombre||'')+' '+statusBadge+'</div>'+
+            '<div style="font-size:11px;color:#666;">'+esc(u.email||'')+' · rol: '+esc(u.rol||'dealer')+'</div>'+
+          '</div>'+
+          '<button class="ad-btn sm ghost pfCredReset" data-user-id="'+u.id+'" type="button" title="Resetear contraseña" style="font-size:11px;">🔑</button>'+
+          '<button class="ad-btn sm ghost pfCredToggle" data-user-id="'+u.id+'" type="button" title="'+(isActive?'Bloquear':'Desbloquear')+'" style="font-size:11px;">'+(isActive?'🔒':'🔓')+'</button>'+
+        '</div>';
+      });
+      $wrap.html(h);
+    }).fail(function(xhr){
+      var err = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de conexión';
+      $wrap.html('<div style="color:#c41e3a;font-size:12px;">'+esc(err)+'</div>');
+    });
+  }
+
+  function generarPasswordAleatorio(){
+    // 10-char mixed alphanumeric (no ambiguous 0/O/1/l)
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    var out = '';
+    for(var i=0;i<10;i++) out += chars.charAt(Math.floor(Math.random()*chars.length));
+    return out;
   }
 
   // ── Import from Excel ───────────────────────────────────────────────────
