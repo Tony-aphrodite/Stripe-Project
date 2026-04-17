@@ -520,7 +520,7 @@ window.AD_ventas = (function(){
     html += '</div>';
 
     ADApp.modal(html);
-    $('#vkPlacasCancel').on('click', function(){ ADApp.closeModal(); showDetail(r); });
+    $('#vkPlacasCancel').on('click', function(){ ADApp.closeModal(); showDetalle(r.id); });
     $('#vkPlacasSave').on('click', function(){
       var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span>');
       ADApp.api('ventas/actualizar-servicio.php', {
@@ -537,7 +537,7 @@ window.AD_ventas = (function(){
           r.placas_gestor_telefono = $('#vkPlacasTel').val();
           r.placas_nota            = $('#vkPlacasNota').val();
           ADApp.closeModal();
-          showDetail(r);
+          showDetalle(r.id);
         } else {
           alert(resp.error||'Error al guardar');
           $btn.prop('disabled', false).text('Guardar');
@@ -583,7 +583,7 @@ window.AD_ventas = (function(){
     html += '</div>';
 
     ADApp.modal(html);
-    $('#vkSeguroCancel').on('click', function(){ ADApp.closeModal(); showDetail(r); });
+    $('#vkSeguroCancel').on('click', function(){ ADApp.closeModal(); showDetalle(r.id); });
     $('#vkSeguroSave').on('click', function(){
       var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span>');
       ADApp.api('ventas/actualizar-servicio.php', {
@@ -599,7 +599,7 @@ window.AD_ventas = (function(){
           r.seguro_poliza     = $('#vkSeguroPoliza').val();
           r.seguro_nota       = $('#vkSeguroNota').val();
           ADApp.closeModal();
-          showDetail(r);
+          showDetalle(r.id);
         } else {
           alert(resp.error||'Error al guardar');
           $btn.prop('disabled', false).text('Guardar');
