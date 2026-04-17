@@ -26,7 +26,12 @@ window.VKApp = (function(){
     setTimeout(function(){ $t.removeClass('show'); setTimeout(function(){$t.remove();},300); },2400);
   }
   function render(html){ $screen.html(html); window.scrollTo(0,0); }
-  function showTabbar(show){ $tabbar.toggle(!!show); }
+  function showTabbar(show){
+    $tabbar.toggle(!!show);
+    // Body class lets CSS switch between desktop sidebar layout (authed)
+    // and centered login layout (pre-auth)
+    $('body').toggleClass('vk-authed', !!show);
+  }
 
   // ── Active purchase (activeCompra) ────────────────────────────────────────
   function _persistActive(){

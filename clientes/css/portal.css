@@ -854,14 +854,25 @@ button{font-family:inherit}
   }
   body { padding-bottom: 0; }
 
-  /* App container — full width, no max-width constraint */
-  .vk-app {
+  /* App container — authed users get sidebar-offset layout */
+  body.vk-authed .vk-app {
     max-width: none !important;
     margin: 0 !important;
     padding: 28px 32px 40px 292px !important;
     background: transparent !important;
     min-height: 100vh;
   }
+
+  /* Pre-auth (login / OTP / recovery): centered card, no sidebar */
+  body:not(.vk-authed) .vk-app {
+    max-width: 520px !important;
+    margin: 0 auto !important;
+    padding: 40px 24px !important;
+    background: transparent !important;
+    min-height: 100vh;
+  }
+  body:not(.vk-authed) .vk-screen { padding: 0; }
+  body:not(.vk-authed) .vk-logo   { margin-top: 12px; }
 
   .vk-screen { min-width: 0; }
 
