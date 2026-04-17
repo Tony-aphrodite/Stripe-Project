@@ -53,7 +53,12 @@ try {
                    LIMIT 1
                )
         LEFT JOIN puntos_voltika p
-               ON p.nombre = t.punto_nombre AND p.activo = 1
+               ON p.id = (
+                   SELECT p2.id FROM puntos_voltika p2
+                   WHERE p2.nombre = t.punto_nombre AND p2.activo = 1
+                   ORDER BY p2.id ASC
+                   LIMIT 1
+               )
         ORDER BY t.freg DESC
         LIMIT 100
     ");
