@@ -726,7 +726,7 @@ window.AD_ventas = (function(){
       $('#rcvConfirm').prop('disabled', true).text('Recuperando...');
       ADApp.api('ventas/recuperar-orden.php', payload).done(function(resp){
         if(resp.ok){
-          $('#rcvMsg').html('<span style="color:#059669;">✓ Recuperada · tx_id='+resp.tx_id+' · folio='+(resp.folio||'')+'</span>');
+          $('#rcvMsg').html('<span style="color:#059669;">Recuperada · tx_id='+resp.tx_id+' · folio='+(resp.folio||'')+'</span>');
           setTimeout(function(){ ADApp.closeModal(); loadData(); }, 1200);
         } else {
           $('#rcvMsg').html('<span style="color:#b91c1c;">Error: '+(resp.error||'desconocido')+'</span>');
@@ -834,7 +834,7 @@ window.AD_ventas = (function(){
       $('#vkeGuardar').prop('disabled', true).text('Guardando...');
       ADApp.api('ventas/actualizar-vksc.php', payload).done(function(resp){
         if(resp.ok){
-          $('#vkeMsg').html('<span style="color:#059669;">✓ Actualizada. '+resp.updated_fields+' campos guardados.</span>');
+          $('#vkeMsg').html('<span style="color:#059669;">Actualizada. '+resp.updated_fields+' campos guardados.</span>');
           setTimeout(function(){ ADApp.closeModal(); loadData(); }, 900);
         } else {
           $('#vkeMsg').html('<span style="color:#b91c1c;">Error: '+(resp.error||'desconocido')+'</span>');

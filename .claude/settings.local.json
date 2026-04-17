@@ -3,7 +3,12 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(curl -sS -o admin-app.js \"https://voltika.mx/admin/js/admin-app.js\")",
-      "Bash(node -c admin-app.js)"
+      "Bash(node -c admin-app.js)",
+      "Bash(node \"c:/tmp/emoji-scan.js\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e 'require\\('\\\\''fs'\\\\''\\).readFile\\('\\\\''c:/Users/PH/Documents/Projects/Stripe-Project/admin_test/js/modules/__TRACKED_VAR__.js'\\\\'','\\\\''utf8'\\\\'',\\(e,s\\)=>{try{new Function\\(s\\);console.log\\('\\\\''__TRACKED_VAR__ OK'\\\\''\\)}catch\\(err\\){console.log\\('\\\\''__TRACKED_VAR__ ERR:'\\\\'',err.message\\)}}\\)')",
+      "Bash(node -e 'require\\('\\\\''fs'\\\\''\\).readFile\\('\\\\''c:/Users/PH/Documents/Projects/Stripe-Project/puntosvoltika_test/js/modules/__TRACKED_VAR__.js'\\\\'','\\\\''utf8'\\\\'',\\(e,s\\)=>{try{new Function\\(s\\);console.log\\('\\\\''__TRACKED_VAR__ OK'\\\\''\\)}catch\\(err\\){console.log\\('\\\\''__TRACKED_VAR__ ERR:'\\\\'',err.message\\)}}\\)')",
+      "Bash(node -e 'require\\('\\\\''fs'\\\\''\\).readFile\\('\\\\''c:/Users/PH/Documents/Projects/Stripe-Project/clientes_test/js/modules/__TRACKED_VAR__.js'\\\\'','\\\\''utf8'\\\\'',\\(e,s\\)=>{try{new Function\\(s\\);console.log\\('\\\\''__TRACKED_VAR__ OK'\\\\''\\)}catch\\(err\\){console.log\\('\\\\''__TRACKED_VAR__ ERR:'\\\\'',err.message\\)}}\\)')"
     ]
   }
 }

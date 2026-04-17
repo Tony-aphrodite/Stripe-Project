@@ -31,7 +31,7 @@ window.PV_venta = (function(){
         html += '<div style="font-size:13px;margin-top:4px;">'+esc(p.modelo||'')+' · '+esc(p.color||'')+' · <strong>$'+Number(p.total||0).toLocaleString('es-MX')+'</strong></div>';
         html += '<div style="font-size:12px;color:var(--ad-dim);margin-top:4px;">Cliente: '+esc(p.nombre||'—')+' · '+esc(p.telefono||'')+' · '+esc(p.email||'')+'</div>';
         html += '<div style="font-size:11px;color:var(--ad-dim);margin-top:2px;">Fecha: '+(p.freg||'').substring(0,16)+'</div>';
-        html += '<button class="ad-btn primary sm pvAssignPedido" data-pedido="'+esc(p.pedido)+'" data-modelo="'+esc(p.modelo||'')+'" data-color="'+esc(p.color||'')+'" data-nombre="'+esc(p.nombre||'')+'" style="margin-top:10px;">✓ Asignar moto de inventario</button>';
+        html += '<button class="ad-btn primary sm pvAssignPedido" data-pedido="'+esc(p.pedido)+'" data-modelo="'+esc(p.modelo||'')+'" data-color="'+esc(p.color||'')+'" data-nombre="'+esc(p.nombre||'')+'" style="margin-top:10px;">Asignar moto de inventario</button>';
         html += '</div>';
       });
     }
@@ -123,7 +123,7 @@ window.PV_venta = (function(){
       }).done(function(r){
         if (r.ok) {
           PVApp.closeModal();
-          PVApp.toast('✓ Moto asignada. Cliente notificado.');
+          PVApp.toast('Moto asignada. Cliente notificado.');
           render();
         } else {
           alert(r.error || 'Error');
@@ -163,7 +163,7 @@ window.PV_venta = (function(){
         cliente_nombre: $('#pvVN').val(), cliente_email: $('#pvVE').val(),
         cliente_telefono: $('#pvVT').val(), precio: parseFloat($('#pvVP').val())||0
       }).done(function(r){
-        if(r.ok){ PVApp.closeModal(); PVApp.toast('✓ Venta registrada. Cliente notificado.'); render(); }
+        if(r.ok){ PVApp.closeModal(); PVApp.toast('Venta registrada. Cliente notificado.'); render(); }
         else { alert(r.error||'Error'); $b.prop('disabled', false).text('Registrar venta'); }
       }).fail(function(x){
         alert((x.responseJSON&&x.responseJSON.error)||'Error');

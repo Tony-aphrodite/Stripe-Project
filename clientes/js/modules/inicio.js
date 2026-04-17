@@ -119,7 +119,7 @@ window.VK_inicio = (function(){
       html += '<div style="font-weight:700;color:#333;margin-bottom:2px">Punto de entrega</div>';
       html += '<div style="font-weight:800;font-size:15px;color:#333">'+(punto.nombre||'Voltika')+'</div>';
       if(punto.direccion) html += '<div style="font-size:13px;color:#555">'+punto.direccion+'</div>';
-      if(entrega.fecha_recoleccion) html += '<div style="font-size:13px;color:#2563eb;margin-top:4px;font-weight:700">📅 Recógela el '+formatFechaES(entrega.fecha_recoleccion)+'</div>';
+      if(entrega.fecha_recoleccion) html += '<div style="font-size:13px;color:#2563eb;margin-top:4px;font-weight:700">Recógela el '+formatFechaES(entrega.fecha_recoleccion)+'</div>';
       if(punto.horario) html += '<div style="font-size:13px;color:#22c55e;margin-top:4px">Horario: '+punto.horario+'</div>';
       html += '<button class="vk-btn-outline" style="margin-top:10px" onclick="if(window.punto_dir){window.open(\'https://maps.google.com/?q=\'+encodeURIComponent(window.punto_dir))}">VER UBICACION &rarr;</button>';
       html += '</div>';

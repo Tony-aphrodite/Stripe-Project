@@ -143,7 +143,7 @@ window.AD_roles = (function(){
         if (r.ok) {
           ADApp.closeModal();
           alert('Usuario creado.\n\nEmail: '+payload.email+'\nContraseña: '+payload.password+
-            (r.notify === 'enviado' ? '\n\n✓ Credenciales enviadas por SMS/Email.' : ''));
+            (r.notify === 'enviado' ? '\n\nCredenciales enviadas por SMS/Email.' : ''));
           load();
         } else {
           alert(r.error || 'Error al crear');
@@ -191,7 +191,7 @@ window.AD_roles = (function(){
         if (r.ok) {
           ADApp.closeModal();
           alert('Contraseña actualizada.\n\nNueva contraseña: '+pass+
-            (r.notify === 'enviado' ? '\n\n✓ Enviada por SMS/Email.' : ''));
+            (r.notify === 'enviado' ? '\n\nEnviada por SMS/Email.' : ''));
           load();
         } else {
           alert(r.error || 'Error');

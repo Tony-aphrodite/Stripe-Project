@@ -107,7 +107,7 @@ window.PV_entrega = (function(){
     // CREDITO — faces do NOT match → cannot deliver
     if (r.match === false) {
       PVApp.modal(
-        '<div class="ad-h2" style="color:var(--ad-err)">⛔ No se puede entregar</div>'+
+        '<div class="ad-h2" style="color:var(--ad-err)">No se puede entregar</div>'+
         '<div class="ad-card" style="color:var(--ad-err)">'+
           '<strong>Las caras NO coinciden</strong> con la persona que realizó el crédito'+
           (r.face_score!=null?' (similitud '+r.face_score+'%)':'')+'.<br><br>'+

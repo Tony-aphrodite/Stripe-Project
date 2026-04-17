@@ -52,28 +52,28 @@ window.AD_puntos = (function(){
 
     // 1. CSV import template
     html += '<div class="ad-card" style="margin-bottom:10px;padding:14px;">';
-    html += '<div style="font-weight:700;margin-bottom:4px;">📊 Plantilla de importación masiva (CSV)</div>';
+    html += '<div style="font-weight:700;margin-bottom:4px;">Plantilla de importación masiva (CSV)</div>';
     html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">Para registrar varios puntos a la vez. Llena y sube desde "Importar Excel".</div>';
     html += '<button class="ad-btn sm" id="adDlCsv" style="background:#e8f5e9;color:#2e7d32;">Descargar CSV</button>';
     html += '</div>';
 
     // 2. XLSX import template
     html += '<div class="ad-card" style="margin-bottom:10px;padding:14px;">';
-    html += '<div style="font-weight:700;margin-bottom:4px;">📊 Plantilla de importación masiva (Excel)</div>';
+    html += '<div style="font-weight:700;margin-bottom:4px;">Plantilla de importación masiva (Excel)</div>';
     html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">Mismo formato que el CSV pero en formato Excel (.xlsx).</div>';
     html += '<button class="ad-btn sm" id="adDlXlsx" style="background:#e8f5e9;color:#2e7d32;">Descargar XLSX</button>';
     html += '</div>';
 
     // 3. Operator manual
     html += '<div class="ad-card" style="margin-bottom:10px;padding:14px;">';
-    html += '<div style="font-weight:700;margin-bottom:4px;">📖 Manual del operador de Punto</div>';
+    html += '<div style="font-weight:700;margin-bottom:4px;">Manual del operador de Punto</div>';
     html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">Guía paso a paso para que el personal del punto use el Panel Voltika (login, inventario, envíos, entregas).</div>';
     html += '<button class="ad-btn sm" id="adDlManual" style="background:#fff3e0;color:#e65100;">Abrir manual (imprimible)</button>';
     html += '</div>';
 
     // 4. Contract template
     html += '<div class="ad-card" style="margin-bottom:10px;padding:14px;">';
-    html += '<div style="font-weight:700;margin-bottom:4px;">📄 Contrato de afiliación — plantilla</div>';
+    html += '<div style="font-weight:700;margin-bottom:4px;">Contrato de afiliación — plantilla</div>';
     html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">Contrato estándar Voltika ↔ Punto afiliado. Personalizable por cliente.</div>';
     html += '<button class="ad-btn sm" id="adDlContrato" style="background:#e3f2fd;color:#1565c0;">Abrir contrato (imprimible)</button>';
     html += '</div>';
@@ -340,7 +340,7 @@ window.AD_puntos = (function(){
           if(!confirm('Resetear contraseña para este usuario?\n\nNueva contraseña: '+newPass+'\n\n(Se enviará por WhatsApp/email)')) return;
           ADApp.api('roles/reset-password.php', { usuario_id: userId, password: newPass, notificar: true }).done(function(r){
             if(r.ok){
-              alert('✓ Contraseña reseteada y enviada al usuario.\n\nNueva contraseña: '+newPass);
+              alert('Contraseña reseteada y enviada al usuario.\n\nNueva contraseña: '+newPass);
             } else alert('Error: '+(r.error||'desconocido'));
           });
         } else if($b.hasClass('pfCredToggle')){

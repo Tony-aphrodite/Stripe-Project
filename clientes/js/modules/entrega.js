@@ -17,7 +17,7 @@ window.VK_entrega = (function(){
   }
 
   function render(){
-    VKApp.render('<div class="vk-h1">Mi entrega 🎁</div><div class="vk-muted">Cargando...</div>');
+    VKApp.render('<div class="vk-h1">Mi entrega </div><div class="vk-muted">Cargando...</div>');
     VKApp.api('entrega/estado.php').done(function(r){
       data = r && r.entrega;
       paint();
@@ -29,14 +29,14 @@ window.VK_entrega = (function(){
   function paint(){
     if (!data) {
       VKApp.render(
-        '<div class="vk-h1">Mi entrega 🎁</div>'+
+        '<div class="vk-h1">Mi entrega </div>'+
         '<div class="vk-card">Aún no tienes una moto asignada para entrega.<br><div class="vk-muted" style="margin-top:6px">Cuando el CEDIS asigne tu unidad a un punto, aquí verás los detalles.</div></div>'
       );
       return;
     }
 
     var st = data.estado_ui;
-    var html = '<div class="vk-h1">Mi entrega 🎁</div>';
+    var html = '<div class="vk-h1">Mi entrega </div>';
 
     // Stepper
     var steps = [
@@ -91,7 +91,7 @@ window.VK_entrega = (function(){
 
     // Pickup date banner — set when the point marks moto lista_para_entrega
     if (data.fecha_recoleccion && st !== 'entregada') {
-      html += '<div class="vk-banner ok">📅 Tu moto está lista. <strong>Recógela el '+fechaLarga(data.fecha_recoleccion)+'</strong> en el punto.</div>';
+      html += '<div class="vk-banner ok">Tu moto está lista. <strong>Recógela el '+fechaLarga(data.fecha_recoleccion)+'</strong> en el punto.</div>';
     }
 
     // State-specific actions
@@ -116,7 +116,7 @@ window.VK_entrega = (function(){
 
     if (st === 'checklist_ok' && !data.acta_firmada) {
       html += '<div class="vk-card">'+
-        '<div class="vk-h2">📄 Firma del ACTA DE ENTREGA</div>'+
+        '<div class="vk-h2">Firma del ACTA DE ENTREGA</div>'+
         '<div class="vk-muted">Por favor revisa y firma el acta para completar la entrega.</div>'+
         '<button id="vkVerActa" class="vk-btn primary" style="margin-top:10px">Ver y firmar ACTA</button>'+
       '</div>';

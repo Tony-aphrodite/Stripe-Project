@@ -10,7 +10,7 @@ window.VK_ayuda = (function(){
     VKApp.render(
       '<div class="vk-h1">Ayuda</div>'+
       '<div class="vk-card hl">'+
-        '<div class="vk-h2">💬 WhatsApp de soporte</div>'+
+        '<div class="vk-h2"> WhatsApp de soporte</div>'+
         '<div class="vk-muted">Atención de lunes a sábado, 9:00 a 19:00</div>'+
         '<a class="vk-btn primary" href="https://api.whatsapp.com/send?phone=5214421198928" target="_blank" style="text-decoration:none;text-align:center">Abrir WhatsApp</a>'+
       '</div>'+

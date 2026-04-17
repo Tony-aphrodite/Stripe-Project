@@ -50,12 +50,12 @@ window.VK_cuenta = (function(){
           '<div class="vk-profile-info">'+
             '<div class="vk-profile-name">'+esc(fullName)+' <span class="vk-doc-badge green">Cuenta verificada</span></div>'+
             '<div class="vk-profile-row">'+
-              '<span class="vk-profile-icon">✉</span>'+
+              '<span class="vk-profile-icon"></span>'+
               '<span class="vk-profile-val">'+esc(c.email||'No registrado')+'</span>'+
               '<button class="vk-profile-edit" data-campo="email">Editar ›</button>'+
             '</div>'+
             '<div class="vk-profile-row">'+
-              '<span class="vk-profile-icon">📱</span>'+
+              '<span class="vk-profile-icon"></span>'+
               '<span class="vk-profile-val">'+(c.telefono||'No registrado')+'</span>'+
               '<span class="vk-doc-badge green" style="font-size:9px">Verificado</span>'+
             '</div>'+
@@ -148,7 +148,7 @@ window.VK_cuenta = (function(){
       // --- WhatsApp help ---
       '<div class="vk-wa-help">'+
         '<div class="vk-wa-text"><strong>¿Necesitas ayuda?</strong><br>Nuestro equipo está listo para apoyarte.</div>'+
-        '<a class="vk-wa-btn" href="https://api.whatsapp.com/send?phone=5214421198928" target="_blank">💬 Chatear por WhatsApp</a>'+
+        '<a class="vk-wa-btn" href="https://api.whatsapp.com/send?phone=5214421198928" target="_blank"> Chatear por WhatsApp</a>'+
       '</div>'
     );
 
