@@ -405,7 +405,7 @@ window.AD_ventas = (function(){
     // ── Section: Servicios adicionales ──
     secIx = 0;
     html += secHead('Servicios adicionales','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>');
-    html += renderServiciosAdicionales(r);
+    html += renderServiciosAdicionales(r, fRow);
 
     ADApp.modal(html);
 
@@ -418,7 +418,7 @@ window.AD_ventas = (function(){
     });
   }
 
-  function renderServiciosAdicionales(r){
+  function renderServiciosAdicionales(r, fRow){
     var placas = !!r.asesoria_placas;
     var seguro = !!r.seguro_qualitas;
     var h = '';
