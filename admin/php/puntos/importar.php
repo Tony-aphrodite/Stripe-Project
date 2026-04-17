@@ -5,7 +5,7 @@
  * Accepts .csv and .xlsx
  *
  * Expected columns (first row = header, order auto-detected):
- *   Nombre, Tipo, Dirección, Colonia, Ciudad, Estado, CP,
+ *   Acción, Nombre, Tipo, Dirección, Colonia, Ciudad, Estado, CP,
  *   Teléfono, Email, Latitud, Longitud, Horarios, Capacidad, Descripción
  */
 require_once __DIR__ . '/../bootstrap.php';
@@ -76,6 +76,7 @@ $colMap = [
     'horarios'    => findCol($headerRow, ['horarios', 'horario', 'hours', 'schedule']),
     'capacidad'   => findCol($headerRow, ['capacidad', 'capacity', 'cap']),
     'descripcion' => findCol($headerRow, ['descripcion', 'descripción', 'description', 'notas', 'notes']),
+    'servicios'   => findCol($headerRow, ['servicios', 'services', 'servicio']),
 ];
 
 if ($colMap['nombre'] === null) {
@@ -89,7 +90,6 @@ $pdo = getDB();
 function generateCodigoVenta(PDO $pdo, string $nombre): string {
     $base = 'PV-' . strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $nombre), 0, 4));
     $code = $base . '-' . strtoupper(substr(md5(uniqid()), 0, 4));
-    // Ensure unique
     $chk = $pdo->prepare("SELECT id FROM puntos_voltika WHERE codigo_venta = ? LIMIT 1");
     $chk->execute([$code]);
     while ($chk->fetch()) {
@@ -126,14 +126,32 @@ $stmtChk = $pdo->prepare("SELECT id FROM puntos_voltika WHERE nombre = ? AND cp 
 $stmtChkByName = $pdo->prepare("SELECT id FROM puntos_voltika WHERE nombre = ? LIMIT 1");
 $stmtIns = $pdo->prepare("INSERT INTO puntos_voltika
     (nombre, tipo, direccion, colonia, ciudad, estado, cp,
-     telefono, email, lat, lng, horarios, capacidad, descripcion,
+     telefono, email, lat, lng, horarios, capacidad, descripcion, servicios,
      activo, codigo_venta, codigo_electronico)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)");
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)");
 
 $stmtUpd = $pdo->prepare("UPDATE puntos_voltika SET
     tipo=?, direccion=?, colonia=?, ciudad=?, estado=?, cp=?,
-    telefono=?, email=?, lat=?, lng=?, horarios=?, capacidad=?, descripcion=?
+    telefono=?, email=?, lat=?, lng=?, horarios=?, capacidad=?, descripcion=?, servicios=?
     WHERE id=?");
+
+// Parse a Servicios cell — accepts pipe, semicolon or comma separators.
+// Valid canonical labels live in admin-puntos.js servicioOpts.
+$allowedServicios = ['Entrega','Exhibición y venta','Servicio Técnico','Pruebas de Manejo','Refacciones'];
+$normalizeServicios = function (string $raw) use ($allowedServicios): ?string {
+    if ($raw === '') return null;
+    $parts = preg_split('/[|;,]+/', $raw) ?: [];
+    $clean = [];
+    foreach ($parts as $p) {
+        $p = trim($p);
+        if ($p === '') continue;
+        foreach ($allowedServicios as $ok) {
+            if (strcasecmp($p, $ok) === 0) { $clean[] = $ok; break; }
+        }
+    }
+    $clean = array_values(array_unique($clean));
+    return $clean ? json_encode($clean, JSON_UNESCAPED_UNICODE) : null;
+};
 
 $stmtDel = $pdo->prepare("UPDATE puntos_voltika SET activo = 0 WHERE id = ?");
 
@@ -180,10 +198,10 @@ for ($i = 1; $i < count($rows); $i++) {
     $horarios   = getVal($row, $colMap['horarios']);
     $capacidad  = getVal($row, $colMap['capacidad']) !== '' ? (int)getVal($row, $colMap['capacidad']) : 0;
     $descripcion = getVal($row, $colMap['descripcion']);
+    $serviciosJson = $normalizeServicios(getVal($row, $colMap['servicios']));
 
     try {
         if ($accion === 'eliminar') {
-            // Find by nombre+cp or just nombre
             $stmtChk->execute([$nombre, $cp]);
             $existing = $stmtChk->fetch(PDO::FETCH_ASSOC);
             if (!$existing && $cp === '') {
@@ -199,7 +217,6 @@ for ($i = 1; $i < count($rows); $i++) {
                 $detalle[] = "Fila " . ($i + 1) . ": '$nombre' no encontrado para eliminar";
             }
         } elseif ($accion === 'actualizar') {
-            // Find by nombre+cp or just nombre
             $stmtChk->execute([$nombre, $cp]);
             $existing = $stmtChk->fetch(PDO::FETCH_ASSOC);
             if (!$existing) {
@@ -212,6 +229,7 @@ for ($i = 1; $i < count($rows); $i++) {
                     $ciudad ?: null, $estado ?: null, $cp ?: null,
                     $telefono ?: null, $email ?: null, $lat, $lng,
                     $horarios ?: null, $capacidad, $descripcion ?: null,
+                    $serviciosJson,
                     $existing['id']
                 ]);
                 $actualizados++;
@@ -220,7 +238,6 @@ for ($i = 1; $i < count($rows); $i++) {
                 $detalle[] = "Fila " . ($i + 1) . ": '$nombre' no encontrado para actualizar";
             }
         } else {
-            // agregar — check duplicate first
             $stmtChk->execute([$nombre, $cp]);
             if ($stmtChk->fetch()) {
                 $duplicados++;
@@ -236,6 +253,7 @@ for ($i = 1; $i < count($rows); $i++) {
                 $ciudad ?: null, $estado ?: null, $cp ?: null,
                 $telefono ?: null, $email ?: null, $lat, $lng,
                 $horarios ?: null, $capacidad, $descripcion ?: null,
+                $serviciosJson,
                 $codVenta, $codElec,
             ]);
             $created++;

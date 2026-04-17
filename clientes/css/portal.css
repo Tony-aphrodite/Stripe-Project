@@ -777,3 +777,46 @@ button{font-family:inherit}
 .vk-detail-row:last-child{border-bottom:0}
 .vk-detail-row .k{font-size:13px;color:var(--vk-text-dim)}
 .vk-detail-row .v{font-size:13px;font-weight:600;color:var(--vk-text);text-align:right}
+
+/* ── Desktop responsive: frame the mobile column nicely on wide browsers ── */
+@media (min-width: 720px) {
+  html, body {
+    background: linear-gradient(135deg, #e8edf3 0%, #f5f7fa 100%);
+    min-height: 100vh;
+  }
+  body {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 28px 20px;
+  }
+  .vk-app {
+    max-width: 480px;
+    min-height: calc(100vh - 56px);
+    box-shadow: 0 12px 48px rgba(12, 35, 64, 0.18);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--vk-bg);
+  }
+  /* Keep the bottom nav docked inside the framed column */
+  .vk-bottom-nav {
+    position: sticky;
+    bottom: 0;
+    left: auto;
+    right: auto;
+  }
+}
+
+/* Ultra-wide: show a subtle decorative panel on either side */
+@media (min-width: 1100px) {
+  body::before {
+    content: "";
+    position: fixed;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background:
+      radial-gradient(circle at 15% 30%, rgba(3,159,225,0.05) 0, transparent 40%),
+      radial-gradient(circle at 85% 70%, rgba(12,35,64,0.04) 0, transparent 40%);
+    pointer-events: none;
+    z-index: -1;
+  }
+}

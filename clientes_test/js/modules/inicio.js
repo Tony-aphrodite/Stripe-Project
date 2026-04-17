@@ -25,6 +25,36 @@ window.VK_inicio = (function(){
     return dias[d.getDay()]+' '+d.getDate()+' de '+meses[d.getMonth()];
   }
 
+  // ── Multi-purchase banner (if client has 2+ purchases) ─────────
+  function renderComprasAdicionales(){
+    var e = VKApp.state.estado || {};
+    var compras = e.compras || [];
+    if (compras.length < 2) return '';
+    var html = '<div style="background:#fff;border:1px solid #e3e7ed;border-radius:10px;padding:12px;margin-bottom:14px;">';
+    html += '<div style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:8px;">📦 Tus compras ('+compras.length+')</div>';
+    compras.forEach(function(c, i){
+      var isFirst = i === 0;
+      var tipoLabel = c.tipo === 'credito' ? '💳 Crédito'
+                   : c.tipo === 'msi'     ? '📋 MSI'
+                   : '💰 Contado';
+      var montoLabel = c.tipo === 'credito'
+        ? '$'+Number(c.pago_semanal||0).toLocaleString('es-MX')+'/sem · '+(c.plazo_meses||'—')+' meses'
+        : '$'+Number(c.total||0).toLocaleString('es-MX');
+      html += '<div style="padding:8px 10px;background:'+(isFirst?'#E3F2FD':'#F5F7FA')+';border-radius:6px;margin-bottom:6px;border:1px solid '+(isFirst?'#90CAF9':'#E3E7ED')+';">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+      html += '<div>';
+      html += '<div style="font-size:13px;font-weight:700;">'+tipoLabel+' · '+(c.modelo||'')+' '+(c.color||'')+'</div>';
+      html += '<div style="font-size:11px;color:#666;">'+montoLabel+(c.fecha_compra ? ' · '+c.fecha_compra.substring(0,10) : '')+'</div>';
+      html += '</div>';
+      if (isFirst) html += '<span style="font-size:10px;background:#1976D2;color:#fff;padding:2px 6px;border-radius:3px;font-weight:700;">ACTIVA</span>';
+      html += '</div>';
+      html += '</div>';
+    });
+    html += '<div style="font-size:11px;color:#666;margin-top:6px;">ℹ️ La vista abajo corresponde a tu compra más reciente. Contacta soporte para gestionar otras compras.</div>';
+    html += '</div>';
+    return html;
+  }
+
   // ── Main router ─────────────────────────────────────────────────
   function render(){
     var tipo = VKApp.state.tipoPortal;
@@ -52,6 +82,7 @@ window.VK_inicio = (function(){
     if(compra.msi_meses) tpagoLabel = compra.msi_meses + ' MSI';
 
     var html = '';
+    html += renderComprasAdicionales();
 
     // ── Header ──
     html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">';
@@ -203,6 +234,7 @@ window.VK_inicio = (function(){
     var monto4 = montoNum*4;
 
     VKApp.render(
+      renderComprasAdicionales()+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
         '<div><div class="vk-muted">Bienvenido</div><div class="vk-h1">¡Hola, '+nombre+'!</div></div>'+
         '<div style="display:flex;align-items:center;gap:10px">'+

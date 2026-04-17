@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Voltika — Reparar checklists corruptos</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; background: #f7f8fa; }
+  h1 { font-size: 1.3rem; }
+  .card { background: #fff; border-radius: 10px; padding: 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 1rem; }
+  button { padding: .7rem 1.4rem; border: none; border-radius: 7px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-right: .5rem; }
+  .btn-dry { background: #ffd666; color: #664d00; }
+  .btn-run { background: #52c41a; color: #fff; }
+  .btn-del { background: #ff4d4f; color: #fff; }
+  .btn-run[disabled], .btn-del[disabled] { background: #ccc; cursor: not-allowed; color: #666; }
+  .summary { font-weight: 700; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+  .ok   { background: #e6f4ea; color: #1e7e34; }
+  .warn { background: #fffbe6; color: #ad6800; }
+  .fail { background: #fde8e8; color: #c41e3a; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #eee; }
+  th { background: #fafafa; }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; background: #f5f5f5; padding: 1px 4px; border-radius: 3px; }
+  .result { white-space: pre-wrap; background: #0d1117; color: #c9d1d9; padding: 1rem; border-radius: 6px; font-family: monospace; font-size: .78rem; max-height: 300px; overflow: auto; }
+  .mini { color:#666; font-size: .85rem; }
+</style>
+</head>
+<body>
+
+<h1>🔧 Reparar checklists corruptos</h1>
+
+<div class="card">
+  <p>Detecta filas en <code>checklist_origen</code> marcadas como <strong>completadas</strong> pero con <strong>todos los campos binarios en 0</strong> (estado inconsistente que hace que el UI muestre <code>Progreso: 0/N</code>).</p>
+  <p class="mini">Causa probable: columnas nuevas agregadas (Phase 2: <code>empaque_accesorios</code>, <code>empaque_llaves</code>) con DEFAULT 0 en filas ya bloqueadas.</p>
+
+  <h3>Modo:</h3>
+  <label style="display:block;margin-bottom:6px;"><input type="radio" name="action" value="unlock" checked> <strong>Desbloquear</strong> (recomendado) — <code>completado=0</code>, usuario puede volver a marcar</label>
+  <label style="display:block;margin-bottom:12px;"><input type="radio" name="action" value="delete"> <strong>Eliminar</strong> — borrar la fila completa</label>
+
+  <p class="mini">⚠ Al desbloquear, si la moto pasó a <code>recibida</code> por este checklist se devuelve a <code>por_llegar</code> automáticamente (solo si no hay otro origen completado).</p>
+  <p class="mini">⚠ Debes estar logueado en <a href="/admin/" target="_blank">/admin_test</a> como admin.</p>
+
+  <div>
+    <button class="btn-dry" onclick="run(true)">1. Previsualizar</button>
+    <button class="btn-run" id="btnRun" disabled onclick="go('unlock')">2. Desbloquear</button>
+    <button class="btn-del" id="btnDel" disabled onclick="go('delete')">2b. Eliminar</button>
+  </div>
+</div>
+
+<div id="summary"></div>
+<div id="tableCard" class="card" style="display:none">
+  <h3 style="margin-top:0">Checklists corruptos</h3>
+  <table><thead><tr>
+    <th>ID</th><th>Moto</th><th>VIN</th><th>Modelo</th><th>Estado</th><th>Hash</th><th>Fecha</th>
+  </tr></thead><tbody id="tbody"></tbody></table>
+</div>
+<div class="card" id="resCard" style="display:none"><h3 style="margin-top:0">Respuesta</h3><div class="result" id="result"></div></div>
+
+<script>
+const ENDPOINT = '/admin/php/checklists/reparar-checklist-corrupto.php';
+
+async function run(dryRun, action) {
+  action = action || document.querySelector('input[name=action]:checked').value;
+  const sum = document.getElementById('summary');
+  const tc  = document.getElementById('tableCard');
+  const tb  = document.getElementById('tbody');
+  const rc  = document.getElementById('resCard');
+  const rr  = document.getElementById('result');
+
+  sum.innerHTML = '<div class="summary warn">⏳ ...</div>';
+  tc.style.display = 'none';
+  rc.style.display = 'none';
+
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({ dry_run: dryRun, action: action })
+    });
+    const d = await res.json();
+    rr.textContent = JSON.stringify(d, null, 2);
+    rc.style.display = 'block';
+
+    if (!res.ok || !d.ok) {
+      sum.innerHTML = `<div class="summary fail">❌ ${d.error || 'Error'}</div>`;
+      return;
+    }
+
+    const corr = d.corruptos || [];
+    if (dryRun) {
+      if (!corr.length) {
+        sum.innerHTML = `<div class="summary ok">✅ No hay checklists corruptos.</div>`;
+        document.getElementById('btnRun').disabled = true;
+        document.getElementById('btnDel').disabled = true;
+      } else {
+        sum.innerHTML = `<div class="summary warn">⚠ ${corr.length} checklists corruptos encontrados</div>`;
+        document.getElementById('btnRun').disabled = false;
+        document.getElementById('btnDel').disabled = false;
+      }
+    } else {
+      sum.innerHTML = `<div class="summary ok">✅ Acción <strong>${d.action}</strong> · ${d.fixed} filas afectadas</div>`;
+      document.getElementById('btnRun').disabled = true;
+      document.getElementById('btnDel').disabled = true;
+    }
+
+    if (corr.length) {
+      tc.style.display = 'block';
+      tb.innerHTML = corr.map(c => `
+        <tr>
+          <td>${c.id}</td>
+          <td>${c.moto_id || '—'}</td>
+          <td><code>${c.vin || '—'}</code></td>
+          <td>${(c.modelo||'')} ${(c.color||'')}</td>
+          <td>${c.estado || '—'}</td>
+          <td><code>${c.hash_short || ''}…</code></td>
+          <td>${c.freg ? c.freg.substring(0,16) : '—'}</td>
+        </tr>
+      `).join('');
+    }
+  } catch (e) {
+    sum.innerHTML = `<div class="summary fail">❌ ${e.message}</div>`;
+  }
+}
+
+function go(action) {
+  const msg = action === 'delete'
+    ? '¿ELIMINAR las filas corruptas de checklist_origen? NO HAY UNDO.'
+    : '¿Desbloquear las filas corruptas? (completado=0, el usuario podrá re-llenar)';
+  if (!confirm(msg)) return;
+  run(false, action);
+}
+</script>
+
+</body>
+</html>

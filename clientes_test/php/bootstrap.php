@@ -467,9 +467,15 @@ function portalEnsureCiclos(array $sub): void {
     }
     if ($semanas <= 0) return;
 
-    $inicio = $sub['fecha_inicio'] ?? $sub['fecha_entrega'] ?? $sub['freg'] ?? date('Y-m-d');
+    // Weekly payment countdown starts ONLY when the motorcycle is delivered.
+    // Before delivery (fecha_inicio NULL, fecha_entrega NULL) we don't generate
+    // any ciclos — the historical freg fallback was causing phantom "pending"
+    // payments to appear in the client portal before the customer even had
+    // their bike.
+    $inicio = $sub['fecha_inicio'] ?? $sub['fecha_entrega'] ?? null;
+    if (!$inicio) return;
     $inicioTs = strtotime(substr($inicio, 0, 10));
-    if (!$inicioTs) $inicioTs = time();
+    if (!$inicioTs) return;
 
     $stmt = $pdo->prepare("SELECT MAX(semana_num) FROM ciclos_pago WHERE subscripcion_id = ?");
     $stmt->execute([$subId]);

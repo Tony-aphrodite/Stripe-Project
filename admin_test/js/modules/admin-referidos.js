@@ -115,16 +115,31 @@ window.AD_referidos = (function(){
     html += '<input class="ad-input" id="rfNombre" placeholder="Nombre" value="'+esc(ref.nombre||'')+'" style="margin-bottom:8px">';
     html += '<input class="ad-input" id="rfEmail" placeholder="Email" value="'+esc(ref.email||'')+'" style="margin-bottom:8px">';
     html += '<input class="ad-input" id="rfTel" placeholder="Teléfono" value="'+esc(ref.telefono||'')+'" style="margin-bottom:8px">';
+    // Optional manual código: admin can enter a custom one, or leave blank to auto-generate
+    html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código <small>(opcional — vacío = auto)</small></label>';
+    html += '<div style="display:flex;gap:6px;margin-bottom:10px;">'+
+      '<input class="ad-input" id="rfCodigo" placeholder="Ej: VOLT2026" value="'+esc(ref.codigo||'')+'" style="flex:1;text-transform:uppercase;">'+
+      '<button class="ad-btn sm ghost" id="rfCodigoGen" type="button" style="white-space:nowrap;">🎲 Generar</button>'+
+    '</div>';
     html += '<button class="ad-btn primary" id="rfSave" style="width:100%;padding:10px;">Guardar</button>';
     ADApp.modal(html);
 
+    $('#rfCodigoGen').on('click', function(){
+      var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      var code = '';
+      for(var i=0;i<7;i++) code += chars.charAt(Math.floor(Math.random()*chars.length));
+      $('#rfCodigo').val(code);
+    });
+
     $('#rfSave').on('click', function(){
+      var codigo = ($('#rfCodigo').val() || '').toUpperCase().trim();
       var payload = {
         accion: isNew ? 'agregar' : 'actualizar',
         id: ref.id||undefined,
         nombre: $('#rfNombre').val(),
         email: $('#rfEmail').val(),
-        telefono: $('#rfTel').val()
+        telefono: $('#rfTel').val(),
+        codigo: codigo || null
       };
       $(this).prop('disabled',true).html('<span class="ad-spin"></span>');
       ADApp.api('referidos/guardar.php', payload).done(function(r2){
@@ -135,11 +150,16 @@ window.AD_referidos = (function(){
   }
 
   function showDetalle(tipo, id){
-    var html = '<div class="ad-h2">Detalle de operaciones</div><div><span class="ad-spin"></span></div>';
+    var html = '<div class="ad-h2">Detalle de operaciones</div><div style="text-align:center;padding:30px;"><span class="ad-spin"></span></div>';
     ADApp.modal(html);
 
     ADApp.api('referidos/detalle.php?tipo='+tipo+'&id='+id).done(function(r){
-      if(!r.ok){ ADApp.closeModal(); return; }
+      if(!r.ok){
+        ADApp.modal('<div class="ad-h2">Detalle de operaciones</div>'+
+          '<div style="padding:20px;background:#fde8e8;color:#c41e3a;border-radius:8px;">Error: '+esc(r.error||'No se pudo cargar')+'</div>'+
+          '<div style="text-align:right;margin-top:14px;"><button class="ad-btn ghost" onclick="ADApp.closeModal()">Cerrar</button></div>');
+        return;
+      }
       var s = r.summary||{};
       var txns = r.transacciones||[];
       var coms = r.comisiones||[];

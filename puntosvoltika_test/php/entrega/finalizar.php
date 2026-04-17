@@ -32,6 +32,33 @@ if (!(int)$e->fetchColumn()) {
 $pdo->prepare("UPDATE inventario_motos SET estado='entregada', fecha_estado=NOW() WHERE id=?")
     ->execute([$motoId]);
 
+// Start weekly payment countdown for linked credit subscriptions.
+// Per client feedback: "first payment starts counting AFTER the motorcycle
+// is delivered, not from purchase date". Set fecha_inicio now so cron
+// generar-ciclos.php creates ciclos from today forward.
+try {
+    $subCols = $pdo->query("SHOW COLUMNS FROM subscripciones_credito")->fetchAll(PDO::FETCH_COLUMN);
+    $sets = ['fecha_inicio = CURDATE()'];
+    if (in_array('fecha_entrega', $subCols, true)) $sets[] = 'fecha_entrega = CURDATE()';
+
+    $motoRowX = $pdo->prepare("SELECT cliente_id, cliente_telefono, cliente_email FROM inventario_motos WHERE id=?");
+    $motoRowX->execute([$motoId]);
+    $mX = $motoRowX->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    // Match by cliente_id (primary) or telefono / email (fallback for older records)
+    if (!empty($mX['cliente_id'])) {
+        $pdo->prepare("UPDATE subscripciones_credito SET " . implode(', ', $sets) . "
+            WHERE cliente_id = ? AND (fecha_inicio IS NULL OR fecha_inicio = '0000-00-00')")
+            ->execute([$mX['cliente_id']]);
+    } elseif (!empty($mX['cliente_telefono'])) {
+        $pdo->prepare("UPDATE subscripciones_credito SET " . implode(', ', $sets) . "
+            WHERE telefono = ? AND (fecha_inicio IS NULL OR fecha_inicio = '0000-00-00')")
+            ->execute([$mX['cliente_telefono']]);
+    }
+} catch (Throwable $e) {
+    error_log('finalizar fecha_inicio update: ' . $e->getMessage());
+}
+
 // Log venta
 $motoRow = $pdo->prepare("SELECT * FROM inventario_motos WHERE id=?");
 $motoRow->execute([$motoId]);

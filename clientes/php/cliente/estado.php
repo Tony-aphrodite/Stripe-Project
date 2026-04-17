@@ -239,4 +239,70 @@ if ($tipoPortal === 'credito') {
     $response['entrega'] = $entrega;
 }
 
+// ── Load ALL purchases for this client (fix for multi-purchase display) ────
+// Client portal was only showing the most recent purchase. This surfaces
+// every credit subscription and every contado/msi transaction so the UI
+// can offer a picker/list.
+try {
+    $allPurchases = [];
+    $tel10 = preg_replace('/\D/', '', $cliente['telefono'] ?? '');
+    if (strlen($tel10) > 10) $tel10 = substr($tel10, -10);
+    $em = $cliente['email'] ?? null;
+
+    // Credit subscriptions linked by cliente_id
+    $subsStmt = $pdo->prepare("SELECT id, modelo, color, monto_semanal, plazo_meses, plazo_semanas,
+            fecha_inicio, fecha_entrega, freg, estado
+        FROM subscripciones_credito
+        WHERE cliente_id = ? ORDER BY id DESC");
+    $subsStmt->execute([$cid]);
+    foreach ($subsStmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
+        $allPurchases[] = [
+            'tipo'          => 'credito',
+            'id'            => (int)$s['id'],
+            'modelo'        => $s['modelo'],
+            'color'         => $s['color'],
+            'pago_semanal'  => (float)($s['monto_semanal'] ?? 0),
+            'plazo_meses'   => (int)($s['plazo_meses'] ?? 0),
+            'fecha_inicio'  => $s['fecha_inicio'],
+            'fecha_entrega' => $s['fecha_entrega'] ?? null,
+            'fecha_compra'  => $s['freg'],
+            'estado'        => $s['estado'],
+        ];
+    }
+
+    // Contado / MSI transactions matched by telefono or email
+    if ($tel10 || $em) {
+        $where = [];
+        $params = [];
+        if ($tel10) { $where[] = "RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''),10) = ?"; $params[] = $tel10; }
+        if ($em)    { $where[] = "email = ?"; $params[] = $em; }
+        $sql = "SELECT id, pedido, modelo, color, total, tpago, msi_meses, freg, pago_estado
+                FROM transacciones
+                WHERE (" . implode(' OR ', $where) . ")
+                  AND tpago IN ('contado','msi','unico')
+                ORDER BY id DESC";
+        $tStmt = $pdo->prepare($sql);
+        $tStmt->execute($params);
+        foreach ($tStmt->fetchAll(PDO::FETCH_ASSOC) as $t) {
+            $allPurchases[] = [
+                'tipo'         => $t['tpago'] === 'msi' ? 'msi' : 'contado',
+                'id'           => (int)$t['id'],
+                'pedido'       => $t['pedido'],
+                'modelo'       => $t['modelo'],
+                'color'        => $t['color'],
+                'total'        => (float)($t['total'] ?? 0),
+                'msi_meses'    => $t['msi_meses'] ? (int)$t['msi_meses'] : null,
+                'fecha_compra' => $t['freg'],
+                'pago_estado'  => $t['pago_estado'],
+            ];
+        }
+    }
+    $response['compras'] = $allPurchases;
+    $response['total_compras'] = count($allPurchases);
+} catch (Throwable $e) {
+    error_log('cliente/estado compras list: ' . $e->getMessage());
+    $response['compras'] = [];
+    $response['total_compras'] = 0;
+}
+
 portalJsonOut($response);

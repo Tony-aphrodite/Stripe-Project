@@ -84,10 +84,10 @@ window.AD_puntos = (function(){
 
     // CSV download (same content as import modal)
     $('#adDlCsv').on('click', function(){
-      var csv = 'Acción,Nombre,Tipo,Dirección,Colonia,Ciudad,Estado,CP,Teléfono,Email,Latitud,Longitud,Horarios,Capacidad,Descripción\n';
-      csv += 'agregar,Punto Ejemplo,entrega,Av. Reforma 123,Juárez,Ciudad de México,CDMX,06600,5551234567,punto@ejemplo.com,19.4326,-99.1332,Lun-Vie 9:00-18:00,20,Punto de entrega ejemplo\n';
-      csv += 'actualizar,Punto Existente,center,Blvd. Centro 456,Centro,Querétaro,QRO,76000,4421234567,centro@ejemplo.com,20.5881,-100.3899,Lun-Sab 10:00-20:00,50,Centro Voltika actualizado\n';
-      csv += 'eliminar,Punto A Eliminar,,,,,,76060,,,,,,,,\n';
+      var csv = 'Acción,Nombre,Tipo,Dirección,Colonia,Ciudad,Estado,CP,Teléfono,Email,Latitud,Longitud,Horarios,Capacidad,Descripción,Servicios\n';
+      csv += 'agregar,Punto Ejemplo,entrega,Av. Reforma 123,Juárez,Ciudad de México,CDMX,06600,5551234567,punto@ejemplo.com,19.4326,-99.1332,Lun-Vie 9:00-18:00,20,Punto de entrega ejemplo,Entrega|Exhibición y venta\n';
+      csv += 'actualizar,Punto Existente,center,Blvd. Centro 456,Centro,Querétaro,QRO,76000,4421234567,centro@ejemplo.com,20.5881,-100.3899,Lun-Sab 10:00-20:00,50,Centro Voltika actualizado,Entrega|Exhibición y venta|Servicio Técnico|Pruebas de Manejo\n';
+      csv += 'eliminar,Punto A Eliminar,,,,,,76060,,,,,,,,,\n';
       downloadBlob(['\uFEFF' + csv], 'text/csv;charset=utf-8;', 'plantilla_puntos.csv');
     });
 
@@ -186,13 +186,14 @@ window.AD_puntos = (function(){
     // ── Referido codes ──
     if(!isNew){
       html += sectionTitle('Códigos de referido');
+      html += '<div style="font-size:11px;color:var(--ad-dim);margin-bottom:6px;">Editá manualmente o apretá 🎲 para generar uno nuevo aleatorio.</div>';
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
       html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código venta en punto</label>'+
-        '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodVenta" value="'+esc(p.codigo_venta||'')+'" readonly style="background:#f5f7fa;flex:1;">'+
-        '<button class="ad-btn sm ghost pfRegen" data-field="codigo_venta" title="Regenerar" style="padding:4px 8px;">&#8635;</button></div></div>';
+        '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodVenta" value="'+esc(p.codigo_venta||'')+'" placeholder="Ej: PVE4DCFC" style="flex:1;text-transform:uppercase;">'+
+        '<button class="ad-btn sm ghost pfRegen" data-field="codigo_venta" title="Generar aleatorio" style="padding:4px 8px;">🎲</button></div></div>';
       html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código venta online</label>'+
-        '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodElec" value="'+esc(p.codigo_electronico||'')+'" readonly style="background:#f5f7fa;flex:1;">'+
-        '<button class="ad-btn sm ghost pfRegen" data-field="codigo_electronico" title="Regenerar" style="padding:4px 8px;">&#8635;</button></div></div>';
+        '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodElec" value="'+esc(p.codigo_electronico||'')+'" placeholder="Ej: PE6AFC75" style="flex:1;text-transform:uppercase;">'+
+        '<button class="ad-btn sm ghost pfRegen" data-field="codigo_electronico" title="Generar aleatorio" style="padding:4px 8px;">🎲</button></div></div>';
       html += '</div>';
     }
 
@@ -412,7 +413,9 @@ window.AD_puntos = (function(){
         zonas: zonasArr,
         lat: $('#pfLat').val()||null,
         lng: $('#pfLng').val()||null,
-        autorizado: 1
+        autorizado: 1,
+        codigo_venta:       ($('#pfCodVenta').val() || '').toUpperCase().trim() || null,
+        codigo_electronico: ($('#pfCodElec').val()  || '').toUpperCase().trim() || null
       };
 
       // Collect commission data
@@ -443,17 +446,23 @@ window.AD_puntos = (function(){
       });
     });
 
-    // Regenerate referido code
+    // Generate a random referido code locally (admin can also edit by hand).
+    // No server round-trip — the new value is persisted when the admin
+    // clicks "Guardar" alongside the rest of the form.
     $('.pfRegen').on('click', function(){
       var field = $(this).data('field');
-      if(!confirm('Regenerar este código? El código anterior dejará de funcionar.')) return;
-      ADApp.api('puntos/regenerar-codigo.php', {id: p.id, campo: field}).done(function(r2){
-        if(r2.ok){
-          if(field==='codigo_venta') $('#pfCodVenta').val(r2.nuevo_codigo);
-          else $('#pfCodElec').val(r2.nuevo_codigo);
-        } else alert(r2.error||'Error');
-      });
+      var prefix = field === 'codigo_venta' ? 'PV' : 'PE';
+      var code = prefix + generarCodigoRandom(6);
+      if(field === 'codigo_venta') $('#pfCodVenta').val(code);
+      else $('#pfCodElec').val(code);
     });
+  }
+
+  function generarCodigoRandom(len){
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var out = '';
+    for(var i=0;i<len;i++) out += chars.charAt(Math.floor(Math.random()*chars.length));
+    return out;
   }
 
   function sectionTitle(t){
@@ -534,10 +543,10 @@ window.AD_puntos = (function(){
 
     $('#adDlPuntosTemplate').on('click', function(e){
       e.preventDefault();
-      var csv = 'Acción,Nombre,Tipo,Dirección,Colonia,Ciudad,Estado,CP,Teléfono,Email,Latitud,Longitud,Horarios,Capacidad,Descripción\n';
-      csv += 'agregar,Punto Ejemplo,entrega,Av. Reforma 123,Juárez,Ciudad de México,CDMX,06600,5551234567,punto@ejemplo.com,19.4326,-99.1332,Lun-Vie 9:00-18:00,20,Punto de entrega ejemplo\n';
-      csv += 'actualizar,Punto Existente,center,Blvd. Centro 456,Centro,Querétaro,QRO,76000,4421234567,centro@ejemplo.com,20.5881,-100.3899,Lun-Sab 10:00-20:00,50,Centro Voltika actualizado\n';
-      csv += 'eliminar,Punto A Eliminar,,,,,,76060,,,,,,,,\n';
+      var csv = 'Acción,Nombre,Tipo,Dirección,Colonia,Ciudad,Estado,CP,Teléfono,Email,Latitud,Longitud,Horarios,Capacidad,Descripción,Servicios\n';
+      csv += 'agregar,Punto Ejemplo,entrega,Av. Reforma 123,Juárez,Ciudad de México,CDMX,06600,5551234567,punto@ejemplo.com,19.4326,-99.1332,Lun-Vie 9:00-18:00,20,Punto de entrega ejemplo,Entrega|Exhibición y venta\n';
+      csv += 'actualizar,Punto Existente,center,Blvd. Centro 456,Centro,Querétaro,QRO,76000,4421234567,centro@ejemplo.com,20.5881,-100.3899,Lun-Sab 10:00-20:00,50,Centro Voltika actualizado,Entrega|Exhibición y venta|Servicio Técnico|Pruebas de Manejo\n';
+      csv += 'eliminar,Punto A Eliminar,,,,,,76060,,,,,,,,,\n';
       var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
