@@ -661,6 +661,42 @@ if ($esCredito) {
     voltikaNotifyDelayed('portal_contado', $notifyData, 300);
 }
 
+// ── Admin alerts for Servicios adicionales ──────────────────────────────
+// When the client opts in for license-plate advisory or Quálitas insurance,
+// notify the Voltika admin so they can follow up manually. The admin number
+// is the same used elsewhere in the project (Voltika owner WhatsApp).
+$ADMIN_WA    = defined('VOLTIKA_ADMIN_WHATSAPP') ? VOLTIKA_ADMIN_WHATSAPP : '+5214421198928';
+$ADMIN_EMAIL = defined('VOLTIKA_ADMIN_EMAIL')    ? VOLTIKA_ADMIN_EMAIL    : 'admin@voltika.mx';
+
+if ($asesoriaPlacasInt === 1) {
+    voltikaNotify('admin_extras_placas', [
+        'pedido'           => $pedidoNum,
+        'nombre'           => $nombre,
+        'telefono_cliente' => $telefono,
+        'estado_mx'        => $estado,
+        'ciudad'           => $ciudad,
+        'modelo'           => $modelo,
+        'telefono'         => $ADMIN_WA,
+        'whatsapp'         => $ADMIN_WA,
+        'email'            => $ADMIN_EMAIL,
+        'cliente_id'       => null,
+    ]);
+}
+
+if ($seguroQualitasInt === 1) {
+    voltikaNotify('admin_extras_seguro', [
+        'pedido'           => $pedidoNum,
+        'nombre'           => $nombre,
+        'telefono_cliente' => $telefono,
+        'modelo'           => $modelo,
+        'color'            => $color,
+        'telefono'         => $ADMIN_WA,
+        'whatsapp'         => $ADMIN_WA,
+        'email'            => $ADMIN_EMAIL,
+        'cliente_id'       => null,
+    ]);
+}
+
 echo json_encode([
     'status'    => $dbSaveOk ? 'ok' : 'ok_warn',
     'pedido'    => $pedidoNum,

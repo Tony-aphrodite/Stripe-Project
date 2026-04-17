@@ -11,6 +11,22 @@ $pdo = getDB();
 
 $rows = [];
 
+// Detect whether the Servicios adicionales tracking columns exist (Phase C
+// migration). Falls back gracefully if the admin hasn't run reparar-schema-servicios yet.
+$hasTracking = false;
+try {
+    $dbName = $pdo->query('SELECT DATABASE()')->fetchColumn();
+    $chk = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA=? AND TABLE_NAME='transacciones' AND COLUMN_NAME='placas_estado'");
+    $chk->execute([$dbName]);
+    $hasTracking = ((int)$chk->fetchColumn()) > 0;
+} catch (Throwable $e) { /* ignore */ }
+
+$trackingSelect = $hasTracking
+    ? ", t.placas_estado, t.placas_gestor_nombre, t.placas_gestor_telefono, t.placas_nota,
+         t.seguro_estado, t.seguro_cotizacion, t.seguro_poliza, t.seguro_nota"
+    : "";
+
 // ── Orders from transacciones ───────────────────────────────────────────
 try {
     $stmt = $pdo->query("
@@ -18,6 +34,8 @@ try {
                t.modelo, t.color, t.tpago, t.total, t.stripe_pi, t.freg,
                t.punto_id, t.punto_nombre, t.ciudad, t.estado, t.cp, t.folio_contrato,
                t.fecha_estimada_entrega,
+               t.asesoria_placas, t.seguro_qualitas
+               $trackingSelect,
                t.pago_estado AS tx_pago_estado,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
                m.pago_estado,
@@ -77,6 +95,16 @@ try {
             'cp'          => $r['cp'] ?? null,
             'folio_contrato' => $r['folio_contrato'] ?? null,
             'fecha_estimada_entrega' => $r['fecha_estimada_entrega'] ?? null,
+            'asesoria_placas' => (int)($r['asesoria_placas'] ?? 0),
+            'seguro_qualitas' => (int)($r['seguro_qualitas'] ?? 0),
+            'placas_estado'          => $r['placas_estado'] ?? null,
+            'placas_gestor_nombre'   => $r['placas_gestor_nombre'] ?? null,
+            'placas_gestor_telefono' => $r['placas_gestor_telefono'] ?? null,
+            'placas_nota'            => $r['placas_nota'] ?? null,
+            'seguro_estado'     => $r['seguro_estado'] ?? null,
+            'seguro_cotizacion' => $r['seguro_cotizacion'] ?? null,
+            'seguro_poliza'     => $r['seguro_poliza'] ?? null,
+            'seguro_nota'       => $r['seguro_nota'] ?? null,
         ];
     }
 } catch (Throwable $e) {
@@ -256,10 +284,10 @@ try {
             && (empty($r['nombre']) || empty($r['telefono']) || empty($r['modelo']));
     }) : [];
     if ($needsBackfill) {
-        $stripePath = __DIR__ . '/../../../configurador_prueba/php/vendor/autoload.php';
+        $stripePath = __DIR__ . '/../../../configurador_prueba_test/php/vendor/autoload.php';
         if (file_exists($stripePath)) {
             require_once $stripePath;
-            require_once __DIR__ . '/../../../configurador_prueba/php/config.php';
+            require_once __DIR__ . '/../../../configurador_prueba_test/php/config.php';
             if (defined('STRIPE_SECRET_KEY') && STRIPE_SECRET_KEY) {
                 \Stripe\Stripe::setApiKey(STRIPE_SECRET_KEY);
                 foreach ($rows as &$row) {
@@ -355,11 +383,9 @@ $buildInvKey = static function($modelo, $color) use ($colorTokens) {
     $m = strtolower(trim((string)$modelo));
     $c = strtolower(trim((string)$color));
     $m = preg_replace('/\s+/', ' ', $m);
-    // Strip the known color (if present) and all generic color tokens from modelo
     if ($c !== '') {
         $m = preg_replace('/\b' . preg_quote($c, '/') . '\b/u', '', $m);
     } else {
-        // Extract color from modelo when color column is empty
         foreach ($colorTokens as $ct) {
             if (preg_match('/\b' . preg_quote($ct, '/') . '\b/u', $m)) { $c = $ct; break; }
         }

@@ -118,6 +118,24 @@ function voltikaNotifyTemplates(): array {
             'sms'     => 'Voltika: Tu {modelo} esta lista en {punto}. Lleva tu INE. Horario: {horario}. voltika.mx/mi-cuenta',
         ],
 
+        // ═══════════════════════════════════════════════════════════════════
+        // INTERNAL — SERVICIOS ADICIONALES (Admin alerts)
+        // ═══════════════════════════════════════════════════════════════════
+
+        // Sent to Voltika admin when a new order requests license-plate advisory
+        'admin_extras_placas' => [
+            'subject' => '🎫 Nueva solicitud de placas — Pedido {pedido}',
+            'body'    => "🎫 NUEVA SOLICITUD: asesoría de placas\n\nPedido: VK-{pedido}\nCliente: {nombre}\nTel. cliente: {telefono_cliente}\nEstado MX: {estado_mx}\nCiudad: {ciudad}\nModelo: {modelo}\n\nGestioná en: voltika.mx/admin/#ventas",
+            'sms'     => 'Voltika ADMIN: Nueva solicitud placas. Pedido VK-{pedido} / {nombre} / {estado_mx}. Gestiona en admin.',
+        ],
+
+        // Sent to Voltika admin when a new order opts in for Quálitas insurance
+        'admin_extras_seguro' => [
+            'subject' => '🛡 Nueva solicitud Quálitas — Pedido {pedido}',
+            'body'    => "🛡 NUEVA SOLICITUD: seguro Quálitas\n\nPedido: VK-{pedido}\nCliente: {nombre}\nTel. cliente: {telefono_cliente}\nUnidad: {modelo} · {color}\n\nCotizá y registra en: voltika.mx/admin/#ventas",
+            'sms'     => 'Voltika ADMIN: Nueva solicitud Qualitas. Pedido VK-{pedido} / {nombre} / {modelo} {color}.',
+        ],
+
         // ── Legacy delivery templates (kept for backward compat) ────────
         'punto_asignado' => [
             'subject' => '📍 Tu Voltika tiene punto de entrega',

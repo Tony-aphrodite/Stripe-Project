@@ -52,6 +52,20 @@ $flujo = (float)$safeScalar("SELECT COALESCE(SUM(monto),0) FROM ciclos_pago
     WHERE estado='pending' AND fecha_vencimiento BETWEEN ? AND DATE_ADD(?, INTERVAL 6 DAY)",
     [$today, $today]);
 
+// Servicios adicionales — uses tracking columns if present, falls back to raw flag count
+$hasTracking = (int)$safeScalar("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='transacciones' AND COLUMN_NAME='placas_estado'") > 0;
+
+if ($hasTracking) {
+    $placasPendientes = (int)$safeScalar("SELECT COUNT(*) FROM transacciones
+        WHERE asesoria_placas=1 AND COALESCE(placas_estado,'pendiente') IN ('pendiente','en_proceso')");
+    $seguroPendientes = (int)$safeScalar("SELECT COUNT(*) FROM transacciones
+        WHERE seguro_qualitas=1 AND COALESCE(seguro_estado,'pendiente') IN ('pendiente','cotizado')");
+} else {
+    $placasPendientes = (int)$safeScalar("SELECT COUNT(*) FROM transacciones WHERE asesoria_placas=1");
+    $seguroPendientes = (int)$safeScalar("SELECT COUNT(*) FROM transacciones WHERE seguro_qualitas=1");
+}
+
 adminJsonOut([
     'app_env' => defined('APP_ENV') ? APP_ENV : 'test',
     'ventas_hoy' => $ventasHoy,
@@ -64,4 +78,6 @@ adminJsonOut([
     'unidades_apartadas' => (int)($inv['apartadas'] ?? 0),
     'en_transito' => (int)($inv['en_transito'] ?? 0),
     'pendientes_entrega_clientes' => (int)($inv['pendientes_entrega_clientes'] ?? 0),
+    'placas_pendientes' => $placasPendientes,
+    'seguro_pendientes' => $seguroPendientes,
 ]);

@@ -34,6 +34,8 @@ window.AD_dashboard = (function(){
       {label:'Apartadas por pago', value:k.unidades_apartadas, cls:'yellow'},
       {label:'Pendientes de envío', value:k.en_transito, cls:'yellow'},
       {label:'Pendientes de entrega a clientes', value:k.pendientes_entrega_clientes, cls:'yellow'},
+      {label:'🎫 Placas pendientes', value:k.placas_pendientes||0, cls:(k.placas_pendientes||0)>0?'yellow':'green'},
+      {label:'🛡 Quálitas pendientes', value:k.seguro_pendientes||0, cls:(k.seguro_pendientes||0)>0?'yellow':'green'},
     ];
     // Environment badge
     var envBadge = '';
