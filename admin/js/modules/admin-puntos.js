@@ -9,7 +9,7 @@ window.AD_puntos = (function(){
 
   function paint(r){
     puntosData = r.puntos||[];
-    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Puntos Voltika</div><div style="display:flex;gap:8px;">'+
+    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Puntos Voltika</div><div style="display:flex;gap:8px;flex-wrap:wrap;">'+
       '<button class="ad-btn" id="adImportPuntos" style="background:#f0f4f8;color:var(--ad-navy);">Importar Excel</button>'+
       '<button class="ad-btn primary" id="adNewPunto">+ Nuevo punto</button></div></div>';
 
