@@ -47,7 +47,22 @@ $binaryFields = [
     'calcomanias_correctas','alineacion_correcta','sin_burbujas','sin_desprendimientos',
     'sin_rayones','acabados_correctos',
     'embalaje_correcto','protecciones_colocadas','caja_sin_dano','sellos_colocados',
+    'empaque_accesorios','empaque_llaves',
     'declaracion_aceptada','validacion_final',
+];
+
+// Mandatory photo categories — each must have at least 1 image on complete
+$photoCategories = [
+    'foto_unidad_completa'        => 'Unidad completa',
+    'foto_vin'                    => 'VIN',
+    'foto_tablero_encendido'      => 'Tablero encendido',
+    'foto_bateria'                => 'Batería',
+    'foto_contenido_previo_cierre'=> 'Contenido previo cierre',
+    'foto_caja_cerrada'           => 'Caja cerrada',
+    'foto_sellos'                 => 'Sellos',
+    'foto_detalle_calcomanias'    => 'Detalle calcomanías',
+    'foto_empaque_accesorios'     => 'Empaque de accesorios',
+    'foto_empaque_llaves'         => 'Empaque de llaves',
 ];
 
 $vals = [
@@ -87,6 +102,30 @@ if ($vals['completado']) {
     }
     if (trim((string)$vals['num_motor']) === '') {
         adminJsonOut(['error' => 'Falta el Número de motor en Identificación de unidad.'], 400);
+    }
+    // Verify at least 1 photo per category (reads current DB state since
+    // photos are uploaded separately via subir-foto.php and persisted
+    // before this save call)
+    $missingPhotos = [];
+    if ($prev) {
+        $cols = array_keys($photoCategories);
+        $select = implode(',', array_map(fn($c) => "`$c`", $cols));
+        $stmt = $pdo->prepare("SELECT $select FROM checklist_origen WHERE id=?");
+        $stmt->execute([$prev['id']]);
+        $photoRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        foreach ($photoCategories as $col => $label) {
+            $arr = json_decode($photoRow[$col] ?? '[]', true);
+            if (!is_array($arr) || count($arr) === 0) $missingPhotos[] = $label;
+        }
+    } else {
+        // No prior record → no photos at all
+        $missingPhotos = array_values($photoCategories);
+    }
+    if ($missingPhotos) {
+        adminJsonOut([
+            'error' => 'Faltan fotos en ' . count($missingPhotos) . ' categoría(s): ' . implode(', ', $missingPhotos),
+            'missing_photos' => $missingPhotos,
+        ], 400);
     }
 }
 

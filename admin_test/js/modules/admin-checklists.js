@@ -4,6 +4,20 @@ window.AD_checklists = (function(){
   var ORIGEN_LEGAL_TEXT = 'La unidad fue revisada, validada y empacada conforme a estándares Voltika. Se confirma que: contenido completo, sistema eléctrico funcional, estética en buen estado.';
   var ORIGEN_REGLA_ORO  = 'Lo que no está validado en origen, no existe.';
 
+  // 10 mandatory photo categories (each needs >=1 image to complete)
+  var ORIGEN_PHOTO_CATEGORIES = [
+    {campo:'foto_unidad_completa',         label:'Unidad completa'},
+    {campo:'foto_vin',                      label:'VIN'},
+    {campo:'foto_tablero_encendido',        label:'Tablero encendido'},
+    {campo:'foto_bateria',                  label:'Batería'},
+    {campo:'foto_contenido_previo_cierre',  label:'Contenido previo cierre'},
+    {campo:'foto_caja_cerrada',             label:'Caja cerrada'},
+    {campo:'foto_sellos',                   label:'Sellos'},
+    {campo:'foto_detalle_calcomanias',      label:'Detalle calcomanías'},
+    {campo:'foto_empaque_accesorios',       label:'Empaque de accesorios'},
+    {campo:'foto_empaque_llaves',           label:'Empaque de llaves'},
+  ];
+
   var ORIGEN_SECTIONS = [
     { title: '1. Estructura principal', fields: [
       {key:'frame_completo', label:'Frame completo'},
@@ -78,7 +92,9 @@ window.AD_checklists = (function(){
       {key:'embalaje_correcto', label:'Embalaje correcto con etiquetas Voltika'},
       {key:'protecciones_colocadas', label:'Protecciones colocadas'},
       {key:'caja_sin_dano', label:'Caja sin daño'},
-      {key:'sellos_colocados', label:'Sellos colocados'}
+      {key:'sellos_colocados', label:'Sellos colocados'},
+      {key:'empaque_accesorios', label:'Empaque de accesorios'},
+      {key:'empaque_llaves', label:'Empaque de llaves completo'}
     ]},
     { title: '14. Declaración legal', prologo: ORIGEN_LEGAL_TEXT, fields: [
       {key:'declaracion_aceptada', label:'Acepto la declaración'}
@@ -316,14 +332,35 @@ window.AD_checklists = (function(){
         '</div>';
       }
       html += '</div>';
-      // Insert section 13 (photos) between section 12 and section 14
+      // Insert section 13 (photos by category) between section 12 and section 14
       if(section.title.indexOf('12.') === 0){
         html += '<div style="margin-bottom:14px;">';
         html += sectionTitle('13. Evidencia fotográfica');
-        var origenFotos = [];
-        try { origenFotos = JSON.parse(data.fotos||'[]'); } catch(e){}
-        if(!Array.isArray(origenFotos)) origenFotos = [];
-        html += photoZone('clOrigenFotos', 'origen', motoId, 'fotos', origenFotos, isLocked);
+        html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:10px;">Subí al menos una foto por cada categoría. Todas son obligatorias para completar el checklist.</div>';
+        ORIGEN_PHOTO_CATEGORIES.forEach(function(cat){
+          var catPhotos = [];
+          try { catPhotos = JSON.parse(data[cat.campo]||'[]'); } catch(e){}
+          if(!Array.isArray(catPhotos)) catPhotos = [];
+          html += '<div class="clPhotoCat" data-cat="'+cat.campo+'" style="margin-bottom:10px;padding:10px;background:#FAFBFC;border:1px solid #EAECEE;border-radius:8px;">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+          html += '<span style="font-size:12.5px;font-weight:600;color:#37474F;">📸 '+esc(cat.label)+'</span>';
+          html += '<span class="clPhotoCatCount" style="font-size:11px;color:'+(catPhotos.length?'#1e7e34':'#c0392b')+';font-weight:600;">'+catPhotos.length+' foto(s)</span>';
+          html += '</div>';
+          html += photoZone('clOrigenFoto_'+cat.campo, 'origen', motoId, cat.campo, catPhotos, isLocked);
+          html += '</div>';
+        });
+        // Legacy fotos (if any) shown read-only for backwards compat
+        var legacyFotos = [];
+        try { legacyFotos = JSON.parse(data.fotos||'[]'); } catch(e){}
+        if(Array.isArray(legacyFotos) && legacyFotos.length){
+          html += '<details style="margin-top:8px;font-size:11.5px;color:#666;">';
+          html += '<summary style="cursor:pointer;">Fotos legacy ('+legacyFotos.length+') — sin categoría</summary>';
+          html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">';
+          legacyFotos.forEach(function(u){
+            html += '<img src="'+u+'" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #ddd;cursor:pointer;" onclick="window.open(\''+u+'\',\'_blank\')">';
+          });
+          html += '</div></details>';
+        }
         html += '</div>';
       }
     });
@@ -384,6 +421,18 @@ window.AD_checklists = (function(){
       if(!$('#clNumMotor').val().trim()){
         alert('Falta el Número de motor en la sección Identificación de unidad.');
         $('#clNumMotor').focus();
+        return;
+      }
+      // Validate at least 1 photo per category
+      var missingPhotos = [];
+      $('.clPhotoCat').each(function(){
+        if($(this).find('.clThumb').length === 0){
+          var label = $(this).find('span').first().text().replace('📸','').trim();
+          missingPhotos.push(label);
+        }
+      });
+      if(missingPhotos.length){
+        alert('Faltan fotos en '+missingPhotos.length+' categoría(s):\n\n• '+missingPhotos.join('\n• '));
         return;
       }
       if(!confirm('¿Completar y bloquear este checklist? No se podrá modificar después.')) return;
@@ -1309,6 +1358,7 @@ window.AD_checklists = (function(){
             if(r.ok){
               $('#'+placeholderId).replaceWith(photoThumb(r.url, false));
               bindPhotoRemoveEvents();
+              refreshPhotoCatCounter($zone);
             } else {
               $('#'+placeholderId).remove();
               alert(r.error||'Error al subir foto');
@@ -1346,7 +1396,7 @@ window.AD_checklists = (function(){
       ADApp.api('checklists/eliminar-foto.php', {
         checklist_tipo: tipo, moto_id: motoId, campo: campo, url: url
       }).done(function(r){
-        if(r.ok) $thumb.remove();
+        if(r.ok){ $thumb.remove(); refreshPhotoCatCounter($zone); }
         else { $thumb.css('opacity','1'); alert(r.error||'Error'); }
       }).fail(function(xhr){
         $thumb.css('opacity','1');
@@ -1355,6 +1405,15 @@ window.AD_checklists = (function(){
         alert(msg);
       });
     });
+  }
+
+  function refreshPhotoCatCounter($zone){
+    var $cat = $zone.closest('.clPhotoCat');
+    if(!$cat.length) return;
+    var n = $cat.find('.clThumb').length;
+    var $count = $cat.find('.clPhotoCatCount');
+    $count.text(n+' foto(s)');
+    $count.css('color', n>0 ? '#1e7e34' : '#c0392b');
   }
 
   function esc(s){
