@@ -47,11 +47,10 @@ var PasoCreditoAprobado = {
             html += '<div class="vk-aprobado-info__row">';
             html += '<span style="font-size:18px;flex-shrink:0;">&#128205;</span>';
             html += '<div style="font-size:14px;line-height:1.5;">';
-            if (centro && centro.nombre) {
-                html += 'Tu moto se entregar\u00e1 en <strong style="color:#039fe1;">' + centro.nombre + '</strong>';
-                if (centro.direccion && centro.tipo !== 'cercano') {
-                    html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:2px;">' + centro.direccion + '</div>';
-                }
+            if (centro && centro.direccion && centro.tipo !== 'cercano') {
+                html += 'Tu moto se entregar\u00e1 en <strong style="color:#039fe1;">' + centro.direccion + '</strong>';
+            } else if (centro && centro.tipo === 'cercano') {
+                html += 'Tu moto se entregar\u00e1 en el <strong>punto Voltika m\u00e1s cercano</strong> a ti';
             } else {
                 html += 'Tu moto se entregar\u00e1 en un <strong>punto Voltika autorizado</strong> cerca de ti';
             }

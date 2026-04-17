@@ -66,8 +66,8 @@ var Paso4A = {
         var base        = window.VK_BASE_PATH || '';
         var _imgFolder  = { 'ukko-s': 'ukko', 'pesgo-plus': 'pesgo' };
         var imgSrc      = base + 'img/' + (_imgFolder[modelo.id] || modelo.id) + '/model.png';
-        var _envioDestino = (state.centroEntrega && state.centroEntrega.nombre && state.centroEntrega.tipo !== 'cercano')
-            ? state.centroEntrega.nombre
+        var _envioDestino = (state.centroEntrega && state.centroEntrega.direccion && state.centroEntrega.tipo !== 'cercano')
+            ? state.centroEntrega.direccion
             : (state.ciudad || 'tu ciudad');
         // _envioDestino used in Resumen section
 
