@@ -30,9 +30,15 @@ window.VK_pagos = (function(){
     return '<span class="vk-hist-dot pendiente"></span>';
   }
 
+  function _scopeQS(){
+    var a = VKApp.state.activeCompra;
+    if (a && a.tipo === 'credito' && a.id) return '?subscripcion_id=' + encodeURIComponent(a.id);
+    return '';
+  }
+
   function render(){
     VKApp.render('<div class="vk-h1">Mis pagos</div><div class="vk-muted"><span class="vk-spin"></span> Cargando...</div>');
-    VKApp.api('pagos/historial.php').done(function(h){ paint(h); });
+    VKApp.api('pagos/historial.php' + _scopeQS()).done(function(h){ paint(h); });
   }
 
   function paint(h){
@@ -132,7 +138,9 @@ window.VK_pagos = (function(){
     // Descargar link
     $('.vk-descargar-link').on('click', function(e){
       e.preventDefault();
-      window.open('php/documentos/descargar.php?tipo=comprobantes', '_blank');
+      var a = VKApp.state.activeCompra;
+      var extra = (a && a.tipo === 'credito' && a.id) ? '&subscripcion_id=' + encodeURIComponent(a.id) : '';
+      window.open('php/documentos/descargar.php?tipo=comprobantes' + extra, '_blank');
     });
   }
   return { render:render };

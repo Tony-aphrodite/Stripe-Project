@@ -13,17 +13,74 @@ require_once __DIR__ . '/../bootstrap.php';
 $cid = portalRequireAuth();
 $pdo = getDB();
 
+// Optional scope by selected purchase
+$reqTipo = isset($_GET['compra_tipo']) ? preg_replace('/[^a-z]/', '', strtolower($_GET['compra_tipo'])) : '';
+$reqId   = isset($_GET['compra_id']) ? (int)$_GET['compra_id'] : 0;
+
 try {
-    // Find active subscription / moto for this client
-    $stmt = $pdo->prepare("SELECT im.*, pv.nombre AS punto_nombre, pv.direccion AS punto_direccion,
+    // Load client contact so we can resolve motos for credit subs (which link by phone/email)
+    $cStmt = $pdo->prepare("SELECT nombre, email, telefono FROM clientes WHERE id = ?");
+    $cStmt->execute([$cid]);
+    $cliente = $cStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $tel10 = preg_replace('/\D/', '', (string)($cliente['telefono'] ?? ''));
+    if (strlen($tel10) > 10) $tel10 = substr($tel10, -10);
+    $em = $cliente['email'] ?? null;
+
+    $moto = null;
+    $motoSelect = "SELECT im.*, pv.nombre AS punto_nombre, pv.direccion AS punto_direccion,
             pv.telefono AS punto_telefono, pv.ciudad AS punto_ciudad
         FROM inventario_motos im
-        LEFT JOIN puntos_voltika pv ON pv.id = im.punto_voltika_id
-        WHERE im.cliente_id = ?
-          AND im.estado IN ('recibida','lista_para_entrega','por_validar_entrega','en_ensamble','por_ensamblar','retenida','entregada')
-        ORDER BY im.id DESC LIMIT 1");
-    $stmt->execute([$cid]);
-    $moto = $stmt->fetch(PDO::FETCH_ASSOC);
+        LEFT JOIN puntos_voltika pv ON pv.id = im.punto_voltika_id";
+
+    if (($reqTipo === 'contado' || $reqTipo === 'msi') && $reqId > 0) {
+        // Scoped contado/msi: find moto via transaccion_id or stripe_pi
+        $tStmt = $pdo->prepare("SELECT id, stripe_pi, pedido FROM transacciones WHERE id = ? LIMIT 1");
+        $tStmt->execute([$reqId]);
+        $txn = $tStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($txn) {
+            $q = $pdo->prepare("$motoSelect WHERE im.transaccion_id = ? ORDER BY im.id DESC LIMIT 1");
+            $q->execute([(int)$txn['id']]);
+            $moto = $q->fetch(PDO::FETCH_ASSOC) ?: null;
+            if (!$moto && !empty($txn['stripe_pi'])) {
+                $q = $pdo->prepare("$motoSelect WHERE im.stripe_pi = ? ORDER BY im.id DESC LIMIT 1");
+                $q->execute([$txn['stripe_pi']]);
+                $moto = $q->fetch(PDO::FETCH_ASSOC) ?: null;
+            }
+            if (!$moto && !empty($txn['pedido'])) {
+                $q = $pdo->prepare("$motoSelect WHERE im.pedido_num = CONCAT('VK-', ?) ORDER BY im.id DESC LIMIT 1");
+                $q->execute([$txn['pedido']]);
+                $moto = $q->fetch(PDO::FETCH_ASSOC) ?: null;
+            }
+        }
+    } elseif ($reqTipo === 'credito' && $reqId > 0) {
+        // Scoped credit: find moto via subscription's contact (no direct FK)
+        $sStmt = $pdo->prepare("SELECT telefono, email FROM subscripciones_credito WHERE id = ? LIMIT 1");
+        $sStmt->execute([$reqId]);
+        $sRow = $sStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        $sTel = preg_replace('/\D/', '', (string)($sRow['telefono'] ?? ''));
+        if (strlen($sTel) > 10) $sTel = substr($sTel, -10);
+        $sEm = $sRow['email'] ?? null;
+        $wh = []; $pv = [];
+        if ($sTel) { $wh[] = "RIGHT(REPLACE(REPLACE(im.cliente_telefono,'+',''),' ',''),10) = ?"; $pv[] = $sTel; }
+        if ($sEm)  { $wh[] = "im.cliente_email = ?"; $pv[] = $sEm; }
+        if ($wh){
+            $q = $pdo->prepare("$motoSelect WHERE (" . implode(' OR ', $wh) . ")
+                AND im.estado IN ('recibida','lista_para_entrega','por_validar_entrega','en_ensamble','por_ensamblar','retenida','entregada')
+                ORDER BY im.id DESC LIMIT 1");
+            $q->execute($pv);
+            $moto = $q->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+    }
+
+    // Default lookup by cliente_id when no scope given or scope didn't match
+    if (!$moto) {
+        $stmt = $pdo->prepare("$motoSelect
+            WHERE im.cliente_id = ?
+              AND im.estado IN ('recibida','lista_para_entrega','por_validar_entrega','en_ensamble','por_ensamblar','retenida','entregada')
+            ORDER BY im.id DESC LIMIT 1");
+        $stmt->execute([$cid]);
+        $moto = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
 
     if (!$moto) {
         portalJsonOut(['ok' => true, 'entrega' => null]);

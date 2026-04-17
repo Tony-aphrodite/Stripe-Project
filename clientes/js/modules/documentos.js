@@ -185,12 +185,16 @@ window.VK_documentos = (function(){
 
     $('[data-tipo]').on('click',function(){
       var t=$(this).data('tipo');
-      window.open('php/documentos/descargar.php?tipo='+encodeURIComponent(t),'_blank');
+      var sc = VKApp.state.activeCompra;
+      var ext = (sc && sc.tipo && sc.id) ? '&compra_tipo='+encodeURIComponent(sc.tipo)+'&compra_id='+encodeURIComponent(sc.id) : '';
+      window.open('php/documentos/descargar.php?tipo='+encodeURIComponent(t)+ext,'_blank');
     });
     $('#vkDownloadAll').on('click',function(){
       var avail = keys.filter(function(k){ return DOC_META_CONTADO[k].available || entregado; });
       avail.forEach(function(t){
-        window.open('php/documentos/descargar.php?tipo='+encodeURIComponent(t),'_blank');
+        var sc = VKApp.state.activeCompra;
+      var ext = (sc && sc.tipo && sc.id) ? '&compra_tipo='+encodeURIComponent(sc.tipo)+'&compra_id='+encodeURIComponent(sc.id) : '';
+      window.open('php/documentos/descargar.php?tipo='+encodeURIComponent(t)+ext,'_blank');
       });
     });
   }
@@ -198,9 +202,15 @@ window.VK_documentos = (function(){
   // ================================================================
   //  CREDIT Documents page (existing)
   // ================================================================
+  function _scopeQS(){
+    var a = VKApp.state.activeCompra;
+    if (a && a.tipo && a.id) return '?compra_tipo=' + encodeURIComponent(a.tipo) + '&compra_id=' + encodeURIComponent(a.id);
+    return '';
+  }
+
   function renderCredito(){
     VKApp.render('<div class="vk-h1">Documentos</div><div class="vk-muted"><span class="vk-spin"></span> Cargando...</div>');
-    VKApp.api('documentos/lista.php').done(paintCredito);
+    VKApp.api('documentos/lista.php' + _scopeQS()).done(paintCredito);
   }
 
   function paintCredito(r){
@@ -292,12 +302,16 @@ window.VK_documentos = (function(){
 
     $('[data-tipo]').on('click',function(){
       var t=$(this).data('tipo');
-      window.open('php/documentos/descargar.php?tipo='+encodeURIComponent(t),'_blank');
+      var sc = VKApp.state.activeCompra;
+      var ext = (sc && sc.tipo && sc.id) ? '&compra_tipo='+encodeURIComponent(sc.tipo)+'&compra_id='+encodeURIComponent(sc.id) : '';
+      window.open('php/documentos/descargar.php?tipo='+encodeURIComponent(t)+ext,'_blank');
     });
     $('#vkDownloadAll').on('click',function(){
       var avail = docs.filter(function(d){return d.disponible;});
       avail.forEach(function(d){
-        window.open('php/documentos/descargar.php?tipo='+encodeURIComponent(d.tipo),'_blank');
+        var sc = VKApp.state.activeCompra;
+        var ext = (sc && sc.tipo && sc.id) ? '&compra_tipo='+encodeURIComponent(sc.tipo)+'&compra_id='+encodeURIComponent(sc.id) : '';
+        window.open('php/documentos/descargar.php?tipo='+encodeURIComponent(d.tipo)+ext,'_blank');
       });
     });
   }

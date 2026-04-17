@@ -51,22 +51,102 @@ if (empty($cliente['nombre'])) {
 
 $nombre = trim(($cliente['nombre'] ?? '') . ' ' . ($cliente['apellido_paterno'] ?? ''));
 
-// ── Determine customer type: credito vs contado/msi ───────────────
-try {
-    $info = portalComputeAccountState($cid);
-} catch (Throwable $e) {
-    error_log('cliente/estado computeAccountState: ' . $e->getMessage());
-    $info = ['state'=>'no_subscription','subscripcion'=>null,'proximoCiclo'=>null,'progreso'=>0,'total_ciclos'=>0,'ciclos_pagados'=>0];
-}
-$sub  = $info['subscripcion'];
-$next = $info['proximoCiclo'];
+// ── Optional scope: a specific purchase selected in "Mis compras" ──
+// When the client has multiple purchases, the UI sends compra_tipo + compra_id
+// so this endpoint returns state for that exact purchase rather than the latest.
+$reqTipo = isset($_GET['compra_tipo']) ? preg_replace('/[^a-z]/', '', strtolower($_GET['compra_tipo'])) : '';
+$reqId   = isset($_GET['compra_id']) ? (int)$_GET['compra_id'] : 0;
 
-// ── Check for contado/MSI purchase if no credit subscription ──────
+$sub = null; $info = null; $next = null;
 $tipoPortal = 'credito';
 $compra = null;
 $entrega = null;
 
-if (!$sub || $info['state'] === 'no_subscription') {
+// Scoped credit: load the requested subscription directly (if it belongs to this client)
+if ($reqTipo === 'credito' && $reqId > 0) {
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM subscripciones_credito
+            WHERE id = ? AND (cliente_id = ? OR email = ? OR telefono = ?)
+            LIMIT 1");
+        $stmt->execute([$reqId, $cid, $cliente['email'] ?? '', $cliente['telefono'] ?? '']);
+        $scopedSub = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($scopedSub) {
+            // Mirror portalComputeAccountState logic for this specific sub
+            try { portalEnsureCiclos($scopedSub); } catch (Throwable $e) { error_log('ensureCiclos scoped: ' . $e->getMessage()); }
+            $nextRow = null; $tot = 0; $pag = 0;
+            try {
+                $ns = $pdo->prepare("SELECT * FROM ciclos_pago
+                    WHERE subscripcion_id = ? AND estado IN ('pending','overdue')
+                    ORDER BY fecha_vencimiento ASC LIMIT 1");
+                $ns->execute([$scopedSub['id']]);
+                $nextRow = $ns->fetch(PDO::FETCH_ASSOC) ?: null;
+                $tot = (int)$pdo->query("SELECT COUNT(*) FROM ciclos_pago WHERE subscripcion_id = " . (int)$scopedSub['id'])->fetchColumn();
+                $pag = (int)$pdo->query("SELECT COUNT(*) FROM ciclos_pago WHERE subscripcion_id = " . (int)$scopedSub['id'] . " AND estado IN ('paid_manual','paid_auto')")->fetchColumn();
+            } catch (Throwable $e) { error_log('scoped ciclos: ' . $e->getMessage()); }
+            $progreso = $tot > 0 ? round(($pag / $tot) * 100, 1) : 0;
+            $state = 'account_current';
+            if ($nextRow) {
+                $today = strtotime(date('Y-m-d'));
+                $venc  = strtotime($nextRow['fecha_vencimiento']);
+                $diff  = ($venc - $today) / 86400;
+                if ($nextRow['estado'] === 'overdue' || $diff < 0) $state = 'payment_overdue';
+                elseif ($diff == 0) $state = 'payment_due_today';
+                elseif ($diff <= 2) $state = 'payment_due_soon';
+                else $state = 'account_current';
+            }
+            $info = [
+                'state' => $state,
+                'subscripcion' => $scopedSub,
+                'proximoCiclo' => $nextRow,
+                'progreso' => $progreso,
+                'total_ciclos' => $tot,
+                'ciclos_pagados' => $pag,
+            ];
+            $sub = $scopedSub;
+            $next = $nextRow;
+            $tipoPortal = 'credito';
+        }
+    } catch (Throwable $e) { error_log('scoped credit load: ' . $e->getMessage()); }
+}
+
+// Scoped contado/msi: load the requested transaction directly
+if (($reqTipo === 'contado' || $reqTipo === 'msi') && $reqId > 0 && !$sub) {
+    try {
+        $tel10full = preg_replace('/\D/', '', $cliente['telefono'] ?? '');
+        if (strlen($tel10full) > 10) $tel10full = substr($tel10full, -10);
+        $stmt = $pdo->prepare("SELECT * FROM transacciones
+            WHERE id = ?
+              AND (
+                    email = ?
+                 OR (? <> '' AND RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''),10) = ?)
+              )
+            LIMIT 1");
+        $stmt->execute([$reqId, $cliente['email'] ?? '', $tel10full, $tel10full]);
+        $compra = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($compra) {
+            $tipoPortal = $compra['tpago'] === 'msi' ? 'msi' : 'contado';
+        }
+    } catch (Throwable $e) { error_log('scoped contado load: ' . $e->getMessage()); }
+}
+
+// ── Default (no scope): most recent credit subscription, or fall back to latest contado ──
+if (!$sub && !$compra) {
+    try {
+        $info = portalComputeAccountState($cid);
+    } catch (Throwable $e) {
+        error_log('cliente/estado computeAccountState: ' . $e->getMessage());
+        $info = ['state'=>'no_subscription','subscripcion'=>null,'proximoCiclo'=>null,'progreso'=>0,'total_ciclos'=>0,'ciclos_pagados'=>0];
+    }
+    $sub  = $info['subscripcion'];
+    $next = $info['proximoCiclo'];
+}
+
+if (!$info) {
+    $info = ['state'=>'no_subscription','subscripcion'=>null,'proximoCiclo'=>null,'progreso'=>0,'total_ciclos'=>0,'ciclos_pagados'=>0];
+}
+
+// ── Check for contado/MSI purchase if no credit subscription (and not already loaded) ──
+if (!$sub && !$compra) {
     $tel10 = preg_replace('/\D/', '', $cliente['telefono'] ?? '');
     if (strlen($tel10) > 10) $tel10 = substr($tel10, -10);
     $em = $cliente['email'] ?? null;
@@ -81,10 +161,16 @@ if (!$sub || $info['state'] === 'no_subscription') {
         $stmt->execute([$em]);
         $compra = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
-
     if ($compra) {
-        $tipoPortal = $compra['tpago'];  // 'contado' or 'msi'
+        $tipoPortal = $compra['tpago'] === 'msi' ? 'msi' : 'contado';
+    }
+}
 
+// ── Compute entrega block for any loaded contado/msi compra ──────
+if ($compra && ($tipoPortal === 'contado' || $tipoPortal === 'msi')) {
+    $tel10 = preg_replace('/\D/', '', $cliente['telefono'] ?? '');
+    if (strlen($tel10) > 10) $tel10 = substr($tel10, -10);
+    {
         // Find linked inventario_motos for delivery tracking
         $moto = null;
         if (!empty($compra['stripe_pi'])) {

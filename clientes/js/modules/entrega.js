@@ -16,9 +16,15 @@ window.VK_entrega = (function(){
     });
   }
 
+  function _scopeQS(){
+    var a = VKApp.state.activeCompra;
+    if (a && a.tipo && a.id) return '?compra_tipo=' + encodeURIComponent(a.tipo) + '&compra_id=' + encodeURIComponent(a.id);
+    return '';
+  }
+
   function render(){
     VKApp.render('<div class="vk-h1">Mi entrega </div><div class="vk-muted">Cargando...</div>');
-    VKApp.api('entrega/estado.php').done(function(r){
+    VKApp.api('entrega/estado.php' + _scopeQS()).done(function(r){
       data = r && r.entrega;
       paint();
     }).fail(function(){

@@ -30,27 +30,29 @@ window.VK_inicio = (function(){
     var e = VKApp.state.estado || {};
     var compras = e.compras || [];
     if (compras.length < 2) return '';
-    var html = '<div style="background:#fff;border:1px solid #e3e7ed;border-radius:10px;padding:12px;margin-bottom:14px;">';
-    html += '<div style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:8px;">Tus compras ('+compras.length+')</div>';
-    compras.forEach(function(c, i){
-      var isFirst = i === 0;
-      var tipoLabel = c.tipo === 'credito' ? 'Crédito'
-                   : c.tipo === 'msi'     ? 'MSI'
-                   : 'Contado';
-      var montoLabel = c.tipo === 'credito'
-        ? '$'+Number(c.pago_semanal||0).toLocaleString('es-MX')+'/sem · '+(c.plazo_meses||'—')+' meses'
-        : '$'+Number(c.total||0).toLocaleString('es-MX');
-      html += '<div style="padding:8px 10px;background:'+(isFirst?'#E3F2FD':'#F5F7FA')+';border-radius:6px;margin-bottom:6px;border:1px solid '+(isFirst?'#90CAF9':'#E3E7ED')+';">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
-      html += '<div>';
-      html += '<div style="font-size:13px;font-weight:700;">'+tipoLabel+' · '+(c.modelo||'')+' '+(c.color||'')+'</div>';
-      html += '<div style="font-size:11px;color:#666;">'+montoLabel+(c.fecha_compra ? ' · '+c.fecha_compra.substring(0,10) : '')+'</div>';
-      html += '</div>';
-      if (isFirst) html += '<span style="font-size:10px;background:#1976D2;color:#fff;padding:2px 6px;border-radius:3px;font-weight:700;">ACTIVA</span>';
-      html += '</div>';
-      html += '</div>';
-    });
-    html += '<div style="font-size:11px;color:#666;margin-top:6px;">La vista abajo corresponde a tu compra más reciente. Contacta soporte para gestionar otras compras.</div>';
+    var active = VKApp.getActiveCompra && VKApp.getActiveCompra();
+    // Identify which compra is being displayed
+    var current = null;
+    if (active) {
+      for (var i=0; i<compras.length; i++){
+        if (compras[i].tipo === active.tipo && parseInt(compras[i].id,10) === parseInt(active.id,10)){
+          current = compras[i]; break;
+        }
+      }
+    }
+    if (!current) current = compras[0];
+
+    var tipoLabel = current.tipo === 'credito' ? 'Crédito'
+                 : current.tipo === 'msi'     ? 'MSI'
+                 : 'Contado';
+
+    var html = '<div style="background:#E8F0FE;border:1px solid #90CAF9;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
+    html += '<div style="font-size:13px;color:#0D47A1;">';
+    html += '<strong>Viendo:</strong> '+tipoLabel+' · '+(current.modelo||'')+' '+(current.color||'');
+    html += '<span style="color:#1976D2;font-weight:700;margin-left:6px;">(ID '+current.id+')</span>';
+    html += '<div style="font-size:11px;color:#37474F;margin-top:2px;">Tienes <strong>'+compras.length+' compras</strong> vinculadas a tu cuenta.</div>';
+    html += '</div>';
+    html += '<button class="vk-btn primary" onclick="VKApp.go(\'miscompras\')" style="font-size:12px;padding:7px 14px;">Ver todas</button>';
     html += '</div>';
     return html;
   }

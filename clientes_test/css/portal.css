@@ -781,6 +781,67 @@ button{font-family:inherit}
 .vk-detail-row .k{font-size:13px;color:var(--vk-text-dim)}
 .vk-detail-row .v{font-size:13px;font-weight:600;color:var(--vk-text);text-align:right}
 
+/* ── Red doc badge (for cancelled purchases) ────────────────────── */
+.vk-doc-badge.red{background:rgba(196,30,58,.12);color:#c41e3a}
+
+/* ── Mis compras — card grid ────────────────────────────────────── */
+.vk-compras-grid{
+  display:grid;gap:12px;
+  grid-template-columns:1fr;
+  margin-bottom:20px;
+}
+@media (min-width: 640px){
+  .vk-compras-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media (min-width: 1200px){
+  .vk-compras-grid{grid-template-columns:repeat(3,1fr);}
+}
+.vk-compra-card{
+  background:var(--vk-surface);border:1px solid var(--vk-border);
+  border-radius:var(--vk-radius);padding:14px;cursor:pointer;
+  transition:box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+}
+.vk-compra-card:hover{
+  border-color:var(--vk-primary-2);
+  box-shadow:0 4px 14px rgba(0,0,0,.08);
+  transform:translateY(-1px);
+}
+.vk-compra-card.is-active{
+  border-color:#1976D2;box-shadow:0 0 0 2px rgba(25,118,210,.15);
+  background:linear-gradient(180deg,#F5FAFF 0%,#fff 40%);
+}
+.vk-compra-head{
+  display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;
+}
+.vk-compra-model{
+  font-size:15px;font-weight:700;color:var(--vk-text);margin-bottom:4px;
+}
+.vk-compra-amount{
+  font-size:18px;font-weight:800;color:var(--vk-text);margin-bottom:2px;
+}
+.vk-compra-actions button{transition:filter .15s ease}
+.vk-compra-actions button:hover{filter:brightness(1.05)}
+
+/* ── Modal backdrop + dialog ────────────────────────────────────── */
+.vk-modal-backdrop{
+  position:fixed;inset:0;background:rgba(10,30,60,.45);
+  z-index:9990;backdrop-filter:blur(2px);
+}
+.vk-modal{
+  position:fixed;z-index:9991;
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  background:#fff;border-radius:12px;padding:22px 20px 18px;
+  width:min(520px, calc(100vw - 32px));
+  max-height:85vh;overflow-y:auto;
+  box-shadow:0 24px 60px rgba(10,30,60,.25);
+}
+.vk-modal-close{
+  position:absolute;top:8px;right:10px;
+  background:transparent;border:0;font-size:26px;line-height:1;
+  color:#666;cursor:pointer;padding:4px 10px;
+}
+.vk-modal-close:hover{color:#111}
+
 /* ══════════════════════════════════════════════════════════════════════════
    DESKTOP LAYOUT (>= 900px) — matches admin panel exactly
    Dark navy gradient sidebar (260px fixed, left) + light content (right).

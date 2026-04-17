@@ -30,6 +30,7 @@ $asset = function(string $rel): string {
   <div id="vkScreen" class="vk-screen"></div>
   <nav id="vkTabbar" class="vk-tabbar" style="display:none">
     <button data-route="inicio"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><em>Inicio</em></button>
+    <button data-route="miscompras"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></span><em>Mis compras</em></button>
     <button data-route="pagos"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span><em>Pagos</em></button>
     <button data-route="entrega"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span><em>Entrega</em></button>
     <button data-route="documentos"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span><em>Documentos</em></button>
@@ -42,6 +43,7 @@ $asset = function(string $rel): string {
 <script src="<?= $asset('js/modules/login.js') ?>"></script>
 <script src="<?= $asset('js/modules/recovery.js') ?>"></script>
 <script src="<?= $asset('js/modules/inicio.js') ?>"></script>
+<script src="<?= $asset('js/modules/mis-compras.js') ?>"></script>
 <script src="<?= $asset('js/modules/pagos.js') ?>"></script>
 <script src="<?= $asset('js/modules/entrega.js') ?>"></script>
 <script src="<?= $asset('js/modules/documentos.js') ?>"></script>
