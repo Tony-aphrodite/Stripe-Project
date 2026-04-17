@@ -106,9 +106,12 @@ button{font-family:inherit}
 .vk-label{display:block;font-size:12px;color:var(--vk-text-dim);margin:10px 0 4px;font-weight:600}
 
 /* ── OTP input grid ────────────────────────────────────────────────────── */
-.vk-otp{display:flex;gap:8px;justify-content:space-between;margin:14px 0}
+.vk-otp{
+  display:flex;gap:10px;justify-content:center;
+  margin:14px auto;max-width:360px;
+}
 .vk-otp input{
-  flex:1;max-width:48px;aspect-ratio:1;
+  flex:0 0 48px;width:48px;height:56px;
   text-align:center;font-size:22px;font-weight:700;
   background:var(--vk-surface);
   border:1px solid var(--vk-border-strong);
@@ -779,98 +782,134 @@ button{font-family:inherit}
 .vk-detail-row .v{font-size:13px;font-weight:600;color:var(--vk-text);text-align:right}
 
 /* ══════════════════════════════════════════════════════════════════════════
-   DESKTOP LAYOUT (>= 900px)
-   The mobile markup is reused but re-styled as a proper desktop dashboard:
-   - Wide container (960px) with top horizontal navigation (not bottom)
-   - Bigger typography, more whitespace
-   - Main cards (payment banner, adelanta pagos) take full width
-   - Two-column rows where there's structural opportunity
-   Below 900px the mobile layout stays untouched.
+   DESKTOP LAYOUT (>= 900px) — matches admin panel exactly
+   Dark navy gradient sidebar (260px fixed, left) + light content (right).
+   Mobile (< 900px) keeps the bottom tab bar untouched.
    ══════════════════════════════════════════════════════════════════════════ */
 @media (min-width: 900px) {
   html, body {
-    background: linear-gradient(180deg, #eef2f7 0%, #f5f7fa 380px);
+    background: #f5f7fa;
+    min-height: 100vh;
+  }
+  body { padding-bottom: 0; }
+
+  /* App container — full width, no max-width constraint */
+  .vk-app {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 28px 32px 40px 292px !important;
+    background: transparent !important;
     min-height: 100vh;
   }
 
-  /* Container grows to desktop size */
-  .vk-app {
-    max-width: 960px !important;
-    padding: 24px 32px 40px !important;
-    background: transparent !important;
-  }
+  .vk-screen { min-width: 0; }
 
-  /* Typography — larger hierarchy on desktop */
+  /* Typography larger on desktop */
   .vk-h1 { font-size: 28px; }
   .vk-h2 { font-size: 20px; }
 
-  /* Cards — more generous padding + subtle elevation */
-  .vk-card {
-    padding: 20px 24px;
-    box-shadow: 0 2px 10px rgba(12,35,64,0.06);
-  }
-
-  /* Payment banner (dark card) — enlarged on desktop */
+  .vk-card { padding: 20px 24px; box-shadow: 0 2px 10px rgba(12,35,64,0.06); }
   .vk-card-dark { padding: 36px 40px; }
   .vk-card-dark-amount { font-size: 56px; }
-
-  /* "Adelanta pagos" option cards — use responsive grid not fixed grid3 */
   .vk-grid3 { grid-template-columns: repeat(4, 1fr); gap: 14px; }
 
-  /* ── Top horizontal navigation (replaces bottom tab bar) ─────────────── */
+  /* ─────────────────────────────────────────────────────────────────────
+     Dark navy sidebar — identical to admin panel
+     ───────────────────────────────────────────────────────────────────── */
   .vk-tabbar {
-    position: sticky !important;
+    position: fixed !important;
     top: 0 !important;
-    bottom: auto !important;
-    left: auto !important;
+    left: 0 !important;
+    bottom: 0 !important;
     transform: none !important;
-    width: 100% !important;
-    max-width: 960px !important;
-    margin: -24px auto 20px !important;
-    padding: 10px 12px !important;
-    border-top: 0 !important;
-    border-bottom: 1px solid var(--vk-border);
-    border-radius: 0 0 12px 12px;
-    box-shadow: 0 4px 12px rgba(12,35,64,.06);
-    justify-content: center;
+    width: 260px !important;
+    max-width: 260px !important;
+    height: 100vh !important;
+    flex-direction: column !important;
+    padding: 24px 16px !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: linear-gradient(180deg, #0a1e3d 0%, #0c2d50 40%, #0f3460 100%) !important;
+    box-shadow: 6px 0 30px rgba(10,30,61,.25) !important;
+    z-index: 10;
     gap: 4px;
+    overflow-y: auto;
   }
+
+  /* Voltika logo injected before the first nav button.
+     Path is relative to THIS CSS file (clientes/css/portal.css) — two levels
+     up to reach voltika.mx root, then into configurador_prueba/img/. */
+  .vk-tabbar::before {
+    content: "";
+    display: block;
+    height: 34px;
+    background: url('../../configurador_prueba/img/voltika_logo_h_white.svg') left center / contain no-repeat;
+    margin: 0 10px 32px;
+  }
+
+  /* Nav buttons — admin style */
   .vk-tabbar button {
-    flex: 0 0 auto;
-    padding: 8px 16px;
-    font-size: 13px;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+    flex: 0 0 auto !important;
+    width: 100%;
+    padding: 13px 16px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    border-radius: 10px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px;
+    text-align: left;
     white-space: nowrap;
+    background: none !important;
+    color: rgba(255,255,255,.55) !important;
+    transition: all .25s ease;
+  }
+  .vk-tabbar button em {
+    font-style: normal;
+    font-size: 14px !important;
+    font-weight: 600;
   }
   .vk-tabbar button .ic {
-    display: inline-flex;
-    margin-bottom: 0;
-    margin-right: 2px;
-    font-size: 18px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;
+    font-size: 18px !important;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
   }
+  .vk-tabbar button .ic svg {
+    width: 20px !important;
+    height: 20px !important;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: .7;
+    transition: opacity .25s;
+  }
+  .vk-tabbar button:hover {
+    background: rgba(255,255,255,.07) !important;
+    color: rgba(255,255,255,.9) !important;
+    transform: translateX(2px);
+  }
+  .vk-tabbar button:hover .ic svg { opacity: 1; }
   .vk-tabbar button.active {
-    background: var(--vk-primary-soft);
-    color: var(--vk-primary-2);
+    background: linear-gradient(135deg, #039fe1, #0280b5) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 20px rgba(3,159,225,.45);
+    transform: translateX(0);
   }
+  .vk-tabbar button.active .ic svg { opacity: 1; }
 
-  /* Bottom padding not needed (nav is at top now) */
-  body { padding-bottom: 0; }
-  .vk-app { padding-bottom: 60px !important; }
+  /* Remove test-mode banner offset on desktop since layout handles it */
+  .vk-app[style*="padding-top"] { padding-top: 28px !important; }
+
+  /* Test mode banner — shift right so it doesn't overlap sidebar */
+  #vk-test-banner { left: 260px !important; }
 }
 
-/* Ultra-wide screens (>= 1300px) — keep container at 960px, no stretching */
-@media (min-width: 1300px) {
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(circle at 10% 20%, rgba(3,159,225,0.04) 0, transparent 40%),
-      radial-gradient(circle at 90% 80%, rgba(12,35,64,0.03) 0, transparent 40%);
-    pointer-events: none;
-    z-index: -1;
-  }
-}
