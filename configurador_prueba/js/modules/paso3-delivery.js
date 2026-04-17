@@ -200,7 +200,10 @@ var Paso3 = {
 
         // Other centers expandable
         html += '<div id="vk-otros-centros-wrapper" style="display:none;margin-top:12px;">';
-        html += '<div id="vk-otros-centros-toggle" style="font-size:14px;font-weight:700;color:var(--vk-green-primary);cursor:pointer;margin-bottom:10px;">Otros centros cercanos &#9660;</div>';
+        html += '<div id="vk-otros-centros-toggle" style="display:inline-flex;align-items:center;gap:8px;font-size:17px;font-weight:800;color:#FF6B00;cursor:pointer;margin-bottom:10px;letter-spacing:0.3px;">'+
+          '<span>VER MÁS PUNTOS CERCANOS</span>'+
+          '<svg class="vk-otros-arrow" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#FF6B00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>'+
+        '</div>';
         html += '<div id="vk-otros-centros-list" style="display:none;"></div>';
         html += '</div>';
 
@@ -337,12 +340,13 @@ var Paso3 = {
         // Toggle other centers list
         $(document).on('click', '#vk-otros-centros-toggle', function() {
             var $list = $('#vk-otros-centros-list');
+            var $arrow = $(this).find('.vk-otros-arrow');
             if ($list.is(':visible')) {
                 $list.slideUp(200);
-                $(this).html('Otros centros cercanos &#9660;');
+                $arrow.css('transform', 'rotate(0deg)');
             } else {
                 $list.slideDown(200);
-                $(this).html('Otros centros cercanos &#9650;');
+                $arrow.css('transform', 'rotate(180deg)');
             }
         });
 
