@@ -10,6 +10,7 @@ window.AD_puntos = (function(){
   function paint(r){
     puntosData = r.puntos||[];
     var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Puntos Voltika</div><div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+      '<button class="ad-btn" id="adRecursos" style="background:#e8f5e9;color:#2e7d32;">📋 Recursos</button>'+
       '<button class="ad-btn" id="adImportPuntos" style="background:#f0f4f8;color:var(--ad-navy);">Importar Excel</button>'+
       '<button class="ad-btn primary" id="adNewPunto">+ Nuevo punto</button></div></div>';
 
@@ -37,11 +38,81 @@ window.AD_puntos = (function(){
     ADApp.render(html);
     $('#adNewPunto').on('click',function(){ showForm({}); });
     $('#adImportPuntos').on('click', showImportForm);
+    $('#adRecursos').on('click', showRecursosModal);
     $('.adEditP').on('click',function(){
       var id=$(this).data('id');
       var p = puntosData.find(function(x){return x.id==id;});
       if(p) showForm(p);
     });
+  }
+
+  function showRecursosModal(){
+    var html = '<div class="ad-h2">📋 Recursos para Puntos Voltika</div>';
+    html += '<div class="ad-dim" style="margin-bottom:14px;font-size:13px;">Descarga plantillas, manuales y contratos para agregar o capacitar nuevos puntos.</div>';
+
+    // 1. CSV import template
+    html += '<div class="ad-card" style="margin-bottom:10px;padding:14px;">';
+    html += '<div style="font-weight:700;margin-bottom:4px;">📊 Plantilla de importación masiva (CSV)</div>';
+    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">Para registrar varios puntos a la vez. Llena y sube desde "Importar Excel".</div>';
+    html += '<button class="ad-btn sm" id="adDlCsv" style="background:#e8f5e9;color:#2e7d32;">Descargar CSV</button>';
+    html += '</div>';
+
+    // 2. XLSX import template
+    html += '<div class="ad-card" style="margin-bottom:10px;padding:14px;">';
+    html += '<div style="font-weight:700;margin-bottom:4px;">📊 Plantilla de importación masiva (Excel)</div>';
+    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">Mismo formato que el CSV pero en formato Excel (.xlsx).</div>';
+    html += '<button class="ad-btn sm" id="adDlXlsx" style="background:#e8f5e9;color:#2e7d32;">Descargar XLSX</button>';
+    html += '</div>';
+
+    // 3. Operator manual
+    html += '<div class="ad-card" style="margin-bottom:10px;padding:14px;">';
+    html += '<div style="font-weight:700;margin-bottom:4px;">📖 Manual del operador de Punto</div>';
+    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">Guía paso a paso para que el personal del punto use el Panel Voltika (login, inventario, envíos, entregas).</div>';
+    html += '<button class="ad-btn sm" id="adDlManual" style="background:#fff3e0;color:#e65100;">Abrir manual (imprimible)</button>';
+    html += '</div>';
+
+    // 4. Contract template
+    html += '<div class="ad-card" style="margin-bottom:10px;padding:14px;">';
+    html += '<div style="font-weight:700;margin-bottom:4px;">📄 Contrato de afiliación — plantilla</div>';
+    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">Contrato estándar Voltika ↔ Punto afiliado. Personalizable por cliente.</div>';
+    html += '<button class="ad-btn sm" id="adDlContrato" style="background:#e3f2fd;color:#1565c0;">Abrir contrato (imprimible)</button>';
+    html += '</div>';
+
+    html += '<div style="text-align:right;margin-top:14px;"><button class="ad-btn ghost" onclick="ADApp.closeModal()">Cerrar</button></div>';
+
+    ADApp.modal(html);
+
+    // CSV download (same content as import modal)
+    $('#adDlCsv').on('click', function(){
+      var csv = 'Acción,Nombre,Tipo,Dirección,Colonia,Ciudad,Estado,CP,Teléfono,Email,Latitud,Longitud,Horarios,Capacidad,Descripción\n';
+      csv += 'agregar,Punto Ejemplo,entrega,Av. Reforma 123,Juárez,Ciudad de México,CDMX,06600,5551234567,punto@ejemplo.com,19.4326,-99.1332,Lun-Vie 9:00-18:00,20,Punto de entrega ejemplo\n';
+      csv += 'actualizar,Punto Existente,center,Blvd. Centro 456,Centro,Querétaro,QRO,76000,4421234567,centro@ejemplo.com,20.5881,-100.3899,Lun-Sab 10:00-20:00,50,Centro Voltika actualizado\n';
+      csv += 'eliminar,Punto A Eliminar,,,,,,76060,,,,,,,,\n';
+      downloadBlob(['\uFEFF' + csv], 'text/csv;charset=utf-8;', 'plantilla_puntos.csv');
+    });
+
+    // XLSX download (server endpoint)
+    $('#adDlXlsx').on('click', function(){
+      window.location.href = 'php/puntos/plantilla-xlsx.php';
+    });
+
+    // Manual (open in new tab, printable)
+    $('#adDlManual').on('click', function(){
+      window.open('php/puntos/manual-punto.php', '_blank');
+    });
+
+    // Contrato (open in new tab, printable)
+    $('#adDlContrato').on('click', function(){
+      window.open('php/puntos/contrato-plantilla.php', '_blank');
+    });
+  }
+
+  function downloadBlob(parts, type, filename){
+    var blob = new Blob(parts, {type: type});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
   }
 
   function showForm(p){
