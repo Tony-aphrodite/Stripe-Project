@@ -34,15 +34,13 @@ window.AD_dashboard = (function(){
       {label:'Apartadas por pago', value:k.unidades_apartadas, cls:'yellow'},
       {label:'Pendientes de envío', value:k.en_transito, cls:'yellow'},
       {label:'Pendientes de entrega a clientes', value:k.pendientes_entrega_clientes, cls:'yellow'},
+      {label:'Placas pendientes', value:k.placas_pendientes||0, cls:(k.placas_pendientes||0)>0?'yellow':'green'},
+      {label:'Quálitas pendientes', value:k.seguro_pendientes||0, cls:(k.seguro_pendientes||0)>0?'yellow':'green'},
     ];
-    // Environment badge
+    // Environment badge hidden in customer-facing dashboard — configurable via
+    // the APP_ENV .env var. Re-enable below if you want a visible indicator.
     var envBadge = '';
-    if(k.app_env === 'live'){
-      envBadge = '<span style="background:#00C851;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-left:10px;vertical-align:middle;">LIVE</span>';
-    } else {
-      envBadge = '<span style="background:#ff9800;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-left:10px;vertical-align:middle;">TEST</span>';
-    }
-    var html = '<div class="ad-h1">Dashboard '+envBadge+'</div><div class="ad-kpis">';
+    var html = '<div class="ad-h1">Dashboard '+envBadge+'</div><div class="ad-kpis" style="grid-template-columns:repeat(4,1fr);">';
     kpis.forEach(function(kpi){
       html += '<div class="ad-kpi"><div class="label">'+kpi.label+'</div><div class="value '+kpi.cls+'">'+kpi.value+'</div></div>';
     });

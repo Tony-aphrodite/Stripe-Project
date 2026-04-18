@@ -65,6 +65,10 @@ switch ($eventType) {
         handlePaymentFailed($event->data->object);
         break;
 
+    case 'payment_intent.created':
+        handlePaymentPending($event->data->object);
+        break;
+
     default:
         webhookLog("Unhandled event type: $eventType");
         break;
@@ -122,7 +126,7 @@ function handlePaymentSucceeded($paymentIntent) {
 
         $stmt = $pdo->prepare("
             SELECT nombre, email, telefono, modelo, color, ciudad, estado, cp,
-                   tpago, precio, total, pedido, stripe_pi
+                   tpago, precio, total, pedido, stripe_pi, punto_nombre, punto_id
             FROM transacciones
             WHERE stripe_pi = ?
             LIMIT 1
@@ -151,6 +155,10 @@ function handlePaymentSucceeded($paymentIntent) {
             webhookLog("Pedido VK-{$order['pedido']} awaiting manual bike assignment in admin panel");
 
             sendConfirmationEmail($order, $methodLabel);
+
+            // ── WhatsApp / SMS notification (MSG 1 or MSG 2) ────────────────
+            sendPurchaseWhatsApp($order);
+
             return;
         }
 
@@ -177,6 +185,7 @@ function handlePaymentSucceeded($paymentIntent) {
             if ($order) {
                 webhookLog("Found order in pedidos: pedido #{$order['pedido']} for {$order['email']}");
                 sendConfirmationEmail($order, $methodLabel);
+                sendPurchaseWhatsApp($order);
                 return;
             }
         }
@@ -203,20 +212,22 @@ function handlePaymentFailed($paymentIntent) {
  * Send confirmation email using the same template as confirmar-orden.php (contado).
  */
 function sendConfirmationEmail($order, $methodLabel) {
-    $nombre    = $order['nombre']  ?? '';
-    $email     = $order['email']   ?? '';
-    $modelo    = $order['modelo']  ?? '';
-    $color     = $order['color']   ?? '';
-    $ciudad    = $order['ciudad']  ?? '';
-    $estado    = $order['estado']  ?? '';
-    $total     = floatval($order['total'] ?? 0);
-    $pedidoNum = $order['pedido']  ?? time();
+    $nombre      = $order['nombre']       ?? '';
+    $email       = $order['email']        ?? '';
+    $modelo      = $order['modelo']       ?? '';
+    $color       = $order['color']        ?? '';
+    $ciudad      = $order['ciudad']       ?? '';
+    $estado      = $order['estado']       ?? '';
+    $total       = floatval($order['total'] ?? 0);
+    $pedidoNum   = $order['pedido']       ?? time();
+    $puntoNombre = trim($order['punto_nombre'] ?? '');
 
     if (empty($email)) {
         webhookLog("Cannot send email — no email address for pedido #$pedidoNum");
         return;
     }
 
+    $tienePunto = ($puntoNombre !== '');
     $montoFormateado = '$' . number_format($total, 0, '.', ',') . ' MXN';
     $pagoDescripcion = "Pago $methodLabel de $montoFormateado";
     $whatsapp = '+52 55 1341 6370';
@@ -248,21 +259,57 @@ function sendConfirmationEmail($order, $methodLabel) {
 <tr><td style="padding:28px;">
 
 <h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Hola, ' . htmlspecialchars($nombre) . ' 👋</h2>
-<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika est&aacute; confirmada.</h3>
+' . ($tienePunto
+    ? '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu compra ha sido confirmada correctamente.</h3>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">Tu Voltika ya est&aacute; en proceso.</p>'
+    : '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika est&aacute; confirmada.</h3>
 <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">Gracias por tu compra. Hemos recibido tu pago correctamente y tu orden ya est&aacute; en proceso.</p>
-<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dar&aacute; seguimiento a tu entrega para que recibas tu moto de forma segura y sin complicaciones.</p>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dar&aacute; seguimiento a tu entrega para que recibas tu moto de forma segura y sin complicaciones.</p>') . '
 
 <!-- DETALLE DE TU COMPRA -->
 <div ' . $section . '>DETALLE DE TU COMPRA</div>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-<tr><td ' . $tdl . '>N&uacute;mero de orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
-<tr><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Ciudad de entrega</td><td ' . $td . '>' . $cd . '</td></tr>
-<tr><td ' . $tdl . '>Monto pagado</td><td ' . $td . '><strong style="color:#039fe1;">' . $montoFormateado . '</strong></td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>M&eacute;todo de pago</td><td ' . $td . '>' . htmlspecialchars($pagoDescripcion) . '</td></tr>
+<tr><td ' . $tdl . '>Cliente</td><td ' . $td . '><strong>' . $n . '</strong></td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>N&uacute;mero de orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
+<tr><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
+<tr><td ' . $tdl . '>Ciudad de entrega</td><td ' . $td . '>' . $cd . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Monto pagado</td><td ' . $td . '><strong style="color:#039fe1;">' . $montoFormateado . '</strong></td></tr>
+<tr><td ' . $tdl . '>M&eacute;todo de pago</td><td ' . $td . '>' . htmlspecialchars($pagoDescripcion) . '</td></tr>
 </table>
 
+' . ($tienePunto ? '
+<!-- PUNTO CONFIRMADO -->
+<div ' . $section . '>PUNTO DE ENTREGA CONFIRMADO</div>
+<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin:12px 0 24px;border:1.5px solid #B3D4FC;">
+<p style="margin:0 0 6px;font-size:14px;color:#555;">Tu punto de entrega ha sido registrado correctamente:</p>
+<p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1a3a5c;">&#128073; ' . htmlspecialchars($puntoNombre) . '</p>
+<p style="margin:0 0 10px;font-size:15px;font-weight:700;color:#1a3a5c;">&#128073; ' . $cd . '</p>
+<p style="margin:0;font-size:13px;color:#555;">Tu punto de entrega ya est&aacute; confirmado. No es necesario realizar ning&uacute;n cambio ni contacto adicional.</p>
+</div>
+
+<div ' . $section . '>&iquest;QU&Eacute; SIGUE CON TU VOLTIKA?</div>
+<div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
+<p style="margin:12px 0 4px;"><strong style="color:#1a3a5c;">&#9989; 1. Preparaci&oacute;n de tu moto</strong></p>
+<p style="margin:0 0 4px;">Estamos preparando tu Voltika para enviarla al punto que seleccionaste.</p>
+<p style="margin:0 0 12px;">Esto incluye: revisi&oacute;n completa, preparaci&oacute;n log&iacute;stica y env&iacute;o seguro.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">&#128666; 2. Env&iacute;o al punto de entrega</strong></p>
+<p style="margin:0 0 4px;">Tu moto ser&aacute; enviada directamente al punto seleccionado.</p>
+<p style="margin:0 0 12px;">&#128233; Te notificaremos por correo y WhatsApp cuando tu moto llegue al punto.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">&#128295; 3. Preparaci&oacute;n en sitio</strong></p>
+<p style="margin:0 0 4px;">Una vez que tu moto llegue: se realiza revisi&oacute;n final y se deja lista para entrega.</p>
+<p style="margin:0 0 12px;">&#128233; Te avisaremos nuevamente cuando est&eacute; lista para recogerla.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">&#127949; 4. Entrega de tu Voltika</strong></p>
+<p style="margin:0;">Cuando recibas el aviso final: acudes al punto seleccionado, validas tu identidad y recibes tu moto lista para rodar.</p>
+</div>
+
+<div ' . $section . '>&iquest;CU&Aacute;NDO RECIBO MI VOLTIKA?</div>
+<div style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">
+<p style="margin:0 0 8px;">El tiempo de entrega depende de la disponibilidad y log&iacute;stica en tu zona.</p>
+<p style="margin:0 0 4px;">&#128073; No necesitas hacer nada.</p>
+<p style="margin:0;">&#128073; Nosotros te mantendremos informado en cada etapa.</p>
+</div>'
+: '
 <!-- QUE SIGUE -->
 <div ' . $section . '>&iquest;QU&Eacute; SIGUE?</div>
 <div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
@@ -276,7 +323,7 @@ function sendConfirmationEmail($order, $methodLabel) {
 
 <!-- CUANDO RECIBO -->
 <div ' . $section . '>&iquest;CU&Aacute;NDO RECIBO MI VOLTIKA?</div>
-<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y log&iacute;stica en tu zona.<br>Tu asesor Voltika te confirmar&aacute; la fecha exacta junto con el punto asignado.</p>
+<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y log&iacute;stica en tu zona.<br>Tu asesor Voltika te confirmar&aacute; la fecha exacta junto con el punto asignado.</p>') . '
 
 <!-- ENTREGA SEGURA -->
 <div ' . $section . '>ENTREGA SEGURA (IMPORTANTE)</div>
@@ -330,7 +377,9 @@ function sendConfirmationEmail($order, $methodLabel) {
 </body>
 </html>';
 
-    $asunto = 'Tu Voltika est&aacute; confirmada, Orden #' . $pedidoNum;
+    $asunto = $tienePunto
+        ? 'Tu Voltika ya est&aacute; en proceso &#128640; Orden #' . $pedidoNum
+        : 'Tu Voltika est&aacute; confirmada, Orden #' . $pedidoNum;
 
     try {
         $sent = sendMail($email, $nombre, $asunto, $cuerpo);
@@ -344,27 +393,136 @@ function sendConfirmationEmail($order, $methodLabel) {
 }
 
 /**
+ * Handle payment_intent.created — mark ciclo as pending_manual for OXXO/SPEI.
+ * This prevents auto-cobro from charging the card while awaiting OXXO/SPEI acreditation.
+ */
+function handlePaymentPending($paymentIntent) {
+    $piId = $paymentIntent->id ?? '';
+    $pmTypes = $paymentIntent->payment_method_types ?? [];
+
+    $isOxxo = in_array('oxxo', $pmTypes);
+    $isSpei = in_array('customer_balance', $pmTypes);
+
+    if (!$isOxxo && !$isSpei) return;
+
+    $meta = (array)($paymentIntent->metadata ?? []);
+    $cicloId = (int)($meta['ciclo_id'] ?? 0);
+
+    if (!$cicloId) {
+        webhookLog("payment_intent.created for OXXO/SPEI but no ciclo_id in metadata: $piId");
+        return;
+    }
+
+    webhookLog("Marking ciclo #$cicloId as pending_manual (OXXO/SPEI payment pending): $piId");
+
+    try {
+        $pdo = getDB();
+        $pdo->prepare("
+            UPDATE ciclos_pago
+            SET estado = 'pending_manual', stripe_payment_intent = ?
+            WHERE id = ? AND estado IN ('pending','overdue')
+        ")->execute([$piId, $cicloId]);
+    } catch (PDOException $e) {
+        webhookLog("pending_manual update error: " . $e->getMessage());
+    }
+}
+
+/**
+ * Send WhatsApp/SMS purchase notification (MSG 1 or MSG 2) + delayed portal message.
+ * For OXXO/SPEI payments confirmed via webhook.
+ */
+function sendPurchaseWhatsApp($order) {
+    try {
+        require_once __DIR__ . '/voltika-notify.php';
+
+        $puntoNombre = trim($order['punto_nombre'] ?? '');
+        $tienePunto  = ($puntoNombre !== '');
+        $ciudad      = ($order['ciudad'] ?? '') . (($order['estado'] ?? '') ? ', ' . $order['estado'] : '');
+        $tpago       = $order['tpago'] ?? 'contado';
+        if ($tpago === 'unico') $tpago = 'contado';
+
+        $notifyData = [
+            'nombre'    => $order['nombre'] ?? '',
+            'modelo'    => $order['modelo'] ?? '',
+            'punto'     => $puntoNombre,
+            'ciudad'    => $ciudad,
+            'telefono'  => $order['telefono'] ?? '',
+            'email'     => $order['email'] ?? '',
+            'whatsapp'  => $order['telefono'] ?? '',
+            'cliente_id'=> null,
+        ];
+
+        // MSG 1 or MSG 2
+        if ($tienePunto) {
+            voltikaNotify('compra_punto_definido', $notifyData);
+        } else {
+            voltikaNotify('compra_punto_pendiente', $notifyData);
+        }
+
+        // MSG 1B/1C/1D — delayed 5 minutes
+        $esCredito = in_array($tpago, ['credito', 'enganche', 'parcial'], true);
+        if ($esCredito) {
+            voltikaNotifyDelayed('portal_plazos', $notifyData, 300);
+        } elseif ($tpago === 'msi') {
+            voltikaNotifyDelayed('portal_msi', $notifyData, 300);
+        } else {
+            voltikaNotifyDelayed('portal_contado', $notifyData, 300);
+        }
+
+        webhookLog("WhatsApp/SMS notification sent for " . ($order['email'] ?? 'unknown'));
+    } catch (Throwable $e) {
+        webhookLog("WhatsApp notification error: " . $e->getMessage());
+    }
+}
+
+/**
  * Handle ciclos_pago update for subscription payments.
  * Reads subscripcion_id and ciclos from PaymentIntent metadata.
  * Previously handled by a separate portal webhook — now unified here.
+ *
+ * Determines payment type from metadata:
+ *   tipo=auto_cobro → paid_auto (from cron)
+ *   otherwise       → paid_manual (OXXO, SPEI, manual card, advance payment)
  */
 function handleCiclosPagoUpdate($paymentIntent) {
     $piId = $paymentIntent->id ?? '';
     $meta = (array)($paymentIntent->metadata ?? []);
-    $subId = (int)($meta['subscripcion_id'] ?? 0);
+    $subId  = (int)($meta['subscripcion_id'] ?? 0);
     $ciclos = $meta['ciclos'] ?? '';
 
+    // Also handle single ciclo_id from manual payment flows
+    $cicloId = (int)($meta['ciclo_id'] ?? 0);
+    if (!$subId && !$ciclos && !$cicloId) return;
+
+    $tipo = ($meta['tipo'] ?? '') === 'auto_cobro' ? 'paid_auto' : 'paid_manual';
+
+    // Single ciclo update (from manual payment / OXXO / SPEI)
+    if ($cicloId && !$ciclos) {
+        webhookLog("Updating single ciclo #$cicloId to $tipo, PI=$piId");
+        try {
+            $pdo = getDB();
+            $pdo->prepare("UPDATE ciclos_pago SET estado = ?, stripe_payment_intent = ?, fecha_pago = NOW()
+                WHERE id = ? AND estado NOT IN ('paid_manual','paid_auto')")
+                ->execute([$tipo, $piId, $cicloId]);
+            webhookLog("ciclo #$cicloId updated to $tipo");
+        } catch (PDOException $e) {
+            webhookLog("ciclo update DB ERROR: " . $e->getMessage());
+        }
+        return;
+    }
+
+    // Batch ciclos update (from auto-cobro or multi-week payment)
     if (!$subId || !$ciclos) return;
 
-    webhookLog("Updating ciclos_pago: subscripcion=$subId, ciclos=$ciclos, PI=$piId");
+    webhookLog("Updating ciclos_pago: subscripcion=$subId, ciclos=$ciclos, PI=$piId, tipo=$tipo");
 
     try {
         $pdo = getDB();
         $nums = array_map('intval', explode(',', $ciclos));
         $ph = implode(',', array_fill(0, count($nums), '?'));
-        $stmt = $pdo->prepare("UPDATE ciclos_pago SET estado = 'paid_auto', stripe_payment_intent = ?
+        $stmt = $pdo->prepare("UPDATE ciclos_pago SET estado = ?, stripe_payment_intent = ?, fecha_pago = NOW()
             WHERE subscripcion_id = ? AND semana_num IN ($ph) AND estado NOT IN ('paid_manual','paid_auto')");
-        $stmt->execute([$piId, $subId, ...$nums]);
+        $stmt->execute([$tipo, $piId, $subId, ...$nums]);
         $updated = $stmt->rowCount();
         webhookLog("ciclos_pago updated: $updated rows for subscripcion=$subId");
     } catch (PDOException $e) {

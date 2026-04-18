@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Voltika — Sincronizar pago_estado con Stripe</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; background: #f7f8fa; }
+  h1 { font-size: 1.3rem; }
+  .card { background: #fff; border-radius: 10px; padding: 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 1rem; }
+  button { padding: .7rem 1.4rem; border: none; border-radius: 7px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-right: .5rem; }
+  .btn-dry { background: #ffd666; color: #664d00; }
+  .btn-run { background: #52c41a; color: #fff; }
+  .btn-run[disabled] { background: #ccc; cursor: not-allowed; }
+  .summary { font-weight: 700; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+  .ok   { background: #e6f4ea; color: #1e7e34; }
+  .warn { background: #fffbe6; color: #ad6800; }
+  .fail { background: #fde8e8; color: #c41e3a; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #eee; }
+  th { background: #fafafa; }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; background: #f5f5f5; padding: 1px 4px; border-radius: 3px; }
+  .result { white-space: pre-wrap; background: #0d1117; color: #c9d1d9; padding: 1rem; border-radius: 6px; font-family: monospace; font-size: .78rem; max-height: 320px; overflow: auto; }
+  input[type=number] { padding: .4rem; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 100px; }
+</style>
+</head>
+<body>
+
+<h1>🔄 Sincronizar <code>pago_estado</code> con Stripe</h1>
+
+<div class="card">
+  <p>
+    Busca filas en <code>transacciones</code> cuyo <code>stripe_pi</code> apunta a un PaymentIntent
+    que Stripe ya marcó <strong>succeeded</strong>, pero el <code>pago_estado</code> en DB sigue
+    siendo <code>pendiente</code> / <code>parcial</code> / vacío.
+    Actualiza a <code>pagada</code>.
+  </p>
+  <p style="color:#666;font-size:.85rem;">
+    También marca como <code>cancelado</code> PIs que Stripe canceló.<br>
+    Complementa <code>verificar-stripe.php</code> (que detecta PIs huérfanos sin fila).
+  </p>
+  <div style="margin:14px 0;">
+    <label style="font-size:13px;">Ventana de tiempo: últimas
+      <input type="number" id="hours" value="168" min="1" max="8760"> horas
+      <small style="color:#888;">(168 = 7 días, 720 = 30 días, 8760 = 1 año)</small>
+    </label>
+  </div>
+  <div>
+    <button class="btn-dry" onclick="run(true)">1. Previsualizar</button>
+    <button class="btn-run" id="btnRun" disabled onclick="go()">2. Ejecutar sincronización</button>
+  </div>
+  <p style="color:#666;font-size:.85rem;margin-top:8px;">⚠ Debes estar logueado en <a href="/admin/" target="_blank">/admin_test</a> como admin.</p>
+</div>
+
+<div id="summary"></div>
+
+<div id="tableCard" class="card" style="display:none">
+  <h3 style="margin-top:0">Filas que se actualizarán</h3>
+  <table><thead><tr>
+    <th>ID</th><th>Pedido</th><th>Cliente</th><th>Monto</th><th>Antes</th><th>Después</th><th>Stripe PI</th>
+  </tr></thead><tbody id="tbody"></tbody></table>
+</div>
+
+<div class="card" id="resCard" style="display:none">
+  <h3 style="margin-top:0">Respuesta cruda</h3>
+  <div class="result" id="result"></div>
+</div>
+
+<script>
+const ENDPOINT = '/admin/php/ventas/sync-pago-estado.php';
+
+async function run(dryRun) {
+  const sum = document.getElementById('summary');
+  const tc  = document.getElementById('tableCard');
+  const tb  = document.getElementById('tbody');
+  const rc  = document.getElementById('resCard');
+  const rr  = document.getElementById('result');
+  const hours = parseInt(document.getElementById('hours').value) || 168;
+
+  sum.innerHTML = '<div class="summary warn">⏳ Consultando Stripe... puede tardar 10-30 segundos</div>';
+  tc.style.display = 'none';
+  rc.style.display = 'none';
+
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({ dry_run: dryRun, hours: hours })
+    });
+    const d = await res.json();
+    rr.textContent = JSON.stringify(d, null, 2);
+    rc.style.display = 'block';
+
+    if (!res.ok || !d.ok) {
+      sum.innerHTML = `<div class="summary fail">❌ ${d.error || 'Error'}</div>`;
+      return;
+    }
+
+    const details = d.details || [];
+    const errs = d.errors || [];
+    let cls = errs.length ? 'fail' : (dryRun ? 'warn' : 'ok');
+    const icon = errs.length ? '❌' : (dryRun ? '⚠' : '✅');
+
+    sum.innerHTML = `<div class="summary ${cls}">
+      ${icon}
+      Escaneadas: <strong>${d.scanned}</strong> ·
+      ${dryRun ? 'A actualizar' : 'Actualizadas'}: <strong>${d.updated}</strong> ·
+      Aún pending en Stripe: <strong>${d.stripe_pending}</strong> ·
+      Errores: <strong>${errs.length}</strong>
+    </div>`;
+
+    if (details.length) {
+      tc.style.display = 'block';
+      tb.innerHTML = details.map(r => `
+        <tr>
+          <td>${r.id}</td>
+          <td><code>VK-${r.pedido || ''}</code></td>
+          <td>${(r.nombre || '').substring(0,30)}</td>
+          <td>${r.total ? ('$'+Number(r.total).toLocaleString('es-MX')) : '—'}</td>
+          <td style="color:#ad6800">${r.previous || '—'}</td>
+          <td style="color:#1e7e34;font-weight:700">${r.new_status}</td>
+          <td><code>${(r.stripe_pi || '').substring(0,25)}...</code></td>
+        </tr>
+      `).join('');
+    }
+
+    if (dryRun) {
+      document.getElementById('btnRun').disabled = (d.updated === 0);
+    } else {
+      document.getElementById('btnRun').disabled = true;
+    }
+
+    if (errs.length) {
+      sum.innerHTML += `<div class="card"><strong>Errores:</strong><pre style="font-size:12px;">${JSON.stringify(errs, null, 2)}</pre></div>`;
+    }
+  } catch (e) {
+    sum.innerHTML = `<div class="summary fail">❌ ${e.message}</div>`;
+  }
+}
+
+function go() {
+  if (!confirm('¿Ejecutar la sincronización?\n\nEsto actualizará el campo pago_estado en transacciones según Stripe. No hay undo.\n\n¿Continuar?')) return;
+  run(false);
+}
+</script>
+
+</body>
+</html>

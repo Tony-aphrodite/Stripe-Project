@@ -47,7 +47,22 @@ $binaryFields = [
     'calcomanias_correctas','alineacion_correcta','sin_burbujas','sin_desprendimientos',
     'sin_rayones','acabados_correctos',
     'embalaje_correcto','protecciones_colocadas','caja_sin_dano','sellos_colocados',
+    'empaque_accesorios','empaque_llaves',
     'declaracion_aceptada','validacion_final',
+];
+
+// Mandatory photo categories — each must have at least 1 image on complete
+$photoCategories = [
+    'foto_unidad_completa'        => 'Unidad completa',
+    'foto_vin'                    => 'VIN',
+    'foto_tablero_encendido'      => 'Tablero encendido',
+    'foto_bateria'                => 'Batería',
+    'foto_contenido_previo_cierre'=> 'Contenido previo cierre',
+    'foto_caja_cerrada'           => 'Caja cerrada',
+    'foto_sellos'                 => 'Sellos',
+    'foto_detalle_calcomanias'    => 'Detalle calcomanías',
+    'foto_empaque_accesorios'     => 'Empaque de accesorios',
+    'foto_empaque_llaves'         => 'Empaque de llaves',
 ];
 
 $vals = [
@@ -71,6 +86,10 @@ $vals['completado']  = !empty($d['completado']) ? 1 : 0;
 
 // If marking complete, validate all required fields
 if ($vals['completado']) {
+    // When config_baterias = '1', bateria_2 is "si aplica" — auto-pass it
+    if ((string)$vals['config_baterias'] === '1') {
+        $vals['bateria_2'] = 1;
+    }
     $missing = [];
     foreach ($binaryFields as $f) {
         if (!$vals[$f]) $missing[] = $f;
@@ -79,6 +98,33 @@ if ($vals['completado']) {
         adminJsonOut([
             'error' => 'Faltan ' . count($missing) . ' items por completar para finalizar el checklist',
             'missing' => $missing,
+        ], 400);
+    }
+    if (trim((string)$vals['num_motor']) === '') {
+        adminJsonOut(['error' => 'Falta el Número de motor en Identificación de unidad.'], 400);
+    }
+    // Verify at least 1 photo per category (reads current DB state since
+    // photos are uploaded separately via subir-foto.php and persisted
+    // before this save call)
+    $missingPhotos = [];
+    if ($prev) {
+        $cols = array_keys($photoCategories);
+        $select = implode(',', array_map(fn($c) => "`$c`", $cols));
+        $stmt = $pdo->prepare("SELECT $select FROM checklist_origen WHERE id=?");
+        $stmt->execute([$prev['id']]);
+        $photoRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        foreach ($photoCategories as $col => $label) {
+            $arr = json_decode($photoRow[$col] ?? '[]', true);
+            if (!is_array($arr) || count($arr) === 0) $missingPhotos[] = $label;
+        }
+    } else {
+        // No prior record → no photos at all
+        $missingPhotos = array_values($photoCategories);
+    }
+    if ($missingPhotos) {
+        adminJsonOut([
+            'error' => 'Faltan fotos en ' . count($missingPhotos) . ' categoría(s): ' . implode(', ', $missingPhotos),
+            'missing_photos' => $missingPhotos,
         ], 400);
     }
 }
@@ -103,11 +149,19 @@ if ($prev) {
     $checkId = (int)$pdo->lastInsertId();
 }
 
-// If completed, generate hash
+// If completed, generate hash + advance moto state (por_llegar → recibida)
 if ($vals['completado']) {
     $hashData = json_encode($vals) . $checkId . date('c');
     $hash = hash('sha256', $hashData);
     $pdo->prepare("UPDATE checklist_origen SET hash_registro=? WHERE id=?")->execute([$hash, $checkId]);
+
+    $pdo->prepare("UPDATE inventario_motos SET
+            estado='recibida',
+            fecha_estado=NOW(),
+            fmod=NOW(),
+            log_estados=JSON_ARRAY_APPEND(COALESCE(log_estados,'[]'), '$', JSON_OBJECT('estado','recibida','fecha',NOW(),'usuario',?,'origen','checklist_origen_completado'))
+        WHERE id=? AND estado IN ('por_llegar')")
+        ->execute([$uid, $motoId]);
 }
 
 adminLog('checklist_origen_' . ($vals['completado'] ? 'completado' : 'guardado'), [

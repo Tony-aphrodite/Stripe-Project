@@ -76,6 +76,7 @@ $colMap = [
     'horarios'    => findCol($headerRow, ['horarios', 'horario', 'hours', 'schedule']),
     'capacidad'   => findCol($headerRow, ['capacidad', 'capacity', 'cap']),
     'descripcion' => findCol($headerRow, ['descripcion', 'descripción', 'description', 'notas', 'notes']),
+    'servicios'   => findCol($headerRow, ['servicios', 'services', 'servicio']),
 ];
 
 if ($colMap['nombre'] === null) {
@@ -125,14 +126,32 @@ $stmtChk = $pdo->prepare("SELECT id FROM puntos_voltika WHERE nombre = ? AND cp 
 $stmtChkByName = $pdo->prepare("SELECT id FROM puntos_voltika WHERE nombre = ? LIMIT 1");
 $stmtIns = $pdo->prepare("INSERT INTO puntos_voltika
     (nombre, tipo, direccion, colonia, ciudad, estado, cp,
-     telefono, email, lat, lng, horarios, capacidad, descripcion,
+     telefono, email, lat, lng, horarios, capacidad, descripcion, servicios,
      activo, codigo_venta, codigo_electronico)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)");
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)");
 
 $stmtUpd = $pdo->prepare("UPDATE puntos_voltika SET
     tipo=?, direccion=?, colonia=?, ciudad=?, estado=?, cp=?,
-    telefono=?, email=?, lat=?, lng=?, horarios=?, capacidad=?, descripcion=?
+    telefono=?, email=?, lat=?, lng=?, horarios=?, capacidad=?, descripcion=?, servicios=?
     WHERE id=?");
+
+// Parse a Servicios cell — accepts pipe, semicolon or comma separators.
+// Valid canonical labels live in admin-puntos.js servicioOpts.
+$allowedServicios = ['Entrega','Exhibición y venta','Servicio Técnico','Pruebas de Manejo','Refacciones'];
+$normalizeServicios = function (string $raw) use ($allowedServicios): ?string {
+    if ($raw === '') return null;
+    $parts = preg_split('/[|;,]+/', $raw) ?: [];
+    $clean = [];
+    foreach ($parts as $p) {
+        $p = trim($p);
+        if ($p === '') continue;
+        foreach ($allowedServicios as $ok) {
+            if (strcasecmp($p, $ok) === 0) { $clean[] = $ok; break; }
+        }
+    }
+    $clean = array_values(array_unique($clean));
+    return $clean ? json_encode($clean, JSON_UNESCAPED_UNICODE) : null;
+};
 
 $stmtDel = $pdo->prepare("UPDATE puntos_voltika SET activo = 0 WHERE id = ?");
 
@@ -179,6 +198,7 @@ for ($i = 1; $i < count($rows); $i++) {
     $horarios   = getVal($row, $colMap['horarios']);
     $capacidad  = getVal($row, $colMap['capacidad']) !== '' ? (int)getVal($row, $colMap['capacidad']) : 0;
     $descripcion = getVal($row, $colMap['descripcion']);
+    $serviciosJson = $normalizeServicios(getVal($row, $colMap['servicios']));
 
     try {
         if ($accion === 'eliminar') {
@@ -209,6 +229,7 @@ for ($i = 1; $i < count($rows); $i++) {
                     $ciudad ?: null, $estado ?: null, $cp ?: null,
                     $telefono ?: null, $email ?: null, $lat, $lng,
                     $horarios ?: null, $capacidad, $descripcion ?: null,
+                    $serviciosJson,
                     $existing['id']
                 ]);
                 $actualizados++;
@@ -232,6 +253,7 @@ for ($i = 1; $i < count($rows); $i++) {
                 $ciudad ?: null, $estado ?: null, $cp ?: null,
                 $telefono ?: null, $email ?: null, $lat, $lng,
                 $horarios ?: null, $capacidad, $descripcion ?: null,
+                $serviciosJson,
                 $codVenta, $codElec,
             ]);
             $created++;

@@ -1,0 +1,92 @@
+<?php
+/**
+ * POST — Iniciar proceso de entrega al cliente: generar OTP y enviar por SMS
+ * Body: { moto_id }
+ */
+require_once __DIR__ . '/../bootstrap.php';
+$ctx = puntoRequireAuth();
+
+$d = puntoJsonIn();
+$motoId = (int)($d['moto_id'] ?? 0);
+if (!$motoId) puntoJsonOut(['error' => 'moto_id requerido'], 400);
+
+$pdo = getDB();
+$stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id=? AND punto_voltika_id=?");
+$stmt->execute([$motoId, $ctx['punto_id']]);
+$moto = $stmt->fetch(PDO::FETCH_ASSOC);
+if (!$moto) puntoJsonOut(['error' => 'Moto no encontrada en este punto'], 404);
+if (!$moto['cliente_telefono']) puntoJsonOut(['error' => 'Moto no tiene cliente asignado'], 400);
+
+// Per dashboards_diagrams.pdf (Delivery process): delivery is blocked if payment is not complete.
+// Allowed: 'pagada' (cash/MSI) or 'pagada_completa'. 'parcial' (credito with enganche only) requires
+// the credit plan to be fully paid before release. Anything else blocks delivery.
+$pagoEstado = strtolower(trim($moto['pago_estado'] ?? ''));
+$pagoOk = in_array($pagoEstado, ['pagada'], true);
+
+if (!$pagoOk && $pagoEstado === 'parcial') {
+    // Credito flow — allow only if the subscription is current and has no overdue cycles.
+    // The real table is `subscripciones_credito`, linked to the moto via `inventario_moto_id`.
+    try {
+        $sq = $pdo->prepare("SELECT s.id FROM subscripciones_credito s
+            WHERE s.inventario_moto_id = ? AND s.estado IN ('activa','active','completada','completed')
+            ORDER BY s.id DESC LIMIT 1");
+        $sq->execute([$motoId]);
+        $subId = $sq->fetchColumn();
+        if ($subId) {
+            $vq = $pdo->prepare("SELECT COUNT(*) FROM ciclos_pago
+                WHERE subscripcion_id = ? AND estado IN ('overdue','pending')
+                  AND fecha_vencimiento < CURDATE()");
+            $vq->execute([(int)$subId]);
+            $vencidos = (int)$vq->fetchColumn();
+            if ($vencidos === 0) $pagoOk = true;
+        }
+    } catch (Throwable $e) { error_log('iniciar entrega pago check: ' . $e->getMessage()); }
+}
+
+if (!$pagoOk) {
+    puntoJsonOut([
+        'error' => 'No se puede iniciar la entrega: el pago no está completo.',
+        'pago_estado' => $pagoEstado ?: 'desconocido'
+    ], 403);
+}
+
+// Generate OTP
+$otp = puntoGenOTP();
+$expires = date('Y-m-d H:i:s', time() + 600);
+
+// Upsert entrega record
+$pdo->prepare("INSERT INTO entregas (moto_id, pedido_num, cliente_nombre, cliente_email, cliente_telefono,
+    otp_code, otp_expires, estado, dealer_id)
+    VALUES (?,?,?,?,?,?,?,'otp_enviado',?)
+    ON DUPLICATE KEY UPDATE otp_code=VALUES(otp_code), otp_expires=VALUES(otp_expires), estado='otp_enviado'")
+    ->execute([
+        $motoId, $moto['pedido_num'], $moto['cliente_nombre'],
+        $moto['cliente_email'], $moto['cliente_telefono'],
+        $otp, $expires, $ctx['user_id']
+    ]);
+
+// Send SMS
+$tel = preg_replace('/\D/', '', $moto['cliente_telefono']);
+if (strlen($tel) === 10) $tel = '52' . $tel;
+$msg = "Voltika: Tu código de entrega es {$otp}. Muéstralo al asesor en el punto. No lo compartas.";
+$smsKey = defined('SMSMASIVOS_API_KEY') ? SMSMASIVOS_API_KEY : (getenv('SMSMASIVOS_API_KEY') ?: '');
+$smsSent = false;
+if ($smsKey) {
+    $ch = curl_init('https://api.smsmasivos.com.mx/sms/send');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json','Authorization: Bearer '.$smsKey],
+        CURLOPT_POSTFIELDS => json_encode(['phone_number'=>$tel,'message'=>$msg]),
+        CURLOPT_TIMEOUT => 8,
+    ]);
+    $res = curl_exec($ch); curl_close($ch);
+    $smsSent = !empty($res);
+}
+
+puntoLog('entrega_otp_enviado', ['moto_id' => $motoId]);
+puntoJsonOut([
+    'ok' => true,
+    'sms_enviado' => $smsSent,
+    'test_code' => $smsSent ? null : $otp, // fallback for dev
+    'cliente' => ['nombre' => $moto['cliente_nombre'], 'telefono' => $moto['cliente_telefono']]
+]);

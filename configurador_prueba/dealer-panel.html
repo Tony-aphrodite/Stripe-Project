@@ -279,13 +279,13 @@ const ESTADOS_LABEL = {
 };
 
 const PASOS_TRACKER = [
-  { key: 'por_llegar',          label: 'Por Llegar',            short: 'Por llegar',  icon: '🚚' },
-  { key: 'recibida',            label: 'Recibida',              short: 'Recibida',    icon: '✓'  },
-  { key: 'por_ensamblar',       label: 'Por Ensamblar',         short: 'P.Ensamblar', icon: '🔧' },
-  { key: 'en_ensamble',         label: 'En Ensamble',           short: 'Ensamble',    icon: '⚙️' },
-  { key: 'lista_para_entrega',  label: 'Lista para Entrega',    short: 'Lista',       icon: '⚡' },
-  { key: 'por_validar_entrega', label: 'Por Validar Entrega',   short: 'Validar',     icon: '🔒' },
-  { key: 'entregada',           label: 'Entregada',             short: 'Entregada',   icon: '🏍️' },
+  { key: 'por_llegar',          label: 'Por Llegar',            short: 'Por llegar',  icon: '' },
+  { key: 'recibida',            label: 'Recibida',              short: 'Recibida',    icon: '' },
+  { key: 'por_ensamblar',       label: 'Por Ensamblar',         short: 'P.Ensamblar', icon: '' },
+  { key: 'en_ensamble',         label: 'En Ensamble',           short: 'Ensamble',    icon: '' },
+  { key: 'lista_para_entrega',  label: 'Lista para Entrega',    short: 'Lista',       icon: '' },
+  { key: 'por_validar_entrega', label: 'Por Validar Entrega',   short: 'Validar',     icon: '' },
+  { key: 'entregada',           label: 'Entregada',             short: 'Entregada',   icon: '' },
 ];
 
 const PASO_IDX = Object.fromEntries(PASOS_TRACKER.map((p, i) => [p.key, i]));
@@ -317,7 +317,7 @@ function showPanel()  {
 
 function updateHeaderPunto() {
   const el = document.getElementById('header-punto');
-  el.innerHTML = '<span>' + esc(dealer.punto_nombre || 'Panel Dealer') + '</span> ⚡';
+  el.innerHTML = '<span>' + esc(dealer.punto_nombre || 'Panel Dealer') + '</span>';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -453,7 +453,7 @@ function renderDashboard(data) {
 
   html += `<div style="text-align:center;padding:16px 0;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
     <a href="inventario.html" class="dealer-inventario-link"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg> Ver inventario</a>
-    ${dealer && ['admin','cedis'].includes(dealer.rol) ? '<a href="cedis.html" class="dealer-inventario-link" style="border-color:#0f172a;color:#0f172a;">🏭 CEDIS Control</a>' : ''}
+    ${dealer && ['admin','cedis'].includes(dealer.rol) ? '<a href="cedis.html" class="dealer-inventario-link" style="border-color:#0f172a;color:#0f172a;">CEDIS Control</a>' : ''}
   </div>`;
 
   el.innerHTML = html;
@@ -626,9 +626,9 @@ function renderMotoCard(m) {
       <div class="card-cliente">${esc(m.cliente_nombre || 'Sin asignar')}</div>
       <div class="card-modelo">${esc(m.modelo)} ${esc(m.color)}</div>
       <div class="card-color" style="display:none">Color: ${esc(m.color)}</div>
-      <div class="card-vin" style="cursor:pointer;" onclick="event.stopPropagation();openDocHub(${m.id})">VIN: <strong style="color:var(--vka-blue);text-decoration:underline;">${esc(m.vin_display || '****')}</strong> 📋</div>
+      <div class="card-vin" style="cursor:pointer;" onclick="event.stopPropagation();openDocHub(${m.id})">VIN: <strong style="color:var(--vka-blue);text-decoration:underline;">${esc(m.vin_display || '****')}</strong></div>
       <div class="card-dias ${diasAlert ? 'alerta' : ''}">
-        ${diasAlert ? '⚠️' : ''} ${esc(diasLabel)}
+        ${esc(diasLabel)}
       </div>
       <div class="card-status-block">
         <div class="card-status-label ${statusCls}">${ESTADOS_LABEL[m.estado] || m.estado}</div>
@@ -704,7 +704,7 @@ async function openDocHub(motoId) {
     } else {
       d.documentos.forEach(doc => {
         const statusColor = doc.completado ? '#10b981' : '#f59e0b';
-        const statusIcon = doc.completado ? '✅' : '⏳';
+        const statusIcon = doc.completado ? '' : '';
         const statusText = doc.completado ? 'Completado' : (doc.existe ? 'En progreso' : 'No iniciado');
         const clickable = doc.url ? 'cursor:pointer;' : '';
         const target = doc.target || '_self';
@@ -761,7 +761,7 @@ function openFaceCompare(motoId, tipoAsignacion) {
   body.innerHTML = `
     <div style="text-align:center;margin-bottom:12px;">
       <div style="font-size:14px;font-weight:700;color:var(--vka-blue-dark);margin-bottom:4px;">
-        ${isCredit ? '📸 Tomar foto para comparación facial' : '📸 Tomar foto del cliente y su INE'}
+        ${isCredit ? ' Tomar foto para comparación facial' : ' Tomar foto del cliente y su INE'}
       </div>
       <div style="font-size:12px;color:var(--vka-grey);">
         ${isCredit ? 'Se comparará automáticamente con la selfie del crédito' : 'Solo para registro — sin comparación automática'}
@@ -792,7 +792,7 @@ function openFaceCompare(motoId, tipoAsignacion) {
       <button class="btn btn-ghost" id="face-btn-retake" onclick="retakePhoto()" style="flex:1;display:none;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Otra vez</button>
     </div>
     <button class="btn btn-success" id="face-btn-send" onclick="sendFaceCompare()" style="width:100%;margin-top:8px;display:none;">
-      ${isCredit ? '🔍 Comparar caras' : '💾 Guardar foto'}
+      ${isCredit ? ' Comparar caras' : ' Guardar foto'}
     </button>
 
     <!-- Result area -->
@@ -890,7 +890,7 @@ async function sendFaceCompare() {
 
   if (!blob) {
     btn.disabled = false;
-    btn.textContent = faceTipo === 'credito' ? '🔍 Comparar caras' : '💾 Guardar foto';
+    btn.textContent = faceTipo === 'credito' ? ' Comparar caras' : ' Guardar foto';
     resultEl.innerHTML = '<div style="color:var(--vka-red);font-size:13px;">No se encontró la foto.</div>';
     resultEl.style.display = 'block';
     return;
@@ -919,7 +919,7 @@ async function sendFaceCompare() {
     } else if (d.comparison && d.match !== undefined) {
       // Face comparison result
       const matchColor = d.match ? '#10b981' : '#ef4444';
-      const matchIcon = d.match ? '✅' : '❌';
+      const matchIcon = d.match ? '' : '';
       const matchBg = d.match ? '#d1fae5' : '#fee2e2';
       const similarity = d.similarity ? Math.round(d.similarity * 100) + '%' : 'N/A';
 
@@ -949,7 +949,7 @@ async function sendFaceCompare() {
       // API failed, show manual comparison
       resultEl.innerHTML = `
         <div style="padding:12px;background:#FFF8E1;border-radius:8px;border:1px solid #FFD54F;text-align:center;">
-          <div style="font-size:14px;font-weight:700;color:#F9A825;">⚠️ Comparación automática no disponible</div>
+          <div style="font-size:14px;font-weight:700;color:#F9A825;"> Comparación automática no disponible</div>
           <div style="font-size:12px;color:#5D4037;margin-top:4px;">${esc(d.message)}</div>
         </div>
         ${d.original_selfie ? `
@@ -971,7 +971,7 @@ async function sendFaceCompare() {
       // Contado — just saved
       resultEl.innerHTML = `
         <div style="padding:12px;background:#d1fae5;border-radius:8px;text-align:center;">
-          <div style="font-size:14px;font-weight:700;color:#10b981;">✅ ${esc(d.message)}</div>
+          <div style="font-size:14px;font-weight:700;color:#10b981;"> ${esc(d.message)}</div>
         </div>
       `;
     }
@@ -982,7 +982,7 @@ async function sendFaceCompare() {
     resultEl.style.display = 'block';
   } finally {
     btn.disabled = false;
-    btn.textContent = faceTipo === 'credito' ? '🔍 Comparar caras' : '💾 Guardar foto';
+    btn.textContent = faceTipo === 'credito' ? ' Comparar caras' : ' Guardar foto';
   }
 }
 
@@ -1028,10 +1028,10 @@ async function ejecutarAccion() {
 
     if (d.ok) {
       closeModal('modal-accion');
-      showToast('✅ ' + pendingAccion.titulo + ' completado', 'success');
+      showToast(' ' + pendingAccion.titulo + ' completado', 'success');
       await loadDashboard();
     } else {
-      showToast('❌ ' + (d.error || 'Error desconocido'), 'error');
+      showToast(' ' + (d.error || 'Error desconocido'), 'error');
     }
   } catch {
     showToast('Error de conexión', 'error');
@@ -1150,11 +1150,11 @@ async function saveChecklist(completar) {
   const d = await r.json();
 
   if (d.ok) {
-    showToast(completar && d.completado ? '✅ Checklist completo — moto en validación' : '💾 Checklist guardado', 'success');
+    showToast(completar && d.completado ? ' Checklist completo — moto en validación' : ' Checklist guardado', 'success');
     closeModal('modal-checklist');
     if (completar && d.completado) await loadDashboard();
   } else {
-    showToast('❌ ' + (d.error || 'Error al guardar'), 'error');
+    showToast(' ' + (d.error || 'Error al guardar'), 'error');
   }
 }
 
@@ -1183,7 +1183,7 @@ async function openQRModal() {
     startQRScan(video);
   } catch (e) {
     document.getElementById('qr-scanner-area').innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:13px;text-align:center;padding:20px;">📵 Cámara no disponible.<br>Usa el campo manual.</div>';
+      '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:13px;text-align:center;padding:20px;"> Cámara no disponible.<br>Usa el campo manual.</div>';
   }
 }
 
@@ -1214,7 +1214,7 @@ async function processQR(codigo) {
   const resultEl = document.getElementById('qr-result');
   resultEl.style.display = 'block';
   resultEl.className = 'qr-result';
-  resultEl.textContent = '⏳ Verificando...';
+  resultEl.textContent = ' Verificando...';
 
   try {
     const r = await fetch('php/admin-qr-verify.php', {
@@ -1226,17 +1226,17 @@ async function processQR(codigo) {
 
     if (d.ok) {
       resultEl.className = 'qr-result ok';
-      resultEl.innerHTML = `<strong>✅ ${d.mensaje}</strong><br>
+      resultEl.innerHTML = `<strong> ${d.mensaje}</strong><br>
         ${d.data?.cliente_nombre ? `Cliente: ${esc(d.data.cliente_nombre)}<br>` : ''}
         ${d.data?.modelo ? `Moto: ${esc(d.data.modelo)} ${esc(d.data.color || '')}<br>` : ''}
         ${d.data?.estado ? `Estado: ${ESTADOS_LABEL[d.data.estado] || d.data.estado}` : ''}`;
     } else {
       resultEl.className = 'qr-result err';
-      resultEl.textContent = '❌ ' + (d.error || 'QR no reconocido');
+      resultEl.textContent = ' ' + (d.error || 'QR no reconocido');
     }
   } catch {
     resultEl.className = 'qr-result err';
-    resultEl.textContent = '❌ Error de conexión';
+    resultEl.textContent = ' Error de conexión';
   }
 }
 

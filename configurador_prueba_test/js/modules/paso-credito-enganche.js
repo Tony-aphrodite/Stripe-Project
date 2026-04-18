@@ -90,9 +90,17 @@ var PasoCreditoEnganche = {
         html += '<span style="font-weight:700;color:var(--vk-text-primary);">Fecha M\u00e1xima de entrega</span><br>';
         html += '<strong style="color:#039fe1;font-size:16px;">' + entregaStr + '</strong>';
         html += '</div>';
-        // Show selected delivery center or city
-        var centroNombre = (state.centroEntrega && state.centroEntrega.nombre) ? state.centroEntrega.nombre : '';
-        var entregaUbicacion = centroNombre || ((state.ciudad || '') + (state.estado ? ', ' + state.estado : ''));
+        // Show selected delivery center address + city + state
+        var _c = state.centroEntrega || {};
+        var _partes = [];
+        if (_c.direccion && _c.tipo !== 'cercano') _partes.push(_c.direccion);
+        if (_c.ciudad)       _partes.push(_c.ciudad);
+        else if (state.ciudad) _partes.push(state.ciudad);
+        if (_c.estado)       _partes.push(_c.estado);
+        else if (state.estado) _partes.push(state.estado);
+        var entregaUbicacion = _partes.length
+            ? _partes.join(', ')
+            : ((state.ciudad || '') + (state.estado ? ', ' + state.estado : ''));
         html += '<div style="font-size:11px;color:var(--vk-text-muted);margin-top:6px;">';
         if (entregaUbicacion) {
             html += 'Entrega en <strong style="color:var(--vk-text-primary);">' + entregaUbicacion + '</strong>';

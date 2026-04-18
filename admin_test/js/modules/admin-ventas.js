@@ -88,16 +88,22 @@ window.AD_ventas = (function(){
       var tipoBadge = 'blue';
       if(r.tipo === 'credito-orfano') tipoBadge = 'yellow';
       if(r.tipo === 'error-captura') tipoBadge = 'red';
+      // Display label: normalize legacy 'unico' → 'contado' for operators.
+      var tipoDisplay = (r.tipo === 'unico') ? 'contado' : (r.tipo || '-');
       var alertaHtml = r.alerta
-        ? '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">⚠ '+esc(r.alerta)+'</div>'
+        ? '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">'+esc(r.alerta)+'</div>'
         : '';
 
+      var extrasHtml = '';
+      if(r.asesoria_placas) extrasHtml += '<span title="Solicitó asesoría para placas" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#FFF3E0;color:#E65100;border:1px solid #FFE0B2;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">PLACAS</span>';
+      if(r.seguro_qualitas) extrasHtml += '<span title="Solicitó seguro Quálitas" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">QUÁLITAS</span>';
+
       html += '<tr>'+
-        '<td><strong>VK-'+(r.pedido||r.id)+'</strong>'+alertaHtml+'</td>'+
+        '<td><strong>VK-'+(r.pedido||r.id)+'</strong>'+extrasHtml+alertaHtml+'</td>'+
         '<td>'+(r.nombre||'-')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
         '<td>'+(r.modelo||'-')+'</td>'+
         '<td>'+(r.color||'-')+'</td>'+
-        '<td><span class="ad-badge '+tipoBadge+'">'+(r.tipo||'-')+'</span></td>'+
+        '<td><span class="ad-badge '+tipoBadge+'">'+tipoDisplay+'</span></td>'+
         '<td>'+ADApp.money(r.monto)+'</td>'+
         '<td>'+pagoEstadoBadge(r.pago_estado, r.tipo)+'</td>'+
         '<td>'+puntoHtml+'</td>'+
@@ -107,13 +113,16 @@ window.AD_ventas = (function(){
       var stock = r.inventario_disponible;
       var transit = r.inventario_en_transito || 0;
       if(!r.moto_id && stock !== undefined){
+        var reqModelo = (r.modelo||'').replace(/\s+/g,' ').trim();
+        var reqColor  = (r.color||'').trim();
+        var reqLabel  = esc(reqModelo + (reqColor ? ' '+reqColor : '')) || 'modelo solicitado';
         if(stock === 0){
-          stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">Sin inventario</div>';
+          stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;" title="Se requiere exactamente: '+reqLabel+'">Sin '+reqLabel+' en stock</div>';
           if(transit > 0){
-            stockInfo += '<div style="font-size:11px;color:#d97706;margin-top:1px;">'+transit+' en tránsito</div>';
+            stockInfo += '<div style="font-size:11px;color:#d97706;margin-top:1px;">'+transit+' en tránsito (por llegar)</div>';
           }
         } else {
-          stockInfo = '<div style="font-size:11px;color:#059669;margin-top:2px;">'+stock+' disponible'+(stock>1?'s':'')+'</div>';
+          stockInfo = '<div style="font-size:11px;color:#059669;margin-top:2px;">'+stock+' '+reqLabel+' disponible'+(stock>1?'s':'')+'</div>';
         }
       }
 
@@ -135,14 +144,30 @@ window.AD_ventas = (function(){
         }
         actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
       } else if(asignada){
-        motoCell = '<span class="ad-badge green">'+(r.moto_vin||'****')+'</span>';
+        // Truncate long VINs so the ACCION column stays inside the viewport
+        var vinFull  = (r.moto_vin||'****');
+        var vinShort = vinFull.length > 10 ? vinFull.slice(-8) : vinFull;
+        motoCell = '<span class="ad-badge green" title="'+esc(vinFull)+'" style="font-family:ui-monospace,Menlo,monospace;">'+esc(vinShort)+'</span>';
         actions  = '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
       } else {
         motoCell = '<span class="ad-badge red">Sin asignar</span>'+stockInfo;
         actions  = '';
         if(ADApp.canWrite()){
-          actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
-                     'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
+          // Only allow "Asignar" once payment is confirmed. Credit-family orders
+          // release the moto on the enganche (pago_estado='parcial'); every other
+          // tpago (contado/unico/msi/spei/oxxo) needs full 'pagada'.
+          var pe = (r.pago_estado||'').toLowerCase();
+          var tp = (r.tipo||r.tpago||'').toLowerCase();
+          var isCreditFam = ['credito','credito-orfano','enganche','parcial'].indexOf(tp) >= 0;
+          var canAssign = (pe === 'pagada' || pe === 'aprobada' || pe === 'approved' || pe === 'paid')
+                       || (isCreditFam && pe === 'parcial');
+          if (canAssign) {
+            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
+                       'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
+          } else {
+            actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+';opacity:.55;cursor:not-allowed;" '+
+                       'title="El pago de esta orden aún no ha sido confirmado" disabled>Pendiente</button>';
+          }
         }
         actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
       }
@@ -249,7 +274,7 @@ window.AD_ventas = (function(){
     var tipoLabel = (tipo||'').toLowerCase();
     // Map payment method labels
     var metodo = '';
-    if(['contado','stripe','tarjeta'].indexOf(tipoLabel)>=0) metodo = 'Tarjeta';
+    if(['contado','unico','stripe','tarjeta'].indexOf(tipoLabel)>=0) metodo = 'Tarjeta';
     else if(tipoLabel==='spei') metodo = 'SPEI';
     else if(tipoLabel==='oxxo') metodo = 'OXXO';
     else if(['credito','credito-orfano','enganche'].indexOf(tipoLabel)>=0) metodo = 'Crédito';
@@ -321,6 +346,7 @@ window.AD_ventas = (function(){
     html += fRow('Color', r.color||'—');
     var tipoMap = {
       'contado': {label:'Contado · Tarjeta', color:'green'},
+      'unico':   {label:'Contado · Tarjeta', color:'green'},  // legacy alias
       'spei':    {label:'Contado · SPEI',    color:'green'},
       'oxxo':    {label:'Contado · OXXO',    color:'green'},
       'msi':     {label:'MSI · Tarjeta',     color:'blue'},
@@ -383,9 +409,11 @@ window.AD_ventas = (function(){
     }
     html += '</div>';
 
-    // ── Section: Moto asignada ──
+    // ── Section: Estatus de moto ──
+    // Neutral heading so it reads naturally whether the moto is already
+    // assigned (shows VIN + estado) or still pending (shows "Sin asignar").
     secIx = 0;
-    html += secHead('Moto asignada','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>');
+    html += secHead('Estatus de moto','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>');
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     if(r.moto_id){
       html += fRow('VIN', '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+(r.moto_vin||'****')+'</code>');
@@ -395,24 +423,234 @@ window.AD_ventas = (function(){
     }
     html += '</div>';
 
+    // ── Section: Servicios adicionales ──
+    secIx = 0;
+    html += secHead('Servicios adicionales','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>');
+    html += renderServiciosAdicionales(r, fRow);
+
     ADApp.modal(html);
+
+    // Wire Servicios adicionales action buttons
+    $('.vkServicioAction').off('click').on('click', function(){
+      var action = $(this).data('action');
+      var id     = $(this).data('id');
+      if(action === 'placas')  openGestionPlacas(id, r);
+      if(action === 'seguro')  openGestionSeguro(id, r);
+    });
+  }
+
+  function renderServiciosAdicionales(r, fRow){
+    var placas = !!r.asesoria_placas;
+    var seguro = !!r.seguro_qualitas;
+    var h = '';
+
+    if(!placas && !seguro){
+      h += '<div style="padding:10px 12px;background:var(--ad-surface-2);border-radius:6px;font-size:12px;color:var(--ad-dim);margin-bottom:8px;">'+
+        'El cliente no solicitó servicios adicionales.'+
+        '</div>';
+      return h;
+    }
+
+    // Asesoría para placas
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:10px;">';
+    if(placas){
+      var placasEstado = (r.placas_estado||'pendiente').toLowerCase();
+      var placasColor = placasEstado==='completado' ? 'green' : (placasEstado==='en_proceso' ? 'blue' : 'yellow');
+      var placasLabel = placasEstado==='completado' ? 'Completado' : (placasEstado==='en_proceso' ? 'En proceso' : 'Pendiente');
+      h += fRow('Asesoría de placas', '<span class="ad-badge '+placasColor+'">'+placasLabel+'</span>');
+      h += fRow('Para estado', r.estado || '—');
+      if(r.placas_gestor_nombre){
+        h += fRow('Gestor', r.placas_gestor_nombre);
+        if(r.placas_gestor_telefono) h += fRow('Tel. gestor', '<a href="tel:'+r.placas_gestor_telefono+'" style="color:var(--ad-primary);text-decoration:none;">'+r.placas_gestor_telefono+'</a>');
+      }
+      if(r.placas_nota){
+        h += '<div style="grid-column:1/-1;padding:6px 10px;font-size:11px;color:var(--ad-dim);background:var(--ad-surface-2);border-radius:4px;margin:4px 0;"><strong>Nota:</strong> '+esc(r.placas_nota)+'</div>';
+      }
+    } else {
+      h += fRow('Asesoría de placas', '<span class="ad-badge gray">No solicitado</span>');
+    }
+    h += '</div>';
+
+    // Seguro Quálitas
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
+    if(seguro){
+      var seguroEstado = (r.seguro_estado||'pendiente').toLowerCase();
+      var seguroColor = seguroEstado==='activo' ? 'green' : (seguroEstado==='cotizado' ? 'blue' : 'yellow');
+      var seguroLabel = seguroEstado==='activo' ? 'Póliza activa' : (seguroEstado==='cotizado' ? 'Cotizado' : 'Pendiente');
+      h += fRow('Seguro Quálitas', '<span class="ad-badge '+seguroColor+'">'+seguroLabel+'</span>');
+      h += fRow('Modelo asegurar', (r.modelo||'—')+' · '+(r.color||'—'));
+      if(r.seguro_cotizacion){
+        h += fRow('Cotización', '$'+Number(r.seguro_cotizacion).toLocaleString('es-MX'));
+      }
+      if(r.seguro_poliza){
+        h += fRow('N° póliza', '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+esc(r.seguro_poliza)+'</code>');
+      }
+      if(r.seguro_nota){
+        h += '<div style="grid-column:1/-1;padding:6px 10px;font-size:11px;color:var(--ad-dim);background:var(--ad-surface-2);border-radius:4px;margin:4px 0;"><strong>Nota:</strong> '+esc(r.seguro_nota)+'</div>';
+      }
+    } else {
+      h += fRow('Seguro Quálitas', '<span class="ad-badge gray">No solicitado</span>');
+    }
+    h += '</div>';
+
+    // Action buttons (wired in Phase C — if column exists)
+    if(placas || seguro){
+      h += '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">';
+      if(placas){
+        h += '<button class="ad-btn sm ghost vkServicioAction" data-action="placas" data-id="'+(r.id||'')+'" data-pedido="'+(r.pedido||'')+'" style="font-size:11px;">Gestionar placas</button>';
+      }
+      if(seguro){
+        h += '<button class="ad-btn sm ghost vkServicioAction" data-action="seguro" data-id="'+(r.id||'')+'" data-pedido="'+(r.pedido||'')+'" style="font-size:11px;">Gestionar Quálitas</button>';
+      }
+      h += '</div>';
+    }
+
+    return h;
+  }
+
+  // ── Servicios adicionales: Gestión modals ───────────────────────────────
+  function openGestionPlacas(txId, r){
+    var estado = (r.placas_estado||'pendiente');
+    var html = '<div class="ad-h2">Gestión de placas</div>';
+    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:14px;">Pedido <strong>VK-'+(r.pedido||txId)+'</strong> · '+(r.nombre||'')+'</div>';
+    html += '<div style="background:var(--ad-surface-2);padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;">';
+    html += '<strong>Cliente:</strong> '+(r.nombre||'—')+' · <a href="tel:'+(r.telefono||'')+'" style="color:var(--ad-primary);">'+(r.telefono||'')+'</a><br>';
+    html += '<strong>Estado MX:</strong> '+(r.estado||'—')+' · <strong>Ciudad:</strong> '+(r.ciudad||'—');
+    html += '</div>';
+
+    html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Estado de la gestión</label>';
+    html += '<select class="ad-select" id="vkPlacasEstado" style="width:100%;margin-bottom:10px;">';
+    ['pendiente','en_proceso','completado'].forEach(function(s){
+      html += '<option value="'+s+'"'+(estado===s?' selected':'')+'>'+s+'</option>';
+    });
+    html += '</select>';
+
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">';
+    html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Gestor asignado</label>'+
+      '<input type="text" class="ad-input" id="vkPlacasGestor" value="'+esc(r.placas_gestor_nombre||'')+'" placeholder="Nombre del gestor" style="width:100%;"></div>';
+    html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Teléfono gestor</label>'+
+      '<input type="text" class="ad-input" id="vkPlacasTel" value="'+esc(r.placas_gestor_telefono||'')+'" placeholder="555..." style="width:100%;"></div>';
+    html += '</div>';
+
+    html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Notas internas</label>';
+    html += '<textarea class="ad-input" id="vkPlacasNota" style="width:100%;min-height:60px;margin-bottom:14px;">'+esc(r.placas_nota||'')+'</textarea>';
+
+    html += '<div style="display:flex;gap:8px;">';
+    html += '<button class="ad-btn ghost" id="vkPlacasCancel" style="flex:1;">Cancelar</button>';
+    html += '<button class="ad-btn primary" id="vkPlacasSave" style="flex:1;">Guardar</button>';
+    html += '</div>';
+
+    ADApp.modal(html);
+    $('#vkPlacasCancel').on('click', function(){ ADApp.closeModal(); showDetalle(r.id); });
+    $('#vkPlacasSave').on('click', function(){
+      var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span>');
+      ADApp.api('ventas/actualizar-servicio.php', {
+        id: txId, tipo: 'placas',
+        estado:   $('#vkPlacasEstado').val(),
+        gestor:   $('#vkPlacasGestor').val(),
+        telefono: $('#vkPlacasTel').val(),
+        nota:     $('#vkPlacasNota').val(),
+      }).done(function(resp){
+        if(resp.ok){
+          // Merge changes back into local row
+          r.placas_estado          = $('#vkPlacasEstado').val();
+          r.placas_gestor_nombre   = $('#vkPlacasGestor').val();
+          r.placas_gestor_telefono = $('#vkPlacasTel').val();
+          r.placas_nota            = $('#vkPlacasNota').val();
+          ADApp.closeModal();
+          showDetalle(r.id);
+        } else {
+          alert(resp.error||'Error al guardar');
+          $btn.prop('disabled', false).text('Guardar');
+        }
+      }).fail(function(xhr){
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        alert(msg);
+        $btn.prop('disabled', false).text('Guardar');
+      });
+    });
+  }
+
+  function openGestionSeguro(txId, r){
+    var estado = (r.seguro_estado||'pendiente');
+    var html = '<div class="ad-h2">Gestión Seguro Quálitas</div>';
+    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:14px;">Pedido <strong>VK-'+(r.pedido||txId)+'</strong> · '+(r.nombre||'')+'</div>';
+    html += '<div style="background:var(--ad-surface-2);padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;">';
+    html += '<strong>Cliente:</strong> '+(r.nombre||'—')+' · <a href="tel:'+(r.telefono||'')+'" style="color:var(--ad-primary);">'+(r.telefono||'')+'</a><br>';
+    html += '<strong>Unidad:</strong> '+(r.modelo||'—')+' · '+(r.color||'—');
+    html += '</div>';
+
+    html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Estado</label>';
+    html += '<select class="ad-select" id="vkSeguroEstado" style="width:100%;margin-bottom:10px;">';
+    ['pendiente','cotizado','activo'].forEach(function(s){
+      html += '<option value="'+s+'"'+(estado===s?' selected':'')+'>'+s+'</option>';
+    });
+    html += '</select>';
+
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">';
+    html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Monto cotización (MXN)</label>'+
+      '<input type="number" step="0.01" class="ad-input" id="vkSeguroCotiz" value="'+(r.seguro_cotizacion||'')+'" placeholder="0.00" style="width:100%;"></div>';
+    html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">N° de póliza</label>'+
+      '<input type="text" class="ad-input" id="vkSeguroPoliza" value="'+esc(r.seguro_poliza||'')+'" placeholder="POL-..." style="width:100%;"></div>';
+    html += '</div>';
+
+    html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Notas internas</label>';
+    html += '<textarea class="ad-input" id="vkSeguroNota" style="width:100%;min-height:60px;margin-bottom:14px;">'+esc(r.seguro_nota||'')+'</textarea>';
+
+    html += '<div style="display:flex;gap:8px;">';
+    html += '<button class="ad-btn ghost" id="vkSeguroCancel" style="flex:1;">Cancelar</button>';
+    html += '<button class="ad-btn primary" id="vkSeguroSave" style="flex:1;">Guardar</button>';
+    html += '</div>';
+
+    ADApp.modal(html);
+    $('#vkSeguroCancel').on('click', function(){ ADApp.closeModal(); showDetalle(r.id); });
+    $('#vkSeguroSave').on('click', function(){
+      var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span>');
+      ADApp.api('ventas/actualizar-servicio.php', {
+        id: txId, tipo: 'seguro',
+        estado:     $('#vkSeguroEstado').val(),
+        cotizacion: $('#vkSeguroCotiz').val(),
+        poliza:     $('#vkSeguroPoliza').val(),
+        nota:       $('#vkSeguroNota').val(),
+      }).done(function(resp){
+        if(resp.ok){
+          r.seguro_estado     = $('#vkSeguroEstado').val();
+          r.seguro_cotizacion = $('#vkSeguroCotiz').val();
+          r.seguro_poliza     = $('#vkSeguroPoliza').val();
+          r.seguro_nota       = $('#vkSeguroNota').val();
+          ADApp.closeModal();
+          showDetalle(r.id);
+        } else {
+          alert(resp.error||'Error al guardar');
+          $btn.prop('disabled', false).text('Guardar');
+        }
+      }).fail(function(xhr){
+        var msg = 'Error de conexión';
+        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        alert(msg);
+        $btn.prop('disabled', false).text('Guardar');
+      });
+    });
   }
 
   var _lastRows = [];
   var _activeTab = 'todas';
 
   function renderTabs(rows){
-    var counts = {todas:rows.length, completadas:0, en_proceso:0, pendientes:0, errores:0};
+    var counts = {todas:rows.length, completadas:0, en_proceso:0, pendientes:0, errores:0, extras:0};
     rows.forEach(function(r){
       var cat = categorizePago(r);
       counts[cat]++;
+      if(r.asesoria_placas || r.seguro_qualitas) counts.extras++;
     });
     var tabs = [
       {key:'todas',       label:'Todas'},
       {key:'completadas', label:'Completadas'},
       {key:'en_proceso',  label:'En proceso'},
       {key:'pendientes',  label:'Pendientes'},
-      {key:'errores',     label:'Errores'}
+      {key:'errores',     label:'Errores'},
+      {key:'extras',      label:'Con extras'}
     ];
     var html = '';
     tabs.forEach(function(t){
@@ -445,6 +683,7 @@ window.AD_ventas = (function(){
 
   function filterRows(rows){
     if(_activeTab === 'todas') return rows;
+    if(_activeTab === 'extras') return rows.filter(function(r){ return r.asesoria_placas || r.seguro_qualitas; });
     return rows.filter(function(r){ return categorizePago(r) === _activeTab; });
   }
 
@@ -508,7 +747,7 @@ window.AD_ventas = (function(){
       $('#rcvConfirm').prop('disabled', true).text('Recuperando...');
       ADApp.api('ventas/recuperar-orden.php', payload).done(function(resp){
         if(resp.ok){
-          $('#rcvMsg').html('<span style="color:#059669;">✓ Recuperada · tx_id='+resp.tx_id+' · folio='+(resp.folio||'')+'</span>');
+          $('#rcvMsg').html('<span style="color:#059669;">Recuperada · tx_id='+resp.tx_id+' · folio='+(resp.folio||'')+'</span>');
           setTimeout(function(){ ADApp.closeModal(); loadData(); }, 1200);
         } else {
           $('#rcvMsg').html('<span style="color:#b91c1c;">Error: '+(resp.error||'desconocido')+'</span>');
@@ -616,7 +855,7 @@ window.AD_ventas = (function(){
       $('#vkeGuardar').prop('disabled', true).text('Guardando...');
       ADApp.api('ventas/actualizar-vksc.php', payload).done(function(resp){
         if(resp.ok){
-          $('#vkeMsg').html('<span style="color:#059669;">✓ Actualizada. '+resp.updated_fields+' campos guardados.</span>');
+          $('#vkeMsg').html('<span style="color:#059669;">Actualizada. '+resp.updated_fields+' campos guardados.</span>');
           setTimeout(function(){ ADApp.closeModal(); loadData(); }, 900);
         } else {
           $('#vkeMsg').html('<span style="color:#b91c1c;">Error: '+(resp.error||'desconocido')+'</span>');

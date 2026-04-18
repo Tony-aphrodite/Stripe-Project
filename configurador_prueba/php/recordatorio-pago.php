@@ -41,7 +41,7 @@ try {
     // Fetch active credit orders with weekly payments
     // Uses the 'pedidos' table with metodo = 'credito' and estado = 'activo'
     $stmt = $pdo->query("
-        SELECT p.id, p.nombre, p.email, p.telefono,
+        SELECT p.id, p.nombre, p.apellidos, p.email, p.telefono,
                p.modelo, p.color, p.pedido_num,
                p.pago_semanal, p.plazo_meses,
                p.fecha_inicio_credito,
@@ -87,7 +87,7 @@ $enviados = 0;
 $errores  = 0;
 
 foreach ($creditos as $c) {
-    $nombre    = $c['nombre'] ?? '';
+    $nombre    = trim(($c['nombre'] ?? '') . ' ' . ($c['apellidos'] ?? ''));
     $email     = $c['email']  ?? '';
     $modelo    = $c['modelo'] ?? '';
     $color     = $c['color']  ?? '';
@@ -139,9 +139,11 @@ foreach ($creditos as $c) {
 
 <!-- Detalle -->
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
-<tr style="background:#f9fafb;"><td style="padding:10px 14px;font-size:13px;color:#6b7280;">Moto</td>
+<tr style="background:#f9fafb;"><td style="padding:10px 14px;font-size:13px;color:#6b7280;">Cliente</td>
+    <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#1a3a5c;">' . $n . '</td></tr>
+<tr><td style="padding:10px 14px;font-size:13px;color:#6b7280;">Moto</td>
     <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#1a3a5c;">' . $m . '</td></tr>
-<tr><td style="padding:10px 14px;font-size:13px;color:#6b7280;">Pedido</td>
+<tr style="background:#f9fafb;"><td style="padding:10px 14px;font-size:13px;color:#6b7280;">Pedido</td>
     <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#1a3a5c;">#' . $p . '</td></tr>
 </table>
 

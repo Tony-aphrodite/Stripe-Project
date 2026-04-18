@@ -28,7 +28,10 @@ if (!$json) {
 }
 
 $paymentIntentId = $json['paymentIntentId'] ?? '';
-$pagoTipo        = $json['pagoTipo']        ?? 'unico';
+// Default to 'contado' (single payment). Legacy value 'unico' is normalized
+// here for consistency with the admin panel, reports and client portal.
+$pagoTipo        = $json['pagoTipo']        ?? 'contado';
+if ($pagoTipo === 'unico') $pagoTipo = 'contado';
 $nombre          = $json['nombre']          ?? '';
 $email           = $json['email']           ?? '';
 $telefono        = $json['telefono']        ?? '';
@@ -89,10 +92,11 @@ if ($caso === 3 && $referidoTipo === 'punto' && $referidoId) {
 }
 
 // Entropy-enriched pedido number — plain time() collides when two users
-// confirm within the same second, which was making the second INSERT silently
-// fail on any future UNIQUE constraint and leaving the order invisible to
-// the admin dashboard (see listar.php).
-$pedidoNum = time() . '-' . substr(bin2hex(random_bytes(3)), 0, 4);
+// confirm within the same second. Four-hex-char entropy (16 bits) was not
+// enough in practice (duplicates observed when the same client retried the
+// flow multiple times within a single second). Eight hex chars (32 bits) makes
+// collisions statistically impossible even under heavy retry bursts.
+$pedidoNum = time() . '-' . bin2hex(random_bytes(4));
 $fecha     = date('Y-m-d H:i');
 
 // Folio de contrato — now generated BEFORE the DB insert so it can be
@@ -107,6 +111,77 @@ $dbSaveOk = false;
 $dbSaveErr = '';
 try {
     $pdo = getDB();
+
+    // ── Ensure UNIQUE INDEX on stripe_pi + pedido (DB-level dedup) ─────────
+    // Final line of defense against duplicate orders. If the admin already
+    // ran the cleanup tool, these ALTERs succeed and from now on MySQL
+    // physically rejects duplicate INSERTs. If duplicates still exist the
+    // ALTER throws — we catch, log, and rely on the GET_LOCK layer below.
+    try {
+        $idxCheck = $pdo->query("SHOW INDEX FROM transacciones WHERE Key_name='uniq_stripe_pi'")->fetchAll();
+        if (!$idxCheck) {
+            $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX uniq_stripe_pi (stripe_pi)");
+            error_log('confirmar-orden: UNIQUE INDEX uniq_stripe_pi created');
+        }
+    } catch (Throwable $e) {
+        error_log('confirmar-orden UNIQUE INDEX stripe_pi skipped: ' . $e->getMessage());
+    }
+    try {
+        $idxPedido = $pdo->query("SHOW INDEX FROM transacciones WHERE Key_name='uniq_pedido'")->fetchAll();
+        if (!$idxPedido) {
+            $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX uniq_pedido (pedido)");
+            error_log('confirmar-orden: UNIQUE INDEX uniq_pedido created');
+        }
+    } catch (Throwable $e) {
+        error_log('confirmar-orden UNIQUE INDEX pedido skipped: ' . $e->getMessage());
+    }
+
+    // ── Idempotency guard (race-safe) ──────────────────────────────────────
+    // If the user clicks CONTINUAR COMPRA more than once (e.g. after a
+    // factura-validation bounce, a network retry, or a double-tap), the same
+    // Stripe PaymentIntent can arrive 2+ times in quick succession. A plain
+    // SELECT-then-INSERT leaks a race where 3 concurrent requests all pass
+    // the duplicate check before any commits. We serialize using MySQL
+    // GET_LOCK keyed on the PaymentIntent id so only one request at a time
+    // can run the check + insert for a given order.
+    $confirmLock = null;
+    if (!empty($paymentIntentId)) {
+        $confirmLock = 'vk_confirm_' . substr($paymentIntentId, 0, 60);
+        try {
+            $lockStmt = $pdo->prepare("SELECT GET_LOCK(?, 10)");
+            $lockStmt->execute([$confirmLock]);
+            $acquired = (int)$lockStmt->fetchColumn();
+            if ($acquired !== 1) {
+                // Couldn't acquire lock in 10s — fall through without dedup
+                // rather than block the user. Duplicate risk remains but
+                // extremely unlikely given 10s timeout.
+                error_log('confirmar-orden GET_LOCK timeout for ' . $confirmLock);
+                $confirmLock = null;
+            } else {
+                $dupStmt = $pdo->prepare("SELECT id, pedido FROM transacciones WHERE stripe_pi = ? ORDER BY id ASC LIMIT 1");
+                $dupStmt->execute([$paymentIntentId]);
+                $dupRow = $dupStmt->fetch(PDO::FETCH_ASSOC);
+                if ($dupRow) {
+                    // Release lock before exit
+                    $pdo->prepare("SELECT RELEASE_LOCK(?)")->execute([$confirmLock]);
+                    echo json_encode([
+                        'status'     => 'ok',
+                        'pedido'     => $dupRow['pedido'],
+                        'emailSent'  => false,
+                        'db_saved'   => true,
+                        'db_warning' => null,
+                        'deduped'    => true,
+                    ]);
+                    exit;
+                }
+                // Hold the lock through INSERT below so concurrent requests
+                // wait and observe the newly-created row on their turn.
+            }
+        } catch (Throwable $e) {
+            error_log('confirmar-orden dedup check: ' . $e->getMessage());
+            $confirmLock = null;
+        }
+    }
 
     // Recovery table: any orphan orders we couldn't write to `transacciones`
     // land here so the admin dashboard can recover them manually. Previously
@@ -157,19 +232,78 @@ try {
     // Backfill columns on pre-existing tables
     ensureTransaccionesColumns($pdo);
 
-    // Determine initial pago_estado based on payment type:
-    // - Card (unico/msi): payment already confirmed → 'pagada'
-    // - SPEI/OXXO: payment pending bank transfer → 'pendiente'
-    // - Credito/enganche: partial payment → 'parcial'
-    $pagoEstadoInit = 'pagada';
-    if (in_array($pagoTipo, ['spei', 'oxxo'], true)) {
-        $pagoEstadoInit = 'pendiente';
-    } elseif (in_array($pagoTipo, ['credito', 'enganche', 'parcial'], true)) {
+    // Determine initial pago_estado by QUERYING STRIPE for the real status.
+    // Historic bug (reported by customer 2026-04-18): this code used to blindly
+    // write 'pagada' for any card tpago without verifying with Stripe, so any
+    // client that posted a paymentIntentId whose status was still
+    // requires_action / processing / requires_payment_method ended up as
+    // 'Pagado' in the admin panel even though the payment never cleared.
+    //
+    // Now we retrieve the PaymentIntent server-side and map its status:
+    //   succeeded             → 'pagada'  (card fully cleared)
+    //   processing            → 'pendiente' (SPEI/OXXO funds in transit,
+    //                                        or card 3DS async processing)
+    //   requires_action /
+    //   requires_confirmation /
+    //   requires_payment_method →  'pendiente' (user didn't complete auth)
+    //   canceled              → 'fallido'
+    //   anything else         → 'pendiente' (conservative default)
+    //
+    // Credit/enganche/parcial keep their semantic 'parcial' irrespective of
+    // the Stripe status because only the enganche is captured up front.
+    $pagoEstadoInit = 'pendiente';
+    $stripeRealStatus = null;
+    if (in_array($pagoTipo, ['credito', 'enganche', 'parcial'], true)) {
         $pagoEstadoInit = 'parcial';
+    } elseif (!empty($paymentIntentId) && defined('STRIPE_SECRET_KEY') && STRIPE_SECRET_KEY) {
+        // Direct REST call (lightweight — no SDK dependency required here)
+        $ch = curl_init('https://api.stripe.com/v1/payment_intents/' . urlencode($paymentIntentId));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . STRIPE_SECRET_KEY],
+            CURLOPT_TIMEOUT        => 12,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($code === 200 && ($data = json_decode($resp, true)) && isset($data['status'])) {
+            $stripeRealStatus = $data['status'];
+            switch ($stripeRealStatus) {
+                case 'succeeded':
+                    $pagoEstadoInit = 'pagada';
+                    break;
+                case 'canceled':
+                    $pagoEstadoInit = 'fallido';
+                    break;
+                case 'processing':
+                case 'requires_action':
+                case 'requires_confirmation':
+                case 'requires_payment_method':
+                case 'requires_capture':
+                default:
+                    $pagoEstadoInit = 'pendiente';
+            }
+        } else {
+            // Stripe unreachable / wrong key → be conservative
+            error_log('confirmar-orden: Stripe retrieve failed for PI ' . $paymentIntentId . ' httpCode=' . $code);
+            $pagoEstadoInit = 'pendiente';
+        }
+    } elseif (empty($paymentIntentId)) {
+        // Client didn't send a paymentIntentId for a card flow — clearly not paid
+        $pagoEstadoInit = 'pendiente';
     }
 
+    // SPEI/OXXO explicit override: these are always 'pendiente' at this step
+    // (funds don't arrive immediately), regardless of what Stripe reports.
+    if (in_array($pagoTipo, ['spei', 'oxxo'], true)) {
+        $pagoEstadoInit = 'pendiente';
+    }
+
+    // INSERT IGNORE so if UNIQUE INDEX catches a duplicate stripe_pi the row
+    // is silently skipped (we fetch the existing pedido afterwards). Without
+    // IGNORE, a UNIQUE violation would throw and land in transacciones_errores.
     $stmt = $pdo->prepare("
-        INSERT INTO transacciones
+        INSERT IGNORE INTO transacciones
             (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago,
              precio, total, freg, pedido, stripe_pi,
              asesoria_placas, seguro_qualitas, punto_id, punto_nombre,
@@ -191,12 +325,14 @@ try {
         $ciudad ?: '',
         $estado ?: '',
         $cp ?: '',
-        $pagoTipo ?: 'unico',
+        $pagoTipo ?: 'contado',
         $pagoTipo === 'msi' ? $msiPago : $total,
         $total,
         $fecha,
         $pedidoNum,
-        $paymentIntentId ?: '',
+        // stripe_pi: use NULL instead of '' so MySQL UNIQUE INDEX allows
+        // multiple empty/missing values (UNIQUE treats each NULL as distinct).
+        !empty($paymentIntentId) ? $paymentIntentId : null,
         $asesoriaPlacasInt,
         $seguroQualitasInt,
         $puntoId ?: '',
@@ -212,6 +348,23 @@ try {
         defined('APP_ENV') ? APP_ENV : 'test',
     ]);
     $dbSaveOk = true;
+
+    // If INSERT IGNORE silently dropped the row due to UNIQUE stripe_pi
+    // collision, rowCount() is 0. Fetch the existing pedido and return it so
+    // the client still gets a consistent response.
+    if ($stmt->rowCount() === 0 && !empty($paymentIntentId)) {
+        try {
+            $existingStmt = $pdo->prepare("SELECT pedido FROM transacciones WHERE stripe_pi = ? LIMIT 1");
+            $existingStmt->execute([$paymentIntentId]);
+            $existingPedido = $existingStmt->fetchColumn();
+            if ($existingPedido) {
+                $pedidoNum = $existingPedido; // use the original pedido for downstream email/notify
+                error_log('confirmar-orden: duplicate stripe_pi silently ignored, reusing pedido ' . $pedidoNum);
+            }
+        } catch (Throwable $e) {
+            error_log('confirmar-orden dedup fetch: ' . $e->getMessage());
+        }
+    }
 
     // Per dashboards_diagrams.pdf: a purchase NEVER creates a motorcycle in
     // inventario_motos. Physical bikes are added by CEDIS when they arrive at
@@ -304,6 +457,14 @@ try {
     }
 }
 
+// Release the idempotency lock so concurrent requests queued behind us can
+// run their dedup SELECT and find the row we just inserted.
+if (!empty($confirmLock)) {
+    try {
+        $pdo->prepare("SELECT RELEASE_LOCK(?)")->execute([$confirmLock]);
+    } catch (Throwable $e) { /* non-fatal */ }
+}
+
 // ── Enviar email de confirmacion ──────────────────────────────────────────────
 $enganchePct    = floatval($json['enganchePct'] ?? 0);
 $plazoMeses     = intval($json['plazoMeses'] ?? 36);
@@ -332,6 +493,9 @@ $td = 'style="padding:10px 16px;border-bottom:1px solid #E5E7EB;font-size:14px;"
 $tdl = 'style="padding:10px 16px;border-bottom:1px solid #E5E7EB;font-size:14px;color:#6B7280;"';
 $section = 'style="margin:0 0 8px;padding:12px 0 6px;font-size:16px;font-weight:800;color:#1a3a5c;border-bottom:2px solid #039fe1;"';
 
+// Determine if customer selected a specific punto
+$tienePunto = ($puntoNombre !== '' && $puntoTipo !== 'cercano');
+
 $cuerpo = '<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tu Voltika está confirmada</title></head>
@@ -350,24 +514,62 @@ $cuerpo = '<!DOCTYPE html>
 <tr><td style="padding:28px;">
 
 <h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Hola, ' . htmlspecialchars($nombre) . ' 👋</h2>
-<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika está confirmada.</h3>
+' . ($tienePunto
+    ? '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu compra ha sido confirmada correctamente.</h3>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">Tu Voltika ya está en proceso.</p>'
+    : '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika está confirmada.</h3>
 <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">Gracias por tu compra. Hemos recibido tu pago correctamente y tu orden ya está en proceso.</p>
-<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dará seguimiento a tu entrega para que recibas tu moto de forma segura y sin complicaciones.</p>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dará seguimiento a tu entrega para que recibas tu moto de forma segura y sin complicaciones.</p>') . '
 
 <!-- DETALLE DE TU COMPRA -->
 <div ' . $section . '>DETALLE DE TU COMPRA</div>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-<tr><td ' . $tdl . '>Número de orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
-<tr><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Ciudad de entrega</td><td ' . $td . '>' . $cd . '</td></tr>
-<tr><td ' . $tdl . '>Monto pagado</td><td ' . $td . '><strong style="color:#039fe1;">' . $montoFormateado . '</strong></td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Método de pago</td><td ' . $td . '>' . htmlspecialchars($pagoDescripcion) . '</td></tr>
-<tr><td ' . $tdl . '>Asesoría para placas</td><td ' . $td . '>' . $asesoriaPlacas . '</td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Seguro Qualitas</td><td ' . $td . '>' . $seguroQualitas . '</td></tr>
+<tr><td ' . $tdl . '>Cliente</td><td ' . $td . '><strong>' . $n . '</strong></td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Número de orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
+<tr><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
+<tr><td ' . $tdl . '>Ciudad de entrega</td><td ' . $td . '>' . $cd . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Monto pagado</td><td ' . $td . '><strong style="color:#039fe1;">' . $montoFormateado . '</strong></td></tr>
+<tr><td ' . $tdl . '>Método de pago</td><td ' . $td . '>' . htmlspecialchars($pagoDescripcion) . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Asesoría para placas</td><td ' . $td . '>' . $asesoriaPlacas . '</td></tr>
+<tr><td ' . $tdl . '>Seguro Qualitas</td><td ' . $td . '>' . $seguroQualitas . '</td></tr>
 </table>
 <p style="font-size:10px;color:#999;line-height:1.5;margin:6px 0 16px;">Voltika solo sugiere gestores y seguros de terceros. No es responsable por su servicio, tiempos, costos ni cobertura. La contratación es responsabilidad del cliente.</p>
 
+' . ($tienePunto ? '
+<!-- PUNTO CONFIRMADO -->
+<div ' . $section . '>PUNTO DE ENTREGA CONFIRMADO</div>
+<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin:12px 0 24px;border:1.5px solid #B3D4FC;">
+<p style="margin:0 0 6px;font-size:14px;color:#555;">Tu punto de entrega ha sido registrado correctamente:</p>
+<p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1a3a5c;">👉 ' . htmlspecialchars($puntoNombre) . '</p>
+<p style="margin:0 0 10px;font-size:15px;font-weight:700;color:#1a3a5c;">👉 ' . $cd . '</p>
+<p style="margin:0;font-size:13px;color:#555;">Tu punto de entrega ya está confirmado. No es necesario realizar ningún cambio ni contacto adicional.</p>
+</div>
+
+<!-- QUÉ SIGUE -->
+<div ' . $section . '>¿QUÉ SIGUE CON TU VOLTIKA?</div>
+<div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
+<p style="margin:12px 0 4px;"><strong style="color:#1a3a5c;">✅ 1. Preparación de tu moto</strong></p>
+<p style="margin:0 0 4px;">Estamos preparando tu Voltika para enviarla al punto que seleccionaste.</p>
+<p style="margin:0 0 12px;">Esto incluye: revisión completa, preparación logística y envío seguro.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🚚 2. Envío al punto de entrega</strong></p>
+<p style="margin:0 0 4px;">Tu moto será enviada directamente al punto seleccionado.</p>
+<p style="margin:0 0 12px;">📩 Te notificaremos por correo y WhatsApp cuando tu moto llegue al punto.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🔧 3. Preparación en sitio</strong></p>
+<p style="margin:0 0 4px;">Una vez que tu moto llegue: se realiza revisión final y se deja lista para entrega.</p>
+<p style="margin:0 0 12px;">📩 Te avisaremos nuevamente cuando esté lista para recogerla.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🏍️ 4. Entrega de tu Voltika</strong></p>
+<p style="margin:0;">Cuando recibas el aviso final: acudes al punto seleccionado, validas tu identidad y recibes tu moto lista para rodar.</p>
+</div>
+
+<!-- CUÁNDO RECIBO -->
+<div ' . $section . '>¿CUÁNDO RECIBO MI VOLTIKA?</div>
+<div style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">
+<p style="margin:0 0 8px;">El tiempo de entrega depende de la disponibilidad y logística en tu zona.</p>
+<p style="margin:0 0 4px;">👉 No necesitas hacer nada.</p>
+<p style="margin:0;">👉 Nosotros te mantendremos informado en cada etapa.</p>
+</div>'
+: '
 <!-- QUÉ SIGUE -->
 <div ' . $section . '>¿QUÉ SIGUE?</div>
 <div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
@@ -381,7 +583,7 @@ $cuerpo = '<!DOCTYPE html>
 
 <!-- CUÁNDO RECIBO -->
 <div ' . $section . '>¿CUÁNDO RECIBO MI VOLTIKA?</div>
-<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y logística en tu zona.<br>Tu asesor Voltika te confirmará la fecha exacta junto con el punto asignado.</p>
+<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y logística en tu zona.<br>Tu asesor Voltika te confirmará la fecha exacta junto con el punto asignado.</p>') . '
 
 <!-- ENTREGA SEGURA -->
 <div ' . $section . '>ENTREGA SEGURA (IMPORTANTE)</div>
@@ -437,7 +639,9 @@ $cuerpo = '<!DOCTYPE html>
 
 // ── Crédito email template ────────────────────────────────────────────────────
 if ($esCredito) {
-    $asunto = 'Tu Voltika está confirmada a crédito, Orden #' . $pedidoNum;
+    $asunto = $tienePunto
+        ? 'Tu Voltika ya está en proceso 🚀 Orden #' . $pedidoNum
+        : 'Tu Voltika está confirmada a crédito, Orden #' . $pedidoNum;
 
     $cuerpo = '<!DOCTYPE html>
 <html lang="es">
@@ -455,25 +659,61 @@ if ($esCredito) {
 <tr><td style="padding:28px;">
 
 <h2 style="margin:0 0 8px;font-size:20px;color:#1a3a5c;">Hola, ' . htmlspecialchars($nombre) . ' 👋</h2>
-<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika está confirmada.</h3>
+' . ($tienePunto
+    ? '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu compra ha sido confirmada correctamente.</h3>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">Tu Voltika ya está en proceso.</p>'
+    : '<h3 style="margin:0 0 12px;font-size:17px;color:#039fe1;">Tu Voltika está confirmada.</h3>
 <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">Gracias por tu compra. Tu crédito Voltika ha sido aprobado y tu orden ya está en proceso.</p>
-<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dará seguimiento a tu entrega paso a paso para que recibas tu moto de forma segura y sin complicaciones.</p>
+<p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">A partir de este momento, nuestro equipo dará seguimiento a tu entrega paso a paso para que recibas tu moto de forma segura y sin complicaciones.</p>') . '
 
 <div ' . $section . '>DETALLE DE TU COMPRA</div>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-<tr><td ' . $tdl . '>Número de orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
-<tr><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Ciudad de entrega</td><td ' . $td . '>' . $cd . '</td></tr>
-<tr><td ' . $tdl . '>Enganche pagado</td><td ' . $td . '><strong style="color:#039fe1;">' . $engancheFormateado . '</strong></td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Pago semanal</td><td ' . $td . '><strong style="color:#039fe1;">' . $pagoSemanalFormateado . '</strong></td></tr>
-<tr><td ' . $tdl . '>Plazo</td><td ' . $td . '>' . $plazoTexto . '</td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Folio de Contrato</td><td ' . $td . '><strong>' . htmlspecialchars($folioContrato) . '</strong></td></tr>
-<tr><td ' . $tdl . '>Asesoría para placas</td><td ' . $td . '>' . $asesoriaPlacas . '</td></tr>
-<tr style="background:#F9FAFB;"><td ' . $tdl . '>Seguro Qualitas</td><td ' . $td . '>' . $seguroQualitas . '</td></tr>
+<tr><td ' . $tdl . '>Cliente</td><td ' . $td . '><strong>' . $n . '</strong></td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Número de orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
+<tr><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
+<tr><td ' . $tdl . '>Ciudad de entrega</td><td ' . $td . '>' . $cd . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Enganche pagado</td><td ' . $td . '><strong style="color:#039fe1;">' . $engancheFormateado . '</strong></td></tr>
+<tr><td ' . $tdl . '>Pago semanal</td><td ' . $td . '><strong style="color:#039fe1;">' . $pagoSemanalFormateado . '</strong></td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Plazo</td><td ' . $td . '>' . $plazoTexto . '</td></tr>
+<tr><td ' . $tdl . '>Folio de Contrato</td><td ' . $td . '><strong>' . htmlspecialchars($folioContrato) . '</strong></td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Asesoría para placas</td><td ' . $td . '>' . $asesoriaPlacas . '</td></tr>
+<tr><td ' . $tdl . '>Seguro Qualitas</td><td ' . $td . '>' . $seguroQualitas . '</td></tr>
 </table>
 <p style="font-size:10px;color:#999;line-height:1.5;margin:6px 0 16px;">Voltika solo sugiere gestores y seguros de terceros. No es responsable por su servicio, tiempos, costos ni cobertura. La contratación es responsabilidad del cliente.</p>
 
+' . ($tienePunto ? '
+<!-- PUNTO CONFIRMADO -->
+<div ' . $section . '>PUNTO DE ENTREGA CONFIRMADO</div>
+<div style="background:#E8F4FD;border-radius:10px;padding:16px;margin:12px 0 24px;border:1.5px solid #B3D4FC;">
+<p style="margin:0 0 6px;font-size:14px;color:#555;">Tu punto de entrega ha sido registrado correctamente:</p>
+<p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1a3a5c;">👉 ' . htmlspecialchars($puntoNombre) . '</p>
+<p style="margin:0 0 10px;font-size:15px;font-weight:700;color:#1a3a5c;">👉 ' . $cd . '</p>
+<p style="margin:0;font-size:13px;color:#555;">Tu punto de entrega ya está confirmado. No es necesario realizar ningún cambio ni contacto adicional.</p>
+</div>
+
+<div ' . $section . '>¿QUÉ SIGUE CON TU VOLTIKA?</div>
+<div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
+<p style="margin:12px 0 4px;"><strong style="color:#1a3a5c;">✅ 1. Preparación de tu moto</strong></p>
+<p style="margin:0 0 4px;">Estamos preparando tu Voltika para enviarla al punto que seleccionaste.</p>
+<p style="margin:0 0 12px;">Esto incluye: revisión completa, preparación logística y envío seguro.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🚚 2. Envío al punto de entrega</strong></p>
+<p style="margin:0 0 4px;">Tu moto será enviada directamente al punto seleccionado.</p>
+<p style="margin:0 0 12px;">📩 Te notificaremos por correo y WhatsApp cuando tu moto llegue al punto.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🔧 3. Preparación en sitio</strong></p>
+<p style="margin:0 0 4px;">Una vez que tu moto llegue: se realiza revisión final y se deja lista para entrega.</p>
+<p style="margin:0 0 12px;">📩 Te avisaremos nuevamente cuando esté lista para recogerla.</p>
+<p style="margin:0 0 4px;"><strong style="color:#1a3a5c;">🏍️ 4. Entrega de tu Voltika</strong></p>
+<p style="margin:0;">Cuando recibas el aviso final: acudes al punto seleccionado, validas tu identidad y recibes tu moto lista para rodar.</p>
+</div>
+
+<div ' . $section . '>¿CUÁNDO RECIBO MI VOLTIKA?</div>
+<div style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">
+<p style="margin:0 0 8px;">El tiempo de entrega depende de la disponibilidad y logística en tu zona.</p>
+<p style="margin:0 0 4px;">👉 No necesitas hacer nada.</p>
+<p style="margin:0;">👉 Nosotros te mantendremos informado en cada etapa.</p>
+</div>'
+: '
 <div ' . $section . '>¿QUÉ SIGUE?</div>
 <div style="margin-bottom:24px;font-size:14px;color:#555;line-height:1.8;">
 <p style="margin:12px 0 4px;"><strong style="color:#1a3a5c;">1. Asignación de punto de entrega</strong></p>
@@ -485,7 +725,7 @@ if ($esCredito) {
 </div>
 
 <div ' . $section . '>¿CUÁNDO RECIBO MI VOLTIKA?</div>
-<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y logística en tu zona.<br>Tu asesor Voltika te confirmará la fecha exacta junto con el punto asignado.</p>
+<p style="font-size:14px;color:#555;line-height:1.7;margin:12px 0 24px;">El tiempo de entrega depende de disponibilidad y logística en tu zona.<br>Tu asesor Voltika te confirmará la fecha exacta junto con el punto asignado.</p>') . '
 
 <div ' . $section . '>ENTREGA SEGURA (IMPORTANTE)</div>
 <div style="background:#FFF8E1;border-radius:8px;padding:16px;margin:12px 0 24px;border-left:4px solid #FFB300;">
@@ -543,10 +783,80 @@ if ($esCredito) {
 </html>';
 
 } else {
-    $asunto = 'Tu Voltika está confirmada, Orden #' . $pedidoNum;
+    $asunto = $tienePunto
+        ? 'Tu Voltika ya está en proceso 🚀 Orden #' . $pedidoNum
+        : 'Tu Voltika está confirmada, Orden #' . $pedidoNum;
 }
 
 $emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
+
+// ── WhatsApp / SMS notifications (post-purchase) ────────────────────────────
+// MSG 1 (punto defined) or MSG 2 (punto pending) — sent immediately
+// MSG 1B/1C/1D (portal access) — sent 5 minutes later via pending_notifications
+require_once __DIR__ . '/voltika-notify.php';
+
+$notifyData = [
+    'nombre'    => $nombre,
+    'modelo'    => $modelo,
+    'punto'     => $puntoNombre,
+    'ciudad'    => $ciudad . ($estado ? ', ' . $estado : ''),
+    'telefono'  => $telefono,
+    'email'     => $email,
+    'whatsapp'  => $telefono,
+    'cliente_id'=> null,
+];
+
+// MSG 1 or MSG 2 — immediate
+if ($tienePunto) {
+    voltikaNotify('compra_punto_definido', $notifyData);
+} else {
+    voltikaNotify('compra_punto_pendiente', $notifyData);
+}
+
+// MSG 1B/1C/1D — delayed 5 minutes based on purchase type
+if ($esCredito) {
+    voltikaNotifyDelayed('portal_plazos', $notifyData, 300);
+} elseif ($pagoTipo === 'msi') {
+    voltikaNotifyDelayed('portal_msi', $notifyData, 300);
+} else {
+    voltikaNotifyDelayed('portal_contado', $notifyData, 300);
+}
+
+// ── Admin alerts for Servicios adicionales ──────────────────────────────
+// When the client opts in for license-plate advisory or Quálitas insurance,
+// notify the Voltika admin so they can follow up manually. The admin number
+// is the same used elsewhere in the project (Voltika owner WhatsApp).
+$ADMIN_WA    = defined('VOLTIKA_ADMIN_WHATSAPP') ? VOLTIKA_ADMIN_WHATSAPP : '+5214421198928';
+$ADMIN_EMAIL = defined('VOLTIKA_ADMIN_EMAIL')    ? VOLTIKA_ADMIN_EMAIL    : 'admin@voltika.mx';
+
+if ($asesoriaPlacasInt === 1) {
+    voltikaNotify('admin_extras_placas', [
+        'pedido'           => $pedidoNum,
+        'nombre'           => $nombre,
+        'telefono_cliente' => $telefono,
+        'estado_mx'        => $estado,
+        'ciudad'           => $ciudad,
+        'modelo'           => $modelo,
+        'telefono'         => $ADMIN_WA,
+        'whatsapp'         => $ADMIN_WA,
+        'email'            => $ADMIN_EMAIL,
+        'cliente_id'       => null,
+    ]);
+}
+
+if ($seguroQualitasInt === 1) {
+    voltikaNotify('admin_extras_seguro', [
+        'pedido'           => $pedidoNum,
+        'nombre'           => $nombre,
+        'telefono_cliente' => $telefono,
+        'modelo'           => $modelo,
+        'color'            => $color,
+        'telefono'         => $ADMIN_WA,
+        'whatsapp'         => $ADMIN_WA,
+        'email'            => $ADMIN_EMAIL,
+        'cliente_id'       => null,
+    ]);
+}
 
 echo json_encode([
     'status'    => $dbSaveOk ? 'ok' : 'ok_warn',

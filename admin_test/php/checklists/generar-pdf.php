@@ -37,19 +37,20 @@ $fechaGen = date('d/m/Y H:i');
 $sections = [];
 if ($tipo === 'origen') {
     $sections = [
-        ['Estructura principal', ['frame_completo','chasis_sin_deformaciones','soportes_estructurales','charola_trasera']],
-        ['Sistema de rodamiento', ['llanta_delantera','llanta_trasera','rines_sin_dano','ejes_completos']],
-        ['Dirección y control', ['manubrio','soportes_completos','dashboard_incluido','controles_completos']],
-        ['Sistema de frenado', ['freno_delantero','freno_trasero','discos_sin_dano','calipers_instalados','lineas_completas']],
-        ['Sistema eléctrico', ['cableado_completo','conectores_correctos','controlador_instalado','encendido_operativo']],
-        ['Motor', ['motor_instalado','motor_sin_dano','motor_conexion']],
-        ['Baterías', ['bateria_1','bateria_2','baterias_sin_dano','cargador_incluido']],
-        ['Accesorios', ['espejos','tornilleria_completa','birlos_completos','kit_herramientas']],
-        ['Complementos', ['llaves_2','manual_usuario','carnet_garantia']],
-        ['Validación eléctrica', ['sistema_enciende','dashboard_funcional','indicador_bateria','luces_funcionando','conectores_firmes','cableado_sin_dano']],
-        ['Artes decorativos', ['calcomanias_correctas','alineacion_correcta','sin_burbujas','sin_desprendimientos','sin_rayones','acabados_correctos']],
-        ['Empaque', ['embalaje_correcto','protecciones_colocadas','caja_sin_dano','sellos_colocados']],
-        ['Declaración final', ['declaracion_aceptada','validacion_final']],
+        ['1. Estructura principal', ['frame_completo','chasis_sin_deformaciones','soportes_estructurales','charola_trasera']],
+        ['2. Sistema de rodamiento', ['llanta_delantera','llanta_trasera','rines_sin_dano','ejes_completos']],
+        ['3. Dirección y control', ['manubrio','soportes_completos','dashboard_incluido','controles_completos']],
+        ['4. Sistema de frenado', ['freno_delantero','freno_trasero','discos_sin_dano','calipers_instalados','lineas_completas']],
+        ['5. Sistema eléctrico', ['cableado_completo','conectores_correctos','controlador_instalado','encendido_operativo']],
+        ['6. Motor', ['motor_instalado','motor_sin_dano','motor_conexion']],
+        ['7. Baterías', ['bateria_1','bateria_2','baterias_sin_dano']],
+        ['8. Accesorios', ['espejos','tornilleria_completa','birlos_completos','kit_herramientas','cargador_incluido']],
+        ['9. Complementos', ['llaves_2','manual_usuario','carnet_garantia']],
+        ['10. Validación eléctrica (sin movimiento)', ['sistema_enciende','dashboard_funcional','indicador_bateria','luces_funcionando','conectores_firmes','cableado_sin_dano']],
+        ['11. Artes decorativos y acabados', ['calcomanias_correctas','alineacion_correcta','sin_burbujas','sin_desprendimientos','sin_rayones','acabados_correctos']],
+        ['12. Empaque', ['embalaje_correcto','protecciones_colocadas','caja_sin_dano','sellos_colocados','empaque_accesorios','empaque_llaves']],
+        ['14. Declaración legal', ['declaracion_aceptada']],
+        ['15. Validación final', ['validacion_final']],
     ];
 } elseif ($tipo === 'ensamble') {
     $sections = [
@@ -79,6 +80,22 @@ if ($tipo === 'origen') {
 $tipoLabels = ['origen'=>'Checklist de Origen','ensamble'=>'Checklist de Ensamble','entrega'=>'Checklist de Entrega'];
 $titulo = $tipoLabels[$tipo];
 
+// Origen-specific constants + photo categories
+$ORIGEN_LEGAL_TEXT = 'La unidad fue revisada, validada y empacada conforme a estándares Voltika. Se confirma que: contenido completo, sistema eléctrico funcional, estética en buen estado.';
+$ORIGEN_REGLA_ORO  = 'Lo que no está validado en origen, no existe.';
+$ORIGEN_PHOTO_CATS = [
+    'foto_unidad_completa'         => 'Unidad completa',
+    'foto_vin'                     => 'VIN',
+    'foto_tablero_encendido'       => 'Tablero encendido',
+    'foto_bateria'                 => 'Batería',
+    'foto_contenido_previo_cierre' => 'Contenido previo cierre',
+    'foto_caja_cerrada'            => 'Caja cerrada',
+    'foto_sellos'                  => 'Sellos',
+    'foto_detalle_calcomanias'     => 'Detalle calcomanías',
+    'foto_empaque_accesorios'      => 'Empaque de accesorios',
+    'foto_empaque_llaves'          => 'Empaque de llaves',
+];
+
 // Generate HTML
 header('Content-Type: text/html; charset=UTF-8');
 ?>
@@ -105,8 +122,13 @@ header('Content-Type: text/html; charset=UTF-8');
   .check.ok { background:#4CAF50; border-color:#4CAF50; color:#fff; }
   .footer { margin-top:20px; border-top:1px solid #ddd; padding-top:12px; font-size:11px; color:#888; text-align:center; }
   .hash { font-family:monospace; font-size:10px; word-break:break-all; background:#f5f5f5; padding:6px; border-radius:4px; margin-top:8px; }
-  .photos { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+  .photos { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px; }
   .photos img { width:80px; height:60px; object-fit:cover; border-radius:4px; border:1px solid #ddd; }
+  .photo-cat { margin-bottom:8px; }
+  .photo-cat .cat-label { font-size:11px; font-weight:600; color:#546E7A; margin-bottom:2px; }
+  .nota { background:#FFF3E0; border-left:3px solid #FB8C00; padding:6px 10px; margin:4px 0 8px; font-size:11px; color:#795548; }
+  .prologo { background:#F5F7FA; border:1px solid #e3e7ed; border-radius:4px; padding:8px 10px; margin:4px 0 8px; font-size:11px; color:#37474F; line-height:1.5; }
+  .regla-oro { background:linear-gradient(135deg,#FFC107,#FF9800); color:#3E2723; border-radius:6px; padding:10px; margin:14px 0; text-align:center; font-weight:700; font-size:12px; }
   .btn-print { position:fixed; top:10px; right:10px; background:#039fe1; color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:14px; }
 </style>
 </head>
@@ -129,11 +151,23 @@ header('Content-Type: text/html; charset=UTF-8');
   <?php if (!empty($moto['pedido_num'])): ?>
   <div><strong>Pedido:</strong> <?= htmlspecialchars($moto['pedido_num']) ?></div>
   <?php endif; ?>
+  <?php if ($tipo === 'origen'): ?>
+  <div><strong>Núm. motor:</strong> <?= htmlspecialchars($cl['num_motor'] ?? '—') ?></div>
+  <div><strong>Año modelo:</strong> <?= htmlspecialchars($moto['anio_modelo'] ?? $cl['anio_modelo'] ?? '—') ?></div>
+  <div><strong>Config. baterías:</strong> <?= htmlspecialchars($cl['config_baterias'] ?? '1') ?></div>
+  <div><strong>Núm. sellos:</strong> <?= htmlspecialchars((string)($cl['num_sellos'] ?? 0)) ?></div>
+  <?php endif; ?>
 </div>
 
 <?php foreach ($sections as [$secTitle, $fields]): ?>
 <div class="section">
   <h3><?= htmlspecialchars($secTitle) ?></h3>
+  <?php if ($tipo === 'origen' && strpos($secTitle, '10.') === 0): ?>
+    <div class="nota"><strong>NOTA:</strong> Validación sin rodaje</div>
+  <?php endif; ?>
+  <?php if ($tipo === 'origen' && strpos($secTitle, '14.') === 0): ?>
+    <div class="prologo"><?= htmlspecialchars($ORIGEN_LEGAL_TEXT) ?></div>
+  <?php endif; ?>
   <div class="items">
     <?php foreach ($fields as $f): ?>
     <div class="item">
@@ -145,6 +179,48 @@ header('Content-Type: text/html; charset=UTF-8');
 </div>
 <?php endforeach; ?>
 
+<?php if ($tipo === 'origen'): ?>
+<div class="section">
+  <h3>13. Evidencia fotográfica</h3>
+  <?php
+    $anyPhoto = false;
+    foreach ($ORIGEN_PHOTO_CATS as $col => $label):
+      $catFotos = json_decode($cl[$col] ?? '[]', true);
+      if (!is_array($catFotos) || !count($catFotos)) continue;
+      $anyPhoto = true;
+  ?>
+  <div class="photo-cat">
+    <div class="cat-label">📸 <?= htmlspecialchars($label) ?> (<?= count($catFotos) ?>)</div>
+    <div class="photos">
+      <?php foreach ($catFotos as $url): ?>
+      <img src="../../<?= htmlspecialchars($url) ?>" alt="<?= htmlspecialchars($label) ?>">
+      <?php endforeach; ?>
+    </div>
+  </div>
+  <?php endforeach; ?>
+  <?php
+    // Legacy single-bucket fotos (pre Phase 2)
+    $legacy = json_decode($cl['fotos'] ?? '[]', true);
+    if (is_array($legacy) && count($legacy)):
+      $anyPhoto = true;
+  ?>
+  <div class="photo-cat">
+    <div class="cat-label" style="color:#999">Legacy (sin categoría)</div>
+    <div class="photos">
+      <?php foreach ($legacy as $url): ?>
+      <img src="../../<?= htmlspecialchars($url) ?>" alt="legacy">
+      <?php endforeach; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+  <?php if (!$anyPhoto): ?>
+  <div style="font-size:11px;color:#999;">Sin fotos registradas.</div>
+  <?php endif; ?>
+</div>
+
+<div class="regla-oro">⚡ REGLA DE ORO — <?= htmlspecialchars($ORIGEN_REGLA_ORO) ?></div>
+<?php endif; ?>
+
 <?php if (!empty($cl['notas'])): ?>
 <div class="section">
   <h3>Notas</h3>
@@ -153,7 +229,7 @@ header('Content-Type: text/html; charset=UTF-8');
 <?php endif; ?>
 
 <?php
-// Show photos
+// Show photos (ensamble + entrega only — origen uses its own per-category render above)
 $fotoCols = [];
 $fotoLabels = [
     'fotos'           => 'Fotos de evidencia',
@@ -166,10 +242,12 @@ $fotoLabels = [
     'fotos_identidad' => 'Fotos de identidad',
     'fotos_unidad'    => 'Fotos de la unidad',
 ];
-foreach ($cl as $k => $v) {
-    if (strpos($k, 'fotos') === 0 && $v) {
-        $fotos = json_decode($v, true);
-        if (is_array($fotos) && count($fotos)) $fotoCols[$k] = $fotos;
+if ($tipo !== 'origen') {
+    foreach ($cl as $k => $v) {
+        if (strpos($k, 'fotos') === 0 && $v) {
+            $fotos = json_decode($v, true);
+            if (is_array($fotos) && count($fotos)) $fotoCols[$k] = $fotos;
+        }
     }
 }
 if ($fotoCols): ?>

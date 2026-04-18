@@ -66,8 +66,8 @@ var Paso4A = {
         var base        = window.VK_BASE_PATH || '';
         var _imgFolder  = { 'ukko-s': 'ukko', 'pesgo-plus': 'pesgo' };
         var imgSrc      = base + 'img/' + (_imgFolder[modelo.id] || modelo.id) + '/model.png';
-        var _envioDestino = (state.centroEntrega && state.centroEntrega.nombre && state.centroEntrega.tipo !== 'cercano')
-            ? state.centroEntrega.nombre
+        var _envioDestino = (state.centroEntrega && state.centroEntrega.direccion && state.centroEntrega.tipo !== 'cercano')
+            ? state.centroEntrega.direccion
             : (state.ciudad || 'tu ciudad');
         // _envioDestino used in Resumen section
 
@@ -324,8 +324,8 @@ var Paso4A = {
         $(document).off('click', '.vk-contado-continuar');
         $(document).on('click', '.vk-contado-continuar', function() {
             var $btn = $(this);
-            if ($btn.prop('disabled')) return;
-            $btn.prop('disabled', true).css('opacity', '0.6').text('Guardando orden...');
+            if ($btn.prop('disabled') || $btn.data('submitted')) return;
+            $btn.prop('disabled', true).data('submitted', true).css('opacity', '0.6').text('Guardando orden...');
 
             var _modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
             var _total = _modelo ? _modelo.precioContado : 0;
@@ -368,9 +368,16 @@ var Paso4A = {
                     referido_id:     refData ? refData.id : null,
                     referido_tipo:   refData ? refData.tipo : ''
                 }),
-                complete: function() {
-                    $btn.prop('disabled', false).css('opacity', '1');
+                success: function() {
+                    // Keep the button disabled on success — dedup guard
+                    // against double-submit when user navigates back after
+                    // a downstream validation bounce (e.g. invalid RFC on
+                    // factura page). Re-enable ONLY on error below.
                     self._showPostPaymentOTP();
+                },
+                error: function() {
+                    $btn.prop('disabled', false).data('submitted', false).css('opacity', '1').text('CONTINUAR COMPRA');
+                    alert('No pudimos guardar la orden. Revisa tu conexión e intenta de nuevo.');
                 }
             });
         });
@@ -379,6 +386,7 @@ var Paso4A = {
         $(document).off('click', '#vk-contado-spei');
         $(document).on('click', '#vk-contado-spei', function(e) {
             e.preventDefault();
+            if (!self._validarDatosContacto()) return;
             $('#vk-contado-spei').css({ 'border-color': '#039fe1', 'background': '#E8F4FD' });
             $('#vk-contado-oxxo').css({ 'border-color': '#ccc', 'background': '#fff' });
             self._handleContadoSPEI();
@@ -388,6 +396,7 @@ var Paso4A = {
         $(document).off('click', '#vk-contado-oxxo');
         $(document).on('click', '#vk-contado-oxxo', function(e) {
             e.preventDefault();
+            if (!self._validarDatosContacto()) return;
             $('#vk-contado-oxxo').css({ 'border-color': '#039fe1', 'background': '#E8F4FD' });
             $('#vk-contado-spei').css({ 'border-color': '#ccc', 'background': '#fff' });
             self._handleContadoOXXO();
@@ -771,14 +780,48 @@ var Paso4A = {
         $(document).on('click', '#vk-post-otp-reenviar', function(e) { e.preventDefault(); self._sendOTP(); });
     },
 
+    /**
+     * Shared validation for name + email + phone before any checkout submission
+     * (card path has its own inline validation; SPEI/OXXO now share this helper
+     * so mandatory fields are enforced in all payment paths).
+     */
+    _validarDatosContacto: function() {
+        // Merge first + last name into hidden vk-nombre field so downstream code
+        // reads the composed value consistently.
+        var _np = ($('#vk-nombre-pila').val()||'').trim();
+        var _ap = ($('#vk-apellidos').val()||'').trim();
+        $('#vk-nombre').val((_np + ' ' + _ap).trim());
+
+        var valid = true;
+        valid = VkValidacion.validarCampo($('#vk-nombre-pila'), VkValidacion.nombre,   'Ingresa tu nombre')                       && valid;
+        valid = VkValidacion.validarCampo($('#vk-apellidos'),   VkValidacion.nombre,   'Ingresa tus apellidos')                   && valid;
+        valid = VkValidacion.validarCampo($('#vk-email'),       VkValidacion.email,    'Ingresa un correo valido')                && valid;
+        valid = VkValidacion.validarCampo($('#vk-telefono'),    VkValidacion.telefono, 'Ingresa un telefono valido (10 digitos)') && valid;
+        if (!valid) {
+            // Scroll to first invalid field for visibility
+            var $first = $('.vk-form-input.vk-invalid').first();
+            if ($first.length) {
+                $('html, body').animate({ scrollTop: $first.offset().top - 100 }, 200);
+                $first.focus();
+            }
+            return false;
+        }
+
+        // Persist in state so downstream _handleContado* methods read real values
+        this.app.state.nombre   = $('#vk-nombre').val().trim();
+        this.app.state.email    = $('#vk-email').val().trim();
+        this.app.state.telefono = $('#vk-telefono').val().trim();
+        return true;
+    },
+
     _handleContadoSPEI: function() {
         var self = this;
         var state = self.app.state;
         var modelo = self.app.getModelo(state.modeloSeleccionado);
         var total = modelo.precioContado; // Contado: freight free
         var base = window.VK_BASE_PATH || '';
-        var nombre = self._fullName(state) || $('#vk-nombre').val() || 'Cliente';
-        var email = state.email || $('#vk-email').val() || '';
+        var nombre = self._fullName(state) || $('#vk-nombre').val();
+        var email = state.email || $('#vk-email').val();
 
         $('#vk-contado-spei').prop('disabled', true).css('opacity', '0.6');
 
@@ -844,8 +887,8 @@ var Paso4A = {
         var modelo = self.app.getModelo(state.modeloSeleccionado);
         var total = modelo.precioContado; // Contado: freight free
         var base = window.VK_BASE_PATH || '';
-        var nombre = self._fullName(state) || $('#vk-nombre').val() || 'Cliente Voltika';
-        var email = state.email || $('#vk-email').val() || 'cliente@voltika.mx';
+        var nombre = self._fullName(state) || $('#vk-nombre').val();
+        var email = state.email || $('#vk-email').val();
 
         $('#vk-contado-oxxo').prop('disabled', true).css('opacity', '0.6');
 

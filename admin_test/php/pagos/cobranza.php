@@ -70,6 +70,7 @@ $offset = ($page - 1) * $limit;
 
 $where = "c.estado='overdue'";
 $params = [];
+$orderBy = 'c.fecha_vencimiento ASC';
 if ($bucket === '1-7') {
     $where .= " AND DATEDIFF(?,c.fecha_vencimiento) BETWEEN 1 AND 7";
     $params[] = $today;
@@ -84,6 +85,10 @@ if ($bucket === '1-7') {
     $params[] = $today;
 } elseif ($bucket === 'all_pending') {
     $where = "c.estado='pending'";
+} elseif ($bucket === 'paid') {
+    // Historical payments (auto-charge or manually marked)
+    $where = "c.estado IN ('paid_auto','paid_manual')";
+    $orderBy = 'c.fecha_pago DESC, c.id DESC';
 }
 
 $rows = [];
@@ -97,7 +102,7 @@ try {
             LEFT JOIN subscripciones_credito s ON c.subscripcion_id = s.id
             LEFT JOIN clientes cl ON c.cliente_id = cl.id
             WHERE {$where}
-            ORDER BY c.fecha_vencimiento ASC
+            ORDER BY {$orderBy}
             LIMIT {$limit} OFFSET {$offset}";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

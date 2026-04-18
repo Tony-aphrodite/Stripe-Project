@@ -33,16 +33,17 @@ window.AD_envios = (function(){
     }
 
     html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
-      '<th>Moto</th><th>VIN</th><th>Pedido</th><th>Destino</th>'+
+      '<th>Orden</th><th>Cliente</th><th>Moto</th><th>VIN</th><th>Destino</th>'+
       '<th>Tracking</th><th>Carrier</th><th>Estado</th>'+
       '<th>Fecha envío</th><th>ETA</th><th>Acciones</th>'+
       '</tr></thead><tbody>';
 
     envios.forEach(function(e){
       html += '<tr>'+
+        '<td style="white-space:nowrap">'+(e.pedido_num ? '<strong>'+e.pedido_num+'</strong>' : '<span class="ad-dim">Inventario</span>')+'</td>'+
+        '<td>'+(e.cliente_nombre||'<span class="ad-dim">—</span>')+'</td>'+
         '<td>'+e.modelo+' '+e.color+'</td>'+
-        '<td>'+(e.vin_display||e.vin||'—')+'</td>'+
-        '<td>'+(e.pedido_num||'<span class="ad-dim">Inventario</span>')+'</td>'+
+        '<td style="font-size:11px;">'+(e.vin_display||e.vin||'—')+'</td>'+
         '<td>'+(e.punto_nombre||'—')+(e.punto_ciudad?' <small class="ad-dim">'+e.punto_ciudad+'</small>':'')+'</td>'+
         '<td>'+(e.tracking_number||'<span class="ad-dim">—</span>')+'</td>'+
         '<td>'+(e.carrier||'—')+'</td>'+
@@ -96,7 +97,7 @@ window.AD_envios = (function(){
         '</div>'+
       '</div>';
     ADApp.modal(html);
-    $('#adEnvShowroom').on('click', function(){ crearEnvioStep2(null, 'showroom'); });
+    $('#adEnvShowroom').on('click', function(){ crearEnvioStep2(null, 'showroom', null); });
     $('#adEnvVenta').on('click', crearEnvioSelectOrder);
   }
 
@@ -107,28 +108,52 @@ window.AD_envios = (function(){
           '<div class="ad-dim" style="padding:20px;text-align:center;">No hay órdenes sin moto asignada.</div>');
         return;
       }
-      var html = '<div class="ad-h2">Seleccionar orden</div>'+
-        '<div style="max-height:350px;overflow-y:auto;">';
-      r.rows.forEach(function(o){
-        html += '<div class="ad-card adPickOrder" style="cursor:pointer;padding:10px;margin-bottom:6px;" data-tid="'+o.id+'" data-pid="'+(o.punto_id||'')+'">'+
-          '<strong>VK-'+(o.pedido||o.id)+'</strong> · '+(o.nombre||'')+
-          '<br><small class="ad-dim">'+o.modelo+' · '+o.color+' · '+ADApp.money(o.monto)+
-          (o.punto_nombre?' · Punto: '+o.punto_nombre:'')+'</small>'+
+      var html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+
+        '<button class="ad-btn ghost sm" id="adEnvBack1" style="padding:4px 8px;">← Volver</button>'+
+        '<div class="ad-h2" style="margin:0;">Paso 1 de 2 — Seleccionar orden</div>'+
+      '</div>'+
+      '<div class="ad-dim" style="margin-bottom:10px;font-size:12px;">Selecciona la orden del cliente para asignar una moto y enviarla.</div>'+
+      '<div style="max-height:350px;overflow-y:auto;">';
+      r.rows.forEach(function(o, idx){
+        html += '<div class="ad-card adPickOrder" style="cursor:pointer;padding:10px;margin-bottom:6px;" data-idx="'+idx+'">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;">'+
+            '<strong>VK-'+(o.pedido||o.id)+'</strong>'+
+            '<span class="ad-badge '+(o.tipo==='credito'||o.tipo==='enganche'?'yellow':(o.tipo==='msi'?'blue':'green'))+'">'+
+              (o.tipo||'contado')+'</span>'+
+          '</div>'+
+          '<div style="font-size:13px;margin-top:4px;">Cliente: '+(o.nombre||'Sin nombre')+'</div>'+
+          '<div style="font-size:12px;color:var(--ad-dim)">'+o.modelo+' · '+o.color+' · '+ADApp.money(o.monto)+'</div>'+
+          (o.punto_nombre?'<div style="font-size:12px;margin-top:2px;">Punto: <strong>'+o.punto_nombre+'</strong></div>':
+            '<div style="font-size:11px;color:#E65100;margin-top:2px;">Sin punto asignado</div>')+
         '</div>';
       });
       html += '</div>';
-      ADApp.modal(html);
-      $('.adPickOrder').on('click', function(){
-        crearEnvioStep2($(this).data('tid'), 'entrega');
-      });
+      ADApp.closeModal();
+      setTimeout(function(){
+        ADApp.modal(html);
+        $('#adEnvBack1').on('click', showCrearEnvio);
+        $('.adPickOrder').on('click', function(){
+          var o = r.rows[$(this).data('idx')];
+          crearEnvioStep2(o.id, 'entrega', {
+            pedido: o.pedido, nombre: o.nombre, modelo: o.modelo,
+            color: o.color, monto: o.monto, punto_id: o.punto_id,
+            punto_nombre: o.punto_nombre
+          });
+        });
+      }, 50);
     });
   }
 
-  function crearEnvioStep2(transId, envioTipo){
+  function crearEnvioStep2(transId, envioTipo, orderInfo){
     envioTipo = envioTipo || 'entrega';
     // Load motos + puntos in parallel
+    // When we have orderInfo, filter motos by matching modelo/color
+    var motosUrl = 'ventas/motos-disponibles.php';
+    if (orderInfo && orderInfo.modelo) motosUrl += '?modelo=' + encodeURIComponent(orderInfo.modelo);
+    if (orderInfo && orderInfo.color)  motosUrl += (motosUrl.indexOf('?')>-1?'&':'?') + 'color=' + encodeURIComponent(orderInfo.color);
+
     $.when(
-      ADApp.api('ventas/motos-disponibles.php'),
+      ADApp.api(motosUrl),
       ADApp.api('puntos/listar.php')
     ).done(function(mRes, pRes){
       var motos = (mRes[0]||mRes).motos||[];
@@ -137,26 +162,51 @@ window.AD_envios = (function(){
       var tipoLabel = transId
         ? 'Entrega con orden'
         : 'Sin orden — a consignación';
-      var html = '<div class="ad-h2">Crear envío ('+tipoLabel+')</div>';
+      var html = '';
+      if (transId) {
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+
+          '<button class="ad-btn ghost sm" id="adEnvBack2" style="padding:4px 8px;">← Volver</button>'+
+          '<div class="ad-h2" style="margin:0;">Paso 2 de 2 — Asignar moto</div>'+
+        '</div>';
+      } else {
+        html += '<div class="ad-h2">Crear envío ('+tipoLabel+')</div>';
+      }
+
+      // Show order summary when creating for a specific order
+      if (transId && orderInfo) {
+        html += '<div style="padding:10px;background:#E8F4FD;border-radius:6px;margin-bottom:10px;font-size:12px;border:1px solid #B3D4FC;">'+
+          '<strong>Orden: VK-'+(orderInfo.pedido||transId)+'</strong><br>'+
+          'Cliente: <strong>'+(orderInfo.nombre||'—')+'</strong><br>'+
+          'Modelo: '+(orderInfo.modelo||'—')+' · Color: '+(orderInfo.color||'—')+' · '+ADApp.money(orderInfo.monto||0)+
+          (orderInfo.punto_nombre ? '<br>Punto solicitado: <strong>'+orderInfo.punto_nombre+'</strong>' : '')+
+        '</div>';
+      }
       if (!transId) {
         html += '<div style="padding:10px;background:#E3F2FD;border-radius:6px;margin-bottom:10px;font-size:12px;">La moto entrará al inventario del punto de venta para exhibición y venta directa.</div>';
       }
 
-      // Moto selector
+      // Moto selector — show VIN + modelo + color + estado
       html += '<label style="font-weight:600;font-size:13px;">Moto:</label>'+
         '<select class="ad-select" id="adEnvMoto" style="margin-bottom:10px;width:100%;">';
       html += '<option value="">— Seleccionar moto —</option>';
       motos.forEach(function(m){
-        html += '<option value="'+m.id+'">'+(m.vin_display||m.vin)+' · '+m.modelo+' · '+m.color+'</option>';
+        var label = (m.vin_display||m.vin)+' · '+m.modelo+' · '+m.color;
+        if (m.punto_nombre) label += ' · Punto: '+m.punto_nombre;
+        html += '<option value="'+m.id+'">'+label+'</option>';
       });
       html += '</select>';
+      if (transId && motos.length === 0) {
+        html += '<div style="padding:8px;background:#FFF3E0;border-radius:6px;font-size:12px;color:#E65100;margin:-6px 0 10px;"><strong>Aviso:</strong> No hay motos disponibles'+(orderInfo?' para '+orderInfo.modelo+' '+orderInfo.color:'')+'. Verifica el inventario en CEDIS.</div>';
+      }
 
-      // Punto selector
+      // Punto selector — auto-select if order has a punto already
+      var orderPuntoId = (orderInfo && orderInfo.punto_id) ? orderInfo.punto_id.toString().replace(/^punto-/,'') : '';
       html += '<label style="font-weight:600;font-size:13px;">Punto destino:</label>'+
         '<select class="ad-select" id="adEnvPunto" style="margin-bottom:10px;width:100%;">';
       html += '<option value="">— Seleccionar punto —</option>';
       puntos.forEach(function(p){
-        html += '<option value="'+p.id+'">'+p.nombre+' · '+(p.ciudad||'')+'</option>';
+        var sel = (orderPuntoId && p.id.toString() === orderPuntoId) ? ' selected' : '';
+        html += '<option value="'+p.id+'"'+sel+'>'+p.nombre+' · '+(p.ciudad||'')+'</option>';
       });
       html += '</select>';
 
@@ -175,7 +225,12 @@ window.AD_envios = (function(){
       html += '<div id="adEnvQuote" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;background:#E3F2FD;font-size:13px;"></div>';
       html += '<button class="ad-btn primary" id="adEnvSave" style="width:100%;padding:10px;">Crear envío</button>';
 
+      ADApp.closeModal();
+      setTimeout(function(){
       ADApp.modal(html);
+
+      // Back button to return to order selection
+      $('#adEnvBack2').on('click', function(){ crearEnvioSelectOrder(); });
 
       // Auto-quote when punto selected
       $('#adEnvPunto').on('change', function(){
@@ -229,6 +284,7 @@ window.AD_envios = (function(){
           $('#adEnvSave').prop('disabled',false).html('Crear envío');
         });
       });
+    }, 50);
     });
   }
 

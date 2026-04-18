@@ -11,6 +11,22 @@ $pdo = getDB();
 
 $rows = [];
 
+// Detect whether the Servicios adicionales tracking columns exist (Phase C
+// migration). Falls back gracefully if the admin hasn't run reparar-schema-servicios yet.
+$hasTracking = false;
+try {
+    $dbName = $pdo->query('SELECT DATABASE()')->fetchColumn();
+    $chk = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA=? AND TABLE_NAME='transacciones' AND COLUMN_NAME='placas_estado'");
+    $chk->execute([$dbName]);
+    $hasTracking = ((int)$chk->fetchColumn()) > 0;
+} catch (Throwable $e) { /* ignore */ }
+
+$trackingSelect = $hasTracking
+    ? ", t.placas_estado, t.placas_gestor_nombre, t.placas_gestor_telefono, t.placas_nota,
+         t.seguro_estado, t.seguro_cotizacion, t.seguro_poliza, t.seguro_nota"
+    : "";
+
 // ── Orders from transacciones ───────────────────────────────────────────
 try {
     $stmt = $pdo->query("
@@ -18,6 +34,8 @@ try {
                t.modelo, t.color, t.tpago, t.total, t.stripe_pi, t.freg,
                t.punto_id, t.punto_nombre, t.ciudad, t.estado, t.cp, t.folio_contrato,
                t.fecha_estimada_entrega,
+               t.asesoria_placas, t.seguro_qualitas
+               $trackingSelect,
                t.pago_estado AS tx_pago_estado,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
                m.pago_estado,
@@ -35,7 +53,12 @@ try {
                    LIMIT 1
                )
         LEFT JOIN puntos_voltika p
-               ON p.nombre = t.punto_nombre AND p.activo = 1
+               ON p.id = (
+                   SELECT p2.id FROM puntos_voltika p2
+                   WHERE p2.nombre = t.punto_nombre AND p2.activo = 1
+                   ORDER BY p2.id ASC
+                   LIMIT 1
+               )
         ORDER BY t.freg DESC
         LIMIT 100
     ");
@@ -77,6 +100,16 @@ try {
             'cp'          => $r['cp'] ?? null,
             'folio_contrato' => $r['folio_contrato'] ?? null,
             'fecha_estimada_entrega' => $r['fecha_estimada_entrega'] ?? null,
+            'asesoria_placas' => (int)($r['asesoria_placas'] ?? 0),
+            'seguro_qualitas' => (int)($r['seguro_qualitas'] ?? 0),
+            'placas_estado'          => $r['placas_estado'] ?? null,
+            'placas_gestor_nombre'   => $r['placas_gestor_nombre'] ?? null,
+            'placas_gestor_telefono' => $r['placas_gestor_telefono'] ?? null,
+            'placas_nota'            => $r['placas_nota'] ?? null,
+            'seguro_estado'     => $r['seguro_estado'] ?? null,
+            'seguro_cotizacion' => $r['seguro_cotizacion'] ?? null,
+            'seguro_poliza'     => $r['seguro_poliza'] ?? null,
+            'seguro_nota'       => $r['seguro_nota'] ?? null,
         ];
     }
 } catch (Throwable $e) {
@@ -343,6 +376,32 @@ usort($rows, fn($a, $b) => strcmp((string)($b['fecha'] ?? ''), (string)($a['fech
 
 // ── Inventory availability per modelo+color ──────────────────────────────
 // Used by the dashboard to show "X disponibles" or "Sin inventario — 2 meses"
+//
+// Legacy orders stored color tokens inside modelo (e.g. "Ukko S+ negro"), while
+// inventario_motos keeps modelo and color in separate columns ("Ukko S+" / "Negro").
+// Normalize both sides so the key matches regardless of pollution.
+$colorTokens = ['negro','negra','blanco','blanca','rojo','roja','azul','gris','naranja',
+                'verde','amarillo','amarilla','plata','plateado','plateada','dorado','dorada',
+                'morado','morada','rosa','rosado','rosada','cafe','café','marron','marrón'];
+
+$buildInvKey = static function($modelo, $color) use ($colorTokens) {
+    $m = strtolower(trim((string)$modelo));
+    $c = strtolower(trim((string)$color));
+    $m = preg_replace('/\s+/', ' ', $m);
+    if ($c !== '') {
+        $m = preg_replace('/\b' . preg_quote($c, '/') . '\b/u', '', $m);
+    } else {
+        foreach ($colorTokens as $ct) {
+            if (preg_match('/\b' . preg_quote($ct, '/') . '\b/u', $m)) { $c = $ct; break; }
+        }
+    }
+    foreach ($colorTokens as $ct) {
+        $m = preg_replace('/\b' . preg_quote($ct, '/') . '\b/u', '', $m);
+    }
+    $m = preg_replace('/\s+/', ' ', trim($m));
+    return $m . '|' . $c;
+};
+
 $disponibles = [];
 try {
     $inv = $pdo->query("
@@ -357,8 +416,8 @@ try {
         GROUP BY modelo, color
     ")->fetchAll(PDO::FETCH_ASSOC);
     foreach ($inv as $i) {
-        $key = strtolower(trim($i['modelo'])) . '|' . strtolower(trim($i['color']));
-        $disponibles[$key] = (int)$i['cnt'];
+        $key = $buildInvKey($i['modelo'], $i['color']);
+        $disponibles[$key] = ($disponibles[$key] ?? 0) + (int)$i['cnt'];
     }
 } catch (Throwable $e) {}
 
@@ -372,14 +431,14 @@ try {
         GROUP BY modelo, color
     ")->fetchAll(PDO::FETCH_ASSOC);
     foreach ($inv2 as $i) {
-        $key = strtolower(trim($i['modelo'])) . '|' . strtolower(trim($i['color']));
-        $enTransito[$key] = (int)$i['cnt'];
+        $key = $buildInvKey($i['modelo'], $i['color']);
+        $enTransito[$key] = ($enTransito[$key] ?? 0) + (int)$i['cnt'];
     }
 } catch (Throwable $e) {}
 
 $twoMonths = date('Y-m-d', strtotime('+2 months'));
 foreach ($rows as &$row) {
-    $key = strtolower(trim($row['modelo'] ?? '')) . '|' . strtolower(trim($row['color'] ?? ''));
+    $key = $buildInvKey($row['modelo'] ?? '', $row['color'] ?? '');
     $stock = $disponibles[$key] ?? 0;
     $row['inventario_disponible'] = $stock;
     $row['inventario_en_transito'] = $enTransito[$key] ?? 0;

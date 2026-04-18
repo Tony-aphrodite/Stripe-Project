@@ -45,15 +45,36 @@ window.AD_cobranza = (function(){
     html += tabBtn('8-30', '8-30 días');
     html += tabBtn('30+', '30+ días');
     html += tabBtn('pending', 'Pendientes hoy');
+    html += tabBtn('paid', 'Pagados');
     html += '</div>';
 
     // ── Table ──
+    var isPaidTab = _bucket === 'paid';
     html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>';
-    html += '<th>Ciclo</th><th>Cliente</th><th>Modelo</th><th>Monto</th><th>Vencimiento</th><th>Días atraso</th><th>Estado</th><th>Acciones</th>';
+    if (isPaidTab) {
+      html += '<th>Ciclo</th><th>Cliente</th><th>Modelo</th><th>Monto</th><th>Fecha de pago</th><th>Método</th><th>Stripe PI</th>';
+    } else {
+      html += '<th>Ciclo</th><th>Cliente</th><th>Modelo</th><th>Monto</th><th>Vencimiento</th><th>Días atraso</th><th>Estado</th><th>Acciones</th>';
+    }
     html += '</tr></thead><tbody>';
 
     if (!r.ciclos || !r.ciclos.length) {
-      html += '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--ad-dim);">No hay registros en este filtro</td></tr>';
+      html += '<tr><td colspan="'+(isPaidTab?7:8)+'" style="text-align:center;padding:30px;color:var(--ad-dim);">No hay registros en este filtro</td></tr>';
+    } else if (isPaidTab) {
+      // Paid history rendering — no overdue/action columns
+      r.ciclos.forEach(function(c){
+        var metodo = c.estado === 'paid_auto' ? 'Automático' : (c.estado === 'paid_manual' ? 'Manual' : esc(c.estado));
+        var metodoColor = c.estado === 'paid_auto' ? 'blue' : 'green';
+        html += '<tr>';
+        html += '<td><strong>#' + c.semana_num + '</strong></td>';
+        html += '<td>' + esc(c.nombre || '—') + '<br><small class="ad-dim">' + esc(c.telefono || '') + '</small></td>';
+        html += '<td>' + esc(c.modelo || '') + ' ' + esc(c.color || '') + '</td>';
+        html += '<td><strong style="color:#1e7e34;">' + ADApp.money(c.monto) + '</strong></td>';
+        html += '<td>' + (c.fecha_pago ? (c.fecha_pago.substring(0,10) + '<br><small class="ad-dim">' + (c.fecha_pago.substring(11,16) || '') + '</small>') : '—') + '</td>';
+        html += '<td><span class="ad-badge ' + metodoColor + '">' + metodo + '</span></td>';
+        html += '<td>' + (c.stripe_payment_intent ? '<code style="font-size:10px;">' + esc(c.stripe_payment_intent.substring(0,22)) + '…</code>' : '—') + '</td>';
+        html += '</tr>';
+      });
     } else {
       r.ciclos.forEach(function(c){
         var diasAtraso = parseInt(c.dias_atraso) || 0;

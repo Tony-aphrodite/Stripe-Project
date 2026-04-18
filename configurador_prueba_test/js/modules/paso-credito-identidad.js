@@ -69,7 +69,7 @@ var PasoCreditoIdentidad = {
 
         // 5c. Comprobante de domicilio (hidden by default)
         html += '<div id="vk-comprobante-wrapper" style="display:none;">';
-        html += this._renderUploadStep(4, 'comprobante', 'Comprobante de domicilio', 'Sube una foto de tu comprobante de domicilio reciente (luz, agua, tel\u00e9fono)', 'none');
+        html += this._renderUploadStep(4, 'comprobante', 'Comprobante de domicilio', 'Sube una foto de tu comprobante de domicilio reciente (luz, agua, tel\u00e9fono, m\u00e1ximo 3 meses de antig\u00fcedad)', 'none');
         html += '</div>';
 
         // 6. 30-second notice

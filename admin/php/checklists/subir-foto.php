@@ -5,7 +5,9 @@
  * Returns: { ok, url, filename }
  *
  * campo values:
- *   origen:   fotos
+ *   origen:   fotos (legacy), foto_unidad_completa, foto_vin, foto_tablero_encendido,
+ *             foto_bateria, foto_contenido_previo_cierre, foto_caja_cerrada, foto_sellos,
+ *             foto_detalle_calcomanias, foto_empaque_accesorios, foto_empaque_llaves
  *   ensamble: fotos_fase1, fotos_base, fotos_manubrio, fotos_llanta, fotos_espejos, fotos_fase3
  *   entrega:  fotos_identidad, fotos_unidad
  */
@@ -32,7 +34,12 @@ if (!in_array($tipo, $validTipos)) {
 
 // Validate campo per tipo
 $validCampos = [
-    'origen'   => ['fotos'],
+    'origen'   => [
+        'fotos',
+        'foto_unidad_completa','foto_vin','foto_tablero_encendido','foto_bateria',
+        'foto_contenido_previo_cierre','foto_caja_cerrada','foto_sellos',
+        'foto_detalle_calcomanias','foto_empaque_accesorios','foto_empaque_llaves',
+    ],
     'ensamble' => ['fotos_fase1','fotos_base','fotos_manubrio','fotos_llanta','fotos_espejos','fotos_fase3'],
     'entrega'  => ['fotos_identidad','fotos_unidad'],
 ];

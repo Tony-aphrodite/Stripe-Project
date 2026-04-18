@@ -22,7 +22,11 @@ if (!$stripeKey) {
 
 $pdo = getDB();
 
-// Get pending/overdue cycles with a saved payment method
+// Get pending/overdue cycles with a saved payment method.
+// IMPORTANT: Skip cycles that already have a manual payment (paid_manual)
+// or are in 'pending_manual' state (OXXO/SPEI payment awaiting acreditation).
+// This prevents duplicate charges when a customer pays manually before the
+// auto-charge cron runs. See: Voltika WhatsApp Notifications doc, Part 1.
 $ciclos = $pdo->query("
     SELECT c.id, c.monto, c.semana_num,
            s.stripe_customer_id, s.stripe_payment_method_id,
@@ -30,6 +34,7 @@ $ciclos = $pdo->query("
     FROM ciclos_pago c
     JOIN subscripciones_credito s ON c.subscripcion_id = s.id
     WHERE c.estado IN ('pending','overdue')
+      AND c.estado NOT IN ('paid_manual','paid_auto','pending_manual')
       AND s.stripe_customer_id IS NOT NULL AND s.stripe_customer_id != ''
       AND s.stripe_payment_method_id IS NOT NULL AND s.stripe_payment_method_id != ''
       AND s.estado = 'activa'
@@ -38,10 +43,22 @@ $ciclos = $pdo->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 $charged = 0;
+$skipped = 0;
 $failed  = 0;
 $errors  = [];
 
 foreach ($ciclos as $ciclo) {
+    // Double-check: re-read the cycle status right before charging.
+    // Between the SELECT above and now, a webhook could have updated
+    // this cycle to paid_manual (OXXO/SPEI payment confirmed).
+    $freshStatus = $pdo->prepare("SELECT estado FROM ciclos_pago WHERE id = ?");
+    $freshStatus->execute([$ciclo['id']]);
+    $currentEstado = $freshStatus->fetchColumn();
+    if (in_array($currentEstado, ['paid_manual', 'paid_auto', 'pending_manual', 'skipped'], true)) {
+        $skipped++;
+        continue;
+    }
+
     $amount = (int)(round($ciclo['monto'] * 100));
 
     $ch = curl_init('https://api.stripe.com/v1/payment_intents');
@@ -97,6 +114,7 @@ foreach ($ciclos as $ciclo) {
 adminLog('cron_auto_cobro', [
     'procesados' => count($ciclos),
     'cobrados'   => $charged,
+    'omitidos'   => $skipped,
     'fallidos'   => $failed,
     'errores'    => $errors,
 ]);
@@ -105,6 +123,7 @@ adminJsonOut([
     'ok'         => true,
     'procesados' => count($ciclos),
     'cobrados'   => $charged,
+    'omitidos'   => $skipped,
     'fallidos'   => $failed,
     'errores'    => $errors,
 ]);

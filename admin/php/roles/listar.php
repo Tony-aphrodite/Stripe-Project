@@ -21,6 +21,12 @@ try {
         FROM dealer_usuarios ORDER BY rol, nombre")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) { error_log('roles/listar: ' . $e->getMessage()); }
 
+$puntos = [];
+try {
+    $puntos = $pdo->query("SELECT id, nombre, ciudad, telefono, codigo_venta, tipo FROM puntos_voltika
+        WHERE activo=1 ORDER BY nombre, id")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) { error_log('roles/listar puntos: ' . $e->getMessage()); }
+
 // Define the permission matrix
 $rolesDisponibles = ['admin','dealer','cedis','operador','cobranza','documentos','logistica'];
 $modulosDisponibles = ['dashboard','ventas','inventario','envios','pagos','cobranza','puntos',
@@ -39,6 +45,7 @@ $matrizDefault = [
 adminJsonOut([
     'ok'       => true,
     'usuarios' => $usuarios,
+    'puntos'   => $puntos,
     'roles'    => $rolesDisponibles,
     'modulos'  => $modulosDisponibles,
     'matriz'   => $matrizDefault,

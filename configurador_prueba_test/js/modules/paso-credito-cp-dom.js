@@ -24,12 +24,13 @@ var PasoCreditoCPDom = {
             html += '<div style="background:#F0F7FF;border:1.5px solid #B3D4FC;border-radius:12px;padding:14px;margin-bottom:16px;">';
             html += '<div style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:6px;display:flex;align-items:center;gap:6px;"><img src="' + (window.VK_BASE_PATH || '') + 'img/entrega.png" alt="" style="width:20px;height:20px;object-fit:contain;"> Punto de entrega seleccionado</div>';
 
-            if (centro && centro.nombre) {
-                // Show centro name
-                html += '<div style="font-size:16px;font-weight:800;color:#333;margin-bottom:4px;">' + centro.nombre + '</div>';
-                // Show address if available
+            if (centro && (centro.direccion || centro.nombre)) {
+                // Primary: address, colonia, city/state (no point name)
                 if (centro.direccion) {
-                    html += '<div style="font-size:13px;color:#555;margin-bottom:2px;">' + centro.direccion + '</div>';
+                    html += '<div style="font-size:16px;font-weight:800;color:#333;margin-bottom:4px;">' + centro.direccion + '</div>';
+                } else if (centro.nombre) {
+                    // Fallback only if address unavailable
+                    html += '<div style="font-size:16px;font-weight:800;color:#333;margin-bottom:4px;">' + centro.nombre + '</div>';
                 }
                 if (centro.colonia) {
                     html += '<div style="font-size:13px;color:#555;margin-bottom:2px;">' + centro.colonia + '</div>';

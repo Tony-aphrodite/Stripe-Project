@@ -11,7 +11,8 @@ $pdo = getDB();
 $id = (int)($d['id'] ?? 0);
 
 $fields = ['nombre','responsable','direccion','colonia','ciudad','estado','cp','telefono','email',
-           'lat','lng','horarios','capacidad','activo','tipo','descripcion','autorizado','orden'];
+           'lat','lng','horarios','capacidad','activo','tipo','descripcion','autorizado','orden',
+           'codigo_venta','codigo_electronico'];
 
 // Ensure responsable column exists
 try {
@@ -41,19 +42,23 @@ if (!$slug && !empty($vals['nombre'])) {
 $vals['slug'] = $slug ?: null;
 
 if ($id) {
-    // Update
+    // Update — skip codigo_* fields if empty so admin keeps existing codes unchanged
+    // when the form input was left blank (no accidental NULL overwrite).
     $sets = []; $params = [];
-    foreach ($vals as $k => $v) { $sets[] = "$k=?"; $params[] = $v; }
+    foreach ($vals as $k => $v) {
+        if (in_array($k, ['codigo_venta','codigo_electronico'], true) && (string)$v === '') continue;
+        $sets[] = "$k=?";
+        $params[] = $v;
+    }
     $params[] = $id;
-    $pdo->prepare("UPDATE puntos_voltika SET " . implode(',', $sets) . " WHERE id=?")->execute($params);
+    if ($sets) {
+        $pdo->prepare("UPDATE puntos_voltika SET " . implode(',', $sets) . " WHERE id=?")->execute($params);
+    }
     adminLog('punto_actualizar', ['punto_id' => $id]);
 } else {
-    // Create with unique referral codes
-    $codigoVenta = 'PV' . strtoupper(substr(md5(uniqid()), 0, 6));
-    $codigoElec  = 'PE' . strtoupper(substr(md5(uniqid()), 0, 6));
-
-    $vals['codigo_venta'] = $codigoVenta;
-    $vals['codigo_electronico'] = $codigoElec;
+    // Create — if admin didn't provide custom codes, auto-generate unique ones
+    if (empty($vals['codigo_venta']))       $vals['codigo_venta']       = 'PV' . strtoupper(substr(md5(uniqid()), 0, 6));
+    if (empty($vals['codigo_electronico'])) $vals['codigo_electronico'] = 'PE' . strtoupper(substr(md5(uniqid()), 0, 6));
 
     $cols = array_keys($vals);
     $placeholders = implode(',', array_fill(0, count($cols), '?'));
