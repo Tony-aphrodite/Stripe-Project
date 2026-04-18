@@ -15,19 +15,38 @@ window.AD_puntos = (function(){
       '<button class="ad-btn primary" id="adNewPunto">+ Nuevo punto</button></div></div>';
 
     html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
-      '<th>Nombre</th><th>Tipo</th><th>Ciudad</th><th>Inventario</th>'+
-      '<th>Listas entrega</th><th>Envíos pend.</th><th>Cód. venta</th><th>Activo</th><th></th>'+
+      '<th>Nombre</th><th>Tipo</th><th>Ciudad</th>'+
+      '<th title="Total de motos en el punto">Total</th>'+
+      '<th title="Motos a consignación (venta directa en tienda)">Consig.</th>'+
+      '<th title="Motos reservadas para entrega web con cliente asignado">Entrega web</th>'+
+      '<th title="Motos en proceso de ensamble">Ensamble</th>'+
+      '<th title="Días transcurridos de la unidad más antigua sin vender en consignación">Aging</th>'+
+      '<th>Cód. venta</th><th>Activo</th><th></th>'+
       '</tr></thead><tbody>';
 
     puntosData.forEach(function(p){
       var tipoLabel = {center:'Center',certificado:'Certificado',entrega:'Entrega'};
+      // Aging color: ≤30d green, 31-60d amber, >60d red. Only show if there
+      // are consignación units to age (inv_consignacion > 0).
+      var aging = parseInt(p.aging_max_dias || 0);
+      var agingCell = '—';
+      if (parseInt(p.inv_consignacion||0) > 0 && aging > 0) {
+        var col = aging <= 30 ? '#059669' : aging <= 60 ? '#d97706' : '#dc2626';
+        agingCell = '<span style="font-weight:700;color:'+col+';">'+aging+' d</span>';
+      }
+      function cnt(v, color){
+        var n = Number(v||0);
+        return '<span style="font-weight:700;color:'+(n>0?color:'var(--ad-dim)')+';">'+n+'</span>';
+      }
       html += '<tr>'+
         '<td><strong>'+p.nombre+'</strong></td>'+
         '<td><span class="ad-badge '+(p.tipo==='center'?'blue':p.tipo==='certificado'?'green':'gray')+'">'+(tipoLabel[p.tipo]||p.tipo||'—')+'</span></td>'+
         '<td>'+(p.ciudad||'—')+', '+(p.estado||'')+'</td>'+
-        '<td>'+p.inventario_actual+'</td>'+
-        '<td>'+p.listas_entrega+'</td>'+
-        '<td>'+p.envios_pendientes+'</td>'+
+        '<td>'+cnt(p.inventario_actual, 'var(--ad-navy)')+'</td>'+
+        '<td>'+cnt(p.inv_consignacion, '#0ea5e9')+'</td>'+
+        '<td>'+cnt(p.inv_para_entrega, '#059669')+'</td>'+
+        '<td>'+cnt(p.inv_en_ensamble, '#6366f1')+'</td>'+
+        '<td>'+agingCell+'</td>'+
         '<td><code>'+(p.codigo_venta||'—')+'</code></td>'+
         '<td>'+(Number(p.activo)?'<span class="ad-badge green">Sí</span>':'<span class="ad-badge red">No</span>')+'</td>'+
         '<td><button class="ad-btn sm ghost adEditP" data-id="'+p.id+'">Editar</button></td>'+
