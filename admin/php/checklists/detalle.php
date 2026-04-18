@@ -19,6 +19,18 @@ $stmt->execute([$motoId]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$moto) adminJsonOut(['error' => 'Moto no encontrada'], 404);
 
+// Linked transacción — we need tpago to decide which signatures to show at
+// delivery (pagaré only applies to credit-family orders).
+try {
+    $moto['tpago'] = null;
+    if (!empty($moto['pedido_num'])) {
+        $pedido = preg_replace('/^VK-/', '', $moto['pedido_num']);
+        $ts = $pdo->prepare("SELECT tpago FROM transacciones WHERE pedido = ? ORDER BY id DESC LIMIT 1");
+        $ts->execute([$pedido]);
+        $moto['tpago'] = $ts->fetchColumn() ?: null;
+    }
+} catch (Throwable $e) { error_log('detalle.php tpago lookup: ' . $e->getMessage()); }
+
 // Credit plan info — enrich moto with plan data so the signing screen can
 // render the customer-friendly summary card (modelo / pago semanal / plazo /
 // primer pago) without needing extra round trips. Match the subscription by

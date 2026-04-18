@@ -935,11 +935,14 @@ window.AD_checklists = (function(){
         }
         html += '</div>';
 
-        // ── Firma 2: Plan de pago (pagaré generado en backend, nunca expuesto) ──
-        // Customer-facing screen: NO legal jargon, NO PDF preview, NO hash.
-        // The pagaré + NOM-151 certification are still produced server-side on save
-        // (see checklists/guardar-firma.php with tipo=pagare) but the customer only
-        // sees a friendly "confirma tu plan de pago" summary card.
+        // ── Firma 2: Plan de pago (SOLO para órdenes de crédito) ──
+        // Pagaré is a legal promissory note — only meaningful when the customer
+        // owes installments. For contado / MSI / SPEI / OXXO orders the full
+        // amount is already paid, so this block is hidden and only the acta
+        // signature above remains. (Customer feedback 2026-04-19.)
+        var tpagoLc = (moto.tpago || '').toLowerCase();
+        var isCreditFamily = ['credito','enganche','parcial'].indexOf(tpagoLc) >= 0;
+        if (isCreditFamily) {
         html += '<div style="padding:16px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;">';
         html += '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">2. Confirma tu plan de pago</div>';
         html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Acuerdo certificado digitalmente</div>';
@@ -980,6 +983,7 @@ window.AD_checklists = (function(){
           html += '<div style="font-size:13px;color:var(--ad-dim);">Sin firma registrada</div>';
         }
         html += '</div>';
+        } // end if(isCreditFamily)
 
       }
 
