@@ -27,6 +27,18 @@ $trackingSelect = $hasTracking
          t.seguro_estado, t.seguro_cotizacion, t.seguro_poliza, t.seguro_nota"
     : "";
 
+// Ensure payment-reminder tracking columns exist (2026-04-19 follow-up feature).
+// Safe idempotent ALTER — lets the SELECT below reference them unconditionally.
+try {
+    $cols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('last_reminder_at', $cols, true)) {
+        $pdo->exec("ALTER TABLE transacciones ADD COLUMN last_reminder_at DATETIME NULL");
+    }
+    if (!in_array('reminders_sent_count', $cols, true)) {
+        $pdo->exec("ALTER TABLE transacciones ADD COLUMN reminders_sent_count INT NOT NULL DEFAULT 0");
+    }
+} catch (Throwable $e) { error_log('listar ensure reminder cols: ' . $e->getMessage()); }
+
 // ── Orders from transacciones ───────────────────────────────────────────
 try {
     $stmt = $pdo->query("
@@ -34,7 +46,9 @@ try {
                t.modelo, t.color, t.tpago, t.total, t.stripe_pi, t.freg,
                t.punto_id, t.punto_nombre, t.ciudad, t.estado, t.cp, t.folio_contrato,
                t.fecha_estimada_entrega,
-               t.asesoria_placas, t.seguro_qualitas
+               t.asesoria_placas, t.seguro_qualitas,
+               COALESCE(t.last_reminder_at, NULL) AS last_reminder_at,
+               COALESCE(t.reminders_sent_count, 0) AS reminders_sent_count
                $trackingSelect,
                t.pago_estado AS tx_pago_estado,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
@@ -102,6 +116,8 @@ try {
             'fecha_estimada_entrega' => $r['fecha_estimada_entrega'] ?? null,
             'asesoria_placas' => (int)($r['asesoria_placas'] ?? 0),
             'seguro_qualitas' => (int)($r['seguro_qualitas'] ?? 0),
+            'last_reminder_at'     => $r['last_reminder_at'] ?? null,
+            'reminders_sent_count' => (int)($r['reminders_sent_count'] ?? 0),
             'placas_estado'          => $r['placas_estado'] ?? null,
             'placas_gestor_nombre'   => $r['placas_gestor_nombre'] ?? null,
             'placas_gestor_telefono' => $r['placas_gestor_telefono'] ?? null,

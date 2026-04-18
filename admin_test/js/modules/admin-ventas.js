@@ -164,6 +164,12 @@ window.AD_ventas = (function(){
           if (canAssign) {
             actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
                        'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
+          } else if (r.stripe_pi) {
+            // Payment not confirmed yet. Offer to resend the payment link to
+            // help the customer complete the transaction.
+            actions += '<button class="ad-btn sm" style="'+btnStyleBase+';background:#d97706;color:#fff;" '+
+                       'title="Reenviar link de pago al cliente" '+
+                       'onclick="AD_ventas.showEnviarLink('+r.id+')">Enviar link</button>';
           } else {
             actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+';opacity:.55;cursor:not-allowed;" '+
                        'title="El pago de esta orden aún no ha sido confirmado" disabled>Pendiente</button>';
@@ -638,24 +644,29 @@ window.AD_ventas = (function(){
   var _activeTab = 'todas';
 
   function renderTabs(rows){
-    var counts = {todas:rows.length, completadas:0, en_proceso:0, pendientes:0, errores:0, extras:0};
+    var counts = {todas:rows.length, completadas:0, en_proceso:0, pendientes:0, pago_pendiente:0, errores:0, extras:0};
     rows.forEach(function(r){
       var cat = categorizePago(r);
       counts[cat]++;
+      if(isPagoPendiente(r)) counts.pago_pendiente++;
       if(r.asesoria_placas || r.seguro_qualitas) counts.extras++;
     });
     var tabs = [
-      {key:'todas',       label:'Todas'},
-      {key:'completadas', label:'Completadas'},
-      {key:'en_proceso',  label:'En proceso'},
-      {key:'pendientes',  label:'Pendientes'},
-      {key:'errores',     label:'Errores'},
-      {key:'extras',      label:'Con extras'}
+      {key:'todas',          label:'Todas'},
+      {key:'completadas',    label:'Completadas'},
+      {key:'en_proceso',     label:'En proceso'},
+      {key:'pendientes',     label:'Pendientes'},
+      {key:'pago_pendiente', label:'Pago pendiente'},
+      {key:'errores',        label:'Errores'},
+      {key:'extras',         label:'Con extras'}
     ];
     var html = '';
     tabs.forEach(function(t){
       var isActive = _activeTab === t.key;
-      var countColor = t.key==='errores' && counts[t.key]>0 ? '#b91c1c' : (t.key==='pendientes' && counts[t.key]>0 ? '#d97706' : 'var(--ad-dim)');
+      var countColor = 'var(--ad-dim)';
+      if(t.key==='errores' && counts[t.key]>0) countColor = '#b91c1c';
+      else if(t.key==='pendientes' && counts[t.key]>0) countColor = '#d97706';
+      else if(t.key==='pago_pendiente' && counts[t.key]>0) countColor = '#c41e3a';
       if(isActive) countColor = '#fff';
       html += '<button class="vtTab" data-tab="'+t.key+'" style="'+
         'padding:10px 18px;font-size:13px;font-weight:600;border:none;cursor:pointer;'+
@@ -681,9 +692,19 @@ window.AD_ventas = (function(){
     return 'pendientes';
   }
 
+  // Cliente inició el pago (tenemos stripe_pi) pero no ha sido confirmado.
+  // Estos son los que necesitan follow-up con link de pago.
+  function isPagoPendiente(r){
+    if (!r.stripe_pi) return false;
+    var pe = (r.pago_estado||'').toLowerCase();
+    // Credit orders: enganche is 'parcial' once captured — not "pending" for this view.
+    return pe === 'pendiente' || pe === 'fallido' || pe === '';
+  }
+
   function filterRows(rows){
     if(_activeTab === 'todas') return rows;
     if(_activeTab === 'extras') return rows.filter(function(r){ return r.asesoria_placas || r.seguro_qualitas; });
+    if(_activeTab === 'pago_pendiente') return rows.filter(isPagoPendiente);
     return rows.filter(function(r){ return categorizePago(r) === _activeTab; });
   }
 
@@ -868,5 +889,96 @@ window.AD_ventas = (function(){
     });
   }
 
-  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc };
+  // ── Enviar link de pago (follow-up para pagos pendientes) ────────────────
+  function showEnviarLink(rowId){
+    var rows = _lastRows || [];
+    var r = null;
+    for(var i=0;i<rows.length;i++){
+      if(rows[i].id === rowId){ r = rows[i]; break; }
+    }
+    if(!r){ alert('Fila no encontrada'); return; }
+
+    var tel  = r.telefono || '';
+    var em   = r.email || '';
+    var last = r.last_reminder_at || '';
+    var sentCount = r.reminders_sent_count || 0;
+
+    var h = '<div class="ad-h2">Enviar link de pago a cliente</div>';
+    h += '<div style="background:#FFF8E1;border-left:3px solid #FFC107;padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;color:#795548;">'+
+      'Se le reenviará al cliente un link para que complete el pago pendiente. Si es SPEI/OXXO se reutiliza la referencia original; si es tarjeta se genera un nuevo Checkout.'+
+    '</div>';
+
+    h += '<div style="font-size:13px;margin-bottom:10px;">';
+    h += '<strong>Pedido:</strong> VK-'+esc(r.pedido||r.id)+'<br>';
+    h += '<strong>Cliente:</strong> '+esc(r.nombre||'—')+'<br>';
+    h += '<strong>Modelo:</strong> '+esc(r.modelo||'—')+' · '+esc(r.color||'—')+'<br>';
+    h += '<strong>Monto:</strong> '+ADApp.money(r.monto)+'<br>';
+    h += '<strong>Método:</strong> '+esc(r.tipo||r.tpago||'—');
+    h += '</div>';
+
+    if(last){
+      h += '<div style="background:#FFFDE7;padding:8px 10px;border-radius:6px;font-size:11px;color:#666;margin-bottom:12px;">'+
+        'Último recordatorio: '+esc(last.substring(0,16))+' · Total envíos: '+sentCount+
+      '</div>';
+    }
+
+    h += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">Canales de envío</div>';
+    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px;cursor:pointer;'+(em?'':'opacity:.5;cursor:not-allowed;')+'">';
+    h += '<input type="checkbox" id="elSendEmail" '+(em?'checked':'disabled')+'>';
+    h += '<span>📧 Email '+(em?'<span style="color:#666;font-size:11px;">'+esc(em)+'</span>':'<span style="color:#b91c1c;font-size:11px;">sin email</span>')+'</span>';
+    h += '</label>';
+    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px;cursor:pointer;'+(tel?'':'opacity:.5;cursor:not-allowed;')+'">';
+    h += '<input type="checkbox" id="elSendSms" '+(tel?'checked':'disabled')+'>';
+    h += '<span>📱 SMS '+(tel?'<span style="color:#666;font-size:11px;">'+esc(tel)+'</span>':'<span style="color:#b91c1c;font-size:11px;">sin teléfono</span>')+'</span>';
+    h += '</label>';
+    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:10px;cursor:pointer;'+(tel?'':'opacity:.5;cursor:not-allowed;')+'">';
+    h += '<input type="checkbox" id="elSendWa" '+(tel?'checked':'disabled')+'>';
+    h += '<span>💬 WhatsApp '+(tel?'<span style="color:#666;font-size:11px;">'+esc(tel)+'</span>':'<span style="color:#b91c1c;font-size:11px;">sin teléfono</span>')+'</span>';
+    h += '</label>';
+
+    h += '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#666;margin-bottom:12px;cursor:pointer;">';
+    h += '<input type="checkbox" id="elForce"> Forzar envío aunque haya sido enviado en las últimas 24h';
+    h += '</label>';
+
+    h += '<div style="display:flex;gap:8px;margin-top:10px;">';
+    h += '<button class="ad-btn ghost" onclick="ADApp.closeModal()" style="flex:1;">Cancelar</button>';
+    h += '<button class="ad-btn primary" id="elSendBtn" style="flex:2;background:#d97706;">Enviar recordatorio</button>';
+    h += '</div>';
+
+    ADApp.modal(h);
+
+    $('#elSendBtn').on('click', function(){
+      var canales = [];
+      if($('#elSendEmail').is(':checked')) canales.push('email');
+      if($('#elSendSms').is(':checked')) canales.push('sms');
+      if($('#elSendWa').is(':checked')) canales.push('whatsapp');
+      if(!canales.length){ alert('Selecciona al menos un canal'); return; }
+
+      var $b = $(this).prop('disabled',true).html('<span class="ad-spin"></span> Enviando...');
+      ADApp.api('ventas/enviar-link-pago.php', {
+        transaccion_id: rowId,
+        canales: canales,
+        force: $('#elForce').is(':checked') ? 1 : 0
+      }).done(function(resp){
+        if(resp.ok){
+          ADApp.closeModal();
+          var parts = [];
+          if(resp.sent_email)    parts.push('Email');
+          if(resp.sent_sms)      parts.push('SMS');
+          if(resp.sent_whatsapp) parts.push('WhatsApp');
+          alert('Recordatorio enviado · ' + (parts.length ? parts.join(' + ') : 'sin canal exitoso'));
+          render(); // refresh list so last_reminder_at updates
+        } else {
+          alert(resp.error||'Error al enviar');
+          $b.prop('disabled',false).html('Enviar recordatorio');
+        }
+      }).fail(function(xhr){
+        var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de conexión';
+        alert(msg);
+        $b.prop('disabled',false).html('Enviar recordatorio');
+      });
+    });
+  }
+
+  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink };
 })();

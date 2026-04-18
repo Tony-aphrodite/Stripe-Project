@@ -119,6 +119,18 @@ function voltikaNotifyTemplates(): array {
         ],
 
         // ═══════════════════════════════════════════════════════════════════
+        // PAYMENT FOLLOW-UP — Pending/abandoned orders
+        // ═══════════════════════════════════════════════════════════════════
+
+        // Sent from admin panel "Pago pendiente" → Enviar link. Reuses the
+        // original Stripe voucher (SPEI/OXXO) or a new Checkout Session.
+        'recordatorio_pago_pendiente' => [
+            'subject' => '💳 Completa el pago de tu Voltika',
+            'body'    => "Hola {nombre} 👋\n\nNotamos que aún no se ha confirmado el pago de tu Voltika ({modelo}).\n\nMonto: {monto_fmt}\n\nContinúa tu pago aquí:\n{link}\n\nSi ya lo pagaste en OXXO o por transferencia, espera unas horas a que se acredite o ignora este mensaje.\n\n¿Dudas? Escríbenos por WhatsApp: +52 55 1341 6370",
+            'sms'     => 'Voltika: Completa el pago de tu {modelo} ({monto_fmt}): {link}',
+        ],
+
+        // ═══════════════════════════════════════════════════════════════════
         // INTERNAL — SERVICIOS ADICIONALES (Admin alerts)
         // ═══════════════════════════════════════════════════════════════════
 
