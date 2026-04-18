@@ -516,6 +516,17 @@ function sendPurchaseNotifications($order) {
              . ($tienePunto ? '_punto' : '_sin_punto');
         voltikaNotify($tpl, $notifyData);
 
+        // Delayed portal-access message (5 min after purchase confirmation).
+        // Customer-facing wording per 2026-04-19 brief — handled by
+        // portal_contado / portal_msi / portal_plazos.
+        if ($esCredito) {
+            voltikaNotifyDelayed('portal_plazos', $notifyData, 300);
+        } elseif ($tpago === 'msi') {
+            voltikaNotifyDelayed('portal_msi', $notifyData, 300);
+        } else {
+            voltikaNotifyDelayed('portal_contado', $notifyData, 300);
+        }
+
         webhookLog("Purchase notification [$tpl] sent for " . ($order['email'] ?? 'unknown'));
     } catch (Throwable $e) {
         webhookLog("Purchase notification error: " . $e->getMessage());

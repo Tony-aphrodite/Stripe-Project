@@ -257,6 +257,146 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
     ];
 }
 
+/**
+ * Build a portal-access template (delayed 5 min after purchase).
+ *
+ *   $isCredit — true for plazos/crédito (rich flow: pagos + cambio tarjeta +
+ *               adelantar pagos + PAGOS SIN DUPLICADO + factura diferida).
+ *               false for contado/MSI (simple flow: estado + docs + factura
+ *               inmediata).
+ *
+ * Customer brief 2026-04-19.
+ */
+function voltikaBuildPortalTemplate(bool $isCredit): array {
+    $subject = '🔐 Ya tienes acceso a tu portal VOLTIKA — Pedido VK-{pedido}';
+
+    // Portal bullets (HTML + WhatsApp text)
+    $items = [];
+    $items[] = [
+        'icon' => '✅',
+        'title' => 'ESTADO DE TU PEDIDO',
+        'desc'  => 'Sigue en tiempo real cada etapa de tu moto — desde preparación en CEDIS hasta que esté lista para recoger en tu punto.',
+    ];
+    if ($isCredit) {
+        $items[] = ['icon'=>'✅','title'=>'TUS PAGOS','desc'=>'Consulta tus pagos realizados y pendientes. Paga desde el portal con tarjeta, OXXO o transferencia SPEI cuando prefieras.'];
+        $items[] = ['icon'=>'✅','title'=>'ADELANTAR PAGOS','desc'=>'Puedes adelantar pagos sin ningún cargo extra directamente desde tu portal.'];
+        $items[] = ['icon'=>'✅','title'=>'CAMBIAR TU TARJETA DOMICILIADA','desc'=>'Actualiza tu tarjeta de cobro automático cuando quieras sin necesidad de llamar.'];
+    }
+    $items[] = ['icon'=>'✅','title'=>'TUS DOCUMENTOS','desc'=>'Descarga tu contrato de compra disponible desde hoy.'];
+    $items[] = ['icon'=>'✅','title'=>'INFORMACIÓN DE TU MOTO','desc'=>'Todos los detalles de tu {modelo} en color {color}.'];
+    $items[] = ['icon'=>'✅','title'=>'PERMISO TEMPORAL PARA CIRCULAR','desc'=>'Disponible en tu portal el día que recojas tu moto. Entra en vigencia ese día — tienes 30 días para tramitar tus placas definitivas.'];
+    if ($isCredit) {
+        $items[] = ['icon'=>'✅','title'=>'TU FACTURA','desc'=>'Tu factura se genera desde el inicio pero estará disponible en tu portal cuando completes todos tus pagos.'];
+    } else {
+        $items[] = ['icon'=>'✅','title'=>'TU FACTURA','desc'=>'Disponible al momento de la entrega. Si necesitas registrar tu RFC antes de esa fecha escríbenos: 📧 ventas@voltika.mx'];
+    }
+    $items[] = ['icon'=>'✅','title'=>'SEGURO Y PLACAS','desc'=>'Si solicitaste asesoría de seguro o gestor de placas encontrarás toda la información aquí.'];
+
+    $itemsHtml = '';
+    foreach ($items as $it) {
+        $itemsHtml .= '<div style="margin:10px 0;padding:10px 12px;background:#f5f7fa;border-radius:6px;">'
+                    . '<div style="font-size:12px;font-weight:700;color:#1a3a5c;letter-spacing:.3px;margin-bottom:3px;">' . $it['icon'] . ' ' . $it['title'] . '</div>'
+                    . '<div style="font-size:13px;color:#444;line-height:1.55;">' . $it['desc'] . '</div>'
+                    . '</div>';
+    }
+
+    // Credit-only sections
+    $pagosHtml = '';
+    $duplicadoHtml = '';
+    if ($isCredit) {
+        $pagosHtml = '<tr><td style="padding:14px 28px;">'
+                   . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">💳 Tu primer pago semanal</div>'
+                   . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Tu primer pago de <strong>\${monto_semanal}</strong> inicia únicamente el día que recibas tu moto en mano.</p>'
+                   . '<p style="font-size:13px;color:#444;line-height:1.5;margin:0;">No se genera ningún cargo antes de la entrega.</p>'
+                   . '</td></tr>';
+        $duplicadoHtml = '<tr><td style="padding:14px 28px;">'
+                       . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">💡 Pagos sin duplicado</div>'
+                       . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0;">Si realizas un pago manual (OXXO, transferencia o adelanto) tu cargo automático no se duplica — el sistema lo detecta y cancela el cobro de esa semana.</p>'
+                       . '</td></tr>';
+    }
+
+    // Full email HTML
+    $emailHtml = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Acceso al portal Voltika</title></head>'
+               . '<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;color:#1a3a5c;">'
+               . '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;"><tr><td align="center" style="padding:24px 12px;">'
+               . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
+               . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:26px;text-align:center;color:#fff;">'
+               . '<div style="font-size:24px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
+               . '<div style="font-size:17px;font-weight:700;margin-top:12px;">🔐 Tu portal ya está activo</div>'
+               . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Pedido VK-{pedido}</div>'
+               . '</td></tr>'
+               . '<tr><td style="padding:22px 28px 6px;">'
+               . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+               . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Tu portal de cliente VOLTIKA ya está activo y listo para usar.</p>'
+               . '</td></tr>'
+               . '<tr><td style="padding:10px 28px 4px;">'
+               . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📱 Entra a tu portal ahora</div>'
+               . '<p style="font-size:13.5px;color:#333;margin:0 0 6px;">Accede con tu número de celular registrado:</p>'
+               . '<div style="text-align:center;margin:14px 0;">'
+               . '<a href="https://voltika.mx/mi-cuenta" style="display:inline-block;background:#039fe1;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Entrar a mi portal</a>'
+               . '</div></td></tr>'
+               . '<tr><td style="padding:12px 28px;">'
+               . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">¿Qué encuentras en tu portal?</div>'
+               . $itemsHtml
+               . '</td></tr>'
+               . $pagosHtml
+               . $duplicadoHtml
+               . '<tr><td style="padding:14px 28px;">'
+               . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📲 Notificaciones automáticas</div>'
+               . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0;">Recibirás WhatsApp en cada paso del proceso de entrega de tu moto. No necesitas llamar ni escribir para saber cómo va tu pedido — todo llega solo a tu celular.</p>'
+               . '</td></tr>'
+               . '<tr><td style="padding:14px 28px 4px;">'
+               . '<p style="font-size:13px;color:#555;margin:0;">¿Tienes alguna duda?<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a><br>🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
+               . '</td></tr>'
+               . '<tr><td style="background:#1a3a5c;padding:18px 28px;text-align:center;color:#fff;">'
+               . '<div style="font-size:14px;font-weight:700;">voltika <span style="color:#22d37a;">⚡</span></div>'
+               . '<div style="font-size:11px;opacity:.7;margin-top:4px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
+               . '</td></tr>'
+               . '</table></td></tr></table></body></html>';
+
+    // WhatsApp body
+    if ($isCredit) {
+        $body = "🔐 {nombre}, ya tienes acceso a\ntu portal VOLTIKA ⚡\n\n"
+              . "Entra ahora con tu número de celular:\n👉 voltika.mx/mi-cuenta\n\n"
+              . "Desde tu portal puedes:\n"
+              . "✅ Ver el estado de tu pedido\n   en tiempo real\n"
+              . "✅ Ver tus pagos realizados\n   y pendientes\n"
+              . "✅ Descargar tu contrato de compra\n"
+              . "✅ Cambiar tu tarjeta domiciliada\n   cuando quieras\n"
+              . "✅ Adelantar pagos sin penalización\n"
+              . "✅ Pagar en OXXO o por transferencia\n   cuando prefieras\n"
+              . "✅ Descargar tu permiso temporal\n   para circular — disponible el\n   día que recojas tu moto\n"
+              . "✅ Ver tus cotizaciones de seguro\n   y placas si las solicitaste\n\n"
+              . "💡 Si realizas un pago manual\n(OXXO, transferencia o adelanto)\ntu cargo automático no se duplica —\nel sistema lo detecta y cancela\nel cobro de esa semana.\n\n"
+              . "⚠️ Tu primer pago semanal de\n\${monto_semanal} inicia el día\nque recibas tu moto en mano.\nSin cargos antes de la entrega.\n\n"
+              . "📲 También te notificamos aquí\nen cada paso del proceso.\nNo necesitas llamar ni escribir\npara saber cómo va tu pedido.\n\n"
+              . "¿Dudas? 📧 ventas@voltika.mx\n🕐 Lunes a Viernes 9:00 - 18:00 hrs";
+    } else {
+        // Contado/MSI WhatsApp (customer didn't provide explicit WA — mirror the
+        // Crédito style but with the shorter bullet list).
+        $body = "🔐 {nombre}, ya tienes acceso a\ntu portal VOLTIKA ⚡\n\n"
+              . "Entra ahora con tu número de celular:\n👉 voltika.mx/mi-cuenta\n\n"
+              . "Desde tu portal puedes:\n"
+              . "✅ Ver el estado de tu pedido\n   en tiempo real\n"
+              . "✅ Descargar tu contrato de compra\n"
+              . "✅ Consultar los detalles de tu\n   {modelo} {color}\n"
+              . "✅ Descargar tu permiso temporal\n   para circular — disponible el\n   día que recojas tu moto\n"
+              . "✅ Consultar y descargar tu factura\n   al momento de la entrega\n"
+              . "✅ Ver tus cotizaciones de seguro\n   y placas si las solicitaste\n\n"
+              . "📲 También te notificamos aquí\nen cada paso del proceso.\nNo necesitas llamar ni escribir\npara saber cómo va tu pedido.\n\n"
+              . "¿Dudas? 📧 ventas@voltika.mx\n🕐 Lunes a Viernes 9:00 - 18:00 hrs";
+    }
+
+    $sms = 'VOLTIKA: {nombre}, tu portal ya está activo. Entra con tu celular en voltika.mx/mi-cuenta. Dudas: ventas@voltika.mx';
+
+    return [
+        'subject'    => $subject,
+        'body'       => $body,
+        'sms'        => $sms,
+        'email_html' => $emailHtml,
+    ];
+}
+
 function voltikaNotifyTemplates(): array {
     // Build the 4 purchase-confirmation templates.
     // Keys: compra_confirmada_{contado|credito}_{punto|sin_punto}
@@ -265,11 +405,21 @@ function voltikaNotifyTemplates(): array {
     $tplKP  = voltikaBuildCompraTemplate(true,  true);   // crédito con punto
     $tplKNP = voltikaBuildCompraTemplate(true,  false);  // crédito sin punto
 
+    // Portal access templates (rewritten 2026-04-19). MSI uses the same
+    // content as Contado — customer didn't provide a distinct MSI variant.
+    $tplPortalContado = voltikaBuildPortalTemplate(false);
+    $tplPortalCredito = voltikaBuildPortalTemplate(true);
+
     return [
         'compra_confirmada_contado_punto'     => $tplCP,
         'compra_confirmada_contado_sin_punto' => $tplCNP,
         'compra_confirmada_credito_punto'     => $tplKP,
         'compra_confirmada_credito_sin_punto' => $tplKNP,
+
+        // New portal access templates (replaces legacy inline definitions below)
+        'portal_contado' => $tplPortalContado,
+        'portal_msi'     => $tplPortalContado,
+        'portal_plazos'  => $tplPortalCredito,
 
         // ═══════════════════════════════════════════════════════════════════
         // INTERNAL — DEALER/PUNTO CREDENTIALS
@@ -385,26 +535,9 @@ function voltikaNotifyTemplates(): array {
             'sms'     => 'Voltika: Tu {modelo} esta confirmada. Estamos asignando tu punto de entrega. Te avisamos en 48h.',
         ],
 
-        // MSG 1B — Client portal (Contado)
-        'portal_contado' => [
-            'subject' => '🔐 Acceso a tu portal VOLTIKA',
-            'body'    => "🔐 {nombre}, ya tienes acceso a tu portal VOLTIKA.\n\nEntra con tu número de celular registrado:\n\n✅ Estado de tu pedido en tiempo real\n✅ Tus documentos y contrato\n✅ Toda la información de tu moto\n\n👉 voltika.mx/mi-cuenta",
-            'sms'     => 'Voltika: Ya tienes acceso a tu portal. Entra con tu celular en voltika.mx/mi-cuenta',
-        ],
-
-        // MSG 1C — Client portal (9 MSI)
-        'portal_msi' => [
-            'subject' => '🔐 Acceso a tu portal VOLTIKA',
-            'body'    => "🔐 {nombre}, ya tienes acceso a tu portal VOLTIKA.\n\nEntra con tu número de celular registrado:\n\n✅ Estado de tu pedido en tiempo real\n✅ Tus documentos y contrato\n✅ Seguimiento de tus pagos MSI\n\n👉 voltika.mx/mi-cuenta",
-            'sms'     => 'Voltika: Ya tienes acceso a tu portal. Seguimiento de pagos MSI en voltika.mx/mi-cuenta',
-        ],
-
-        // MSG 1D — Client portal (Plazos Voltika / Crédito)
-        'portal_plazos' => [
-            'subject' => '🔐 Acceso a tu portal VOLTIKA',
-            'body'    => "🔐 {nombre}, ya tienes acceso a tu portal VOLTIKA.\n\nEntra con tu número de celular registrado:\n\n✅ Estado de tu pedido en tiempo real\n✅ Tus pagos realizados y pendientes\n✅ Tus documentos y contrato\n✅ Cambiar tu tarjeta domiciliada cuando quieras\n✅ Adelantar pagos sin penalización\n✅ Pagar en OXXO o por transferencia cuando prefieras\n\n💡 Si realizas un pago manual (OXXO, transferencia o adelanto) tu cargo automático no se duplica — el sistema lo detecta y cancela el cobro de esa semana.\n\n👉 voltika.mx/mi-cuenta",
-            'sms'     => 'Voltika: Ya tienes acceso a tu portal. Pagos, documentos y mas en voltika.mx/mi-cuenta',
-        ],
+        // Legacy portal_contado/portal_msi/portal_plazos definitions removed
+        // — replaced by voltikaBuildPortalTemplate() at top of this function
+        // (2026-04-19 customer rewrite with rich email_html).
 
         // ═══════════════════════════════════════════════════════════════════
         // DELIVERY FLOW MESSAGES
