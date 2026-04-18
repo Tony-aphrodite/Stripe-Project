@@ -175,24 +175,35 @@ function _intOrZero(string $s): int {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 5) Resolve modelo IDs for commission mapping (once up front)
+// 5) Ensure all 6 canonical models exist + resolve IDs for commission mapping.
 // ═══════════════════════════════════════════════════════════════════════════
+// Canonical names kept consistent with comisiones.php's autoinsert list.
+$canonicalModels = ['M03', 'M05', 'Pesgo plus', 'mino B', 'Ukko S+', 'MC10 Streetx'];
+try {
+    $ins = $pdo->prepare("INSERT IGNORE INTO modelos (nombre, activo) VALUES (?, 1)");
+    foreach ($canonicalModels as $name) {
+        try { $ins->execute([$name]); } catch (Throwable $e) {}
+    }
+} catch (Throwable $e) {}
+
+// Build a fuzzy-compare lookup: space-stripped, accent-stripped, lowercased.
+function _modeloNormKey(string $s): string {
+    $n = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+    $n = strtolower($n);
+    $n = preg_replace('/[^a-z0-9]/', '', $n);   // drop spaces, pluses, dashes, etc.
+    return $n;
+}
 $modeloIds = [];
 try {
     $q = $pdo->query("SELECT id, nombre FROM modelos");
     foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $m) {
-        $n = strtolower(iconv('UTF-8','ASCII//TRANSLIT//IGNORE', $m['nombre']));
-        $modeloIds[$n] = (int)$m['id'];
+        $k = _modeloNormKey($m['nombre']);
+        if ($k !== '') $modeloIds[$k] = (int)$m['id'];
     }
 } catch (Throwable $e) {}
 function _modeloIdFor(string $label, array $modeloIds): ?int {
-    $n = strtolower(iconv('UTF-8','ASCII//TRANSLIT//IGNORE', $label));
-    if (isset($modeloIds[$n])) return $modeloIds[$n];
-    // Fuzzy: try prefix match
-    foreach ($modeloIds as $mn => $id) {
-        if (strpos($mn, $n) !== false || strpos($n, $mn) !== false) return $id;
-    }
-    return null;
+    $k = _modeloNormKey($label);
+    return $modeloIds[$k] ?? null;
 }
 // Ensure punto_comisiones table + comision_venta_monto column exist.
 // master-bootstrap creates the table with pct only, so we ALTER on first import.
@@ -314,13 +325,15 @@ for ($i = 1; $i < count($rows); $i++) {
 
         // Per-model commissions (replace existing set)
         $stmtComDel->execute([$puntoId]);
+        // Labels match what _modeloNormKey() normalizes to the same key as the
+        // canonical model names stored in the DB (spaces/accents/pluses stripped).
         $commissionColumns = [
-            'com_pesgo_plus'  => 'Pesgo Plus',
+            'com_pesgo_plus'  => 'Pesgo plus',
             'com_m03'         => 'M03',
-            'com_mino_b'      => 'Mino B',
+            'com_mino_b'      => 'mino B',
             'com_m05'         => 'M05',
             'com_ukko_s_plus' => 'Ukko S+',
-            'com_mc10'        => 'MC10StreetX',
+            'com_mc10'        => 'MC10 Streetx',
         ];
         foreach ($commissionColumns as $key => $modelLabel) {
             if ($colMap[$key] === null) continue;

@@ -18,8 +18,9 @@ try {
     }
 } catch (Throwable $e) { error_log('comisiones ensure col: ' . $e->getMessage()); }
 
-// Ensure all required models exist (auto-insert missing ones)
-$requiredModels = ['m03', 'Pesgo plus', 'mino B', 'MC10 Streetx'];
+// Ensure all required models exist (auto-insert missing ones).
+// Customer Puntos template defines 6 sale-commission columns — all must exist.
+$requiredModels = ['M03', 'M05', 'Pesgo plus', 'mino B', 'Ukko S+', 'MC10 Streetx'];
 $chkModel = $pdo->prepare("SELECT id FROM modelos WHERE nombre = ? LIMIT 1");
 $insModel = $pdo->prepare("INSERT INTO modelos (nombre, activo) VALUES (?, 1)");
 foreach ($requiredModels as $mName) {
