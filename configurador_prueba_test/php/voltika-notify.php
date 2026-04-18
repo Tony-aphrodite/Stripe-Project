@@ -47,11 +47,96 @@ function voltikaNotifyTemplates(): array {
         // INTERNAL — DEALER/PUNTO CREDENTIALS
         // ═══════════════════════════════════════════════════════════════════
 
-        // Sent to newly-created dealer/admin user with login credentials
+        // Sent to newly-created dealer/admin user with login credentials.
+        // Rewritten 2026-04-19 per customer brief: richer welcome + legal notice
+        // + manual download link.
         'credenciales_punto' => [
-            'subject' => '🔐 Acceso al Panel Voltika — ' . '{punto}',
-            'body'    => "🔐 Hola {nombre},\n\nYa tienes acceso al Panel Voltika ({rol}).\n\n📍 Punto: {punto}\n🌐 URL: https://{url}\n\nTus credenciales:\n• Usuario: {email}\n• Contraseña: {password}\n\n⚠️ Por seguridad, cambia la contraseña en tu primer inicio de sesión.",
-            'sms'     => 'Voltika Panel: Usuario {email} Clave {password} URL https://{url}',
+            'subject' => 'Bienvenido a la red VOLTIKA — {punto}',
+            // WhatsApp body (shorter, emoji-friendly)
+            'body'    => "🔐 Hola {nombre}, bienvenido a la red VOLTIKA ⚡\n\n"
+                       . "Ya tienes acceso al Panel de Operaciones como {rol}.\n\n"
+                       . "📍 Punto: {punto}\n"
+                       . "🌐 Panel: https://{url}\n"
+                       . "👤 Usuario: {email}\n"
+                       . "🔒 Clave: {password}\n\n"
+                       . "⚠️ Cambia tu contraseña al entrar por primera vez.\n\n"
+                       . "📎 Revisa el manual adjunto en tu correo antes de tu primera operación:\n"
+                       . "https://voltika.mx/docs/manual-operador-punto.pdf\n\n"
+                       . "¿Dudas? Comunícate directamente con el ejecutivo VOLTIKA que te afilió — él es tu contacto principal.\n"
+                       . "📧 puntos@voltika.mx\n"
+                       . "🕐 Lunes a Viernes 9:00 - 18:00 hrs\n\n"
+                       . "Este es un mensaje automático — no respondas aquí.",
+            // SMS body (single line, no emoji for Mexican carrier compatibility)
+            'sms'     => 'VOLTIKA: Hola {nombre}, ya tienes acceso como {rol}. Usuario: {email} Clave: {password} Panel: https://{url} Cambia tu clave al entrar. Dudas: puntos@voltika.mx',
+            // Rich HTML email
+            'email_html' => '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Bienvenido a VOLTIKA</title></head>'
+                         . '<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;color:#1a3a5c;">'
+                         . '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;">'
+                         . '<tr><td align="center" style="padding:24px 12px;">'
+                         . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
+                         // Header
+                         . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:28px;text-align:center;color:#fff;">'
+                         . '<div style="font-size:26px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
+                         . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Red de Puntos Oficiales</div>'
+                         . '<div style="font-size:17px;font-weight:700;margin-top:14px;">Bienvenido al equipo</div>'
+                         . '<div style="font-size:14px;opacity:.9;margin-top:2px;">{punto}</div>'
+                         . '</td></tr>'
+                         // Welcome
+                         . '<tr><td style="padding:26px 28px 10px;">'
+                         . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+                         . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Ya eres parte oficial de la red VOLTIKA como <strong>{rol}</strong>. Tu acceso al Panel de Operaciones está activo y listo para usar desde ahora mismo.</p>'
+                         . '</td></tr>'
+                         // Credenciales
+                         . '<tr><td style="padding:14px 28px;">'
+                         . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🔑 Tus credenciales de acceso</div>'
+                         . '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;background:#f5f7fa;border-radius:8px;padding:4px;">'
+                         . '<tr><td style="padding:8px 14px;color:#666;">Punto</td><td style="padding:8px 14px;font-weight:700;">{punto}</td></tr>'
+                         . '<tr><td style="padding:8px 14px;color:#666;">Panel</td><td style="padding:8px 14px;"><a href="https://{url}" style="color:#039fe1;font-weight:700;">https://{url}</a></td></tr>'
+                         . '<tr><td style="padding:8px 14px;color:#666;">Usuario</td><td style="padding:8px 14px;font-family:ui-monospace,Consolas,monospace;">{email}</td></tr>'
+                         . '<tr><td style="padding:8px 14px;color:#666;">Contraseña</td><td style="padding:8px 14px;font-family:ui-monospace,Consolas,monospace;font-weight:700;">{password}</td></tr>'
+                         . '</table>'
+                         . '<p style="font-size:12px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:4px;margin-top:12px;"><strong>⚠️ Cambia tu contraseña en tu primer inicio de sesión.</strong><br>Menú superior → tu nombre → Cambiar contraseña. No compartas tus credenciales con nadie.</p>'
+                         . '</td></tr>'
+                         // Manual
+                         . '<tr><td style="padding:14px 28px;">'
+                         . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📎 Manual del operador</div>'
+                         . '<p style="font-size:13px;color:#444;line-height:1.6;margin:0 0 10px;">Todo lo que necesitas saber está en el manual. <strong>Léelo antes de tu primera operación</strong>. Incluye capturas reales del panel y protocolos paso a paso.</p>'
+                         . '<ul style="font-size:13px;color:#444;line-height:1.8;padding-left:20px;margin:4px 0 12px;">'
+                         . '<li>Cómo usar el panel</li>'
+                         . '<li>Recepción de motos</li>'
+                         . '<li>Proceso de entrega</li>'
+                         . '<li>Tus comisiones</li>'
+                         . '<li>Venta por referido</li>'
+                         . '<li>Protocolos de emergencia</li>'
+                         . '</ul>'
+                         . '<div style="text-align:center;margin:16px 0;">'
+                         . '<a href="https://voltika.mx/docs/manual-operador-punto.pdf" target="_blank" style="display:inline-block;background:#039fe1;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Descargar manual del operador</a>'
+                         . '</div>'
+                         . '</td></tr>'
+                         // Legal notice
+                         . '<tr><td style="padding:14px 28px;">'
+                         . '<div style="background:#fef2f2;border-left:4px solid #dc2626;padding:14px 16px;border-radius:6px;">'
+                         . '<div style="font-size:13px;font-weight:700;color:#991b1b;margin-bottom:6px;">🚨 LEE EL MANUAL ANTES DE TU PRIMERA ENTREGA</div>'
+                         . '<p style="font-size:12.5px;color:#7a0e1f;line-height:1.6;margin:0;">Entregar una moto sin completar la <strong>validación facial</strong> y el <strong>OTP</strong> en el sistema hace al punto responsable del <strong>valor total de la moto</strong>. El manual explica el proceso completo. Sin excepciones.</p>'
+                         . '</div>'
+                         . '</td></tr>'
+                         // Soporte
+                         . '<tr><td style="padding:14px 28px;">'
+                         . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">💬 ¿Tienes dudas? Estamos aquí</div>'
+                         . '<p style="font-size:13px;color:#444;line-height:1.7;margin:0;">'
+                         . '📱 WhatsApp: <a href="https://wa.me/525579440928" style="color:#039fe1;font-weight:700;">557 944 0928</a><br>'
+                         . '📧 Email: <a href="mailto:puntos@voltika.mx" style="color:#039fe1;font-weight:700;">puntos@voltika.mx</a><br>'
+                         . '🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
+                         . '<p style="font-size:12.5px;color:#555;line-height:1.6;margin:10px 0 0;">👤 Comunícate con el ejecutivo VOLTIKA que te contactó para afiliarte — él es tu contacto principal para dudas y capacitación por videollamada.</p>'
+                         . '</td></tr>'
+                         // Footer
+                         . '<tr><td style="background:#1a3a5c;padding:20px 28px;text-align:center;color:#fff;">'
+                         . '<div style="font-size:14px;font-weight:700;">voltika <span style="color:#22d37a;">⚡</span></div>'
+                         . '<div style="font-size:11px;opacity:.7;margin-top:4px;">Movilidad eléctrica · Red Nacional · México</div>'
+                         . '<div style="font-size:11px;opacity:.7;margin-top:2px;">voltika.mx · puntos@voltika.mx</div>'
+                         . '</td></tr>'
+                         . '</table>'
+                         . '</td></tr></table></body></html>',
         ],
 
         // ═══════════════════════════════════════════════════════════════════
@@ -335,13 +420,19 @@ function voltikaNotify(string $tipo, array $data): array {
         $summary['channels']['whatsapp'] = $r['ok'];
     }
 
-    // Email
+    // Email — template can provide `email_html` for rich markup, otherwise
+    // the default plain-text wrapper is used.
     if (!empty($data['email']) && function_exists('sendMail')) {
-        $html = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:20px;color:#222">'
-              . '<h2 style="color:#22d37a;margin:0 0 14px">' . htmlspecialchars($subject) . '</h2>'
-              . '<p style="white-space:pre-line;line-height:1.6">' . htmlspecialchars($body) . '</p>'
-              . '<hr><p style="font-size:11px;color:#888">Este mensaje fue enviado automáticamente por Voltika. No respondas a este correo.</p>'
-              . '</div>';
+        $html = '';
+        if (!empty($tpl['email_html'])) {
+            $html = voltikaNotifyInterpolate($tpl['email_html'], $data);
+        } else {
+            $html = '<div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:20px;color:#222">'
+                  . '<h2 style="color:#22d37a;margin:0 0 14px">' . htmlspecialchars($subject) . '</h2>'
+                  . '<p style="white-space:pre-line;line-height:1.6">' . htmlspecialchars($body) . '</p>'
+                  . '<hr><p style="font-size:11px;color:#888">Este mensaje fue enviado automáticamente por Voltika. No respondas a este correo.</p>'
+                  . '</div>';
+        }
         $ok = false;
         try { $ok = (bool) @sendMail($data['email'], $data['nombre'] ?? '', $subject, $html); } catch (Throwable $e) { error_log('voltikaNotify email: ' . $e->getMessage()); }
         voltikaNotifyLog($clienteId, $tipo, 'email', $data['email'], $subject, $ok ? 'sent' : 'failed');

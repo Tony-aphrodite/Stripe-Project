@@ -830,6 +830,42 @@ $ADMIN_WA    = defined('VOLTIKA_ADMIN_WHATSAPP') ? VOLTIKA_ADMIN_WHATSAPP : '+52
 $ADMIN_EMAIL = defined('VOLTIKA_ADMIN_EMAIL')    ? VOLTIKA_ADMIN_EMAIL    : 'admin@voltika.mx';
 
 if ($asesoriaPlacasInt === 1) {
+    // Route to the state-specific gestor de placas if one is registered
+    // (see admin → Gestores de placas). Fallback to Voltika admin if no
+    // gestor is assigned for this estado.
+    $placasTel   = $ADMIN_WA;
+    $placasWa    = $ADMIN_WA;
+    $placasEmail = $ADMIN_EMAIL;
+    try {
+        $pdoG = getDB();
+        // Ensure table exists (idempotent) so the lookup doesn't fatal on fresh schemas.
+        $pdoG->exec("CREATE TABLE IF NOT EXISTS gestores_placas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            estado_mx VARCHAR(100) NOT NULL,
+            nombre VARCHAR(200) NOT NULL,
+            telefono VARCHAR(30) DEFAULT NULL,
+            email VARCHAR(200) DEFAULT NULL,
+            whatsapp VARCHAR(30) DEFAULT NULL,
+            notas TEXT DEFAULT NULL,
+            activo TINYINT(1) NOT NULL DEFAULT 1,
+            freg DATETIME DEFAULT CURRENT_TIMESTAMP,
+            fmod DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_estado (estado_mx, activo)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $gStmt = $pdoG->prepare("SELECT nombre, telefono, email, whatsapp
+            FROM gestores_placas
+            WHERE estado_mx = ? AND activo = 1
+            ORDER BY id DESC LIMIT 1");
+        $gStmt->execute([$estado]);
+        $g = $gStmt->fetch(PDO::FETCH_ASSOC);
+        if ($g) {
+            if (!empty($g['whatsapp'])) $placasWa  = $g['whatsapp'];
+            elseif (!empty($g['telefono'])) $placasWa = $g['telefono'];
+            if (!empty($g['telefono'])) $placasTel   = $g['telefono'];
+            if (!empty($g['email']))    $placasEmail = $g['email'];
+        }
+    } catch (Throwable $e) { error_log('gestor placas lookup: ' . $e->getMessage()); }
+
     voltikaNotify('admin_extras_placas', [
         'pedido'           => $pedidoNum,
         'nombre'           => $nombre,
@@ -837,9 +873,9 @@ if ($asesoriaPlacasInt === 1) {
         'estado_mx'        => $estado,
         'ciudad'           => $ciudad,
         'modelo'           => $modelo,
-        'telefono'         => $ADMIN_WA,
-        'whatsapp'         => $ADMIN_WA,
-        'email'            => $ADMIN_EMAIL,
+        'telefono'         => $placasTel,
+        'whatsapp'         => $placasWa,
+        'email'            => $placasEmail,
         'cliente_id'       => null,
     ]);
 }
