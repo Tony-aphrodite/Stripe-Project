@@ -10,6 +10,14 @@ adminRequireAuth(['admin']);
 
 $pdo = getDB();
 
+// Ensure comision_venta_monto column exists (customer template uses fixed MXN).
+try {
+    $pcCols = array_column($pdo->query("SHOW COLUMNS FROM punto_comisiones")->fetchAll(PDO::FETCH_ASSOC), 'Field');
+    if (!in_array('comision_venta_monto', $pcCols, true)) {
+        $pdo->exec("ALTER TABLE punto_comisiones ADD COLUMN comision_venta_monto DECIMAL(10,2) NULL");
+    }
+} catch (Throwable $e) { error_log('comisiones ensure col: ' . $e->getMessage()); }
+
 // Ensure all required models exist (auto-insert missing ones)
 $requiredModels = ['m03', 'Pesgo plus', 'mino B', 'MC10 Streetx'];
 $chkModel = $pdo->prepare("SELECT id FROM modelos WHERE nombre = ? LIMIT 1");
@@ -27,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     $rows = $pdo->prepare("
         SELECT pc.modelo_id, m.nombre AS modelo_nombre,
-               pc.comision_venta_pct, pc.comision_entrega_pct
+               pc.comision_venta_pct, pc.comision_venta_monto, pc.comision_entrega_pct
         FROM punto_comisiones pc
         JOIN modelos m ON m.id = pc.modelo_id
         WHERE pc.punto_id = ?
@@ -53,19 +61,21 @@ $comisiones = $d['comisiones'] ?? [];
 if (!$puntoId) adminJsonOut(['ok' => false, 'error' => 'punto_id requerido'], 400);
 
 $stmt = $pdo->prepare("
-    INSERT INTO punto_comisiones (punto_id, modelo_id, comision_venta_pct, comision_entrega_pct)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO punto_comisiones (punto_id, modelo_id, comision_venta_pct, comision_venta_monto, comision_entrega_pct)
+    VALUES (?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
-        comision_venta_pct = VALUES(comision_venta_pct),
+        comision_venta_pct   = VALUES(comision_venta_pct),
+        comision_venta_monto = VALUES(comision_venta_monto),
         comision_entrega_pct = VALUES(comision_entrega_pct)
 ");
 
 foreach ($comisiones as $c) {
-    $modeloId = (int)($c['modelo_id'] ?? 0);
-    $ventaPct = floatval($c['comision_venta_pct'] ?? 0);
+    $modeloId   = (int)($c['modelo_id'] ?? 0);
+    $ventaPct   = floatval($c['comision_venta_pct']   ?? 0);
+    $ventaMonto = isset($c['comision_venta_monto']) ? floatval($c['comision_venta_monto']) : 0;
     $entregaPct = floatval($c['comision_entrega_pct'] ?? 0);
     if (!$modeloId) continue;
-    $stmt->execute([$puntoId, $modeloId, $ventaPct, $entregaPct]);
+    $stmt->execute([$puntoId, $modeloId, $ventaPct, $ventaMonto ?: null, $entregaPct]);
 }
 
 adminLog('comisiones_actualizar', ['punto_id' => $puntoId, 'count' => count($comisiones)]);

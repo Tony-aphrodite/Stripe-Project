@@ -407,10 +407,15 @@ window.AD_puntos = (function(){
 
         modelos.forEach(function(m){
           var c = comMap[m.id]||{};
+          // Prefer fixed MXN amount (customer template uses $1,500 / $2,000 / $4,000 etc.)
+          // Fallback to legacy pct column for pre-import data.
+          var ventaVal   = parseFloat(c.comision_venta_monto);
+          if (!ventaVal || isNaN(ventaVal)) ventaVal = parseFloat(c.comision_venta_pct) || 0;
+          var entregaVal = parseFloat(c.comision_entrega_pct) || 0;
           ch += '<tr data-mid="'+m.id+'" style="border-bottom:1px solid #f0f0f0;">'+
             '<td style="padding:4px;font-weight:600;">'+esc(m.nombre)+'</td>'+
-            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComVenta" step="50" min="0" value="'+(parseFloat(c.comision_venta_pct)||0)+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
-            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComEntrega" step="50" min="0" value="'+(parseFloat(c.comision_entrega_pct)||0)+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
+            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComVenta" step="50" min="0" value="'+ventaVal+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
+            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComEntrega" step="50" min="0" value="'+entregaVal+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
           '</tr>';
         });
         ch += '</tbody></table>';
@@ -469,10 +474,15 @@ window.AD_puntos = (function(){
       var comisiones = [];
       $('#pfComisionesWrap tr[data-mid]').each(function(){
         var mid = $(this).data('mid');
+        var ventaAmt = parseFloat($(this).find('.pfComVenta').val()) || 0;
         comisiones.push({
           modelo_id: mid,
-          comision_venta_pct: parseFloat($(this).find('.pfComVenta').val())||0,
-          comision_entrega_pct: parseFloat($(this).find('.pfComEntrega').val())||0
+          // Save the same fixed MXN amount into monto (customer template) and
+          // leave pct null — keeps legacy pct-readers working via the monto
+          // fallback in the read path.
+          comision_venta_monto: ventaAmt,
+          comision_venta_pct: 0,
+          comision_entrega_pct: parseFloat($(this).find('.pfComEntrega').val()) || 0,
         });
       });
 
