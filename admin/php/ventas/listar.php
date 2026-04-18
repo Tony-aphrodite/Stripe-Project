@@ -53,6 +53,15 @@ try {
                t.pago_estado AS tx_pago_estado,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
                m.pago_estado,
+               m.punto_voltika_id AS moto_punto_id,
+               DATEDIFF(CURDATE(), COALESCE(m.fecha_estado, m.freg)) AS moto_dias_en_estado,
+               pm.nombre    AS punto_moto_nombre,
+               pm.ciudad    AS punto_moto_ciudad,
+               pm.direccion AS punto_moto_direccion,
+               (SELECT e.estado FROM envios e WHERE e.moto_id = m.id ORDER BY e.id DESC LIMIT 1) AS envio_estado,
+               (SELECT e.carrier FROM envios e WHERE e.moto_id = m.id ORDER BY e.id DESC LIMIT 1) AS envio_carrier,
+               (SELECT e.tracking_number FROM envios e WHERE e.moto_id = m.id ORDER BY e.id DESC LIMIT 1) AS envio_tracking,
+               (SELECT e.fecha_estimada_llegada FROM envios e WHERE e.moto_id = m.id ORDER BY e.id DESC LIMIT 1) AS envio_eta,
                p.direccion AS punto_direccion, p.colonia AS punto_colonia,
                p.ciudad AS punto_ciudad, p.estado AS punto_estado,
                p.cp AS punto_cp, p.telefono AS punto_telefono
@@ -66,6 +75,7 @@ try {
                    ORDER BY m2.fmod DESC
                    LIMIT 1
                )
+        LEFT JOIN puntos_voltika pm ON pm.id = m.punto_voltika_id
         LEFT JOIN puntos_voltika p
                ON p.id = (
                    SELECT p2.id FROM puntos_voltika p2
@@ -92,6 +102,16 @@ try {
             'moto_id'     => $r['moto_id'] ? (int)$r['moto_id'] : null,
             'moto_vin'    => $r['moto_vin'],
             'moto_estado' => $r['moto_estado'],
+            'dias_en_estado'       => isset($r['moto_dias_en_estado']) ? (int)$r['moto_dias_en_estado'] : null,
+            'punto_moto_nombre'    => $r['punto_moto_nombre']    ?? null,
+            'punto_moto_ciudad'    => $r['punto_moto_ciudad']    ?? null,
+            'punto_moto_direccion' => $r['punto_moto_direccion'] ?? null,
+            'envio' => $r['envio_estado'] ? [
+                'estado'                 => $r['envio_estado'],
+                'carrier'                => $r['envio_carrier'],
+                'tracking_number'        => $r['envio_tracking'],
+                'fecha_estimada_llegada' => $r['envio_eta'],
+            ] : null,
             'pago_estado' => $r['pago_estado']
                 ?: ($r['tx_pago_estado'] ?? '')
                 ?: (

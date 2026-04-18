@@ -441,12 +441,48 @@ window.AD_ventas = (function(){
     // ── Section: Estatus de moto ──
     // Neutral heading so it reads naturally whether the moto is already
     // assigned (shows VIN + estado) or still pending (shows "Sin asignar").
+    // Customer feedback 2026-04-19: include physical location + aging so the
+    // operator knows where the moto physically sits right now.
     secIx = 0;
     html += secHead('Estatus de moto','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>');
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     if(r.moto_id){
       html += fRow('VIN', '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+(r.moto_vin||'****')+'</code>');
       html += fRow('Estado', ADApp.badgeEstado(r.moto_estado||'—'));
+
+      // Ubicación actual — where the moto physically is right now.
+      var motoEst = (r.moto_estado||'').toLowerCase();
+      var locHtml = '';
+      if (motoEst === 'entregada') {
+        locHtml = '<span style="color:#059669;font-weight:600;">Entregada al cliente</span>';
+      } else if (motoEst === 'por_llegar') {
+        locHtml = '<span style="color:#d97706;font-weight:600;">En tránsito desde CEDIS</span>';
+        if (r.punto_moto_nombre) locHtml += ' <span style="color:var(--ad-dim);">→ ' + esc(r.punto_moto_nombre) + '</span>';
+      } else if (r.punto_moto_nombre) {
+        var mapsAddr = r.punto_moto_nombre + (r.punto_moto_direccion ? ', ' + r.punto_moto_direccion : '') + (r.punto_moto_ciudad ? ', ' + r.punto_moto_ciudad : '');
+        locHtml = '<strong>' + esc(r.punto_moto_nombre) + '</strong>';
+        if (r.punto_moto_ciudad) locHtml += ' · <span style="color:var(--ad-dim);">' + esc(r.punto_moto_ciudad) + '</span>';
+        locHtml += ' <a href="https://maps.google.com/?q=' + encodeURIComponent(mapsAddr) + '" target="_blank" style="color:var(--ad-primary);font-size:11px;margin-left:4px;">📍 Maps</a>';
+      } else {
+        locHtml = '<span style="color:var(--ad-dim);">En CEDIS</span>';
+      }
+      html += fRow('Ubicación', locHtml);
+
+      // Aging in current state — color-coded per CEDIS "Por punto" convention.
+      if (r.dias_en_estado != null && motoEst !== 'entregada') {
+        var d = parseInt(r.dias_en_estado) || 0;
+        var col = d <= 7 ? '#059669' : d <= 30 ? '#d97706' : '#dc2626';
+        var label = d === 0 ? 'Hoy' : (d === 1 ? 'Hace 1 día' : 'Hace ' + d + ' días');
+        html += fRow('En este estado', '<span style="font-weight:700;color:' + col + ';">' + label + '</span>');
+      }
+
+      // Shipment status for in-transit motos (Skydrop or similar).
+      if (r.envio && (motoEst === 'por_llegar' || motoEst === 'recibida')) {
+        var envLine = esc(r.envio.carrier || 'Envío') + ' · ' + esc(r.envio.estado || 'en tránsito');
+        if (r.envio.fecha_estimada_llegada) envLine += ' · ETA ' + esc(String(r.envio.fecha_estimada_llegada).substring(0, 10));
+        if (r.envio.tracking_number) envLine += ' · <code style="font-size:11px;">' + esc(r.envio.tracking_number) + '</code>';
+        html += fRow('Envío', envLine);
+      }
     } else {
       html += fRow('Estado', '<span class="ad-badge red">Sin moto asignada</span>');
     }
