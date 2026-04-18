@@ -128,6 +128,7 @@ window.AD_ventas = (function(){
 
       var isOrphan = r.source === 'transacciones_errores' || r.source === 'subscripciones_credito';
       var motoCell, actions;
+      var actionsLayout = 'row';   // 'row' | 'stacked_pago_pendiente'
       var btnStyleBase = 'padding:5px 10px;font-size:12px;white-space:nowrap;';
       if(isOrphan){
         var isVksc = r.source === 'subscripciones_credito';
@@ -165,27 +166,39 @@ window.AD_ventas = (function(){
             actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
                        'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
           } else if (r.stripe_pi) {
-            // Payment not confirmed in DB but stripe_pi exists. Two actions:
-            //   (a) Sincronizar — re-check Stripe (fixes drift where payment
-            //       actually succeeded but webhook didn't update DB).
-            //   (b) Enviar link — re-send the payment link to the customer.
-            actions += '<button class="ad-btn sm" style="'+btnStyleBase+';background:#0ea5e9;color:#fff;" '+
-                       'title="Verificar estado real con Stripe" '+
-                       'onclick="AD_ventas.syncStripe('+r.id+', this)">🔄 Sinc</button>';
-            actions += '<button class="ad-btn sm" style="'+btnStyleBase+';background:#d97706;color:#fff;" '+
-                       'title="Reenviar link de pago al cliente" '+
-                       'onclick="AD_ventas.showEnviarLink('+r.id+')">Enviar link</button>';
+            // Payment not confirmed: Enviar link prominently on top (full width),
+            // Sinc + Ver on the bottom row. Prevents "Ver" from overflowing to
+            // the right when 3 buttons stack horizontally.
+            actionsLayout = 'stacked_pago_pendiente';
           } else {
             actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+';opacity:.55;cursor:not-allowed;" '+
                        'title="El pago de esta orden aún no ha sido confirmado" disabled>Pendiente</button>';
           }
         }
-        actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+        if (actionsLayout !== 'stacked_pago_pendiente') {
+          actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+        }
       }
-      html += '<td>'+motoCell+'</td>'+
-              '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
-              actions+
-              '</div></td>';
+      var actionTd;
+      if (actionsLayout === 'stacked_pago_pendiente') {
+        actionTd = '<td style="min-width:170px;"><div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;">'+
+          '<button class="ad-btn sm" style="'+btnStyleBase+';background:#d97706;color:#fff;width:100%;" '+
+            'title="Reenviar link de pago al cliente" '+
+            'onclick="AD_ventas.showEnviarLink('+r.id+')">Enviar link</button>'+
+          '<div style="display:flex;gap:5px;">'+
+            '<button class="ad-btn sm" style="'+btnStyleBase+';background:#0ea5e9;color:#fff;flex:1;" '+
+              'title="Verificar estado real con Stripe" '+
+              'onclick="AD_ventas.syncStripe('+r.id+', this)">🔄 Sinc</button>'+
+            '<button class="ad-btn sm ghost" style="'+btnStyleBase+';flex:1;" '+
+              'onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>'+
+          '</div>'+
+        '</div></td>';
+      } else {
+        actionTd = '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
+          actions +
+        '</div></td>';
+      }
+      html += '<td>'+motoCell+'</td>' + actionTd;
       html += '</tr>';
     });
 
