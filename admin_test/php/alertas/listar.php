@@ -132,6 +132,90 @@ foreach ($topSellers as $ts) {
     }
 }
 
+// ── 7. Pickup retrasado — moto lista_para_entrega con cliente hace > 7 días ──
+// Customer hasn't collected their unit despite the punto marking it ready.
+$pickupRetrasado = $safeAll(
+    "SELECT m.id, m.vin_display, m.modelo, m.color, m.cliente_nombre, m.cliente_telefono,
+            pv.nombre AS punto_nombre,
+            DATEDIFF(?, COALESCE(m.fecha_estado, m.freg)) as dias
+     FROM inventario_motos m
+     LEFT JOIN puntos_voltika pv ON pv.id = m.punto_voltika_id
+     WHERE m.activo = 1
+       AND m.estado = 'lista_para_entrega'
+       AND m.cliente_nombre IS NOT NULL AND m.cliente_nombre <> ''
+       AND DATEDIFF(?, COALESCE(m.fecha_estado, m.freg)) > 7
+     ORDER BY dias DESC LIMIT 20",
+    [$today, $today]
+);
+foreach ($pickupRetrasado as $pr) {
+    $alerts[] = [
+        'tipo'      => 'pickup_retrasado',
+        'prioridad' => $pr['dias'] > 14 ? 'alta' : 'media',
+        'titulo'    => 'Cliente no recoge su moto',
+        'mensaje'   => ($pr['cliente_nombre'] ?: 'Cliente') . ' no ha recogido su ' . $pr['modelo']
+                     . ' · ' . ($pr['vin_display'] ?: 's/VIN')
+                     . ' en ' . ($pr['punto_nombre'] ?: 'punto') . '. '
+                     . $pr['dias'] . ' días desde que se marcó lista para entrega.',
+        'icono'     => 'pickup',
+    ];
+}
+
+// ── 8. Ensamble retrasado — moto en ensamble > 7 días ──
+// Punto may be stuck (missing parts, forgot the unit, etc.). Flag for CEDIS.
+$ensambleRetrasado = $safeAll(
+    "SELECT m.id, m.vin_display, m.modelo, m.color,
+            pv.nombre AS punto_nombre,
+            DATEDIFF(?, COALESCE(m.fecha_estado, m.freg)) as dias
+     FROM inventario_motos m
+     LEFT JOIN puntos_voltika pv ON pv.id = m.punto_voltika_id
+     WHERE m.activo = 1
+       AND m.estado IN ('en_ensamble', 'por_ensamblar')
+       AND DATEDIFF(?, COALESCE(m.fecha_estado, m.freg)) > 7
+     ORDER BY dias DESC LIMIT 20",
+    [$today, $today]
+);
+foreach ($ensambleRetrasado as $er) {
+    $alerts[] = [
+        'tipo'      => 'ensamble_retrasado',
+        'prioridad' => $er['dias'] > 14 ? 'alta' : 'media',
+        'titulo'    => 'Ensamble retrasado',
+        'mensaje'   => $er['modelo'] . ' · ' . ($er['vin_display'] ?: 's/VIN')
+                     . ' lleva ' . $er['dias'] . ' días en ensamble en '
+                     . ($er['punto_nombre'] ?: 'punto') . '. Verifica bloqueos o falta de piezas.',
+        'icono'     => 'ensamble',
+    ];
+}
+
+// ── 9. Consignación estancada — sin vender > 30 días ──
+// Aging stock: reconsider relocation, price adjustment or recall.
+$consigEstancada = $safeAll(
+    "SELECT m.id, m.vin_display, m.modelo, m.color,
+            pv.nombre AS punto_nombre,
+            DATEDIFF(?, COALESCE(m.fecha_estado, m.freg)) as dias
+     FROM inventario_motos m
+     LEFT JOIN puntos_voltika pv ON pv.id = m.punto_voltika_id
+     WHERE m.activo = 1
+       AND m.tipo_asignacion = 'consignacion'
+       AND (m.cliente_nombre IS NULL OR m.cliente_nombre = '')
+       AND (m.pedido_num IS NULL OR m.pedido_num = '')
+       AND m.estado NOT IN ('entregada','retenida','por_llegar')
+       AND DATEDIFF(?, COALESCE(m.fecha_estado, m.freg)) > 30
+     ORDER BY dias DESC LIMIT 20",
+    [$today, $today]
+);
+foreach ($consigEstancada as $ce) {
+    $alerts[] = [
+        'tipo'      => 'consignacion_estancada',
+        'prioridad' => $ce['dias'] > 60 ? 'alta' : 'media',
+        'titulo'    => 'Consignación sin venderse',
+        'mensaje'   => $ce['modelo'] . ' · ' . ($ce['vin_display'] ?: 's/VIN')
+                     . ' lleva ' . $ce['dias'] . ' días en consignación en '
+                     . ($ce['punto_nombre'] ?: 'punto') . ' sin venderse.'
+                     . ($ce['dias'] > 60 ? ' Evalúa reubicación o ajuste de precio.' : ''),
+        'icono'     => 'consignacion',
+    ];
+}
+
 // Sort: alta first, then media, then info
 $prioOrder = ['alta' => 0, 'media' => 1, 'info' => 2];
 usort($alerts, function($a, $b) use ($prioOrder) {
