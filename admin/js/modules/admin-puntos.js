@@ -147,7 +147,8 @@ window.AD_puntos = (function(){
     // ── Basic info ──
     html += sectionTitle('Información básica');
     html += '<input class="ad-input" id="pfNombre" placeholder="Nombre del punto" value="'+esc(p.nombre||'')+'" style="margin-bottom:8px">';
-    html += '<input class="ad-input" id="pfResponsable" placeholder="Nombre del responsable" value="'+esc(p.responsable||'')+'" style="margin-bottom:8px">';
+    html += '<input class="ad-input" id="pfResponsable" placeholder="Nombre del responsable" value="'+esc(p.responsable_nombre||p.responsable||'')+'" style="margin-bottom:8px">';
+    html += '<input class="ad-input" id="pfUbicacion" placeholder="Ubicación (ej: CDMX, Tulum)" value="'+esc(p.ubicacion||'')+'" style="margin-bottom:8px">';
     html += '<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:8px">'+
       '<select class="ad-select" id="pfTipo" style="width:100%;">'+
         '<option value="center"'+(p.tipo==='center'?' selected':'')+'>Voltika Center</option>'+
@@ -159,7 +160,8 @@ window.AD_puntos = (function(){
 
     // ── Address ──
     html += sectionTitle('Dirección');
-    html += '<input class="ad-input" id="pfDir" placeholder="Calle y número" value="'+esc(p.direccion||'')+'" style="margin-bottom:8px">';
+    html += '<input class="ad-input" id="pfDir" placeholder="Dirección completa" value="'+esc(p.direccion||'')+'" style="margin-bottom:8px">';
+    html += '<input class="ad-input" id="pfCalleNum" placeholder="Calle y número" value="'+esc(p.calle_numero||'')+'" style="margin-bottom:8px">';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
       '<input class="ad-input" id="pfCP" placeholder="Código postal" value="'+esc(p.cp||'')+'" maxlength="5" inputmode="numeric">'+
       '<input class="ad-input" id="pfTel" placeholder="Teléfono" value="'+esc(p.telefono||'')+'">'+
@@ -201,6 +203,23 @@ window.AD_puntos = (function(){
 
     html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:2px;display:block;">Tags / etiquetas (separados por coma):</label>';
     html += '<input class="ad-input" id="pfTags" placeholder="Exhibición, Prueba de manejo, Entrega" value="'+tags.join(', ')+'" style="margin-bottom:8px">';
+
+    // ── Capacidades del punto (6 flags SI/NO de la plantilla oficial) ──
+    html += sectionTitle('Capacidades del punto');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:10px;font-size:13px;">';
+    function svcBox(id, field, label){
+      var checked = Number(p[field]) === 1 ? 'checked' : '';
+      return '<label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="'+id+'" '+checked+'> '+label+'</label>';
+    }
+    html += svcBox('pfSvcConfig',      'svc_configurador', 'Configurador');
+    html += svcBox('pfSvcEntrega',     'svc_entrega',      'Entrega');
+    html += svcBox('pfSvcExhibicion',  'svc_exhibicion',   'Exhibición y venta');
+    html += svcBox('pfSvcTecnico',     'svc_tecnico',      'Servicio técnico');
+    html += svcBox('pfSvcPruebas',     'svc_pruebas',      'Pruebas de manejo');
+    html += svcBox('pfSvcRefacciones', 'svc_refacciones',  'Refacciones');
+    html += '</div>';
+    html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:2px;display:block;">Comisión de entrega (MXN)</label>';
+    html += '<input class="ad-input" id="pfComEntrega" type="number" step="0.01" min="0" placeholder="Ej: 500" value="'+(p.comision_entrega!=null?p.comision_entrega:'')+'" style="margin-bottom:8px">';
 
     // ── Referido codes ──
     if(!isNew){
@@ -413,7 +432,9 @@ window.AD_puntos = (function(){
       var payload = {
         id: p.id||undefined,
         nombre: $('#pfNombre').val(),
-        responsable: $('#pfResponsable').val(),
+        responsable_nombre: $('#pfResponsable').val(),
+        ubicacion: $('#pfUbicacion').val() || null,
+        calle_numero: $('#pfCalleNum').val() || null,
         tipo: $('#pfTipo').val(),
         direccion: $('#pfDir').val(),
         colonia: $('#pfColonia').val(),
@@ -433,6 +454,13 @@ window.AD_puntos = (function(){
         lat: $('#pfLat').val()||null,
         lng: $('#pfLng').val()||null,
         autorizado: 1,
+        comision_entrega:   parseFloat($('#pfComEntrega').val()) || 0,
+        svc_configurador:   $('#pfSvcConfig').is(':checked') ? 1 : 0,
+        svc_entrega:        $('#pfSvcEntrega').is(':checked') ? 1 : 0,
+        svc_exhibicion:     $('#pfSvcExhibicion').is(':checked') ? 1 : 0,
+        svc_tecnico:        $('#pfSvcTecnico').is(':checked') ? 1 : 0,
+        svc_pruebas:        $('#pfSvcPruebas').is(':checked') ? 1 : 0,
+        svc_refacciones:    $('#pfSvcRefacciones').is(':checked') ? 1 : 0,
         codigo_venta:       ($('#pfCodVenta').val() || '').toUpperCase().trim() || null,
         codigo_electronico: ($('#pfCodElec').val()  || '').toUpperCase().trim() || null
       };

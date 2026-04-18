@@ -6,11 +6,26 @@
 require_once __DIR__ . '/../bootstrap.php';
 adminRequireAuth(['admin']);
 
-$headers = ['Acción','Nombre','Tipo','Dirección','Colonia','Ciudad','Estado','CP','Teléfono','Email','Latitud','Longitud','Horarios','Capacidad','Descripción'];
+// Customer template v1 — 32 columns (2026-04-19). Match exactly the customer
+// file "Puntos Voltika (version 1).xlsx" headers so admins can edit & re-upload.
+$headers = [
+    'Nombre del punto','Nombre del responsable','Ubicación','Dirección',
+    'Calle y número','Codigo Postal','Colonia','Ciudad','Estado','Email',
+    'Telefono/Whatsapp','Tipo de punto','Codigo de referido',
+    'Codigo para Venta en Piso','Horario','Capacidad','Orden de Aparicion',
+    'Configurador','Entrega','Exhibicion y venta','Servicio tecnico',
+    'Prubas de Manejo','Refacciones','Latitud','Longitud','Comision de Entrega',
+    'Venta Pesgo Plus','Venta M03','Venta  Mino B','Venta M05','Venta Ukko S+',
+    'Venta MC10StreetX',
+];
 $rows = [
-    ['agregar','Punto Ejemplo','entrega','Av. Reforma 123','Juárez','Ciudad de México','CDMX','06600','5551234567','punto@ejemplo.com','19.4326','-99.1332','Lun-Vie 9:00-18:00','20','Punto de entrega ejemplo'],
-    ['actualizar','Punto Existente','center','Blvd. Centro 456','Centro','Querétaro','QRO','76000','4421234567','centro@ejemplo.com','20.5881','-100.3899','Lun-Sab 10:00-20:00','50','Centro Voltika actualizado'],
-    ['eliminar','Punto A Eliminar','','','','','','76060','','','','','','',''],
+    [
+        'Punto Ejemplo','Nombre del Responsable','CDMX','Av. Reforma 123, Juárez, CDMX',
+        'Av. Reforma 123','06600','Juárez','Ciudad de México','CDMX','punto@ejemplo.com',
+        '+52 55 1234 5678','Distribuidor Certificado','COD01','PSCOD01','Lunes-Viernes 9:00-18:00','20','1',
+        'SI','SI','SI','SI','SI','NO','19.4326','-99.1332','500',
+        '1300','1500','1500','2000','3000','4000',
+    ],
 ];
 
 $all = array_merge([$headers], $rows);
