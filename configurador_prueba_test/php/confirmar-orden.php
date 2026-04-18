@@ -788,30 +788,72 @@ if ($esCredito) {
         : 'Tu Voltika está confirmada, Orden #' . $pedidoNum;
 }
 
-$emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
+// Legacy inline HTML email ($cuerpo) is no longer sent directly —
+// voltikaNotify('compra_confirmada_*') below handles email + WhatsApp + SMS
+// from a single rich template (customer-authored 4-way variants).
+// Keep the $cuerpo block above intact for reference / rollback only.
+$emailSent = false;
 
-// ── WhatsApp / SMS notifications (post-purchase) ────────────────────────────
-// MSG 1 (punto defined) or MSG 2 (punto pending) — sent immediately
-// MSG 1B/1C/1D (portal access) — sent 5 minutes later via pending_notifications
+// ── Post-purchase notification (email + WhatsApp + SMS, 4-way) ──────────────
 require_once __DIR__ . '/voltika-notify.php';
 
+// Resolve punto address + maps link for the new templates
+$direccionPunto = '';
+$linkMaps       = '';
+if ($tienePunto) {
+    try {
+        $pdoTmp = getDB();
+        $ps = $pdoTmp->prepare("SELECT direccion, ciudad, estado FROM puntos_voltika WHERE nombre = ? AND activo = 1 LIMIT 1");
+        $ps->execute([$puntoNombre]);
+        $pRow = $ps->fetch(PDO::FETCH_ASSOC);
+        if ($pRow) {
+            $direccionPunto = trim($pRow['direccion'] ?? '');
+            $addr = $puntoNombre . ($direccionPunto ? ', ' . $direccionPunto : '');
+            if ($pRow['ciudad']) $addr .= ', ' . $pRow['ciudad'];
+            if ($pRow['estado']) $addr .= ', ' . $pRow['estado'];
+            $linkMaps = 'https://maps.google.com/?q=' . urlencode($addr);
+        }
+    } catch (Throwable $e) { error_log('confirmar-orden punto lookup: ' . $e->getMessage()); }
+}
+
+// Estimated delivery — 10 days from today unless transacción provides one
+$fechaEstimada = date('j/n/Y', strtotime('+10 days'));
+
+// Weekly payment (credit only) — looked up from subscripciones_credito
+$montoSemanal = '';
+if ($esCredito) {
+    try {
+        $pdoTmp = getDB();
+        $ss = $pdoTmp->prepare("SELECT monto_semanal FROM subscripciones_credito WHERE email = ? OR telefono = ? ORDER BY id DESC LIMIT 1");
+        $ss->execute([$email, $telefono]);
+        $ms = $ss->fetchColumn();
+        if ($ms) $montoSemanal = number_format((float)$ms, 2);
+    } catch (Throwable $e) {}
+}
+
 $notifyData = [
-    'nombre'    => $nombre,
-    'modelo'    => $modelo,
-    'punto'     => $puntoNombre,
-    'ciudad'    => $ciudad . ($estado ? ', ' . $estado : ''),
-    'telefono'  => $telefono,
-    'email'     => $email,
-    'whatsapp'  => $telefono,
-    'cliente_id'=> null,
+    'pedido'          => $pedidoNum,
+    'nombre'          => $nombre,
+    'modelo'          => $modelo,
+    'color'           => $color,
+    'punto'           => $puntoNombre,
+    'ciudad'          => $ciudad . ($estado ? ', ' . $estado : ''),
+    'direccion_punto' => $direccionPunto,
+    'link_maps'       => $linkMaps,
+    'fecha_estimada'  => $fechaEstimada,
+    'monto_semanal'   => $montoSemanal,
+    'telefono'        => $telefono,
+    'email'           => $email,
+    'whatsapp'        => $telefono,
+    'cliente_id'      => null,
 ];
 
-// MSG 1 or MSG 2 — immediate
-if ($tienePunto) {
-    voltikaNotify('compra_punto_definido', $notifyData);
-} else {
-    voltikaNotify('compra_punto_pendiente', $notifyData);
-}
+// Dispatch to one of the 4 purchase-confirmation templates
+$tplKey = 'compra_confirmada_'
+        . ($esCredito ? 'credito' : 'contado')
+        . ($tienePunto ? '_punto' : '_sin_punto');
+voltikaNotify($tplKey, $notifyData);
+$emailSent = !empty($email);
 
 // MSG 1B/1C/1D — delayed 5 minutes based on purchase type
 if ($esCredito) {
