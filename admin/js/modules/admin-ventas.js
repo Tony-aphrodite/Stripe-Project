@@ -165,8 +165,13 @@ window.AD_ventas = (function(){
             actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
                        'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
           } else if (r.stripe_pi) {
-            // Payment not confirmed yet. Offer to resend the payment link to
-            // help the customer complete the transaction.
+            // Payment not confirmed in DB but stripe_pi exists. Two actions:
+            //   (a) Sincronizar — re-check Stripe (fixes drift where payment
+            //       actually succeeded but webhook didn't update DB).
+            //   (b) Enviar link — re-send the payment link to the customer.
+            actions += '<button class="ad-btn sm" style="'+btnStyleBase+';background:#0ea5e9;color:#fff;" '+
+                       'title="Verificar estado real con Stripe" '+
+                       'onclick="AD_ventas.syncStripe('+r.id+', this)">🔄 Sinc</button>';
             actions += '<button class="ad-btn sm" style="'+btnStyleBase+';background:#d97706;color:#fff;" '+
                        'title="Reenviar link de pago al cliente" '+
                        'onclick="AD_ventas.showEnviarLink('+r.id+')">Enviar link</button>';
@@ -305,6 +310,11 @@ window.AD_ventas = (function(){
     var r = null;
     for(var i=0;i<rows.length;i++){ if(rows[i].id===transId){ r=rows[i]; break; } }
     if(!r) return;
+
+    // Silent Stripe re-check for non-paid orders on detail open.
+    // Fixes the common drift where Stripe already processed the payment but
+    // the DB still reads 'pendiente' because the webhook never landed.
+    _autoVerifyOnDetail(r);
 
     var isPending = r.punto_id==='centro-cercano';
 
@@ -1031,5 +1041,54 @@ window.AD_ventas = (function(){
     });
   }
 
-  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink };
+  // ── Sincronizar fila con Stripe (fix DB drift when webhook missed it) ────
+  function syncStripe(transId, btnEl){
+    var $btn = $(btnEl);
+    var originalHtml = $btn.html();
+    $btn.prop('disabled', true).html('<span class="ad-spin"></span>');
+    ADApp.api('ventas/verificar-stripe-uno.php', { transaccion_id: transId }).done(function(resp){
+      if (!resp.ok) {
+        alert(resp.error || 'Error al verificar');
+        $btn.prop('disabled', false).html(originalHtml);
+        return;
+      }
+      if (resp.changed) {
+        ADApp.toast
+          ? ADApp.toast('Estado actualizado: ' + resp.before + ' → ' + resp.after + ' (Stripe: ' + resp.stripe_status + ')')
+          : alert('Estado actualizado: ' + resp.before + ' → ' + resp.after);
+        render(); // refresh the entire list so UI reflects new state
+      } else {
+        if (ADApp.toast) {
+          ADApp.toast('Ya estaba sincronizado (' + resp.stripe_status + ')');
+        } else {
+          alert('Ya estaba sincronizado con Stripe: ' + resp.stripe_status);
+        }
+        $btn.prop('disabled', false).html(originalHtml);
+      }
+    }).fail(function(xhr){
+      var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de conexión';
+      alert(msg);
+      $btn.prop('disabled', false).html(originalHtml);
+    });
+  }
+
+  // Auto-verify silently when operator opens detail for a non-paid order.
+  // Fixes drift without the operator having to click Sincronizar manually.
+  function _autoVerifyOnDetail(row){
+    if (!row || !row.stripe_pi) return;
+    var pe = (row.pago_estado || '').toLowerCase();
+    var tp = (row.tipo || row.tpago || '').toLowerCase();
+    var isCreditFam = ['credito','credito-orfano','enganche','parcial'].indexOf(tp) >= 0;
+    // Credit family: 'parcial' is the terminal state (enganche captured), so don't re-verify it.
+    if (pe === 'pagada' || (isCreditFam && pe === 'parcial')) return;
+    ADApp.api('ventas/verificar-stripe-uno.php', { transaccion_id: row.id }).done(function(resp){
+      if (resp && resp.ok && resp.changed) {
+        // Refresh the list so the caller sees updated state
+        if (ADApp.toast) ADApp.toast('Stripe indica ' + resp.after + ' — actualizado automáticamente');
+        render();
+      }
+    });
+  }
+
+  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink, syncStripe:syncStripe };
 })();
