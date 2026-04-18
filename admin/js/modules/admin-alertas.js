@@ -17,13 +17,33 @@ window.AD_alertas = (function(){
 
   var _prioOrder = { alta: 0, media: 1, info: 2 };
 
+  var _isRefreshing = false;
+  var _lastTotal = null;
+
   function render(){
     ADApp.render(_backBtn + '<div class="ad-h1">Alertas</div><div><span class="ad-spin"></span> Analizando datos...</div>');
     load();
   }
 
   function load(){
-    ADApp.api('alertas/listar.php').done(paint).fail(function(){
+    ADApp.api('alertas/listar.php').done(function(r){
+      paint(r);
+      // Refresh feedback — toast with result, comparing to the previous count
+      // so the operator knows the click had an effect even when the list
+      // looks identical.
+      if (_isRefreshing && ADApp.toast) {
+        var total = (r && r.total) || 0;
+        var diff  = (_lastTotal !== null) ? total - _lastTotal : 0;
+        var msg;
+        if (diff > 0)      msg = 'Actualizado · ' + diff + ' alertas nuevas (total ' + total + ')';
+        else if (diff < 0) msg = 'Actualizado · ' + Math.abs(diff) + ' resueltas (total ' + total + ')';
+        else               msg = 'Actualizado · sin cambios (' + total + ' activas)';
+        ADApp.toast(msg);
+      }
+      _lastTotal = (r && r.total) || 0;
+      _isRefreshing = false;
+    }).fail(function(){
+      _isRefreshing = false;
       ADApp.render(_backBtn + '<div class="ad-h1">Alertas</div><div class="ad-banner err">Error al cargar alertas</div>');
     });
   }
@@ -31,7 +51,7 @@ window.AD_alertas = (function(){
   function paint(r){
     var html = _backBtn;
     html += '<div class="ad-toolbar"><div class="ad-h1">Alertas <span class="ad-dim" style="font-size:14px;font-weight:400;">(' + (r.total || 0) + ' activas)</span></div>';
-    html += '<button class="ad-btn sm ghost" onclick="AD_alertas.refresh()">\u{1F504} Actualizar</button></div>';
+    html += '<button class="ad-btn sm ghost" id="adAlertRefreshBtn"><span id="adAlertRefreshIcon">\u{1F504}</span> Actualizar</button></div>';
 
     // Count by priority
     var counts = { alta: 0, media: 0, info: 0 };
@@ -103,9 +123,18 @@ window.AD_alertas = (function(){
     });
 
     ADApp.render(html);
+    // Wire the Actualizar button (explicit spinner feedback beats onclick-only)
+    $('#adAlertRefreshBtn').on('click', function(){
+      var $btn = $(this).prop('disabled', true);
+      $('#adAlertRefreshIcon').replaceWith('<span class="ad-spin" id="adAlertRefreshIcon"></span>');
+      refresh();
+    });
   }
 
-  function refresh(){ load(); }
+  function refresh(){
+    _isRefreshing = true;
+    load();
+  }
   function esc(s){ return $('<span>').text(s || '').html(); }
 
   return { render: render, refresh: refresh };
