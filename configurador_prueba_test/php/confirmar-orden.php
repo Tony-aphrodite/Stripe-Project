@@ -28,7 +28,10 @@ if (!$json) {
 }
 
 $paymentIntentId = $json['paymentIntentId'] ?? '';
-$pagoTipo        = $json['pagoTipo']        ?? 'unico';
+// Default to 'contado' (single payment). Legacy value 'unico' is normalized
+// here for consistency with the admin panel, reports and client portal.
+$pagoTipo        = $json['pagoTipo']        ?? 'contado';
+if ($pagoTipo === 'unico') $pagoTipo = 'contado';
 $nombre          = $json['nombre']          ?? '';
 $email           = $json['email']           ?? '';
 $telefono        = $json['telefono']        ?? '';
@@ -266,7 +269,7 @@ try {
         $ciudad ?: '',
         $estado ?: '',
         $cp ?: '',
-        $pagoTipo ?: 'unico',
+        $pagoTipo ?: 'contado',
         $pagoTipo === 'msi' ? $msiPago : $total,
         $total,
         $fecha,

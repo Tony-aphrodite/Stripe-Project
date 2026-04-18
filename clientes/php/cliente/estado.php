@@ -365,7 +365,7 @@ try {
         $sql = "SELECT id, pedido, modelo, color, total, tpago, msi_meses, freg, pago_estado
                 FROM transacciones
                 WHERE (" . implode(' OR ', $where) . ")
-                  AND tpago IN ('contado','msi','unico')
+                  AND tpago IN ('contado','msi')
                 ORDER BY id DESC";
         $tStmt = $pdo->prepare($sql);
         $tStmt->execute($params);

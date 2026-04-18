@@ -438,7 +438,8 @@ function sendPurchaseWhatsApp($order) {
         $puntoNombre = trim($order['punto_nombre'] ?? '');
         $tienePunto  = ($puntoNombre !== '');
         $ciudad      = ($order['ciudad'] ?? '') . (($order['estado'] ?? '') ? ', ' . $order['estado'] : '');
-        $tpago       = $order['tpago'] ?? 'unico';
+        $tpago       = $order['tpago'] ?? 'contado';
+        if ($tpago === 'unico') $tpago = 'contado';
 
         $notifyData = [
             'nombre'    => $order['nombre'] ?? '',

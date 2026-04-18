@@ -88,6 +88,8 @@ window.AD_ventas = (function(){
       var tipoBadge = 'blue';
       if(r.tipo === 'credito-orfano') tipoBadge = 'yellow';
       if(r.tipo === 'error-captura') tipoBadge = 'red';
+      // Display label: normalize legacy 'unico' → 'contado' for operators.
+      var tipoDisplay = (r.tipo === 'unico') ? 'contado' : (r.tipo || '-');
       var alertaHtml = r.alerta
         ? '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">'+esc(r.alerta)+'</div>'
         : '';
@@ -101,7 +103,7 @@ window.AD_ventas = (function(){
         '<td>'+(r.nombre||'-')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
         '<td>'+(r.modelo||'-')+'</td>'+
         '<td>'+(r.color||'-')+'</td>'+
-        '<td><span class="ad-badge '+tipoBadge+'">'+(r.tipo||'-')+'</span></td>'+
+        '<td><span class="ad-badge '+tipoBadge+'">'+tipoDisplay+'</span></td>'+
         '<td>'+ADApp.money(r.monto)+'</td>'+
         '<td>'+pagoEstadoBadge(r.pago_estado, r.tipo)+'</td>'+
         '<td>'+puntoHtml+'</td>'+
@@ -272,7 +274,7 @@ window.AD_ventas = (function(){
     var tipoLabel = (tipo||'').toLowerCase();
     // Map payment method labels
     var metodo = '';
-    if(['contado','stripe','tarjeta'].indexOf(tipoLabel)>=0) metodo = 'Tarjeta';
+    if(['contado','unico','stripe','tarjeta'].indexOf(tipoLabel)>=0) metodo = 'Tarjeta';
     else if(tipoLabel==='spei') metodo = 'SPEI';
     else if(tipoLabel==='oxxo') metodo = 'OXXO';
     else if(['credito','credito-orfano','enganche'].indexOf(tipoLabel)>=0) metodo = 'Crédito';
@@ -344,6 +346,7 @@ window.AD_ventas = (function(){
     html += fRow('Color', r.color||'—');
     var tipoMap = {
       'contado': {label:'Contado · Tarjeta', color:'green'},
+      'unico':   {label:'Contado · Tarjeta', color:'green'},  // legacy alias
       'spei':    {label:'Contado · SPEI',    color:'green'},
       'oxxo':    {label:'Contado · OXXO',    color:'green'},
       'msi':     {label:'MSI · Tarjeta',     color:'blue'},
