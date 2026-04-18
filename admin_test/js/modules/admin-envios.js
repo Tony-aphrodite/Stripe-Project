@@ -104,27 +104,39 @@ window.AD_envios = (function(){
   function crearEnvioSelectOrder(){
     ADApp.api('ventas/sin-punto.php').done(function(r){
       if(!r.ok || !r.rows.length){
-        ADApp.modal('<div class="ad-h2">Sin órdenes pendientes</div>'+
-          '<div class="ad-dim" style="padding:20px;text-align:center;">No hay órdenes sin moto asignada.</div>');
+        ADApp.modal('<div class="ad-h2">Sin órdenes elegibles</div>'+
+          '<div class="ad-dim" style="padding:20px;text-align:center;line-height:1.6;">'+
+            'No hay órdenes listas para envío.<br><br>'+
+            'Para aparecer aquí una orden debe:<br>'+
+            '• Estar <strong>pagada</strong> (o con enganche en crédito)<br>'+
+            '• Tener un <strong>punto de entrega asignado</strong><br>'+
+            '• No tener una moto ya asignada'+
+          '</div>');
         return;
       }
       var html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+
         '<button class="ad-btn ghost sm" id="adEnvBack1" style="padding:4px 8px;">← Volver</button>'+
         '<div class="ad-h2" style="margin:0;">Paso 1 de 2 — Seleccionar orden</div>'+
       '</div>'+
-      '<div class="ad-dim" style="margin-bottom:10px;font-size:12px;">Selecciona la orden del cliente para asignar una moto y enviarla.</div>'+
+      '<div class="ad-dim" style="margin-bottom:10px;font-size:12px;">Solo órdenes pagadas con punto asignado y sin moto ligada · Ordenadas de nueva a vieja ('+r.rows.length+')</div>'+
       '<div style="max-height:350px;overflow-y:auto;">';
       r.rows.forEach(function(o, idx){
+        var pe = (o.pago_estado||'').toLowerCase();
+        var pagoLabel = pe === 'parcial' ? 'Enganche' : (pe === 'pagada' ? 'Pagado' : (pe || 'OK'));
+        var pagoCol   = pe === 'parcial' ? 'yellow' : 'green';
         html += '<div class="ad-card adPickOrder" style="cursor:pointer;padding:10px;margin-bottom:6px;" data-idx="'+idx+'">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">'+
             '<strong>VK-'+(o.pedido||o.id)+'</strong>'+
-            '<span class="ad-badge '+(o.tipo==='credito'||o.tipo==='enganche'?'yellow':(o.tipo==='msi'?'blue':'green'))+'">'+
-              (o.tipo||'contado')+'</span>'+
+            '<div style="display:flex;gap:4px;">'+
+              '<span class="ad-badge '+pagoCol+'" style="font-size:10px;">'+pagoLabel+'</span>'+
+              '<span class="ad-badge '+(o.tipo==='credito'||o.tipo==='enganche'?'yellow':(o.tipo==='msi'?'blue':'green'))+'" style="font-size:10px;">'+
+                (o.tipo||'contado')+'</span>'+
+            '</div>'+
           '</div>'+
           '<div style="font-size:13px;margin-top:4px;">Cliente: '+(o.nombre||'Sin nombre')+'</div>'+
           '<div style="font-size:12px;color:var(--ad-dim)">'+o.modelo+' · '+o.color+' · '+ADApp.money(o.monto)+'</div>'+
-          (o.punto_nombre?'<div style="font-size:12px;margin-top:2px;">Punto: <strong>'+o.punto_nombre+'</strong></div>':
-            '<div style="font-size:11px;color:#E65100;margin-top:2px;">Sin punto asignado</div>')+
+          '<div style="font-size:12px;margin-top:2px;">Punto: <strong>'+(o.punto_nombre||'—')+'</strong></div>'+
+          '<div style="font-size:11px;color:var(--ad-dim);margin-top:2px;">'+(o.fecha?String(o.fecha).substring(0,16):'')+'</div>'+
         '</div>';
       });
       html += '</div>';
