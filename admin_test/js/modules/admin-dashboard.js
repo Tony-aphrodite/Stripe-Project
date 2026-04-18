@@ -35,7 +35,7 @@ window.AD_dashboard = (function(){
       {label:'Pendientes de envío', value:k.en_transito, cls:'yellow'},
       {label:'Pendientes de entrega a clientes', value:k.pendientes_entrega_clientes, cls:'yellow'},
       {label:'Placas pendientes', value:k.placas_pendientes||0, cls:(k.placas_pendientes||0)>0?'yellow':'green'},
-      {label:'Quálitas pendientes', value:k.seguro_pendientes||0, cls:(k.seguro_pendientes||0)>0?'yellow':'green'},
+      {label:'Seguros pendientes', value:k.seguro_pendientes||0, cls:(k.seguro_pendientes||0)>0?'yellow':'green'},
     ];
     // Environment badge hidden in customer-facing dashboard — configurable via
     // the APP_ENV .env var. Re-enable below if you want a visible indicator.

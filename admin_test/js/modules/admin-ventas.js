@@ -96,7 +96,7 @@ window.AD_ventas = (function(){
 
       var extrasHtml = '';
       if(r.asesoria_placas) extrasHtml += '<span title="Solicitó asesoría para placas" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#FFF3E0;color:#E65100;border:1px solid #FFE0B2;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">PLACAS</span>';
-      if(r.seguro_qualitas) extrasHtml += '<span title="Solicitó seguro Quálitas" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">QUÁLITAS</span>';
+      if(r.seguro_qualitas) extrasHtml += '<span title="Solicitó seguro (Quálitas)" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">SEGURO</span>';
 
       html += '<tr>'+
         '<td><strong>VK-'+(r.pedido||r.id)+'</strong>'+extrasHtml+alertaHtml+'</td>'+
@@ -487,13 +487,13 @@ window.AD_ventas = (function(){
     }
     h += '</div>';
 
-    // Seguro Quálitas
+    // Seguro
     h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     if(seguro){
       var seguroEstado = (r.seguro_estado||'pendiente').toLowerCase();
       var seguroColor = seguroEstado==='activo' ? 'green' : (seguroEstado==='cotizado' ? 'blue' : 'yellow');
       var seguroLabel = seguroEstado==='activo' ? 'Póliza activa' : (seguroEstado==='cotizado' ? 'Cotizado' : 'Pendiente');
-      h += fRow('Seguro Quálitas', '<span class="ad-badge '+seguroColor+'">'+seguroLabel+'</span>');
+      h += fRow('Seguro', '<span class="ad-badge '+seguroColor+'">'+seguroLabel+'</span>');
       h += fRow('Modelo asegurar', (r.modelo||'—')+' · '+(r.color||'—'));
       if(r.seguro_cotizacion){
         h += fRow('Cotización', '$'+Number(r.seguro_cotizacion).toLocaleString('es-MX'));
@@ -505,7 +505,7 @@ window.AD_ventas = (function(){
         h += '<div style="grid-column:1/-1;padding:6px 10px;font-size:11px;color:var(--ad-dim);background:var(--ad-surface-2);border-radius:4px;margin:4px 0;"><strong>Nota:</strong> '+esc(r.seguro_nota)+'</div>';
       }
     } else {
-      h += fRow('Seguro Quálitas', '<span class="ad-badge gray">No solicitado</span>');
+      h += fRow('Seguro', '<span class="ad-badge gray">No solicitado</span>');
     }
     h += '</div>';
 
@@ -516,7 +516,7 @@ window.AD_ventas = (function(){
         h += '<button class="ad-btn sm ghost vkServicioAction" data-action="placas" data-id="'+(r.id||'')+'" data-pedido="'+(r.pedido||'')+'" style="font-size:11px;">Gestionar placas</button>';
       }
       if(seguro){
-        h += '<button class="ad-btn sm ghost vkServicioAction" data-action="seguro" data-id="'+(r.id||'')+'" data-pedido="'+(r.pedido||'')+'" style="font-size:11px;">Gestionar Quálitas</button>';
+        h += '<button class="ad-btn sm ghost vkServicioAction" data-action="seguro" data-id="'+(r.id||'')+'" data-pedido="'+(r.pedido||'')+'" style="font-size:11px;">Gestionar seguro</button>';
       }
       h += '</div>';
     }
@@ -590,7 +590,7 @@ window.AD_ventas = (function(){
 
   function openGestionSeguro(txId, r){
     var estado = (r.seguro_estado||'pendiente');
-    var html = '<div class="ad-h2">Gestión Seguro Quálitas</div>';
+    var html = '<div class="ad-h2">Gestión de seguro</div>';
     html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:14px;">Pedido <strong>VK-'+(r.pedido||txId)+'</strong> · '+(r.nombre||'')+'</div>';
     html += '<div style="background:var(--ad-surface-2);padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;">';
     html += '<strong>Cliente:</strong> '+(r.nombre||'—')+' · <a href="tel:'+(r.telefono||'')+'" style="color:var(--ad-primary);">'+(r.telefono||'')+'</a><br>';
