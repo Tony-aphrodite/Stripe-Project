@@ -22,8 +22,8 @@ window.PV_inicio = (function(){
     html += '</div>';
 
     html += '<div class="ad-h2">Códigos de referido</div>';
-    html += '<div class="ad-card"><strong>Venta directa:</strong> <code>'+(p.codigo_venta||'—')+'</code></div>';
-    html += '<div class="ad-card"><strong>Venta electrónica:</strong> <code>'+(p.codigo_electronico||'—')+'</code></div>';
+    html += '<div class="ad-card"><strong>Venta directa en tienda:</strong> <code>'+(p.codigo_venta||'—')+'</code></div>';
+    html += '<div class="ad-card"><strong>Ventas desde la Web Voltika:</strong> <code>'+(p.codigo_electronico||'—')+'</code></div>';
 
     html += '<div class="ad-h2">Acciones rápidas</div>';
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';

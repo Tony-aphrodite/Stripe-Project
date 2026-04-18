@@ -188,10 +188,10 @@ window.AD_puntos = (function(){
       html += sectionTitle('Códigos de referido');
       html += '<div style="font-size:11px;color:var(--ad-dim);margin-bottom:6px;">Editá manualmente o apretá "Generar" para uno nuevo aleatorio.</div>';
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
-      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código venta en punto</label>'+
+      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Venta directa en tienda</label>'+
         '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodVenta" value="'+esc(p.codigo_venta||'')+'" placeholder="Ej: PVE4DCFC" style="flex:1;text-transform:uppercase;">'+
         '<button class="ad-btn sm ghost pfRegen" data-field="codigo_venta" title="Generar aleatorio" style="padding:4px 10px;font-size:11px;">Generar</button></div></div>';
-      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código venta online</label>'+
+      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Ventas desde la Web Voltika</label>'+
         '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodElec" value="'+esc(p.codigo_electronico||'')+'" placeholder="Ej: PE6AFC75" style="flex:1;text-transform:uppercase;">'+
         '<button class="ad-btn sm ghost pfRegen" data-field="codigo_electronico" title="Generar aleatorio" style="padding:4px 10px;font-size:11px;">Generar</button></div></div>';
       html += '</div>';
