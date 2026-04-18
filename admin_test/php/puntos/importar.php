@@ -215,18 +215,22 @@ try {
     }
 } catch (Throwable $e) { error_log('importar modelos dedupe: ' . $e->getMessage()); }
 
-// Step B — ensure every canonical model exists (insert only if the normalized
-// key is not already present).
+// Step B — ensure every canonical model exists AND is active. Reactivates
+// soft-disabled rows so the customer's 6-row Puntos template renders fully.
 try {
     $existing = [];
-    $q = $pdo->query("SELECT id, nombre FROM modelos");
+    $q = $pdo->query("SELECT id, nombre, activo FROM modelos");
     foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $m) {
-        $existing[_modeloNormKey($m['nombre'])] = (int)$m['id'];
+        $existing[_modeloNormKey($m['nombre'])] = ['id' => (int)$m['id'], 'activo' => (int)$m['activo']];
     }
     $ins = $pdo->prepare("INSERT INTO modelos (nombre, activo) VALUES (?, 1)");
+    $act = $pdo->prepare("UPDATE modelos SET activo = 1 WHERE id = ?");
     foreach ($canonicalModels as $name) {
-        if (!isset($existing[_modeloNormKey($name)])) {
+        $k = _modeloNormKey($name);
+        if (!isset($existing[$k])) {
             try { $ins->execute([$name]); } catch (Throwable $e) {}
+        } elseif ($existing[$k]['activo'] === 0) {
+            try { $act->execute([$existing[$k]['id']]); } catch (Throwable $e) {}
         }
     }
 } catch (Throwable $e) {}

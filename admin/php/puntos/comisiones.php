@@ -29,14 +29,20 @@ function _modNormKey(string $s): string {
 }
 try {
     $existing = [];
-    $q = $pdo->query("SELECT id, nombre FROM modelos");
+    $q = $pdo->query("SELECT id, nombre, activo FROM modelos");
     foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $m) {
-        $existing[_modNormKey($m['nombre'])] = true;
+        $existing[_modNormKey($m['nombre'])] = ['id' => (int)$m['id'], 'activo' => (int)$m['activo']];
     }
-    $insModel = $pdo->prepare("INSERT INTO modelos (nombre, activo) VALUES (?, 1)");
+    $insModel  = $pdo->prepare("INSERT INTO modelos (nombre, activo) VALUES (?, 1)");
+    $actModel  = $pdo->prepare("UPDATE modelos SET activo = 1 WHERE id = ?");
     foreach ($requiredModels as $mName) {
-        if (!isset($existing[_modNormKey($mName)])) {
+        $k = _modNormKey($mName);
+        if (!isset($existing[$k])) {
             try { $insModel->execute([$mName]); } catch (Throwable $e) {}
+        } elseif ($existing[$k]['activo'] === 0) {
+            // Reactivate a canonical model that someone turned off — the
+            // customer's template assumes all 6 sale-commission rows exist.
+            try { $actModel->execute([$existing[$k]['id']]); } catch (Throwable $e) {}
         }
     }
 } catch (Throwable $e) { error_log('comisiones required models: ' . $e->getMessage()); }
