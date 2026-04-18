@@ -36,10 +36,14 @@ $configCandidates = [
 ];
 foreach ($configCandidates as $p) { if (file_exists($p)) { require_once $p; break; } }
 
-$d     = adminJsonIn();
-$tid   = (int)($d['transaccion_id'] ?? 0);
+$d       = adminJsonIn();
+$tid     = (int)($d['transaccion_id'] ?? 0);
 $canales = is_array($d['canales'] ?? null) ? $d['canales'] : [];
-$force = !empty($d['force']);
+$force   = !empty($d['force']);
+// Manual contact overrides — operator can fill these when the order has no
+// email/telefono on file (orphan rows from aborted checkouts).
+$emailOverride = trim($d['email']    ?? '');
+$telOverride   = trim($d['telefono'] ?? '');
 
 if (!$tid || !$canales) {
     adminJsonOut(['error' => 'transaccion_id y al menos un canal son requeridos'], 400);
@@ -153,10 +157,26 @@ if (!$paymentUrl) {
     ], 500);
 }
 
-// Send notifications
-$tel   = $order['telefono'] ?? '';
-$email = $order['email'] ?? '';
+// Send notifications — prefer operator-provided overrides, fall back to DB
+$tel   = $telOverride   !== '' ? $telOverride   : ($order['telefono'] ?? '');
+$email = $emailOverride !== '' ? $emailOverride : ($order['email']    ?? '');
 $nombre = $order['nombre'] ?? 'Cliente';
+
+// Backfill the order with the newly supplied contact info so future reminders
+// don't need to re-ask. Only update if the field was empty on disk.
+try {
+    if ($emailOverride !== '' && empty($order['email'])) {
+        $pdo->prepare("UPDATE transacciones SET email = ? WHERE id = ?")->execute([$emailOverride, $tid]);
+    }
+    if ($telOverride !== '' && empty($order['telefono'])) {
+        $pdo->prepare("UPDATE transacciones SET telefono = ? WHERE id = ?")->execute([$telOverride, $tid]);
+    }
+} catch (Throwable $e) { error_log('enviar-link-pago backfill contact: ' . $e->getMessage()); }
+
+// Guard: after overrides, at least one channel must be reachable
+if (empty($tel) && empty($email)) {
+    adminJsonOut(['error' => 'No hay email ni teléfono para enviar el recordatorio'], 400);
+}
 $modelo = trim(($order['modelo'] ?? '') . (!empty($order['color']) ? ' · ' . $order['color'] : ''));
 $monto  = (float)($order['total'] ?? 0);
 

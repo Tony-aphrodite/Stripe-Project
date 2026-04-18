@@ -898,10 +898,11 @@ window.AD_ventas = (function(){
     }
     if(!r){ alert('Fila no encontrada'); return; }
 
-    var tel  = r.telefono || '';
-    var em   = r.email || '';
+    var tel  = (r.telefono || '').trim();
+    var em   = (r.email    || '').trim();
     var last = r.last_reminder_at || '';
     var sentCount = r.reminders_sent_count || 0;
+    var hasAnyContact = !!(tel || em);
 
     var h = '<div class="ad-h2">Enviar link de pago a cliente</div>';
     h += '<div style="background:#FFF8E1;border-left:3px solid #FFC107;padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;color:#795548;">'+
@@ -922,19 +923,54 @@ window.AD_ventas = (function(){
       '</div>';
     }
 
+    // Warning if no contact info at all
+    if (!hasAnyContact) {
+      h += '<div style="background:#FDECEA;border-left:3px solid #c41e3a;padding:10px 12px;border-radius:6px;margin-bottom:12px;font-size:12px;color:#7a0e1f;">'+
+        '<strong>Sin datos de contacto.</strong> Esta orden no tiene email ni teléfono registrado. '+
+        'Puedes introducir los datos del cliente abajo para enviarle el link ahora. '+
+        'Los datos se guardarán en la orden para envíos futuros.'+
+      '</div>';
+    }
+
     h += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">Canales de envío</div>';
-    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px;cursor:pointer;'+(em?'':'opacity:.5;cursor:not-allowed;')+'">';
-    h += '<input type="checkbox" id="elSendEmail" '+(em?'checked':'disabled')+'>';
-    h += '<span>📧 Email '+(em?'<span style="color:#666;font-size:11px;">'+esc(em)+'</span>':'<span style="color:#b91c1c;font-size:11px;">sin email</span>')+'</span>';
+
+    // Email
+    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px;cursor:pointer;">';
+    h += '<input type="checkbox" id="elSendEmail" '+(em?'checked':'')+'>';
+    h += '<span style="flex:1;">📧 Email';
+    if (em) {
+      h += ' <span style="color:#666;font-size:11px;">'+esc(em)+'</span></span>';
+      h += '<input type="hidden" id="elEmailInput" value="'+esc(em)+'">';
+    } else {
+      h += '</span>';
+    }
     h += '</label>';
-    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px;cursor:pointer;'+(tel?'':'opacity:.5;cursor:not-allowed;')+'">';
-    h += '<input type="checkbox" id="elSendSms" '+(tel?'checked':'disabled')+'>';
-    h += '<span>📱 SMS '+(tel?'<span style="color:#666;font-size:11px;">'+esc(tel)+'</span>':'<span style="color:#b91c1c;font-size:11px;">sin teléfono</span>')+'</span>';
+    if (!em) {
+      h += '<input type="email" id="elEmailInput" placeholder="cliente@ejemplo.com" class="ad-input" style="margin:-4px 0 8px 28px;width:calc(100% - 28px);font-size:12px;padding:6px 8px;">';
+    }
+
+    // SMS
+    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px;cursor:pointer;">';
+    h += '<input type="checkbox" id="elSendSms" '+(tel?'checked':'')+'>';
+    h += '<span style="flex:1;">📱 SMS';
+    if (tel) {
+      h += ' <span style="color:#666;font-size:11px;">'+esc(tel)+'</span></span>';
+      h += '<input type="hidden" id="elSmsInput" value="'+esc(tel)+'">';
+    } else {
+      h += '</span>';
+    }
     h += '</label>';
-    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:10px;cursor:pointer;'+(tel?'':'opacity:.5;cursor:not-allowed;')+'">';
-    h += '<input type="checkbox" id="elSendWa" '+(tel?'checked':'disabled')+'>';
-    h += '<span>💬 WhatsApp '+(tel?'<span style="color:#666;font-size:11px;">'+esc(tel)+'</span>':'<span style="color:#b91c1c;font-size:11px;">sin teléfono</span>')+'</span>';
-    h += '</label>';
+    if (!tel) {
+      h += '<input type="tel" id="elSmsInput" inputmode="numeric" maxlength="10" placeholder="10 dígitos" class="ad-input" style="margin:-4px 0 8px 28px;width:calc(100% - 28px);font-size:12px;padding:6px 8px;">';
+    }
+
+    // WhatsApp (shares the phone input if no tel)
+    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:10px;cursor:pointer;">';
+    h += '<input type="checkbox" id="elSendWa" '+(tel?'checked':'')+'>';
+    h += '<span style="flex:1;">💬 WhatsApp';
+    if (tel) h += ' <span style="color:#666;font-size:11px;">'+esc(tel)+'</span>';
+    else      h += ' <span style="color:#666;font-size:11px;">(usa el mismo número que SMS)</span>';
+    h += '</span></label>';
 
     h += '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#666;margin-bottom:12px;cursor:pointer;">';
     h += '<input type="checkbox" id="elForce"> Forzar envío aunque haya sido enviado en las últimas 24h';
@@ -949,16 +985,31 @@ window.AD_ventas = (function(){
 
     $('#elSendBtn').on('click', function(){
       var canales = [];
-      if($('#elSendEmail').is(':checked')) canales.push('email');
-      if($('#elSendSms').is(':checked')) canales.push('sms');
-      if($('#elSendWa').is(':checked')) canales.push('whatsapp');
+      var emailVal = ($('#elEmailInput').val() || '').trim();
+      var smsVal   = ($('#elSmsInput').val()   || '').trim();
+
+      if($('#elSendEmail').is(':checked')) {
+        if (!emailVal || emailVal.indexOf('@') < 0) { alert('Ingresa un email válido'); return; }
+        canales.push('email');
+      }
+      if($('#elSendSms').is(':checked')) {
+        if (!smsVal || smsVal.replace(/\D/g,'').length < 10) { alert('Ingresa un teléfono de 10 dígitos'); return; }
+        canales.push('sms');
+      }
+      if($('#elSendWa').is(':checked')) {
+        if (!smsVal || smsVal.replace(/\D/g,'').length < 10) { alert('Para WhatsApp ingresa un teléfono de 10 dígitos'); return; }
+        canales.push('whatsapp');
+      }
       if(!canales.length){ alert('Selecciona al menos un canal'); return; }
 
       var $b = $(this).prop('disabled',true).html('<span class="ad-spin"></span> Enviando...');
       ADApp.api('ventas/enviar-link-pago.php', {
         transaccion_id: rowId,
         canales: canales,
-        force: $('#elForce').is(':checked') ? 1 : 0
+        force: $('#elForce').is(':checked') ? 1 : 0,
+        // Manual overrides (used if the DB row is missing contact info)
+        email:    emailVal,
+        telefono: smsVal
       }).done(function(resp){
         if(resp.ok){
           ADApp.closeModal();
@@ -967,7 +1018,7 @@ window.AD_ventas = (function(){
           if(resp.sent_sms)      parts.push('SMS');
           if(resp.sent_whatsapp) parts.push('WhatsApp');
           alert('Recordatorio enviado · ' + (parts.length ? parts.join(' + ') : 'sin canal exitoso'));
-          render(); // refresh list so last_reminder_at updates
+          render();
         } else {
           alert(resp.error||'Error al enviar');
           $b.prop('disabled',false).html('Enviar recordatorio');
