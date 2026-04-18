@@ -406,9 +406,11 @@ window.AD_ventas = (function(){
     }
     html += '</div>';
 
-    // ── Section: Moto asignada ──
+    // ── Section: Estatus de moto ──
+    // Neutral heading so it reads naturally whether the moto is already
+    // assigned (shows VIN + estado) or still pending (shows "Sin asignar").
     secIx = 0;
-    html += secHead('Moto asignada','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>');
+    html += secHead('Estatus de moto','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>');
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     if(r.moto_id){
       html += fRow('VIN', '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+(r.moto_vin||'****')+'</code>');
