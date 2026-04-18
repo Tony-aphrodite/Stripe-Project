@@ -28,25 +28,38 @@ if (!$order) {
 }
 
 // Per dashboards_diagrams.pdf CASE 1: moto must be assigned ONLY after payment
-// is successful. Block the assignment if the order is not paid or, for credito,
-// if the enganche has not been captured.
-$tpago = strtolower(trim($order['tpago'] ?? ''));
-$pagoOk = false;
+// is successful. Use `pago_estado` as the source of truth (set by the Stripe
+// webhook on payment_intent.succeeded, regardless of payment method).
+//
+// `tpago` is NOT a whitelist — it varies by payment instrument (contado, unico,
+// msi, spei, oxxo, credito, enganche, parcial) and past attempts to gate on it
+// blocked legitimate paid orders. Credit-family orders only require the
+// enganche to be captured (reflected as stripe_pi present + pago_estado in
+// 'parcial'|'pagada').
+$tpago      = strtolower(trim($order['tpago']       ?? ''));
+$pagoEstadoOrder = strtolower(trim($order['pago_estado'] ?? ''));
+$isCreditFamily  = in_array($tpago, ['credito', 'enganche', 'parcial'], true);
 
-if (in_array($tpago, ['contado', 'msi'], true)) {
-    // Stripe single-payment and MSI: stripe_pi must be set
-    if (!empty($order['stripe_pi'])) $pagoOk = true;
-} elseif (in_array($tpago, ['credito', 'enganche', 'parcial'], true)) {
-    // Credito: enganche must have been captured (stripe_pi present). The rest
-    // of the plan is collected via the subscription cycle, so only the enganche
-    // is required to release the moto.
-    if (!empty($order['stripe_pi'])) $pagoOk = true;
+$pagoOk = false;
+if (in_array($pagoEstadoOrder, ['pagada', 'aprobada', 'approved', 'paid'], true)) {
+    $pagoOk = true;
+} elseif ($isCreditFamily && $pagoEstadoOrder === 'parcial' && !empty($order['stripe_pi'])) {
+    // Credit: enganche captured, rest collected via subscription
+    $pagoOk = true;
+} elseif (!$pagoEstadoOrder && !empty($order['stripe_pi'])) {
+    // Legacy rows written before pago_estado column existed: trust stripe_pi
+    // (PaymentIntent id stored only on successful/confirmed payments).
+    $pagoOk = true;
 }
 
 if (!$pagoOk) {
-    adminJsonOut([
-        'error' => 'No se puede asignar la moto: el pago de la orden no está confirmado (tpago=' . ($tpago ?: 'desconocido') . ').'
-    ], 403);
+    $msg = 'El pago de esta orden aún no ha sido confirmado.';
+    if ($pagoEstadoOrder === 'pendiente' || $pagoEstadoOrder === '') {
+        $msg .= ' Espera unos minutos a que Stripe confirme la transacción e intenta de nuevo. Si el cliente pagó por SPEI/OXXO puede tardar varias horas.';
+    } elseif ($pagoEstadoOrder === 'fallido' || $pagoEstadoOrder === 'cancelada') {
+        $msg .= ' El pago fue rechazado o cancelado — esta orden no puede recibir una moto.';
+    }
+    adminJsonOut(['error' => $msg], 403);
 }
 
 // ── Check order doesn't already have a bike assigned ────────────────────
@@ -148,22 +161,19 @@ if ($estadoMoto && !in_array($estadoMoto, $estadosLibres, true)) {
 // ── Assign ───────────────────────────────────────────────────────────────
 $pedidoNum = 'VK-' . $order['pedido'];
 
-// Credito orders only have enganche paid at this point — mark as 'parcial'.
-// Contado and MSI are fully paid — mark as 'pagada'.
-$pagoEstado = in_array($tpago, ['credito', 'enganche', 'parcial'], true)
-    ? 'parcial'
-    : 'pagada';
+// Credit-family orders only have enganche paid at this point → mark 'parcial'.
+// Every other tpago (contado, unico, msi, spei, oxxo, ...) is a fully settled
+// single payment when pago_estado='pagada' — mark as 'pagada'.
+$pagoEstado = $isCreditFamily ? 'parcial' : 'pagada';
 
 // Resolve punto_voltika_id from order's punto_id or punto_nombre
 $puntoVoltId = null;
 $orderPuntoId = $order['punto_id'] ?? '';
 $orderPuntoNombre = $order['punto_nombre'] ?? '';
 if ($orderPuntoId && $orderPuntoId !== 'centro-cercano') {
-    // punto_id might be numeric or a string; try numeric first
     if (is_numeric($orderPuntoId)) {
         $puntoVoltId = (int)$orderPuntoId;
     } else {
-        // Lookup by nombre
         $pLook = $pdo->prepare("SELECT id FROM puntos_voltika WHERE nombre = ? AND activo = 1 LIMIT 1");
         $pLook->execute([$orderPuntoNombre ?: $orderPuntoId]);
         $pRow = $pLook->fetch(PDO::FETCH_ASSOC);

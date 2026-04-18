@@ -142,14 +142,30 @@ window.AD_ventas = (function(){
         }
         actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
       } else if(asignada){
-        motoCell = '<span class="ad-badge green">'+(r.moto_vin||'****')+'</span>';
+        // Truncate long VINs so the ACCION column stays inside the viewport
+        var vinFull  = (r.moto_vin||'****');
+        var vinShort = vinFull.length > 10 ? vinFull.slice(-8) : vinFull;
+        motoCell = '<span class="ad-badge green" title="'+esc(vinFull)+'" style="font-family:ui-monospace,Menlo,monospace;">'+esc(vinShort)+'</span>';
         actions  = '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
       } else {
         motoCell = '<span class="ad-badge red">Sin asignar</span>'+stockInfo;
         actions  = '';
         if(ADApp.canWrite()){
-          actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
-                     'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
+          // Only allow "Asignar" once payment is confirmed. Credit-family orders
+          // release the moto on the enganche (pago_estado='parcial'); every other
+          // tpago (contado/unico/msi/spei/oxxo) needs full 'pagada'.
+          var pe = (r.pago_estado||'').toLowerCase();
+          var tp = (r.tipo||r.tpago||'').toLowerCase();
+          var isCreditFam = ['credito','credito-orfano','enganche','parcial'].indexOf(tp) >= 0;
+          var canAssign = (pe === 'pagada' || pe === 'aprobada' || pe === 'approved' || pe === 'paid')
+                       || (isCreditFam && pe === 'parcial');
+          if (canAssign) {
+            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
+                       'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
+          } else {
+            actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+';opacity:.55;cursor:not-allowed;" '+
+                       'title="El pago de esta orden aún no ha sido confirmado" disabled>Pendiente</button>';
+          }
         }
         actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
       }
