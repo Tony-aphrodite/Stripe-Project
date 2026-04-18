@@ -232,15 +232,71 @@ try {
     // Backfill columns on pre-existing tables
     ensureTransaccionesColumns($pdo);
 
-    // Determine initial pago_estado based on payment type:
-    // - Card (unico/msi): payment already confirmed → 'pagada'
-    // - SPEI/OXXO: payment pending bank transfer → 'pendiente'
-    // - Credito/enganche: partial payment → 'parcial'
-    $pagoEstadoInit = 'pagada';
+    // Determine initial pago_estado by QUERYING STRIPE for the real status.
+    // Historic bug (reported by customer 2026-04-18): this code used to blindly
+    // write 'pagada' for any card tpago without verifying with Stripe, so any
+    // client that posted a paymentIntentId whose status was still
+    // requires_action / processing / requires_payment_method ended up as
+    // 'Pagado' in the admin panel even though the payment never cleared.
+    //
+    // Now we retrieve the PaymentIntent server-side and map its status:
+    //   succeeded             → 'pagada'  (card fully cleared)
+    //   processing            → 'pendiente' (SPEI/OXXO funds in transit,
+    //                                        or card 3DS async processing)
+    //   requires_action /
+    //   requires_confirmation /
+    //   requires_payment_method →  'pendiente' (user didn't complete auth)
+    //   canceled              → 'fallido'
+    //   anything else         → 'pendiente' (conservative default)
+    //
+    // Credit/enganche/parcial keep their semantic 'parcial' irrespective of
+    // the Stripe status because only the enganche is captured up front.
+    $pagoEstadoInit = 'pendiente';
+    $stripeRealStatus = null;
+    if (in_array($pagoTipo, ['credito', 'enganche', 'parcial'], true)) {
+        $pagoEstadoInit = 'parcial';
+    } elseif (!empty($paymentIntentId) && defined('STRIPE_SECRET_KEY') && STRIPE_SECRET_KEY) {
+        // Direct REST call (lightweight — no SDK dependency required here)
+        $ch = curl_init('https://api.stripe.com/v1/payment_intents/' . urlencode($paymentIntentId));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . STRIPE_SECRET_KEY],
+            CURLOPT_TIMEOUT        => 12,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($code === 200 && ($data = json_decode($resp, true)) && isset($data['status'])) {
+            $stripeRealStatus = $data['status'];
+            switch ($stripeRealStatus) {
+                case 'succeeded':
+                    $pagoEstadoInit = 'pagada';
+                    break;
+                case 'canceled':
+                    $pagoEstadoInit = 'fallido';
+                    break;
+                case 'processing':
+                case 'requires_action':
+                case 'requires_confirmation':
+                case 'requires_payment_method':
+                case 'requires_capture':
+                default:
+                    $pagoEstadoInit = 'pendiente';
+            }
+        } else {
+            // Stripe unreachable / wrong key → be conservative
+            error_log('confirmar-orden: Stripe retrieve failed for PI ' . $paymentIntentId . ' httpCode=' . $code);
+            $pagoEstadoInit = 'pendiente';
+        }
+    } elseif (empty($paymentIntentId)) {
+        // Client didn't send a paymentIntentId for a card flow — clearly not paid
+        $pagoEstadoInit = 'pendiente';
+    }
+
+    // SPEI/OXXO explicit override: these are always 'pendiente' at this step
+    // (funds don't arrive immediately), regardless of what Stripe reports.
     if (in_array($pagoTipo, ['spei', 'oxxo'], true)) {
         $pagoEstadoInit = 'pendiente';
-    } elseif (in_array($pagoTipo, ['credito', 'enganche', 'parcial'], true)) {
-        $pagoEstadoInit = 'parcial';
     }
 
     // INSERT IGNORE so if UNIQUE INDEX catches a duplicate stripe_pi the row
