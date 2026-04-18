@@ -233,7 +233,7 @@ window.AD_checklists = (function(){
         var mid = $(this).data('mid');
         if(tipo==='origen') openOrigenForm(mid, r.origen, r.moto);
         else if(tipo==='ensamble') openEnsambleForm(mid, r.ensamble);
-        else if(tipo==='entrega') openEntregaForm(mid, r.entrega);
+        else if(tipo==='entrega') openEntregaForm(mid, r.entrega, r.moto);
       });
 
       $('.clPdf').on('click',function(){
@@ -802,8 +802,9 @@ window.AD_checklists = (function(){
   ENTREGA_PHASES.forEach(function(ph){ ph.sections.forEach(function(s){ s.fields.forEach(function(f){ ALL_ENTREGA_FIELDS.push(f.key); }); }); });
   var TOTAL_ENTREGA = ALL_ENTREGA_FIELDS.length;
 
-  function openEntregaForm(motoId, existing){
+  function openEntregaForm(motoId, existing, moto){
     var data = existing || {};
+    moto = moto || {};
     var isLocked = data.completado == 1;
 
     var activeFase = data.fase_actual || 'fase1';
@@ -934,34 +935,42 @@ window.AD_checklists = (function(){
         }
         html += '</div>';
 
-        // ── Firma 2: Pagaré (CINCEL) ──
+        // ── Firma 2: Plan de pago (pagaré generado en backend, nunca expuesto) ──
+        // Customer-facing screen: NO legal jargon, NO PDF preview, NO hash.
+        // The pagaré + NOM-151 certification are still produced server-side on save
+        // (see checklists/guardar-firma.php with tipo=pagare) but the customer only
+        // sees a friendly "confirma tu plan de pago" summary card.
         html += '<div style="padding:16px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;">';
-        html += '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">2. Finaliza tu compra</div>';
-        html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Firma pagaré — Documento PDF inmutable + Certificación NOM-151</div>';
+        html += '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">2. Confirma tu plan de pago</div>';
+        html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Acuerdo certificado digitalmente</div>';
 
-        // Pagaré PDF status area
-        html += '<div id="clPagareInfo" style="margin-bottom:10px;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;">';
-        if(data.pagare_pdf_path){
-          html += '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré generado</div>';
-          if(data.pagare_pdf_hash) html += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+data.pagare_pdf_hash+'</div>';
-          html += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(data.pagare_pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF</a>';
-        } else if(!isLocked){
-          html += '<div style="font-size:12px;color:#92400e;">El PDF del pagaré se generará automáticamente al firmar.</div>';
-          html += '<button class="ad-btn sm ghost" id="clPagarePreview" style="margin-top:6px;font-size:11px;border-color:#f59e0b;color:#92400e;">Vista previa del pagaré</button>';
-        }
+        // Native plan summary card (replaces the old PDF preview card)
+        var plan = (moto && moto.plan) ? moto.plan : {};
+        var planNombre  = plan.nombre || (moto && moto.cliente_nombre) || data.cliente_nombre || '—';
+        var planModelo  = (moto && moto.modelo) ? (moto.modelo + (moto.color ? ' · ' + moto.color : '')) : '—';
+        var planSemanal = plan.pago_semanal ? '$' + Number(plan.pago_semanal).toLocaleString('es-MX', {minimumFractionDigits:2}) + ' MXN' : '—';
+        var planPlazo   = plan.plazo_semanas ? plan.plazo_semanas + ' semanas' : (plan.plazo_meses ? plan.plazo_meses + ' meses' : '—');
+        var planPrimer  = 'Día de entrega';
+
+        html += '<div style="margin-bottom:12px;padding:14px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;">';
+        html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:8px 12px;font-size:13px;line-height:1.5;">';
+        html += '<div style="color:#64748b;">🏍️ Modelo:</div><div style="font-weight:600;color:#1a3a5c;">'+esc(planModelo)+'</div>';
+        html += '<div style="color:#64748b;">👤 Nombre:</div><div style="font-weight:600;color:#1a3a5c;">'+esc(planNombre)+'</div>';
+        html += '<div style="color:#64748b;">💳 Pago semanal:</div><div style="font-weight:700;color:#039fe1;">'+esc(planSemanal)+'</div>';
+        html += '<div style="color:#64748b;">⏳ Plazo:</div><div style="font-weight:600;color:#1a3a5c;">'+esc(planPlazo)+'</div>';
+        html += '<div style="color:#64748b;">📆 Primer pago:</div><div style="font-weight:600;color:#1a3a5c;">'+esc(planPrimer)+'</div>';
+        html += '</div>';
+        html += '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed #e5e7eb;font-size:12px;color:#64748b;text-align:center;">Al firmar aceptas tu plan de pago con <strong style="color:#1a3a5c;">VOLTIKA</strong>.</div>';
         html += '</div>';
 
         if(data.firma_pagare_data){
           html += '<div style="border:1px solid #ddd;border-radius:8px;padding:8px;display:inline-block;background:#fff;">'+
             '<img src="'+data.firma_pagare_data+'" style="max-width:300px;height:auto;"></div>';
-          html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;font-weight:600;">Firma pagaré capturada</div>';
-          if(data.firma_pagare_timestamp) html += '<div style="font-size:11px;color:#64748b;margin-top:2px;">Timestamp: '+data.firma_pagare_timestamp+'</div>';
-          if(data.firma_pagare_cincel_id) html += '<div style="font-size:11px;color:#64748b;">CINCEL ID: <code>'+data.firma_pagare_cincel_id+'</code></div>';
-          if(data.pagare_pdf_hash) html += '<div style="font-size:11px;color:#64748b;">PDF Hash: <code style="font-size:10px;">'+data.pagare_pdf_hash+'</code></div>';
+          html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;font-weight:600;">Firma capturada</div>';
         } else if(!isLocked){
           html += '<div id="clFirmaPagareWrapper" style="border:2px dashed #f59e0b;border-radius:8px;position:relative;background:#fff;">';
           html += '<canvas id="clFirmaPagareCanvas" style="width:100%;height:120px;display:block;cursor:crosshair;"></canvas>';
-          html += '<div id="clFirmaPagarePlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:13px;pointer-events:none;">Firmar aquí</div>';
+          html += '<div id="clFirmaPagarePlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:13px;pointer-events:none;">Firma aquí</div>';
           html += '</div>';
           html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">';
           html += '<span id="clFirmaPagareStatus" style="font-size:12px;color:#999;">Pendiente de firma</span>';
@@ -1085,30 +1094,8 @@ window.AD_checklists = (function(){
       if(f === 'fase5') initSignatureCanvas();
     });
 
-    // Pagaré preview button
-    $('#clPagarePreview').on('click', function(){
-      var $btn = $(this);
-      $btn.prop('disabled',true).html('<span class="ad-spin"></span> Generando...');
-      ADApp.api('checklists/generar-pagare.php', {moto_id: motoId}).done(function(r){
-        if(r.ok){
-          var infoHtml = '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré generado (vista previa)</div>';
-          if(r.datos && r.datos.nombre) infoHtml += '<div style="font-size:11px;color:#64748b;margin-top:2px;">Cliente: '+r.datos.nombre+'</div>';
-          if(r.datos && r.datos.monto_fmt) infoHtml += '<div style="font-size:11px;color:#64748b;">Monto: '+r.datos.monto_fmt+'</div>';
-          if(r.pdf_hash) infoHtml += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+r.pdf_hash+'</div>';
-          infoHtml += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(r.pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF</a>';
-          infoHtml += '<div style="font-size:11px;color:#92400e;margin-top:4px;">El PDF final se generará con la firma al guardar.</div>';
-          $('#clPagareInfo').html(infoHtml);
-        } else {
-          alert(r.error||'Error generando vista previa');
-          $btn.prop('disabled',false).html('Vista previa del pagaré');
-        }
-      }).fail(function(xhr){
-        var msg = 'Error de conexión';
-        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
-        alert(msg);
-        $btn.prop('disabled',false).html('Vista previa del pagaré');
-      });
-    });
+    // Pagaré preview handler removed — legal document is backend-only, never
+    // exposed to the customer (customer feedback 2026-04-19).
 
     $('.clCheck').on('change', function(){
       updateProgressGeneric(ALL_ENTREGA_FIELDS, TOTAL_ENTREGA);
@@ -1155,23 +1142,18 @@ window.AD_checklists = (function(){
       // Step 2: Save pagaré signature (this triggers PDF generation + CINCEL)
       var pagarePromise;
       if(firmaPagare){
-        $('#clFirmaPagareStatus').text('Generando PDF y sellando NOM-151...').css('color','#92400e');
+        $('#clFirmaPagareStatus').text('Guardando firma...').css('color','#92400e');
         pagarePromise = ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, tipo: 'pagare', firma_data: firmaPagare });
       } else {
         pagarePromise = $.Deferred().resolve({ok:true});
       }
 
       pagarePromise.done(function(pagareResp){
-        // Show pagaré result
-        if(pagareResp && pagareResp.pdf_hash){
-          var infoHtml = '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré firmado y sellado</div>';
-          if(pagareResp.pdf_hash) infoHtml += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+pagareResp.pdf_hash+'</div>';
-          if(pagareResp.cincel_id) infoHtml += '<div style="font-size:11px;color:#64748b;">CINCEL ID: <code>'+pagareResp.cincel_id+'</code></div>';
-          if(pagareResp.pdf_path) infoHtml += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(pagareResp.pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF firmado</a>';
-          $('#clPagareInfo').html(infoHtml);
-        }
-        if(pagareResp && pagareResp.cincel_warning){
-          $('#clFirmaPagareStatus').text('Firma guardada (CINCEL: '+pagareResp.cincel_warning+')').css('color','#FF9800');
+        // Legal document (pagaré + NOM-151 hash + CINCEL ID) is generated
+        // server-side on save but intentionally hidden from the customer-facing
+        // UI — do not surface pdf_hash, cincel_id, or download links here.
+        if(firmaPagare){
+          $('#clFirmaPagareStatus').text('Firma capturada').css('color','#4CAF50');
         }
       }).always(function(){
         // Step 3: Save checklist data
