@@ -452,7 +452,7 @@ $pdf->divider();
 
 $pdf->SetFont('Arial', 'I', 9.5);
 $pdf->SetTextColor(100, 116, 139);
-$pdf->MultiCell(0, 5, _lat('Este manual se actualiza periódicamente. La versión vigente siempre está en https://voltika.mx/docs/manual-operador-punto.php. Consulta si hay nueva versión cada trimestre.'));
+$pdf->MultiCell(0, 5, _lat('Este manual se actualiza periódicamente. La versión vigente siempre está en https://voltika.mx/docs/manual-operador-punto.pdf. Consulta si hay nueva versión cada trimestre.'));
 
 // ════════════════════════════════════════════════════════════════════════════
 // OUTPUT
