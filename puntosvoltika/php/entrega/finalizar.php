@@ -74,6 +74,37 @@ $pdo->prepare("INSERT INTO ventas_log (moto_id, tipo, dealer_id, cliente_nombre,
 
 puntoLog('entrega_finalizada', ['moto_id' => $motoId]);
 
+// ── Delivery commission for the punto (comision_entrega from puntos_voltika) ──
+// Generates one row in comisiones_log per delivered moto. Idempotent: if the
+// same moto already has a tipo='entrega' entry, we skip to avoid double pay.
+try {
+    $puntoId = (int)($m['punto_voltika_id'] ?? 0);
+    if ($puntoId > 0) {
+        $exists = $pdo->prepare("SELECT id FROM comisiones_log
+            WHERE pedido_num = ? AND tipo = 'entrega' AND punto_id = ? LIMIT 1");
+        $exists->execute([$m['pedido_num'] ?? '', $puntoId]);
+        if (!$exists->fetch()) {
+            $cStmt = $pdo->prepare("SELECT COALESCE(comision_entrega, 0) FROM puntos_voltika WHERE id = ?");
+            $cStmt->execute([$puntoId]);
+            $comEntrega = (float)$cStmt->fetchColumn();
+            if ($comEntrega > 0) {
+                $pdo->prepare("INSERT INTO comisiones_log
+                    (punto_id, referido_id, pedido_num, modelo, monto_venta, comision_pct, comision_monto, tipo)
+                    VALUES (?, NULL, ?, ?, ?, NULL, ?, 'entrega')")
+                    ->execute([
+                        $puntoId,
+                        $m['pedido_num'] ?? '',
+                        $m['modelo'] ?? '',
+                        (float)($m['precio_venta'] ?? 0),
+                        round($comEntrega, 2),
+                    ]);
+            }
+        }
+    }
+} catch (Throwable $e) {
+    error_log('finalizar comision_entrega: ' . $e->getMessage());
+}
+
 // Notify cliente — "¡Bienvenido a la familia Voltika!"
 require_once __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php';
 try {

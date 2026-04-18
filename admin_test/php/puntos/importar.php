@@ -194,7 +194,8 @@ function _modeloIdFor(string $label, array $modeloIds): ?int {
     }
     return null;
 }
-// Ensure punto_comisiones exists (for model commissions)
+// Ensure punto_comisiones table + comision_venta_monto column exist.
+// master-bootstrap creates the table with pct only, so we ALTER on first import.
 try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS punto_comisiones (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -204,7 +205,12 @@ try {
         comision_venta_monto DECIMAL(10,2) NULL,
         UNIQUE KEY ux_punto_modelo (punto_id, modelo_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-} catch (Throwable $e) {}
+    // Add the monto column if the table pre-existed from master-bootstrap
+    $pcCols = array_column($pdo->query("SHOW COLUMNS FROM punto_comisiones")->fetchAll(PDO::FETCH_ASSOC), 'Field');
+    if (!in_array('comision_venta_monto', $pcCols, true)) {
+        $pdo->exec("ALTER TABLE punto_comisiones ADD COLUMN comision_venta_monto DECIMAL(10,2) NULL");
+    }
+} catch (Throwable $e) { error_log('importar punto_comisiones ensure: ' . $e->getMessage()); }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 6) Upsert each row

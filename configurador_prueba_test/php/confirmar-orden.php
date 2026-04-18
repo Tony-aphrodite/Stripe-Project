@@ -406,22 +406,34 @@ try {
     }
 
     // ── Auto-calculate commission for punto referido sales ──
+    // Priority: fixed monto (comision_venta_monto) over percentage (comision_venta_pct).
+    // The customer's Puntos template (Z~AF columns) uses fixed MXN amounts per
+    // model, so monto is the primary path; pct is kept for backward compat.
     if ($puntoVoltikaId && $referidoTipo === 'punto' && $total > 0) {
         try {
-            // Find modelo_id from modelos table
             $mStmt = $pdo->prepare("SELECT id FROM modelos WHERE nombre = ? LIMIT 1");
             $mStmt->execute([$modelo]);
             $modeloDbId = $mStmt->fetchColumn();
 
             if ($modeloDbId) {
                 $cStmt = $pdo->prepare("
-                    SELECT comision_venta_pct FROM punto_comisiones
+                    SELECT comision_venta_pct, comision_venta_monto FROM punto_comisiones
                     WHERE punto_id = ? AND modelo_id = ?
                 ");
                 $cStmt->execute([$puntoVoltikaId, $modeloDbId]);
-                $comPct = floatval($cStmt->fetchColumn());
+                $cRow = $cStmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($comPct > 0) {
+                $comPct   = $cRow ? (float)($cRow['comision_venta_pct']   ?? 0) : 0;
+                $comFixed = $cRow ? (float)($cRow['comision_venta_monto'] ?? 0) : 0;
+
+                if ($comFixed > 0) {
+                    $comMonto = round($comFixed, 2);
+                    $pdo->prepare("
+                        INSERT INTO comisiones_log
+                            (punto_id, referido_id, pedido_num, modelo, monto_venta, comision_pct, comision_monto, tipo)
+                        VALUES (?, NULL, ?, ?, ?, NULL, ?, 'venta')
+                    ")->execute([$puntoVoltikaId, $pedidoNum, $modelo, $total, $comMonto]);
+                } elseif ($comPct > 0) {
                     $comMonto = round($total * $comPct / 100, 2);
                     $pdo->prepare("
                         INSERT INTO comisiones_log
