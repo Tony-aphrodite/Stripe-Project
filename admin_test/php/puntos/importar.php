@@ -221,10 +221,27 @@ $upsertSql = "
 $stmtIns = $pdo->prepare("INSERT INTO puntos_voltika SET $upsertSql");
 $stmtUpd = $pdo->prepare("UPDATE puntos_voltika SET $upsertSql WHERE id=?");
 
+// Resolve a unique code when the file has duplicates across rows
+// (customer sometimes copies a referral code and forgets to change it).
+$chkCodElec  = $pdo->prepare("SELECT id FROM puntos_voltika WHERE codigo_electronico = ? AND (? IS NULL OR id <> ?) LIMIT 1");
+$chkCodVenta = $pdo->prepare("SELECT id FROM puntos_voltika WHERE codigo_venta = ? AND (? IS NULL OR id <> ?) LIMIT 1");
+function _uniqueCode(PDOStatement $chk, string $base, ?int $selfId = null): string {
+    if ($base === '') return '';
+    $chk->execute([$base, $selfId, $selfId ?? 0]);
+    if (!$chk->fetch()) return $base;
+    // Collision — append -2, -3, … until free
+    for ($n = 2; $n < 100; $n++) {
+        $try = $base . '-' . $n;
+        $chk->execute([$try, $selfId, $selfId ?? 0]);
+        if (!$chk->fetch()) return $try;
+    }
+    return $base . '-' . strtoupper(substr(md5(uniqid()), 0, 4));
+}
+
 $stmtComDel = $pdo->prepare("DELETE FROM punto_comisiones WHERE punto_id = ?");
 $stmtComIns = $pdo->prepare("INSERT INTO punto_comisiones (punto_id, modelo_id, comision_venta_monto) VALUES (?,?,?)");
 
-$created = 0; $updated = 0; $errors = 0; $detail = [];
+$created = 0; $updated = 0; $errors = 0; $duplicados = 0; $detail = [];
 
 for ($i = 1; $i < count($rows); $i++) {
     $row = $rows[$i];
@@ -236,6 +253,20 @@ for ($i = 1; $i < count($rows); $i++) {
     }
 
     try {
+        // Resolve referral codes; auto-suffix if the Excel has duplicates
+        // across rows or a different punto already claims the code.
+        $stmtByName->execute([$nombre]);
+        $existing = $stmtByName->fetch(PDO::FETCH_ASSOC);
+        $selfId   = $existing ? (int)$existing['id'] : null;
+
+        $codRefRaw   = _cell($row, $colMap['cod_referido']);
+        $codPisoRaw  = _cell($row, $colMap['cod_piso']);
+        $codRef      = $codRefRaw  ? _uniqueCode($chkCodElec,  $codRefRaw,  $selfId) : null;
+        $codPiso     = $codPisoRaw ? _uniqueCode($chkCodVenta, $codPisoRaw, $selfId) : null;
+        if ($codRef  && $codRefRaw  && $codRef  !== $codRefRaw)  $detail[] = "Fila " . ($i+1) . " ('$nombre'): código referido duplicado '$codRefRaw' → reasignado '$codRef'";
+        if ($codPiso && $codPisoRaw && $codPiso !== $codPisoRaw) $detail[] = "Fila " . ($i+1) . " ('$nombre'): código piso duplicado '$codPisoRaw' → reasignado '$codPiso'";
+        if (($codRef && $codRef !== $codRefRaw) || ($codPiso && $codPiso !== $codPisoRaw)) $duplicados++;
+
         $params = [
             $nombre,
             _cell($row, $colMap['responsable']) ?: null,
@@ -249,8 +280,8 @@ for ($i = 1; $i < count($rows); $i++) {
             _cell($row, $colMap['email']) ?: null,
             _cell($row, $colMap['telefono']) ?: null,
             _normTipo(_cell($row, $colMap['tipo'])),
-            _cell($row, $colMap['cod_referido']) ?: null,   // codigo_electronico (web referido)
-            _cell($row, $colMap['cod_piso']) ?: null,       // codigo_venta (piso)
+            $codRef,    // codigo_electronico (web referido)
+            $codPiso,   // codigo_venta (piso)
             _cell($row, $colMap['horario']) ?: null,
             _intOrZero(_cell($row, $colMap['capacidad'])),
             _intOrZero(_cell($row, $colMap['orden'])),
@@ -264,9 +295,6 @@ for ($i = 1; $i < count($rows); $i++) {
             _floatOrNull(_cell($row, $colMap['lng'])),
             _floatOrNull(_cell($row, $colMap['comision'])) ?? 0,
         ];
-
-        $stmtByName->execute([$nombre]);
-        $existing = $stmtByName->fetch(PDO::FETCH_ASSOC);
 
         if ($existing) {
             $stmtUpd->execute(array_merge($params, [$existing['id']]));
@@ -303,16 +331,19 @@ for ($i = 1; $i < count($rows); $i++) {
 }
 
 adminLog('puntos_importar_v1', [
-    'archivo'  => $file['name'],
-    'creados'  => $created,
-    'updated'  => $updated,
-    'errores'  => $errors,
+    'archivo'     => $file['name'],
+    'creados'     => $created,
+    'updated'     => $updated,
+    'duplicados'  => $duplicados,
+    'errores'     => $errors,
 ]);
 
 adminJsonOut([
     'ok'           => true,
     'creados'      => $created,
     'actualizados' => $updated,
+    'eliminados'   => 0,
+    'duplicados'   => $duplicados,
     'errores'      => $errors,
     'total_filas'  => count($rows) - 1,
     'detalle'      => array_slice($detail, 0, 30),
