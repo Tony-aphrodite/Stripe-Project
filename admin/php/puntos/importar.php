@@ -175,24 +175,63 @@ function _intOrZero(string $s): int {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 5) Ensure all 6 canonical models exist + resolve IDs for commission mapping.
+// 5) Normalize modelos: dedupe existing duplicates, ensure canonical names.
 // ═══════════════════════════════════════════════════════════════════════════
-// Canonical names kept consistent with comisiones.php's autoinsert list.
-$canonicalModels = ['M03', 'M05', 'Pesgo plus', 'mino B', 'Ukko S+', 'MC10 Streetx'];
-try {
-    $ins = $pdo->prepare("INSERT IGNORE INTO modelos (nombre, activo) VALUES (?, 1)");
-    foreach ($canonicalModels as $name) {
-        try { $ins->execute([$name]); } catch (Throwable $e) {}
-    }
-} catch (Throwable $e) {}
-
-// Build a fuzzy-compare lookup: space-stripped, accent-stripped, lowercased.
+// Fuzzy-compare key (drop spaces, accents, pluses, casing).
 function _modeloNormKey(string $s): string {
     $n = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
     $n = strtolower($n);
-    $n = preg_replace('/[^a-z0-9]/', '', $n);   // drop spaces, pluses, dashes, etc.
+    $n = preg_replace('/[^a-z0-9]/', '', $n);
     return $n;
 }
+
+// Canonical names (kept consistent with comisiones.php's autoinsert list).
+$canonicalModels = ['M03', 'M05', 'Pesgo plus', 'mino B', 'Ukko S+', 'MC10 Streetx'];
+
+// Step A — group existing modelos by normalized key; pick canonical (lowest id)
+// per group and retarget all punto_comisiones references to it, then drop dupes.
+try {
+    $allMod = $pdo->query("SELECT id, nombre FROM modelos ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $groups = [];
+    foreach ($allMod as $m) {
+        $k = _modeloNormKey($m['nombre']);
+        if ($k === '') continue;
+        $groups[$k][] = (int)$m['id'];
+    }
+    foreach ($groups as $k => $ids) {
+        if (count($ids) < 2) continue;
+        $keep = $ids[0];
+        $drop = array_slice($ids, 1);
+        // Retarget punto_comisiones
+        $up = $pdo->prepare("UPDATE IGNORE punto_comisiones SET modelo_id = ? WHERE modelo_id = ?");
+        foreach ($drop as $dId) $up->execute([$keep, $dId]);
+        // Delete duplicate punto_comisiones rows left (same punto+modelo after merge)
+        $pdo->exec("DELETE pc1 FROM punto_comisiones pc1
+            INNER JOIN punto_comisiones pc2
+            WHERE pc1.id > pc2.id AND pc1.punto_id = pc2.punto_id AND pc1.modelo_id = pc2.modelo_id");
+        // Now drop the duplicate model rows
+        $in = implode(',', array_map('intval', $drop));
+        if ($in !== '') $pdo->exec("DELETE FROM modelos WHERE id IN ($in)");
+    }
+} catch (Throwable $e) { error_log('importar modelos dedupe: ' . $e->getMessage()); }
+
+// Step B — ensure every canonical model exists (insert only if the normalized
+// key is not already present).
+try {
+    $existing = [];
+    $q = $pdo->query("SELECT id, nombre FROM modelos");
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $m) {
+        $existing[_modeloNormKey($m['nombre'])] = (int)$m['id'];
+    }
+    $ins = $pdo->prepare("INSERT INTO modelos (nombre, activo) VALUES (?, 1)");
+    foreach ($canonicalModels as $name) {
+        if (!isset($existing[_modeloNormKey($name)])) {
+            try { $ins->execute([$name]); } catch (Throwable $e) {}
+        }
+    }
+} catch (Throwable $e) {}
+
+// Step C — final modelo lookup map for commission assignment.
 $modeloIds = [];
 try {
     $q = $pdo->query("SELECT id, nombre FROM modelos");

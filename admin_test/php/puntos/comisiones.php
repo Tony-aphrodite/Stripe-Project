@@ -20,15 +20,26 @@ try {
 
 // Ensure all required models exist (auto-insert missing ones).
 // Customer Puntos template defines 6 sale-commission columns — all must exist.
+// Uses a normalized-key comparison so `M03`, `m03`, `MC10 Streetx`, `MC10Streetx`
+// etc. all resolve to the same row (prevents duplicates across imports).
 $requiredModels = ['M03', 'M05', 'Pesgo plus', 'mino B', 'Ukko S+', 'MC10 Streetx'];
-$chkModel = $pdo->prepare("SELECT id FROM modelos WHERE nombre = ? LIMIT 1");
-$insModel = $pdo->prepare("INSERT INTO modelos (nombre, activo) VALUES (?, 1)");
-foreach ($requiredModels as $mName) {
-    $chkModel->execute([$mName]);
-    if (!$chkModel->fetch()) {
-        try { $insModel->execute([$mName]); } catch (Throwable $e) { /* ignore */ }
-    }
+function _modNormKey(string $s): string {
+    $n = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+    return preg_replace('/[^a-z0-9]/', '', strtolower($n));
 }
+try {
+    $existing = [];
+    $q = $pdo->query("SELECT id, nombre FROM modelos");
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $m) {
+        $existing[_modNormKey($m['nombre'])] = true;
+    }
+    $insModel = $pdo->prepare("INSERT INTO modelos (nombre, activo) VALUES (?, 1)");
+    foreach ($requiredModels as $mName) {
+        if (!isset($existing[_modNormKey($mName)])) {
+            try { $insModel->execute([$mName]); } catch (Throwable $e) {}
+        }
+    }
+} catch (Throwable $e) { error_log('comisiones required models: ' . $e->getMessage()); }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $puntoId = (int)($_GET['punto_id'] ?? 0);
