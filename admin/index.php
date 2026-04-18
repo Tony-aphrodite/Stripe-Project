@@ -21,14 +21,13 @@ $asset = function(string $rel): string {
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Voltika — Admin Dashboard (TEST)</title>
+<title>Voltika — Admin Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="../configurador_prueba/img/favicon.svg">
 <link rel="stylesheet" href="<?= $asset('css/admin.css') ?>">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
-<div id="vk-test-banner" style="background:#ff9800;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:99999;">MODO DE PRUEBA — Panel de pruebas</div>
-<div id="adApp" class="ad-app" style="padding-top:32px">
+<div id="adApp" class="ad-app">
   <nav id="adSidebar" class="ad-sidebar" style="display:none">
     <div class="ad-logo"><img src="../configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'"></div>
     <button class="ad-hamburger" id="adHamburger">&#9776;</button>

@@ -61,7 +61,7 @@ function voltikaNotifyTemplates(): array {
                        . "🔒 Clave: {password}\n\n"
                        . "⚠️ Cambia tu contraseña al entrar por primera vez.\n\n"
                        . "📎 Revisa el manual adjunto en tu correo antes de tu primera operación:\n"
-                       . "https://voltika.mx/docs/manual-operador-punto.pdf\n\n"
+                       . "https://voltika.mx/docs/manual-operador-punto.php\n\n"
                        . "¿Dudas? Comunícate directamente con el ejecutivo VOLTIKA que te afilió — él es tu contacto principal.\n"
                        . "📧 puntos@voltika.mx\n"
                        . "🕐 Lunes a Viernes 9:00 - 18:00 hrs\n\n"
@@ -110,7 +110,7 @@ function voltikaNotifyTemplates(): array {
                          . '<li>Protocolos de emergencia</li>'
                          . '</ul>'
                          . '<div style="text-align:center;margin:16px 0;">'
-                         . '<a href="https://voltika.mx/docs/manual-operador-punto.pdf" target="_blank" style="display:inline-block;background:#039fe1;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Descargar manual del operador</a>'
+                         . '<a href="https://voltika.mx/docs/manual-operador-punto.php" target="_blank" style="display:inline-block;background:#039fe1;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Descargar manual del operador</a>'
                          . '</div>'
                          . '</td></tr>'
                          // Legal notice
