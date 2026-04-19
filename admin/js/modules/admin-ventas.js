@@ -573,6 +573,107 @@ window.AD_ventas = (function(){
     return h;
   }
 
+  // ── Cotización file block — shared by seguro + placas modals ────────────
+  // Renders either the current attachment (with Ver/Reemplazar/Eliminar) or a
+  // plain file picker when nothing is attached yet. The block is keyed by
+  // `tipo` ('seguro'|'placas') so both modals can live side-by-side without
+  // DOM id collisions.
+  function cotizacionBlock(tipo, r, txId){
+    var has     = !!r[tipo+'_cotizacion_archivo'];
+    var subido  = r[tipo+'_cotizacion_subido'] || '';
+    var size    = r[tipo+'_cotizacion_size'] || 0;
+    var mime    = r[tipo+'_cotizacion_mime'] || '';
+    var urlBase = 'ventas/serve-cotizacion.php?transaccion_id='+txId+'&tipo='+tipo;
+    var h = '<div style="margin:0 0 10px;">';
+    h += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Archivo de cotización (PDF, JPG, PNG — máx 5 MB)</label>';
+    h += '<div id="vkCot_'+tipo+'_panel">';
+    if (has) {
+      var kb = size ? (size >= 1024*1024 ? (size/1024/1024).toFixed(1)+' MB' : Math.round(size/1024)+' KB') : '';
+      h += '<div style="display:flex;gap:8px;align-items:center;padding:10px 12px;background:#E8F4FD;border:1px solid #B3D4FC;border-radius:6px;flex-wrap:wrap;">'
+         +   '<span style="font-size:18px;">'+(mime.indexOf('pdf')>=0?'📄':'🖼️')+'</span>'
+         +   '<div style="flex:1;min-width:140px;font-size:12px;">'
+         +     '<div><strong>Archivo cargado</strong></div>'
+         +     '<div class="ad-dim" style="font-size:11px;">'+esc(subido)+(kb?(' · '+kb):'')+'</div>'
+         +   '</div>'
+         +   '<a href="/admin/php/'+urlBase+'&inline=1" target="_blank" class="ad-btn sm ghost" style="text-decoration:none;">Ver</a>'
+         +   '<button class="ad-btn sm ghost" id="vkCot_'+tipo+'_replace" type="button">Reemplazar</button>'
+         +   '<button class="ad-btn sm ghost" id="vkCot_'+tipo+'_delete"  type="button" style="color:#b91c1c;">Eliminar</button>'
+         + '</div>';
+    } else {
+      h += '<input type="file" id="vkCot_'+tipo+'_file" accept="application/pdf,image/jpeg,image/png,image/webp" style="width:100%;padding:8px;border:1.5px dashed var(--ad-border);border-radius:6px;font-size:12px;background:var(--ad-surface-2);">';
+    }
+    h += '</div>';
+    h += '<div id="vkCot_'+tipo+'_msg" style="font-size:11px;margin-top:4px;"></div>';
+    h += '</div>';
+    return h;
+  }
+
+  function wireCotizacionBlock(tipo, r, txId){
+    var $msg = $('#vkCot_'+tipo+'_msg');
+
+    function doUpload(file){
+      if (!file) return;
+      if (file.size > 5*1024*1024) { $msg.css('color','#b91c1c').text('Archivo excede 5 MB'); return; }
+      var fd = new FormData();
+      fd.append('transaccion_id', txId);
+      fd.append('tipo', tipo);
+      fd.append('file', file);
+      $msg.css('color','#555').html('<span class="ad-spin"></span> Subiendo...');
+      $.ajax({
+        url: 'php/ventas/subir-cotizacion.php',
+        type: 'POST', data: fd, processData:false, contentType:false,
+        xhrFields: { withCredentials: true }
+      }).done(function(resp){
+        if (resp && resp.ok){
+          $msg.css('color','#0e8f55').text('✓ Cargado');
+          // Reflect new state in the row obj + redraw the panel (stay in modal)
+          r[tipo+'_cotizacion_archivo'] = 'uploaded';
+          r[tipo+'_cotizacion_mime']    = resp.mime;
+          r[tipo+'_cotizacion_size']    = resp.size;
+          r[tipo+'_cotizacion_subido']  = (new Date()).toISOString().replace('T',' ').substring(0,19);
+          $('#vkCot_'+tipo+'_panel').replaceWith(
+            $('<div>'+cotizacionBlock(tipo, r, txId)+'</div>').find('#vkCot_'+tipo+'_panel')
+          );
+          wireCotizacionBlock(tipo, r, txId);
+        } else {
+          $msg.css('color','#b91c1c').text(resp && resp.error ? resp.error : 'Error al subir');
+        }
+      }).fail(function(xhr){
+        var err = 'Error de conexión';
+        try { err = JSON.parse(xhr.responseText).error || err; } catch(e){}
+        $msg.css('color','#b91c1c').text(err);
+      });
+    }
+
+    $('#vkCot_'+tipo+'_file').on('change', function(){ doUpload(this.files && this.files[0]); });
+
+    $('#vkCot_'+tipo+'_replace').on('click', function(){
+      var $inp = $('<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp">');
+      $inp.on('change', function(){ doUpload(this.files && this.files[0]); }).trigger('click');
+    });
+
+    $('#vkCot_'+tipo+'_delete').on('click', function(){
+      if (!confirm('¿Eliminar el archivo de cotización? Esta acción no se puede deshacer.')) return;
+      $msg.css('color','#555').html('<span class="ad-spin"></span> Eliminando...');
+      ADApp.api('ventas/eliminar-cotizacion.php', {transaccion_id: txId, tipo: tipo})
+        .done(function(resp){
+          if (resp && resp.ok){
+            r[tipo+'_cotizacion_archivo'] = null;
+            r[tipo+'_cotizacion_mime']    = null;
+            r[tipo+'_cotizacion_size']    = null;
+            r[tipo+'_cotizacion_subido']  = null;
+            $('#vkCot_'+tipo+'_panel').replaceWith(
+              $('<div>'+cotizacionBlock(tipo, r, txId)+'</div>').find('#vkCot_'+tipo+'_panel')
+            );
+            wireCotizacionBlock(tipo, r, txId);
+            $msg.text('');
+          } else {
+            $msg.css('color','#b91c1c').text(resp.error || 'Error al eliminar');
+          }
+        });
+    });
+  }
+
   // ── Servicios adicionales: Gestión modals ───────────────────────────────
   function openGestionPlacas(txId, r){
     var estado = (r.placas_estado||'pendiente');
@@ -600,12 +701,15 @@ window.AD_ventas = (function(){
     html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Notas internas</label>';
     html += '<textarea class="ad-input" id="vkPlacasNota" style="width:100%;min-height:60px;margin-bottom:14px;">'+esc(r.placas_nota||'')+'</textarea>';
 
+    html += cotizacionBlock('placas', r, txId);
+
     html += '<div style="display:flex;gap:8px;">';
     html += '<button class="ad-btn ghost" id="vkPlacasCancel" style="flex:1;">Cancelar</button>';
     html += '<button class="ad-btn primary" id="vkPlacasSave" style="flex:1;">Guardar</button>';
     html += '</div>';
 
     ADApp.modal(html);
+    wireCotizacionBlock('placas', r, txId);
     $('#vkPlacasCancel').on('click', function(){ ADApp.closeModal(); showDetalle(r.id); });
     $('#vkPlacasSave').on('click', function(){
       var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span>');
@@ -663,12 +767,15 @@ window.AD_ventas = (function(){
     html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Notas internas</label>';
     html += '<textarea class="ad-input" id="vkSeguroNota" style="width:100%;min-height:60px;margin-bottom:14px;">'+esc(r.seguro_nota||'')+'</textarea>';
 
+    html += cotizacionBlock('seguro', r, txId);
+
     html += '<div style="display:flex;gap:8px;">';
     html += '<button class="ad-btn ghost" id="vkSeguroCancel" style="flex:1;">Cancelar</button>';
     html += '<button class="ad-btn primary" id="vkSeguroSave" style="flex:1;">Guardar</button>';
     html += '</div>';
 
     ADApp.modal(html);
+    wireCotizacionBlock('seguro', r, txId);
     $('#vkSeguroCancel').on('click', function(){ ADApp.closeModal(); showDetalle(r.id); });
     $('#vkSeguroSave').on('click', function(){
       var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span>');

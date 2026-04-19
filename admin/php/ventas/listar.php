@@ -27,6 +27,22 @@ $trackingSelect = $hasTracking
          t.seguro_estado, t.seguro_cotizacion, t.seguro_poliza, t.seguro_nota"
     : "";
 
+// Quotation attachment columns — added by subir-cotizacion.php on first use.
+// We only include them in the SELECT if they exist, otherwise the whole
+// query fails on older DBs.
+$hasCotiz = false;
+try {
+    $c = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                         WHERE TABLE_SCHEMA=? AND TABLE_NAME='transacciones'
+                           AND COLUMN_NAME='seguro_cotizacion_archivo'");
+    $c->execute([$dbName]);
+    $hasCotiz = ((int)$c->fetchColumn()) > 0;
+} catch (Throwable $e) {}
+$cotizSelect = $hasCotiz
+    ? ", t.seguro_cotizacion_archivo, t.seguro_cotizacion_mime, t.seguro_cotizacion_size, t.seguro_cotizacion_subido,
+         t.placas_cotizacion_archivo, t.placas_cotizacion_mime, t.placas_cotizacion_size, t.placas_cotizacion_subido"
+    : "";
+
 // Ensure payment-reminder tracking columns exist (2026-04-19 follow-up feature).
 // Safe idempotent ALTER — lets the SELECT below reference them unconditionally.
 try {
@@ -49,7 +65,8 @@ try {
                t.asesoria_placas, t.seguro_qualitas,
                COALESCE(t.last_reminder_at, NULL) AS last_reminder_at,
                COALESCE(t.reminders_sent_count, 0) AS reminders_sent_count
-               $trackingSelect,
+               $trackingSelect
+               $cotizSelect,
                t.pago_estado AS tx_pago_estado,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
                m.pago_estado,
@@ -146,6 +163,14 @@ try {
             'seguro_cotizacion' => $r['seguro_cotizacion'] ?? null,
             'seguro_poliza'     => $r['seguro_poliza'] ?? null,
             'seguro_nota'       => $r['seguro_nota'] ?? null,
+            'seguro_cotizacion_archivo' => $r['seguro_cotizacion_archivo'] ?? null,
+            'seguro_cotizacion_mime'    => $r['seguro_cotizacion_mime']    ?? null,
+            'seguro_cotizacion_size'    => $r['seguro_cotizacion_size']    ?? null,
+            'seguro_cotizacion_subido'  => $r['seguro_cotizacion_subido']  ?? null,
+            'placas_cotizacion_archivo' => $r['placas_cotizacion_archivo'] ?? null,
+            'placas_cotizacion_mime'    => $r['placas_cotizacion_mime']    ?? null,
+            'placas_cotizacion_size'    => $r['placas_cotizacion_size']    ?? null,
+            'placas_cotizacion_subido'  => $r['placas_cotizacion_subido']  ?? null,
         ];
     }
 } catch (Throwable $e) {

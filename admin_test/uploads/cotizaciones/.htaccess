@@ -1,0 +1,10 @@
+# Block direct HTTP access to uploaded quotation files.
+# Clients must fetch them via php/ventas/serve-cotizacion.php which enforces
+# admin auth + correct MIME + Content-Disposition headers.
+Order deny,allow
+Deny from all
+
+# Apache 2.4+
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
