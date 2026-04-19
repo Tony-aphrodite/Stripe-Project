@@ -301,24 +301,66 @@ window.VK_inicio = (function(){
         '</div>'+
       '</div>'+
 
-      // --- Payment methods ---
+      // ── Section 2 (customer brief): backup-card explainer + change card ──
+      // Mounted as a placeholder; populated by a follow-up API call so render
+      // doesn't have to wait for Stripe.
+      '<div class="vk-card" id="vkBackupCard">'+
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">'+
+          '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#039fe1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'+
+          '<div style="font-size:12.5px;font-weight:700;letter-spacing:.4px;color:#039fe1;text-transform:uppercase;">¿Para qué sirve tu tarjeta guardada?</div>'+
+        '</div>'+
+        '<div style="font-size:13px;color:#555;line-height:1.55;">Tu tarjeta es un <strong>respaldo automático</strong> — solo se usa si no realizas tu pago antes del vencimiento. Si ya pagaste por OXXO, SPEI o tarjeta manualmente, el cargo automático no se realiza. <strong>Tu pago nunca se duplica.</strong></div>'+
+        '<div style="font-size:11.5px;font-weight:700;color:#888;letter-spacing:.5px;margin:14px 0 8px;text-transform:uppercase;">Tarjeta de respaldo</div>'+
+        '<div id="vkBackupCardBody"><div class="vk-muted" style="text-align:center;padding:14px 0;font-size:12px;"><span class="vk-spin"></span> Cargando…</div></div>'+
+      '</div>'+
+
+      // ── Section 3 (customer brief): branded payment-method buttons ──
       '<div class="vk-card">'+
         '<div class="vk-h2">Paga tu semana o tu adelanto como quieras</div>'+
-        '<div class="vk-pay-method">'+
-          '<span class="vk-pm-icon"><svg viewBox="0 0 24 24" width="28" height="28"><rect x="1" y="4" width="22" height="16" rx="3" fill="#1a1f71"/><rect x="1" y="8" width="22" height="3" fill="#f7b600"/></svg></span>'+
-          '<span class="k">Tarjeta guardada</span><span class="v">Automatica</span>'+
+        '<div class="vk-pay-action" data-method="tarjeta">'+
+          '<div class="vk-pay-action-icons">'+
+            // Visa
+            '<svg viewBox="0 0 64 24" width="34" height="14"><rect width="64" height="24" rx="3" fill="#1a1f71"/><text x="32" y="17" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-weight="900" font-size="13" font-style="italic" letter-spacing="1">VISA</text></svg>'+
+            // Mastercard
+            '<svg viewBox="0 0 32 24" width="22" height="14"><circle cx="12" cy="12" r="9" fill="#eb001b"/><circle cx="20" cy="12" r="9" fill="#f79e1b"/><path d="M16 5.5a9 9 0 010 13 9 9 0 010-13z" fill="#ff5f00"/></svg>'+
+            // Amex
+            '<svg viewBox="0 0 64 24" width="30" height="14"><rect width="64" height="24" rx="3" fill="#2e77bb"/><text x="32" y="16" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-weight="900" font-size="9">AMEX</text></svg>'+
+          '</div>'+
+          '<div class="vk-pay-action-body">'+
+            '<div class="vk-pay-action-title">Tarjeta</div>'+
+            '<div class="vk-pay-action-sub">Visa, Mastercard o Amex · Débito o crédito</div>'+
+          '</div>'+
+          '<svg class="vk-pay-action-arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'+
         '</div>'+
-        '<div class="vk-pay-method">'+
-          '<span class="vk-pm-icon"><svg viewBox="0 0 24 24" width="28" height="28"><rect x="2" y="3" width="20" height="18" rx="3" fill="#004990"/><text x="12" y="15" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold">SPEI</text></svg></span>'+
-          '<span class="k">Transferencia SPEI</span><span class="v">Manual</span>'+
+        '<div class="vk-pay-action" data-method="oxxo">'+
+          '<div class="vk-pay-action-icons">'+
+            // OXXO logo
+            '<svg viewBox="0 0 80 32" width="46" height="20"><rect width="80" height="32" rx="4" fill="#e30613"/><text x="40" y="22" text-anchor="middle" fill="#fff" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="16" letter-spacing="-0.5">OXXO</text></svg>'+
+          '</div>'+
+          '<div class="vk-pay-action-body">'+
+            '<div class="vk-pay-action-title">OXXO</div>'+
+            '<div class="vk-pay-action-sub">Efectivo en cualquier tienda OXXO del país</div>'+
+          '</div>'+
+          '<svg class="vk-pay-action-arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'+
         '</div>'+
-        '<div class="vk-pay-method">'+
-          '<span class="vk-pm-icon"><svg viewBox="0 0 24 24" width="28" height="28"><rect x="2" y="3" width="20" height="18" rx="3" fill="#cd1719"/><text x="12" y="15" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">OXXO</text></svg></span>'+
-          '<span class="k">OXXO</span><span class="v">Efectivo</span>'+
+        '<div class="vk-pay-action" data-method="spei">'+
+          '<div class="vk-pay-action-icons">'+
+            // SPEI logo (Banxico style, simplified)
+            '<svg viewBox="0 0 80 32" width="46" height="20"><rect width="80" height="32" rx="4" fill="#0072bc"/><text x="40" y="22" text-anchor="middle" fill="#fff" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="16" letter-spacing="0.5">SPEI</text></svg>'+
+          '</div>'+
+          '<div class="vk-pay-action-body">'+
+            '<div class="vk-pay-action-title">SPEI</div>'+
+            '<div class="vk-pay-action-sub">Pago con transferencia de cualquier banco</div>'+
+          '</div>'+
+          '<svg class="vk-pay-action-arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'+
         '</div>'+
       '</div>'+
 
-      '<div class="vk-banner ok">Tu pago manual siempre tiene prioridad. Nunca cobramos dos veces por la misma semana.</div>'+
+      // ── Section 4 (customer brief): green-styled note replacing the old tip ──
+      '<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-left:4px solid #22c55e;border-radius:8px;padding:12px 14px;margin:14px 0;display:flex;gap:10px;align-items:flex-start;">'+
+        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><polyline points="20 6 9 17 4 12"/></svg>'+
+        '<div style="font-size:13px;color:#166534;line-height:1.55;"><strong>Tu pago nunca se duplica.</strong> Si realizas un pago manual, el sistema lo detecta automáticamente y cancela cualquier cargo adicional.</div>'+
+      '</div>'+
 
       '<a class="vk-link" onclick="VKApp.go(\'pagos\')">Ver todos mis pagos &rarr;</a>'
     );
@@ -335,6 +377,72 @@ window.VK_inicio = (function(){
       } else {
         pay(tipo);
       }
+    });
+
+    // ── Branded payment-method buttons (customer brief 2026-04-19) ─────────
+    // Each button starts the corresponding manual payment flow. Falls back to
+    // the existing pay() function with the right tipo so the rest of the
+    // pipeline (Stripe call → success toast → reload) is reused as-is.
+    $('.vk-pay-action').on('click', function(){
+      var method = $(this).data('method');
+      if (method === 'tarjeta') pay('tarjeta_manual');
+      else if (method === 'oxxo') pay('oxxo');
+      else if (method === 'spei') pay('spei');
+    });
+
+    // ── Backup-card section (customer brief 2026-04-19) ────────────────────
+    loadBackupCard();
+  }
+
+  function backupCardBrandSvg(brand){
+    var b = (brand||'').toLowerCase();
+    if (b === 'visa')
+      return '<svg viewBox="0 0 64 24" width="56" height="22"><rect width="64" height="24" rx="3" fill="#1a1f71"/><text x="32" y="17" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-weight="900" font-size="13" font-style="italic" letter-spacing="1">VISA</text></svg>';
+    if (b === 'mastercard')
+      return '<svg viewBox="0 0 64 32" width="56" height="28"><rect width="64" height="32" rx="3" fill="#fff"/><circle cx="26" cy="16" r="11" fill="#eb001b"/><circle cx="38" cy="16" r="11" fill="#f79e1b"/><path d="M32 7.5a11 11 0 010 17 11 11 0 010-17z" fill="#ff5f00"/></svg>';
+    if (b === 'amex' || b === 'american_express')
+      return '<svg viewBox="0 0 64 24" width="56" height="22"><rect width="64" height="24" rx="3" fill="#2e77bb"/><text x="32" y="16" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-weight="900" font-size="9">AMEX</text></svg>';
+    return '<svg viewBox="0 0 64 24" width="56" height="22"><rect width="64" height="24" rx="3" fill="#666"/><text x="32" y="16" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-weight="700" font-size="9">'+(brand||'CARD').toUpperCase()+'</text></svg>';
+  }
+
+  function loadBackupCard(){
+    VKApp.api('pagos/metodo-pago.php').done(function(r){
+      var $body = $('#vkBackupCardBody');
+      if (!$body.length) return;
+      var m = r && r.metodo;
+      if (m && m.last4) {
+        var brand = (m.brand||'').toString();
+        var brandLabel = brand.charAt(0).toUpperCase() + brand.slice(1);
+        $body.html(
+          '<div style="display:flex;gap:12px;align-items:center;padding:12px 14px;background:#f7fafc;border:1px solid #e1e8ee;border-radius:8px;flex-wrap:wrap;">'+
+            '<div style="flex-shrink:0;">'+ backupCardBrandSvg(brand) +'</div>'+
+            '<div style="flex:1;min-width:140px;">'+
+              '<div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#334;letter-spacing:1px;">•••• •••• •••• '+ String(m.last4||'').replace(/[<>"&]/g,'') +'</div>'+
+              '<div style="font-size:11.5px;color:#666;margin-top:2px;">'+ String(brandLabel).replace(/[<>"&]/g,'') +' · Respaldo automático</div>'+
+            '</div>'+
+            '<button class="vk-btn ghost sm" id="vkCambiarTarjeta" style="padding:6px 14px;font-size:12px;">Cambiar</button>'+
+          '</div>'
+        );
+      } else {
+        $body.html(
+          '<div style="padding:12px 14px;background:#fffbeb;border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">'+
+            '<div style="flex:1;min-width:160px;font-size:13px;color:#7a4f08;">Aún no tienes tarjeta de respaldo registrada.</div>'+
+            '<button class="vk-btn primary sm" id="vkCambiarTarjeta" style="padding:6px 14px;font-size:12px;">Agregar tarjeta</button>'+
+          '</div>'
+        );
+      }
+      $('#vkCambiarTarjeta').on('click', function(){
+        var $btn = $(this).prop('disabled', true).html('<span class="vk-spin"></span>');
+        VKApp.api('pagos/cambiar-tarjeta.php', {}).done(function(res){
+          if (res && res.url) { window.location.href = res.url; }
+          else { VKApp.toast(res.error||'No se pudo iniciar el cambio'); $btn.prop('disabled', false).text('Cambiar'); }
+        }).fail(function(x){
+          VKApp.toast((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
+          $btn.prop('disabled', false).text('Cambiar');
+        });
+      });
+    }).fail(function(){
+      $('#vkBackupCardBody').html('<div class="vk-muted" style="font-size:12px;">No se pudo cargar la tarjeta de respaldo.</div>');
     });
   }
 
