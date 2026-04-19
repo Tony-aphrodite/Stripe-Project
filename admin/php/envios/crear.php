@@ -196,7 +196,7 @@ if ($transaccionId && !empty($order)) {
                     ? voltikaBuildMapsLink($direccionPunto, $punto['ciudad'] ?? '',
                         isset($punto['lat']) ? (float)$punto['lat'] : null,
                         isset($punto['lng']) ? (float)$punto['lng'] : null)
-                    : 'https://voltika.mx/mi-cuenta';
+                    : 'https://voltika.mx/clientes/';
                 $fechaHuman = function_exists('voltikaFormatFechaHuman')
                     ? voltikaFormatFechaHuman($fechaEstimada)
                     : (string)$fechaEstimada;

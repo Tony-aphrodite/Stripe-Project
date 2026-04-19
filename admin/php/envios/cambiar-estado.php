@@ -65,7 +65,7 @@ $linkMaps = function_exists('voltikaBuildMapsLink')
     ? voltikaBuildMapsLink($direccionPunto, $envio['punto_ciudad'] ?? '',
         isset($envio['punto_lat']) ? (float)$envio['punto_lat'] : null,
         isset($envio['punto_lng']) ? (float)$envio['punto_lng'] : null)
-    : 'https://voltika.mx/mi-cuenta';
+    : 'https://voltika.mx/clientes/';
 $fechaHuman = function_exists('voltikaFormatFechaHuman')
     ? voltikaFormatFechaHuman($envio['fecha_estimada_llegada'] ?? null)
     : ($envio['fecha_estimada_llegada'] ?: 'próximamente');

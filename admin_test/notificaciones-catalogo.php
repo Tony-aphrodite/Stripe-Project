@@ -432,7 +432,7 @@ header('Content-Type: text/html; charset=utf-8');
 
 Contenido: Tabla con datos para la transferencia SPEI (CLABE, banco, referencia)
 o referencia OXXO con código de barras. Incluye contacto WhatsApp {whatsapp}
-y enlace al portal voltika.mx/mi-cuenta.</div>
+y enlace al portal voltika.mx/clientes/.</div>
       <p style="font-size:12px;color:#5b6b80;margin:8px 0 0;">El HTML completo está en <code>create-payment-intent.php</code> a partir de la línea 21. La parte de texto editable más relevante es la tabla con los datos SPEI / OXXO y las instrucciones de pago.</p>
     </div>
     <div class="vars"><strong>Variables:</strong>
