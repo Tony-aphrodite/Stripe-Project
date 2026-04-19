@@ -178,7 +178,7 @@ window.AD_envios = (function(){
       if (transId) {
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+
           '<button class="ad-btn ghost sm" id="adEnvBack2" style="padding:4px 8px;">← Volver</button>'+
-          '<div class="ad-h2" style="margin:0;">Paso 2 de 2 — Asignar moto</div>'+
+          '<div class="ad-h2" style="margin:0;">Paso 2 de 2 — Crear envío</div>'+
         '</div>';
       } else {
         html += '<div class="ad-h2">Crear envío ('+tipoLabel+')</div>';
@@ -197,18 +197,56 @@ window.AD_envios = (function(){
         html += '<div style="padding:10px;background:#E3F2FD;border-radius:6px;margin-bottom:10px;font-size:12px;">La moto entrará al inventario del punto de venta para exhibición y venta directa.</div>';
       }
 
-      // Moto selector — show VIN + modelo + color + estado
-      html += '<label style="font-weight:600;font-size:13px;">Moto:</label>'+
-        '<select class="ad-select" id="adEnvMoto" style="margin-bottom:10px;width:100%;">';
-      html += '<option value="">— Seleccionar moto —</option>';
-      motos.forEach(function(m){
-        var label = (m.vin_display||m.vin)+' · '+m.modelo+' · '+m.color;
-        if (m.punto_nombre) label += ' · Punto: '+m.punto_nombre;
-        html += '<option value="'+m.id+'">'+label+'</option>';
-      });
-      html += '</select>';
-      if (transId && motos.length === 0) {
-        html += '<div style="padding:8px;background:#FFF3E0;border-radius:6px;font-size:12px;color:#E65100;margin:-6px 0 10px;"><strong>Aviso:</strong> No hay motos disponibles'+(orderInfo?' para '+orderInfo.modelo+' '+orderInfo.color:'')+'. Verifica el inventario en CEDIS.</div>';
+      // ── Moto assignment ─────────────────────────────────────────────
+      // Order-linked flow (Flow A): auto-pick the oldest CEDIS moto that
+      // matches the order's modelo/color (motos-disponibles already sorts
+      // by fecha_llegada ASC). Show it as a read-only card with a
+      // "Cambiar" link that expands the dropdown for manual override.
+      // No-order flow (Flow B): keep the classic dropdown — admin picks.
+      var autoMoto = (transId && motos.length > 0) ? motos[0] : null;
+
+      if (transId) {
+        if (autoMoto) {
+          var amLabel = (autoMoto.vin_display||autoMoto.vin)+' · '+autoMoto.modelo+' · '+autoMoto.color;
+          var amLoc   = autoMoto.punto_nombre ? ('Punto: '+autoMoto.punto_nombre) : 'CEDIS';
+          html += '<label style="font-weight:600;font-size:13px;">Moto asignada:</label>'+
+            '<div id="adEnvMotoCard" style="padding:10px;margin-bottom:10px;border:1.5px solid #C8E6C9;background:#E8F5E9;border-radius:6px;font-size:13px;">'+
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">'+
+                '<div><strong>'+esc(amLabel)+'</strong><div class="ad-dim" style="font-size:11px;margin-top:2px;">'+esc(amLoc)+' · Auto-asignada (FIFO)</div></div>'+
+                '<button class="ad-btn ghost sm" id="adEnvMotoChg" type="button">Cambiar</button>'+
+              '</div>'+
+            '</div>';
+          // Hidden dropdown — shown only if admin clicks "Cambiar"
+          html += '<div id="adEnvMotoWrap" style="display:none;">'+
+            '<label style="font-weight:600;font-size:13px;">Seleccionar otra moto:</label>'+
+            '<select class="ad-select" id="adEnvMoto" style="margin-bottom:10px;width:100%;">';
+          motos.forEach(function(m, i){
+            var label = (m.vin_display||m.vin)+' · '+m.modelo+' · '+m.color;
+            if (m.punto_nombre) label += ' · Punto: '+m.punto_nombre;
+            html += '<option value="'+m.id+'"'+(i===0?' selected':'')+'>'+label+'</option>';
+          });
+          html += '</select></div>';
+        } else {
+          // No matching stock — block submission
+          html += '<div style="padding:12px;background:#FFEBEE;border:1.5px solid #EF9A9A;border-radius:6px;font-size:13px;color:#C62828;margin-bottom:10px;">'+
+            '<strong>Sin stock para esta orden</strong><br>'+
+            'No hay motos disponibles en CEDIS para <strong>'+(orderInfo?esc(orderInfo.modelo)+' '+esc(orderInfo.color):'el modelo solicitado')+'</strong>.<br>'+
+            '<span style="font-size:12px;">Registra primero la recepción en CEDIS → Inventario.</span>'+
+          '</div>';
+          // Hidden empty select so the save handler can read .val() safely
+          html += '<select id="adEnvMoto" style="display:none;"></select>';
+        }
+      } else {
+        // Flow B: classic dropdown
+        html += '<label style="font-weight:600;font-size:13px;">Moto:</label>'+
+          '<select class="ad-select" id="adEnvMoto" style="margin-bottom:10px;width:100%;">';
+        html += '<option value="">— Seleccionar moto —</option>';
+        motos.forEach(function(m){
+          var label = (m.vin_display||m.vin)+' · '+m.modelo+' · '+m.color;
+          if (m.punto_nombre) label += ' · Punto: '+m.punto_nombre;
+          html += '<option value="'+m.id+'">'+label+'</option>';
+        });
+        html += '</select>';
       }
 
       // Punto selector — auto-select if order has a punto already
@@ -235,7 +273,8 @@ window.AD_envios = (function(){
         '<input class="ad-input" id="adEnvNotas" placeholder="Notas del envío" style="margin-bottom:14px;">';
 
       html += '<div id="adEnvQuote" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;background:#E3F2FD;font-size:13px;"></div>';
-      html += '<button class="ad-btn primary" id="adEnvSave" style="width:100%;padding:10px;">Crear envío</button>';
+      var saveDisabled = (transId && !autoMoto) ? ' disabled' : '';
+      html += '<button class="ad-btn primary" id="adEnvSave"'+saveDisabled+' style="width:100%;padding:10px;">Crear envío</button>';
 
       ADApp.closeModal();
       setTimeout(function(){
@@ -243,6 +282,14 @@ window.AD_envios = (function(){
 
       // Back button to return to order selection
       $('#adEnvBack2').on('click', function(){ crearEnvioSelectOrder(); });
+
+      // "Cambiar" toggle — reveals manual moto dropdown in order-linked flow
+      $('#adEnvMotoChg').on('click', function(){
+        var $wrap = $('#adEnvMotoWrap');
+        var open = $wrap.is(':visible');
+        $wrap.toggle(!open);
+        $(this).text(open ? 'Cambiar' : 'Cancelar');
+      });
 
       // Auto-quote when punto selected
       $('#adEnvPunto').on('change', function(){
@@ -267,9 +314,18 @@ window.AD_envios = (function(){
 
       // Save
       $('#adEnvSave').on('click', function(){
-        var motoId = $('#adEnvMoto').val();
+        // In order-linked flow: prefer dropdown value only if user expanded "Cambiar";
+        // otherwise use the auto-assigned moto. In no-order flow: dropdown required.
+        var motoId;
+        if (transId && autoMoto) {
+          var chgOpen = $('#adEnvMotoWrap').is(':visible');
+          motoId = chgOpen ? $('#adEnvMoto').val() : autoMoto.id;
+        } else {
+          motoId = $('#adEnvMoto').val();
+        }
         var puntoId = $('#adEnvPunto').val();
-        if(!motoId || !puntoId){ alert('Selecciona moto y punto'); return; }
+        if(!motoId){ alert(transId ? 'No hay moto disponible para esta orden' : 'Selecciona una moto'); return; }
+        if(!puntoId){ alert('Selecciona un punto destino'); return; }
 
         var payload = {
           moto_id: parseInt(motoId),

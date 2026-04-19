@@ -59,8 +59,21 @@ if ($transaccionId) {
     $order = $tStmt->fetch(PDO::FETCH_ASSOC);
     if (!$order) adminJsonOut(['error' => 'Orden no encontrada'], 404);
 
+    $pedidoNum = 'VK-' . $order['pedido'];
+
+    // Deactivate any placeholder moto (VK-MOD-xxx-timestamp-hash) that
+    // confirmar-orden.php created when the order was placed. Without this
+    // cleanup the real moto + placeholder would both carry the same
+    // pedido_num, breaking downstream queries.
+    try {
+        $pdo->prepare("UPDATE inventario_motos SET activo=0, fmod=NOW()
+            WHERE vin REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
+              AND (pedido_num = ? OR (stripe_pi = ? AND stripe_pi <> ''))
+              AND id <> ?")
+           ->execute([$pedidoNum, $order['stripe_pi'] ?? '', $motoId]);
+    } catch (Throwable $e) { error_log('envios placeholder cleanup: ' . $e->getMessage()); }
+
     if (empty($moto['pedido_num']) && empty($moto['cliente_email'])) {
-        $pedidoNum = 'VK-' . $order['pedido'];
         $pdo->prepare("UPDATE inventario_motos SET
             cliente_nombre=?, cliente_email=?, cliente_telefono=?,
             pedido_num=?, stripe_pi=?, pago_estado='pagada', fmod=NOW()
@@ -69,7 +82,7 @@ if ($transaccionId) {
             $pedidoNum, $order['stripe_pi'] ?? '', $motoId
         ]);
     }
-    if (!$notas) $notas = 'Venta - Pedido VK-' . $order['pedido'];
+    if (!$notas) $notas = 'Venta - Pedido ' . $pedidoNum;
 }
 
 // Auto-quote via Skydropx if no date provided
@@ -112,7 +125,7 @@ if ($transaccionId && !empty($order)) {
     $clienteTel   = $order['telefono'] ?? '';
     $clienteEmail = $order['email']    ?? '';
     if ($clienteTel || $clienteEmail) {
-        require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
+        require_once __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php';
         try {
             $fechaHuman = $fechaEstimada;
             if ($fechaEstimada) {
