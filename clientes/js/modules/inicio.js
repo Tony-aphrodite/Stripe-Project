@@ -52,10 +52,25 @@ window.VK_inicio = (function(){
     html += '<span style="color:#1976D2;font-weight:700;margin-left:6px;">(ID '+current.id+')</span>';
     html += '<div style="font-size:11px;color:#37474F;margin-top:2px;">Tienes <strong>'+compras.length+' compras</strong> vinculadas a tu cuenta.</div>';
     html += '</div>';
-    html += '<button class="vk-btn primary" onclick="VKApp.go(\'miscompras\')" style="font-size:12px;padding:7px 14px;">Ver todas</button>';
+    // Class-based handler (wired below). Inline onclick failed silently for
+    // some clients — using jQuery + e.preventDefault is more robust and gives
+    // us a visible toast on the (extremely unlikely) case VKApp.go isn't ready.
+    html += '<button class="vk-btn primary vkVerTodasCompras" type="button" style="font-size:12px;padding:7px 14px;">Ver todas</button>';
     html += '</div>';
     return html;
   }
+
+  // Wire the "Ver todas" banner button after every render so it survives the
+  // SPA re-renders inicio does. Uses delegated binding on document so a single
+  // attachment covers all future renders.
+  $(document).off('click.vkVerTodas').on('click.vkVerTodas', '.vkVerTodasCompras', function(e){
+    e.preventDefault();
+    if (window.VKApp && typeof VKApp.go === 'function') {
+      VKApp.go('miscompras');
+    } else {
+      console.error('VKApp.go no disponible');
+    }
+  });
 
   // ── Main router ─────────────────────────────────────────────────
   function render(){
