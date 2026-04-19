@@ -225,22 +225,42 @@ window.AD_envios = (function(){
         html += '</select>';
       }
 
-      // Punto selector — auto-select if order has a punto already.
-      // Match by ID first; fall back to name match because legacy orders may
-      // store punto_id as a slug ("punto-5") or have it NULL while punto_nombre
-      // is set (configurador saved only the display name).
+      // Punto selector — auto-select the order's punto.
+      // Name takes precedence because that's what the user sees in the summary
+      // ("Punto solicitado: X"). ID is only a fallback when name is absent —
+      // a numeric punto_id coincidence must not override a real name match
+      // (e.g. orders with punto_nombre="Punto prueba manual" whose punto_id
+      // happens to coincide with another punto's numeric key).
       var orderPuntoId = (orderInfo && orderInfo.punto_id) ? orderInfo.punto_id.toString().replace(/^punto-/,'') : '';
       var orderPuntoName = (orderInfo && orderInfo.punto_nombre) ? orderInfo.punto_nombre.toString().toLowerCase().trim() : '';
+      var autoSelectId = null;
+      if (orderPuntoName) {
+        for (var _i = 0; _i < puntos.length; _i++) {
+          if ((puntos[_i].nombre||'').toLowerCase().trim() === orderPuntoName) {
+            autoSelectId = puntos[_i].id; break;
+          }
+        }
+      }
+      if (!autoSelectId && orderPuntoId) {
+        for (var _j = 0; _j < puntos.length; _j++) {
+          if (puntos[_j].id.toString() === orderPuntoId) {
+            autoSelectId = puntos[_j].id; break;
+          }
+        }
+      }
       html += '<label style="font-weight:600;font-size:13px;">Punto destino:</label>'+
         '<select class="ad-select" id="adEnvPunto" style="margin-bottom:10px;width:100%;">';
       html += '<option value="">— Seleccionar punto —</option>';
       puntos.forEach(function(p){
-        var matchId   = orderPuntoId && p.id.toString() === orderPuntoId;
-        var matchName = !matchId && orderPuntoName && (p.nombre||'').toLowerCase().trim() === orderPuntoName;
-        var sel = (matchId || matchName) ? ' selected' : '';
+        var sel = (autoSelectId && p.id === autoSelectId) ? ' selected' : '';
         html += '<option value="'+p.id+'"'+sel+'>'+p.nombre+' · '+(p.ciudad||'')+'</option>';
       });
       html += '</select>';
+      if (orderPuntoName && !autoSelectId) {
+        html += '<div style="margin-top:-6px;margin-bottom:10px;padding:8px;background:#FFF3E0;border-radius:6px;font-size:12px;color:#E65100;">'+
+          '<strong>Aviso:</strong> El punto solicitado "<strong>'+esc(orderInfo.punto_nombre)+'</strong>" no está en el catálogo. Selecciona uno equivalente.'+
+        '</div>';
+      }
 
       // Tracking
       html += '<label style="font-weight:600;font-size:13px;">Número de tracking (opcional):</label>'+
@@ -264,24 +284,24 @@ window.AD_envios = (function(){
       // Back button to return to order selection
       $('#adEnvBack2').on('click', function(){ crearEnvioSelectOrder(); });
 
-      // Auto-quote when punto selected
+      // Auto-quote when punto selected — purely optional; failures are
+      // silent so the admin can still create the envío manually.
       $('#adEnvPunto').on('change', function(){
         var pid = $(this).val();
-        if(!pid){ $('#adEnvQuote').hide(); return; }
         var $q = $('#adEnvQuote');
-        $q.html('<span class="ad-spin"></span> Cotizando...').show();
+        $q.data('eta','');
+        if(!pid){ $q.hide(); return; }
+        $q.html('<span class="ad-spin"></span> Cotizando (opcional)...').show();
         ADApp.api('inventario/cotizar-envio.php',{punto_id:pid}).done(function(q){
           if(q.ok){
             $q.html('<strong>ETA:</strong> '+q.dias+' días · <strong>Llegada:</strong> '+q.fecha_estimada+
               ' · <strong>Carrier:</strong> '+q.carrier);
             $q.data('eta', q.fecha_estimada);
           } else {
-            $q.html('<span style="color:orange;">'+q.error+'</span>');
-            $q.data('eta','');
+            $q.hide();
           }
         }).fail(function(){
-          $q.html('<span style="color:orange;">Error de conexión</span>');
-          $q.data('eta','');
+          $q.hide();
         });
       });
 

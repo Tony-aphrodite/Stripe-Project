@@ -151,28 +151,41 @@ if ($transaccionId && !empty($order)) {
     $clienteTel   = $order['telefono'] ?? '';
     $clienteEmail = $order['email']    ?? '';
     if ($clienteTel || $clienteEmail) {
-        require_once __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php';
-        try {
-            $fechaHuman = $fechaEstimada;
-            if ($fechaEstimada) {
-                try {
-                    $meses = ['enero','febrero','marzo','abril','mayo','junio',
-                              'julio','agosto','septiembre','octubre','noviembre','diciembre'];
-                    $dt = new DateTime($fechaEstimada);
-                    $fechaHuman = $dt->format('j') . ' de ' . $meses[(int)$dt->format('n') - 1] . ' de ' . $dt->format('Y');
-                } catch (Throwable $e) {}
-            }
-            voltikaNotify('moto_enviada', [
-                'cliente_id' => $moto['cliente_id'] ?? null,
-                'nombre'     => $order['nombre']    ?? '',
-                'modelo'     => $moto['modelo']     ?? ($order['modelo'] ?? ''),
-                'punto'      => $punto['nombre']    ?? '',
-                'ciudad'     => $punto['ciudad']    ?? '',
-                'fecha'      => $fechaHuman         ?? '',
-                'telefono'   => $clienteTel,
-                'email'      => $clienteEmail,
-            ]);
-        } catch (Throwable $e) { error_log('notify moto_enviada: ' . $e->getMessage()); }
+        // Resolve notify helper path — test env uses _test suffix, prod uses
+        // the unsuffixed folder. file_exists() avoids fatal require_once.
+        $notifyPath = null;
+        foreach ([
+            __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php',
+            __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php',
+        ] as $_p) {
+            if (is_file($_p)) { $notifyPath = $_p; break; }
+        }
+        if ($notifyPath) { try { require_once $notifyPath; } catch (Throwable $e) { error_log('notify include: ' . $e->getMessage()); } }
+        if (function_exists('voltikaNotify')) {
+            try {
+                $fechaHuman = $fechaEstimada;
+                if ($fechaEstimada) {
+                    try {
+                        $meses = ['enero','febrero','marzo','abril','mayo','junio',
+                                  'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+                        $dt = new DateTime($fechaEstimada);
+                        $fechaHuman = $dt->format('j') . ' de ' . $meses[(int)$dt->format('n') - 1] . ' de ' . $dt->format('Y');
+                    } catch (Throwable $e) {}
+                }
+                voltikaNotify('moto_enviada', [
+                    'cliente_id' => $moto['cliente_id'] ?? null,
+                    'nombre'     => $order['nombre']    ?? '',
+                    'modelo'     => $moto['modelo']     ?? ($order['modelo'] ?? ''),
+                    'punto'      => $punto['nombre']    ?? '',
+                    'ciudad'     => $punto['ciudad']    ?? '',
+                    'fecha'      => $fechaHuman         ?? '',
+                    'telefono'   => $clienteTel,
+                    'email'      => $clienteEmail,
+                ]);
+            } catch (Throwable $e) { error_log('notify moto_enviada: ' . $e->getMessage()); }
+        } else {
+            error_log('envios crear: voltikaNotify no disponible, se omite notificación');
+        }
     }
 }
 
