@@ -25,14 +25,26 @@ window.AD_ventas = (function(){
     });
   }
 
-  function loadData(){
+  // Visual feedback after a row was just modified — paints the row green
+  // for ~1.2s so the admin sees that the change landed even if the modal
+  // is still open over the table.
+  function flashRow(rowId){
+    setTimeout(function(){
+      var $tr = $('#vtTable tr[data-row-id="'+rowId+'"]');
+      if (!$tr.length) return;
+      $tr.css({transition:'background-color .25s ease', background:'#d1fae5'});
+      setTimeout(function(){ $tr.css({background:''}); }, 1200);
+    }, 100);
+  }
+
+  function loadData(cb){
     var _loadStart = Date.now();
     ADApp.api('ventas/listar.php').done(function(r){
       var elapsed = ((Date.now() - _loadStart) / 1000).toFixed(1);
       var now = new Date();
       var timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
       $('#vtLastUpdate').html('Actualizado: ' + timeStr + ' (' + elapsed + 's)');
-      if(!r.ok){ $('#vtTable').html('<div class="ad-card">Error al cargar</div>'); return; }
+      if(!r.ok){ $('#vtTable').html('<div class="ad-card">Error al cargar</div>'); if(cb) cb(); return; }
 
       // KPIs
       var pendingPunto = (r.rows||[]).filter(function(o){ return o.punto_id==='centro-cercano'; }).length;
@@ -49,8 +61,10 @@ window.AD_ventas = (function(){
       var rows = r.rows || [];
       _lastRows = rows;
       renderTable(rows);
+      if(cb) cb();
     }).fail(function(){
       $('#vtTable').html('<div class="ad-card">Error de conexion</div>');
+      if(cb) cb();
     });
   }
 
@@ -98,7 +112,7 @@ window.AD_ventas = (function(){
       if(r.asesoria_placas) extrasHtml += '<span title="Solicitó asesoría para placas" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#FFF3E0;color:#E65100;border:1px solid #FFE0B2;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">PLACAS</span>';
       if(r.seguro_qualitas) extrasHtml += '<span title="Solicitó seguro (Quálitas)" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">SEGURO</span>';
 
-      html += '<tr>'+
+      html += '<tr data-row-id="'+r.id+'">'+
         '<td><strong>'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'</strong>'+extrasHtml+alertaHtml+'</td>'+
         '<td>'+(r.nombre||'-')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
         '<td>'+(r.modelo||'-')+'</td>'+
@@ -248,32 +262,67 @@ window.AD_ventas = (function(){
       return;
     }
 
+    // Card-based radio picker (matches the asignar-punto modal pattern). The
+    // previous flex row collapsed catastrophically on mobile — text wrapped
+    // letter-by-letter because VIN, two badges and a button were forced into
+    // a single narrow row. Now each moto is a stacked card with VIN on top,
+    // meta below; selection happens via a single bottom Confirm button.
     var html = '';
-    if(showAll){
+    if (showAll) {
       html += '<div class="ad-banner warn" style="margin-bottom:10px;">No hay motos del mismo color. Mostrando otras unidades del mismo modelo.</div>';
     }
 
-    html += '<div style="max-height:350px;overflow-y:auto;">';
-    motos.forEach(function(m){
-      html += '<div class="ad-card" style="padding:10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" '+
-              'onclick="AD_ventas.doAsignar('+transId+','+m.id+')">';
-      html += '<div>'+
-        '<strong>'+(m.vin_display||m.vin)+'</strong>'+
-        '<span class="ad-badge blue" style="margin-left:8px;">'+m.modelo+'</span>'+
-        '<span class="ad-badge gray" style="margin-left:4px;">'+m.color+'</span>'+
-        '<br><small class="ad-dim">Estado: '+m.estado+(m.punto_nombre?' &middot; '+m.punto_nombre:'')+'</small>'+
-        '</div>';
-      html += '<button class="ad-btn primary" style="padding:5px 14px;font-size:12px;flex-shrink:0">Seleccionar</button>';
-      html += '</div>';
+    html += '<div style="max-height:340px;overflow-y:auto;padding-right:4px;">';
+    motos.forEach(function(m, i){
+      var vinTxt   = m.vin_display || m.vin || '—';
+      var metaTxt  = (m.modelo || '') + (m.color ? ' · ' + m.color : '') + (m.estado ? ' · ' + m.estado : '');
+      var locTxt   = m.punto_nombre ? m.punto_nombre : 'En CEDIS';
+      html += '<label class="adPickMoto" data-mid="'+m.id+'" '+
+                'style="display:block;cursor:pointer;padding:11px 13px;margin-bottom:6px;'+
+                       'border:1.5px solid var(--ad-border);border-radius:8px;background:var(--ad-surface);">'+
+                '<div style="display:flex;gap:10px;align-items:flex-start;">'+
+                  '<input type="radio" name="motoChoice" value="'+m.id+'" style="margin-top:3px;flex-shrink:0;"'+(i===0?' checked':'')+'>'+
+                  '<div style="flex:1;min-width:0;">'+
+                    '<div style="font-weight:700;font-size:13.5px;color:var(--ad-navy);font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;">'+vinTxt+'</div>'+
+                    '<div style="font-size:12px;color:var(--ad-dim);margin-top:3px;">'+metaTxt+'</div>'+
+                    '<div style="font-size:11.5px;color:#666;margin-top:2px;">'+locTxt+'</div>'+
+                  '</div>'+
+                '</div>'+
+              '</label>';
     });
     html += '</div>';
+    html += '<div id="vtMotosMsg" style="font-size:12px;margin:8px 0 0;"></div>';
+    html += '<div style="display:flex;gap:8px;margin-top:12px;">'+
+              '<button class="ad-btn ghost" id="vtMotosCancel" style="flex:1;">Cancelar</button>'+
+              '<button class="ad-btn primary" id="vtMotosSave" style="flex:1;">Confirmar moto</button>'+
+            '</div>';
 
     $('#vtMotos').html(html);
+
+    // Highlight selected card
+    function syncHighlight(){
+      $('.adPickMoto').css({borderColor:'var(--ad-border)', background:'var(--ad-surface)'});
+      var $sel = $('input[name="motoChoice"]:checked').closest('.adPickMoto');
+      $sel.css({borderColor:'var(--ad-primary)', background:'#E8F4FD'});
+    }
+    syncHighlight();
+
+    $('.adPickMoto').on('click', function(){
+      $(this).find('input[type="radio"]').prop('checked', true);
+      syncHighlight();
+    });
+
+    $('#vtMotosCancel').on('click', function(){ ADApp.closeModal(); });
+
+    $('#vtMotosSave').on('click', function(){
+      var motoId = parseInt($('input[name="motoChoice"]:checked').val(), 10);
+      if (!motoId) { $('#vtMotosMsg').css('color','#b91c1c').text('Selecciona una moto'); return; }
+      doAsignar(transId, motoId);
+    });
   }
 
   function doAsignar(transId, motoId){
-    if(!confirm('Confirmar asignacion de esta moto?')) return;
-
+    var $btn = $('#vtMotosSave').prop('disabled', true).html('<span class="ad-spin"></span> Guardando...');
     ADApp.api('ventas/asignar-moto.php', {
       transaccion_id: transId,
       moto_id: motoId
@@ -282,10 +331,12 @@ window.AD_ventas = (function(){
         ADApp.closeModal();
         loadData();
       } else {
-        alert(r.error || 'Error al asignar');
+        $('#vtMotosMsg').css('color','#b91c1c').text(r.error || 'Error al asignar');
+        $btn.prop('disabled', false).text('Confirmar moto');
       }
     }).fail(function(x){
-      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+      $('#vtMotosMsg').css('color','#b91c1c').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+      $btn.prop('disabled', false).text('Confirmar moto');
     });
   }
 
@@ -617,9 +668,19 @@ window.AD_ventas = (function(){
           if (res && res.ok) {
             var iconChk = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><polyline points="20 6 9 17 4 12"/></svg>';
             $('#vkAsignPuntoMsg').css('color','#0e8f55').html(iconChk+'Punto asignado · Notificación enviada al cliente');
+            // After save: close the modal and refresh the underlying list so
+            // the new punto shows up. Detail modal is NOT re-opened — the
+            // admin can click Ver again if they want to inspect the result.
+            //   1) switch active tab to 'todas' so the row stays visible,
+            //   2) reload the list (loadData) + flash the row green,
+            //   3) backup reload 1.2s later for slow DB commits.
             setTimeout(function(){
               ADApp.closeModal();
-              showDetalle(r.id);
+              _activeTab = 'todas';
+              loadData(function(){
+                flashRow(r.id);
+                setTimeout(function(){ loadData(); }, 1200);
+              });
             }, 700);
           } else {
             $('#vkAsignPuntoMsg').css('color','#b91c1c').text((res && res.error) || 'Error al guardar');

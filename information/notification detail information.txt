@@ -1,0 +1,2267 @@
+Here we start with all notifications email /whatsaap:
+
+ASUNTO: Bienvenido a la red VOLTIKA — {punto}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+HEADER
+voltika ⚡
+Red de Puntos Oficiales
+Bienvenido al equipo
+{punto}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Hola {nombre} 👋
+
+Ya eres parte oficial de la red VOLTIKA
+como {rol}. Tu acceso al Panel de
+Operaciones está activo y listo para
+usar desde ahora mismo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 TUS CREDENCIALES DE ACCESO
+
+Punto      → {punto}
+Panel      → https://{url}
+Usuario    → {email}
+Contraseña → {password}
+
+⚠️ Cambia tu contraseña en tu primer
+inicio de sesión.
+Menú superior → tu nombre →
+Cambiar contraseña.
+No compartas tus credenciales con nadie.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📎 MANUAL DEL OPERADOR ADJUNTO
+
+Todo lo que necesitas saber está en el
+manual adjunto. Léelo antes de tu
+primera operación. Incluye capturas
+reales del panel y protocolos paso a paso.
+
+✓ Cómo usar el panel
+✓ Recepción de motos
+✓ Proceso de entrega
+✓ Tus comisiones
+✓ Venta por referido
+✓ Protocolos de emergencia
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 LEE EL MANUAL ANTES DE TU
+PRIMERA ENTREGA
+
+Entregar una moto sin completar la
+validación facial y el OTP en el sistema
+hace al punto responsable del valor total
+de la moto. El manual explica el proceso
+completo. Sin excepciones.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💬 ¿TIENES DUDAS? ESTAMOS AQUÍ
+
+📱 WhatsApp   557 944 0928
+📧 Email      puntos@voltika.mx
+
+👤 Comunícate con el ejecutivo VOLTIKA
+que te contactó para afiliarte —
+él es tu contacto principal para dudas
+y capacitación por videollamada.
+
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FOOTER
+voltika ⚡
+Movilidad eléctrica · Red Nacional · México
+voltika.mx · puntos@voltika.mx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+VARIABLES: {nombre} {punto} {rol} {url} {email} {password}
+
+SMS: VOLTIKA: Hola {nombre}, ya tienes acceso
+como {rol}. Usuario: {email} Clave: {password}
+Panel: https://{url} Cambia tu clave al entrar.
+Dudas: puntos@voltika.mx
+
+=================================
+WhatsApp:
+
+🔐 Hola {nombre}, bienvenido a la red VOLTIKA ⚡
+
+Ya tienes acceso al Panel de Operaciones como {rol}.
+
+📍 Punto: {punto}
+🌐 Panel: https://{url}
+👤 Usuario: {email}
+🔒 Clave: {password}
+
+⚠️ Cambia tu contraseña al entrar por primera vez.
+
+📎 Revisa el manual adjunto en tu correo antes de tu primera operación.
+
+¿Dudas? Comunícate directamente con el ejecutivo VOLTIKA que te afilió — él es tu contacto principal.
+📧 puntos@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+Este es un mensaje automático — no respондas aquí.
+
+
+==========================
+
+
+1.- confirmación de compra:
+
+4 different messages depending of kind of purcahse:
+
+1.- Contado/ MSI.- with preselected delivery point
+2.- contado /MSI .- with no assigned point (48 hours  later)
+3.-compra a crédito.- with preselected delivery point.
+4.- Compra a crédito.- with no assigned delivery point (48 hours confirmation)
+
+1.- Email Contado/MSi with preselected delivery point:
+
+🎉 ¡Tu VOLTIKA está confirmada! — Pedido VK-{pedido}
+
+Hola {nombre} 🎉
+
+¡Bienvenido a la familia VOLTIKA!
+Tu {modelo} en color {color} ya está confirmada y en preparación.
+
+Pedido: VK-{pedido}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 TU PUNTO DE ENTREGA
+
+🏪 {punto}
+📬 {direccion_punto}
+🗺️ {link_maps}
+🕐 Lunes a Sábado 9:00 - 18:00 hrs
+📅 Entrega estimada: antes del {fecha_estimada}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 LO QUE VA A PASAR — PASO A PASO
+
+1️⃣ Preparamos tu moto en nuestro CEDIS
+2️⃣ La enviamos a tu punto de entrega
+3️⃣ Te avisamos por WhatsApp cuando
+   salga de nuestras instalaciones
+4️⃣ Te avisamos cuando llegue al punto
+5️⃣ Te avisamos cuando esté lista con
+   fecha y hora exacta para recogerla
+6️⃣ Llegas al punto con tu INE,
+   firmas digitalmente y te llevas
+   tu moto lista para circular
+
+📲 Recibirás WhatsApp automático
+en cada paso. No necesitas llamar
+ni escribir para saber cómo va
+tu pedido — todo llega solo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 TU PORTAL DE CLIENTE
+
+Todo lo de tu compra en un solo lugar.
+Entra con tu número de celular:
+👉 voltika.mx/mi-cuenta
+
+Desde tu portal puedes:
+✅ Seguir tu pedido en tiempo real
+✅ Descargar tu permiso temporal
+   para circular
+✅ Consultar y descargar tu factura
+✅ Descargar tu contrato y
+   acta de entrega
+✅ Ver cotizaciones de seguro
+   y placas si las solicitaste
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 PERMISO TEMPORAL PARA CIRCULAR
+
+Tu permiso estará disponible en
+tu portal el día que recojas tu moto.
+
+⚠️ Entra en vigencia ese día y
+tienes 30 días para tramitar
+tus placas definitivas.
+
+Descárgalo e imprímelo ese mismo día:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧾 TU FACTURA
+
+Tu factura estará disponible
+al momento de la entrega en:
+👉 voltika.mx/mi-cuenta
+
+¿Necesitas registrar tu RFC?
+Escríbenos antes de la entrega:
+📧 ventas@voltika.mx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛡️ SEGURO Y 🪪 PLACAS
+
+Si solicitaste asesoría de seguro
+o gestor de placas recibirás un
+correo por separado con toda
+la información.
+
+También podrás consultarla en
+tu portal en cualquier momento:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿Tienes alguna duda?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika 
+voltika.mx
+
+==================
+
+WhatsApp:
+
+🎉 ¡{nombre}, bienvenido a la 
+familia VOLTIKA!
+
+Tu {modelo} {color} está confirmada
+y en preparación ✅
+Pedido: VK-{pedido}
+
+📍 Tu punto de entrega:
+🏪 {punto} — {ciudad}
+📅 Entrega antes del {fecha_estimada}
+
+🔄 Lo que sigue:
+1️⃣ Preparamos tu moto
+2️⃣ La enviamos a tu punto
+3️⃣ Te avisamos cuando salga
+4️⃣ Te avisamos cuando llegue
+5️⃣ Te avisamos cuando esté lista
+
+📲 Te notificamos aquí en cada paso.
+No necesitas llamar ni escribir.
+
+━━━━━━━━━━━━━━━━━━━━
+
+📱 Tu portal de cliente:
+👉 voltika.mx/mi-cuenta
+
+Desde hoy puedes ver tu pedido
+y tus documentos en tiempo real.
+
+📄 Tu permiso temporal para circular
+estará disponible el día que recojas
+tu moto. Entra en vigencia ese día
+y tienes 30 días para tramitar placas.
+
+🧾 Tu factura estará lista
+al momento de la entrega.
+
+━━━━━━━━━━━━━━━━━━━━
+
+¿Dudas? 📧 ventas@voltika.mx
+
+======================
+2.- Contado/MSI with no preselected delivery point (not assigned ( to be assigned in 48 hours):
+
+🎉 ¡Tu VOLTIKA está confirmada! — Pedido VK-{pedido}
+
+Hola {nombre} 🎉
+
+¡Bienvenido a la familia VOLTIKA!
+Tu {modelo} en color {color} ya está confirmada y en preparación.
+
+Pedido: VK-{pedido}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 TU PUNTO DE ENTREGA
+
+Estamos asignando el punto más
+cercano a ti en {ciudad}.
+
+Te confirmamos dirección exacta
+en menos de 48 horas por WhatsApp.
+No necesitas hacer nada por ahora.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 LO QUE VA A PASAR — PASO A PASO
+
+1️⃣ Asignamos tu punto de entrega
+   en menos de 48 horas y te
+   avisamos por WhatsApp
+2️⃣ Preparamos tu moto en nuestro CEDIS
+3️⃣ La enviamos a tu punto de entrega
+4️⃣ Te avisamos por WhatsApp cuando
+   salga de nuestras instalaciones
+5️⃣ Te avisamos cuando llegue al punto
+6️⃣ Te avisamos cuando esté lista con
+   fecha y hora exacta para recogerla
+7️⃣ Llegas al punto con tu INE,
+   firmas digitalmente y te llevas
+   tu moto lista para circular
+
+📲 Recibirás WhatsApp automático
+en cada paso. No necesitas llamar
+ni escribir para saber cómo va
+tu pedido — todo llega solo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 TU PORTAL DE CLIENTE
+
+Todo lo de tu compra en un solo lugar.
+Entra con tu número de celular:
+👉 voltika.mx/mi-cuenta
+
+Desde tu portal puedes:
+✅ Seguir tu pedido en tiempo real
+✅ Descargar tu permiso temporal
+   para circular
+✅ Consultar y descargar tu factura
+✅ Descargar tu contrato y
+   acta de entrega
+✅ Ver cotizaciones de seguro
+   y placas si las solicitaste
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 PERMISO TEMPORAL PARA CIRCULAR
+
+Tu permiso estará disponible en
+tu portal el día que recojas tu moto.
+
+⚠️ Entra en vigencia ese día y
+tienes 30 días para tramitar
+tus placas definitivas.
+
+Descárgalo e imprímelo ese mismo día:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧾 TU FACTURA
+
+Tu factura estará disponible
+al momento de la entrega en:
+👉 voltika.mx/mi-cuenta
+
+¿Necesitas registrar tu RFC?
+Escríbenos antes de la entrega:
+📧 ventas@voltika.mx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛡️ SEGURO Y 🪪 PLACAS
+
+Si solicitaste asesoría de seguro
+o gestor de placas recibirás un
+correo por separado con toda
+la información.
+
+También podrás consultarla en
+tu portal en cualquier momento:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿Tienes alguna duda?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika 
+voltika.mx
+
+==================
+
+Whatsaap:
+
+🎉 ¡{nombre}, bienvenido a la 
+familia VOLTIKA!
+
+Tu {modelo} {color} está confirmada
+y en preparación ✅
+Pedido: VK-{pedido}
+
+📍 Tu punto de entrega:
+Estamos asignando el punto más
+cercano a ti en {ciudad}.
+Te confirmamos en menos de 48 horas.
+
+🔄 Lo que sigue:
+1️⃣ Asignamos tu punto en 48 horas
+2️⃣ Preparamos tu moto
+3️⃣ La enviamos a tu punto
+4️⃣ Te avisamos cuando salga
+5️⃣ Te avisamos cuando llegue
+6️⃣ Te avisamos cuando esté lista
+
+📲 Te notificamos aquí en cada paso.
+No necesitas llamar ni escribir.
+
+━━━━━━━━━━━━━━━━━━━━
+
+📱 Tu portal de cliente:
+👉 voltika.mx/mi-cuenta
+
+Desde hoy puedes ver tu pedido
+y tus documentos en tiempo real.
+
+📄 Tu permiso temporal para circular
+estará disponible el día que recojas
+tu moto. Entra en vigencia ese día
+y tienes 30 días para tramitar placas.
+
+🧾 Tu factura estará lista
+al momento de la entrega.
+
+━━━━━━━━━━━━━━━━━━━━
+
+¿Dudas? 📧 ventas@voltika.mx
+
+========================
+
+3.- credit order (with assigned delivery point)
+
+🎉 ¡Tu VOLTIKA está confirmada a plazos!— Pedido VK-{pedido}
+
+Hola {nombre} 🎉
+
+¡Bienvenido a la familia VOLTIKA!
+Tu {modelo} en color {color} ya está confirmada y en preparación.
+
+Pedido: VK-{pedido}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 TU PUNTO DE ENTREGA
+
+🏪 {punto}
+📬 {direccion_punto}
+🗺️ {link_maps}
+🕐 Lunes a Sábado 9:00 - 18:00 hrs
+📅 Entrega estimada: antes del {fecha_estimada}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 LO QUE VA A PASAR — PASO A PASO
+
+1️⃣ Preparamos tu moto en nuestro CEDIS
+2️⃣ La enviamos a tu punto de entrega
+3️⃣ Te avisamos por WhatsApp cuando
+   salga de nuestras instalaciones
+4️⃣ Te avisamos cuando llegue al punto
+5️⃣ Te avisamos cuando esté lista con
+   fecha y hora exacta para recogerla
+6️⃣ Llegas al punto con tu INE,
+   firmas digitalmente y te llevas
+   tu moto lista para circular
+
+📲 Recibirás WhatsApp automático
+en cada paso. No necesitas llamar
+ni escribir para saber cómo va
+tu pedido — todo llega solo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 TU PORTAL DE CLIENTE
+
+Todo lo de tu compra en un solo lugar.
+Entra con tu número de celular:
+👉 voltika.mx/mi-cuenta
+
+Desde tu portal puedes:
+✅ Seguir tu pedido en tiempo real
+✅ Ver y realizar tus pagos semanales
+✅ Adelantar pagos sin penalización
+✅ Descargar tu permiso temporal
+   para circular
+✅ Descargar tu contrato y
+   acta de entrega
+✅ Ver cotizaciones de seguro
+   y placas si las solicitaste
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💳 TUS PAGOS SEMANALES
+
+Tu primer pago semanal de
+${monto_semanal} inicia únicamente
+el día que recibas tu moto en mano.
+
+No se genera ningún cargo antes
+de la entrega.
+
+Puedes pagar con:
+🏪 Efectivo en cualquier OXXO
+🏦 Transferencia SPEI
+💳 Tarjeta en tu portal
+
+Consulta tus fechas de pago y
+realiza pagos desde tu portal:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 PERMISO TEMPORAL PARA CIRCULAR
+
+Tu permiso estará disponible en
+tu portal el día que recojas tu moto.
+
+⚠️ Entra en vigencia ese día y
+tienes 30 días para tramitar
+tus placas definitivas.
+
+Descárgalo e imprímelo ese mismo día:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧾 TU FACTURA
+
+Tu factura se genera desde el inicio
+pero estará disponible en tu portal
+cuando completes todos tus pagos.
+
+Mientras tanto tu contrato y acta
+de entrega están disponibles desde
+el día de la entrega en:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛡️ SEGURO Y 🪪 PLACAS
+
+Si solicitaste asesoría de seguro
+o gestor de placas recibirás un
+correo por separado con toda
+la información.
+
+También podrás consultarla en
+tu portal en cualquier momento:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿Tienes alguna duda?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika 
+voltika.mx
+
+================================
+
+Whatsaap:
+
+🎉 ¡{nombre}, bienvenido a la 
+familia VOLTIKA!
+
+Tu {modelo} {color} está confirmada
+y en preparación ✅
+Pedido: VK-{pedido}
+
+📍 Tu punto de entrega:
+🏪 {punto} — {ciudad}
+📅 Entrega antes del {fecha_estimada}
+
+🔄 Lo que sigue:
+1️⃣ Preparamos tu moto
+2️⃣ La enviamos a tu punto
+3️⃣ Te avisamos cuando salga
+4️⃣ Te avisamos cuando llegue
+5️⃣ Te avisamos cuando esté lista
+
+📲 Te notificamos aquí en cada paso.
+No necesitas llamar ni escribir.
+
+━━━━━━━━━━━━━━━━━━━━
+
+📱 Tu portal de cliente:
+👉 voltika.mx/mi-cuenta
+
+Desde hoy puedes ver tu pedido,
+tus pagos y tus documentos.
+
+💳 Tu primer pago semanal de
+${monto_semanal} inicia el día
+que recibas tu moto.
+Sin cargos antes de la entrega.
+
+📄 Tu permiso temporal para circular
+estará disponible el día que recojas
+tu moto. Entra en vigencia ese día
+y tienes 30 días para tramitar placas.
+
+🧾 Tu factura estará disponible
+en tu portal al liquidar tu plan
+de pagos completo.
+
+━━━━━━━━━━━━━━━━━━━━
+
+¿Dudas? 📧 ventas@voltika.mx
+
+======================================
+4.- Credit order (without assigned delivery point) to be confirmed before 48 hours .:
+
+🎉 ¡Tu VOLTIKA está confirmada a plazos! — Pedido VK-{pedido}
+
+Hola {nombre} 🎉
+
+¡Bienvenido a la familia VOLTIKA!
+Tu {modelo} en color {color} ya está confirmada y en preparación.
+
+Pedido: VK-{pedido}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 TU PUNTO DE ENTREGA
+
+Estamos asignando el punto más
+cercano a ti en {ciudad}.
+
+Te confirmamos dirección exacta
+en menos de 48 horas por WhatsApp.
+No necesitas hacer nada por ahora.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 LO QUE VA A PASAR — PASO A PASO
+
+1️⃣ Asignamos tu punto de entrega
+   en menos de 48 horas y te
+   avisamos por WhatsApp
+2️⃣ Preparamos tu moto en nuestro CEDIS
+3️⃣ La enviamos a tu punto de entrega
+4️⃣ Te avisamos por WhatsApp cuando
+   salga de nuestras instalaciones
+5️⃣ Te avisamos cuando llegue al punto
+6️⃣ Te avisamos cuando esté lista con
+   fecha y hora exacta para recogerla
+7️⃣ Llegas al punto con tu INE,
+   firmas digitalmente y te llevas
+   tu moto lista para circular
+
+📲 Recibirás WhatsApp automático
+en cada paso. No necesitas llamar
+ni escribir para saber cómo va
+tu pedido — todo llega solo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 TU PORTAL DE CLIENTE
+
+Todo lo de tu compra en un solo lugar.
+Entra con tu número de celular:
+👉 voltika.mx/mi-cuenta
+
+Desde tu portal puedes:
+✅ Seguir tu pedido en tiempo real
+✅ Ver y realizar tus pagos semanales
+✅ Adelantar pagos sin penalización
+✅ Descargar tu permiso temporal
+   para circular
+✅ Descargar tu contrato y
+   acta de entrega
+✅ Ver cotizaciones de seguro
+   y placas si las solicitaste
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💳 TUS PAGOS SEMANALES
+
+Tu primer pago semanal de
+${monto_semanal} inicia únicamente
+el día que recibas tu moto en mano.
+
+No se genera ningún cargo antes
+de la entrega.
+
+Puedes pagar con:
+🏪 Efectivo en cualquier OXXO
+🏦 Transferencia SPEI
+💳 Tarjeta en tu portal
+
+Consulta tus fechas de pago y
+realiza pagos desde tu portal:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 PERMISO TEMPORAL PARA CIRCULAR
+
+Tu permiso estará disponible en
+tu portal el día que recojas tu moto.
+
+⚠️ Entra en vigencia ese día y
+tienes 30 días para tramitar
+tus placas definitivas.
+
+Descárgalo e imprímelo ese mismo día:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧾 TU FACTURA
+
+Tu factura se genera desde el inicio
+pero estará disponible en tu portal
+cuando completes todos tus pagos.
+
+Mientras tanto tu contrato y acta
+de entrega están disponibles desde
+el día de la entrega en:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛡️ SEGURO Y 🪪 PLACAS
+
+Si solicitaste asesoría de seguro
+o gestor de placas recibirás un
+correo por separado con toda
+la información.
+
+También podrás consultarla en
+tu portal en cualquier momento:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿Tienes alguna duda?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika 
+voltika.mx
+
+======================================
+
+WhatsApp:
+
+🎉 ¡{nombre}, bienvenido a la 
+familia VOLTIKA!
+
+Tu {modelo} {color} está confirmada
+y en preparación ✅
+Pedido: VK-{pedido}
+
+📍 Tu punto de entrega:
+Estamos asignando el punto más
+cercano a ti en {ciudad}.
+Te confirmamos en menos de 48 horas.
+
+🔄 Lo que sigue:
+1️⃣ Asignamos tu punto en 48 horas
+2️⃣ Preparamos tu moto
+3️⃣ La enviamos a tu punto
+4️⃣ Te avisamos cuando salga
+5️⃣ Te avisamos cuando llegue
+6️⃣ Te avisamos cuando esté lista
+
+📲 Te notificamos aquí en cada paso.
+No necesitas llamar ni escribir.
+
+━━━━━━━━━━━━━━━━━━━━
+
+📱 Tu portal de cliente:
+👉 voltika.mx/mi-cuenta
+
+Desde hoy puedes ver tu pedido,
+tus pagos y tus documentos.
+
+💳 Tu primer pago semanal de
+${monto_semanal} inicia el día
+que recibas tu moto.
+Sin cargos antes de la entrega.
+
+📄 Tu permiso temporal para circular
+estará disponible el día que recojas
+tu moto. Entra en vigencia ese día
+y tienes 30 días para tramitar placas.
+
+🧾 Tu factura estará disponible
+en tu portal al liquidar tu plan
+de pagos completo.
+
+━━━━━━━━━━━━━━━━━━━━
+
+¿Dudas? 📧 ventas@voltika.mx
+
+==========================================
+2.- acceso al portal de clientes:
+
+Acceso al portal: email contado/MSI
+
+🔐 Ya tienes acceso a tu portal VOLTIKA — Pedido VK-{pedido}
+
+Hola {nombre} 👋
+
+Tu portal de cliente VOLTIKA ya está
+activo y listo para usar.
+
+Pedido: VK-{pedido}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 ENTRA A TU PORTAL AHORA
+
+Accede con tu número de celular
+registrado:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿QUÉ ENCUENTRAS EN TU PORTAL?
+
+✅ ESTADO DE TU PEDIDO
+Sigue en tiempo real cada etapa
+de tu moto — desde preparación
+en CEDIS hasta que esté lista
+para recoger en tu punto.
+
+✅ TUS DOCUMENTOS
+Descarga tu contrato de compra
+disponible desde hoy.
+
+✅ INFORMACIÓN DE TU MOTO
+Todos los detalles de tu {modelo}
+en color {color}.
+
+✅ PERMISO TEMPORAL PARA CIRCULAR
+Disponible en tu portal el día
+que recojas tu moto.
+Entra en vigencia ese día —
+tienes 30 días para tramitar
+tus placas definitivas.
+
+✅ TU FACTURA
+Disponible al momento de la entrega.
+Si necesitas registrar tu RFC
+antes de esa fecha escríbenos:
+📧 ventas@voltika.mx
+
+✅ SEGURO Y PLACAS
+Si solicitaste asesoría de seguro
+o gestor de placas encontrarás
+toda la información aquí.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📲 NOTIFICACIONES AUTOMÁTICAS
+
+Recibirás WhatsApp en cada paso
+del proceso de entrega de tu moto.
+No necesitas llamar ni escribir
+para saber cómo va tu pedido —
+todo llega solo a tu celular.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿Tienes alguna duda?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika 
+voltika.mx
+
+===================
+WhatsApp:
+
+Acceso portal Crédito ;
+
+🔐 Ya tienes acceso a tu portal VOLTIKA — Pedido VK-{pedido}
+
+Hola {nombre} 👋
+
+Tu portal de cliente VOLTIKA ya está
+activo y listo para usar.
+
+Pedido: VK-{pedido}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 ENTRA A TU PORTAL AHORA
+
+Accede con tu número de celular
+registrado:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿QUÉ ENCUENTRAS EN TU PORTAL?
+
+✅ ESTADO DE TU PEDIDO
+Sigue en tiempo real cada etapa
+de tu moto — desde preparación
+en CEDIS hasta que esté lista
+para recoger en tu punto.
+
+✅ TUS PAGOS
+Consulta tus pagos realizados
+y pendientes. Paga desde el portal
+con tarjeta, OXXO o transferencia
+SPEI cuando prefieras.
+
+✅ ADELANTAR PAGOS
+Puedes adelantar pagos sin ningún
+cargo extra directamente desde
+tu portal.
+
+✅ CAMBIAR TU TARJETA DOMICILIADA
+Actualiza tu tarjeta de cobro
+automático cuando quieras sin
+necesidad de llamar.
+
+✅ TUS DOCUMENTOS
+Descarga tu contrato de compra
+disponible desde hoy.
+
+✅ INFORMACIÓN DE TU MOTO
+Todos los detalles de tu {modelo}
+en color {color}.
+
+✅ PERMISO TEMPORAL PARA CIRCULAR
+Disponible en tu portal el día
+que recojas tu moto.
+Entra en vigencia ese día —
+tienes 30 días para tramitar
+tus placas definitivas.
+
+✅ TU FACTURA
+Tu factura se genera desde el inicio
+pero estará disponible en tu portal
+cuando completes todos tus pagos.
+
+✅ SEGURO Y PLACAS
+Si solicitaste asesoría de seguro
+o gestor de placas encontrarás
+toda la información aquí.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💳 TU PRIMER PAGO SEMANAL
+
+Tu primer pago de ${monto_semanal}
+inicia únicamente el día que
+recibas tu moto en mano.
+
+No se genera ningún cargo antes
+de la entrega.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 PAGOS SIN DUPLICADO
+
+Si realizas un pago manual
+(OXXO, transferencia o adelanto)
+tu cargo automático no se duplica —
+el sistema lo detecta y cancela
+el cobro de esa semana.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📲 NOTIFICACIONES AUTOMÁTICAS
+
+Recibirás WhatsApp en cada paso
+del proceso de entrega de tu moto.
+No necesitas llamar ni escribir
+para saber cómo va tu pedido —
+todo llega solo a tu celular.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿Tienes alguna duda?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika 
+voltika.mx
+
+===========================================
+Whatsaap:
+
+🔐 {nombre}, ya tienes acceso a
+tu portal VOLTIKA ⚡
+
+Entra ahora con tu número de celular:
+👉 voltika.mx/mi-cuenta
+
+Desde tu portal puedes:
+✅ Ver el estado de tu pedido
+   en tiempo real
+✅ Ver tus pagos realizados
+   y pendientes
+✅ Descargar tu contrato de compra
+✅ Cambiar tu tarjeta domiciliada
+   cuando quieras
+✅ Adelantar pagos sin penalización
+✅ Pagar en OXXO o por transferencia
+   cuando prefieras
+✅ Descargar tu permiso temporal
+   para circular — disponible el
+   día que recojas tu moto
+✅ Ver tus cotizaciones de seguro
+   y placas si las solicitaste
+
+💡 Si realizas un pago manual
+(OXXO, transferencia o adelanto)
+tu cargo automático no se duplica —
+el sistema lo detecta y cancela
+el cobro de esa semana.
+
+⚠️ Tu primer pago semanal de
+${monto_semanal} inicia el día
+que recibas tu moto en mano.
+Sin cargos antes de la entrega.
+
+📲 También te notificamos aquí
+en cada paso del proceso.
+No necesitas llamar ni escribir
+para saber cómo va tu pedido.
+
+¿Dudas? 📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+==========================================
+3.- Mensajes de logística :
+
+A) al asignar el punto 
+B) al enviar al punto 
+C) al llegar al punto 
+D) lista para entregar
+
+A) email al asignar punto:
+
+ASUNTO:
+🎉 ¡Todo listo! Tu VOLTIKA ya tiene
+punto de entrega — Pedido VK-{pedido}
+
+Hola {nombre} 👋
+
+Tenemos buenas noticias — tu moto
+ya tiene punto de entrega confirmado
+y fecha estimada. Todo marcha perfecto.
+
+Pedido: VK-{pedido}
+🏍️ {modelo} · {color}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 TU PUNTO DE ENTREGA
+
+🏪 {punto}
+📬 {direccion_punto}
+🗺️ {link_maps}
+🕐 Lunes a Sábado 9:00 - 18:00 hrs
+
+📅 Fecha estimada de entrega:
+Antes del {fecha_estimada}
+
+Si por alguna razón la fecha cambia
+te avisamos de inmediato por WhatsApp
+— siempre estarás informado.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 LO QUE VIENE — PASO A PASO
+
+Desde aquí no tienes que hacer
+nada — nosotros nos encargamos
+de todo y te avisamos en cada paso:
+
+1️⃣ Preparamos tu moto con cuidado
+2️⃣ La enviamos directo a tu punto
+3️⃣ Te avisamos por WhatsApp cuando
+   salga de nuestras instalaciones
+4️⃣ Te avisamos cuando llegue al punto
+5️⃣ Te avisamos cuando esté lista
+   con fecha y hora exacta
+
+Tu moto llegará armada, revisada
+y lista para circular desde
+el primer momento ✅
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 SIGUE TU PEDIDO EN TIEMPO REAL
+
+Consulta el estado exacto de tu moto
+en cualquier momento:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Estamos contigo en cada paso 🙌
+
+¿Tienes alguna duda?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika 
+voltika.mx
+
+===============================
+
+WhatsApp:
+
+🎉 ¡Buenas noticias, {nombre}!
+
+Tu {modelo} en color {color} ya tiene
+todo listo para llegar a ti ⚡
+
+Pedido: VK-{pedido}
+
+📍 Tu punto de entrega:
+🏪 {punto}
+📬 {direccion_punto}
+🗺️ {link_maps}
+🕐 Lunes a Sábado 9:00 - 18:00 hrs
+
+📅 Fecha estimada de entrega:
+Antes del {fecha_estimada}
+
+Desde aquí no tienes que hacer
+nada — nosotros te avisamos
+en cada paso por aquí mismo.
+
+🔄 Lo que viene:
+1️⃣ Preparamos tu moto con cuidado
+2️⃣ La enviamos directo a tu punto
+3️⃣ Te avisamos cuando salga
+4️⃣ Te avisamos cuando llegue
+5️⃣ Te avisamos cuando esté
+   lista y perfecta para ti
+
+Tu moto llegará armada, revisada
+y lista para circular desde
+el primer momento ✅
+
+Sigue cada paso en tiempo real:
+👉 voltika.mx/mi-cuenta
+
+¿Alguna duda? Estamos aquí:
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+=========================================
+B) email al ser enviada al punto:
+
+ASUNTO:
+🚚 ¡Tu VOLTIKA ya está en camino!
+— Pedido VK-{pedido}
+
+Hola {nombre} 👋
+
+¡Momento emocionante — tu moto
+ya salió de nuestras instalaciones
+y está en camino hacia ti!
+
+Pedido: VK-{pedido}
+🏍️ {modelo} · {color}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚚 EN CAMINO HACIA TI
+
+📍 Destino:
+🏪 {punto}
+📬 {direccion_punto}
+🗺️ {link_maps}
+
+📅 Llegada estimada al punto:
+{fecha_llegada_punto}
+
+Si por alguna razón la fecha cambia
+te avisamos de inmediato por WhatsApp
+— siempre estarás al tanto de
+dónde está tu moto.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 LO QUE SIGUE
+
+Cuando tu moto llegue al punto
+nuestro equipo se encarga de todo:
+
+⚙️ La reciben y verifican
+🔧 La ensamblan completamente
+🔍 Revisan cada sistema —
+   batería, frenos, luces y motor
+⚡ La activan y configuran
+✅ Realizan el checklist completo
+
+Tu moto no sale del punto hasta
+que esté perfecta para ti.
+
+Cuando esté lista recibirás un
+WhatsApp con fecha y hora exacta.
+No tienes que hacer nada por ahora.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 SIGUE TU MOTO EN TIEMPO REAL
+
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Estamos contigo en cada paso 🙌
+
+¿Tienes alguna duda?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika 
+voltika.mx
+
+======================================
+WhatsApp:
+
+🚚 ¡{nombre}, tu moto ya salió
+y está en camino hacia ti!
+
+Tu {modelo} en color {color}
+ya está en ruta ⚡
+
+Pedido: VK-{pedido}
+
+📍 Va directo a tu punto:
+🏪 {punto} — {ciudad}
+
+📅 Llegada estimada al punto:
+{fecha_llegada_punto}
+
+Si por alguna razón la fecha cambia
+te avisamos de inmediato —
+siempre sabrás dónde está tu moto.
+
+Una vez que llegue nuestro equipo
+la recibe, ensambla completamente,
+verifica cada detalle y la activa
+para que salga perfecta para ti ✅
+
+Te avisamos cuando llegue y cuando
+esté lista — no tienes que hacer
+nada por ahora 🙌
+
+Sigue tu moto en tiempo real:
+👉 voltika.mx/mi-cuenta
+
+¿Alguna duda? Estamos aquí:
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+======================================
+C) email moto llegó al punto de entrega:
+ASUNTO:
+🔧 ¡Tu VOLTIKA llegó al punto y
+está en preparación! — Pedido VK-{pedido}
+
+Hola {nombre} 👋
+
+¡Muy buenas noticias — tu moto
+llegó a tu punto de entrega y
+ya está en manos de nuestro equipo!
+
+Pedido: VK-{pedido}
+🏍️ {modelo} · {color}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 EN PREPARACIÓN EN TU PUNTO
+
+🏪 {punto}
+📬 {direccion_punto}
+🗺️ {link_maps}
+🕐 Lunes a Sábado 9:00 - 18:00 hrs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 ¿QUÉ ESTÁ PASANDO AHORA?
+
+Nuestro equipo está trabajando
+para que todo esté perfecto:
+
+⚙️ Ensamble completo de tu moto
+🔍 Verificación de todos los sistemas
+   — batería, frenos, luces y motor
+⚡ Activación y configuración
+✅ Checklist completo de pre-entrega
+
+Tu moto no sale del punto hasta
+que pase todas las revisiones
+y esté lista al 100% para ti.
+
+Este proceso toma algunas horas.
+En cuanto esté lista recibirás
+un WhatsApp con fecha y hora
+exacta para ir a recogerla.
+
+📲 No necesitas llamar ni ir al
+punto antes de ese aviso —
+nosotros te buscamos 🙌
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 SIGUE TU PEDIDO EN TIEMPO REAL
+
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Estamos contigo en cada paso 🙌
+
+¿Tienes alguna duda?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika 
+voltika.mx
+
+=====================================
+WhatsApp:
+🔧 ¡{nombre}, tu moto llegó
+al punto y ya está en manos
+de nuestro equipo!
+
+🏍️ {modelo} · {color}
+Pedido: VK-{pedido}
+
+📍 {punto} — {ciudad}
+
+Ahora mismo están trabajando
+para que todo esté perfecto para ti:
+
+⚙️ Ensamble completo
+🔍 Verificación de cada sistema
+⚡ Activación y configuración
+✅ Checklist completo de entrega
+
+Tu moto no sale hasta que pase
+todas las revisiones y esté
+lista al 100% ✅
+
+Este proceso toma algunas horas.
+En cuanto esté lista te avisamos
+aquí con fecha y hora exacta
+para que vengas a recogerla 🙌
+
+No necesitas llamar ni ir al punto
+antes de ese aviso — nosotros
+te buscamos.
+
+Sigue tu pedido aquí:
+👉 voltika.mx/mi-cuenta
+
+¿Alguna duda? Estamos aquí:
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+========================================
+D) email lista para entrega:
+
+ASUNTO:
+✅ ¡Tu VOLTIKA está lista! Descarga
+tu permiso en 24 hrs — Pedido VK-{pedido}
+
+Hola {nombre} 🎉
+
+¡El momento llegó — tu moto pasó
+todas las revisiones y está perfecta
+para ti desde el primer kilómetro!
+
+Pedido: VK-{pedido}
+🏍️ {modelo} · {color}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ IMPORTANTE — LEE ESTO PRIMERO
+
+Al confirmarse tu entrega la
+autoridad de transporte emitió
+automáticamente tu permiso
+temporal para circular.
+
+Este proceso es automático y está
+fuera del control de VOLTIKA —
+es la autoridad quien lo genera
+y determina su fecha de inicio.
+
+El permiso tiene una vigencia de
+30 días a partir de su emisión
+para tramitar tus placas definitivas.
+
+Los días ya están corriendo —
+por eso te recomendamos recoger
+tu moto lo antes posible.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 TU PERMISO TEMPORAL PARA CIRCULAR
+
+Estará disponible en tu portal
+en las próximas 24 horas:
+👉 voltika.mx/mi-cuenta
+
+Qué hacer cuando esté disponible:
+
+1️⃣ Entra a voltika.mx/mi-cuenta
+2️⃣ Descarga e imprime tu permiso
+3️⃣ Énmicalo para protegerlo —
+   lo llevarás en tu moto durante
+   30 días expuesto al sol, lluvia
+   y polvo. Enmicarlo lo protege
+   y lo mantiene legible ante
+   cualquier autoridad.
+4️⃣ Colócalo en la parte trasera
+   de tu moto — ese es el lugar
+   oficial donde va mientras
+   tramitas tus placas definitivas.
+   Las autoridades lo verifican ahí.
+5️⃣ Llévalo contigo el día que
+   vayas al punto a recoger tu moto
+
+Sin el permiso impreso no podrás
+circular legalmente al salir
+del punto ese mismo día.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 VE A RECOGERLA CUANDO QUIERAS
+
+🏪 {punto}
+📬 {direccion_punto}
+🗺️ {link_maps}
+🕐 Lunes a Sábado 9:00 - 18:00 hrs
+
+📅 Recógela antes del {fecha_limite}
+
+No necesitas cita — llega en
+cualquier momento del horario y
+el equipo te atenderá de inmediato.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ LO QUE DEBES LLEVAR
+
+🖨️ Tu permiso impreso y enmicado
+🪪 Tu INE vigente
+📱 Tu celular con este número
+   — recibirás un código OTP
+   al momento de la entrega
+
+Sin estos tres elementos no es
+posible entregarte la moto ni
+circular legalmente al salir.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 ASÍ ES LA ENTREGA — MUY SENCILLO
+
+1️⃣ Llegas con permiso enmicado,
+   INE y celular
+2️⃣ El equipo verifica tu identidad
+3️⃣ Recibes tu código OTP en tu celular
+4️⃣ El punto lo ingresa al sistema
+5️⃣ Firmas el acta de entrega digital
+6️⃣ Colocas tu permiso enmicado
+   en la parte trasera de tu moto
+7️⃣ ¡Te llevas tu moto lista para
+   circular ese mismo momento! ⚡
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 ¿NO TE LLEGA EL CÓDIGO OTP?
+
+No te preocupes — es algo sencillo
+de resolver. Díselo al personal
+del punto y ellos lo reenvían
+desde el sistema en ese momento.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿NO PUEDES IR ANTES DEL {fecha_limite}?
+
+Sin problema — escríbenos y
+lo coordinamos juntos:
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¡Bienvenido a la familia VOLTIKA!
+Nos da mucho gusto que ya seas
+parte de nuestra red ⚡
+
+voltika 
+voltika.mx
+
+=======================================
+
+WhatsApp:
+
+✅ ¡{nombre}, tu moto está lista
+y te espera! 🎉
+
+Tu {modelo} · {color}
+Pedido: VK-{pedido}
+
+━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ACCIÓN REQUERIDA HOY
+
+Tu permiso temporal para circular
+ya fue emitido por la autoridad
+de transporte — tienes 30 días
+desde hoy para tramitar tus placas.
+
+Haz esto antes de ir al punto:
+
+1️⃣ Entra a tu portal:
+   👉 voltika.mx/mi-cuenta
+2️⃣ Descarga e imprime tu permiso
+   (disponible en las próximas 24 hrs)
+3️⃣ Énmicalo
+4️⃣ Llévalo el día que recojas tu moto
+   — va en la parte trasera de la moto
+
+━━━━━━━━━━━━━━━━━━━━
+
+📍 Tu punto de entrega:
+🏪 {punto}
+📬 {direccion_punto}
+🗺️ {link_maps}
+🕐 Lunes a Sábado 9:00 - 18:00 hrs
+📅 Recógela antes del {fecha_limite}
+
+Sin cita — llega cuando puedas.
+
+━━━━━━━━━━━━━━━━━━━━
+
+⚠️ Lleva el día de la entrega:
+🖨️ Permiso impreso y enmicado
+🪪 INE vigente
+📱 Tu celular con este número
+
+¿No puedes ir antes del {fecha_limite}?
+📧 ventas@voltika.mx
+
+¡Bienvenido a la familia VOLTIKA!
+
+========================================
+4.- Mensajería de Entrega:
+
+El cliente llega al punto :
+
+SMS y WhatsApp: OTP:
+
+SMS:
+Voltika: {nombre}, tu código de
+entrega es: {otp}
+Muéstraselo al asesor del punto.
+Solo tú debes verlo.
+Expira en 10 minutos.
+Dudas: ventas@voltika.mx
+
+====================
+
+WhatsApp:
+🔐 {nombre}, aquí está tu código
+de seguridad para recibir tu moto:
+
+━━━━━━━━━━━━━━━━━━━━
+
+🔑  {otp}
+
+━━━━━━━━━━━━━━━━━━━━
+
+Muéstraselo al asesor del punto
+VOLTIKA en este momento.
+
+⏱️ Expira en 10 minutos.
+⚠️ No lo compartas con nadie
+   más que el asesor del punto.
+
+Este código es tu llave digital
+para recibir tu moto de forma
+segura — es el último paso antes
+de llevártela ⚡
+
+Si no solicitaste este código
+o tienes dudas escríbenos:
+📧 ventas@voltika.mx
+
+
+======================
+
+Mensaje de acta de entrega Email /whatsaap:
+ASUNTO:
+✅ Acta de Entrega firmada — Tu VOLTIKA
+es oficialmente tuya — Pedido VK-{pedido}
+
+Hola {nombre} 🎉
+
+¡Tu moto es oficialmente tuya
+desde este momento!
+
+Has firmado el Acta de Entrega
+de tu {modelo} · {color}
+Pedido: VK-{pedido}
+Fecha y hora de entrega: {fecha_entrega}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 RESUMEN DE TU ENTREGA
+
+Este documento certifica que:
+
+✓ Recibiste tu {modelo} · {color}
+  con número de serie {vin} en
+  perfectas condiciones
+✓ Verificaste su funcionamiento
+  antes de recibirla
+✓ Tu identidad fue validada
+  mediante reconocimiento facial
+  y código de seguridad OTP
+✓ Firmaste digitalmente el Acta
+  de Entrega con validez legal
+✓ Aceptaste los términos
+  de tu contrato VOLTIKA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 TU ACTA DE ENTREGA
+
+Tu acta firmada ya está disponible
+en tu portal como comprobante
+oficial de entrega:
+👉 voltika.mx/mi-cuenta
+
+Guárdala — es tu documento legal
+que acredita que eres el propietario
+de la moto desde este momento.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 RECUERDA ANTES DE SALIR
+
+📄 Coloca tu permiso temporal
+enmicado en la parte trasera
+de tu moto — es obligatorio para
+circular legalmente.
+
+Tienes 30 días desde la emisión
+de tu permiso para tramitar
+tus placas definitivas.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 TU PORTAL DE CLIENTE
+
+Accede en cualquier momento a:
+👉 voltika.mx/mi-cuenta
+
+Desde tu portal puedes:
+✅ Descargar tu acta de entrega
+✅ Descargar tu contrato
+✅ Consultar tus pagos
+✅ Descargar tu permiso temporal
+✅ Ver toda la información
+   de tu moto
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¡Bienvenido a la familia VOLTIKA!
+Disfruta tu moto y la libertad
+de la movilidad eléctrica ⚡
+
+¿Tienes alguna duda o comentario?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika 
+voltika.mx
+
+======================================
+
+WhatsApp:
+
+✅ ¡{nombre}, tu moto es oficialmente
+tuya desde este momento! 🎉
+
+Has firmado el Acta de Entrega
+de tu {modelo} · {color}
+Pedido: VK-{pedido}
+
+📋 Este documento confirma que:
+✓ Recibiste tu moto en perfectas
+  condiciones
+✓ Verificaste su funcionamiento
+✓ Aceptaste los términos
+  de tu contrato
+✓ La entrega fue validada con
+  tu identidad y código de seguridad
+
+Tu acta firmada ya está disponible
+en tu portal como comprobante
+oficial de entrega:
+👉 voltika.mx/mi-cuenta
+
+━━━━━━━━━━━━━━━━━━━━
+
+📄 Recuerda colocar tu permiso
+enmicado en la parte trasera
+de tu moto antes de salir.
+
+Tienes 30 días para tramitar
+tus placas definitivas.
+
+━━━━━━━━━━━━━━━━━━━━
+
+¡Disfruta tu VOLTIKA y bienvenido
+a la movilidad eléctrica! ⚡
+
+¿Alguna duda o comentario?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+======================================
+
+Mensaje de insidencias al entregar la moto: email / whatsaap
+
+Email 
+
+ASUNTO:
+⚠️ Recibimos tu reporte — 
+Te contactamos en 24 hrs — Pedido VK-{pedido}
+
+Hola {nombre} 👋
+
+Recibimos tu reporte y lo registramos
+en nuestro sistema. Entendemos que
+esto puede ser frustrante y queremos
+que sepas que ya estamos en ello.
+
+Pedido: VK-{pedido}
+🏍️ {modelo} · {color}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 LO QUE NOS REPORTASTE
+
+"{mensaje}"
+
+Fecha y hora del reporte: {fecha_reporte}
+Número de caso: {numero_caso}
+
+Guarda este número — te sirve
+para dar seguimiento a tu caso.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 ¿QUÉ SIGUE?
+
+Nuestro equipo de soporte ya tiene
+tu caso asignado y lo está revisando.
+
+Te contactaremos en menos de 24 hrs
+con una respuesta y plan de acción.
+
+No necesitas llamar ni escribir
+de nuevo — ya tenemos tu caso
+y nosotros te buscamos 🙌
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿Es una situación urgente?
+Escríbenos directamente:
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika
+voltika.mx
+
+================================
+WhatsApp
+
+⚠️ Hola {nombre}, recibimos tu
+reporte sobre tu {modelo} ·{color}
+Pedido: VK-{pedido}
+
+📋 Lo que nos reportaste:
+"{mensaje}"
+
+Tu reporte quedó registrado en
+nuestro sistema con fecha y hora.
+Nuestro equipo de soporte lo está
+revisando ahora mismo.
+
+Te contactaremos en menos de 24 hrs
+para darte seguimiento y solución.
+
+No necesitas llamar ni escribir
+de nuevo — ya tenemos tu caso
+y te buscamos nosotros 🙌
+
+Si es urgente escríbenos a:
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+===================================
+
+Mensajes de cobranza: email /whatsaap:
+
+Mensaje -2 días de la fecha de pago:
+
+Aquí en resumen todos los mensajes de cobranza: SMS y WhatsApp e email.
+
+════════════════════════════════════════════════════════════
+VOLTIKA — MENSAJES DE COBRANZA SEMANAL
+Documento completo para implementación
+WhatsApp + SMS + Email
+Origen: cron/cobranza-diaria.php
+MTECH GEARS S.A. DE C.V.
+════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MENSAJE 1 — recordatorio_pago_2dias
+Cuándo: 2 días antes del vencimiento del ciclo de pago
+Audiencia: Cliente (plazos)
+Canales: WhatsApp + SMS + Email
+Variables: {nombre} {pedido} {monto_semanal} {fecha_vencimiento} {payment_link}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHATSAPP:
+⏰ {nombre}, tu pago de ${monto_semanal}
+vence el {fecha_vencimiento}.
+
+Págalo HOY — OXXO y SPEI tardan
+24 hrs en acreditarse:
+🏪 OXXO
+🏦 SPEI
+💳 👉 {payment_link}
+
+💡 Tu tarjeta es solo respaldo
+automático si no detectamos
+otro pago antes del vencimiento.
+
+-----
+
+SMS:
+Voltika: {nombre}, pago de
+${monto_semanal} vence el {fecha_vencimiento}.
+Págalo hoy — OXXO/SPEI tardan 24hrs:
+{payment_link}
+
+-----
+
+EMAIL
+ASUNTO: ⏰ Tu pago de ${monto_semanal} vence en 2 días — Pedido VK-{pedido}
+
+Hola {nombre} 👋
+
+Tu pago semanal de ${monto_semanal}
+vence el {fecha_vencimiento}.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 PÁGALO HOY
+
+OXXO y SPEI tardan 24 hrs en
+acreditarse — si esperas al día
+del vencimiento puede llegar tarde.
+
+🏪 OXXO — efectivo en cualquier tienda
+🏦 SPEI — transferencia desde tu banco
+💳 Tarjeta desde tu portal:
+👉 {payment_link}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 ¿TIENES TARJETA REGISTRADA?
+
+Tu tarjeta actúa como respaldo
+automático el día del vencimiento
+si no detectamos otro pago antes.
+
+Pagar por OXXO o SPEI hoy es
+la mejor opción para llegar
+a tiempo sin depender del cargo
+automático.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tu saldo actualizado:
+👉 voltika.mx/mi-cuenta
+
+¿Dudas sobre tu pago?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika ⚡
+voltika.mx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MENSAJE 2 — pago_vence_hoy
+Cuándo: Día del vencimiento del ciclo de pago
+Audiencia: Cliente (plazos)
+Canales: WhatsApp + SMS + Email
+Variables: {nombre} {pedido} {monto_semanal} {payment_link}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHATSAPP:
+🔔 {nombre}, HOY vence tu pago
+de ${monto_semanal}.
+
+Si pagas por OXXO o SPEI hazlo
+de inmediato — tardan 24 hrs
+en acreditarse:
+🏪 OXXO
+🏦 SPEI
+💳 👉 {payment_link}
+
+💡 Tu tarjeta registrada actúa
+como respaldo automático hoy
+si no detectamos otro pago.
+
+¿Ya pagaste ayer? Ignora esto.
+
+-----
+
+SMS:
+Voltika: {nombre}, HOY vence
+${monto_semanal}. Paga ya —
+OXXO/SPEI tardan 24hrs:
+{payment_link}
+
+-----
+
+EMAIL
+ASUNTO: 🔔 Hoy vence tu pago de ${monto_semanal} — Pedido VK-{pedido}
+
+Hola {nombre} 👋
+
+HOY es el último día para pagar
+sin cargos por atraso.
+
+Tu pago semanal de ${monto_semanal}
+vence hoy.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ PÁGALO AHORA
+
+Si pagas por OXXO o SPEI hazlo
+de inmediato — tardan 24 hrs
+en acreditarse.
+
+🏪 OXXO — efectivo en cualquier tienda
+🏦 SPEI — transferencia desde tu banco
+💳 Tarjeta desde tu portal:
+👉 {payment_link}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 ¿TIENES TARJETA REGISTRADA?
+
+Si no detectamos otro pago hoy
+se intenta el cargo automático
+al final del día.
+
+Pagar directo en OXXO o SPEI
+siempre es la mejor opción.
+El pago no se duplica —
+el sistema lo detecta solo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿Ya pagaste ayer por OXXO o SPEI?
+Ignora este mensaje — tu pago
+está en proceso de acreditación.
+
+Tu saldo actualizado:
+👉 voltika.mx/mi-cuenta
+
+¿Dudas sobre tu pago?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika ⚡
+voltika.mx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MENSAJE 3 — pago_vencido_48h
+Cuándo: 48 horas después del vencimiento sin pago detectado
+Audiencia: Cliente (plazos)
+Canales: WhatsApp + SMS + Email
+Variables: {nombre} {pedido} {monto_semanal} {payment_link}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHATSAPP:
+⚠️ {nombre}, tu pago de ${monto_semanal}
+lleva 2 días vencido y ya acumula
+cargos por atraso.
+
+Regulariza hoy:
+🏪 OXXO
+🏦 SPEI
+💳 👉 {payment_link}
+
+¿Pagaste ayer por OXXO o SPEI?
+Espera 24 hrs — está acreditándose.
+
+¿Problema con tu pago?
+📧 ventas@voltika.mx
+
+-----
+
+SMS:
+Voltika: {nombre}, 2 días vencido.
+Cargos acumulándose. Regulariza:
+{payment_link}
+
+-----
+
+EMAIL
+ASUNTO: ⚠️ Tu pago lleva 2 días vencido — Pedido VK-{pedido}
+
+Hola {nombre},
+
+Tu pago de ${monto_semanal} lleva
+2 días vencido y ya se acumulan
+cargos por atraso en tu cuenta.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REGULARIZA HOY
+
+Cada día que pasa sin pagar
+los cargos por atraso aumentan.
+
+🏪 OXXO — efectivo en cualquier tienda
+🏦 SPEI — transferencia desde tu banco
+💳 Tarjeta desde tu portal:
+👉 {payment_link}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿PAGASTE AYER POR OXXO O SPEI?
+
+Ignora este mensaje — tu pago
+está en proceso de acreditación
+y se verá reflejado en 24 hrs.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tu saldo actualizado con cargos:
+👉 voltika.mx/mi-cuenta
+
+¿Tienes algún problema con tu pago?
+Escríbenos hoy — podemos ayudarte:
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika ⚡
+voltika.mx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MENSAJE 4 — pago_vencido_96h
+Cuándo: 96 horas después del vencimiento sin pago — tono crítico
+Audiencia: Cliente (plazos)
+Canales: WhatsApp + SMS
+Variables: {nombre} {monto_semanal} {payment_link}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHATSAPP:
+🔴 {nombre}, 4 días vencido.
+
+Tu saldo incluye ${monto_semanal}
+más cargos por atraso acumulados.
+
+Si no regularizas hoy:
+❌ Los cargos siguen aumentando
+❌ Tu historial en Buró de Crédito
+se ve afectado
+
+Paga ahora:
+🏪 OXXO
+🏦 SPEI
+💳 👉 {payment_link}
+
+👉 voltika.mx/mi-cuenta
+
+¿Necesitas apoyo?
+📧 ventas@voltika.mx
+
+-----
+
+SMS:
+Voltika: {nombre}, 4 días vencido.
+Riesgo de reporte a Buró.
+Regulariza hoy: {payment_link}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MENSAJE 5 — incentivo_adelanto
+Cuándo: Enviado periódicamente a clientes al corriente
+Audiencia: Cliente (plazos)
+Canales: WhatsApp + SMS + Email
+Variables: {nombre} {payment_link}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHATSAPP:
+💡 {nombre}, adelanta pagos
+sin ningún costo extra.
+
+Cada pago adelantado reduce
+tu saldo y acerca tu liquidación.
+
+🏪 OXXO
+🏦 SPEI
+💳 👉 {payment_link}
+
+Tu tarjeta no se cobra doble —
+el sistema lo detecta solo.
+
+-----
+
+SMS:
+Voltika: {nombre}, adelanta pagos
+sin costo. Reduce tu saldo:
+{payment_link}
+
+-----
+
+EMAIL
+ASUNTO: 💡 Adelanta pagos sin costo extra y liquida tu VOLTIKA antes
+
+Hola {nombre} 👋
+
+¿Sabías que puedes adelantar
+pagos de tu VOLTIKA sin ningún
+costo adicional?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿POR QUÉ ADELANTAR?
+
+✅ Reduces tu saldo pendiente
+✅ Te acercas a liquidar antes
+✅ Te olvidas de fechas de pago
+✅ Sin ningún cargo extra
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ADELANTA CUANDO QUIERAS
+
+🏪 OXXO — efectivo en cualquier tienda
+🏦 SPEI — transferencia desde tu banco
+💳 Tarjeta desde tu portal:
+👉 {payment_link}
+
+⚠️ OXXO y SPEI tardan 24 hrs
+en acreditarse.
+
+💡 Si haces un pago adelantado
+el cargo automático de esa semana
+no se duplica — el sistema
+lo detecta solo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tu saldo actualizado:
+👉 voltika.mx/mi-cuenta
+
+¿Dudas sobre tu plan de pagos?
+📧 ventas@voltika.mx
+🕐 Lunes a Viernes 9:00 - 18:00 hrs
+
+voltika ⚡
+voltika.mx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MENSAJE 6 — pago_recibido
+Cuándo: Stripe confirma cobro automático o pago manual (OXXO/SPEI/adelanto)
+Audiencia: Cliente (plazos)
+Canales: WhatsApp + SMS
+Variables: {nombre} {monto} {semana} {proximo_pago} {payment_link}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHATSAPP:
+✅ ¡{nombre}, pago recibido!
+
+💰 ${monto} — Semana {semana} cubierta
+📆 Próximo pago: {proximo_pago}
+
+¿Lo adelantas ahora?
+Sin costo extra 👉 {payment_link}
+
+Tu cuenta al corriente ⚡
+
+-----
+
+SMS:
+Voltika: ¡{nombre}, ${monto} recibido!
+Semana {semana} cubierta.
+Próximo: {proximo_pago}
+¿Lo adelantas? {payment_link}
+
+════════════════════════════════════════════════════════════
+RESUMEN DE VARIABLES POR MENSAJE
+════════════════════════════════════════════════════════════
+
+M1 recordatorio_pago_2dias:
+{nombre} {pedido} {monto_semanal}
+{fecha_vencimiento} {payment_link}
+
+M2 pago_vence_hoy:
+{nombre} {pedido} {monto_semanal}
+{payment_link}
+
+M3 pago_vencido_48h:
+{nombre} {pedido} {monto_semanal}
+{payment_link}
+
+M4 pago_vencido_96h:
+{nombre} {monto_semanal} {payment_link}
+
+M5 incentivo_adelanto:
+{nombre} {payment_link}
+
+M6 pago_recibido:
+{nombre} {monto} {semana}
+{proximo_pago} {payment_link}
+
+════════════════════════════════════════════════════════════
+CANALES POR MENSAJE
+════════════════════════════════════════════════════════════
+
+M1 recordatorio_pago_2dias  → WhatsApp + SMS + Email
+M2 pago_vence_hoy           → WhatsApp + SMS + Email
+M3 pago_vencido_48h         → WhatsApp + SMS + Email
+M4 pago_vencido_96h         → WhatsApp + SMS
+M5 incentivo_adelanto       → WhatsApp + SMS + Email
+M6 pago_recibido            → WhatsApp + SMS
+
+════════════════════════════════════════════════════════════
+FIN DEL DOCUMENTO
+voltika.mx — MTECH GEARS S.A. DE C.V.
+════════════════════════════════════════════════════════════
