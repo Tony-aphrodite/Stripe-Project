@@ -323,6 +323,10 @@ window.AD_envios = (function(){
         };
         if(transId) {
           payload.transaccion_id = transId;
+          // We already know the moto from sin-punto.php — pass it so the
+          // backend skips re-derivation and uses the exact record the admin
+          // sees on screen.
+          if (orderInfo && orderInfo.moto_id) payload.moto_id = parseInt(orderInfo.moto_id);
         } else {
           var motoId = $('#adEnvMoto').val();
           if(!motoId){ alert('Selecciona una moto'); return; }

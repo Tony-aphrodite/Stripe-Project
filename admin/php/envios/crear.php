@@ -4,7 +4,29 @@
  * Body: { moto_id, punto_id, tracking_number?, carrier?, fecha_estimada?, transaccion_id?, notas? }
  */
 require_once __DIR__ . '/../bootstrap.php';
-require_once __DIR__ . '/../skydropx.php';
+
+// Catch any fatal error (missing file, undefined function, DB exception) and
+// convert it into a JSON error response so the client sees a helpful message
+// instead of a 500 HTML page → "Error de conexión" alert.
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) return false;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(['ok' => false, 'error' => 'Error interno: ' . $err['message']]);
+    }
+});
+
+// Skydropx is optional — if the helper file is missing we skip quoting.
+$_skydropxPath = __DIR__ . '/../skydropx.php';
+if (is_file($_skydropxPath)) { try { require_once $_skydropxPath; } catch (Throwable $e) { error_log('skydropx include: ' . $e->getMessage()); } }
+
 $uid = adminRequireAuth(['admin','cedis']);
 
 $d = adminJsonIn();
@@ -111,14 +133,16 @@ if ($transaccionId) {
     if (!$notas) $notas = 'Venta - Pedido ' . $pedidoNum;
 }
 
-// Auto-quote via Skydropx if no date provided
-if (!$fechaEstimada) {
-    $cpOrigen  = defined('CEDIS_CP') ? CEDIS_CP : '';
-    $cpDestino = $punto['cp'] ?? '';
-    if ($cpOrigen && $cpDestino) {
-        $quote = skydropxCotizar($cpOrigen, $cpDestino);
-        if (!empty($quote['ok'])) $fechaEstimada = $quote['fecha_estimada'];
-    }
+// Auto-quote via Skydropx if no date provided (optional, failures are silent)
+if (!$fechaEstimada && function_exists('skydropxCotizar')) {
+    try {
+        $cpOrigen  = defined('CEDIS_CP') ? CEDIS_CP : '';
+        $cpDestino = $punto['cp'] ?? '';
+        if ($cpOrigen && $cpDestino) {
+            $quote = skydropxCotizar($cpOrigen, $cpDestino);
+            if (!empty($quote['ok'])) $fechaEstimada = $quote['fecha_estimada'];
+        }
+    } catch (Throwable $e) { error_log('skydropx cotizar: ' . $e->getMessage()); }
 }
 
 // Create envio
