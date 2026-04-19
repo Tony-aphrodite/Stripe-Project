@@ -50,7 +50,7 @@ portalLog('login_request', [
 
 $out = ['ok' => true, 'status' => 'sent'];
 // Always expose testCode for known test numbers, or when SMS fails
-$isTestNumber = in_array($tel, ['5500000000', '0000000000']);
+$isTestNumber = in_array($tel, ['5500000000', '0000000000', '5511112222']);
 if (!$r['ok'] || $isTestNumber) {
     $out['testCode'] = $codigo;
 }
