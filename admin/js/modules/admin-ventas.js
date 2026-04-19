@@ -25,14 +25,14 @@ window.AD_ventas = (function(){
     });
   }
 
-  function loadData(){
+  function loadData(cb){
     var _loadStart = Date.now();
     ADApp.api('ventas/listar.php').done(function(r){
       var elapsed = ((Date.now() - _loadStart) / 1000).toFixed(1);
       var now = new Date();
       var timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
       $('#vtLastUpdate').html('Actualizado: ' + timeStr + ' (' + elapsed + 's)');
-      if(!r.ok){ $('#vtTable').html('<div class="ad-card">Error al cargar</div>'); return; }
+      if(!r.ok){ $('#vtTable').html('<div class="ad-card">Error al cargar</div>'); if(cb) cb(); return; }
 
       // KPIs
       var pendingPunto = (r.rows||[]).filter(function(o){ return o.punto_id==='centro-cercano'; }).length;
@@ -49,8 +49,10 @@ window.AD_ventas = (function(){
       var rows = r.rows || [];
       _lastRows = rows;
       renderTable(rows);
+      if(cb) cb();
     }).fail(function(){
       $('#vtTable').html('<div class="ad-card">Error de conexion</div>');
+      if(cb) cb();
     });
   }
 
@@ -654,9 +656,13 @@ window.AD_ventas = (function(){
           if (res && res.ok) {
             var iconChk = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><polyline points="20 6 9 17 4 12"/></svg>';
             $('#vkAsignPuntoMsg').css('color','#0e8f55').html(iconChk+'Punto asignado · Notificación enviada al cliente');
+            // Refresh the cached Ventas list so the detail modal reflects the
+            // new punto + address fields (saved row in server is authoritative).
+            // Once loadData repopulates _lastRows, re-open the detail modal
+            // for the same order id.
             setTimeout(function(){
               ADApp.closeModal();
-              showDetalle(r.id);
+              loadData(function(){ showDetalle(r.id); });
             }, 700);
           } else {
             $('#vkAsignPuntoMsg').css('color','#b91c1c').text((res && res.error) || 'Error al guardar');
