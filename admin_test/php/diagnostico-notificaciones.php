@@ -94,7 +94,30 @@ if ($action === 'send') {
                     ['moto_enviada',       '🚚 B) moto_enviada'],
                     ['moto_recibida',      '🔧 C) moto_recibida'],
                     ['moto_lista_entrega', '✅ D) moto_lista_entrega'],
+                    // Batch 2 — OTP / acta / incidencia / cobranza
+                    ['otp_entrega',               '🔐 OTP entrega'],
+                    ['entrega_completada',        '✅ Acta firmada'],
+                    ['recepcion_incidencia',      '⚠️ Incidencia'],
+                    ['recordatorio_pago_2dias',   '⏰ Cobranza M1 (2 días antes)'],
+                    ['pago_vence_hoy',            '🔔 Cobranza M2 (hoy)'],
+                    ['pago_vencido_48h',          '⚠️ Cobranza M3 (48h)'],
+                    ['pago_vencido_96h',          '🔴 Cobranza M4 (96h)'],
+                    ['incentivo_adelanto',        '💡 Cobranza M5 (adelanto)'],
+                    ['pago_recibido',             '✅ Cobranza M6 (recibido)'],
                 ];
+
+                // Extra fields required by the batch-2 templates
+                $baseData['otp']           = '547821';
+                $baseData['vin']           = 'VIN987654321987';
+                $baseData['fecha_entrega'] = $fechaLleg;
+                $baseData['fecha_reporte'] = date('Y-m-d H:i');
+                $baseData['numero_caso']   = 'CASO-' . date('Ymd') . '-0001';
+                $baseData['mensaje']       = 'La batería no carga al 100% (reporte de prueba)';
+                $baseData['monto']         = '235.00';
+                $baseData['monto_semanal'] = '235.00';
+                $baseData['semana']        = '3';
+                $baseData['proximo_pago']  = $fechaEst;
+                $baseData['payment_link']  = 'https://voltika.mx/mi-cuenta';
 
                 // Anchor id for "recent log" query — capture MAX(id) before sending.
                 try {

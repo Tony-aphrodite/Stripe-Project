@@ -183,16 +183,38 @@ function sendPaymentNotification(string $tipo, array $ciclo, string $marker): bo
         return sendLegacySMS($ciclo);
     }
 
-    $montoFmt = '$' . number_format($ciclo['monto'], 2);
+    $montoRaw     = (float)($ciclo['monto'] ?? 0);
+    $montoFmt     = number_format($montoRaw, 2);
+    $fechaHuman   = function_exists('voltikaFormatFechaHuman')
+        ? voltikaFormatFechaHuman($ciclo['fecha_vencimiento'] ?? null)
+        : ($ciclo['fecha_vencimiento'] ?? '');
+
+    // Resolve pedido number from subscripcion → transacciones (best effort).
+    $pedido = '';
+    if (!empty($ciclo['stripe_customer_id'])) {
+        try {
+            $t = $pdo->prepare("SELECT pedido FROM transacciones
+                                 WHERE stripe_customer_id = ?
+                                 ORDER BY id DESC LIMIT 1");
+            $t->execute([$ciclo['stripe_customer_id']]);
+            $pedido = (string)($t->fetchColumn() ?: '');
+        } catch (Throwable $e) {}
+    }
 
     $result = voltikaNotify($tipo, [
-        'nombre'       => $ciclo['nombre'] ?? '',
-        'telefono'     => $ciclo['telefono'] ?? '',
-        'email'        => $ciclo['email'] ?? '',
-        'whatsapp'     => $ciclo['telefono'] ?? '',
-        'monto'        => $montoFmt,
-        'fecha'        => $ciclo['fecha_vencimiento'] ?? '',
-        'payment_link' => 'voltika.mx/mi-cuenta',
+        'nombre'            => $ciclo['nombre'] ?? '',
+        'telefono'          => $ciclo['telefono'] ?? '',
+        'email'             => $ciclo['email'] ?? '',
+        'whatsapp'          => $ciclo['telefono'] ?? '',
+        // Legacy aliases kept so old templates still interpolate cleanly.
+        'monto'             => $montoFmt,
+        'fecha'             => $ciclo['fecha_vencimiento'] ?? '',
+        // New placeholders the rewritten templates expect.
+        'monto_semanal'     => $montoFmt,
+        'fecha_vencimiento' => $fechaHuman,
+        'semana'            => (string)($ciclo['semana_num'] ?? ''),
+        'pedido'            => $pedido,
+        'payment_link'      => 'https://voltika.mx/mi-cuenta',
     ]);
 
     // Mark as sent to avoid duplicate sends

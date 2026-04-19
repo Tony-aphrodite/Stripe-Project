@@ -745,6 +745,269 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
     return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
 }
 
+/**
+ * ══════════════════════════════════════════════════════════════════════════
+ * OTP / ACTA / INCIDENCIA / COBRANZA — customer brief 2026-04-19 (batch 2)
+ * All 9 templates below use voltikaLogisticsEmailShell() for HTML where a
+ * rich email version is desired, and plain WhatsApp/SMS bodies elsewhere.
+ * ══════════════════════════════════════════════════════════════════════════
+ */
+
+// ── OTP entrega ─────────────────────────────────────────────────────────────
+function voltikaBuildOtpEntregaTemplate(): array {
+    $sms = "Voltika: {nombre}, tu código de entrega es: {otp}. Muéstraselo al asesor del punto. Solo tú debes verlo. Expira en 10 min. Dudas: ventas@voltika.mx";
+    $body = "🔐 {nombre}, aquí está tu código\nde seguridad para recibir tu moto:\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "🔑  {otp}\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "Muéstraselo al asesor del punto\nVOLTIKA en este momento.\n\n"
+          . "⏱️ Expira en 10 minutos.\n"
+          . "⚠️ No lo compartas con nadie\n   más que el asesor del punto.\n\n"
+          . "Este código es tu llave digital\npara recibir tu moto de forma\nsegura — es el último paso antes\nde llevártela ⚡\n\n"
+          . "Si no solicitaste este código\no tienes dudas escríbenos:\n📧 ventas@voltika.mx";
+    return ['subject' => '🔐 Código de entrega Voltika', 'body' => $body, 'sms' => $sms];
+}
+
+// ── Acta firmada — entrega completada ───────────────────────────────────────
+function voltikaBuildActaFirmadaTemplate(): array {
+    $subject = '✅ Acta de Entrega firmada — Tu VOLTIKA es oficialmente tuya — Pedido VK-{pedido}';
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 🎉</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">¡Tu moto es oficialmente tuya desde este momento!</p>'
+          . '<p style="font-size:13px;color:#333;margin:10px 0 0;">Has firmado el Acta de Entrega de tu <strong>{modelo}</strong> · {color}<br>Pedido: <strong>VK-{pedido}</strong><br>Fecha y hora de entrega: <strong>{fecha_entrega}</strong></p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📋 Resumen de tu entrega</div>'
+          . '<p style="font-size:13px;color:#444;margin:0 0 8px;">Este documento certifica que:</p>'
+          . '<div style="font-size:13.5px;color:#333;line-height:1.8;">'
+          . '✓ Recibiste tu <strong>{modelo} · {color}</strong> con número de serie <strong>{vin}</strong> en perfectas condiciones<br>'
+          . '✓ Verificaste su funcionamiento antes de recibirla<br>'
+          . '✓ Tu identidad fue validada mediante reconocimiento facial y código OTP<br>'
+          . '✓ Firmaste digitalmente el Acta de Entrega con validez legal<br>'
+          . '✓ Aceptaste los términos de tu contrato VOLTIKA'
+          . '</div></td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📄 Tu acta de entrega</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">Tu acta firmada ya está disponible en tu portal como comprobante oficial de entrega:<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+          . '<p style="font-size:12.5px;color:#555;margin:8px 0 0;">Guárdala — es tu documento legal que acredita que eres el propietario de la moto desde este momento.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#b45309;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📌 Recuerda antes de salir</div>'
+          . '<p style="font-size:13px;color:#7a4f08;background:#fffbeb;border-left:3px solid #f59e0b;padding:10px 12px;border-radius:4px;margin:0;line-height:1.6;">Coloca tu permiso temporal <strong>enmicado en la parte trasera</strong> de tu moto — es obligatorio para circular legalmente. Tienes <strong>30 días</strong> desde la emisión para tramitar tus placas definitivas.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📱 Tu portal de cliente</div>'
+          . '<p style="font-size:13px;color:#444;margin:0 0 6px;">Accede en cualquier momento a:<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+          . '<div style="font-size:13px;color:#333;line-height:1.7;margin-top:6px;">'
+          . '✅ Descargar tu acta de entrega<br>'
+          . '✅ Descargar tu contrato<br>'
+          . '✅ Consultar tus pagos<br>'
+          . '✅ Descargar tu permiso temporal<br>'
+          . '✅ Ver toda la información de tu moto'
+          . '</div></td></tr>'
+          . '<tr><td style="padding:12px 28px 0;"><p style="font-size:13.5px;color:#1a3a5c;margin:0;font-weight:700;">¡Bienvenido a la familia VOLTIKA! Disfruta tu moto y la libertad de la movilidad eléctrica ⚡</p></td></tr>';
+    $emailHtml = voltikaLogisticsEmailShell('✅ Acta de Entrega firmada', 'Pedido VK-{pedido}', $rows);
+
+    $body = "✅ ¡{nombre}, tu moto es oficialmente\ntuya desde este momento! 🎉\n\n"
+          . "Has firmado el Acta de Entrega\nde tu {modelo} · {color}\nPedido: VK-{pedido}\n\n"
+          . "📋 Este documento confirma que:\n"
+          . "✓ Recibiste tu moto en perfectas\n  condiciones\n"
+          . "✓ Verificaste su funcionamiento\n"
+          . "✓ Aceptaste los términos de tu contrato\n"
+          . "✓ La entrega fue validada con tu\n  identidad y código de seguridad\n\n"
+          . "Tu acta firmada ya está disponible\nen tu portal:\n👉 voltika.mx/mi-cuenta\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "📄 Recuerda colocar tu permiso\nenmicado en la parte trasera\nde tu moto antes de salir.\n\n"
+          . "Tienes 30 días para tramitar\ntus placas definitivas.\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "¡Disfruta tu VOLTIKA! ⚡\n\n"
+          . "¿Dudas?\n📧 ventas@voltika.mx";
+    $sms = 'VOLTIKA: {nombre}, tu {modelo} es oficialmente tuya. Descarga tu acta en voltika.mx/mi-cuenta. Permiso: coloca atrás de la moto. 30 días para placas.';
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
+// ── Incidencia al entregar ──────────────────────────────────────────────────
+function voltikaBuildIncidenciaTemplate(): array {
+    $subject = '⚠️ Recibimos tu reporte — Te contactamos en 24 hrs — Pedido VK-{pedido}';
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Recibimos tu reporte y lo registramos en nuestro sistema. Entendemos que esto puede ser frustrante y queremos que sepas que ya estamos en ello.</p>'
+          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#b45309;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📋 Lo que nos reportaste</div>'
+          . '<div style="padding:12px 14px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;font-size:13.5px;color:#7a4f08;line-height:1.6;">"{mensaje}"</div>'
+          . '<p style="font-size:12.5px;color:#555;margin:10px 0 0;line-height:1.6;">Fecha y hora del reporte: <strong>{fecha_reporte}</strong><br>Número de caso: <strong>{numero_caso}</strong></p>'
+          . '<p style="font-size:12px;color:#888;margin:6px 0 0;">Guarda este número — te sirve para dar seguimiento a tu caso.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">🔄 ¿Qué sigue?</div>'
+          . '<p style="font-size:13px;color:#444;margin:0 0 8px;line-height:1.6;">Nuestro equipo de soporte ya tiene tu caso asignado y lo está revisando.<br>Te contactaremos en <strong>menos de 24 hrs</strong> con una respuesta y plan de acción.</p>'
+          . '<p style="font-size:12.5px;color:#166534;background:#ecfdf5;padding:8px 12px;border-radius:4px;border-left:3px solid #22d37a;margin:10px 0 0;">No necesitas llamar ni escribir de nuevo — ya tenemos tu caso y nosotros te buscamos 🙌</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">¿Es una situación urgente?<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a></p>'
+          . '</td></tr>';
+    $emailHtml = voltikaLogisticsEmailShell('⚠️ Reporte recibido', 'Caso {numero_caso}', $rows);
+
+    $body = "⚠️ Hola {nombre}, recibimos tu\nreporte sobre tu {modelo} · {color}\nPedido: VK-{pedido}\n\n"
+          . "📋 Lo que nos reportaste:\n\"{mensaje}\"\n\n"
+          . "Tu reporte quedó registrado en\nnuestro sistema con fecha y hora.\nNúmero de caso: {numero_caso}\n\nNuestro equipo de soporte lo está\nrevisando ahora mismo.\n\n"
+          . "Te contactaremos en menos de 24 hrs\npara darte seguimiento y solución.\n\n"
+          . "No necesitas llamar ni escribir\nde nuevo — ya tenemos tu caso\ny te buscamos nosotros 🙌\n\n"
+          . "Si es urgente escríbenos a:\n📧 ventas@voltika.mx\n🕐 Lun a Vie 9:00 - 18:00 hrs";
+    $sms = 'VOLTIKA: {nombre}, recibimos tu reporte. Caso {numero_caso}. Te contactamos en 24h. Urgente: ventas@voltika.mx';
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
+// ── Cobranza email shell (reused by M1/M2/M3/M5) ────────────────────────────
+function voltikaBuildCobranzaEmailHtml(string $hero, string $heroSub, string $innerRows): string {
+    return voltikaLogisticsEmailShell($hero, $heroSub, $innerRows
+        . '<tr><td style="padding:14px 28px;">'
+        . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">💳 Métodos de pago</div>'
+        . '<div style="font-size:13px;color:#333;line-height:1.8;">'
+        . '🏪 <strong>OXXO</strong> — efectivo en cualquier tienda<br>'
+        . '🏦 <strong>SPEI</strong> — transferencia desde tu banco<br>'
+        . '💳 <strong>Tarjeta</strong> desde tu portal:<br>'
+        . '<a href="{payment_link}" style="color:#039fe1;font-weight:700;">👉 {payment_link}</a>'
+        . '</div></td></tr>'
+        . '<tr><td style="padding:14px 28px;">'
+        . '<p style="font-size:13px;color:#555;margin:0;">Tu saldo actualizado:<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+        . '</td></tr>'
+    );
+}
+
+// ── M1: recordatorio 2 días antes ───────────────────────────────────────────
+function voltikaBuildRecordatorio2diasTemplate(): array {
+    $subject = '⏰ Tu pago de ${monto_semanal} vence en 2 días — Pedido VK-{pedido}';
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Tu pago semanal de <strong>${monto_semanal}</strong> vence el <strong>{fecha_vencimiento}</strong>.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:10px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#b45309;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">💡 Págalo hoy</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">OXXO y SPEI tardan <strong>24 hrs</strong> en acreditarse — si esperas al día del vencimiento puede llegar tarde.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">💡 ¿Tienes tarjeta registrada?</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">Tu tarjeta actúa como respaldo automático el día del vencimiento si no detectamos otro pago antes. Pagar por OXXO o SPEI hoy es la mejor opción.</p>'
+          . '</td></tr>';
+    $emailHtml = voltikaBuildCobranzaEmailHtml('⏰ Tu pago vence en 2 días', 'Pedido VK-{pedido} · ${monto_semanal}', $rows);
+
+    $body = "⏰ {nombre}, tu pago de \${monto_semanal}\nvence el {fecha_vencimiento}.\n\n"
+          . "Págalo HOY — OXXO y SPEI tardan\n24 hrs en acreditarse:\n🏪 OXXO\n🏦 SPEI\n💳 👉 {payment_link}\n\n"
+          . "💡 Tu tarjeta es solo respaldo\nautomático si no detectamos\notro pago antes del vencimiento.";
+    $sms = "Voltika: {nombre}, pago de \${monto_semanal} vence el {fecha_vencimiento}. Págalo hoy — OXXO/SPEI tardan 24hrs: {payment_link}";
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
+// ── M2: vence hoy ───────────────────────────────────────────────────────────
+function voltikaBuildPagoVenceHoyTemplate(): array {
+    $subject = '🔔 Hoy vence tu pago de ${monto_semanal} — Pedido VK-{pedido}';
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">HOY es el último día para pagar sin cargos por atraso.<br>Tu pago semanal de <strong>${monto_semanal}</strong> vence hoy.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:10px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#dc2626;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">⚠️ Págalo ahora</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">Si pagas por OXXO o SPEI hazlo de inmediato — tardan <strong>24 hrs</strong> en acreditarse.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">💡 ¿Tienes tarjeta registrada?</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">Si no detectamos otro pago hoy se intenta el cargo automático al final del día. Pagar directo en OXXO o SPEI siempre es la mejor opción — el pago no se duplica.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:10px 28px;">'
+          . '<p style="font-size:12.5px;color:#555;background:#f5f7fa;padding:10px 12px;border-radius:6px;margin:0;">¿Ya pagaste ayer por OXXO o SPEI? Ignora este mensaje — tu pago está en proceso de acreditación.</p>'
+          . '</td></tr>';
+    $emailHtml = voltikaBuildCobranzaEmailHtml('🔔 Tu pago vence HOY', 'Pedido VK-{pedido} · ${monto_semanal}', $rows);
+
+    $body = "🔔 {nombre}, HOY vence tu pago\nde \${monto_semanal}.\n\n"
+          . "Si pagas por OXXO o SPEI hazlo\nde inmediato — tardan 24 hrs\nen acreditarse:\n🏪 OXXO\n🏦 SPEI\n💳 👉 {payment_link}\n\n"
+          . "💡 Tu tarjeta registrada actúa\ncomo respaldo automático hoy\nsi no detectamos otro pago.\n\n"
+          . "¿Ya pagaste ayer? Ignora esto.";
+    $sms = "Voltika: {nombre}, HOY vence \${monto_semanal}. Paga ya — OXXO/SPEI tardan 24hrs: {payment_link}";
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
+// ── M3: vencido 48h ─────────────────────────────────────────────────────────
+function voltikaBuildPagoVencido48hTemplate(): array {
+    $subject = '⚠️ Tu pago lleva 2 días vencido — Pedido VK-{pedido}';
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong>,</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Tu pago de <strong>${monto_semanal}</strong> lleva 2 días vencido y ya se acumulan cargos por atraso en tu cuenta.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:10px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#dc2626;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">Regulariza hoy</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">Cada día que pasa sin pagar los cargos por atraso aumentan.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<p style="font-size:12.5px;color:#555;background:#f5f7fa;padding:10px 12px;border-radius:6px;margin:0;line-height:1.6;"><strong>¿Pagaste ayer por OXXO o SPEI?</strong><br>Ignora este mensaje — tu pago está en proceso de acreditación y se verá reflejado en 24 hrs.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:10px 28px;">'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">¿Tienes algún problema con tu pago? Escríbenos hoy — podemos ayudarte:<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a></p>'
+          . '</td></tr>';
+    $emailHtml = voltikaBuildCobranzaEmailHtml('⚠️ 2 días vencido', 'Pedido VK-{pedido}', $rows);
+
+    $body = "⚠️ {nombre}, tu pago de \${monto_semanal}\nlleva 2 días vencido y ya acumula\ncargos por atraso.\n\n"
+          . "Regulariza hoy:\n🏪 OXXO\n🏦 SPEI\n💳 👉 {payment_link}\n\n"
+          . "¿Pagaste ayer por OXXO o SPEI?\nEspera 24 hrs — está acreditándose.\n\n"
+          . "¿Problema con tu pago?\n📧 ventas@voltika.mx";
+    $sms = "Voltika: {nombre}, 2 días vencido. Cargos acumulándose. Regulariza: {payment_link}";
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
+// ── M4: vencido 96h (WA + SMS only, no email) ───────────────────────────────
+function voltikaBuildPagoVencido96hTemplate(): array {
+    $body = "🔴 {nombre}, 4 días vencido.\n\n"
+          . "Tu saldo incluye \${monto_semanal}\nmás cargos por atraso acumulados.\n\n"
+          . "Si no regularizas hoy:\n❌ Los cargos siguen aumentando\n❌ Tu historial en Buró de Crédito\n   se ve afectado\n\n"
+          . "Paga ahora:\n🏪 OXXO\n🏦 SPEI\n💳 👉 {payment_link}\n\n"
+          . "👉 voltika.mx/mi-cuenta\n\n"
+          . "¿Necesitas apoyo?\n📧 ventas@voltika.mx";
+    $sms = "Voltika: {nombre}, 4 días vencido. Riesgo de reporte a Buró. Regulariza hoy: {payment_link}";
+    // No email_html — customer explicitly specified WA + SMS only for M4.
+    return ['subject' => '🔴 Pago vencido — 4 días', 'body' => $body, 'sms' => $sms];
+}
+
+// ── M5: incentivo adelanto ──────────────────────────────────────────────────
+function voltikaBuildIncentivoAdelantoTemplate(): array {
+    $subject = '💡 Adelanta pagos sin costo extra y liquida tu VOLTIKA antes';
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">¿Sabías que puedes adelantar pagos de tu VOLTIKA sin ningún costo adicional?</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:10px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">¿Por qué adelantar?</div>'
+          . '<div style="font-size:13.5px;color:#333;line-height:1.8;">'
+          . '✅ Reduces tu saldo pendiente<br>'
+          . '✅ Te acercas a liquidar antes<br>'
+          . '✅ Te olvidas de fechas de pago<br>'
+          . '✅ Sin ningún cargo extra'
+          . '</div></td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<p style="font-size:12.5px;color:#555;background:#f5f7fa;padding:10px 12px;border-radius:6px;margin:0;line-height:1.6;"><strong>⚠️ OXXO y SPEI tardan 24 hrs en acreditarse.</strong><br>💡 Si haces un pago adelantado el cargo automático de esa semana no se duplica — el sistema lo detecta solo.</p>'
+          . '</td></tr>';
+    $emailHtml = voltikaBuildCobranzaEmailHtml('💡 Adelanta pagos sin costo', 'Liquida tu VOLTIKA antes', $rows);
+
+    $body = "💡 {nombre}, adelanta pagos\nsin ningún costo extra.\n\n"
+          . "Cada pago adelantado reduce\ntu saldo y acerca tu liquidación.\n\n"
+          . "🏪 OXXO\n🏦 SPEI\n💳 👉 {payment_link}\n\n"
+          . "Tu tarjeta no se cobra doble —\nel sistema lo detecta solo.";
+    $sms = "Voltika: {nombre}, adelanta pagos sin costo. Reduce tu saldo: {payment_link}";
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
+// ── M6: pago recibido (WA + SMS only) ───────────────────────────────────────
+function voltikaBuildPagoRecibidoTemplate(): array {
+    $body = "✅ ¡{nombre}, pago recibido!\n\n"
+          . "💰 \${monto} — Semana {semana} cubierta\n"
+          . "📆 Próximo pago: {proximo_pago}\n\n"
+          . "¿Lo adelantas ahora?\nSin costo extra 👉 {payment_link}\n\n"
+          . "Tu cuenta al corriente ⚡";
+    $sms = "Voltika: ¡{nombre}, \${monto} recibido! Semana {semana} cubierta. Próximo: {proximo_pago}. ¿Lo adelantas? {payment_link}";
+    return ['subject' => '✅ Pago recibido — Voltika', 'body' => $body, 'sms' => $sms];
+}
+
 function voltikaNotifyTemplates(): array {
     // Build the 4 purchase-confirmation templates.
     // Keys: compra_confirmada_{contado|credito}_{punto|sin_punto}
@@ -763,6 +1026,17 @@ function voltikaNotifyTemplates(): array {
     $tplMotoEnviada  = voltikaBuildMotoEnviadaTemplate();
     $tplMotoRecibida = voltikaBuildMotoRecibidaTemplate();
     $tplMotoLista    = voltikaBuildMotoListaEntregaTemplate();
+
+    // OTP / acta / incidencia / cobranza — customer brief 2026-04-19 batch 2.
+    $tplOtp         = voltikaBuildOtpEntregaTemplate();
+    $tplActa        = voltikaBuildActaFirmadaTemplate();
+    $tplIncidencia  = voltikaBuildIncidenciaTemplate();
+    $tplCobr2d      = voltikaBuildRecordatorio2diasTemplate();
+    $tplCobrHoy     = voltikaBuildPagoVenceHoyTemplate();
+    $tplCobr48h     = voltikaBuildPagoVencido48hTemplate();
+    $tplCobr96h     = voltikaBuildPagoVencido96hTemplate();
+    $tplCobrIncent  = voltikaBuildIncentivoAdelantoTemplate();
+    $tplCobrRecv    = voltikaBuildPagoRecibidoTemplate();
 
     return [
         'compra_confirmada_contado_punto'     => $tplCP,
@@ -783,6 +1057,19 @@ function voltikaNotifyTemplates(): array {
         'moto_en_punto'       => $tplMotoRecibida,  // alias for backward compat
         'moto_lista_entrega'  => $tplMotoLista,
         'lista_para_recoger'  => $tplMotoLista,     // alias for backward compat
+
+        // Batch 2 overrides — the legacy inline definitions further down are
+        // replaced thanks to PHP array later-key-wins.
+        'otp_entrega'                 => $tplOtp,
+        'acta_firmada'                => $tplActa,
+        'entrega_completada'          => $tplActa,    // alias — same content
+        'recepcion_incidencia'        => $tplIncidencia,
+        'recordatorio_pago_2dias'     => $tplCobr2d,
+        'pago_vence_hoy'              => $tplCobrHoy,
+        'pago_vencido_48h'            => $tplCobr48h,
+        'pago_vencido_96h'            => $tplCobr96h,
+        'incentivo_adelanto'          => $tplCobrIncent,
+        'pago_recibido'               => $tplCobrRecv,
 
         // ═══════════════════════════════════════════════════════════════════
         // INTERNAL — DEALER/PUNTO CREDENTIALS
