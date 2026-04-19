@@ -86,7 +86,7 @@ if (!$nombreCompleto && $trans) $nombreCompleto = $trans['nombre'] ?? '';
 function loadFPDF(): bool {
     if (class_exists('FPDF')) return true;
     $paths = [
-        __DIR__ . '/../../../configurador_prueba/php/vendor/fpdf/fpdf.php',
+        __DIR__ . '/../../../configurador_prueba_test/php/vendor/fpdf/fpdf.php',
         __DIR__ . '/../../../admin/php/lib/fpdf.php',
     ];
     foreach ($paths as $p) {
@@ -119,8 +119,8 @@ function serveFile(string $path, string $filename): void {
 if ($tipo === 'contrato') {
     // 1. Try pre-generated file on disk
     $searchDirs = [
-        __DIR__ . '/../../../configurador_prueba/php/contratos/',
-        __DIR__ . '/../../../configurador_prueba/php/uploads/contratos/',
+        __DIR__ . '/../../../configurador_prueba_test/php/contratos/',
+        __DIR__ . '/../../../configurador_prueba_test/php/uploads/contratos/',
         sys_get_temp_dir() . '/voltika_contratos/',
     ];
     foreach ($searchDirs as $dir) {
@@ -247,7 +247,7 @@ if ($tipo === 'pagare') {
     // 2. Search disk
     $searchDirs = [
         sys_get_temp_dir() . '/voltika_pagares/',
-        __DIR__ . '/../../../configurador_prueba/php/uploads/pagares/',
+        __DIR__ . '/../../../configurador_prueba_test/php/uploads/pagares/',
     ];
     if ($moto) {
         foreach ($searchDirs as $dir) {
@@ -523,7 +523,7 @@ if ($tipo === 'comprobantes') {
 if ($tipo === 'acta_entrega') {
     // Try pre-generated file
     $searchDirs = [
-        __DIR__ . '/../../../configurador_prueba/php/uploads/actas/',
+        __DIR__ . '/../../../configurador_prueba_test/php/uploads/actas/',
         sys_get_temp_dir() . '/voltika_actas/',
     ];
     foreach ($searchDirs as $dir) {
@@ -603,6 +603,114 @@ if ($tipo === 'acta_entrega') {
 
     header('Content-Type: application/json');
     portalJsonOut(['error' => 'Acta de entrega no disponible todavia'], 404);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MANUAL DEL USUARIO — static PDF per modelo (with on-the-fly fallback)
+// ═══════════════════════════════════════════════════════════════════════
+if ($tipo === 'manual') {
+    // Resolve the moto modelo to pick the right manual PDF.
+    $modelo = '';
+    if ($moto)        $modelo = $moto['modelo'] ?? '';
+    if (!$modelo && $sub)   $modelo = $sub['modelo']  ?? '';
+    if (!$modelo && $trans) $modelo = $trans['modelo']?? '';
+    $modeloKey = preg_replace('/[^A-Z0-9]/i', '', strtoupper((string)$modelo));
+
+    // Try several candidate static-asset locations
+    $candidates = [
+        __DIR__ . '/../../assets/manuales/' . $modeloKey . '.pdf',
+        __DIR__ . '/../../assets/manuales/manual-' . $modeloKey . '.pdf',
+        __DIR__ . '/../../assets/manuales/manual.pdf',                        // generic fallback
+        __DIR__ . '/../../../docs/manual-' . $modeloKey . '.pdf',
+    ];
+    foreach ($candidates as $f) {
+        if (is_file($f)) serveFile($f, 'manual_voltika_' . $modeloKey . '.pdf');
+    }
+
+    // Generate a placeholder PDF on-the-fly so the customer never gets a 404.
+    if (loadFPDF()) {
+        $enc = function($s) { return iconv('UTF-8', 'ISO-8859-1//TRANSLIT//IGNORE', (string)$s); };
+        $pdf = new FPDF();
+        $pdf->SetAutoPageBreak(true, 15);
+        $pdf->AddPage();
+        $pdf->SetFont('Arial', 'B', 18);
+        $pdf->Cell(0, 12, $enc('MANUAL DEL USUARIO'), 0, 1, 'C');
+        $pdf->SetFont('Arial', '', 11);
+        $pdf->Cell(0, 7, $enc('VOLTIKA' . ($modelo ? ' — ' . $modelo : '')), 0, 1, 'C');
+        $pdf->Ln(8);
+        $pdf->SetFont('Arial', '', 10);
+        $pdf->MultiCell(0, 6, $enc(
+            'Estamos preparando el manual completo de tu modelo. ' .
+            'En cuanto este disponible lo podras descargar desde aqui.'
+        ));
+        $pdf->Ln(6);
+        $pdf->SetFont('Arial', 'B', 11);
+        $pdf->Cell(0, 7, $enc('Mientras tanto, recuerda:'), 0, 1);
+        $pdf->SetFont('Arial', '', 9.5);
+        foreach ([
+            'Carga tu moto cada noche para mantener una bateria saludable.',
+            'No expongas la moto a lluvia intensa por periodos prolongados.',
+            'Revisa la presion de las llantas cada semana.',
+            'Si detectas un comportamiento inusual contacta a ventas@voltika.mx.',
+        ] as $line) {
+            $pdf->Cell(5, 6, '-', 0, 0);
+            $pdf->MultiCell(0, 6, $enc(' ' . $line));
+        }
+        $pdf->Ln(6);
+        $pdf->SetFont('Arial', 'I', 8);
+        $pdf->Cell(0, 5, $enc('Documento provisional generado el ' . date('d/m/Y H:i')), 0, 1, 'R');
+        servePDF($pdf->Output('S'), 'manual_voltika.pdf');
+    }
+
+    header('Content-Type: application/json');
+    portalJsonOut(['error' => 'Manual no disponible todavia'], 404);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SEGURO — cotización/póliza uploaded by admin
+// ═══════════════════════════════════════════════════════════════════════
+if ($tipo === 'seguro') {
+    $rel = '';
+    $mime = '';
+    try {
+        // Find the most recent transaccion that belongs to this client and has a
+        // seguro file attached.
+        $stmt = $pdo->prepare("SELECT seguro_cotizacion_archivo, seguro_cotizacion_mime
+                                 FROM transacciones
+                                WHERE (email = ? OR telefono = ?)
+                                  AND seguro_cotizacion_archivo IS NOT NULL
+                             ORDER BY id DESC LIMIT 1");
+        $email = $cliente['email']    ?? ($trans['email']    ?? '');
+        $tel   = $cliente['telefono'] ?? ($trans['telefono'] ?? '');
+        $stmt->execute([$email, $tel]);
+        if ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $rel  = $r['seguro_cotizacion_archivo'] ?? '';
+            $mime = $r['seguro_cotizacion_mime']    ?? 'application/octet-stream';
+        }
+    } catch (Throwable $e) { error_log('seguro lookup: ' . $e->getMessage()); }
+
+    if ($rel) {
+        $abs = (strlen($rel) > 0 && $rel[0] === '/') || preg_match('#^[A-Z]:[\\\\/]#', $rel)
+            ? $rel
+            : __DIR__ . '/../../../admin/' . ltrim($rel, '/');
+        if (!is_file($abs)) {
+            // Try admin_test as a secondary location
+            $abs2 = __DIR__ . '/../../../admin_test/' . ltrim($rel, '/');
+            if (is_file($abs2)) $abs = $abs2;
+        }
+        if (is_file($abs)) {
+            $ext = strtolower(pathinfo($abs, PATHINFO_EXTENSION));
+            $fname = 'seguro_voltika.' . $ext;
+            header('Content-Type: ' . ($mime ?: 'application/pdf'));
+            header('Content-Disposition: inline; filename="' . $fname . '"');
+            header('Content-Length: ' . filesize($abs));
+            readfile($abs);
+            exit;
+        }
+    }
+
+    header('Content-Type: application/json');
+    portalJsonOut(['error' => 'No hay cotizacion de seguro disponible todavia'], 404);
 }
 
 // ═══════════════════════════════════════════════════════════════════════

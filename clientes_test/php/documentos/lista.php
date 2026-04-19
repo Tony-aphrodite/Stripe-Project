@@ -98,38 +98,71 @@ if ($scopedTxnId > 0) {
     } catch (Throwable $e) {}
 }
 
-// Pagaré — credit only
-$pagareDisponible = false;
-$pagareSubtitulo = 'Pendiente de generación';
+// Pagaré — REMOVED from customer-facing list per brief 2026-04-19. The signed
+// pagaré PDF still lives in checklist_entrega_v2.pagare_pdf_path for legal
+// audit; descargar.php?tipo=pagare can still serve it if needed internally.
+
+// Manual de usuario — always available once a moto is linked (modelo known).
+$modeloForManual = '';
 try {
-    if ($scopedSubId > 0) {
-        $stmt = $pdo->prepare("SELECT ce.pagare_pdf_path, ce.firma_pagare_timestamp, ce.firma_pagare_cincel_id
-            FROM checklist_entrega_v2 ce
-            JOIN inventario_motos m ON m.id = ce.moto_id
-            JOIN subscripciones_credito s ON (s.telefono = m.cliente_telefono OR s.email = m.cliente_email)
-            WHERE m.cliente_id = ? AND s.id = ? AND ce.pagare_pdf_path IS NOT NULL
-            ORDER BY ce.freg DESC LIMIT 1");
-        $stmt->execute([$cid, $scopedSubId]);
-    } elseif (!$scopedTxnId) {
-        $stmt = $pdo->prepare("SELECT ce.pagare_pdf_path, ce.firma_pagare_timestamp, ce.firma_pagare_cincel_id
-            FROM checklist_entrega_v2 ce
-            JOIN inventario_motos m ON m.id = ce.moto_id
-            WHERE m.cliente_id = ? AND ce.pagare_pdf_path IS NOT NULL
-            ORDER BY ce.freg DESC LIMIT 1");
-        $stmt->execute([$cid]);
+    if ($scopedTxnId > 0) {
+        $stmt = $pdo->prepare("SELECT modelo FROM transacciones WHERE id = ?");
+        $stmt->execute([$scopedTxnId]);
+        $modeloForManual = (string)($stmt->fetchColumn() ?: '');
+    } elseif ($scopedSubId > 0) {
+        $stmt = $pdo->prepare("SELECT modelo FROM subscripciones_credito WHERE id = ?");
+        $stmt->execute([$scopedSubId]);
+        $modeloForManual = (string)($stmt->fetchColumn() ?: '');
     } else {
-        $stmt = null;
-    }
-    if ($stmt && $pr = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $pagareDisponible = true;
-        $pagareSubtitulo = 'Documento firmado digitalmente';
-        if ($pr['firma_pagare_cincel_id']) $pagareSubtitulo .= ' — NOM-151';
+        $stmt = $pdo->prepare("SELECT modelo FROM inventario_motos WHERE cliente_id = ? AND activo = 1 ORDER BY fmod DESC LIMIT 1");
+        $stmt->execute([$cid]);
+        $modeloForManual = (string)($stmt->fetchColumn() ?: '');
     }
 } catch (Throwable $e) {}
-if (!$scopedTxnId) {
-    $docs[] = ['tipo' => 'pagare', 'titulo' => 'Pagaré',
-               'subtitulo' => $pagareSubtitulo, 'disponible' => $pagareDisponible];
-}
+$docs[] = [
+    'tipo'       => 'manual',
+    'titulo'     => 'Manual del usuario' . ($modeloForManual ? ' — ' . $modeloForManual : ''),
+    'subtitulo'  => 'Guía digital de tu Voltika',
+    'disponible' => $modeloForManual !== '',
+];
+
+// Seguros — cotización + póliza uploaded by admin via cotizacion endpoint.
+// The file lives at transacciones.seguro_cotizacion_archivo (relative path).
+$seguroDisponible = false;
+$seguroSub = 'Cotización y póliza';
+try {
+    $needCol = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                               WHERE TABLE_SCHEMA = DATABASE()
+                                 AND TABLE_NAME = 'transacciones'
+                                 AND COLUMN_NAME = 'seguro_cotizacion_archivo'");
+    $needCol->execute();
+    if ((int)$needCol->fetchColumn() > 0) {
+        if ($scopedTxnId > 0) {
+            $stmt = $pdo->prepare("SELECT seguro_cotizacion_archivo, seguro_cotizacion_subido FROM transacciones
+                                    WHERE id = ? AND seguro_cotizacion_archivo IS NOT NULL LIMIT 1");
+            $stmt->execute([$scopedTxnId]);
+        } else {
+            // Find any tx for this client that has a seguro file
+            $stmt = $pdo->prepare("SELECT t.seguro_cotizacion_archivo, t.seguro_cotizacion_subido
+                                     FROM transacciones t
+                                LEFT JOIN clientes c ON c.id = ?
+                                    WHERE (t.email = c.email OR t.telefono = c.telefono)
+                                      AND t.seguro_cotizacion_archivo IS NOT NULL
+                                 ORDER BY t.id DESC LIMIT 1");
+            $stmt->execute([$cid]);
+        }
+        if ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $seguroDisponible = true;
+            $seguroSub = 'Subido el ' . substr($r['seguro_cotizacion_subido'] ?? '', 0, 10);
+        }
+    }
+} catch (Throwable $e) { error_log('documentos/lista seguro: ' . $e->getMessage()); }
+$docs[] = [
+    'tipo'       => 'seguro',
+    'titulo'     => 'Seguros',
+    'subtitulo'  => $seguroDisponible ? $seguroSub : 'Pendiente de cotización',
+    'disponible' => $seguroDisponible,
+];
 
 // Carta factura — always available once the purchase is al corriente / liquidada
 $cartaDisponible = $scopedTxnId > 0 ? true : $alCorriente;
