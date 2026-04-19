@@ -25,6 +25,18 @@ window.AD_ventas = (function(){
     });
   }
 
+  // Visual feedback after a row was just modified — paints the row green
+  // for ~1.2s so the admin sees that the change landed even if the modal
+  // is still open over the table.
+  function flashRow(rowId){
+    setTimeout(function(){
+      var $tr = $('#vtTable tr[data-row-id="'+rowId+'"]');
+      if (!$tr.length) return;
+      $tr.css({transition:'background-color .25s ease', background:'#d1fae5'});
+      setTimeout(function(){ $tr.css({background:''}); }, 1200);
+    }, 100);
+  }
+
   function loadData(cb){
     var _loadStart = Date.now();
     ADApp.api('ventas/listar.php').done(function(r){
@@ -100,7 +112,7 @@ window.AD_ventas = (function(){
       if(r.asesoria_placas) extrasHtml += '<span title="Solicitó asesoría para placas" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#FFF3E0;color:#E65100;border:1px solid #FFE0B2;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">PLACAS</span>';
       if(r.seguro_qualitas) extrasHtml += '<span title="Solicitó seguro (Quálitas)" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">SEGURO</span>';
 
-      html += '<tr>'+
+      html += '<tr data-row-id="'+r.id+'">'+
         '<td><strong>'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'</strong>'+extrasHtml+alertaHtml+'</td>'+
         '<td>'+(r.nombre||'-')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
         '<td>'+(r.modelo||'-')+'</td>'+
@@ -656,13 +668,26 @@ window.AD_ventas = (function(){
           if (res && res.ok) {
             var iconChk = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><polyline points="20 6 9 17 4 12"/></svg>';
             $('#vkAsignPuntoMsg').css('color','#0e8f55').html(iconChk+'Punto asignado · Notificación enviada al cliente');
-            // Refresh the cached Ventas list so the detail modal reflects the
-            // new punto + address fields (saved row in server is authoritative).
-            // Once loadData repopulates _lastRows, re-open the detail modal
-            // for the same order id.
+            // Customer feedback 2026-04-20: also force the underlying Ventas
+            // list to re-render so closing the detail modal doesn't reveal
+            // stale "Pendiente de asignar" rows. Steps:
+            //   1) switch active tab to 'todas' so the row is always visible
+            //      regardless of which filter the admin was on,
+            //   2) reload the list (loadData),
+            //   3) re-open detail modal,
+            //   4) flash the updated row green for visual confirmation,
+            //   5) backup reload 1.2s later in case of a slow DB commit.
             setTimeout(function(){
               ADApp.closeModal();
-              loadData(function(){ showDetalle(r.id); });
+              _activeTab = 'todas';
+              loadData(function(){
+                showDetalle(r.id);
+                flashRow(r.id);
+                // Belt-and-suspenders: another silent reload after a longer
+                // delay covers servers where the SELECT was slightly behind
+                // the UPDATE the first time around.
+                setTimeout(function(){ loadData(); }, 1200);
+              });
             }, 700);
           } else {
             $('#vkAsignPuntoMsg').css('color','#b91c1c').text((res && res.error) || 'Error al guardar');
