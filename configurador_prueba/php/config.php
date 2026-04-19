@@ -119,17 +119,22 @@ if (!defined('VOLTIKA_CRON_TOKEN')) define('VOLTIKA_CRON_TOKEN', getenv('VOLTIKA
 if (!defined('VOLTIKA_BASE_URL'))   define('VOLTIKA_BASE_URL',   getenv('VOLTIKA_BASE_URL')   ?: 'https://voltika.mx');
 
 // ── Shared DB connection ────────────────────────────────────────────────────
-function getDB() {
-    static $pdo = null;
-    if ($pdo === null) {
-        $pdo = new PDO(
-            'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
-            DB_USER,
-            DB_PASS,
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-        );
+// Guarded because admin/php/bootstrap.php already declares getDB(); if admin
+// code pulls in this file transitively (e.g. via voltika-notify.php), a
+// redeclare fatal crashed the request with a 500.
+if (!function_exists('getDB')) {
+    function getDB() {
+        static $pdo = null;
+        if ($pdo === null) {
+            $pdo = new PDO(
+                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+                DB_USER,
+                DB_PASS,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+        }
+        return $pdo;
     }
-    return $pdo;
 }
 
 // ── Shared PHPMailer helper ─────────────────────────────────────────────────

@@ -339,11 +339,16 @@ window.AD_envios = (function(){
             ADApp.closeModal();
             render();
           } else {
-            alert(res.error||'Error');
+            alert(res.error||'Error desconocido');
             $('#adEnvSave').prop('disabled',false).html('Crear envío');
           }
-        }).fail(function(){
-          alert('Error de conexión');
+        }).fail(function(xhr){
+          // Show the real HTTP status + first 400 chars of the server response
+          // so we can pinpoint PHP fatals / missing files / SQL errors without
+          // guessing.
+          var status = xhr && xhr.status ? xhr.status : '?';
+          var body = xhr && xhr.responseText ? xhr.responseText.substring(0, 400) : '(sin respuesta)';
+          alert('HTTP '+status+'\n\n'+body);
           $('#adEnvSave').prop('disabled',false).html('Crear envío');
         });
       });
