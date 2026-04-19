@@ -1396,30 +1396,9 @@ function voltikaNotifyTemplates(): array {
         // — replaced by voltikaBuildPortalTemplate() at top of this function
         // (2026-04-19 customer rewrite with rich email_html).
 
-        // ═══════════════════════════════════════════════════════════════════
-        // DELIVERY FLOW MESSAGES
-        // ═══════════════════════════════════════════════════════════════════
-
-        // MSG 3 — Motorcycle assigned and in transit
-        'moto_enviada' => [
-            'subject' => '📦 Tu Voltika ya fue asignada',
-            'body'    => "📦 ¡{nombre}, tu {modelo} ya fue asignada!\n\nTu moto está en camino hacia tu punto de entrega:\n\n📍 {punto} — {ciudad}\n\n📲 Te avisamos en cuanto llegue.\nNo necesitas acudir todavía.",
-            'sms'     => 'Voltika: Tu {modelo} va en camino a {punto}. Te avisamos cuando llegue.',
-        ],
-
-        // MSG 4 — Arrived at delivery point
-        'moto_en_punto' => [
-            'subject' => '📍 Tu Voltika ya llegó al punto',
-            'body'    => "📍 ¡{nombre}, tu {modelo} ya llegó!\n\nTu moto está en:\n📍 {punto} — {ciudad}\n\n🔧 Está en revisión y preparación final.\n\n📲 Te avisamos en cuanto esté lista para recogerla.\nPor favor espera este mensaje antes de acudir.",
-            'sms'     => 'Voltika: Tu {modelo} ya llego a {punto}. Esta en revision. Te avisamos cuando este lista.',
-        ],
-
-        // MSG 5 — Ready for pickup
-        'lista_para_recoger' => [
-            'subject' => '🚀 Tu Voltika está lista',
-            'body'    => "🚀 ¡{nombre}, tu {modelo} está lista!\n\n📍 {punto} — {ciudad}\n📍 {direccion}\n🗺️ {maps_link}\n\n⏱️ Horario de entrega:\n{horario}\n\n🛡️ Para recogerla necesitas:\n✔️ Identificación oficial vigente\n✔️ Acceso a tu número registrado\n\n⚠️ Preséntate únicamente en el horario indicado.\n\n💳 Tu primer pago semanal inicia a partir de hoy — gestiona todo en:\n👉 voltika.mx/clientes/",
-            'sms'     => 'Voltika: Tu {modelo} esta lista en {punto}. Lleva tu INE. Horario: {horario}. voltika.mx/clientes/',
-        ],
+        // Delivery flow (moto_enviada / moto_en_punto / lista_para_recoger)
+        // is defined at the top of this function via voltikaBuild*Template()
+        // with rich email_html — no stubs here.
 
         // ═══════════════════════════════════════════════════════════════════
         // PAYMENT FOLLOW-UP — Pending/abandoned orders
@@ -1451,78 +1430,13 @@ function voltikaNotifyTemplates(): array {
             'sms'     => 'Voltika ADMIN: Nueva solicitud Qualitas. Pedido {pedido_corto} / {nombre} / {modelo} {color}.',
         ],
 
-        // ── Legacy delivery templates (kept for backward compat) ────────
-        'punto_asignado' => [
-            'subject' => '📍 Tu Voltika tiene punto de entrega',
-            'body'    => "Hola {nombre},\n\nTu moto {modelo} será entregada en {punto} ({ciudad}).\nTe avisaremos cuando esté lista para recoger.\n\n¡Gracias por elegir Voltika! ⚡",
-            'sms'     => 'Voltika: Tu moto sera entregada en {punto}. Te avisamos cuando este lista.',
-        ],
-        'otp_entrega' => [
-            'subject' => '🔐 Código de entrega Voltika',
-            'body'    => "Hola {nombre},\n\nTu código de entrega es: {otp}\n\nMuéstralo al asesor en el punto de Voltika. Este código expira en 10 minutos.\nNO lo compartas con nadie.",
-            'sms'     => 'Voltika: Tu codigo de entrega es {otp}. Muestralo al asesor. No lo compartas. Expira en 10 min.',
-        ],
-        'acta_firmada' => [
-            'subject' => '📄 ACTA DE ENTREGA firmada',
-            'body'    => "Hola {nombre},\n\nHas firmado el ACTA DE ENTREGA de tu moto {modelo}.\nEl personal de Voltika finalizará el proceso ahora mismo.\n\n¡Casi listo! ⚡",
-            'sms'     => 'Voltika: ACTA firmada. Personal finalizara tu entrega en instantes.',
-        ],
-        'entrega_completada' => [
-            'subject' => '🎉 ¡Bienvenido a la familia Voltika!',
-            'body'    => "¡Felicidades {nombre}! 🎊\n\nTu moto {modelo} te fue entregada con éxito.\n\nRecuerda:\n• Tu primer pago semanal vence el {proximo_pago}\n• Puedes gestionar tus pagos en voltika.mx/clientes\n• Para soporte, contáctanos por WhatsApp\n\n¡Disfruta tu Voltika! ⚡",
-            'sms'     => 'Voltika: Bienvenido! Tu moto fue entregada. Proximo pago: {proximo_pago}. Gestiona todo en voltika.mx/clientes',
-        ],
-        'recepcion_incidencia' => [
-            'subject' => '⚠️ Incidencia reportada en entrega',
-            'body'    => "Hola {nombre},\n\nRegistramos la incidencia que reportaste sobre tu moto {modelo}:\n{mensaje}\n\nNuestro equipo te contactará en menos de 24h.",
-            'sms'     => 'Voltika: Recibimos tu reporte de incidencia. Te contactaremos pronto.',
-        ],
+        // Delivery / cobranza rich templates (punto_asignado, otp_entrega,
+        // acta_firmada, entrega_completada, recepcion_incidencia, and the
+        // 6 cobranza messages) are defined at the top of this function via
+        // voltikaBuild*Template() — no stubs here.
 
-        // ═══════════════════════════════════════════════════════════════════
-        // WEEKLY PAYMENT COLLECTION (plazos_voltika only)
-        // ═══════════════════════════════════════════════════════════════════
-
-        // MSG A — Payment reminder (2 days before due)
-        'recordatorio_pago_2dias' => [
-            'subject' => '⏰ Recordatorio de pago — Voltika',
-            'body'    => "Hola {nombre} 👋\n\nTu pago semanal VOLTIKA vence en 2 días.\n\nPaga fácil y rápido:\n\n🏪 Efectivo en cualquier OXXO\n🏦 Transferencia bancaria (SPEI)\n👉 {payment_link}\n\n💡 Si no pagas antes del vencimiento se intentará el cargo automático a tu tarjeta.\n\nEl pago no se duplica — el sistema lo detecta automáticamente.\n\n⏱️ OXXO y transferencia se acreditan en hasta 24 horas.",
-            'sms'     => 'Voltika: Tu pago semanal vence en 2 dias. Paga en OXXO o SPEI: {payment_link}',
-        ],
-
-        // MSG B — Payment due today
-        'pago_vence_hoy' => [
-            'subject' => '⏰ Tu pago vence hoy — Voltika',
-            'body'    => "Hola {nombre} 👋\n\nHoy vence tu pago semanal VOLTIKA.\n\nPaga ahora en segundos:\n\n🏪 Efectivo en cualquier OXXO\n🏦 Transferencia bancaria (SPEI)\n👉 {payment_link}\n\n💡 Si no se recibe pago hoy se intentará el cargo automático a tu tarjeta registrada.\n\nEl pago no se duplica — el sistema lo detecta automáticamente.\n\n⏱️ OXXO y transferencia se acreditan en hasta 24 horas.",
-            'sms'     => 'Voltika: Hoy vence tu pago semanal. Paga en OXXO o SPEI: {payment_link}',
-        ],
-
-        // MSG C — First overdue (48 hours)
-        'pago_vencido_48h' => [
-            'subject' => '⚠️ Pago pendiente — Voltika',
-            'body'    => "Hola {nombre} 👋\n\nTu pago semanal VOLTIKA aún no ha sido procesado.\n\nSi pagaste en OXXO o transferencia en las últimas 24 horas ignora este mensaje — tu pago está en proceso de acreditación.\n\nSi aún no has pagado, hazlo hoy para evitar cargos por atraso:\n\n🏪 Efectivo en cualquier OXXO\n🏦 Transferencia bancaria (SPEI)\n👉 {payment_link}\n\nTu estado actualizado:\n👉 voltika.mx/clientes/",
-            'sms'     => 'Voltika: Tu pago semanal aun no se procesa. Si ya pagaste en OXXO/SPEI, espera acreditacion. Si no: {payment_link}',
-        ],
-
-        // MSG D — Critical overdue (96 hours)
-        'pago_vencido_96h' => [
-            'subject' => '🔴 Pago vencido — Voltika',
-            'body'    => "{nombre}, tu cuenta VOLTIKA tiene un pago vencido.\n\nTu saldo incluye cargos por atraso acumulados.\n\nRegulariza hoy para detener los cargos:\n\n🏪 Efectivo en cualquier OXXO\n🏦 Transferencia bancaria (SPEI)\n👉 {payment_link}\n\nEl pago no se duplica — el sistema lo detecta automáticamente.\n\nTu saldo actualizado:\n👉 voltika.mx/clientes/\n\nPara aclaración: atencion@voltika.mx",
-            'sms'     => 'Voltika: Tu cuenta tiene un pago vencido con cargos. Regulariza hoy: {payment_link} o contacta atencion@voltika.mx',
-        ],
-
-        // MSG E — Advance payment incentive
-        'incentivo_adelanto' => [
-            'subject' => '💡 Adelanta pagos sin cargo extra — Voltika',
-            'body'    => "Hola {nombre} 👋\n\n¿Sabías que puedes adelantar pagos de tu VOLTIKA sin ningún cargo extra?\n\nCada pago que adelantas:\n✅ Reduce tu saldo pendiente\n✅ Acerca tu liquidación total\n✅ Sin ningún costo adicional\n\nAdelanta cuando quieras:\n\n🏪 Efectivo en cualquier OXXO\n🏦 Transferencia bancaria (SPEI)\n👉 {payment_link}\n\n⏱️ OXXO y transferencia se acreditan en hasta 24 horas.\n\nTu saldo actualizado:\n👉 voltika.mx/clientes/",
-            'sms'     => 'Voltika: Adelanta pagos sin cargo extra. Reduce tu saldo: {payment_link}. Info en voltika.mx/clientes/',
-        ],
-
-        // ── Legacy payment templates (kept for backward compat) ─────────
-        'pago_recibido' => [
-            'subject' => '✅ Pago recibido — Voltika',
-            'body'    => "Hola {nombre},\n\nRecibimos tu pago de \${monto} correctamente.\nSemana {semana} cubierta. Próximo pago: {proximo_pago}.\n\n¡Gracias!",
-            'sms'     => 'Voltika: Pago de \${monto} recibido. Proximo pago: {proximo_pago}. Gracias!',
-        ],
+        // ── Legacy payment templates (distinct keys, still referenced by
+        // older callers — no rich override exists for these) ──────────────
         'pago_vencido' => [
             'subject' => '⚠️ Pago vencido — Voltika',
             'body'    => "Hola {nombre},\n\nTu pago semanal de \${monto} está vencido.\nRegulariza en voltika.mx/clientes para evitar afectar tu historial crediticio.",
