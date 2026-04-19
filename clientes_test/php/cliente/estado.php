@@ -5,9 +5,17 @@ $cid = portalRequireAuth();
 $pdo = getDB();
 
 // ── Load cliente info ─────────────────────────────────────────────
+// Probe columns — apellido_paterno doesn't exist on every deployment.
+// Without this guard the SELECT throws and $cliente stays empty, which then
+// breaks the contado/msi lookup downstream (telefono/email come back blank).
 $cliente = [];
 try {
-    $stmt = $pdo->prepare("SELECT nombre, apellido_paterno, email, telefono FROM clientes WHERE id = ?");
+    $colsClient = $pdo->query("SHOW COLUMNS FROM clientes")->fetchAll(PDO::FETCH_COLUMN);
+    $colsClientSet = array_flip($colsClient);
+    $sel = ['nombre', 'email', 'telefono'];
+    if (isset($colsClientSet['apellido_paterno']))  $sel[] = 'apellido_paterno';
+    if (isset($colsClientSet['apellido_materno']))  $sel[] = 'apellido_materno';
+    $stmt = $pdo->prepare("SELECT " . implode(',', $sel) . " FROM clientes WHERE id = ?");
     $stmt->execute([$cid]);
     $cliente = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $e) { error_log('cliente/estado clientes: ' . $e->getMessage()); }
@@ -49,7 +57,11 @@ if (empty($cliente['nombre'])) {
     }
 }
 
-$nombre = trim(($cliente['nombre'] ?? '') . ' ' . ($cliente['apellido_paterno'] ?? ''));
+$nombre = trim(implode(' ', array_filter([
+    $cliente['nombre'] ?? '',
+    $cliente['apellido_paterno'] ?? '',
+    $cliente['apellido_materno'] ?? '',
+], 'strlen')));
 
 // ── Optional scope: a specific purchase selected in "Mis compras" ──
 // When the client has multiple purchases, the UI sends compra_tipo + compra_id
@@ -311,16 +323,66 @@ if ($tipoPortal === 'credito') {
         'restantes' => max(0, $info['total_ciclos'] - $info['ciclos_pagados']),
     ];
 } else {
-    // Contado / MSI
+    // Contado / MSI / SPEI / OXXO — single-payment portal home (customer
+    // brief 2026-04-19). Surface enough fields so the home can render the
+    // "Resumen de pago" card without a second API call.
     $response['state'] = 'compra_confirmada';
+
+    // Friendly method label + last4 if Stripe gave us a card.
+    $tpagoRaw = strtolower($compra['tpago'] ?? 'contado');
+    $metodoLabel = 'Pagado';
+    $metodoLast4 = null;
+    if (in_array($tpagoRaw, ['contado','msi'], true)) {
+        $metodoLabel = 'Tarjeta';
+        // Try to fetch last4 from Stripe via stripe_pi (best-effort)
+        if (!empty($compra['stripe_pi']) && defined('STRIPE_SECRET_KEY') && STRIPE_SECRET_KEY) {
+            try {
+                $ch = curl_init('https://api.stripe.com/v1/payment_intents/' . urlencode($compra['stripe_pi']) . '?expand[]=payment_method');
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . STRIPE_SECRET_KEY],
+                    CURLOPT_TIMEOUT        => 8,
+                ]);
+                $piResp = curl_exec($ch);
+                curl_close($ch);
+                $pi = json_decode((string)$piResp, true) ?: [];
+                $card = $pi['payment_method']['card'] ?? null;
+                if ($card) {
+                    $metodoLast4 = $card['last4'] ?? null;
+                    $brand = ucfirst($card['brand'] ?? 'Tarjeta');
+                    $metodoLabel = $brand;
+                }
+            } catch (Throwable $e) { error_log('estado contado pi fetch: ' . $e->getMessage()); }
+        }
+    } elseif ($tpagoRaw === 'oxxo') {
+        $metodoLabel = 'OXXO';
+    } elseif ($tpagoRaw === 'spei') {
+        $metodoLabel = 'SPEI';
+    }
+
+    // Resolve short folio (VK-YYMM-NNNN) — falls back to legacy long pedido.
+    $pedidoCorto = $compra['pedido_corto'] ?? null;
+    if (!$pedidoCorto && function_exists('voltikaResolvePedidoCorto') && !empty($compra['id'])) {
+        try { $pedidoCorto = voltikaResolvePedidoCorto($pdo, (int)$compra['id']); } catch (Throwable $e) {}
+    }
+    if (!$pedidoCorto && !empty($compra['pedido'])) $pedidoCorto = 'VK-' . $compra['pedido'];
+
     $response['compra'] = [
-        'pedido'    => $compra['pedido'] ?? null,
-        'modelo'    => $compra['modelo'] ?? null,
-        'color'     => $compra['color'] ?? null,
-        'total'     => (float)($compra['total'] ?? 0),
-        'tpago'     => $compra['tpago'] ?? 'contado',
-        'msi_meses' => $compra['msi_meses'] ? (int)$compra['msi_meses'] : null,
-        'fecha'     => $compra['freg'] ?? null,
+        'pedido'         => $compra['pedido'] ?? null,
+        'pedido_corto'   => $pedidoCorto,
+        'modelo'         => $compra['modelo'] ?? null,
+        'color'          => $compra['color'] ?? null,
+        'total'          => (float)($compra['total'] ?? 0),
+        'tpago'          => $compra['tpago'] ?? 'contado',
+        'msi_meses'      => $compra['msi_meses'] ? (int)$compra['msi_meses'] : null,
+        'fecha'          => $compra['freg'] ?? null,
+        'metodo_label'   => $metodoLabel,
+        'metodo_last4'   => $metodoLast4,
+        'pago_estado'    => $compra['pago_estado'] ?? null,
+        // Factura is "available" once the moto has been delivered (real-world
+        // CFDI is invoiced after handover). The Documents tab will gate the
+        // actual download regardless of this flag.
+        'factura_disponible' => isset($entrega['etiqueta']) && $entrega['etiqueta'] === 'listo',
     ];
     $response['entrega'] = $entrega;
 }

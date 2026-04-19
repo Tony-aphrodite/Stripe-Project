@@ -3,13 +3,30 @@
  * Voltika Portal - Access Recovery (6-step flow)
  * Single endpoint, dispatches on ?step=N
  *  1 = email submit → send email OTP
- *  2 = verify email OTP
+ *  2 = verify email OTP (+ optional new phone capture)
  *  3 = verify apellido paterno
  *  4 = verify fecha nacimiento
- *  5 = submit new phone → send SMS OTP
+ *  5 = submit new phone → send SMS OTP (auto-skipped if phone captured at step 2)
  *  6 = verify new phone OTP → update
  */
 require_once __DIR__ . '/../bootstrap.php';
+
+// Convert any PHP fatal/warning into a JSON error response so the client
+// always gets a parseable body (avoids generic "Error" toast on the front).
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) return false;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(['ok' => false, 'error' => 'Error interno: ' . $err['message']]);
+    }
+});
 
 $step = intval($_GET['step'] ?? ($_POST['step'] ?? 0));
 $in = portalJsonIn();
@@ -38,14 +55,19 @@ case 1: // email → send email OTP
         'stage' => 1,
     ];
     $body = "<p>Hola,</p><p>Tu código de recuperación de Voltika es:</p><h2>{$codigo}</h2><p>Válido por 10 minutos.</p>";
-    $sent = sendMail($email, '', 'Tu código de recuperación Voltika', $body);
+    $sent = false;
+    try {
+        $sent = function_exists('sendMail') ? sendMail($email, '', 'Tu código de recuperación Voltika', $body) : false;
+    } catch (Throwable $e) {
+        error_log('recovery sendMail: ' . $e->getMessage());
+    }
     recoveryLog('email_sent', ['email' => $email, 'cliente_id' => (int)$cliente['id'], 'success' => $sent ? 1 : 0]);
     $out = ['status' => 'sent'];
-    if (!$sent) $out['testCode'] = $codigo;
+    if (!$sent) $out['testCode'] = $codigo;  // fallback so flow continues
     portalJsonOut($out);
     break;
 
-case 2: // verify email OTP
+case 2: // verify email OTP — also accepts an optional new phone number
     if (empty($rec) || ($rec['stage'] ?? 0) < 1) portalJsonOut(['error' => 'Flujo inválido'], 400);
     $cod = preg_replace('/\D/', '', $in['codigo'] ?? '');
     if (time() > ($rec['email_otp_exp'] ?? 0)) portalJsonOut(['error' => 'Código expirado'], 400);
@@ -54,7 +76,17 @@ case 2: // verify email OTP
         portalJsonOut(['error' => 'Código incorrecto'], 400);
     }
     $_SESSION['portal_recovery']['stage'] = 2;
-    recoveryLog('email_otp_ok', ['email' => $rec['email'], 'cliente_id' => $rec['cliente_id'], 'success' => 1]);
+    // Optional new phone captured at step 2 (customer brief 2026-04-19) so the
+    // user doesn't re-enter it at step 5. Validates format only — actual SMS
+    // confirmation still happens at step 6.
+    $newTel = portalNormPhone($in['telefono'] ?? '');
+    if ($newTel && strlen($newTel) >= 10) {
+        $_SESSION['portal_recovery']['new_phone_pending'] = $newTel;
+    }
+    recoveryLog('email_otp_ok', [
+        'email' => $rec['email'], 'cliente_id' => $rec['cliente_id'],
+        'success' => 1, 'phone_captured' => $newTel ? 1 : 0,
+    ]);
     portalJsonOut(['status' => 'ok']);
     break;
 
@@ -92,7 +124,9 @@ case 4: // verify fecha nacimiento
 
 case 5: // new phone → SMS OTP
     if (empty($rec) || ($rec['stage'] ?? 0) < 4) portalJsonOut(['error' => 'Flujo inválido'], 400);
-    $tel = portalNormPhone($in['telefono'] ?? '');
+    // Use the phone captured at step 2 if present; otherwise fall back to the
+    // standalone input from this step (legacy path).
+    $tel = portalNormPhone($in['telefono'] ?? ($rec['new_phone_pending'] ?? ''));
     if (strlen($tel) < 10) portalJsonOut(['error' => 'Teléfono inválido'], 400);
     $codigo = portalGenOTP();
     $_SESSION['portal_recovery']['new_phone'] = $tel;

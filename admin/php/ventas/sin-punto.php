@@ -22,7 +22,7 @@ try {
     //   (d) No shipment exists yet for that moto (en envios table).
     //   (e) Newest first.
     $stmt = $pdo->query("
-        SELECT t.id, t.pedido, t.nombre, t.email, t.telefono,
+        SELECT t.id, t.pedido, t.pedido_corto, t.nombre, t.email, t.telefono,
                t.modelo, t.color, t.tpago, t.total, t.stripe_pi, t.freg,
                t.punto_id, t.punto_nombre, t.pago_estado,
                m.id         AS moto_id,
@@ -57,6 +57,7 @@ try {
         $rows[] = [
             'id'            => (int)$r['id'],
             'pedido'        => $r['pedido'],
+            'pedido_corto'  => $r['pedido_corto'] ?? null,
             'nombre'        => $r['nombre'],
             'email'         => $r['email'],
             'telefono'      => $r['telefono'],

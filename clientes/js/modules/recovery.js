@@ -15,8 +15,22 @@ window.VK_recovery = (function(){
   }
   function call(step, data, cb){
     return VKApp.api('auth/recovery.php?step='+step, data).done(function(r){
-      if(r.ok) cb(r); else VKApp.toast(r.error||'Error');
-    }).fail(function(x){ VKApp.toast((x.responseJSON&&x.responseJSON.error)||'Error'); });
+      // Backend uses {status:'sent'|'ok'} as success marker — accept either
+      // that or the more conventional {ok:true}. Treat any other shape as a
+      // structured error so the toast tells the user something useful.
+      if (r && (r.ok || r.status === 'sent' || r.status === 'ok')) {
+        cb(r);
+      } else if (r && r.error) {
+        VKApp.toast(r.error);
+      } else {
+        VKApp.toast('Respuesta inesperada del servidor');
+      }
+    }).fail(function(x){
+      var msg = 'Error';
+      if (x.responseJSON && x.responseJSON.error) msg = x.responseJSON.error;
+      else if (x.responseText) msg = 'HTTP ' + (x.status||'?') + ': ' + x.responseText.substring(0, 200);
+      VKApp.toast(msg);
+    });
   }
   function render(){ ctx={}; step1(); }
   function step1(){
@@ -33,12 +47,35 @@ window.VK_recovery = (function(){
   }
   function step2(testCode){
     wrap('Código por email','2 de 6 — Revisa tu correo',
+      // Green confirmation banner — customer brief 2026-04-19
+      '<div style="background:#ecfdf5;border-left:4px solid #22c55e;color:#0e8f55;'+
+        'padding:10px 12px;border-radius:6px;font-size:13px;font-weight:600;margin:0 0 12px;">'+
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><polyline points="20 6 9 17 4 12"/></svg>'+
+        'Confirmación enviada a tu correo registrado!'+
+      '</div>'+
       '<label class="vk-label">Código de 6 dígitos</label>'+
       '<input id="rCode" class="vk-input" inputmode="numeric" maxlength="6">'+
-      (testCode?'<div class="vk-banner warn">Código de prueba: <b>'+testCode+'</b></div>':'')+
-      '<button id="rNext" class="vk-btn primary">Verificar</button>');
+      (testCode?'<div class="vk-banner warn" style="margin-top:8px;">Código de prueba: <b>'+testCode+'</b></div>':'')+
+      // Optional phone update — captures the new comms number here so the
+      // user doesn't re-enter it later. If left blank we keep the old one.
+      '<div style="margin-top:18px;padding-top:14px;border-top:1px solid #e1e8ee;">'+
+        '<label class="vk-label" style="display:block;">Nuevo número de comunicación <span style="color:#888;font-weight:400;">(opcional)</span></label>'+
+        '<input id="rNewTel" class="vk-input" inputmode="numeric" maxlength="10" placeholder="10 dígitos">'+
+        '<div class="vk-muted" style="font-size:11px;margin-top:4px;line-height:1.5;">Si tu número cambió, déjanos el nuevo aquí — recibirás futuras notificaciones por WhatsApp y SMS en este.</div>'+
+      '</div>'+
+      '<button id="rNext" class="vk-btn primary" style="margin-top:14px;">Verificar</button>');
+
+    $('#rNewTel').on('input', function(){ this.value = this.value.replace(/\D/g, ''); });
+
     $('#rNext').on('click',function(){
-      call(2,{email:ctx.email,codigo:$('#rCode').val()},function(){ step3(); });
+      var tel = $('#rNewTel').val().trim();
+      if (tel && tel.length !== 10) { VKApp.toast('Teléfono debe tener 10 dígitos'); return; }
+      var payload = { email: ctx.email, codigo: $('#rCode').val() };
+      if (tel) payload.telefono = tel;
+      call(2, payload, function(){
+        if (tel) ctx.tel = tel;  // remember for step 5 auto-skip
+        step3();
+      });
     });
   }
   function step3(){
@@ -60,6 +97,15 @@ window.VK_recovery = (function(){
     });
   }
   function step5(){
+    // If the user already entered a new phone at step 2, skip this screen and
+    // jump straight to SMS dispatch. Otherwise show the original input form.
+    if (ctx.tel) {
+      wrap('Enviando SMS','5 de 6 — Confirmando tu nuevo número',
+        '<div style="text-align:center;padding:30px 0;"><span class="vk-spin"></span></div>'+
+        '<div class="vk-muted" style="text-align:center;font-size:13px;">Enviando código a +52 '+ctx.tel.substr(0,3)+' ****'+ctx.tel.substr(-2)+'…</div>');
+      call(5, {email: ctx.email, telefono: ctx.tel}, function(r){ step6(r.testCode); });
+      return;
+    }
     wrap('Nuevo número','5 de 6 — Ingresa tu nuevo teléfono',
       '<label class="vk-label">Nuevo número (10 dígitos)</label>'+
       '<input id="rTel" class="vk-input" inputmode="numeric" maxlength="10">'+

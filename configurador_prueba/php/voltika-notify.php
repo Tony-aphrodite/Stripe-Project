@@ -53,7 +53,7 @@ function voltikaNotifyEnsureTable(): void {
 function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
     // ── Title / subject ──────────────────────────────────────────────────
     $plazos = $isCredit ? ' a plazos' : '';
-    $subject = '🎉 ¡Tu VOLTIKA está confirmada' . $plazos . '! — Pedido VK-{pedido}';
+    $subject = '🎉 ¡Tu VOLTIKA está confirmada' . $plazos . '! — Pedido {pedido_corto}';
 
     // ── "TU PUNTO DE ENTREGA" section (HTML + text) ─────────────────────
     if ($hasPunto) {
@@ -146,13 +146,13 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
                . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:26px;text-align:center;color:#fff;">'
                . '<div style="font-size:24px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
                . '<div style="font-size:17px;font-weight:700;margin-top:12px;">🎉 ¡Tu VOLTIKA está confirmada' . ($isCredit ? ' a plazos' : '') . '!</div>'
-               . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Pedido VK-{pedido}</div>'
+               . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Pedido {pedido_corto}</div>'
                . '</td></tr>'
                // Welcome
                . '<tr><td style="padding:22px 28px 6px;">'
                . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 🎉</div>'
                . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">¡Bienvenido a la familia VOLTIKA!<br>Tu <strong>{modelo}</strong> en color <strong>{color}</strong> ya está confirmada y en preparación.</p>'
-               . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong></p>'
+               . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>{pedido_corto}</strong></p>'
                . '</td></tr>'
                // Punto
                . '<tr><td style="padding:10px 28px;">'
@@ -231,7 +231,7 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
 
     $body = "🎉 ¡{nombre}, bienvenido a la\nfamilia VOLTIKA!\n\n"
           . "Tu {modelo} {color} está confirmada\ny en preparación ✅\n"
-          . "Pedido: VK-{pedido}\n\n"
+          . "Pedido: {pedido_corto}\n\n"
           . $waPunto . "\n\n"
           . "🔄 Lo que sigue:\n"
           . rtrim($waPasosText, "\n") . "\n\n"
@@ -245,7 +245,7 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
           . "¿Dudas? 📧 ventas@voltika.mx";
 
     // SMS (very short)
-    $sms = 'VOLTIKA: {nombre}, tu {modelo} {color} está confirmada. Pedido VK-{pedido}. '
+    $sms = 'VOLTIKA: {nombre}, tu {modelo} {color} está confirmada. Pedido {pedido_corto}. '
          . ($hasPunto ? 'Punto: {punto} — {ciudad}.' : 'Asignaremos tu punto en 48h.')
          . ' Portal: voltika.mx/mi-cuenta';
 
@@ -268,7 +268,7 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
  * Customer brief 2026-04-19.
  */
 function voltikaBuildPortalTemplate(bool $isCredit): array {
-    $subject = '🔐 Ya tienes acceso a tu portal VOLTIKA — Pedido VK-{pedido}';
+    $subject = '🔐 Ya tienes acceso a tu portal VOLTIKA — Pedido {pedido_corto}';
 
     // Portal bullets (HTML + WhatsApp text)
     $items = [];
@@ -323,7 +323,7 @@ function voltikaBuildPortalTemplate(bool $isCredit): array {
                . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:26px;text-align:center;color:#fff;">'
                . '<div style="font-size:24px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
                . '<div style="font-size:17px;font-weight:700;margin-top:12px;">🔐 Tu portal ya está activo</div>'
-               . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Pedido VK-{pedido}</div>'
+               . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Pedido {pedido_corto}</div>'
                . '</td></tr>'
                . '<tr><td style="padding:22px 28px 6px;">'
                . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
@@ -417,6 +417,61 @@ function voltikaBuildMapsLink(string $direccion = '', string $ciudad = '', ?floa
     return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($q);
 }
 
+/**
+ * Resolve / generate the short customer-facing order code VK-YYMM-NNNN.
+ *
+ *   - If the row already has pedido_corto, return it.
+ *   - Otherwise compute next counter for current YYMM + write it back.
+ *   - Idempotent: safe to call repeatedly on the same transaccion_id.
+ *
+ * Runs with the existing PDO (passed in) so triggers can reuse their handle
+ * instead of opening a new one.
+ */
+function voltikaResolvePedidoCorto(PDO $pdo, int $transaccionId): string {
+    if (!$transaccionId) return '';
+
+    // Fast path — already stamped?
+    $q = $pdo->prepare("SELECT pedido_corto, freg FROM transacciones WHERE id=?");
+    $q->execute([$transaccionId]);
+    $row = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return '';
+    if (!empty($row['pedido_corto'])) return $row['pedido_corto'];
+
+    // Ensure the column exists (lazy migration for databases that never ran
+    // the one-shot migration script).
+    try {
+        $pdo->exec("ALTER TABLE transacciones ADD COLUMN IF NOT EXISTS pedido_corto VARCHAR(20) NULL");
+        $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX IF NOT EXISTS idx_pedido_corto (pedido_corto)");
+    } catch (Throwable $e) {
+        // Older MySQL lacks IF NOT EXISTS on ADD COLUMN; absorb and continue.
+    }
+
+    // Compute next counter for current YYMM
+    try {
+        $dt = new DateTime($row['freg'] ?? 'now');
+    } catch (Throwable $e) {
+        $dt = new DateTime();
+    }
+    $yymm = $dt->format('ym');
+
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        $cnt = $pdo->prepare("SELECT MAX(CAST(SUBSTRING_INDEX(pedido_corto, '-', -1) AS UNSIGNED))
+                                FROM transacciones
+                               WHERE pedido_corto LIKE ?");
+        $cnt->execute(["VK-$yymm-%"]);
+        $next = ((int)$cnt->fetchColumn()) + 1 + $attempt;
+        $short = sprintf('VK-%s-%04d', $yymm, $next);
+        try {
+            $pdo->prepare("UPDATE transacciones SET pedido_corto=? WHERE id=?")
+               ->execute([$short, $transaccionId]);
+            return $short;
+        } catch (Throwable $e) {
+            // UNIQUE collision (two concurrent writes) — retry with next index.
+        }
+    }
+    return '';
+}
+
 function voltikaFormatFechaHuman(?string $iso): string {
     if (!$iso) return '';
     try {
@@ -452,12 +507,12 @@ function voltikaLogisticsEmailShell(string $hero, string $heroSub, string $inner
 
 // ── A) PUNTO ASIGNADO ───────────────────────────────────────────────────────
 function voltikaBuildPuntoAsignadoTemplate(): array {
-    $subject = '🎉 ¡Todo listo! Tu VOLTIKA ya tiene punto de entrega — Pedido VK-{pedido}';
+    $subject = '🎉 ¡Todo listo! Tu VOLTIKA ya tiene punto de entrega — Pedido {pedido_corto}';
 
     $rows = '<tr><td style="padding:22px 28px 6px;">'
           . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
           . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Tenemos buenas noticias — tu moto ya tiene <strong>punto de entrega confirmado</strong> y fecha estimada. Todo marcha perfecto.</p>'
-          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
+          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>{pedido_corto}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
           . '</td></tr>'
           // Punto box
           . '<tr><td style="padding:10px 28px;">'
@@ -493,13 +548,13 @@ function voltikaBuildPuntoAsignadoTemplate(): array {
 
     $emailHtml = voltikaLogisticsEmailShell(
         '🎉 ¡Tu punto de entrega está listo!',
-        'Pedido VK-{pedido}',
+        'Pedido {pedido_corto}',
         $rows
     );
 
     $body = "🎉 ¡Buenas noticias, {nombre}!\n\n"
           . "Tu {modelo} en color {color} ya tiene\ntodo listo para llegar a ti ⚡\n"
-          . "Pedido: VK-{pedido}\n\n"
+          . "Pedido: {pedido_corto}\n\n"
           . "📍 Tu punto de entrega:\n🏪 {punto}\n📬 {direccion_punto}\n🗺️ {link_maps}\n🕐 Lunes a Sábado 9:00 - 18:00 hrs\n\n"
           . "📅 Fecha estimada de entrega:\nAntes del {fecha_estimada}\n\n"
           . "Desde aquí no tienes que hacer\nnada — nosotros te avisamos\nen cada paso por aquí mismo.\n\n"
@@ -515,12 +570,12 @@ function voltikaBuildPuntoAsignadoTemplate(): array {
 
 // ── B) MOTO ENVIADA ─────────────────────────────────────────────────────────
 function voltikaBuildMotoEnviadaTemplate(): array {
-    $subject = '🚚 ¡Tu VOLTIKA ya está en camino! — Pedido VK-{pedido}';
+    $subject = '🚚 ¡Tu VOLTIKA ya está en camino! — Pedido {pedido_corto}';
 
     $rows = '<tr><td style="padding:22px 28px 6px;">'
           . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
           . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">¡Momento emocionante — tu moto ya salió de nuestras instalaciones y está en camino hacia ti!</p>'
-          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
+          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>{pedido_corto}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
           . '</td></tr>'
           // Destino
           . '<tr><td style="padding:10px 28px;">'
@@ -556,13 +611,13 @@ function voltikaBuildMotoEnviadaTemplate(): array {
 
     $emailHtml = voltikaLogisticsEmailShell(
         '🚚 ¡Tu moto ya está en camino!',
-        'Pedido VK-{pedido}',
+        'Pedido {pedido_corto}',
         $rows
     );
 
     $body = "🚚 ¡{nombre}, tu moto ya salió\ny está en camino hacia ti!\n\n"
           . "Tu {modelo} en color {color}\nya está en ruta ⚡\n"
-          . "Pedido: VK-{pedido}\n\n"
+          . "Pedido: {pedido_corto}\n\n"
           . "📍 Va directo a tu punto:\n🏪 {punto} — {ciudad}\n\n"
           . "📅 Llegada estimada al punto:\n{fecha_llegada_punto}\n\n"
           . "Si por alguna razón la fecha cambia\nte avisamos de inmediato —\nsiempre sabrás dónde está tu moto.\n\n"
@@ -578,12 +633,12 @@ function voltikaBuildMotoEnviadaTemplate(): array {
 
 // ── C) MOTO RECIBIDA EN EL PUNTO ────────────────────────────────────────────
 function voltikaBuildMotoRecibidaTemplate(): array {
-    $subject = '🔧 ¡Tu VOLTIKA llegó al punto y está en preparación! — Pedido VK-{pedido}';
+    $subject = '🔧 ¡Tu VOLTIKA llegó al punto y está en preparación! — Pedido {pedido_corto}';
 
     $rows = '<tr><td style="padding:22px 28px 6px;">'
           . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
           . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">¡Muy buenas noticias — tu moto llegó a tu punto de entrega y ya está en manos de nuestro equipo!</p>'
-          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
+          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>{pedido_corto}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
           . '</td></tr>'
           // Punto
           . '<tr><td style="padding:10px 28px;">'
@@ -617,12 +672,12 @@ function voltikaBuildMotoRecibidaTemplate(): array {
 
     $emailHtml = voltikaLogisticsEmailShell(
         '🔧 ¡Tu moto llegó y está en preparación!',
-        'Pedido VK-{pedido}',
+        'Pedido {pedido_corto}',
         $rows
     );
 
     $body = "🔧 ¡{nombre}, tu moto llegó\nal punto y ya está en manos\nde nuestro equipo!\n\n"
-          . "🏍️ {modelo} · {color}\nPedido: VK-{pedido}\n\n"
+          . "🏍️ {modelo} · {color}\nPedido: {pedido_corto}\n\n"
           . "📍 {punto} — {ciudad}\n\n"
           . "Ahora mismo están trabajando\npara que todo esté perfecto para ti:\n\n"
           . "⚙️ Ensamble completo\n🔍 Verificación de cada sistema\n⚡ Activación y configuración\n✅ Checklist completo de entrega\n\n"
@@ -639,12 +694,12 @@ function voltikaBuildMotoRecibidaTemplate(): array {
 
 // ── D) MOTO LISTA PARA ENTREGA ──────────────────────────────────────────────
 function voltikaBuildMotoListaEntregaTemplate(): array {
-    $subject = '✅ ¡Tu VOLTIKA está lista! Descarga tu permiso en 24 hrs — Pedido VK-{pedido}';
+    $subject = '✅ ¡Tu VOLTIKA está lista! Descarga tu permiso en 24 hrs — Pedido {pedido_corto}';
 
     $rows = '<tr><td style="padding:22px 28px 6px;">'
           . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 🎉</div>'
           . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">¡El momento llegó — tu moto pasó todas las revisiones y está perfecta para ti desde el primer kilómetro!</p>'
-          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
+          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>{pedido_corto}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
           . '</td></tr>'
           // Permiso notice
           . '<tr><td style="padding:12px 28px;">'
@@ -718,12 +773,12 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
 
     $emailHtml = voltikaLogisticsEmailShell(
         '✅ ¡Tu VOLTIKA está lista!',
-        'Pedido VK-{pedido}',
+        'Pedido {pedido_corto}',
         $rows
     );
 
     $body = "✅ ¡{nombre}, tu moto está lista\ny te espera! 🎉\n\n"
-          . "Tu {modelo} · {color}\nPedido: VK-{pedido}\n\n"
+          . "Tu {modelo} · {color}\nPedido: {pedido_corto}\n\n"
           . "━━━━━━━━━━━━━━━━━━━━\n\n"
           . "⚠️ ACCIÓN REQUERIDA HOY\n\n"
           . "Tu permiso temporal para circular\nya fue emitido por la autoridad\nde transporte — tienes 30 días\ndesde hoy para tramitar tus placas.\n\n"
@@ -770,11 +825,11 @@ function voltikaBuildOtpEntregaTemplate(): array {
 
 // ── Acta firmada — entrega completada ───────────────────────────────────────
 function voltikaBuildActaFirmadaTemplate(): array {
-    $subject = '✅ Acta de Entrega firmada — Tu VOLTIKA es oficialmente tuya — Pedido VK-{pedido}';
+    $subject = '✅ Acta de Entrega firmada — Tu VOLTIKA es oficialmente tuya — Pedido {pedido_corto}';
     $rows = '<tr><td style="padding:22px 28px 6px;">'
           . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 🎉</div>'
           . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">¡Tu moto es oficialmente tuya desde este momento!</p>'
-          . '<p style="font-size:13px;color:#333;margin:10px 0 0;">Has firmado el Acta de Entrega de tu <strong>{modelo}</strong> · {color}<br>Pedido: <strong>VK-{pedido}</strong><br>Fecha y hora de entrega: <strong>{fecha_entrega}</strong></p>'
+          . '<p style="font-size:13px;color:#333;margin:10px 0 0;">Has firmado el Acta de Entrega de tu <strong>{modelo}</strong> · {color}<br>Pedido: <strong>{pedido_corto}</strong><br>Fecha y hora de entrega: <strong>{fecha_entrega}</strong></p>'
           . '</td></tr>'
           . '<tr><td style="padding:14px 28px;">'
           . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📋 Resumen de tu entrega</div>'
@@ -806,10 +861,10 @@ function voltikaBuildActaFirmadaTemplate(): array {
           . '✅ Ver toda la información de tu moto'
           . '</div></td></tr>'
           . '<tr><td style="padding:12px 28px 0;"><p style="font-size:13.5px;color:#1a3a5c;margin:0;font-weight:700;">¡Bienvenido a la familia VOLTIKA! Disfruta tu moto y la libertad de la movilidad eléctrica ⚡</p></td></tr>';
-    $emailHtml = voltikaLogisticsEmailShell('✅ Acta de Entrega firmada', 'Pedido VK-{pedido}', $rows);
+    $emailHtml = voltikaLogisticsEmailShell('✅ Acta de Entrega firmada', 'Pedido {pedido_corto}', $rows);
 
     $body = "✅ ¡{nombre}, tu moto es oficialmente\ntuya desde este momento! 🎉\n\n"
-          . "Has firmado el Acta de Entrega\nde tu {modelo} · {color}\nPedido: VK-{pedido}\n\n"
+          . "Has firmado el Acta de Entrega\nde tu {modelo} · {color}\nPedido: {pedido_corto}\n\n"
           . "📋 Este documento confirma que:\n"
           . "✓ Recibiste tu moto en perfectas\n  condiciones\n"
           . "✓ Verificaste su funcionamiento\n"
@@ -828,11 +883,11 @@ function voltikaBuildActaFirmadaTemplate(): array {
 
 // ── Incidencia al entregar ──────────────────────────────────────────────────
 function voltikaBuildIncidenciaTemplate(): array {
-    $subject = '⚠️ Recibimos tu reporte — Te contactamos en 24 hrs — Pedido VK-{pedido}';
+    $subject = '⚠️ Recibimos tu reporte — Te contactamos en 24 hrs — Pedido {pedido_corto}';
     $rows = '<tr><td style="padding:22px 28px 6px;">'
           . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
           . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Recibimos tu reporte y lo registramos en nuestro sistema. Entendemos que esto puede ser frustrante y queremos que sepas que ya estamos en ello.</p>'
-          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
+          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>{pedido_corto}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
           . '</td></tr>'
           . '<tr><td style="padding:14px 28px;">'
           . '<div style="font-size:13px;font-weight:700;color:#b45309;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📋 Lo que nos reportaste</div>'
@@ -850,7 +905,7 @@ function voltikaBuildIncidenciaTemplate(): array {
           . '</td></tr>';
     $emailHtml = voltikaLogisticsEmailShell('⚠️ Reporte recibido', 'Caso {numero_caso}', $rows);
 
-    $body = "⚠️ Hola {nombre}, recibimos tu\nreporte sobre tu {modelo} · {color}\nPedido: VK-{pedido}\n\n"
+    $body = "⚠️ Hola {nombre}, recibimos tu\nreporte sobre tu {modelo} · {color}\nPedido: {pedido_corto}\n\n"
           . "📋 Lo que nos reportaste:\n\"{mensaje}\"\n\n"
           . "Tu reporte quedó registrado en\nnuestro sistema con fecha y hora.\nNúmero de caso: {numero_caso}\n\nNuestro equipo de soporte lo está\nrevisando ahora mismo.\n\n"
           . "Te contactaremos en menos de 24 hrs\npara darte seguimiento y solución.\n\n"
@@ -879,7 +934,7 @@ function voltikaBuildCobranzaEmailHtml(string $hero, string $heroSub, string $in
 
 // ── M1: recordatorio 2 días antes ───────────────────────────────────────────
 function voltikaBuildRecordatorio2diasTemplate(): array {
-    $subject = '⏰ Tu pago de ${monto_semanal} vence en 2 días — Pedido VK-{pedido}';
+    $subject = '⏰ Tu pago de ${monto_semanal} vence en 2 días — Pedido {pedido_corto}';
     $rows = '<tr><td style="padding:22px 28px 6px;">'
           . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
           . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Tu pago semanal de <strong>${monto_semanal}</strong> vence el <strong>{fecha_vencimiento}</strong>.</p>'
@@ -892,7 +947,7 @@ function voltikaBuildRecordatorio2diasTemplate(): array {
           . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">💡 ¿Tienes tarjeta registrada?</div>'
           . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">Tu tarjeta actúa como respaldo automático el día del vencimiento si no detectamos otro pago antes. Pagar por OXXO o SPEI hoy es la mejor opción.</p>'
           . '</td></tr>';
-    $emailHtml = voltikaBuildCobranzaEmailHtml('⏰ Tu pago vence en 2 días', 'Pedido VK-{pedido} · ${monto_semanal}', $rows);
+    $emailHtml = voltikaBuildCobranzaEmailHtml('⏰ Tu pago vence en 2 días', 'Pedido {pedido_corto} · ${monto_semanal}', $rows);
 
     $body = "⏰ {nombre}, tu pago de \${monto_semanal}\nvence el {fecha_vencimiento}.\n\n"
           . "Págalo HOY — OXXO y SPEI tardan\n24 hrs en acreditarse:\n🏪 OXXO\n🏦 SPEI\n💳 👉 {payment_link}\n\n"
@@ -903,7 +958,7 @@ function voltikaBuildRecordatorio2diasTemplate(): array {
 
 // ── M2: vence hoy ───────────────────────────────────────────────────────────
 function voltikaBuildPagoVenceHoyTemplate(): array {
-    $subject = '🔔 Hoy vence tu pago de ${monto_semanal} — Pedido VK-{pedido}';
+    $subject = '🔔 Hoy vence tu pago de ${monto_semanal} — Pedido {pedido_corto}';
     $rows = '<tr><td style="padding:22px 28px 6px;">'
           . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
           . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">HOY es el último día para pagar sin cargos por atraso.<br>Tu pago semanal de <strong>${monto_semanal}</strong> vence hoy.</p>'
@@ -919,7 +974,7 @@ function voltikaBuildPagoVenceHoyTemplate(): array {
           . '<tr><td style="padding:10px 28px;">'
           . '<p style="font-size:12.5px;color:#555;background:#f5f7fa;padding:10px 12px;border-radius:6px;margin:0;">¿Ya pagaste ayer por OXXO o SPEI? Ignora este mensaje — tu pago está en proceso de acreditación.</p>'
           . '</td></tr>';
-    $emailHtml = voltikaBuildCobranzaEmailHtml('🔔 Tu pago vence HOY', 'Pedido VK-{pedido} · ${monto_semanal}', $rows);
+    $emailHtml = voltikaBuildCobranzaEmailHtml('🔔 Tu pago vence HOY', 'Pedido {pedido_corto} · ${monto_semanal}', $rows);
 
     $body = "🔔 {nombre}, HOY vence tu pago\nde \${monto_semanal}.\n\n"
           . "Si pagas por OXXO o SPEI hazlo\nde inmediato — tardan 24 hrs\nen acreditarse:\n🏪 OXXO\n🏦 SPEI\n💳 👉 {payment_link}\n\n"
@@ -931,7 +986,7 @@ function voltikaBuildPagoVenceHoyTemplate(): array {
 
 // ── M3: vencido 48h ─────────────────────────────────────────────────────────
 function voltikaBuildPagoVencido48hTemplate(): array {
-    $subject = '⚠️ Tu pago lleva 2 días vencido — Pedido VK-{pedido}';
+    $subject = '⚠️ Tu pago lleva 2 días vencido — Pedido {pedido_corto}';
     $rows = '<tr><td style="padding:22px 28px 6px;">'
           . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong>,</div>'
           . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Tu pago de <strong>${monto_semanal}</strong> lleva 2 días vencido y ya se acumulan cargos por atraso en tu cuenta.</p>'
@@ -946,7 +1001,7 @@ function voltikaBuildPagoVencido48hTemplate(): array {
           . '<tr><td style="padding:10px 28px;">'
           . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">¿Tienes algún problema con tu pago? Escríbenos hoy — podemos ayudarte:<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a></p>'
           . '</td></tr>';
-    $emailHtml = voltikaBuildCobranzaEmailHtml('⚠️ 2 días vencido', 'Pedido VK-{pedido}', $rows);
+    $emailHtml = voltikaBuildCobranzaEmailHtml('⚠️ 2 días vencido', 'Pedido {pedido_corto}', $rows);
 
     $body = "⚠️ {nombre}, tu pago de \${monto_semanal}\nlleva 2 días vencido y ya acumula\ncargos por atraso.\n\n"
           . "Regulariza hoy:\n🏪 OXXO\n🏦 SPEI\n💳 👉 {payment_link}\n\n"
@@ -1233,15 +1288,15 @@ function voltikaNotifyTemplates(): array {
         // Sent to Voltika admin when a new order requests license-plate advisory
         'admin_extras_placas' => [
             'subject' => '🎫 Nueva solicitud de placas — Pedido {pedido}',
-            'body'    => "🎫 NUEVA SOLICITUD: asesoría de placas\n\nPedido: VK-{pedido}\nCliente: {nombre}\nTel. cliente: {telefono_cliente}\nEstado MX: {estado_mx}\nCiudad: {ciudad}\nModelo: {modelo}\n\nGestioná en: voltika.mx/admin/#ventas",
-            'sms'     => 'Voltika ADMIN: Nueva solicitud placas. Pedido VK-{pedido} / {nombre} / {estado_mx}. Gestiona en admin.',
+            'body'    => "🎫 NUEVA SOLICITUD: asesoría de placas\n\nPedido: {pedido_corto}\nCliente: {nombre}\nTel. cliente: {telefono_cliente}\nEstado MX: {estado_mx}\nCiudad: {ciudad}\nModelo: {modelo}\n\nGestioná en: voltika.mx/admin/#ventas",
+            'sms'     => 'Voltika ADMIN: Nueva solicitud placas. Pedido {pedido_corto} / {nombre} / {estado_mx}. Gestiona en admin.',
         ],
 
         // Sent to Voltika admin when a new order opts in for Quálitas insurance
         'admin_extras_seguro' => [
             'subject' => '🛡 Nueva solicitud Quálitas — Pedido {pedido}',
-            'body'    => "🛡 NUEVA SOLICITUD: seguro Quálitas\n\nPedido: VK-{pedido}\nCliente: {nombre}\nTel. cliente: {telefono_cliente}\nUnidad: {modelo} · {color}\n\nCotizá y registra en: voltika.mx/admin/#ventas",
-            'sms'     => 'Voltika ADMIN: Nueva solicitud Qualitas. Pedido VK-{pedido} / {nombre} / {modelo} {color}.',
+            'body'    => "🛡 NUEVA SOLICITUD: seguro Quálitas\n\nPedido: {pedido_corto}\nCliente: {nombre}\nTel. cliente: {telefono_cliente}\nUnidad: {modelo} · {color}\n\nCotizá y registra en: voltika.mx/admin/#ventas",
+            'sms'     => 'Voltika ADMIN: Nueva solicitud Qualitas. Pedido {pedido_corto} / {nombre} / {modelo} {color}.',
         ],
 
         // ── Legacy delivery templates (kept for backward compat) ────────
@@ -1407,6 +1462,14 @@ function voltikaNotify(string $tipo, array $data): array {
     if (!isset($templates[$tipo])) {
         error_log("voltikaNotify: unknown template $tipo");
         return ['ok' => false, 'error' => 'unknown_template'];
+    }
+
+    // Ensure pedido_corto has a sensible value — templates were migrated from
+    // "VK-{pedido}" to "{pedido_corto}" (customer wants short codes). If the
+    // caller forgot to pass it, synthesise from the legacy pedido so messages
+    // never go out with a blank order number.
+    if (empty($data['pedido_corto']) && !empty($data['pedido'])) {
+        $data['pedido_corto'] = 'VK-' . $data['pedido'];
     }
 
     $tpl       = $templates[$tipo];

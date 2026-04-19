@@ -17,10 +17,15 @@ window.VK_documentos = (function(){
       desc: 'Historial completo de los pagos que has realizado.',
       size: 'PDF - 800 KB'
     },
-    pagare: {
-      icon: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>',
-      desc: 'Pagare firmado como parte de tu compra a plazos.',
-      size: 'PDF - 1.0 MB'
+    manual: {
+      icon: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>',
+      desc: 'Guia digital para el cuidado y uso correcto de tu Voltika.',
+      size: 'PDF'
+    },
+    seguro: {
+      icon: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+      desc: 'Cotizacion y poliza de seguro de tu Voltika.',
+      size: 'PDF / IMG'
     },
     carta_factura: {
       icon: '<svg viewBox="0 0 24 24" width="32" height="32" fill="none"><rect x="3" y="2" width="18" height="20" rx="2" fill="#fff3cd" stroke="#f59e0b" stroke-width="1.5"/><path d="M7 7h10M7 11h10M7 15h6" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/><circle cx="17" cy="17" r="5" fill="#22c55e"/><path d="M15 17l1.5 1.5 3-3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -81,9 +86,10 @@ window.VK_documentos = (function(){
 
   function badgeFor(doc){
     var t = doc.tipo;
-    if(t==='contrato') return doc.disponible ? '<span class="vk-doc-badge green">Firmado digitalmente</span>' : '';
-    if(t==='acta_entrega') return doc.disponible ? '<span class="vk-doc-badge green">Confirmada</span>' : '';
-    if(t==='pagare') return '<span class="vk-doc-badge yellow">Documento de tu operacion</span>';
+    if(t==='contrato')     return doc.disponible ? '<span class="vk-doc-badge green">Firmado digitalmente</span>' : '<span class="vk-doc-badge gray">Pendiente</span>';
+    if(t==='acta_entrega') return doc.disponible ? '<span class="vk-doc-badge green">Confirmada</span>'           : '<span class="vk-doc-badge gray">Pendiente</span>';
+    if(t==='manual')       return doc.disponible ? '<span class="vk-doc-badge green">Disponible</span>'           : '<span class="vk-doc-badge gray">Pendiente</span>';
+    if(t==='seguro')       return doc.disponible ? '<span class="vk-doc-badge green">Disponible</span>'           : '<span class="vk-doc-badge gray">Pendiente</span>';
     if(t==='comprobantes') return '';
     return '';
   }

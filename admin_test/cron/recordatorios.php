@@ -189,17 +189,25 @@ function sendPaymentNotification(string $tipo, array $ciclo, string $marker): bo
         ? voltikaFormatFechaHuman($ciclo['fecha_vencimiento'] ?? null)
         : ($ciclo['fecha_vencimiento'] ?? '');
 
-    // Resolve pedido number from subscripcion → transacciones (best effort).
+    // Resolve pedido + short code from subscripcion → transacciones (best effort).
     $pedido = '';
+    $pedidoCorto = '';
     if (!empty($ciclo['stripe_customer_id'])) {
         try {
-            $t = $pdo->prepare("SELECT pedido FROM transacciones
+            $t = $pdo->prepare("SELECT id, pedido FROM transacciones
                                  WHERE stripe_customer_id = ?
                                  ORDER BY id DESC LIMIT 1");
             $t->execute([$ciclo['stripe_customer_id']]);
-            $pedido = (string)($t->fetchColumn() ?: '');
+            $txRow = $t->fetch(PDO::FETCH_ASSOC);
+            if ($txRow) {
+                $pedido = (string)($txRow['pedido'] ?? '');
+                if (function_exists('voltikaResolvePedidoCorto')) {
+                    $pedidoCorto = voltikaResolvePedidoCorto($pdo, (int)$txRow['id']);
+                }
+            }
         } catch (Throwable $e) {}
     }
+    if (!$pedidoCorto && $pedido) $pedidoCorto = 'VK-' . $pedido;
 
     $result = voltikaNotify($tipo, [
         'nombre'            => $ciclo['nombre'] ?? '',
@@ -214,6 +222,7 @@ function sendPaymentNotification(string $tipo, array $ciclo, string $marker): bo
         'fecha_vencimiento' => $fechaHuman,
         'semana'            => (string)($ciclo['semana_num'] ?? ''),
         'pedido'            => $pedido,
+        'pedido_corto'      => $pedidoCorto,
         'payment_link'      => 'https://voltika.mx/mi-cuenta',
     ]);
 

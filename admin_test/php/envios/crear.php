@@ -200,10 +200,14 @@ if ($transaccionId && !empty($order)) {
                 $fechaHuman = function_exists('voltikaFormatFechaHuman')
                     ? voltikaFormatFechaHuman($fechaEstimada)
                     : (string)$fechaEstimada;
+                $pedidoCorto = function_exists('voltikaResolvePedidoCorto')
+                    ? voltikaResolvePedidoCorto($pdo, (int)($order['id'] ?? 0))
+                    : ('VK-' . ($order['pedido'] ?? ''));
                 voltikaNotify('moto_enviada', [
                     'cliente_id'           => $moto['cliente_id'] ?? null,
                     'nombre'               => $order['nombre']    ?? '',
                     'pedido'               => $order['pedido']    ?? '',
+                    'pedido_corto'         => $pedidoCorto,
                     'modelo'               => $moto['modelo']     ?? ($order['modelo'] ?? ''),
                     'color'                => $moto['color']      ?? ($order['color']  ?? ''),
                     'punto'                => $punto['nombre']    ?? '',

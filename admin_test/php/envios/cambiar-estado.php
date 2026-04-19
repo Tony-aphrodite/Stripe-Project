@@ -45,6 +45,18 @@ if ($_notifyPath) { try { require_once $_notifyPath; } catch (Throwable $e) { er
 // pedido). Reused for both moto_enviada and moto_recibida.
 $pedido = $envio['pedido_num'] ?? '';
 if ($pedido && str_starts_with($pedido, 'VK-')) $pedido = substr($pedido, 3);
+
+// Resolve the short customer-facing code from transacciones via pedido_num.
+$pedidoCorto = '';
+try {
+    $txQ = $pdo->prepare("SELECT id FROM transacciones WHERE pedido=? ORDER BY id DESC LIMIT 1");
+    $txQ->execute([$pedido]);
+    $txId = (int)($txQ->fetchColumn() ?: 0);
+    if ($txId && function_exists('voltikaResolvePedidoCorto')) {
+        $pedidoCorto = voltikaResolvePedidoCorto($pdo, $txId);
+    }
+} catch (Throwable $e) {}
+if (!$pedidoCorto) $pedidoCorto = 'VK-' . $pedido;
 $direccionPunto = trim(($envio['punto_direccion'] ?? '')
     . ($envio['punto_colonia'] ? ', ' . $envio['punto_colonia'] : '')
     . ($envio['punto_cp']      ? ' CP ' . $envio['punto_cp']   : ''));
@@ -62,6 +74,7 @@ $notifyData = [
     'cliente_id'          => $envio['cliente_id'] ?? null,
     'nombre'              => $envio['cliente_nombre'] ?? '',
     'pedido'              => $pedido,
+    'pedido_corto'        => $pedidoCorto,
     'modelo'              => $envio['modelo'] ?? '',
     'color'               => $envio['color']  ?? '',
     'punto'               => $envio['punto_nombre']  ?? '',

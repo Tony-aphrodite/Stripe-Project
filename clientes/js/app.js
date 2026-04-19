@@ -74,10 +74,13 @@ window.VKApp = (function(){
   function setupTabs(tipo){
     state.tipoPortal = tipo;
     $tabbar.find('button').hide();
-    if(tipo === 'contado' || tipo === 'msi'){
-      $tabbar.find('[data-route="inicio"],[data-route="miscompras"],[data-route="documentos"],[data-route="mivoltika"],[data-route="cuenta"],[data-route="ayuda"]').show();
+    // Customer brief 2026-04-19: contado / msi / spei / oxxo customers see
+    // the same set of tabs as credit customers EXCEPT "Pagos" (they paid in
+    // a single shot — no recurring payment list to manage).
+    if (tipo === 'contado' || tipo === 'msi' || tipo === 'spei' || tipo === 'oxxo') {
+      $tabbar.find('[data-route="inicio"],[data-route="miscompras"],[data-route="entrega"],[data-route="documentos"],[data-route="mivoltika"],[data-route="cuenta"],[data-route="ayuda"]').show();
     } else {
-      $tabbar.find('[data-route="inicio"],[data-route="miscompras"],[data-route="pagos"],[data-route="entrega"],[data-route="documentos"],[data-route="cuenta"],[data-route="ayuda"]').show();
+      $tabbar.find('[data-route="inicio"],[data-route="miscompras"],[data-route="pagos"],[data-route="entrega"],[data-route="documentos"],[data-route="mivoltika"],[data-route="cuenta"],[data-route="ayuda"]').show();
     }
   }
 
