@@ -86,10 +86,10 @@ window.VK_documentos = (function(){
 
   function badgeFor(doc){
     var t = doc.tipo;
-    if(t==='contrato')     return doc.disponible ? '<span class="vk-doc-badge green">Firmado digitalmente</span>' : '';
-    if(t==='acta_entrega') return doc.disponible ? '<span class="vk-doc-badge green">Confirmada</span>' : '';
-    if(t==='manual')       return doc.disponible ? '<span class="vk-doc-badge green">Disponible</span>' : '<span class="vk-doc-badge gray">Pendiente</span>';
-    if(t==='seguro')       return doc.disponible ? '<span class="vk-doc-badge green">Disponible</span>' : '<span class="vk-doc-badge gray">Pendiente</span>';
+    if(t==='contrato')     return doc.disponible ? '<span class="vk-doc-badge green">Firmado digitalmente</span>' : '<span class="vk-doc-badge gray">Pendiente</span>';
+    if(t==='acta_entrega') return doc.disponible ? '<span class="vk-doc-badge green">Confirmada</span>'           : '<span class="vk-doc-badge gray">Pendiente</span>';
+    if(t==='manual')       return doc.disponible ? '<span class="vk-doc-badge green">Disponible</span>'           : '<span class="vk-doc-badge gray">Pendiente</span>';
+    if(t==='seguro')       return doc.disponible ? '<span class="vk-doc-badge green">Disponible</span>'           : '<span class="vk-doc-badge gray">Pendiente</span>';
     if(t==='comprobantes') return '';
     return '';
   }

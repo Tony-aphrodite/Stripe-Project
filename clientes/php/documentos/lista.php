@@ -17,7 +17,12 @@ $alCorriente = in_array($info['state'], ['account_current','payment_due_soon','p
 
 $docs = [];
 
-// Contrato — gated to credit purchases only; scoped by subscripcion_id if provided
+// Contrato — credit only. Always present in the list so the user sees the
+// 6-doc layout consistently; disponible=true once a firmas_contratos row
+// exists (signed digitally).
+$contratoDisponible = false;
+$contratoSub = 'Pendiente de firma';
+$contratoFecha = null;
 try {
     if ($scopedSubId > 0) {
         $stmt = $pdo->prepare("SELECT id, freg FROM firmas_contratos WHERE cliente_id = ? AND subscripcion_id = ? ORDER BY id DESC LIMIT 1");
@@ -29,39 +34,65 @@ try {
         $stmt = null;
     }
     if ($stmt && $r = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $docs[] = ['tipo' => 'contrato', 'titulo' => 'Contrato de compra con facilidades de pago',
-                   'subtitulo' => 'Firmado digitalmente', 'disponible' => true, 'fecha' => $r['freg']];
+        $contratoDisponible = true;
+        $contratoSub        = 'Firmado digitalmente';
+        $contratoFecha      = $r['freg'];
     }
 } catch (Throwable $e) {}
+if (!$scopedTxnId) {
+    $docs[] = ['tipo' => 'contrato',
+               'titulo' => 'Contrato de compra con facilidades de pago',
+               'subtitulo' => $contratoSub,
+               'disponible' => $contratoDisponible,
+               'fecha' => $contratoFecha];
+}
 
-// Acta de entrega — scoped by moto if scope given
+// Acta de entrega — always shown; flips to disponible=true once an actas_entrega
+// row (or a completed checklist_entrega_v2) exists for this client.
+$actaDisponible = false;
+$actaSub = 'Pendiente de entrega';
+$actaFecha = null;
 try {
-    $stmt = $pdo->prepare("SHOW TABLES LIKE 'actas_entrega'");
-    $stmt->execute();
-    if ($stmt->fetch()) {
+    // Prefer actas_entrega table if present; fall back to checklist_entrega_v2.
+    $hasActasTbl = (bool)$pdo->query("SHOW TABLES LIKE 'actas_entrega'")->fetch();
+    if ($hasActasTbl) {
         if ($scopedTxnId > 0) {
             $stmt = $pdo->prepare("SELECT a.id, a.freg FROM actas_entrega a
                 JOIN inventario_motos m ON m.id = a.moto_id
                 WHERE a.cliente_id = ? AND m.transaccion_id = ?
                 ORDER BY a.id DESC LIMIT 1");
             $stmt->execute([$cid, $scopedTxnId]);
-        } elseif ($scopedSubId > 0) {
-            // Credit: acta for the moto tied to this sub's contact
-            $stmt = $pdo->prepare("SELECT a.id, a.freg FROM actas_entrega a
-                JOIN inventario_motos m ON m.id = a.moto_id
-                WHERE a.cliente_id = ?
-                ORDER BY a.id DESC LIMIT 1");
-            $stmt->execute([$cid]);
         } else {
             $stmt = $pdo->prepare("SELECT id, freg FROM actas_entrega WHERE cliente_id = ? ORDER BY id DESC LIMIT 1");
             $stmt->execute([$cid]);
         }
         if ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $docs[] = ['tipo' => 'acta_entrega', 'titulo' => 'Acta de entrega',
-                       'subtitulo' => 'Confirmada', 'disponible' => true, 'fecha' => $r['freg']];
+            $actaDisponible = true; $actaSub = 'Confirmada'; $actaFecha = $r['freg'];
+        }
+    }
+    if (!$actaDisponible) {
+        // Fallback: completed delivery checklist
+        $stmt = $pdo->prepare("SELECT ce.freg FROM checklist_entrega_v2 ce
+            JOIN inventario_motos m ON m.id = ce.moto_id
+            WHERE (m.cliente_id = ? OR m.cliente_telefono = ?) AND ce.completado = 1
+            ORDER BY ce.freg DESC LIMIT 1");
+        $tel = $cliente['telefono'] ?? '';
+        // $cliente var defined in descargar.php only — fall back to a 2nd query
+        if (!isset($cliente)) {
+            $tel2 = $pdo->prepare("SELECT telefono FROM clientes WHERE id = ?");
+            $tel2->execute([$cid]);
+            $tel = (string)($tel2->fetchColumn() ?: '');
+        }
+        $stmt->execute([$cid, $tel]);
+        if ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $actaDisponible = true; $actaSub = 'Confirmada'; $actaFecha = $r['freg'];
         }
     }
 } catch (Throwable $e) {}
+if (!$scopedTxnId) {
+    $docs[] = ['tipo' => 'acta_entrega', 'titulo' => 'Acta de entrega',
+               'subtitulo' => $actaSub, 'disponible' => $actaDisponible, 'fecha' => $actaFecha];
+}
 
 // Comprobantes de pago — credit only
 $nPagos = 0;
