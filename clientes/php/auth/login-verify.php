@@ -60,17 +60,91 @@ portalLog('login_verify', [
     'success' => 1,
 ]);
 
-// Load cliente for frontend
+// Load cliente for frontend — same column-probing + name-fallback logic as
+// me.php so the JS state always lands with a usable name. Without this the
+// frontend showed "¡Hola, Cliente!" right after login until a page reload.
+function lvIsPlaceholderName(?string $n): bool {
+    $n = trim((string)$n);
+    if ($n === '') return true;
+    $low = mb_strtolower($n);
+    foreach (['cliente', 'cliente voltika', 'sin nombre', 'n/a', 'none'] as $bad) {
+        if ($low === $bad) return true;
+    }
+    return false;
+}
+
 $cli = null;
+$cidLogin = (int)$otp['cliente_id'];
 try {
-    $stmt = $pdo->prepare("SELECT id, nombre, apellido_paterno, apellido_materno, email, telefono FROM clientes WHERE id=? LIMIT 1");
-    $stmt->execute([(int)$otp['cliente_id']]);
+    $cols = $pdo->query("SHOW COLUMNS FROM clientes")->fetchAll(PDO::FETCH_COLUMN);
+    $colSet = array_flip($cols);
+    $select = ['id', 'nombre', 'email', 'telefono'];
+    if (isset($colSet['apellido_paterno'])) $select[] = 'apellido_paterno';
+    if (isset($colSet['apellido_materno'])) $select[] = 'apellido_materno';
+
+    $stmt = $pdo->prepare("SELECT " . implode(',', $select) . " FROM clientes WHERE id=? LIMIT 1");
+    $stmt->execute([$cidLogin]);
     $cli = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-} catch (Throwable $e) {}
+
+    if ($cli && lvIsPlaceholderName($cli['nombre'] ?? null)) {
+        $real = null;
+        $em  = $cli['email']    ?? null;
+        $tel2 = $cli['telefono'] ?? null;
+
+        try {
+            $q = $pdo->prepare("SELECT nombre FROM subscripciones_credito
+                                 WHERE (cliente_id = ?
+                                     OR (? <> '' AND email = ?)
+                                     OR (? <> '' AND telefono = ?))
+                                   AND nombre IS NOT NULL AND TRIM(nombre) <> ''
+                              ORDER BY id DESC LIMIT 1");
+            $q->execute([$cidLogin, $em ?: '', $em ?: '', $tel2 ?: '', $tel2 ?: '']);
+            $cand = trim((string)($q->fetchColumn() ?: ''));
+            if ($cand && !lvIsPlaceholderName($cand)) $real = $cand;
+        } catch (Throwable $e) {}
+
+        if (!$real && ($em || $tel2)) {
+            try {
+                $q = $pdo->prepare("SELECT nombre FROM transacciones
+                                     WHERE ((? <> '' AND email = ?) OR (? <> '' AND telefono = ?))
+                                       AND nombre IS NOT NULL AND TRIM(nombre) <> ''
+                                  ORDER BY id DESC LIMIT 1");
+                $q->execute([$em ?: '', $em ?: '', $tel2 ?: '', $tel2 ?: '']);
+                $cand = trim((string)($q->fetchColumn() ?: ''));
+                if ($cand && !lvIsPlaceholderName($cand)) $real = $cand;
+            } catch (Throwable $e) {}
+        }
+        if (!$real && ($em || $tel2)) {
+            try {
+                $q = $pdo->prepare("SELECT cliente_nombre FROM inventario_motos
+                                     WHERE ((? <> '' AND cliente_email = ?) OR (? <> '' AND cliente_telefono = ?))
+                                       AND cliente_nombre IS NOT NULL AND TRIM(cliente_nombre) <> ''
+                                  ORDER BY id DESC LIMIT 1");
+                $q->execute([$em ?: '', $em ?: '', $tel2 ?: '', $tel2 ?: '']);
+                $cand = trim((string)($q->fetchColumn() ?: ''));
+                if ($cand && !lvIsPlaceholderName($cand)) $real = $cand;
+            } catch (Throwable $e) {}
+        }
+        if ($real) {
+            $cli['nombre'] = $real;
+            try { $pdo->prepare("UPDATE clientes SET nombre = ? WHERE id = ?")->execute([$real, $cidLogin]); }
+            catch (Throwable $e) {}
+        }
+    }
+
+    if ($cli) {
+        $parts = array_filter([
+            trim((string)($cli['nombre'] ?? '')),
+            trim((string)($cli['apellido_paterno'] ?? '')),
+            trim((string)($cli['apellido_materno'] ?? '')),
+        ], 'strlen');
+        $cli['nombre_completo'] = $parts ? implode(' ', $parts) : '';
+    }
+} catch (Throwable $e) { error_log('login-verify cliente: ' . $e->getMessage()); }
 
 portalJsonOut([
     'ok' => true,
     'status' => 'ok',
-    'cliente_id' => (int)$otp['cliente_id'],
+    'cliente_id' => $cidLogin,
     'cliente' => $cli,
 ]);
