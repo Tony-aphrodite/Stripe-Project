@@ -668,24 +668,17 @@ window.AD_ventas = (function(){
           if (res && res.ok) {
             var iconChk = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><polyline points="20 6 9 17 4 12"/></svg>';
             $('#vkAsignPuntoMsg').css('color','#0e8f55').html(iconChk+'Punto asignado · Notificación enviada al cliente');
-            // Customer feedback 2026-04-20: also force the underlying Ventas
-            // list to re-render so closing the detail modal doesn't reveal
-            // stale "Pendiente de asignar" rows. Steps:
-            //   1) switch active tab to 'todas' so the row is always visible
-            //      regardless of which filter the admin was on,
-            //   2) reload the list (loadData),
-            //   3) re-open detail modal,
-            //   4) flash the updated row green for visual confirmation,
-            //   5) backup reload 1.2s later in case of a slow DB commit.
+            // After save: close the modal and refresh the underlying list so
+            // the new punto shows up. Detail modal is NOT re-opened — the
+            // admin can click Ver again if they want to inspect the result.
+            //   1) switch active tab to 'todas' so the row stays visible,
+            //   2) reload the list (loadData) + flash the row green,
+            //   3) backup reload 1.2s later for slow DB commits.
             setTimeout(function(){
               ADApp.closeModal();
               _activeTab = 'todas';
               loadData(function(){
-                showDetalle(r.id);
                 flashRow(r.id);
-                // Belt-and-suspenders: another silent reload after a longer
-                // delay covers servers where the SELECT was slightly behind
-                // the UPDATE the first time around.
                 setTimeout(function(){ loadData(); }, 1200);
               });
             }, 700);
