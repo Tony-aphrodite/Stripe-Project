@@ -5,9 +5,17 @@ $cid = portalRequireAuth();
 $pdo = getDB();
 
 // ── Load cliente info ─────────────────────────────────────────────
+// Probe columns — apellido_paterno doesn't exist on every deployment.
+// Without this guard the SELECT throws and $cliente stays empty, which then
+// breaks the contado/msi lookup downstream (telefono/email come back blank).
 $cliente = [];
 try {
-    $stmt = $pdo->prepare("SELECT nombre, apellido_paterno, email, telefono FROM clientes WHERE id = ?");
+    $colsClient = $pdo->query("SHOW COLUMNS FROM clientes")->fetchAll(PDO::FETCH_COLUMN);
+    $colsClientSet = array_flip($colsClient);
+    $sel = ['nombre', 'email', 'telefono'];
+    if (isset($colsClientSet['apellido_paterno']))  $sel[] = 'apellido_paterno';
+    if (isset($colsClientSet['apellido_materno']))  $sel[] = 'apellido_materno';
+    $stmt = $pdo->prepare("SELECT " . implode(',', $sel) . " FROM clientes WHERE id = ?");
     $stmt->execute([$cid]);
     $cliente = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $e) { error_log('cliente/estado clientes: ' . $e->getMessage()); }
@@ -49,7 +57,11 @@ if (empty($cliente['nombre'])) {
     }
 }
 
-$nombre = trim(($cliente['nombre'] ?? '') . ' ' . ($cliente['apellido_paterno'] ?? ''));
+$nombre = trim(implode(' ', array_filter([
+    $cliente['nombre'] ?? '',
+    $cliente['apellido_paterno'] ?? '',
+    $cliente['apellido_materno'] ?? '',
+], 'strlen')));
 
 // ── Optional scope: a specific purchase selected in "Mis compras" ──
 // When the client has multiple purchases, the UI sends compra_tipo + compra_id
