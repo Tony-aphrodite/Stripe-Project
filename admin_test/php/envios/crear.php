@@ -28,9 +28,35 @@ if ($transaccionId) {
     adminJsonOut(['error' => 'envio_tipo requerido para envío sin orden (showroom|entrega)'], 400);
 }
 
-if (!$motoId || !$puntoId) adminJsonOut(['error' => 'moto_id y punto_id requeridos'], 400);
+if (!$puntoId) adminJsonOut(['error' => 'punto_id requerido'], 400);
 
 $pdo = getDB();
+
+// Order-linked flow: derive moto_id server-side from the transaction's
+// already-linked real moto (assigned in Ventas via asignar-moto.php). Client
+// doesn't send moto_id; we trust only the DB link.
+if ($transaccionId && !$motoId) {
+    $motoStmt = $pdo->prepare("
+        SELECT m.id
+          FROM transacciones t
+          JOIN inventario_motos m
+            ON m.activo = 1
+           AND m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
+           AND (
+                 (m.stripe_pi = t.stripe_pi AND m.stripe_pi <> '')
+              OR  m.pedido_num = CONCAT('VK-', t.pedido)
+           )
+         WHERE t.id = ?
+         LIMIT 1
+    ");
+    $motoStmt->execute([$transaccionId]);
+    $motoId = (int)($motoStmt->fetchColumn() ?: 0);
+    if (!$motoId) {
+        adminJsonOut(['error' => 'La orden no tiene una moto asignada. Asigna una moto desde Ventas primero.'], 409);
+    }
+}
+
+if (!$motoId) adminJsonOut(['error' => 'moto_id requerido'], 400);
 
 // Ensure envios.envio_tipo column exists (idempotent migration)
 try {
