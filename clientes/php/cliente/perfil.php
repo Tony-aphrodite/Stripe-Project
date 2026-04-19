@@ -6,9 +6,28 @@ $pdo = getDB();
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $c = null; $sub = null;
     try {
-        $stmt = $pdo->prepare("SELECT id, nombre, apellido_paterno, apellido_materno, email, telefono, fecha_nacimiento FROM clientes WHERE id = ?");
+        // Probe columns — schema varies between deployments. Older databases
+        // don't have apellido_paterno/materno (the full name lives inside
+        // `nombre`). Build the SELECT dynamically so the query never fails.
+        $cols = $pdo->query("SHOW COLUMNS FROM clientes")->fetchAll(PDO::FETCH_COLUMN);
+        $colSet = array_flip($cols);
+        $select = ['id', 'nombre', 'email', 'telefono'];
+        if (isset($colSet['apellido_paterno']))  $select[] = 'apellido_paterno';
+        if (isset($colSet['apellido_materno']))  $select[] = 'apellido_materno';
+        if (isset($colSet['fecha_nacimiento']))  $select[] = 'fecha_nacimiento';
+
+        $stmt = $pdo->prepare("SELECT " . implode(',', $select) . " FROM clientes WHERE id = ?");
         $stmt->execute([$cid]);
         $c = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        if ($c) {
+            $parts = array_filter([
+                trim((string)($c['nombre'] ?? '')),
+                trim((string)($c['apellido_paterno'] ?? '')),
+                trim((string)($c['apellido_materno'] ?? '')),
+            ], 'strlen');
+            $c['nombre_completo'] = $parts ? implode(' ', $parts) : '';
+        }
     } catch (Throwable $e) { error_log('perfil cliente: ' . $e->getMessage()); }
 
     try {
@@ -44,8 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             foreach ($colorMap as $es => $en) {
                 if (stripos($colorSlug, $es) !== false) { $cf = $en . '_side.png'; break; }
             }
-            $baseDir = __DIR__ . '/../../configurador_prueba/img/' . $slug . '/';
-            $baseUrl = '../configurador_prueba/img/' . $slug . '/';
+            $baseDir = __DIR__ . '/../../configurador_prueba_test/img/' . $slug . '/';
+            $baseUrl = '../configurador_prueba_test/img/' . $slug . '/';
             if ($cf && file_exists($baseDir . $cf)) $motoImg = $baseUrl . $cf;
             elseif (file_exists($baseDir . 'model.png')) $motoImg = $baseUrl . 'model.png';
         }
