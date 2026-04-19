@@ -187,24 +187,33 @@ if ($transaccionId && !empty($order)) {
         if ($notifyPath) { try { require_once $notifyPath; } catch (Throwable $e) { error_log('notify include: ' . $e->getMessage()); } }
         if (function_exists('voltikaNotify')) {
             try {
-                $fechaHuman = $fechaEstimada;
-                if ($fechaEstimada) {
-                    try {
-                        $meses = ['enero','febrero','marzo','abril','mayo','junio',
-                                  'julio','agosto','septiembre','octubre','noviembre','diciembre'];
-                        $dt = new DateTime($fechaEstimada);
-                        $fechaHuman = $dt->format('j') . ' de ' . $meses[(int)$dt->format('n') - 1] . ' de ' . $dt->format('Y');
-                    } catch (Throwable $e) {}
-                }
+                // Resolve direccion_punto + link_maps from puntos_voltika
+                $direccionPunto = trim(($punto['direccion'] ?? '')
+                    . ($punto['colonia'] ? ', ' . $punto['colonia'] : '')
+                    . ($punto['cp']      ? ' CP ' . $punto['cp'] : ''));
+                if (!$direccionPunto) $direccionPunto = $punto['calle_numero'] ?? '';
+                $linkMaps = function_exists('voltikaBuildMapsLink')
+                    ? voltikaBuildMapsLink($direccionPunto, $punto['ciudad'] ?? '',
+                        isset($punto['lat']) ? (float)$punto['lat'] : null,
+                        isset($punto['lng']) ? (float)$punto['lng'] : null)
+                    : 'https://voltika.mx/mi-cuenta';
+                $fechaHuman = function_exists('voltikaFormatFechaHuman')
+                    ? voltikaFormatFechaHuman($fechaEstimada)
+                    : (string)$fechaEstimada;
                 voltikaNotify('moto_enviada', [
-                    'cliente_id' => $moto['cliente_id'] ?? null,
-                    'nombre'     => $order['nombre']    ?? '',
-                    'modelo'     => $moto['modelo']     ?? ($order['modelo'] ?? ''),
-                    'punto'      => $punto['nombre']    ?? '',
-                    'ciudad'     => $punto['ciudad']    ?? '',
-                    'fecha'      => $fechaHuman         ?? '',
-                    'telefono'   => $clienteTel,
-                    'email'      => $clienteEmail,
+                    'cliente_id'           => $moto['cliente_id'] ?? null,
+                    'nombre'               => $order['nombre']    ?? '',
+                    'pedido'               => $order['pedido']    ?? '',
+                    'modelo'               => $moto['modelo']     ?? ($order['modelo'] ?? ''),
+                    'color'                => $moto['color']      ?? ($order['color']  ?? ''),
+                    'punto'                => $punto['nombre']    ?? '',
+                    'ciudad'               => $punto['ciudad']    ?? '',
+                    'direccion_punto'      => $direccionPunto,
+                    'link_maps'            => $linkMaps,
+                    'fecha'                => $fechaHuman, // legacy alias
+                    'fecha_llegada_punto'  => $fechaHuman,
+                    'telefono'             => $clienteTel,
+                    'email'                => $clienteEmail,
                 ]);
             } catch (Throwable $e) { error_log('notify moto_enviada: ' . $e->getMessage()); }
         } else {

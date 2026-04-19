@@ -397,6 +397,354 @@ function voltikaBuildPortalTemplate(bool $isCredit): array {
     ];
 }
 
+/**
+ * ══════════════════════════════════════════════════════════════════════════
+ * LOGISTICS NOTIFICATIONS — 4 stages (customer brief 2026-04-19)
+ *   A) punto_asignado      — punto confirmed for the order
+ *   B) moto_enviada        — bike left CEDIS, on its way
+ *   C) moto_recibida       — bike arrived at the point, in preparation
+ *   D) moto_lista_entrega  — ready for customer pickup
+ * ══════════════════════════════════════════════════════════════════════════
+ */
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function voltikaBuildMapsLink(string $direccion = '', string $ciudad = '', ?float $lat = null, ?float $lng = null): string {
+    if ($lat !== null && $lng !== null && $lat != 0 && $lng != 0) {
+        return 'https://www.google.com/maps/search/?api=1&query=' . $lat . ',' . $lng;
+    }
+    $q = trim($direccion . ($ciudad ? ', ' . $ciudad : ''));
+    if ($q === '') return 'https://voltika.mx/mi-cuenta';
+    return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($q);
+}
+
+function voltikaFormatFechaHuman(?string $iso): string {
+    if (!$iso) return '';
+    try {
+        $meses = ['enero','febrero','marzo','abril','mayo','junio',
+                  'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        $dt = new DateTime($iso);
+        return $dt->format('j') . ' de ' . $meses[(int)$dt->format('n') - 1] . ' de ' . $dt->format('Y');
+    } catch (Throwable $e) { return (string)$iso; }
+}
+
+// Shared chrome (header + footer) used by every logistics email. Reduces
+// duplication and keeps visual consistency across all 4 stages.
+function voltikaLogisticsEmailShell(string $hero, string $heroSub, string $innerRows): string {
+    return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Voltika</title></head>'
+         . '<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;color:#1a3a5c;">'
+         . '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;"><tr><td align="center" style="padding:24px 12px;">'
+         . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
+         . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:26px;text-align:center;color:#fff;">'
+         . '<div style="font-size:24px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
+         . '<div style="font-size:17px;font-weight:700;margin-top:12px;">' . $hero . '</div>'
+         . '<div style="font-size:13px;opacity:.85;margin-top:4px;">' . $heroSub . '</div>'
+         . '</td></tr>'
+         . $innerRows
+         . '<tr><td style="padding:14px 28px 4px;">'
+         . '<p style="font-size:13px;color:#555;margin:0;">¿Tienes alguna duda?<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a><br>🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
+         . '</td></tr>'
+         . '<tr><td style="background:#1a3a5c;padding:18px 28px;text-align:center;color:#fff;">'
+         . '<div style="font-size:14px;font-weight:700;">voltika <span style="color:#22d37a;">⚡</span></div>'
+         . '<div style="font-size:11px;opacity:.7;margin-top:4px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
+         . '</td></tr>'
+         . '</table></td></tr></table></body></html>';
+}
+
+// ── A) PUNTO ASIGNADO ───────────────────────────────────────────────────────
+function voltikaBuildPuntoAsignadoTemplate(): array {
+    $subject = '🎉 ¡Todo listo! Tu VOLTIKA ya tiene punto de entrega — Pedido VK-{pedido}';
+
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Tenemos buenas noticias — tu moto ya tiene <strong>punto de entrega confirmado</strong> y fecha estimada. Todo marcha perfecto.</p>'
+          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
+          . '</td></tr>'
+          // Punto box
+          . '<tr><td style="padding:10px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📍 Tu punto de entrega</div>'
+          . '<div style="background:#E8F4FD;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.7;color:#1a3a5c;">'
+          . '🏪 <strong>{punto}</strong><br>'
+          . '📬 {direccion_punto}<br>'
+          . '🗺️ <a href="{link_maps}" style="color:#039fe1;">Ver en Google Maps</a><br>'
+          . '🕐 Lunes a Sábado 9:00 - 18:00 hrs<br>'
+          . '📅 Fecha estimada: antes del <strong>{fecha_estimada}</strong>'
+          . '</div>'
+          . '<p style="font-size:12.5px;color:#6b4c0f;background:#FFF8E1;border-left:3px solid #FFC107;padding:8px 12px;border-radius:4px;margin:10px 0 0;line-height:1.5;">Si por alguna razón la fecha cambia te avisamos de inmediato por WhatsApp — siempre estarás informado.</p>'
+          . '</td></tr>'
+          // Pasos
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">🔄 Lo que viene — paso a paso</div>'
+          . '<p style="font-size:13px;color:#444;margin:0 0 8px;">Desde aquí no tienes que hacer nada — nosotros nos encargamos de todo y te avisamos en cada paso:</p>'
+          . '<div style="font-size:13.5px;color:#333;line-height:1.6;">'
+          . '1️⃣ Preparamos tu moto con cuidado<br>'
+          . '2️⃣ La enviamos directo a tu punto<br>'
+          . '3️⃣ Te avisamos por WhatsApp cuando salga de nuestras instalaciones<br>'
+          . '4️⃣ Te avisamos cuando llegue al punto<br>'
+          . '5️⃣ Te avisamos cuando esté lista con fecha y hora exacta'
+          . '</div>'
+          . '<p style="font-size:12.5px;color:#166534;background:#ecfdf5;padding:8px 12px;border-radius:4px;border-left:3px solid #22d37a;margin:10px 0 0;">Tu moto llegará armada, revisada y lista para circular desde el primer momento ✅</p>'
+          . '</td></tr>'
+          // Portal CTA
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📱 Sigue tu pedido en tiempo real</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;">Consulta el estado exacto de tu moto en cualquier momento:<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:12px 28px 0;"><p style="font-size:13px;color:#333;margin:0;">Estamos contigo en cada paso 🙌</p></td></tr>';
+
+    $emailHtml = voltikaLogisticsEmailShell(
+        '🎉 ¡Tu punto de entrega está listo!',
+        'Pedido VK-{pedido}',
+        $rows
+    );
+
+    $body = "🎉 ¡Buenas noticias, {nombre}!\n\n"
+          . "Tu {modelo} en color {color} ya tiene\ntodo listo para llegar a ti ⚡\n"
+          . "Pedido: VK-{pedido}\n\n"
+          . "📍 Tu punto de entrega:\n🏪 {punto}\n📬 {direccion_punto}\n🗺️ {link_maps}\n🕐 Lunes a Sábado 9:00 - 18:00 hrs\n\n"
+          . "📅 Fecha estimada de entrega:\nAntes del {fecha_estimada}\n\n"
+          . "Desde aquí no tienes que hacer\nnada — nosotros te avisamos\nen cada paso por aquí mismo.\n\n"
+          . "🔄 Lo que viene:\n1️⃣ Preparamos tu moto con cuidado\n2️⃣ La enviamos directo a tu punto\n3️⃣ Te avisamos cuando salga\n4️⃣ Te avisamos cuando llegue\n5️⃣ Te avisamos cuando esté lista\n\n"
+          . "Tu moto llegará armada, revisada\ny lista para circular desde el primer momento ✅\n\n"
+          . "Sigue cada paso en tiempo real:\n👉 voltika.mx/mi-cuenta\n\n"
+          . "¿Alguna duda? Estamos aquí:\n📧 ventas@voltika.mx\n🕐 Lun a Vie 9:00 - 18:00 hrs";
+
+    $sms = 'VOLTIKA: {nombre}, tu {modelo} ya tiene punto de entrega: {punto}. Entrega antes del {fecha_estimada}. Portal: voltika.mx/mi-cuenta';
+
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
+// ── B) MOTO ENVIADA ─────────────────────────────────────────────────────────
+function voltikaBuildMotoEnviadaTemplate(): array {
+    $subject = '🚚 ¡Tu VOLTIKA ya está en camino! — Pedido VK-{pedido}';
+
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">¡Momento emocionante — tu moto ya salió de nuestras instalaciones y está en camino hacia ti!</p>'
+          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
+          . '</td></tr>'
+          // Destino
+          . '<tr><td style="padding:10px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">🚚 En camino hacia ti</div>'
+          . '<div style="background:#E8F4FD;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.7;color:#1a3a5c;">'
+          . '📍 Destino:<br>'
+          . '🏪 <strong>{punto}</strong><br>'
+          . '📬 {direccion_punto}<br>'
+          . '🗺️ <a href="{link_maps}" style="color:#039fe1;">Ver en Google Maps</a><br>'
+          . '📅 Llegada estimada al punto: <strong>{fecha_llegada_punto}</strong>'
+          . '</div>'
+          . '<p style="font-size:12.5px;color:#6b4c0f;background:#FFF8E1;border-left:3px solid #FFC107;padding:8px 12px;border-radius:4px;margin:10px 0 0;line-height:1.5;">Si por alguna razón la fecha cambia te avisamos de inmediato por WhatsApp — siempre estarás al tanto de dónde está tu moto.</p>'
+          . '</td></tr>'
+          // Lo que sigue
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">🔄 Lo que sigue</div>'
+          . '<p style="font-size:13px;color:#444;margin:0 0 8px;">Cuando tu moto llegue al punto nuestro equipo se encarga de todo:</p>'
+          . '<div style="font-size:13.5px;color:#333;line-height:1.8;">'
+          . '⚙️ La reciben y verifican<br>'
+          . '🔧 La ensamblan completamente<br>'
+          . '🔍 Revisan cada sistema — batería, frenos, luces y motor<br>'
+          . '⚡ La activan y configuran<br>'
+          . '✅ Realizan el checklist completo'
+          . '</div>'
+          . '<p style="font-size:12.5px;color:#166534;background:#ecfdf5;padding:8px 12px;border-radius:4px;border-left:3px solid #22d37a;margin:10px 0 0;">Tu moto no sale del punto hasta que esté perfecta para ti. Cuando esté lista recibirás un WhatsApp con fecha y hora exacta. No tienes que hacer nada por ahora.</p>'
+          . '</td></tr>'
+          // Portal
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📱 Sigue tu moto en tiempo real</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;"><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:12px 28px 0;"><p style="font-size:13px;color:#333;margin:0;">Estamos contigo en cada paso 🙌</p></td></tr>';
+
+    $emailHtml = voltikaLogisticsEmailShell(
+        '🚚 ¡Tu moto ya está en camino!',
+        'Pedido VK-{pedido}',
+        $rows
+    );
+
+    $body = "🚚 ¡{nombre}, tu moto ya salió\ny está en camino hacia ti!\n\n"
+          . "Tu {modelo} en color {color}\nya está en ruta ⚡\n"
+          . "Pedido: VK-{pedido}\n\n"
+          . "📍 Va directo a tu punto:\n🏪 {punto} — {ciudad}\n\n"
+          . "📅 Llegada estimada al punto:\n{fecha_llegada_punto}\n\n"
+          . "Si por alguna razón la fecha cambia\nte avisamos de inmediato —\nsiempre sabrás dónde está tu moto.\n\n"
+          . "Una vez que llegue nuestro equipo\nla recibe, ensambla completamente,\nverifica cada detalle y la activa\npara que salga perfecta para ti ✅\n\n"
+          . "Te avisamos cuando llegue y cuando\nesté lista — no tienes que hacer\nnada por ahora 🙌\n\n"
+          . "Sigue tu moto en tiempo real:\n👉 voltika.mx/mi-cuenta\n\n"
+          . "¿Alguna duda? Estamos aquí:\n📧 ventas@voltika.mx\n🕐 Lun a Vie 9:00 - 18:00 hrs";
+
+    $sms = 'VOLTIKA: {nombre}, tu {modelo} va en camino a {punto} — {ciudad}. Llegada estimada: {fecha_llegada_punto}.';
+
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
+// ── C) MOTO RECIBIDA EN EL PUNTO ────────────────────────────────────────────
+function voltikaBuildMotoRecibidaTemplate(): array {
+    $subject = '🔧 ¡Tu VOLTIKA llegó al punto y está en preparación! — Pedido VK-{pedido}';
+
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">¡Muy buenas noticias — tu moto llegó a tu punto de entrega y ya está en manos de nuestro equipo!</p>'
+          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
+          . '</td></tr>'
+          // Punto
+          . '<tr><td style="padding:10px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📍 En preparación en tu punto</div>'
+          . '<div style="background:#E8F4FD;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.7;color:#1a3a5c;">'
+          . '🏪 <strong>{punto}</strong><br>'
+          . '📬 {direccion_punto}<br>'
+          . '🗺️ <a href="{link_maps}" style="color:#039fe1;">Ver en Google Maps</a><br>'
+          . '🕐 Lunes a Sábado 9:00 - 18:00 hrs'
+          . '</div>'
+          . '</td></tr>'
+          // Qué está pasando
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">🔄 ¿Qué está pasando ahora?</div>'
+          . '<p style="font-size:13px;color:#444;margin:0 0 8px;">Nuestro equipo está trabajando para que todo esté perfecto:</p>'
+          . '<div style="font-size:13.5px;color:#333;line-height:1.8;">'
+          . '⚙️ Ensamble completo de tu moto<br>'
+          . '🔍 Verificación de todos los sistemas — batería, frenos, luces y motor<br>'
+          . '⚡ Activación y configuración<br>'
+          . '✅ Checklist completo de pre-entrega'
+          . '</div>'
+          . '<p style="font-size:12.5px;color:#166534;background:#ecfdf5;padding:8px 12px;border-radius:4px;border-left:3px solid #22d37a;margin:10px 0 0;line-height:1.5;">Tu moto no sale del punto hasta que pase todas las revisiones y esté lista al 100% para ti. Este proceso toma algunas horas. En cuanto esté lista recibirás un WhatsApp con fecha y hora exacta para ir a recogerla.</p>'
+          . '<p style="font-size:12.5px;color:#6b4c0f;background:#FFF8E1;border-left:3px solid #FFC107;padding:8px 12px;border-radius:4px;margin:8px 0 0;">📲 No necesitas llamar ni ir al punto antes de ese aviso — nosotros te buscamos 🙌</p>'
+          . '</td></tr>'
+          // Portal
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📱 Sigue tu pedido en tiempo real</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;"><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:12px 28px 0;"><p style="font-size:13px;color:#333;margin:0;">Estamos contigo en cada paso 🙌</p></td></tr>';
+
+    $emailHtml = voltikaLogisticsEmailShell(
+        '🔧 ¡Tu moto llegó y está en preparación!',
+        'Pedido VK-{pedido}',
+        $rows
+    );
+
+    $body = "🔧 ¡{nombre}, tu moto llegó\nal punto y ya está en manos\nde nuestro equipo!\n\n"
+          . "🏍️ {modelo} · {color}\nPedido: VK-{pedido}\n\n"
+          . "📍 {punto} — {ciudad}\n\n"
+          . "Ahora mismo están trabajando\npara que todo esté perfecto para ti:\n\n"
+          . "⚙️ Ensamble completo\n🔍 Verificación de cada sistema\n⚡ Activación y configuración\n✅ Checklist completo de entrega\n\n"
+          . "Tu moto no sale hasta que pase\ntodas las revisiones y esté\nlista al 100% ✅\n\n"
+          . "Este proceso toma algunas horas.\nEn cuanto esté lista te avisamos\naquí con fecha y hora exacta\npara que vengas a recogerla 🙌\n\n"
+          . "No necesitas llamar ni ir al punto\nantes de ese aviso — nosotros\nte buscamos.\n\n"
+          . "Sigue tu pedido aquí:\n👉 voltika.mx/mi-cuenta\n\n"
+          . "¿Alguna duda? 📧 ventas@voltika.mx";
+
+    $sms = 'VOLTIKA: {nombre}, tu {modelo} llegó a {punto}. En ensamble y revisión. Te avisamos cuando esté lista.';
+
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
+// ── D) MOTO LISTA PARA ENTREGA ──────────────────────────────────────────────
+function voltikaBuildMotoListaEntregaTemplate(): array {
+    $subject = '✅ ¡Tu VOLTIKA está lista! Descarga tu permiso en 24 hrs — Pedido VK-{pedido}';
+
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 🎉</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">¡El momento llegó — tu moto pasó todas las revisiones y está perfecta para ti desde el primer kilómetro!</p>'
+          . '<p style="font-size:12px;color:#666;margin:8px 0 0;">Pedido: <strong>VK-{pedido}</strong><br>🏍️ <strong>{modelo}</strong> · {color}</p>'
+          . '</td></tr>'
+          // Permiso notice
+          . '<tr><td style="padding:12px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#991b1b;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">⚠️ Importante — lee esto primero</div>'
+          . '<div style="background:#fef2f2;border-left:4px solid #dc2626;padding:12px 14px;border-radius:6px;font-size:13px;color:#7a0e1f;line-height:1.6;">'
+          . 'Al confirmarse tu entrega la <strong>autoridad de transporte emitió automáticamente tu permiso temporal</strong> para circular.<br><br>'
+          . 'Este proceso es automático y está fuera del control de VOLTIKA — es la autoridad quien lo genera y determina su fecha de inicio.<br><br>'
+          . 'El permiso tiene una vigencia de <strong>30 días a partir de su emisión</strong> para tramitar tus placas definitivas.<br><br>'
+          . 'Los días ya están corriendo — por eso te recomendamos recoger tu moto lo antes posible.'
+          . '</div>'
+          . '</td></tr>'
+          // Permiso descarga
+          . '<tr><td style="padding:10px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📄 Tu permiso temporal para circular</div>'
+          . '<p style="font-size:13px;color:#444;margin:0 0 8px;line-height:1.6;">Estará disponible en tu portal en las <strong>próximas 24 horas</strong>:<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+          . '<p style="font-size:13px;color:#444;margin:10px 0 6px;"><strong>Qué hacer cuando esté disponible:</strong></p>'
+          . '<div style="font-size:13px;color:#333;line-height:1.7;">'
+          . '1️⃣ Entra a voltika.mx/mi-cuenta<br>'
+          . '2️⃣ Descarga e imprime tu permiso<br>'
+          . '3️⃣ <strong>Enmícalo</strong> para protegerlo — lo llevarás en tu moto durante 30 días expuesto al sol, lluvia y polvo. Enmicarlo lo protege y lo mantiene legible ante cualquier autoridad.<br>'
+          . '4️⃣ Colócalo en la <strong>parte trasera de tu moto</strong> — ese es el lugar oficial donde va mientras tramitas tus placas definitivas. Las autoridades lo verifican ahí.<br>'
+          . '5️⃣ Llévalo contigo el día que vayas al punto a recoger tu moto'
+          . '</div>'
+          . '<p style="font-size:12.5px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:4px;margin:10px 0 0;"><strong>Sin el permiso impreso</strong> no podrás circular legalmente al salir del punto ese mismo día.</p>'
+          . '</td></tr>'
+          // Punto pickup
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📍 Ve a recogerla cuando quieras</div>'
+          . '<div style="background:#E8F4FD;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.7;color:#1a3a5c;">'
+          . '🏪 <strong>{punto}</strong><br>'
+          . '📬 {direccion_punto}<br>'
+          . '🗺️ <a href="{link_maps}" style="color:#039fe1;">Ver en Google Maps</a><br>'
+          . '🕐 Lunes a Sábado 9:00 - 18:00 hrs<br>'
+          . '📅 Recógela antes del <strong>{fecha_limite}</strong>'
+          . '</div>'
+          . '<p style="font-size:12.5px;color:#166534;background:#ecfdf5;padding:8px 12px;border-radius:4px;border-left:3px solid #22d37a;margin:10px 0 0;">No necesitas cita — llega en cualquier momento del horario y el equipo te atenderá de inmediato.</p>'
+          . '</td></tr>'
+          // Qué llevar
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#991b1b;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">⚠️ Lo que debes llevar</div>'
+          . '<div style="font-size:13.5px;color:#333;line-height:1.8;">'
+          . '🖨️ Tu permiso impreso y enmicado<br>'
+          . '🪪 Tu INE vigente<br>'
+          . '📱 Tu celular con este número — recibirás un código OTP al momento de la entrega'
+          . '</div>'
+          . '<p style="font-size:12.5px;color:#7a0e1f;background:#fef2f2;border-left:3px solid #dc2626;padding:8px 12px;border-radius:4px;margin:10px 0 0;"><strong>Sin estos tres elementos</strong> no es posible entregarte la moto ni circular legalmente al salir.</p>'
+          . '</td></tr>'
+          // Proceso entrega
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">🔄 Así es la entrega — muy sencillo</div>'
+          . '<div style="font-size:13px;color:#333;line-height:1.8;">'
+          . '1️⃣ Llegas con permiso enmicado, INE y celular<br>'
+          . '2️⃣ El equipo verifica tu identidad<br>'
+          . '3️⃣ Recibes tu código OTP en tu celular<br>'
+          . '4️⃣ El punto lo ingresa al sistema<br>'
+          . '5️⃣ Firmas el acta de entrega digital<br>'
+          . '6️⃣ Colocas tu permiso enmicado en la parte trasera de tu moto<br>'
+          . '7️⃣ ¡Te llevas tu moto lista para circular ese mismo momento! ⚡'
+          . '</div>'
+          . '</td></tr>'
+          // OTP help
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">💡 ¿No te llega el código OTP?</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">No te preocupes — es algo sencillo de resolver. Díselo al personal del punto y ellos lo reenvían desde el sistema en ese momento.</p>'
+          . '</td></tr>'
+          // Reagendar
+          . '<tr><td style="padding:14px 28px;">'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;"><strong>¿No puedes ir antes del {fecha_limite}?</strong><br>Sin problema — escríbenos y lo coordinamos juntos:<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a><br>🕐 Lun a Vie 9:00 - 18:00 hrs</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:12px 28px 0;"><p style="font-size:13.5px;color:#1a3a5c;margin:0;font-weight:700;">¡Bienvenido a la familia VOLTIKA! Nos da mucho gusto que ya seas parte de nuestra red ⚡</p></td></tr>';
+
+    $emailHtml = voltikaLogisticsEmailShell(
+        '✅ ¡Tu VOLTIKA está lista!',
+        'Pedido VK-{pedido}',
+        $rows
+    );
+
+    $body = "✅ ¡{nombre}, tu moto está lista\ny te espera! 🎉\n\n"
+          . "Tu {modelo} · {color}\nPedido: VK-{pedido}\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "⚠️ ACCIÓN REQUERIDA HOY\n\n"
+          . "Tu permiso temporal para circular\nya fue emitido por la autoridad\nde transporte — tienes 30 días\ndesde hoy para tramitar tus placas.\n\n"
+          . "Haz esto antes de ir al punto:\n\n"
+          . "1️⃣ Entra a tu portal:\n   👉 voltika.mx/mi-cuenta\n"
+          . "2️⃣ Descarga e imprime tu permiso\n   (disponible en las próximas 24 hrs)\n"
+          . "3️⃣ Enmícalo\n"
+          . "4️⃣ Llévalo el día que recojas tu moto\n   — va en la parte trasera de la moto\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "📍 Tu punto de entrega:\n🏪 {punto}\n📬 {direccion_punto}\n🗺️ {link_maps}\n🕐 Lunes a Sábado 9:00 - 18:00 hrs\n📅 Recógela antes del {fecha_limite}\n\n"
+          . "Sin cita — llega cuando puedas.\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "⚠️ Lleva el día de la entrega:\n🖨️ Permiso impreso y enmicado\n🪪 INE vigente\n📱 Tu celular con este número\n\n"
+          . "¿No puedes ir antes del {fecha_limite}?\n📧 ventas@voltika.mx\n\n"
+          . "¡Bienvenido a la familia VOLTIKA!";
+
+    $sms = 'VOLTIKA: {nombre}, tu {modelo} está lista en {punto}. Descarga permiso en voltika.mx/mi-cuenta (24h). Recoge antes del {fecha_limite}. Lleva INE.';
+
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
 function voltikaNotifyTemplates(): array {
     // Build the 4 purchase-confirmation templates.
     // Keys: compra_confirmada_{contado|credito}_{punto|sin_punto}
@@ -410,6 +758,12 @@ function voltikaNotifyTemplates(): array {
     $tplPortalContado = voltikaBuildPortalTemplate(false);
     $tplPortalCredito = voltikaBuildPortalTemplate(true);
 
+    // Logistics stages — customer brief 2026-04-19.
+    $tplPuntoAsig    = voltikaBuildPuntoAsignadoTemplate();
+    $tplMotoEnviada  = voltikaBuildMotoEnviadaTemplate();
+    $tplMotoRecibida = voltikaBuildMotoRecibidaTemplate();
+    $tplMotoLista    = voltikaBuildMotoListaEntregaTemplate();
+
     return [
         'compra_confirmada_contado_punto'     => $tplCP,
         'compra_confirmada_contado_sin_punto' => $tplCNP,
@@ -420,6 +774,15 @@ function voltikaNotifyTemplates(): array {
         'portal_contado' => $tplPortalContado,
         'portal_msi'     => $tplPortalContado,
         'portal_plazos'  => $tplPortalCredito,
+
+        // Logistics — rich rewritten templates (override the legacy short ones
+        // further down in this file thanks to PHP array later-key-wins).
+        'punto_asignado'      => $tplPuntoAsig,
+        'moto_enviada'        => $tplMotoEnviada,
+        'moto_recibida'       => $tplMotoRecibida,
+        'moto_en_punto'       => $tplMotoRecibida,  // alias for backward compat
+        'moto_lista_entrega'  => $tplMotoLista,
+        'lista_para_recoger'  => $tplMotoLista,     // alias for backward compat
 
         // ═══════════════════════════════════════════════════════════════════
         // INTERNAL — DEALER/PUNTO CREDENTIALS
