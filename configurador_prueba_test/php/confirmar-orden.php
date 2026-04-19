@@ -843,8 +843,31 @@ if ($esCredito) {
     } catch (Throwable $e) {}
 }
 
+// Resolve the short customer-facing code VK-YYMM-NNNN. Lookup by stripe_pi
+// (most reliable — fresh webhook) or by pedido if stripe_pi unavailable.
+$pedidoCorto = '';
+try {
+    $pdoTmp = getDB();
+    $txId = 0;
+    if (!empty($paymentIntentId)) {
+        $q = $pdoTmp->prepare("SELECT id FROM transacciones WHERE stripe_pi=? ORDER BY id DESC LIMIT 1");
+        $q->execute([$paymentIntentId]);
+        $txId = (int)($q->fetchColumn() ?: 0);
+    }
+    if (!$txId && !empty($pedidoNum)) {
+        $q = $pdoTmp->prepare("SELECT id FROM transacciones WHERE pedido=? ORDER BY id DESC LIMIT 1");
+        $q->execute([$pedidoNum]);
+        $txId = (int)($q->fetchColumn() ?: 0);
+    }
+    if ($txId && function_exists('voltikaResolvePedidoCorto')) {
+        $pedidoCorto = voltikaResolvePedidoCorto($pdoTmp, $txId);
+    }
+} catch (Throwable $e) { error_log('confirmar-orden pedido_corto: ' . $e->getMessage()); }
+if (!$pedidoCorto) $pedidoCorto = 'VK-' . $pedidoNum; // safe fallback
+
 $notifyData = [
     'pedido'          => $pedidoNum,
+    'pedido_corto'    => $pedidoCorto,
     'nombre'          => $nombre,
     'modelo'          => $modelo,
     'color'           => $color,

@@ -148,6 +148,16 @@ if ($vals['completado']) {
             if (function_exists('voltikaNotify')) {
                 $pedido = $info['pedido_num'] ?? '';
                 if ($pedido && str_starts_with($pedido, 'VK-')) $pedido = substr($pedido, 3);
+                $pedidoCorto = '';
+                try {
+                    $txQ = $pdo->prepare("SELECT id FROM transacciones WHERE pedido=? ORDER BY id DESC LIMIT 1");
+                    $txQ->execute([$pedido]);
+                    $txId = (int)($txQ->fetchColumn() ?: 0);
+                    if ($txId && function_exists('voltikaResolvePedidoCorto')) {
+                        $pedidoCorto = voltikaResolvePedidoCorto($pdo, $txId);
+                    }
+                } catch (Throwable $e) {}
+                if (!$pedidoCorto) $pedidoCorto = 'VK-' . $pedido;
                 $direccionPunto = trim(($info['punto_direccion'] ?? '')
                     . ($info['punto_colonia'] ? ', ' . $info['punto_colonia'] : '')
                     . ($info['punto_cp']      ? ' CP ' . $info['punto_cp']   : ''));
@@ -168,6 +178,7 @@ if ($vals['completado']) {
                     'cliente_id'      => $info['cliente_id'] ?? null,
                     'nombre'          => $info['cliente_nombre'] ?? '',
                     'pedido'          => $pedido,
+                    'pedido_corto'    => $pedidoCorto,
                     'modelo'          => $info['modelo'] ?? '',
                     'color'           => $info['color']  ?? '',
                     'punto'           => $info['punto_nombre']  ?? '',

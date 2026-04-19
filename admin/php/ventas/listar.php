@@ -53,12 +53,16 @@ try {
     if (!in_array('reminders_sent_count', $cols, true)) {
         $pdo->exec("ALTER TABLE transacciones ADD COLUMN reminders_sent_count INT NOT NULL DEFAULT 0");
     }
+    if (!in_array('pedido_corto', $cols, true)) {
+        $pdo->exec("ALTER TABLE transacciones ADD COLUMN pedido_corto VARCHAR(20) NULL");
+        try { $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX idx_pedido_corto (pedido_corto)"); } catch (Throwable $e) {}
+    }
 } catch (Throwable $e) { error_log('listar ensure reminder cols: ' . $e->getMessage()); }
 
 // ── Orders from transacciones ───────────────────────────────────────────
 try {
     $stmt = $pdo->query("
-        SELECT t.id, t.pedido, t.nombre, t.email, t.telefono,
+        SELECT t.id, t.pedido, t.pedido_corto, t.nombre, t.email, t.telefono,
                t.modelo, t.color, t.tpago, t.total, t.stripe_pi, t.freg,
                t.punto_id, t.punto_nombre, t.ciudad, t.estado, t.cp, t.folio_contrato,
                t.fecha_estimada_entrega,
@@ -107,6 +111,7 @@ try {
         $rows[] = [
             'id'          => (int)$r['id'],
             'pedido'      => $r['pedido'],
+            'pedido_corto'=> $r['pedido_corto'] ?? null,
             'nombre'      => $r['nombre'],
             'email'       => $r['email'],
             'telefono'    => $r['telefono'],

@@ -112,11 +112,18 @@ if ($clienteTel || $clienteEmail) {
         $fechaHuman = function_exists('voltikaFormatFechaHuman')
             ? voltikaFormatFechaHuman(date('Y-m-d H:i:s'))
             : date('Y-m-d H:i:s');
+        $pedidoCorto = '';
+        if (!empty($row['transaccion_id']) && function_exists('voltikaResolvePedidoCorto')) {
+            $pedidoCorto = voltikaResolvePedidoCorto($pdo, (int)$row['transaccion_id']);
+        }
+        if (!$pedidoCorto) $pedidoCorto = 'VK-' . $pedido;
+
         try {
             voltikaNotify('recepcion_incidencia', [
                 'cliente_id'    => $row['cliente_id'] ?? null,
                 'nombre'        => $row['cliente_nombre'] ?? '',
                 'pedido'        => $pedido,
+                'pedido_corto'  => $pedidoCorto,
                 'modelo'        => $row['modelo'] ?? '',
                 'color'         => $row['color']  ?? '',
                 'mensaje'       => $mensaje,

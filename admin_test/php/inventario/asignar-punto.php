@@ -159,11 +159,15 @@ if ($clienteTel || $clienteEmail) {
                 : (string)$fechaEstimada;
             $pedido = $order['pedido'] ?? ($moto['pedido_num'] ?? '');
             if ($pedido && str_starts_with($pedido, 'VK-')) $pedido = substr($pedido, 3);
+            $pedidoCorto = (function_exists('voltikaResolvePedidoCorto') && !empty($order['id']))
+                ? voltikaResolvePedidoCorto($pdo, (int)$order['id'])
+                : 'VK-' . $pedido;
 
             voltikaNotify('punto_asignado', [
                 'cliente_id'      => $moto['cliente_id'] ?? null,
                 'nombre'          => $clienteNombre,
                 'pedido'          => $pedido,
+                'pedido_corto'    => $pedidoCorto,
                 'modelo'          => $moto['modelo'] ?? ($order['modelo'] ?? ''),
                 'color'           => $moto['color']  ?? ($order['color']  ?? ''),
                 'punto'           => $punto['nombre'],

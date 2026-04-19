@@ -128,7 +128,7 @@ window.AD_envios = (function(){
         var pagoCol   = pe === 'parcial' ? 'yellow' : 'green';
         html += '<div class="ad-card adPickOrder" style="cursor:pointer;padding:10px;margin-bottom:6px;" data-idx="'+idx+'">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">'+
-            '<strong>VK-'+(o.pedido||o.id)+'</strong>'+
+            '<strong>'+(o.pedido_corto||'VK-'+(o.pedido||o.id))+'</strong>'+
             '<div style="display:flex;gap:4px;">'+
               '<span class="ad-badge '+pagoCol+'" style="font-size:10px;">'+pagoLabel+'</span>'+
               '<span class="ad-badge '+(o.tipo==='credito'||o.tipo==='enganche'?'yellow':(o.tipo==='msi'?'blue':'green'))+'" style="font-size:10px;">'+
@@ -190,7 +190,7 @@ window.AD_envios = (function(){
       // Show order summary when creating for a specific order
       if (transId && orderInfo) {
         html += '<div style="padding:10px;background:#E8F4FD;border-radius:6px;margin-bottom:10px;font-size:12px;border:1px solid #B3D4FC;">'+
-          '<strong>Orden: VK-'+(orderInfo.pedido||transId)+'</strong><br>'+
+          '<strong>Orden: '+(orderInfo.pedido_corto||'VK-'+(orderInfo.pedido||transId))+'</strong><br>'+
           'Cliente: <strong>'+(orderInfo.nombre||'—')+'</strong><br>'+
           'Modelo: '+(orderInfo.modelo||'—')+' · Color: '+(orderInfo.color||'—')+' · '+ADApp.money(orderInfo.monto||0)+
           (orderInfo.punto_nombre ? '<br>Punto solicitado: <strong>'+orderInfo.punto_nombre+'</strong>' : '')+

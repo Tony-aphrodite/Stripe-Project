@@ -99,7 +99,7 @@ window.AD_ventas = (function(){
       if(r.seguro_qualitas) extrasHtml += '<span title="Solicitó seguro (Quálitas)" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">SEGURO</span>';
 
       html += '<tr>'+
-        '<td><strong>VK-'+(r.pedido||r.id)+'</strong>'+extrasHtml+alertaHtml+'</td>'+
+        '<td><strong>'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'+'</strong>'+extrasHtml+alertaHtml+'</td>'+
         '<td>'+(r.nombre||'-')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
         '<td>'+(r.modelo||'-')+'</td>'+
         '<td>'+(r.color||'-')+'</td>'+
@@ -164,7 +164,7 @@ window.AD_ventas = (function(){
                        || (isCreditFam && pe === 'parcial');
           if (canAssign) {
             actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
-                       'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
+                       'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\''+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'+'\')">Asignar</button>';
           } else if (r.stripe_pi) {
             // Payment not confirmed: Enviar link prominently on top (full width),
             // Sinc + Ver on the bottom row. Prevents "Ver" from overflowing to
@@ -353,7 +353,7 @@ window.AD_ventas = (function(){
     var html = '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:18px;border-bottom:2px solid var(--ad-border);">';
     html += '<div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#039fe1,#0280b5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
     html += '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>';
-    html += '<div style="flex:1;min-width:0;"><div style="font-size:20px;font-weight:800;color:var(--ad-navy);line-height:1.2;">VK-'+(r.pedido||r.id)+'</div>';
+    html += '<div style="flex:1;min-width:0;"><div style="font-size:20px;font-weight:800;color:var(--ad-navy);line-height:1.2;">'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'+'</div>';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;"><span class="ad-badge '+pagoColor+'">'+pagoLabel+'</span>';
     html += '<span style="font-size:13px;color:var(--ad-dim);">'+(r.modelo||'—')+' · '+(r.color||'—')+' · '+ADApp.money(r.monto)+'</span>';
     html += '</div></div></div>';
@@ -678,7 +678,7 @@ window.AD_ventas = (function(){
   function openGestionPlacas(txId, r){
     var estado = (r.placas_estado||'pendiente');
     var html = '<div class="ad-h2">Gestión de placas</div>';
-    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:14px;">Pedido <strong>VK-'+(r.pedido||txId)+'</strong> · '+(r.nombre||'')+'</div>';
+    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:14px;">Pedido <strong>'+(r.pedido_corto||'VK-'+(r.pedido||txId))+'+'</strong> · '+(r.nombre||'')+'</div>';
     html += '<div style="background:var(--ad-surface-2);padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;">';
     html += '<strong>Cliente:</strong> '+(r.nombre||'—')+' · <a href="tel:'+(r.telefono||'')+'" style="color:var(--ad-primary);">'+(r.telefono||'')+'</a><br>';
     html += '<strong>Estado MX:</strong> '+(r.estado||'—')+' · <strong>Ciudad:</strong> '+(r.ciudad||'—');
@@ -744,7 +744,7 @@ window.AD_ventas = (function(){
   function openGestionSeguro(txId, r){
     var estado = (r.seguro_estado||'pendiente');
     var html = '<div class="ad-h2">Gestión de seguro</div>';
-    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:14px;">Pedido <strong>VK-'+(r.pedido||txId)+'</strong> · '+(r.nombre||'')+'</div>';
+    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:14px;">Pedido <strong>'+(r.pedido_corto||'VK-'+(r.pedido||txId))+'+'</strong> · '+(r.nombre||'')+'</div>';
     html += '<div style="background:var(--ad-surface-2);padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;">';
     html += '<strong>Cliente:</strong> '+(r.nombre||'—')+' · <a href="tel:'+(r.telefono||'')+'" style="color:var(--ad-primary);">'+(r.telefono||'')+'</a><br>';
     html += '<strong>Unidad:</strong> '+(r.modelo||'—')+' · '+(r.color||'—');
@@ -1076,7 +1076,7 @@ window.AD_ventas = (function(){
     '</div>';
 
     h += '<div style="font-size:13px;margin-bottom:10px;">';
-    h += '<strong>Pedido:</strong> VK-'+esc(r.pedido||r.id)+'<br>';
+    h += '<strong>Pedido:</strong> '+esc(r.pedido_corto||'VK-'+(r.pedido||r.id))+'+'<br>';
     h += '<strong>Cliente:</strong> '+esc(r.nombre||'—')+'<br>';
     h += '<strong>Modelo:</strong> '+esc(r.modelo||'—')+' · '+esc(r.color||'—')+'<br>';
     h += '<strong>Monto:</strong> '+ADApp.money(r.monto)+'<br>';
