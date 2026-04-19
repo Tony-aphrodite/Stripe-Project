@@ -92,17 +92,32 @@ if ($tipo === 'placas' && empty($tx['asesoria_placas'])) {
     adminJsonOut(['error' => 'Esta orden no tiene asesoría de placas'], 400);
 }
 
-// Storage directory (admin/uploads/cotizaciones/<tipo>/<tx_id>/)
-$baseDir = dirname(__DIR__, 2) . '/uploads/cotizaciones/' . $tipo . '/' . $txId;
+// Storage directory — flat layout admin/uploads/cotizaciones/<tipo>/
+// (no per-tx_id subdirs: filename contains tx_id + random hash, so collisions
+// are impossible and we don't need runtime mkdir that can fail on restrictive
+// shared hosts). The <tipo> folder must be pre-created with write perms for
+// the web user — the helper below verifies and returns a clear error.
+$adminRoot = dirname(__DIR__, 2);
+$baseDir   = $adminRoot . '/uploads/cotizaciones/' . $tipo;
 if (!is_dir($baseDir)) {
-    if (!@mkdir($baseDir, 0755, true) && !is_dir($baseDir)) {
-        adminJsonOut(['error' => 'No se pudo crear directorio de subida'], 500);
-    }
+    @mkdir($baseDir, 0775, true);
+}
+if (!is_dir($baseDir)) {
+    adminJsonOut([
+        'error' => 'La carpeta admin/uploads/cotizaciones/' . $tipo . ' no existe',
+        'hint'  => 'Crea la carpeta en el servidor con permisos 775 (o 777 temporalmente)',
+    ], 500);
+}
+if (!is_writable($baseDir)) {
+    adminJsonOut([
+        'error' => 'La carpeta admin/uploads/cotizaciones/' . $tipo . ' existe pero no es escribible por PHP',
+        'hint'  => 'Aplica chmod 775 (o 777) a esa carpeta. En Plesk: File Manager → clic derecho en la carpeta → Change Permissions',
+    ], 500);
 }
 
-// Random filename (keep extension only). Hashing avoids collisions and prevents
-// path-traversal via the client-provided name.
-$newName  = bin2hex(random_bytes(16)) . '.' . $ext;
+// Filename embeds tx_id so admins can recognise files visually when browsing
+// the folder via FTP, plus a random hash to prevent collisions on re-upload.
+$newName  = $txId . '-' . bin2hex(random_bytes(8)) . '.' . $ext;
 $destPath = $baseDir . '/' . $newName;
 
 if (!@move_uploaded_file($f['tmp_name'], $destPath)) {
@@ -117,7 +132,7 @@ if ($oldRel) {
 }
 
 // Relative path (from admin/) that we store — the serve endpoint re-anchors it.
-$relPath = 'uploads/cotizaciones/' . $tipo . '/' . $txId . '/' . $newName;
+$relPath = 'uploads/cotizaciones/' . $tipo . '/' . $newName;
 
 $col = $tipo . '_cotizacion_';
 $pdo->prepare("UPDATE transacciones SET
