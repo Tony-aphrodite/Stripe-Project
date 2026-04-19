@@ -73,7 +73,13 @@ window.VK_inicio = (function(){
   function renderContado(){
     var e = VKApp.state.estado || {};
     var c = VKApp.state.cliente || {};
-    var nombre = c.nombrePila || (c.nombre||'').split(' ')[0] || 'Cliente';
+    // Customer brief: greet with FULL name (nombre + apellido_paterno + materno).
+    // me.php now returns `nombre_completo` pre-composed; fall back to manual
+    // concatenation in case an old cached payload is still in memory.
+    var nombre = c.nombre_completo
+      || [c.nombre, c.apellido_paterno, c.apellido_materno].filter(function(v){return v;}).join(' ').trim()
+      || c.nombre
+      || 'Cliente';
     var compra = e.compra || {};
     var entrega = e.entrega || {};
     var paso = entrega.paso || 1;
@@ -223,7 +229,13 @@ window.VK_inicio = (function(){
   function renderCredito(){
     var e = VKApp.state.estado || {};
     var c = VKApp.state.cliente || {};
-    var nombre = c.nombrePila || (c.nombre||'').split(' ')[0] || 'Cliente';
+    // Customer brief: greet with FULL name (nombre + apellido_paterno + materno).
+    // me.php now returns `nombre_completo` pre-composed; fall back to manual
+    // concatenation in case an old cached payload is still in memory.
+    var nombre = c.nombre_completo
+      || [c.nombre, c.apellido_paterno, c.apellido_materno].filter(function(v){return v;}).join(' ').trim()
+      || c.nombre
+      || 'Cliente';
     var prox = e.proximo_pago || {};
     var prog = e.progreso || {};
     var pct = prog.total? Math.round((prog.pagados/prog.total)*100):0;

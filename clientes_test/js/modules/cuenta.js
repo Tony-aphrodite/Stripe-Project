@@ -34,7 +34,9 @@ window.VK_cuenta = (function(){
     var c = p.cliente||{};
     var m = p.moto||{};
     var img = p.moto_img||'';
-    var fullName = ((c.nombre||'')+ ' '+(c.apellido_paterno||'')).trim() || 'Cliente';
+    var fullName = c.nombre_completo
+      || [c.nombre, c.apellido_paterno, c.apellido_materno].filter(function(v){return v;}).join(' ').trim()
+      || 'Cliente';
     var ini = initials(fullName);
     var estadoMoto = (m.estado||'activa');
 
