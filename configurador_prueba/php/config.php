@@ -138,48 +138,52 @@ if (!function_exists('getDB')) {
 }
 
 // ── Shared PHPMailer helper ─────────────────────────────────────────────────
-function sendMail($to, $toName, $subject, $htmlBody) {
-    $autoload = __DIR__ . '/vendor/autoload.php';
-    if (file_exists($autoload)) require_once $autoload;
+// Guarded to avoid "Cannot redeclare" fatals when this file is pulled in
+// transitively from admin code that already declared sendMail().
+if (!function_exists('sendMail')) {
+    function sendMail($to, $toName, $subject, $htmlBody) {
+        $autoload = __DIR__ . '/vendor/autoload.php';
+        if (file_exists($autoload)) require_once $autoload;
 
-    $sent = false;
+        $sent = false;
 
-    if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-        try {
-            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-            $mail->isSMTP();
-            $mail->SMTPAuth   = true;
-            $mail->Host       = SMTP_HOST;
-            $mail->Port       = SMTP_PORT;
-            $mail->Username   = SMTP_USER;
-            $mail->Password   = SMTP_PASS;
-            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
-            $mail->setFrom(SMTP_USER, 'Voltika México');
-            $mail->addAddress($to, $toName);
-            $mail->addAddress('redes@voltika.com.mx');
-            $mail->CharSet    = 'UTF-8';
-            $mail->Encoding   = 'base64';
-            $mail->isHTML(true);
-            $mail->Subject    = $subject;
-            $mail->Body       = $htmlBody;
-            $mail->AltBody    = strip_tags($htmlBody);
-            $mail->send();
-            $sent = true;
-        } catch (Exception $e) {
-            error_log('Voltika PHPMailer error: ' . $e->getMessage());
+        if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+            try {
+                $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                $mail->isSMTP();
+                $mail->SMTPAuth   = true;
+                $mail->Host       = SMTP_HOST;
+                $mail->Port       = SMTP_PORT;
+                $mail->Username   = SMTP_USER;
+                $mail->Password   = SMTP_PASS;
+                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+                $mail->setFrom(SMTP_USER, 'Voltika México');
+                $mail->addAddress($to, $toName);
+                $mail->addAddress('redes@voltika.com.mx');
+                $mail->CharSet    = 'UTF-8';
+                $mail->Encoding   = 'base64';
+                $mail->isHTML(true);
+                $mail->Subject    = $subject;
+                $mail->Body       = $htmlBody;
+                $mail->AltBody    = strip_tags($htmlBody);
+                $mail->send();
+                $sent = true;
+            } catch (Exception $e) {
+                error_log('Voltika PHPMailer error: ' . $e->getMessage());
+            }
         }
-    }
 
-    // Fallback: PHP mail()
-    if (!$sent && !empty($to)) {
-        $headers  = "MIME-Version: 1.0\r\n";
-        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: Voltika México <" . SMTP_USER . ">\r\n";
-        $headers .= "Bcc: redes@voltika.com.mx\r\n";
-        $sent = @mail($to, $subject, $htmlBody, $headers);
-    }
+        // Fallback: PHP mail()
+        if (!$sent && !empty($to)) {
+            $headers  = "MIME-Version: 1.0\r\n";
+            $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+            $headers .= "From: Voltika México <" . SMTP_USER . ">\r\n";
+            $headers .= "Bcc: redes@voltika.com.mx\r\n";
+            $sent = @mail($to, $subject, $htmlBody, $headers);
+        }
 
-    return $sent;
+        return $sent;
+    }
 }
 
 // ── Ensure logs directory exists ────────────────────────────────────────────
