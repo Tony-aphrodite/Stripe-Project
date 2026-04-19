@@ -432,13 +432,15 @@ window.VK_inicio = (function(){
         );
       }
       $('#vkCambiarTarjeta').on('click', function(){
-        var $btn = $(this).prop('disabled', true).html('<span class="vk-spin"></span>');
+        var $btn = $(this);
+        var originalLabel = $btn.text();   // remember "Cambiar" or "Agregar tarjeta"
+        $btn.prop('disabled', true).html('<span class="vk-spin"></span>');
         VKApp.api('pagos/cambiar-tarjeta.php', {}).done(function(res){
           if (res && res.url) { window.location.href = res.url; }
-          else { VKApp.toast(res.error||'No se pudo iniciar el cambio'); $btn.prop('disabled', false).text('Cambiar'); }
+          else { VKApp.toast(res.error||'No se pudo iniciar el cambio'); $btn.prop('disabled', false).text(originalLabel); }
         }).fail(function(x){
           VKApp.toast((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
-          $btn.prop('disabled', false).text('Cambiar');
+          $btn.prop('disabled', false).text(originalLabel);
         });
       });
     }).fail(function(){
