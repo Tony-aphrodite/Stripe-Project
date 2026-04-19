@@ -15,8 +15,22 @@ window.VK_recovery = (function(){
   }
   function call(step, data, cb){
     return VKApp.api('auth/recovery.php?step='+step, data).done(function(r){
-      if(r.ok) cb(r); else VKApp.toast(r.error||'Error');
-    }).fail(function(x){ VKApp.toast((x.responseJSON&&x.responseJSON.error)||'Error'); });
+      // Backend uses {status:'sent'|'ok'} as success marker — accept either
+      // that or the more conventional {ok:true}. Treat any other shape as a
+      // structured error so the toast tells the user something useful.
+      if (r && (r.ok || r.status === 'sent' || r.status === 'ok')) {
+        cb(r);
+      } else if (r && r.error) {
+        VKApp.toast(r.error);
+      } else {
+        VKApp.toast('Respuesta inesperada del servidor');
+      }
+    }).fail(function(x){
+      var msg = 'Error';
+      if (x.responseJSON && x.responseJSON.error) msg = x.responseJSON.error;
+      else if (x.responseText) msg = 'HTTP ' + (x.status||'?') + ': ' + x.responseText.substring(0, 200);
+      VKApp.toast(msg);
+    });
   }
   function render(){ ctx={}; step1(); }
   function step1(){

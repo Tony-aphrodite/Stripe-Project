@@ -3,13 +3,30 @@
  * Voltika Portal - Access Recovery (6-step flow)
  * Single endpoint, dispatches on ?step=N
  *  1 = email submit → send email OTP
- *  2 = verify email OTP
+ *  2 = verify email OTP (+ optional new phone capture)
  *  3 = verify apellido paterno
  *  4 = verify fecha nacimiento
- *  5 = submit new phone → send SMS OTP
+ *  5 = submit new phone → send SMS OTP (auto-skipped if phone captured at step 2)
  *  6 = verify new phone OTP → update
  */
 require_once __DIR__ . '/../bootstrap.php';
+
+// Convert any PHP fatal/warning into a JSON error response so the client
+// always gets a parseable body (avoids generic "Error" toast on the front).
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) return false;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(['ok' => false, 'error' => 'Error interno: ' . $err['message']]);
+    }
+});
 
 $step = intval($_GET['step'] ?? ($_POST['step'] ?? 0));
 $in = portalJsonIn();
@@ -38,10 +55,15 @@ case 1: // email → send email OTP
         'stage' => 1,
     ];
     $body = "<p>Hola,</p><p>Tu código de recuperación de Voltika es:</p><h2>{$codigo}</h2><p>Válido por 10 minutos.</p>";
-    $sent = sendMail($email, '', 'Tu código de recuperación Voltika', $body);
+    $sent = false;
+    try {
+        $sent = function_exists('sendMail') ? sendMail($email, '', 'Tu código de recuperación Voltika', $body) : false;
+    } catch (Throwable $e) {
+        error_log('recovery sendMail: ' . $e->getMessage());
+    }
     recoveryLog('email_sent', ['email' => $email, 'cliente_id' => (int)$cliente['id'], 'success' => $sent ? 1 : 0]);
     $out = ['status' => 'sent'];
-    if (!$sent) $out['testCode'] = $codigo;
+    if (!$sent) $out['testCode'] = $codigo;  // fallback so flow continues
     portalJsonOut($out);
     break;
 
