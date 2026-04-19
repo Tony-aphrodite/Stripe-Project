@@ -413,13 +413,53 @@ window.VK_inicio = (function(){
     // pipeline (Stripe call → success toast → reload) is reused as-is.
     $('.vk-pay-action').on('click', function(){
       var method = $(this).data('method');
-      if (method === 'tarjeta') pay('tarjeta_manual');
-      else if (method === 'oxxo') pay('oxxo');
-      else if (method === 'spei') pay('spei');
+      if (method === 'tarjeta') payWithTarjeta('semanal');
+      else if (method === 'oxxo') payWithOxxo('semanal');
+      else if (method === 'spei') payWithSpei('semanal');
     });
 
     // ── Backup-card section (customer brief 2026-04-19) ────────────────────
     loadBackupCard();
+
+    // ── Pending OXXO/SPEI banner (re-open instructions) ────────────────────
+    loadPendientesPagos();
+  }
+
+  function loadPendientesPagos(){
+    VKApp.api('pagos/pendientes.php').done(function(r){
+      var list = (r && r.pendientes) || [];
+      if (!list.length) { $('#vkPendientesPagos').remove(); return; }
+      var html = '<div id="vkPendientesPagos" class="vk-card" style="border-left:4px solid #f59e0b;background:#fffbeb;">'+
+        '<div class="vk-h2" style="margin:0 0 6px;font-size:15px;color:#7a4f08;">Pagos en proceso</div>'+
+        '<div style="font-size:12.5px;color:#78350f;margin-bottom:10px;">Estas referencias siguen pendientes. Cuando Voltika reciba tu pago se marcará automáticamente.</div>';
+      list.forEach(function(p){
+        var isOxxo = p.origen === 'portal_oxxo';
+        var label  = isOxxo ? 'OXXO' : 'SPEI';
+        var color  = isOxxo ? '#e30613' : '#0072bc';
+        var monto  = speiFormatMonto(p.monto);
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px dashed #fcd34d;">'+
+          '<div style="background:'+color+';color:#fff;font-weight:900;font-size:11px;padding:4px 8px;border-radius:4px;letter-spacing:.5px;">'+ label +'</div>'+
+          '<div style="flex:1;font-size:13px;color:#0f172a;"><strong>'+ monto +'</strong></div>'+
+          '<button class="vk-btn ghost sm vkReopenPendiente" data-id="'+ p.id +'" type="button" style="padding:6px 12px;font-size:12px;">Ver instrucciones</button>'+
+        '</div>';
+      });
+      html += '</div>';
+      $('#vkPendientesPagos').remove();
+      // Insert the banner right after the first header (vk-h1) so it's prominent
+      var $host = $('#vkScreen').find('.vk-h1').first();
+      if ($host.length) $host.after(html); else $('#vkScreen').prepend(html);
+
+      // Cache pending data on the DOM so re-open doesn't need another round-trip
+      $('#vkPendientesPagos').data('cache', list);
+      $(document).off('click.vkReopen').on('click.vkReopen', '.vkReopenPendiente', function(){
+        var id = String($(this).data('id'));
+        var cache = $('#vkPendientesPagos').data('cache') || [];
+        var p = cache.filter(function(x){ return String(x.id) === id; })[0];
+        if (!p) return;
+        if (p.origen === 'portal_oxxo') showOxxoModal(p);
+        else if (p.origen === 'portal_spei') showSpeiModal(p);
+      });
+    });
   }
 
   function backupCardBrandSvg(brand){
@@ -473,6 +513,228 @@ window.VK_inicio = (function(){
       });
     }).fail(function(){
       $('#vkBackupCardBody').html('<div class="vk-muted" style="font-size:12px;">No se pudo cargar la tarjeta de respaldo.</div>');
+    });
+  }
+
+  // ── Tarjeta flow (Stripe Checkout redirect) ─────────────────────────────
+  // Creates a Checkout Session server-side and redirects the user to Stripe's
+  // hosted page where they enter any card. On success Stripe redirects back
+  // to /clientes/?pago=ok; the webhook marks ciclos paid via PI metadata.
+  function payWithTarjeta(tipo, numSemanas){
+    if (paying) return;
+    paying = true;
+    $('.vk-pay-action').css('opacity','0.5').css('pointer-events','none');
+    VKApp.toast('Redirigiendo a Stripe...');
+    var data = { tipo: tipo };
+    if (numSemanas) data.num_semanas = numSemanas;
+    VKApp.api('pagos/iniciar-tarjeta.php', data).done(function(r){
+      if (r && r.url) { window.location.href = r.url; return; }
+      VKApp.toast((r && r.error) || 'No se pudo iniciar el pago con tarjeta');
+      paying = false;
+      $('.vk-pay-action').css('opacity','').css('pointer-events','');
+    }).fail(function(x){
+      VKApp.toast((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+      paying = false;
+      $('.vk-pay-action').css('opacity','').css('pointer-events','');
+    });
+  }
+
+  // ── SPEI flow ────────────────────────────────────────────────────────────
+  // Creates a Stripe customer_balance PaymentIntent on the server, then shows
+  // the CLABE + reference in a modal. Ciclos stay pending; the webhook marks
+  // them paid when the bank transfer settles (up to 24h).
+  function payWithSpei(tipo, numSemanas){
+    if (paying) return;
+    paying = true;
+    $('.vk-pay-action').css('opacity','0.5').css('pointer-events','none');
+    VKApp.toast('Generando instrucciones SPEI...');
+    var data = { tipo: tipo };
+    if (numSemanas) data.num_semanas = numSemanas;
+    VKApp.api('pagos/iniciar-spei.php', data).done(function(r){
+      if (r && r.clabe) showSpeiModal(r);
+      else VKApp.toast((r && r.error) || 'No se pudo generar la referencia SPEI');
+    }).fail(function(x){
+      VKApp.toast((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+    }).always(function(){
+      paying = false;
+      $('.vk-pay-action').css('opacity','').css('pointer-events','');
+    });
+  }
+
+  function speiFormatMonto(n){
+    return '$' + Number(n||0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MXN';
+  }
+
+  function showSpeiModal(r){
+    $('#vkSpeiModal').remove();
+    var clabe  = String(r.clabe || '').replace(/\s+/g,'');
+    var banco  = r.banco || 'STP';
+    var benef  = r.beneficiario || 'MTECH GEARS S.A. DE C.V.';
+    var ref    = r.referencia || '';
+    var monto  = speiFormatMonto(r.monto);
+
+    var html =
+      '<div id="vkSpeiModal" style="position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:flex-end;justify-content:center;z-index:9999;">'+
+        '<div style="background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:20px 18px 24px;max-height:92vh;overflow-y:auto;box-shadow:0 -6px 24px rgba(0,0,0,.2);">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'+
+            '<div style="display:flex;align-items:center;gap:10px;">'+
+              '<svg viewBox="0 0 80 32" width="44" height="18"><rect width="80" height="32" rx="4" fill="#0072bc"/><text x="40" y="22" text-anchor="middle" fill="#fff" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="16" letter-spacing="0.5">SPEI</text></svg>'+
+              '<div style="font-size:16px;font-weight:700;color:#1a3a5c;">Transferencia SPEI</div>'+
+            '</div>'+
+            '<button id="vkSpeiClose" type="button" aria-label="Cerrar" style="background:none;border:0;font-size:22px;line-height:1;color:#64748b;cursor:pointer;padding:4px 8px;">&times;</button>'+
+          '</div>'+
+
+          '<div style="background:#eef7ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:14px;">'+
+            '<div style="font-size:12px;color:#1e40af;margin-bottom:4px;">Monto a transferir</div>'+
+            '<div style="font-size:24px;font-weight:800;color:#0b3c7a;">'+ monto +'</div>'+
+          '</div>'+
+
+          '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px;">'+
+            '<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">CLABE interbancaria</div>'+
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">'+
+              '<div id="vkSpeiClabe" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;font-weight:700;letter-spacing:1.2px;color:#0f172a;word-break:break-all;">'+ (clabe||'—') +'</div>'+
+              (clabe ? '<button id="vkSpeiCopy" class="vk-btn primary sm" type="button" style="padding:6px 12px;font-size:12px;flex-shrink:0;">Copiar</button>' : '')+
+            '</div>'+
+          '</div>'+
+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'+
+            '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;">'+
+              '<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Banco</div>'+
+              '<div style="font-size:14px;font-weight:600;color:#0f172a;margin-top:2px;">'+ String(banco).replace(/[<>"&]/g,'') +'</div>'+
+            '</div>'+
+            '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;">'+
+              '<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Referencia</div>'+
+              '<div style="font-size:14px;font-weight:600;color:#0f172a;margin-top:2px;word-break:break-all;">'+ (ref ? String(ref).replace(/[<>"&]/g,'') : '—') +'</div>'+
+            '</div>'+
+          '</div>'+
+
+          '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:16px;">'+
+            '<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Beneficiario</div>'+
+            '<div style="font-size:14px;font-weight:600;color:#0f172a;margin-top:2px;">'+ String(benef).replace(/[<>"&]/g,'') +'</div>'+
+          '</div>'+
+
+          '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #22c55e;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#166534;line-height:1.55;">'+
+            '<strong>Acreditación automática.</strong> Cuando recibamos tu transferencia, tu pago se marcará como realizado (hasta 24 horas). No envíes comprobantes.'+
+          '</div>'+
+
+          '<button id="vkSpeiDone" class="vk-btn primary" type="button" style="width:100%;padding:12px;font-size:14px;">Entendido</button>'+
+        '</div>'+
+      '</div>';
+
+    $('body').append(html);
+
+    $('#vkSpeiClose,#vkSpeiDone').on('click', function(){ $('#vkSpeiModal').remove(); });
+    $('#vkSpeiCopy').on('click', function(){
+      var $b = $(this);
+      var orig = $b.text();
+      var done = function(){ $b.text('Copiado ✓'); setTimeout(function(){ $b.text(orig); }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(clabe).then(done, function(){
+          window.prompt('Copia la CLABE:', clabe);
+        });
+      } else {
+        window.prompt('Copia la CLABE:', clabe);
+        done();
+      }
+    });
+  }
+
+  // ── OXXO flow ────────────────────────────────────────────────────────────
+  // Creates a Stripe OXXO PaymentIntent on the server and shows the voucher
+  // URL + reference in a modal. Ciclos stay pending; webhook marks paid when
+  // the customer pays at the store (typically same-day to 24h).
+  function payWithOxxo(tipo, numSemanas){
+    if (paying) return;
+    paying = true;
+    $('.vk-pay-action').css('opacity','0.5').css('pointer-events','none');
+    VKApp.toast('Generando referencia OXXO...');
+    var data = { tipo: tipo };
+    if (numSemanas) data.num_semanas = numSemanas;
+    VKApp.api('pagos/iniciar-oxxo.php', data).done(function(r){
+      if (r && (r.voucher_url || r.referencia)) showOxxoModal(r);
+      else VKApp.toast((r && r.error) || 'No se pudo generar la referencia OXXO');
+    }).fail(function(x){
+      VKApp.toast((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+    }).always(function(){
+      paying = false;
+      $('.vk-pay-action').css('opacity','').css('pointer-events','');
+    });
+  }
+
+  function oxxoFormatExpiry(ts){
+    if (!ts) return '—';
+    var d = new Date(ts * 1000);
+    if (isNaN(d)) return '—';
+    var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    return d.getDate() + ' de ' + meses[d.getMonth()] + ' de ' + d.getFullYear();
+  }
+
+  function showOxxoModal(r){
+    $('#vkOxxoModal').remove();
+    var ref    = String(r.referencia || '').replace(/\s+/g,'');
+    var voucher= r.voucher_url || '';
+    var monto  = speiFormatMonto(r.monto);
+    var exp    = oxxoFormatExpiry(r.expires_at);
+
+    var html =
+      '<div id="vkOxxoModal" style="position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:flex-end;justify-content:center;z-index:9999;">'+
+        '<div style="background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:20px 18px 24px;max-height:92vh;overflow-y:auto;box-shadow:0 -6px 24px rgba(0,0,0,.2);">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'+
+            '<div style="display:flex;align-items:center;gap:10px;">'+
+              '<svg viewBox="0 0 80 32" width="46" height="20"><rect width="80" height="32" rx="4" fill="#e30613"/><text x="40" y="22" text-anchor="middle" fill="#fff" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="16" letter-spacing="-0.5">OXXO</text></svg>'+
+              '<div style="font-size:16px;font-weight:700;color:#1a3a5c;">Pago en OXXO</div>'+
+            '</div>'+
+            '<button id="vkOxxoClose" type="button" aria-label="Cerrar" style="background:none;border:0;font-size:22px;line-height:1;color:#64748b;cursor:pointer;padding:4px 8px;">&times;</button>'+
+          '</div>'+
+
+          '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;margin-bottom:14px;">'+
+            '<div style="font-size:12px;color:#991b1b;margin-bottom:4px;">Monto a pagar</div>'+
+            '<div style="font-size:24px;font-weight:800;color:#7f1d1d;">'+ monto +'</div>'+
+          '</div>'+
+
+          '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px;">'+
+            '<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Número de referencia</div>'+
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">'+
+              '<div id="vkOxxoRef" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;font-weight:700;letter-spacing:1px;color:#0f172a;word-break:break-all;">'+ (ref||'—') +'</div>'+
+              (ref ? '<button id="vkOxxoCopy" class="vk-btn primary sm" type="button" style="padding:6px 12px;font-size:12px;flex-shrink:0;">Copiar</button>' : '')+
+            '</div>'+
+          '</div>'+
+
+          '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:14px;">'+
+            '<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Paga antes del</div>'+
+            '<div style="font-size:14px;font-weight:600;color:#0f172a;margin-top:2px;">'+ exp +'</div>'+
+          '</div>'+
+
+          (voucher
+            ? '<a href="'+ voucher +'" target="_blank" rel="noopener noreferrer" class="vk-btn primary" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;font-size:14px;background:#e30613;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;margin-bottom:12px;">'+
+                '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h.01M11 8h.01M15 8h.01M7 12h10M7 16h6"/></svg>'+
+                'Ver comprobante con código de barras'+
+              '</a>'
+            : '')+
+
+          '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #22c55e;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#166534;line-height:1.55;">'+
+            '<strong>Presenta la referencia o el código de barras</strong> en cualquier tienda OXXO del país. Tu pago se acreditará automáticamente (hasta 24 horas).'+
+          '</div>'+
+
+          '<button id="vkOxxoDone" class="vk-btn primary" type="button" style="width:100%;padding:12px;font-size:14px;">Entendido</button>'+
+        '</div>'+
+      '</div>';
+
+    $('body').append(html);
+
+    $('#vkOxxoClose,#vkOxxoDone').on('click', function(){ $('#vkOxxoModal').remove(); });
+    $('#vkOxxoCopy').on('click', function(){
+      var $b = $(this);
+      var orig = $b.text();
+      var done = function(){ $b.text('Copiado ✓'); setTimeout(function(){ $b.text(orig); }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ref).then(done, function(){
+          window.prompt('Copia la referencia:', ref);
+        });
+      } else {
+        window.prompt('Copia la referencia:', ref);
+        done();
+      }
     });
   }
 
