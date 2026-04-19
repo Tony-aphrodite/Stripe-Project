@@ -248,32 +248,67 @@ window.AD_ventas = (function(){
       return;
     }
 
+    // Card-based radio picker (matches the asignar-punto modal pattern). The
+    // previous flex row collapsed catastrophically on mobile — text wrapped
+    // letter-by-letter because VIN, two badges and a button were forced into
+    // a single narrow row. Now each moto is a stacked card with VIN on top,
+    // meta below; selection happens via a single bottom Confirm button.
     var html = '';
-    if(showAll){
+    if (showAll) {
       html += '<div class="ad-banner warn" style="margin-bottom:10px;">No hay motos del mismo color. Mostrando otras unidades del mismo modelo.</div>';
     }
 
-    html += '<div style="max-height:350px;overflow-y:auto;">';
-    motos.forEach(function(m){
-      html += '<div class="ad-card" style="padding:10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" '+
-              'onclick="AD_ventas.doAsignar('+transId+','+m.id+')">';
-      html += '<div>'+
-        '<strong>'+(m.vin_display||m.vin)+'</strong>'+
-        '<span class="ad-badge blue" style="margin-left:8px;">'+m.modelo+'</span>'+
-        '<span class="ad-badge gray" style="margin-left:4px;">'+m.color+'</span>'+
-        '<br><small class="ad-dim">Estado: '+m.estado+(m.punto_nombre?' &middot; '+m.punto_nombre:'')+'</small>'+
-        '</div>';
-      html += '<button class="ad-btn primary" style="padding:5px 14px;font-size:12px;flex-shrink:0">Seleccionar</button>';
-      html += '</div>';
+    html += '<div style="max-height:340px;overflow-y:auto;padding-right:4px;">';
+    motos.forEach(function(m, i){
+      var vinTxt   = m.vin_display || m.vin || '—';
+      var metaTxt  = (m.modelo || '') + (m.color ? ' · ' + m.color : '') + (m.estado ? ' · ' + m.estado : '');
+      var locTxt   = m.punto_nombre ? m.punto_nombre : 'En CEDIS';
+      html += '<label class="adPickMoto" data-mid="'+m.id+'" '+
+                'style="display:block;cursor:pointer;padding:11px 13px;margin-bottom:6px;'+
+                       'border:1.5px solid var(--ad-border);border-radius:8px;background:var(--ad-surface);">'+
+                '<div style="display:flex;gap:10px;align-items:flex-start;">'+
+                  '<input type="radio" name="motoChoice" value="'+m.id+'" style="margin-top:3px;flex-shrink:0;"'+(i===0?' checked':'')+'>'+
+                  '<div style="flex:1;min-width:0;">'+
+                    '<div style="font-weight:700;font-size:13.5px;color:var(--ad-navy);font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;">'+vinTxt+'</div>'+
+                    '<div style="font-size:12px;color:var(--ad-dim);margin-top:3px;">'+metaTxt+'</div>'+
+                    '<div style="font-size:11.5px;color:#666;margin-top:2px;">'+locTxt+'</div>'+
+                  '</div>'+
+                '</div>'+
+              '</label>';
     });
     html += '</div>';
+    html += '<div id="vtMotosMsg" style="font-size:12px;margin:8px 0 0;"></div>';
+    html += '<div style="display:flex;gap:8px;margin-top:12px;">'+
+              '<button class="ad-btn ghost" id="vtMotosCancel" style="flex:1;">Cancelar</button>'+
+              '<button class="ad-btn primary" id="vtMotosSave" style="flex:1;">Confirmar moto</button>'+
+            '</div>';
 
     $('#vtMotos').html(html);
+
+    // Highlight selected card
+    function syncHighlight(){
+      $('.adPickMoto').css({borderColor:'var(--ad-border)', background:'var(--ad-surface)'});
+      var $sel = $('input[name="motoChoice"]:checked').closest('.adPickMoto');
+      $sel.css({borderColor:'var(--ad-primary)', background:'#E8F4FD'});
+    }
+    syncHighlight();
+
+    $('.adPickMoto').on('click', function(){
+      $(this).find('input[type="radio"]').prop('checked', true);
+      syncHighlight();
+    });
+
+    $('#vtMotosCancel').on('click', function(){ ADApp.closeModal(); });
+
+    $('#vtMotosSave').on('click', function(){
+      var motoId = parseInt($('input[name="motoChoice"]:checked').val(), 10);
+      if (!motoId) { $('#vtMotosMsg').css('color','#b91c1c').text('Selecciona una moto'); return; }
+      doAsignar(transId, motoId);
+    });
   }
 
   function doAsignar(transId, motoId){
-    if(!confirm('Confirmar asignacion de esta moto?')) return;
-
+    var $btn = $('#vtMotosSave').prop('disabled', true).html('<span class="ad-spin"></span> Guardando...');
     ADApp.api('ventas/asignar-moto.php', {
       transaccion_id: transId,
       moto_id: motoId
@@ -282,10 +317,12 @@ window.AD_ventas = (function(){
         ADApp.closeModal();
         loadData();
       } else {
-        alert(r.error || 'Error al asignar');
+        $('#vtMotosMsg').css('color','#b91c1c').text(r.error || 'Error al asignar');
+        $btn.prop('disabled', false).text('Confirmar moto');
       }
     }).fail(function(x){
-      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+      $('#vtMotosMsg').css('color','#b91c1c').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+      $btn.prop('disabled', false).text('Confirmar moto');
     });
   }
 
