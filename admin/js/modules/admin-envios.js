@@ -50,17 +50,18 @@ window.AD_envios = (function(){
         '<td>'+ADApp.badgeEstado(e.estado)+'</td>'+
         '<td>'+(e.fecha_envio||'—')+'</td>'+
         '<td>'+(e.fecha_estimada_llegada||'—')+'</td>'+
-        '<td style="white-space:nowrap">';
+        '<td style="min-width:110px;"><div style="display:flex;flex-direction:column;gap:4px;align-items:stretch;">';
 
-      // Action buttons
+      // Action buttons — stacked so they never get clipped by the viewport
       html += '<button class="ad-btn sm ghost adEditTracking" data-id="'+e.id+'" '+
         'data-tracking="'+(e.tracking_number||'')+'" data-carrier="'+(e.carrier||'')+'" '+
-        'data-notas="'+esc(e.notas||'')+'" data-eta="'+(e.fecha_estimada_llegada||'')+'">Tracking</button> ';
+        'data-notas="'+esc(e.notas||'')+'" data-eta="'+(e.fecha_estimada_llegada||'')+'" '+
+        'style="width:100%;">Tracking</button>';
 
       if(e.estado==='lista_para_enviar')
-        html += '<button class="ad-btn sm primary adChg" data-id="'+e.id+'" data-est="enviada">Enviar</button>';
+        html += '<button class="ad-btn sm primary adChg" data-id="'+e.id+'" data-est="enviada" style="width:100%;">Enviar</button>';
 
-      html += '</td></tr>';
+      html += '</div></td></tr>';
     });
 
     html += '</tbody></table></div></div>';
@@ -343,12 +344,12 @@ window.AD_envios = (function(){
             $('#adEnvSave').prop('disabled',false).html('Crear envío');
           }
         }).fail(function(xhr){
-          // Show the real HTTP status + first 400 chars of the server response
-          // so we can pinpoint PHP fatals / missing files / SQL errors without
-          // guessing.
-          var status = xhr && xhr.status ? xhr.status : '?';
-          var body = xhr && xhr.responseText ? xhr.responseText.substring(0, 400) : '(sin respuesta)';
-          alert('HTTP '+status+'\n\n'+body);
+          var msg = 'Error de conexión';
+          try {
+            var r = xhr && xhr.responseText ? JSON.parse(xhr.responseText) : null;
+            if (r && r.error) msg = r.error;
+          } catch(e){}
+          alert(msg);
           $('#adEnvSave').prop('disabled',false).html('Crear envío');
         });
       });
