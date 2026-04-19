@@ -21,7 +21,10 @@ $row = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$row) adminJsonOut(['error' => 'Transacción no encontrada'], 404);
 
 if (!empty($row['archivo'])) {
-    $abs = dirname(__DIR__, 2) . '/' . ltrim($row['archivo'], '/');
+    $stored = $row['archivo'];
+    $abs    = (strlen($stored) > 0 && $stored[0] === '/') || preg_match('#^[A-Z]:[\\\\/]#', $stored)
+        ? $stored
+        : dirname(__DIR__, 2) . '/' . ltrim($stored, '/');
     if (is_file($abs)) @unlink($abs);
 }
 

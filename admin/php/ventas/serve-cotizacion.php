@@ -24,7 +24,12 @@ $stmt->execute([$txId]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$row || empty($row['archivo'])) { http_response_code(404); exit('Sin archivo'); }
 
-$abs = dirname(__DIR__, 2) . '/' . ltrim($row['archivo'], '/');
+// Support both relative paths (under admin/) and absolute fallbacks
+// (tmp dir used when all persistent candidates were read-only).
+$stored = $row['archivo'];
+$abs    = (strlen($stored) > 0 && $stored[0] === '/') || preg_match('#^[A-Z]:[\\\\/]#', $stored)
+    ? $stored
+    : dirname(__DIR__, 2) . '/' . ltrim($stored, '/');
 if (!is_file($abs)) { http_response_code(404); exit('Archivo no encontrado en disco'); }
 
 $mime = $row['mime'] ?: 'application/octet-stream';

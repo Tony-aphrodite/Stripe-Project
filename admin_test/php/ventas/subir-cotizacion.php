@@ -92,26 +92,36 @@ if ($tipo === 'placas' && empty($tx['asesoria_placas'])) {
     adminJsonOut(['error' => 'Esta orden no tiene asesoría de placas'], 400);
 }
 
-// Storage directory — flat layout admin/uploads/cotizaciones/<tipo>/
-// (no per-tx_id subdirs: filename contains tx_id + random hash, so collisions
-// are impossible and we don't need runtime mkdir that can fail on restrictive
-// shared hosts). The <tipo> folder must be pre-created with write perms for
-// the web user — the helper below verifies and returns a clear error.
+// Storage directory — reuse admin/uploads/checklists/ which PHP already owns
+// (created at runtime by subir-foto.php with the correct user). Cotización
+// files live in a dedicated subfolder there; PHP can chmod + write freely
+// because the parent is owned by the PHP user.
+//
+// Also try a couple of fallback roots in case the Plesk instance uses a
+// different layout. First writable candidate wins.
 $adminRoot = dirname(__DIR__, 2);
-$baseDir   = $adminRoot . '/uploads/cotizaciones/' . $tipo;
-if (!is_dir($baseDir)) {
-    @mkdir($baseDir, 0775, true);
+$candidates = [
+    $adminRoot . '/uploads/checklists/cotizaciones/' . $tipo,  // primary — riding on checklists perms
+    $adminRoot . '/uploads/cotizaciones/' . $tipo,             // fallback — if cotizaciones is fixed later
+    sys_get_temp_dir() . '/voltika_cotizaciones/' . $tipo,     // last resort — tmp (non-persistent!)
+];
+$baseDir = null; $relRoot = null;
+foreach ($candidates as $i => $cand) {
+    if (!is_dir($cand)) @mkdir($cand, 0775, true);
+    if (is_dir($cand) && is_writable($cand)) {
+        $baseDir = $cand;
+        // Compute the relative path we'll store in the DB; only the first two
+        // candidates live under $adminRoot so they can be served back.
+        if ($i === 0) $relRoot = 'uploads/checklists/cotizaciones/' . $tipo;
+        elseif ($i === 1) $relRoot = 'uploads/cotizaciones/' . $tipo;
+        else $relRoot = null; // tmp fallback — stored as absolute
+        break;
+    }
 }
-if (!is_dir($baseDir)) {
+if (!$baseDir) {
     adminJsonOut([
-        'error' => 'La carpeta admin/uploads/cotizaciones/' . $tipo . ' no existe',
-        'hint'  => 'Crea la carpeta en el servidor con permisos 775 (o 777 temporalmente)',
-    ], 500);
-}
-if (!is_writable($baseDir)) {
-    adminJsonOut([
-        'error' => 'La carpeta admin/uploads/cotizaciones/' . $tipo . ' existe pero no es escribible por PHP',
-        'hint'  => 'Aplica chmod 775 (o 777) a esa carpeta. En Plesk: File Manager → clic derecho en la carpeta → Change Permissions',
+        'error' => 'No se encontró ninguna carpeta escribible para cotizaciones',
+        'hint'  => 'Revisa permisos de admin/uploads/checklists/ — si esa carpeta funciona para checklists, debería funcionar aquí también',
     ], 500);
 }
 
@@ -131,8 +141,10 @@ if ($oldRel) {
     if (is_file($oldAbs) && $oldAbs !== $destPath) @unlink($oldAbs);
 }
 
-// Relative path (from admin/) that we store — the serve endpoint re-anchors it.
-$relPath = 'uploads/cotizaciones/' . $tipo . '/' . $newName;
+// Relative path (from admin/) that we store — the serve endpoint re-anchors
+// it. If the fallback was the tmp dir, $relRoot is null — store the absolute
+// path so serve-cotizacion.php can still find the file.
+$relPath = $relRoot ? ($relRoot . '/' . $newName) : $destPath;
 
 $col = $tipo . '_cotizacion_';
 $pdo->prepare("UPDATE transacciones SET
