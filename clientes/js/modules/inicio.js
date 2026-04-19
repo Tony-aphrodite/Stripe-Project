@@ -591,9 +591,9 @@ window.VK_inicio = (function(){
 
           '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px;">'+
             '<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">CLABE interbancaria</div>'+
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">'+
-              '<div id="vkSpeiClabe" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;font-weight:700;letter-spacing:1.2px;color:#0f172a;word-break:break-all;">'+ (clabe||'—') +'</div>'+
-              (clabe ? '<button id="vkSpeiCopy" class="vk-btn primary sm" type="button" style="padding:6px 12px;font-size:12px;flex-shrink:0;">Copiar</button>' : '')+
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">'+
+              '<div id="vkSpeiClabe" style="flex:1;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;font-weight:700;letter-spacing:.5px;color:#0f172a;word-break:break-all;line-height:1.4;">'+ (clabe||'—') +'</div>'+
+              (clabe ? '<button id="vkSpeiCopy" type="button" style="width:auto;flex-shrink:0;padding:6px 14px;font-size:12px;font-weight:700;background:#039fe1;color:#fff;border:0;border-radius:6px;cursor:pointer;">Copiar</button>' : '')+
             '</div>'+
           '</div>'+
 
@@ -694,9 +694,9 @@ window.VK_inicio = (function(){
 
           '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px;">'+
             '<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Número de referencia</div>'+
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">'+
-              '<div id="vkOxxoRef" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;font-weight:700;letter-spacing:1px;color:#0f172a;word-break:break-all;">'+ (ref||'—') +'</div>'+
-              (ref ? '<button id="vkOxxoCopy" class="vk-btn primary sm" type="button" style="padding:6px 12px;font-size:12px;flex-shrink:0;">Copiar</button>' : '')+
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">'+
+              '<div id="vkOxxoRef" style="flex:1;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;font-weight:700;letter-spacing:.5px;color:#0f172a;word-break:break-all;line-height:1.4;">'+ (ref||'—') +'</div>'+
+              (ref ? '<button id="vkOxxoCopy" type="button" style="width:auto;flex-shrink:0;padding:6px 14px;font-size:12px;font-weight:700;background:#039fe1;color:#fff;border:0;border-radius:6px;cursor:pointer;">Copiar</button>' : '')+
             '</div>'+
           '</div>'+
 

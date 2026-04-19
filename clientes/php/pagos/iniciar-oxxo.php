@@ -49,7 +49,18 @@ if ($amountCents <= 0)   portalJsonOut(['error' => 'Monto inválido'], 400);
 if ($amountCents > 999900) portalJsonOut(['error' => 'OXXO no admite un solo pago mayor a $9,999. Divídelo en varias semanas.'], 400);
 
 // ── Resolve cliente name/email for OXXO billing_details (required) ──────────
-$cliRow = $pdo->prepare("SELECT nombre, apellido_paterno, apellido_materno, email, telefono FROM clientes WHERE id = ?");
+// Probe columns first — some deployments lack apellido_paterno/materno, and a
+// raw SELECT on a missing column would throw PDOException → HTTP 500.
+$colSet = [];
+try {
+    $cols = $pdo->query("SHOW COLUMNS FROM clientes")->fetchAll(PDO::FETCH_COLUMN);
+    $colSet = array_flip($cols);
+} catch (Throwable $e) {}
+$select = ['nombre', 'email', 'telefono'];
+if (isset($colSet['apellido_paterno'])) $select[] = 'apellido_paterno';
+if (isset($colSet['apellido_materno'])) $select[] = 'apellido_materno';
+
+$cliRow = $pdo->prepare("SELECT " . implode(',', $select) . " FROM clientes WHERE id = ?");
 $cliRow->execute([$cid]);
 $cli = $cliRow->fetch(PDO::FETCH_ASSOC) ?: [];
 
