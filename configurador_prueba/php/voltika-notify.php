@@ -61,7 +61,7 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
                    . '<div style="font-size:14px;line-height:1.7;color:#1a3a5c;">'
                    . '🏪 <strong>{punto}</strong><br>'
                    . '📬 {direccion_punto}<br>'
-                   . '🗺️ <a href="{link_maps}" style="color:#039fe1;">Ver en Google Maps</a><br>'
+                   . '🗺️ <a href="{link_maps}" target="_blank" rel="noopener noreferrer" style="color:#039fe1;">Ver en Google Maps</a><br>'
                    . '🕐 Lunes a Sábado 9:00 - 18:00 hrs<br>'
                    . '📅 Entrega estimada: antes del <strong>{fecha_estimada}</strong>'
                    . '</div></div>';
@@ -125,7 +125,7 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
                    . '<p style="font-size:13.5px;color:#444;line-height:1.6;margin:0 0 10px;">No se genera ningún cargo antes de la entrega.</p>'
                    . '<p style="font-size:13px;color:#555;margin:10px 0 4px;">Puedes pagar con:</p>'
                    . '<div style="font-size:13px;color:#333;line-height:1.8;">🏪 Efectivo en cualquier OXXO<br>🏦 Transferencia SPEI<br>💳 Tarjeta en tu portal</div>'
-                   . '<p style="font-size:13px;color:#555;margin:10px 0 0;">Consulta tus fechas de pago y realiza pagos desde tu portal:<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+                   . '<p style="font-size:13px;color:#555;margin:10px 0 0;">Consulta tus fechas de pago y realiza pagos desde tu portal:<br><a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
                    . '</td></tr>';
     }
 
@@ -169,7 +169,7 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
                . '<tr><td style="padding:14px 28px;">'
                . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📱 Tu portal de cliente</div>'
                . '<p style="font-size:13.5px;color:#333;margin:0 0 8px;line-height:1.6;">Todo lo de tu compra en un solo lugar. Entra con tu número de celular:</p>'
-               . '<p style="margin:0 0 12px;"><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+               . '<p style="margin:0 0 12px;"><a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
                . '<p style="font-size:13px;color:#555;margin:8px 0 4px;">Desde tu portal puedes:</p>'
                . $portalHtml
                . '</td></tr>'
@@ -179,19 +179,19 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
                . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📄 Permiso temporal para circular</div>'
                . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu permiso estará disponible en tu portal el día que recojas tu moto.</p>'
                . '<p style="font-size:12.5px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:4px;margin:8px 0;line-height:1.6;"><strong>⚠️ Entra en vigencia ese día</strong> y tienes <strong>30 días para tramitar tus placas definitivas</strong>.</p>'
-               . '<p style="font-size:13px;color:#555;margin:8px 0 0;">Descárgalo e imprímelo ese mismo día: <a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+               . '<p style="font-size:13px;color:#555;margin:8px 0 0;">Descárgalo e imprímelo ese mismo día: <a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
                . '</td></tr>'
                // Factura
                . '<tr><td style="padding:14px 28px;">'
                . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🧾 Tu factura</div>'
-               . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0;">' . $facturaText . '<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+               . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0;">' . $facturaText . '<br><a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
                . $facturaRfc
                . '</td></tr>'
                // Seguro y placas
                . '<tr><td style="padding:14px 28px;">'
                . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🛡️ Seguro y 🪪 placas</div>'
                . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Si solicitaste asesoría de seguro o gestor de placas recibirás un correo por separado con toda la información.</p>'
-               . '<p style="font-size:13px;color:#555;margin:0;">También podrás consultarla en tu portal en cualquier momento: <a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+               . '<p style="font-size:13px;color:#555;margin:0;">También podrás consultarla en tu portal en cualquier momento: <a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
                . '</td></tr>'
                // Support
                . '<tr><td style="padding:14px 28px 4px;">'
@@ -333,7 +333,7 @@ function voltikaBuildPortalTemplate(bool $isCredit): array {
                . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📱 Entra a tu portal ahora</div>'
                . '<p style="font-size:13.5px;color:#333;margin:0 0 6px;">Accede con tu número de celular registrado:</p>'
                . '<div style="text-align:center;margin:14px 0;">'
-               . '<a href="https://voltika.mx/mi-cuenta" style="display:inline-block;background:#039fe1;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Entrar a mi portal</a>'
+               . '<a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#039fe1;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Entrar a mi portal →</a>'
                . '</div></td></tr>'
                . '<tr><td style="padding:12px 28px;">'
                . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">¿Qué encuentras en tu portal?</div>'
@@ -508,16 +508,26 @@ function voltikaLogisticsEmailShell(string $hero, string $heroSub, string $inner
 // ── Reusable section rows (customer brief 2026-04-20: match compra_confirmada
 //    visual richness across every notification email).
 function vkPortalRow(): string {
+    // Customer brief 2026-04-20: portal section needs to look like a real CTA
+    // — wrap the body in a soft blue card and turn the URL into a fat button
+    // (with target=_blank so it stays clickable inside preview iframes too).
     return '<tr><td style="padding:14px 28px;">'
          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📱 Tu portal de cliente</div>'
-         . '<p style="font-size:13.5px;color:#333;margin:0 0 8px;line-height:1.6;">Todo lo de tu compra en un solo lugar. Entra con tu número de celular:</p>'
-         . '<p style="margin:0 0 12px;"><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
-         . '<p style="font-size:13px;color:#555;margin:8px 0 4px;">Desde tu portal puedes:</p>'
-         . '<div style="font-size:13.5px;color:#333;margin:4px 0;">✅ Seguir tu pedido en tiempo real</div>'
-         . '<div style="font-size:13.5px;color:#333;margin:4px 0;">✅ Descargar tu permiso temporal para circular</div>'
-         . '<div style="font-size:13.5px;color:#333;margin:4px 0;">✅ Consultar y descargar tu factura</div>'
-         . '<div style="font-size:13.5px;color:#333;margin:4px 0;">✅ Descargar tu contrato y acta de entrega</div>'
-         . '<div style="font-size:13.5px;color:#333;margin:4px 0;">✅ Ver cotizaciones de seguro y placas si las solicitaste</div>'
+         . '<div style="background:#E8F4FD;border:1px solid #B3D4FC;border-radius:10px;padding:16px 18px;">'
+         .   '<p style="font-size:13.5px;color:#1a3a5c;margin:0 0 10px;line-height:1.6;">Todo lo de tu compra en un solo lugar. Entra con tu número de celular:</p>'
+         .   '<table cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 14px;"><tr><td>'
+         .     '<a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#039fe1;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.3px;">Entrar a mi portal →</a>'
+         .   '</td></tr></table>'
+         .   '<p style="font-size:11.5px;color:#555;margin:0 0 12px;font-family:ui-monospace,Menlo,Consolas,monospace;">'
+         .     '<a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;text-decoration:underline;">voltika.mx/mi-cuenta</a>'
+         .   '</p>'
+         .   '<p style="font-size:13px;color:#1a3a5c;margin:6px 0 6px;font-weight:700;">Desde tu portal puedes:</p>'
+         .   '<div style="font-size:13.5px;color:#1a3a5c;margin:4px 0;">✅ Seguir tu pedido en tiempo real</div>'
+         .   '<div style="font-size:13.5px;color:#1a3a5c;margin:4px 0;">✅ Descargar tu permiso temporal para circular</div>'
+         .   '<div style="font-size:13.5px;color:#1a3a5c;margin:4px 0;">✅ Consultar y descargar tu factura</div>'
+         .   '<div style="font-size:13.5px;color:#1a3a5c;margin:4px 0;">✅ Descargar tu contrato y acta de entrega</div>'
+         .   '<div style="font-size:13.5px;color:#1a3a5c;margin:4px 0;">✅ Ver cotizaciones de seguro y placas si las solicitaste</div>'
+         . '</div>'
          . '</td></tr>';
 }
 
@@ -526,14 +536,14 @@ function vkPermisoRow(): string {
          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📄 Permiso temporal para circular</div>'
          . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu permiso estará disponible en tu portal el día que recojas tu moto.</p>'
          . '<p style="font-size:12.5px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:4px;margin:8px 0;line-height:1.6;"><strong>⚠️ Entra en vigencia ese día</strong> y tienes <strong>30 días para tramitar tus placas definitivas</strong>.</p>'
-         . '<p style="font-size:13px;color:#555;margin:8px 0 0;">Descárgalo e imprímelo ese mismo día: <a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+         . '<p style="font-size:13px;color:#555;margin:8px 0 0;">Descárgalo e imprímelo ese mismo día: <a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
          . '</td></tr>';
 }
 
 function vkFacturaRow(): string {
     return '<tr><td style="padding:14px 28px;">'
          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🧾 Tu factura</div>'
-         . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0;">Tu factura estará disponible al momento de la entrega en:<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+         . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0;">Tu factura estará disponible al momento de la entrega en:<br><a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
          . '<p style="font-size:13px;color:#555;margin:10px 0 0;">¿Necesitas registrar tu RFC? Escríbenos antes de la entrega:<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a></p>'
          . '</td></tr>';
 }
@@ -542,7 +552,7 @@ function vkSeguroPlacasRow(): string {
     return '<tr><td style="padding:14px 28px;">'
          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🛡️ Seguro y 🪪 placas</div>'
          . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Si solicitaste asesoría de seguro o gestor de placas recibirás un correo por separado con toda la información.</p>'
-         . '<p style="font-size:13px;color:#555;margin:0;">También podrás consultarla en tu portal en cualquier momento: <a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+         . '<p style="font-size:13px;color:#555;margin:0;">También podrás consultarla en tu portal en cualquier momento: <a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
          . '</td></tr>';
 }
 
@@ -567,7 +577,7 @@ function voltikaBuildPuntoAsignadoTemplate(): array {
           . '<div style="background:#E8F4FD;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.7;color:#1a3a5c;">'
           . '🏪 <strong>{punto}</strong><br>'
           . '📬 {direccion_punto}<br>'
-          . '🗺️ <a href="{link_maps}" style="color:#039fe1;">Ver en Google Maps</a><br>'
+          . '🗺️ <a href="{link_maps}" target="_blank" rel="noopener noreferrer" style="color:#039fe1;">Ver en Google Maps</a><br>'
           . '🕐 Lunes a Sábado 9:00 - 18:00 hrs<br>'
           . '📅 Fecha estimada: antes del <strong>{fecha_estimada}</strong>'
           . '</div>'
@@ -631,7 +641,7 @@ function voltikaBuildMotoEnviadaTemplate(): array {
           . '📍 Destino:<br>'
           . '🏪 <strong>{punto}</strong><br>'
           . '📬 {direccion_punto}<br>'
-          . '🗺️ <a href="{link_maps}" style="color:#039fe1;">Ver en Google Maps</a><br>'
+          . '🗺️ <a href="{link_maps}" target="_blank" rel="noopener noreferrer" style="color:#039fe1;">Ver en Google Maps</a><br>'
           . '📅 Llegada estimada al punto: <strong>{fecha_llegada_punto}</strong>'
           . '</div>'
           . '<p style="font-size:12.5px;color:#6b4c0f;background:#FFF8E1;border-left:3px solid #FFC107;padding:8px 12px;border-radius:4px;margin:10px 0 0;line-height:1.5;">Si por alguna razón la fecha cambia te avisamos de inmediato por WhatsApp — siempre estarás al tanto de dónde está tu moto.</p>'
@@ -693,7 +703,7 @@ function voltikaBuildMotoRecibidaTemplate(): array {
           . '<div style="background:#E8F4FD;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.7;color:#1a3a5c;">'
           . '🏪 <strong>{punto}</strong><br>'
           . '📬 {direccion_punto}<br>'
-          . '🗺️ <a href="{link_maps}" style="color:#039fe1;">Ver en Google Maps</a><br>'
+          . '🗺️ <a href="{link_maps}" target="_blank" rel="noopener noreferrer" style="color:#039fe1;">Ver en Google Maps</a><br>'
           . '🕐 Lunes a Sábado 9:00 - 18:00 hrs'
           . '</div>'
           . '</td></tr>'
@@ -761,7 +771,7 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
           // Permiso descarga
           . '<tr><td style="padding:10px 28px;">'
           . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📄 Tu permiso temporal para circular</div>'
-          . '<p style="font-size:13px;color:#444;margin:0 0 8px;line-height:1.6;">Estará disponible en tu portal en las <strong>próximas 24 horas</strong>:<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+          . '<p style="font-size:13px;color:#444;margin:0 0 8px;line-height:1.6;">Estará disponible en tu portal en las <strong>próximas 24 horas</strong>:<br><a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
           . '<p style="font-size:13px;color:#444;margin:10px 0 6px;"><strong>Qué hacer cuando esté disponible:</strong></p>'
           . '<div style="font-size:13px;color:#333;line-height:1.7;">'
           . '1️⃣ Entra a voltika.mx/mi-cuenta<br>'
@@ -778,7 +788,7 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
           . '<div style="background:#E8F4FD;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.7;color:#1a3a5c;">'
           . '🏪 <strong>{punto}</strong><br>'
           . '📬 {direccion_punto}<br>'
-          . '🗺️ <a href="{link_maps}" style="color:#039fe1;">Ver en Google Maps</a><br>'
+          . '🗺️ <a href="{link_maps}" target="_blank" rel="noopener noreferrer" style="color:#039fe1;">Ver en Google Maps</a><br>'
           . '🕐 Lunes a Sábado 9:00 - 18:00 hrs<br>'
           . '📅 Recógela antes del <strong>{fecha_limite}</strong>'
           . '</div>'
@@ -921,7 +931,7 @@ function voltikaBuildActaFirmadaTemplate(): array {
           . '</div></td></tr>'
           . '<tr><td style="padding:14px 28px;">'
           . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📄 Tu acta de entrega</div>'
-          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">Tu acta firmada ya está disponible en tu portal como comprobante oficial de entrega:<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">Tu acta firmada ya está disponible en tu portal como comprobante oficial de entrega:<br><a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
           . '<p style="font-size:12.5px;color:#555;margin:8px 0 0;">Guárdala — es tu documento legal que acredita que eres el propietario de la moto desde este momento.</p>'
           . '</td></tr>'
           . '<tr><td style="padding:14px 28px;">'
@@ -930,7 +940,7 @@ function voltikaBuildActaFirmadaTemplate(): array {
           . '</td></tr>'
           . '<tr><td style="padding:14px 28px;">'
           . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📱 Tu portal de cliente</div>'
-          . '<p style="font-size:13px;color:#444;margin:0 0 6px;">Accede en cualquier momento a:<br><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+          . '<p style="font-size:13px;color:#444;margin:0 0 6px;">Accede en cualquier momento a:<br><a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
           . '<div style="font-size:13px;color:#333;line-height:1.7;margin-top:6px;">'
           . '✅ Descargar tu acta de entrega<br>'
           . '✅ Descargar tu contrato<br>'
@@ -1010,7 +1020,7 @@ function voltikaBuildCobranzaEmailHtml(string $hero, string $heroSub, string $in
           . '🏪 <strong>OXXO</strong> — efectivo en cualquier tienda del país<br>'
           . '🏦 <strong>SPEI</strong> — transferencia desde tu banco<br>'
           . '💳 <strong>Tarjeta</strong> desde tu portal:<br>'
-          . '<a href="{payment_link}" style="color:#039fe1;font-weight:700;">👉 {payment_link}</a>'
+          . '<a href="{payment_link}" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 {payment_link}</a>'
           . '</div>'
           . '<p style="font-size:11.5px;color:#777;margin:8px 0 0;line-height:1.5;">⏱️ OXXO y SPEI tardan hasta 24 horas en acreditarse.</p>'
           . '</td></tr>'
@@ -1024,7 +1034,7 @@ function voltikaBuildCobranzaEmailHtml(string $hero, string $heroSub, string $in
           . '<tr><td style="padding:14px 28px;">'
           . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">📱 Tu portal de cliente</div>'
           . '<p style="font-size:13.5px;color:#333;margin:0 0 6px;">Consulta tu saldo, historial de pagos y descarga comprobantes:</p>'
-          . '<p style="margin:0;"><a href="https://voltika.mx/mi-cuenta" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
+          . '<p style="margin:0;"><a href="https://voltika.mx/mi-cuenta" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/mi-cuenta</a></p>'
           . '</td></tr>';
     return voltikaLogisticsEmailShell($hero, $heroSub, $innerRows . $tail);
 }
@@ -1192,7 +1202,7 @@ function voltikaBuildPagoRecibidoTemplate(): array {
           . '<tr><td style="padding:14px 28px;">'
           . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">💡 ¿Quieres adelantar?</div>'
           . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Cada pago adelantado reduce tu saldo y acerca tu liquidación. Sin ningún costo extra.</p>'
-          . '<p style="margin:0;"><a href="{payment_link}" style="color:#039fe1;font-weight:700;">👉 Adelantar ahora</a></p>'
+          . '<p style="margin:0;"><a href="{payment_link}" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 Adelantar ahora</a></p>'
           . '</td></tr>';
     $emailHtml = voltikaBuildCobranzaEmailHtml('✅ Pago recibido', 'Semana {semana} cubierta', $rows);
 
@@ -1316,7 +1326,7 @@ function voltikaNotifyTemplates(): array {
                          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🔑 Tus credenciales de acceso</div>'
                          . '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;background:#f5f7fa;border-radius:8px;padding:4px;">'
                          . '<tr><td style="padding:8px 14px;color:#666;">Punto</td><td style="padding:8px 14px;font-weight:700;">{punto}</td></tr>'
-                         . '<tr><td style="padding:8px 14px;color:#666;">Panel</td><td style="padding:8px 14px;"><a href="https://{url}" style="color:#039fe1;font-weight:700;">https://{url}</a></td></tr>'
+                         . '<tr><td style="padding:8px 14px;color:#666;">Panel</td><td style="padding:8px 14px;"><a href="https://{url}" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">https://{url}</a></td></tr>'
                          . '<tr><td style="padding:8px 14px;color:#666;">Usuario</td><td style="padding:8px 14px;font-family:ui-monospace,Consolas,monospace;">{email}</td></tr>'
                          . '<tr><td style="padding:8px 14px;color:#666;">Contraseña</td><td style="padding:8px 14px;font-family:ui-monospace,Consolas,monospace;font-weight:700;">{password}</td></tr>'
                          . '</table>'
@@ -1349,7 +1359,7 @@ function voltikaNotifyTemplates(): array {
                          . '<tr><td style="padding:14px 28px;">'
                          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">💬 ¿Tienes dudas? Estamos aquí</div>'
                          . '<p style="font-size:13px;color:#444;line-height:1.7;margin:0;">'
-                         . '📱 WhatsApp: <a href="https://wa.me/525579440928" style="color:#039fe1;font-weight:700;">557 944 0928</a><br>'
+                         . '📱 WhatsApp: <a href="https://wa.me/525579440928" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">557 944 0928</a><br>'
                          . '📧 Email: <a href="mailto:puntos@voltika.mx" style="color:#039fe1;font-weight:700;">puntos@voltika.mx</a><br>'
                          . '🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
                          . '<p style="font-size:12.5px;color:#555;line-height:1.6;margin:10px 0 0;">👤 Comunícate con el ejecutivo VOLTIKA que te contactó para afiliarte — él es tu contacto principal para dudas y capacitación por videollamada.</p>'
