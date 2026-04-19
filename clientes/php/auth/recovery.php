@@ -45,7 +45,7 @@ case 1: // email → send email OTP
     portalJsonOut($out);
     break;
 
-case 2: // verify email OTP
+case 2: // verify email OTP — also accepts an optional new phone number
     if (empty($rec) || ($rec['stage'] ?? 0) < 1) portalJsonOut(['error' => 'Flujo inválido'], 400);
     $cod = preg_replace('/\D/', '', $in['codigo'] ?? '');
     if (time() > ($rec['email_otp_exp'] ?? 0)) portalJsonOut(['error' => 'Código expirado'], 400);
@@ -54,7 +54,17 @@ case 2: // verify email OTP
         portalJsonOut(['error' => 'Código incorrecto'], 400);
     }
     $_SESSION['portal_recovery']['stage'] = 2;
-    recoveryLog('email_otp_ok', ['email' => $rec['email'], 'cliente_id' => $rec['cliente_id'], 'success' => 1]);
+    // Optional new phone captured at step 2 (customer brief 2026-04-19) so the
+    // user doesn't re-enter it at step 5. Validates format only — actual SMS
+    // confirmation still happens at step 6.
+    $newTel = portalNormPhone($in['telefono'] ?? '');
+    if ($newTel && strlen($newTel) >= 10) {
+        $_SESSION['portal_recovery']['new_phone_pending'] = $newTel;
+    }
+    recoveryLog('email_otp_ok', [
+        'email' => $rec['email'], 'cliente_id' => $rec['cliente_id'],
+        'success' => 1, 'phone_captured' => $newTel ? 1 : 0,
+    ]);
     portalJsonOut(['status' => 'ok']);
     break;
 
@@ -92,7 +102,9 @@ case 4: // verify fecha nacimiento
 
 case 5: // new phone → SMS OTP
     if (empty($rec) || ($rec['stage'] ?? 0) < 4) portalJsonOut(['error' => 'Flujo inválido'], 400);
-    $tel = portalNormPhone($in['telefono'] ?? '');
+    // Use the phone captured at step 2 if present; otherwise fall back to the
+    // standalone input from this step (legacy path).
+    $tel = portalNormPhone($in['telefono'] ?? ($rec['new_phone_pending'] ?? ''));
     if (strlen($tel) < 10) portalJsonOut(['error' => 'Teléfono inválido'], 400);
     $codigo = portalGenOTP();
     $_SESSION['portal_recovery']['new_phone'] = $tel;
