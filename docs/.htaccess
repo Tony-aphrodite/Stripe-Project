@@ -1,0 +1,13 @@
+# Serve the dynamic PDF at a clean .pdf URL so the link in the email looks
+# like a real static PDF file.
+#
+# Customer-facing URL:  https://voltika.mx/docs/manual-operador-punto.pdf
+# Actual handler:       /docs/manual-operador-punto.php  (FPDF generator)
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Only rewrite if the physical .pdf doesn't exist — lets real static PDFs
+    # (if any are uploaded later) take precedence over the generator.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^manual-operador-punto\.pdf$ manual-operador-punto.php [L]
+</IfModule>

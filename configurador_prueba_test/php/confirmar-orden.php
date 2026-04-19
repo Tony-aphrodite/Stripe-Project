@@ -406,22 +406,34 @@ try {
     }
 
     // ── Auto-calculate commission for punto referido sales ──
+    // Priority: fixed monto (comision_venta_monto) over percentage (comision_venta_pct).
+    // The customer's Puntos template (Z~AF columns) uses fixed MXN amounts per
+    // model, so monto is the primary path; pct is kept for backward compat.
     if ($puntoVoltikaId && $referidoTipo === 'punto' && $total > 0) {
         try {
-            // Find modelo_id from modelos table
             $mStmt = $pdo->prepare("SELECT id FROM modelos WHERE nombre = ? LIMIT 1");
             $mStmt->execute([$modelo]);
             $modeloDbId = $mStmt->fetchColumn();
 
             if ($modeloDbId) {
                 $cStmt = $pdo->prepare("
-                    SELECT comision_venta_pct FROM punto_comisiones
+                    SELECT comision_venta_pct, comision_venta_monto FROM punto_comisiones
                     WHERE punto_id = ? AND modelo_id = ?
                 ");
                 $cStmt->execute([$puntoVoltikaId, $modeloDbId]);
-                $comPct = floatval($cStmt->fetchColumn());
+                $cRow = $cStmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($comPct > 0) {
+                $comPct   = $cRow ? (float)($cRow['comision_venta_pct']   ?? 0) : 0;
+                $comFixed = $cRow ? (float)($cRow['comision_venta_monto'] ?? 0) : 0;
+
+                if ($comFixed > 0) {
+                    $comMonto = round($comFixed, 2);
+                    $pdo->prepare("
+                        INSERT INTO comisiones_log
+                            (punto_id, referido_id, pedido_num, modelo, monto_venta, comision_pct, comision_monto, tipo)
+                        VALUES (?, NULL, ?, ?, ?, NULL, ?, 'venta')
+                    ")->execute([$puntoVoltikaId, $pedidoNum, $modelo, $total, $comMonto]);
+                } elseif ($comPct > 0) {
                     $comMonto = round($total * $comPct / 100, 2);
                     $pdo->prepare("
                         INSERT INTO comisiones_log
@@ -788,30 +800,72 @@ if ($esCredito) {
         : 'Tu Voltika está confirmada, Orden #' . $pedidoNum;
 }
 
-$emailSent = !empty($email) ? sendMail($email, $nombre, $asunto, $cuerpo) : false;
+// Legacy inline HTML email ($cuerpo) is no longer sent directly —
+// voltikaNotify('compra_confirmada_*') below handles email + WhatsApp + SMS
+// from a single rich template (customer-authored 4-way variants).
+// Keep the $cuerpo block above intact for reference / rollback only.
+$emailSent = false;
 
-// ── WhatsApp / SMS notifications (post-purchase) ────────────────────────────
-// MSG 1 (punto defined) or MSG 2 (punto pending) — sent immediately
-// MSG 1B/1C/1D (portal access) — sent 5 minutes later via pending_notifications
+// ── Post-purchase notification (email + WhatsApp + SMS, 4-way) ──────────────
 require_once __DIR__ . '/voltika-notify.php';
 
+// Resolve punto address + maps link for the new templates
+$direccionPunto = '';
+$linkMaps       = '';
+if ($tienePunto) {
+    try {
+        $pdoTmp = getDB();
+        $ps = $pdoTmp->prepare("SELECT direccion, ciudad, estado FROM puntos_voltika WHERE nombre = ? AND activo = 1 LIMIT 1");
+        $ps->execute([$puntoNombre]);
+        $pRow = $ps->fetch(PDO::FETCH_ASSOC);
+        if ($pRow) {
+            $direccionPunto = trim($pRow['direccion'] ?? '');
+            $addr = $puntoNombre . ($direccionPunto ? ', ' . $direccionPunto : '');
+            if ($pRow['ciudad']) $addr .= ', ' . $pRow['ciudad'];
+            if ($pRow['estado']) $addr .= ', ' . $pRow['estado'];
+            $linkMaps = 'https://maps.google.com/?q=' . urlencode($addr);
+        }
+    } catch (Throwable $e) { error_log('confirmar-orden punto lookup: ' . $e->getMessage()); }
+}
+
+// Estimated delivery — 10 days from today unless transacción provides one
+$fechaEstimada = date('j/n/Y', strtotime('+10 days'));
+
+// Weekly payment (credit only) — looked up from subscripciones_credito
+$montoSemanal = '';
+if ($esCredito) {
+    try {
+        $pdoTmp = getDB();
+        $ss = $pdoTmp->prepare("SELECT monto_semanal FROM subscripciones_credito WHERE email = ? OR telefono = ? ORDER BY id DESC LIMIT 1");
+        $ss->execute([$email, $telefono]);
+        $ms = $ss->fetchColumn();
+        if ($ms) $montoSemanal = number_format((float)$ms, 2);
+    } catch (Throwable $e) {}
+}
+
 $notifyData = [
-    'nombre'    => $nombre,
-    'modelo'    => $modelo,
-    'punto'     => $puntoNombre,
-    'ciudad'    => $ciudad . ($estado ? ', ' . $estado : ''),
-    'telefono'  => $telefono,
-    'email'     => $email,
-    'whatsapp'  => $telefono,
-    'cliente_id'=> null,
+    'pedido'          => $pedidoNum,
+    'nombre'          => $nombre,
+    'modelo'          => $modelo,
+    'color'           => $color,
+    'punto'           => $puntoNombre,
+    'ciudad'          => $ciudad . ($estado ? ', ' . $estado : ''),
+    'direccion_punto' => $direccionPunto,
+    'link_maps'       => $linkMaps,
+    'fecha_estimada'  => $fechaEstimada,
+    'monto_semanal'   => $montoSemanal,
+    'telefono'        => $telefono,
+    'email'           => $email,
+    'whatsapp'        => $telefono,
+    'cliente_id'      => null,
 ];
 
-// MSG 1 or MSG 2 — immediate
-if ($tienePunto) {
-    voltikaNotify('compra_punto_definido', $notifyData);
-} else {
-    voltikaNotify('compra_punto_pendiente', $notifyData);
-}
+// Dispatch to one of the 4 purchase-confirmation templates
+$tplKey = 'compra_confirmada_'
+        . ($esCredito ? 'credito' : 'contado')
+        . ($tienePunto ? '_punto' : '_sin_punto');
+voltikaNotify($tplKey, $notifyData);
+$emailSent = !empty($email);
 
 // MSG 1B/1C/1D — delayed 5 minutes based on purchase type
 if ($esCredito) {
@@ -830,6 +884,42 @@ $ADMIN_WA    = defined('VOLTIKA_ADMIN_WHATSAPP') ? VOLTIKA_ADMIN_WHATSAPP : '+52
 $ADMIN_EMAIL = defined('VOLTIKA_ADMIN_EMAIL')    ? VOLTIKA_ADMIN_EMAIL    : 'admin@voltika.mx';
 
 if ($asesoriaPlacasInt === 1) {
+    // Route to the state-specific gestor de placas if one is registered
+    // (see admin → Gestores de placas). Fallback to Voltika admin if no
+    // gestor is assigned for this estado.
+    $placasTel   = $ADMIN_WA;
+    $placasWa    = $ADMIN_WA;
+    $placasEmail = $ADMIN_EMAIL;
+    try {
+        $pdoG = getDB();
+        // Ensure table exists (idempotent) so the lookup doesn't fatal on fresh schemas.
+        $pdoG->exec("CREATE TABLE IF NOT EXISTS gestores_placas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            estado_mx VARCHAR(100) NOT NULL,
+            nombre VARCHAR(200) NOT NULL,
+            telefono VARCHAR(30) DEFAULT NULL,
+            email VARCHAR(200) DEFAULT NULL,
+            whatsapp VARCHAR(30) DEFAULT NULL,
+            notas TEXT DEFAULT NULL,
+            activo TINYINT(1) NOT NULL DEFAULT 1,
+            freg DATETIME DEFAULT CURRENT_TIMESTAMP,
+            fmod DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_estado (estado_mx, activo)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $gStmt = $pdoG->prepare("SELECT nombre, telefono, email, whatsapp
+            FROM gestores_placas
+            WHERE estado_mx = ? AND activo = 1
+            ORDER BY id DESC LIMIT 1");
+        $gStmt->execute([$estado]);
+        $g = $gStmt->fetch(PDO::FETCH_ASSOC);
+        if ($g) {
+            if (!empty($g['whatsapp'])) $placasWa  = $g['whatsapp'];
+            elseif (!empty($g['telefono'])) $placasWa = $g['telefono'];
+            if (!empty($g['telefono'])) $placasTel   = $g['telefono'];
+            if (!empty($g['email']))    $placasEmail = $g['email'];
+        }
+    } catch (Throwable $e) { error_log('gestor placas lookup: ' . $e->getMessage()); }
+
     voltikaNotify('admin_extras_placas', [
         'pedido'           => $pedidoNum,
         'nombre'           => $nombre,
@@ -837,9 +927,9 @@ if ($asesoriaPlacasInt === 1) {
         'estado_mx'        => $estado,
         'ciudad'           => $ciudad,
         'modelo'           => $modelo,
-        'telefono'         => $ADMIN_WA,
-        'whatsapp'         => $ADMIN_WA,
-        'email'            => $ADMIN_EMAIL,
+        'telefono'         => $placasTel,
+        'whatsapp'         => $placasWa,
+        'email'            => $placasEmail,
         'cliente_id'       => null,
     ]);
 }

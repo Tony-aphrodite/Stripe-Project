@@ -4,7 +4,29 @@
  * Body: { moto_id, punto_id, tracking_number?, carrier?, fecha_estimada?, transaccion_id?, notas? }
  */
 require_once __DIR__ . '/../bootstrap.php';
-require_once __DIR__ . '/../skydropx.php';
+
+// Catch any fatal error (missing file, undefined function, DB exception) and
+// convert it into a JSON error response so the client sees a helpful message
+// instead of a 500 HTML page → "Error de conexión" alert.
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) return false;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(['ok' => false, 'error' => 'Error interno: ' . $err['message']]);
+    }
+});
+
+// Skydropx is optional — if the helper file is missing we skip quoting.
+$_skydropxPath = __DIR__ . '/../skydropx.php';
+if (is_file($_skydropxPath)) { try { require_once $_skydropxPath; } catch (Throwable $e) { error_log('skydropx include: ' . $e->getMessage()); } }
+
 $uid = adminRequireAuth(['admin','cedis']);
 
 $d = adminJsonIn();
@@ -28,9 +50,35 @@ if ($transaccionId) {
     adminJsonOut(['error' => 'envio_tipo requerido para envío sin orden (showroom|entrega)'], 400);
 }
 
-if (!$motoId || !$puntoId) adminJsonOut(['error' => 'moto_id y punto_id requeridos'], 400);
+if (!$puntoId) adminJsonOut(['error' => 'punto_id requerido'], 400);
 
 $pdo = getDB();
+
+// Order-linked flow: derive moto_id server-side from the transaction's
+// already-linked real moto (assigned in Ventas via asignar-moto.php). Client
+// doesn't send moto_id; we trust only the DB link.
+if ($transaccionId && !$motoId) {
+    $motoStmt = $pdo->prepare("
+        SELECT m.id
+          FROM transacciones t
+          JOIN inventario_motos m
+            ON m.activo = 1
+           AND m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
+           AND (
+                 (m.stripe_pi = t.stripe_pi AND m.stripe_pi <> '')
+              OR  m.pedido_num = CONCAT('VK-', t.pedido)
+           )
+         WHERE t.id = ?
+         LIMIT 1
+    ");
+    $motoStmt->execute([$transaccionId]);
+    $motoId = (int)($motoStmt->fetchColumn() ?: 0);
+    if (!$motoId) {
+        adminJsonOut(['error' => 'La orden no tiene una moto asignada. Asigna una moto desde Ventas primero.'], 409);
+    }
+}
+
+if (!$motoId) adminJsonOut(['error' => 'moto_id requerido'], 400);
 
 // Ensure envios.envio_tipo column exists (idempotent migration)
 try {
@@ -59,8 +107,21 @@ if ($transaccionId) {
     $order = $tStmt->fetch(PDO::FETCH_ASSOC);
     if (!$order) adminJsonOut(['error' => 'Orden no encontrada'], 404);
 
+    $pedidoNum = 'VK-' . $order['pedido'];
+
+    // Deactivate any placeholder moto (VK-MOD-xxx-timestamp-hash) that
+    // confirmar-orden.php created when the order was placed. Without this
+    // cleanup the real moto + placeholder would both carry the same
+    // pedido_num, breaking downstream queries.
+    try {
+        $pdo->prepare("UPDATE inventario_motos SET activo=0, fmod=NOW()
+            WHERE vin REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
+              AND (pedido_num = ? OR (stripe_pi = ? AND stripe_pi <> ''))
+              AND id <> ?")
+           ->execute([$pedidoNum, $order['stripe_pi'] ?? '', $motoId]);
+    } catch (Throwable $e) { error_log('envios placeholder cleanup: ' . $e->getMessage()); }
+
     if (empty($moto['pedido_num']) && empty($moto['cliente_email'])) {
-        $pedidoNum = 'VK-' . $order['pedido'];
         $pdo->prepare("UPDATE inventario_motos SET
             cliente_nombre=?, cliente_email=?, cliente_telefono=?,
             pedido_num=?, stripe_pi=?, pago_estado='pagada', fmod=NOW()
@@ -69,17 +130,19 @@ if ($transaccionId) {
             $pedidoNum, $order['stripe_pi'] ?? '', $motoId
         ]);
     }
-    if (!$notas) $notas = 'Venta - Pedido VK-' . $order['pedido'];
+    if (!$notas) $notas = 'Venta - Pedido ' . $pedidoNum;
 }
 
-// Auto-quote via Skydropx if no date provided
-if (!$fechaEstimada) {
-    $cpOrigen  = defined('CEDIS_CP') ? CEDIS_CP : '';
-    $cpDestino = $punto['cp'] ?? '';
-    if ($cpOrigen && $cpDestino) {
-        $quote = skydropxCotizar($cpOrigen, $cpDestino);
-        if (!empty($quote['ok'])) $fechaEstimada = $quote['fecha_estimada'];
-    }
+// Auto-quote via Skydropx if no date provided (optional, failures are silent)
+if (!$fechaEstimada && function_exists('skydropxCotizar')) {
+    try {
+        $cpOrigen  = defined('CEDIS_CP') ? CEDIS_CP : '';
+        $cpDestino = $punto['cp'] ?? '';
+        if ($cpOrigen && $cpDestino) {
+            $quote = skydropxCotizar($cpOrigen, $cpDestino);
+            if (!empty($quote['ok'])) $fechaEstimada = $quote['fecha_estimada'];
+        }
+    } catch (Throwable $e) { error_log('skydropx cotizar: ' . $e->getMessage()); }
 }
 
 // Create envio
@@ -112,28 +175,50 @@ if ($transaccionId && !empty($order)) {
     $clienteTel   = $order['telefono'] ?? '';
     $clienteEmail = $order['email']    ?? '';
     if ($clienteTel || $clienteEmail) {
-        require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
-        try {
-            $fechaHuman = $fechaEstimada;
-            if ($fechaEstimada) {
-                try {
-                    $meses = ['enero','febrero','marzo','abril','mayo','junio',
-                              'julio','agosto','septiembre','octubre','noviembre','diciembre'];
-                    $dt = new DateTime($fechaEstimada);
-                    $fechaHuman = $dt->format('j') . ' de ' . $meses[(int)$dt->format('n') - 1] . ' de ' . $dt->format('Y');
-                } catch (Throwable $e) {}
-            }
-            voltikaNotify('moto_enviada', [
-                'cliente_id' => $moto['cliente_id'] ?? null,
-                'nombre'     => $order['nombre']    ?? '',
-                'modelo'     => $moto['modelo']     ?? ($order['modelo'] ?? ''),
-                'punto'      => $punto['nombre']    ?? '',
-                'ciudad'     => $punto['ciudad']    ?? '',
-                'fecha'      => $fechaHuman         ?? '',
-                'telefono'   => $clienteTel,
-                'email'      => $clienteEmail,
-            ]);
-        } catch (Throwable $e) { error_log('notify moto_enviada: ' . $e->getMessage()); }
+        // Resolve notify helper path — test env uses _test suffix, prod uses
+        // the unsuffixed folder. file_exists() avoids fatal require_once.
+        $notifyPath = null;
+        foreach ([
+            __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php',
+            __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php',
+        ] as $_p) {
+            if (is_file($_p)) { $notifyPath = $_p; break; }
+        }
+        if ($notifyPath) { try { require_once $notifyPath; } catch (Throwable $e) { error_log('notify include: ' . $e->getMessage()); } }
+        if (function_exists('voltikaNotify')) {
+            try {
+                // Resolve direccion_punto + link_maps from puntos_voltika
+                $direccionPunto = trim(($punto['direccion'] ?? '')
+                    . ($punto['colonia'] ? ', ' . $punto['colonia'] : '')
+                    . ($punto['cp']      ? ' CP ' . $punto['cp'] : ''));
+                if (!$direccionPunto) $direccionPunto = $punto['calle_numero'] ?? '';
+                $linkMaps = function_exists('voltikaBuildMapsLink')
+                    ? voltikaBuildMapsLink($direccionPunto, $punto['ciudad'] ?? '',
+                        isset($punto['lat']) ? (float)$punto['lat'] : null,
+                        isset($punto['lng']) ? (float)$punto['lng'] : null)
+                    : 'https://voltika.mx/mi-cuenta';
+                $fechaHuman = function_exists('voltikaFormatFechaHuman')
+                    ? voltikaFormatFechaHuman($fechaEstimada)
+                    : (string)$fechaEstimada;
+                voltikaNotify('moto_enviada', [
+                    'cliente_id'           => $moto['cliente_id'] ?? null,
+                    'nombre'               => $order['nombre']    ?? '',
+                    'pedido'               => $order['pedido']    ?? '',
+                    'modelo'               => $moto['modelo']     ?? ($order['modelo'] ?? ''),
+                    'color'                => $moto['color']      ?? ($order['color']  ?? ''),
+                    'punto'                => $punto['nombre']    ?? '',
+                    'ciudad'               => $punto['ciudad']    ?? '',
+                    'direccion_punto'      => $direccionPunto,
+                    'link_maps'            => $linkMaps,
+                    'fecha'                => $fechaHuman, // legacy alias
+                    'fecha_llegada_punto'  => $fechaHuman,
+                    'telefono'             => $clienteTel,
+                    'email'                => $clienteEmail,
+                ]);
+            } catch (Throwable $e) { error_log('notify moto_enviada: ' . $e->getMessage()); }
+        } else {
+            error_log('envios crear: voltikaNotify no disponible, se omite notificación');
+        }
     }
 }
 

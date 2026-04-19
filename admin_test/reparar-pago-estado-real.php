@@ -20,11 +20,12 @@
 require_once __DIR__ . '/php/bootstrap.php';
 adminRequireAuth(['admin']);
 
-// Also need Stripe key from configurador
-$configPath = __DIR__ . '/../configurador_prueba_test/php/config.php';
-if (file_exists($configPath)) require_once $configPath;
-$configPath2 = __DIR__ . '/../configurador_prueba/php/config.php';
-if (!defined('STRIPE_SECRET_KEY') && file_exists($configPath2)) require_once $configPath2;
+// bootstrap.php already loads master-bootstrap.php which already loads the
+// right config.php (prod → configurador_prueba, test → configurador_prueba_test),
+// so STRIPE_SECRET_KEY and getDB() are already available. Do NOT require
+// another config.php — both files declare `function getDB()` without a guard,
+// so double-including from the "other" environment triggers "Cannot redeclare
+// function" fatal error.
 
 $pdo = getDB();
 $isRun = ($_SERVER['REQUEST_METHOD'] === 'POST') && (($_GET['run'] ?? '') === '1');
@@ -87,13 +88,16 @@ if (!defined('STRIPE_SECRET_KEY') || !STRIPE_SECRET_KEY) {
 }
 
 try {
+    // No LIMIT — scan all orders with a stripe_pi. Credit-family orders
+    // (credito/enganche/parcial) skipped because 'parcial' is the intentional
+    // state while the subscription is still active; don't flip them to 'pagada'
+    // based on a single PI that only represents the enganche.
     $rows = $pdo->query("
         SELECT id, pedido, nombre, email, modelo, color, total, tpago, stripe_pi, pago_estado, freg
         FROM transacciones
         WHERE stripe_pi IS NOT NULL AND stripe_pi <> ''
           AND tpago NOT IN ('credito','enganche','parcial')
         ORDER BY id DESC
-        LIMIT 500
     ")->fetchAll(PDO::FETCH_ASSOC);
 
     $diffs = [];

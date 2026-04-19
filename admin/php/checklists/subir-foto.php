@@ -40,7 +40,15 @@ $validCampos = [
         'foto_contenido_previo_cierre','foto_caja_cerrada','foto_sellos',
         'foto_detalle_calcomanias','foto_empaque_accesorios','foto_empaque_llaves',
     ],
-    'ensamble' => ['fotos_fase1','fotos_base','fotos_manubrio','fotos_llanta','fotos_espejos','fotos_fase3'],
+    'ensamble' => [
+        // Phase-level (legacy)
+        'fotos_fase1','fotos_fase3',
+        // Phase 2 per-section
+        'fotos_desembalaje','fotos_base','fotos_manubrio','fotos_llanta','fotos_espejos',
+        // Phase 3 per-section (customer feedback 2026-04-18)
+        'fotos_3_1_frenos','fotos_3_2_iluminacion','fotos_3_3_electrico',
+        'fotos_3_4_motor','fotos_3_5_acceso','fotos_3_6_mecanica',
+    ],
     'entrega'  => ['fotos_identidad','fotos_unidad'],
 ];
 if (!in_array($campo, $validCampos[$tipo] ?? [])) {
@@ -116,6 +124,19 @@ try {
     $pdo = getDB();
     $tableMap = ['origen' => 'checklist_origen', 'ensamble' => 'checklist_ensamble', 'entrega' => 'checklist_entrega_v2'];
     $table = $tableMap[$tipo];
+
+    // Ensure the target column exists — new per-section photo fields may be
+    // missing on older schemas. Whitelist above already restricted to known
+    // column names, so a positional ALTER here is safe.
+    try {
+        $colsStmt = $pdo->query("SHOW COLUMNS FROM `$table`");
+        $existingCols = array_column($colsStmt->fetchAll(PDO::FETCH_ASSOC), 'Field');
+        if (!in_array($campo, $existingCols, true)) {
+            $pdo->exec("ALTER TABLE `$table` ADD COLUMN `$campo` TEXT NULL");
+        }
+    } catch (Throwable $colErr) {
+        error_log('subir-foto ensure column: ' . $colErr->getMessage());
+    }
 
     // Get existing record
     $stmt = $pdo->prepare("SELECT id, `$campo` FROM `$table` WHERE moto_id=? ORDER BY freg DESC LIMIT 1");

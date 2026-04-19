@@ -102,6 +102,54 @@ adminLog('checklist_entrega_' . ($vals['completado'] ? 'completado' : 'guardado'
     'moto_id' => $motoId, 'checklist_id' => $checkId, 'fase' => $vals['fase_actual']
 ]);
 
+// ── On full completion: flip inventario state and fire Acta firmada notif ─
+if ($vals['completado']) {
+    try {
+        $pdo->prepare("UPDATE inventario_motos SET estado='entregada', fecha_estado=NOW() WHERE id=?")
+           ->execute([$motoId]);
+    } catch (Throwable $e) { error_log('entrega estado: ' . $e->getMessage()); }
+
+    try {
+        $infoStmt = $pdo->prepare("SELECT m.cliente_id, m.cliente_nombre, m.cliente_telefono, m.cliente_email,
+                                          m.modelo, m.color, m.pedido_num,
+                                          m.vin_display AS vin
+                                     FROM inventario_motos m
+                                    WHERE m.id=?");
+        $infoStmt->execute([$motoId]);
+        $info = $infoStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($info && ($info['cliente_telefono'] || $info['cliente_email'])) {
+            $notifyPath = null;
+            foreach ([
+                __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php',
+                __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php',
+            ] as $p) {
+                if (is_file($p)) { $notifyPath = $p; break; }
+            }
+            if ($notifyPath) require_once $notifyPath;
+
+            if (function_exists('voltikaNotify')) {
+                $pedido = $info['pedido_num'] ?? '';
+                if ($pedido && str_starts_with($pedido, 'VK-')) $pedido = substr($pedido, 3);
+                $fechaHuman = function_exists('voltikaFormatFechaHuman')
+                    ? voltikaFormatFechaHuman(date('Y-m-d'))
+                    : date('Y-m-d');
+                voltikaNotify('entrega_completada', [
+                    'cliente_id'     => $info['cliente_id'] ?? null,
+                    'nombre'         => $info['cliente_nombre'] ?? '',
+                    'pedido'         => $pedido,
+                    'modelo'         => $info['modelo'] ?? '',
+                    'color'          => $info['color']  ?? '',
+                    'vin'            => $info['vin']    ?? '',
+                    'fecha_entrega'  => $fechaHuman . ' ' . date('H:i'),
+                    'telefono'       => $info['cliente_telefono'] ?? '',
+                    'email'          => $info['cliente_email']    ?? '',
+                ]);
+            }
+        }
+    } catch (Throwable $e) { error_log('notify entrega_completada: ' . $e->getMessage()); }
+}
+
 adminJsonOut([
     'ok' => true,
     'checklist_id' => $checkId,

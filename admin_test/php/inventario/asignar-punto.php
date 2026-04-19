@@ -133,19 +133,50 @@ $clienteEmail = $order['email']         ?? $moto['cliente_email']    ?? '';
 $clienteNombre = $order['nombre']       ?? $moto['cliente_nombre']   ?? '';
 
 if ($clienteTel || $clienteEmail) {
-    require_once __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php';
-    try {
-        voltikaNotify('punto_asignado', [
-            'cliente_id' => $moto['cliente_id'] ?? null,
-            'nombre'     => $clienteNombre,
-            'modelo'     => $moto['modelo'] ?? '',
-            'punto'      => $punto['nombre'],
-            'ciudad'     => $punto['ciudad'] ?? '',
-            'fecha'      => $fechaEstimada ?? '',
-            'telefono'   => $clienteTel,
-            'email'      => $clienteEmail,
-        ]);
-    } catch (Throwable $e) { error_log('notify punto_asignado: ' . $e->getMessage()); }
+    // Resolve notify helper path (test vs prod)
+    $_notifyPath = null;
+    foreach ([
+        __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php',
+        __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php',
+    ] as $_p) {
+        if (is_file($_p)) { $_notifyPath = $_p; break; }
+    }
+    if ($_notifyPath) { try { require_once $_notifyPath; } catch (Throwable $e) { error_log('notify include: ' . $e->getMessage()); } }
+
+    if (function_exists('voltikaNotify')) {
+        try {
+            $direccionPunto = trim(($punto['direccion'] ?? '')
+                . ($punto['colonia'] ? ', ' . $punto['colonia'] : '')
+                . ($punto['cp']      ? ' CP ' . $punto['cp']   : ''));
+            if (!$direccionPunto) $direccionPunto = $punto['calle_numero'] ?? '';
+            $linkMaps = function_exists('voltikaBuildMapsLink')
+                ? voltikaBuildMapsLink($direccionPunto, $punto['ciudad'] ?? '',
+                    isset($punto['lat']) ? (float)$punto['lat'] : null,
+                    isset($punto['lng']) ? (float)$punto['lng'] : null)
+                : 'https://voltika.mx/mi-cuenta';
+            $fechaHuman = function_exists('voltikaFormatFechaHuman')
+                ? voltikaFormatFechaHuman($fechaEstimada)
+                : (string)$fechaEstimada;
+            $pedido = $order['pedido'] ?? ($moto['pedido_num'] ?? '');
+            if ($pedido && str_starts_with($pedido, 'VK-')) $pedido = substr($pedido, 3);
+
+            voltikaNotify('punto_asignado', [
+                'cliente_id'      => $moto['cliente_id'] ?? null,
+                'nombre'          => $clienteNombre,
+                'pedido'          => $pedido,
+                'modelo'          => $moto['modelo'] ?? ($order['modelo'] ?? ''),
+                'color'           => $moto['color']  ?? ($order['color']  ?? ''),
+                'punto'           => $punto['nombre'],
+                'ciudad'          => $punto['ciudad'] ?? '',
+                'direccion_punto' => $direccionPunto,
+                'link_maps'       => $linkMaps,
+                'fecha'           => $fechaHuman, // legacy alias
+                'fecha_estimada'  => $fechaHuman,
+                'telefono'        => $clienteTel,
+                'email'           => $clienteEmail,
+            ]);
+        } catch (Throwable $e) { error_log('notify punto_asignado: ' . $e->getMessage()); }
+    }
 }
 
 adminJsonOut([

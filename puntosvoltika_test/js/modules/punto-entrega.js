@@ -5,6 +5,28 @@ window.PV_entrega = (function(){
     PVApp.api('inventario/listar.php').done(function(r){
       var list = (r.inventario_entrega||[]).filter(function(m){ return m.estado!=='entregada'; });
       var html = '<div class="ad-h1">Entregar al cliente</div>';
+
+      // Fraud-prevention warning. Always shown, regardless of whether the list
+      // has items — punto operator must always see this notice before acting.
+      // Icon: simple outlined padlock (stroke only, geometric). Explicitly NOT
+      // a generic "🚨/⚠️" emoji to avoid the AI-generated look.
+      html += '<div style="display:flex;gap:10px;align-items:flex-start;'+
+        'background:#FFF4F2;border-left:4px solid #C41E3A;'+
+        'padding:12px 14px;margin:8px 0 14px;border-radius:6px;">'+
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#C41E3A" '+
+          'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '+
+          'style="flex-shrink:0;margin-top:1px;">'+
+          '<rect x="4" y="11" width="16" height="10" rx="1.5"/>'+
+          '<path d="M8 11V7a4 4 0 018 0v4"/>'+
+          '<circle cx="12" cy="16" r="1.2" fill="#C41E3A"/>'+
+        '</svg>'+
+        '<div style="font-size:12.5px;line-height:1.55;color:#4a1220;">'+
+          '<div style="margin-bottom:6px;">Estas son las <strong>únicas motos autorizadas</strong> que puedes entregar. '+
+          'No entregues por ningún motivo si el número <strong>VIN</strong> no aparece en esta lista.</div>'+
+          '<div>Nadie puede pedirte entregar una moto si no aparece en esta lista.</div>'+
+        '</div>'+
+      '</div>';
+
       if (list.length===0) html += '<div class="ad-card">Sin motos para entregar</div>';
       list.forEach(function(m){
         html += '<div class="ad-card">'+

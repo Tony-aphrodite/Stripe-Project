@@ -27,6 +27,34 @@ $trackingSelect = $hasTracking
          t.seguro_estado, t.seguro_cotizacion, t.seguro_poliza, t.seguro_nota"
     : "";
 
+// Quotation attachment columns — added by subir-cotizacion.php on first use.
+// We only include them in the SELECT if they exist, otherwise the whole
+// query fails on older DBs.
+$hasCotiz = false;
+try {
+    $c = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                         WHERE TABLE_SCHEMA=? AND TABLE_NAME='transacciones'
+                           AND COLUMN_NAME='seguro_cotizacion_archivo'");
+    $c->execute([$dbName]);
+    $hasCotiz = ((int)$c->fetchColumn()) > 0;
+} catch (Throwable $e) {}
+$cotizSelect = $hasCotiz
+    ? ", t.seguro_cotizacion_archivo, t.seguro_cotizacion_mime, t.seguro_cotizacion_size, t.seguro_cotizacion_subido,
+         t.placas_cotizacion_archivo, t.placas_cotizacion_mime, t.placas_cotizacion_size, t.placas_cotizacion_subido"
+    : "";
+
+// Ensure payment-reminder tracking columns exist (2026-04-19 follow-up feature).
+// Safe idempotent ALTER — lets the SELECT below reference them unconditionally.
+try {
+    $cols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('last_reminder_at', $cols, true)) {
+        $pdo->exec("ALTER TABLE transacciones ADD COLUMN last_reminder_at DATETIME NULL");
+    }
+    if (!in_array('reminders_sent_count', $cols, true)) {
+        $pdo->exec("ALTER TABLE transacciones ADD COLUMN reminders_sent_count INT NOT NULL DEFAULT 0");
+    }
+} catch (Throwable $e) { error_log('listar ensure reminder cols: ' . $e->getMessage()); }
+
 // ── Orders from transacciones ───────────────────────────────────────────
 try {
     $stmt = $pdo->query("
@@ -34,11 +62,23 @@ try {
                t.modelo, t.color, t.tpago, t.total, t.stripe_pi, t.freg,
                t.punto_id, t.punto_nombre, t.ciudad, t.estado, t.cp, t.folio_contrato,
                t.fecha_estimada_entrega,
-               t.asesoria_placas, t.seguro_qualitas
-               $trackingSelect,
+               t.asesoria_placas, t.seguro_qualitas,
+               COALESCE(t.last_reminder_at, NULL) AS last_reminder_at,
+               COALESCE(t.reminders_sent_count, 0) AS reminders_sent_count
+               $trackingSelect
+               $cotizSelect,
                t.pago_estado AS tx_pago_estado,
                m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
                m.pago_estado,
+               m.punto_voltika_id AS moto_punto_id,
+               DATEDIFF(CURDATE(), COALESCE(m.fecha_estado, m.freg)) AS moto_dias_en_estado,
+               pm.nombre    AS punto_moto_nombre,
+               pm.ciudad    AS punto_moto_ciudad,
+               pm.direccion AS punto_moto_direccion,
+               (SELECT e.estado FROM envios e WHERE e.moto_id = m.id ORDER BY e.id DESC LIMIT 1) AS envio_estado,
+               (SELECT e.carrier FROM envios e WHERE e.moto_id = m.id ORDER BY e.id DESC LIMIT 1) AS envio_carrier,
+               (SELECT e.tracking_number FROM envios e WHERE e.moto_id = m.id ORDER BY e.id DESC LIMIT 1) AS envio_tracking,
+               (SELECT e.fecha_estimada_llegada FROM envios e WHERE e.moto_id = m.id ORDER BY e.id DESC LIMIT 1) AS envio_eta,
                p.direccion AS punto_direccion, p.colonia AS punto_colonia,
                p.ciudad AS punto_ciudad, p.estado AS punto_estado,
                p.cp AS punto_cp, p.telefono AS punto_telefono
@@ -52,6 +92,7 @@ try {
                    ORDER BY m2.fmod DESC
                    LIMIT 1
                )
+        LEFT JOIN puntos_voltika pm ON pm.id = m.punto_voltika_id
         LEFT JOIN puntos_voltika p
                ON p.id = (
                    SELECT p2.id FROM puntos_voltika p2
@@ -78,6 +119,16 @@ try {
             'moto_id'     => $r['moto_id'] ? (int)$r['moto_id'] : null,
             'moto_vin'    => $r['moto_vin'],
             'moto_estado' => $r['moto_estado'],
+            'dias_en_estado'       => isset($r['moto_dias_en_estado']) ? (int)$r['moto_dias_en_estado'] : null,
+            'punto_moto_nombre'    => $r['punto_moto_nombre']    ?? null,
+            'punto_moto_ciudad'    => $r['punto_moto_ciudad']    ?? null,
+            'punto_moto_direccion' => $r['punto_moto_direccion'] ?? null,
+            'envio' => $r['envio_estado'] ? [
+                'estado'                 => $r['envio_estado'],
+                'carrier'                => $r['envio_carrier'],
+                'tracking_number'        => $r['envio_tracking'],
+                'fecha_estimada_llegada' => $r['envio_eta'],
+            ] : null,
             'pago_estado' => $r['pago_estado']
                 ?: ($r['tx_pago_estado'] ?? '')
                 ?: (
@@ -102,6 +153,8 @@ try {
             'fecha_estimada_entrega' => $r['fecha_estimada_entrega'] ?? null,
             'asesoria_placas' => (int)($r['asesoria_placas'] ?? 0),
             'seguro_qualitas' => (int)($r['seguro_qualitas'] ?? 0),
+            'last_reminder_at'     => $r['last_reminder_at'] ?? null,
+            'reminders_sent_count' => (int)($r['reminders_sent_count'] ?? 0),
             'placas_estado'          => $r['placas_estado'] ?? null,
             'placas_gestor_nombre'   => $r['placas_gestor_nombre'] ?? null,
             'placas_gestor_telefono' => $r['placas_gestor_telefono'] ?? null,
@@ -110,6 +163,14 @@ try {
             'seguro_cotizacion' => $r['seguro_cotizacion'] ?? null,
             'seguro_poliza'     => $r['seguro_poliza'] ?? null,
             'seguro_nota'       => $r['seguro_nota'] ?? null,
+            'seguro_cotizacion_archivo' => $r['seguro_cotizacion_archivo'] ?? null,
+            'seguro_cotizacion_mime'    => $r['seguro_cotizacion_mime']    ?? null,
+            'seguro_cotizacion_size'    => $r['seguro_cotizacion_size']    ?? null,
+            'seguro_cotizacion_subido'  => $r['seguro_cotizacion_subido']  ?? null,
+            'placas_cotizacion_archivo' => $r['placas_cotizacion_archivo'] ?? null,
+            'placas_cotizacion_mime'    => $r['placas_cotizacion_mime']    ?? null,
+            'placas_cotizacion_size'    => $r['placas_cotizacion_size']    ?? null,
+            'placas_cotizacion_subido'  => $r['placas_cotizacion_subido']  ?? null,
         ];
     }
 } catch (Throwable $e) {

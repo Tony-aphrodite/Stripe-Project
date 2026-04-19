@@ -1,12 +1,35 @@
 window.AD_inventario = (function(){
   var filters = {};
+  var _view = 'global';   // 'global' | 'por_punto' | 'detalle_punto'
+  var _selectedPuntoId = null;
   var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
   function render(){
     ADApp.render('<div class="ad-h1">CEDIS</div><div><span class="ad-spin"></span> Cargando...</div>');
+    if (_view === 'por_punto')      return loadPorPunto();
+    if (_view === 'detalle_punto')  return loadDetallePunto(_selectedPuntoId);
     load();
   }
   function load(){
     ADApp.api('inventario/listar.php?' + $.param(filters)).done(paint);
+  }
+  function loadPorPunto(){
+    ADApp.api('inventario/por-punto.php').done(paintPorPunto);
+  }
+  function loadDetallePunto(puntoId){
+    ADApp.api('inventario/por-punto.php?punto_id=' + encodeURIComponent(puntoId)).done(paintDetallePunto);
+  }
+
+  function viewToggle(){
+    function btn(key, label){
+      var active = _view === key || (key === 'por_punto' && _view === 'detalle_punto');
+      return '<button class="adInvView" data-view="'+key+'" style="padding:8px 16px;font-size:13px;font-weight:600;border:1px solid var(--ad-border);'+
+        'background:'+(active?'var(--ad-primary)':'#fff')+';color:'+(active?'#fff':'var(--ad-dim)')+';'+
+        'cursor:pointer;border-radius:6px;">'+label+'</button>';
+    }
+    return '<div style="display:flex;gap:6px;margin:8px 0 12px;">'+
+      btn('global','Inventario global')+
+      btn('por_punto','Por punto')+
+    '</div>';
   }
   function paint(r){
     var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">CEDIS</div>';
@@ -17,6 +40,7 @@ window.AD_inventario = (function(){
         '</div>';
     }
     html += '</div>';
+    html += viewToggle();
     // Summary KPIs
     var s = r.resumen||{};
     html += '<div class="ad-kpis">';
@@ -26,6 +50,10 @@ window.AD_inventario = (function(){
      {l:'Bloqueado',v:s.bloqueado,c:'red'}].forEach(function(k){
       html += '<div class="ad-kpi"><div class="label">'+k.l+'</div><div class="value '+(k.c||'')+'">'+Number(k.v||0)+'</div></div>';
     });
+    // Pagos pendientes KPI — clickable, jumps to Ventas → Pago pendiente tab
+    if (s.pagos_pendientes != null) {
+      html += '<div class="ad-kpi" id="adKpiPagosPendientes" style="cursor:pointer;" title="Ir a Ventas → Pago pendiente"><div class="label">Pagos pendientes</div><div class="value red">'+Number(s.pagos_pendientes||0)+'</div></div>';
+    }
     html += '</div>';
     // Model summary
     var pm = r.por_modelo||[];
@@ -112,6 +140,7 @@ window.AD_inventario = (function(){
       html += '</div>';
     }
     ADApp.render(html);
+    bindViewToggle();
     $('#adFApply').on('click',function(){
       filters.vin=$('#adFVin').val();
       filters.modelo=$('#adFModelo').val();
@@ -124,7 +153,202 @@ window.AD_inventario = (function(){
     $('.adPage').on('click',function(){ filters.page=$(this).data('p'); load(); });
     $('#adNewMoto').on('click', showNewForm);
     $('#adImportExcel').on('click', showImportForm);
+    $('#adKpiPagosPendientes').on('click', function(){
+      ADApp.go('ventas');
+      // Set the Ventas activeTab to 'pago_pendiente' after nav
+      setTimeout(function(){
+        if (window.AD_ventas && typeof window.AD_ventas.render === 'function') {
+          // AD_ventas reads _activeTab internally; simplest path is to click the tab
+          var $t = $('.vtTab[data-tab="pago_pendiente"]');
+          if ($t.length) $t.trigger('click');
+        }
+      }, 300);
+    });
   }
+
+  function bindViewToggle(){
+    $('.adInvView').on('click', function(){
+      _view = $(this).data('view');
+      if (_view !== 'detalle_punto') _selectedPuntoId = null;
+      render();
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  POR PUNTO — overview (card grid)
+  // ═══════════════════════════════════════════════════════════════════════
+  function paintPorPunto(r){
+    var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">CEDIS — Inventario por punto</div></div>';
+    html += viewToggle();
+
+    var puntos = (r && r.puntos) || [];
+    if (!puntos.length) {
+      html += '<div class="ad-card">No hay puntos registrados.</div>';
+      ADApp.render(html);
+      bindViewToggle();
+      return;
+    }
+
+    // Summary across all points
+    var totals = { consignacion:0, en_transito:0, en_ensamble:0, lista:0, disp:0, pagos:0 };
+    puntos.forEach(function(p){
+      totals.consignacion += p.consignacion_count;
+      totals.en_transito  += p.en_transito_count;
+      totals.en_ensamble  += p.en_ensamble_count;
+      totals.lista        += p.lista_para_entrega_count;
+      totals.disp         += p.disponible_venta_count;
+      totals.pagos        += p.pagos_pendientes_count;
+    });
+    html += '<div class="ad-kpis" style="margin-bottom:14px;">';
+    [{l:'Consignación',v:totals.consignacion,c:'blue'},
+     {l:'En tránsito',v:totals.en_transito,c:'yellow'},
+     {l:'En ensamble',v:totals.en_ensamble,c:'yellow'},
+     {l:'Para entrega',v:totals.lista,c:'green'},
+     {l:'Para venta',v:totals.disp,c:'green'},
+     {l:'Pagos pendientes',v:totals.pagos,c:'red'}].forEach(function(k){
+      html += '<div class="ad-kpi"><div class="label">'+k.l+'</div><div class="value '+k.c+'">'+k.v+'</div></div>';
+    });
+    html += '</div>';
+
+    // Per-punto grid
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">';
+    puntos.forEach(function(p){
+      var aging = p.aging_max_dias || 0;
+      var agingColor = aging <= 30 ? '#059669' : aging <= 60 ? '#d97706' : '#dc2626';
+      var agingNote = aging > 0
+        ? '<span style="color:'+agingColor+';font-weight:700;">'+aging+' días</span> en consignación'
+        : 'Sin consignación';
+
+      html += '<div class="ad-card adPuntoCard" data-punto="'+p.id+'" style="cursor:pointer;transition:box-shadow .15s;">';
+      html += '<div style="font-size:15px;font-weight:800;color:var(--ad-navy);margin-bottom:2px;">'+esc(p.nombre)+'</div>';
+      html += '<div style="font-size:11px;color:var(--ad-dim);margin-bottom:10px;">'+esc(p.ciudad||'')+'</div>';
+
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px;margin-bottom:8px;">';
+      html += statRow('Consignación', p.consignacion_count, '#0ea5e9');
+      html += statRow('En tránsito', p.en_transito_count, '#d97706');
+      html += statRow('En ensamble', p.en_ensamble_count, '#6366f1');
+      html += statRow('Para entrega', p.lista_para_entrega_count, '#059669');
+      html += statRow('Para venta', p.disponible_venta_count, '#059669');
+      html += statRow('Pagos pendientes', p.pagos_pendientes_count, '#dc2626');
+      html += '</div>';
+
+      if (aging > 0) {
+        html += '<div style="font-size:11px;color:var(--ad-dim);padding-top:8px;border-top:1px dashed var(--ad-border);">Aging: '+agingNote+'</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+
+    ADApp.render(html);
+    bindViewToggle();
+    $('.adPuntoCard').on('click', function(){
+      _selectedPuntoId = parseInt($(this).data('punto'), 10);
+      _view = 'detalle_punto';
+      render();
+    });
+  }
+
+  function statRow(label, count, color){
+    var c = count > 0 ? color : 'var(--ad-dim)';
+    return '<div style="display:flex;justify-content:space-between;align-items:baseline;">'+
+      '<span style="color:var(--ad-dim);">'+label+'</span>'+
+      '<span style="font-weight:800;font-size:16px;color:'+c+';">'+count+'</span>'+
+    '</div>';
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  POR PUNTO — detail of a single punto
+  // ═══════════════════════════════════════════════════════════════════════
+  function paintDetallePunto(r){
+    if (!r || !r.ok) {
+      ADApp.render('<div class="ad-card">'+((r&&r.error)||'Error al cargar punto')+'</div>');
+      return;
+    }
+    var html = '<button class="ad-back" id="adPBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver a puntos</button>';
+    html += '<div class="ad-h1" style="margin-top:8px;">'+esc(r.punto.nombre)+'</div>';
+    html += '<div style="color:var(--ad-dim);font-size:13px;margin-bottom:14px;">'+esc(r.punto.ciudad||'')+(r.punto.direccion?' · '+esc(r.punto.direccion):'')+'</div>';
+
+    // Summary strip
+    var s = r.resumen;
+    html += '<div class="ad-kpis" style="margin-bottom:18px;">';
+    [{l:'Consignación',v:s.consignacion,c:'blue'},
+     {l:'En tránsito',v:s.en_transito,c:'yellow'},
+     {l:'En ensamble',v:s.en_ensamble,c:'yellow'},
+     {l:'Para entrega',v:s.lista_para_entrega,c:'green'},
+     {l:'Para venta',v:s.disponible_venta,c:'green'},
+     {l:'Pagos pendientes',v:s.pagos_pendientes,c:'red'}].forEach(function(k){
+      html += '<div class="ad-kpi"><div class="label">'+k.l+'</div><div class="value '+k.c+'">'+k.v+'</div></div>';
+    });
+    html += '</div>';
+
+    html += motoSection('Consignación (ventas directas)',  'Motos en el punto listas para venta directa en tienda. Alto aging = revisar.', r.consignacion, true);
+    html += motoSection('En tránsito hacia este punto',    'Motos enviadas desde CEDIS, pendientes de recepción.', r.en_transito, false);
+    html += motoSection('En ensamble',                     'Motos en proceso de ensamble en el punto.', r.en_ensamble, false);
+    html += motoSection('Lista para entrega (cliente)',    'Motos con cliente asignado, listas para recogerse.', r.lista_para_entrega, false);
+    html += motoSection('Disponible para venta directa',   'Motos recibidas sin cliente aún (walk-in).', r.disponible_venta, false);
+
+    // Payment follow-up
+    if (r.pagos_pendientes && r.pagos_pendientes.length) {
+      html += '<div style="margin-top:24px;">';
+      html += '<div style="font-weight:700;font-size:15px;color:var(--ad-navy);margin-bottom:8px;">Pagos pendientes vinculados al punto ('+r.pagos_pendientes.length+')</div>';
+      html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Monto</th><th>Método</th><th></th></tr></thead><tbody>';
+      r.pagos_pendientes.forEach(function(p){
+        html += '<tr>'+
+          '<td><strong>VK-'+esc(p.pedido||p.id)+'</strong></td>'+
+          '<td>'+esc(p.nombre||'—')+'<br><small class="ad-dim">'+esc(p.telefono||'')+'</small></td>'+
+          '<td>'+esc(p.modelo||'')+' · '+esc(p.color||'')+'</td>'+
+          '<td>'+ADApp.money(p.total)+'</td>'+
+          '<td>'+esc(p.tpago||'')+'</td>'+
+          '<td><button class="ad-btn sm" style="background:#d97706;color:#fff;" onclick="AD_ventas.showEnviarLink('+p.id+')">Enviar link</button></td>'+
+        '</tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+
+    ADApp.render(html);
+    $('#adPBack').on('click', function(){
+      _view = 'por_punto';
+      _selectedPuntoId = null;
+      render();
+    });
+    $('.adDetail').on('click',function(){ showDetail($(this).data('id')); });
+  }
+
+  function motoSection(title, subtitle, list, showAging){
+    var html = '<div style="margin-top:20px;">';
+    html += '<div style="font-weight:700;font-size:14px;color:var(--ad-navy);margin-bottom:2px;">'+title+' ('+list.length+')</div>';
+    html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">'+subtitle+'</div>';
+    if (!list.length) {
+      html += '<div class="ad-card" style="color:var(--ad-dim);font-size:13px;">— sin motos en esta categoría —</div>';
+      return html + '</div>';
+    }
+    html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr>'+
+      '<th>VIN</th><th>Modelo</th><th>Color</th><th>Estado</th>'+
+      (showAging ? '<th>Días en punto</th>' : '')+
+      '<th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
+    list.forEach(function(m){
+      var agingCell = '';
+      if (showAging) {
+        var d = m.dias_en_punto || 0;
+        var c = d <= 30 ? '#059669' : d <= 60 ? '#d97706' : '#dc2626';
+        agingCell = '<td><span style="font-weight:700;color:'+c+';">'+d+'d</span></td>';
+      }
+      html += '<tr>'+
+        '<td><code style="font-size:11px;">'+esc(m.vin_display||m.vin||'—')+'</code></td>'+
+        '<td>'+esc(m.modelo||'')+'</td>'+
+        '<td>'+esc(m.color||'')+'</td>'+
+        '<td>'+ADApp.badgeEstado(m.estado||'')+'</td>'+
+        agingCell+
+        '<td>'+esc(m.cliente_nombre||'—')+'</td>'+
+        '<td>'+ADApp.badgeEstado(m.pago_estado||'—')+'</td>'+
+        '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
+      '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+    return html;
+  }
+
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function showDetail(id){
     ADApp.api('inventario/detalle.php?id='+id).done(function(r){
       var m=r.moto; if(!m) return;

@@ -233,7 +233,7 @@ window.AD_checklists = (function(){
         var mid = $(this).data('mid');
         if(tipo==='origen') openOrigenForm(mid, r.origen, r.moto);
         else if(tipo==='ensamble') openEnsambleForm(mid, r.ensamble);
-        else if(tipo==='entrega') openEntregaForm(mid, r.entrega);
+        else if(tipo==='entrega') openEntregaForm(mid, r.entrega, r.moto);
       });
 
       $('.clPdf').on('click',function(){
@@ -506,9 +506,13 @@ window.AD_checklists = (function(){
 
   // ── Checklist de Ensamble ──────────────────────────────────────────────────
 
+  // Each section carries its own `fotoCampo` so photo evidence is captured
+  // per-step rather than dumped into one bulk bucket at the end of the phase.
+  // (Customer feedback 2026-04-18: "Pictures of listed assembly process
+  // evidence" — every section now has its own photo zone.)
   var ENSAMBLE_PHASES = [
     { key:'fase1', title:'Fase 1 — Inicio', sections:[
-      { title:'Recepción y preparación', fields:[
+      { title:'Recepción y preparación', fotoCampo:'fotos_fase1', fields:[
         {key:'recepcion_validada', label:'Recepción validada (checklist origen completo)'},
         {key:'primera_apertura', label:'Primera apertura del embalaje'},
         {key:'area_segura', label:'Área de trabajo segura y despejada'},
@@ -518,31 +522,31 @@ window.AD_checklists = (function(){
       ]}
     ]},
     { key:'fase2', title:'Fase 2 — Proceso de ensamble', sections:[
-      { title:'2.1 Desembalaje', fields:[
+      { title:'2.1 Desembalaje', fotoCampo:'fotos_desembalaje', fields:[
         {key:'componentes_sin_dano', label:'Componentes sin daño'},
         {key:'accesorios_separados', label:'Accesorios separados e identificados'},
         {key:'llanta_identificada', label:'Llanta delantera identificada'}
       ]},
-      { title:'2.2 Base y asiento', fields:[
+      { title:'2.2 Base y asiento', fotoCampo:'fotos_base', fields:[
         {key:'base_instalada', label:'Base instalada correctamente'},
         {key:'asiento_instalado', label:'Asiento instalado'},
         {key:'tornilleria_base', label:'Tornillería de base completa'},
         {key:'torque_base_25', label:'Torque base 25 Nm confirmado'}
       ]},
-      { title:'2.3 Manubrio', fields:[
+      { title:'2.3 Manubrio', fotoCampo:'fotos_manubrio', fields:[
         {key:'manubrio_instalado', label:'Manubrio instalado'},
         {key:'cableado_sin_tension', label:'Cableado sin tensión'},
         {key:'alineacion_manubrio', label:'Alineación del manubrio correcta'},
         {key:'torque_manubrio_25', label:'Torque manubrio 25 Nm confirmado'}
       ]},
-      { title:'2.4 Llanta delantera', fields:[
+      { title:'2.4 Llanta delantera', fotoCampo:'fotos_llanta', fields:[
         {key:'buje_corto', label:'Buje corto instalado'},
         {key:'buje_largo', label:'Buje largo instalado'},
         {key:'disco_alineado', label:'Disco de freno alineado'},
         {key:'eje_instalado', label:'Eje instalado correctamente'},
         {key:'torque_llanta_50', label:'Torque llanta 50 Nm confirmado'}
       ]},
-      { title:'2.5 Espejos', fields:[
+      { title:'2.5 Espejos', fotoCampo:'fotos_espejos', fields:[
         {key:'espejo_izq', label:'Espejo izquierdo instalado'},
         {key:'espejo_der', label:'Espejo derecho instalado'},
         {key:'roscas_ok', label:'Roscas en buen estado'},
@@ -550,35 +554,35 @@ window.AD_checklists = (function(){
       ]}
     ]},
     { key:'fase3', title:'Fase 3 — Validación final', sections:[
-      { title:'3.1 Frenos', fields:[
+      { title:'3.1 Frenos', fotoCampo:'fotos_3_1_frenos', fields:[
         {key:'freno_del_funcional', label:'Freno delantero funcional'},
         {key:'freno_tras_funcional', label:'Freno trasero funcional'},
         {key:'luz_freno_operativa', label:'Luz de freno operativa'}
       ]},
-      { title:'3.2 Iluminación', fields:[
+      { title:'3.2 Iluminación', fotoCampo:'fotos_3_2_iluminacion', fields:[
         {key:'direccionales_ok', label:'Direccionales funcionando'},
         {key:'intermitentes_ok', label:'Intermitentes funcionando'},
         {key:'luz_alta', label:'Luz alta funcional'},
         {key:'luz_baja', label:'Luz baja funcional'}
       ]},
-      { title:'3.3 Sistema eléctrico', fields:[
+      { title:'3.3 Sistema eléctrico', fotoCampo:'fotos_3_3_electrico', fields:[
         {key:'claxon_ok', label:'Claxon funcional'},
         {key:'dashboard_ok', label:'Dashboard funcional'},
         {key:'bateria_cargando', label:'Batería cargando correctamente'},
         {key:'puerto_carga_ok', label:'Puerto de carga funcional'}
       ]},
-      { title:'3.4 Motor y modos', fields:[
+      { title:'3.4 Motor y modos', fotoCampo:'fotos_3_4_motor', fields:[
         {key:'modo_eco', label:'Modo ECO funcional'},
         {key:'modo_drive', label:'Modo DRIVE funcional'},
         {key:'modo_sport', label:'Modo SPORT funcional'},
         {key:'reversa_ok', label:'Reversa funcional'}
       ]},
-      { title:'3.5 Acceso', fields:[
+      { title:'3.5 Acceso', fotoCampo:'fotos_3_5_acceso', fields:[
         {key:'nfc_ok', label:'NFC funcional'},
         {key:'control_remoto_ok', label:'Control remoto funcional'},
         {key:'llaves_funcionales', label:'Llaves funcionales'}
       ]},
-      { title:'3.6 Validación mecánica', fields:[
+      { title:'3.6 Validación mecánica', fotoCampo:'fotos_3_6_mecanica', fields:[
         {key:'sin_ruidos', label:'Sin ruidos anormales'},
         {key:'sin_interferencias', label:'Sin interferencias mecánicas'},
         {key:'torques_verificados', label:'Todos los torques verificados'},
@@ -624,42 +628,46 @@ window.AD_checklists = (function(){
     });
     html += '</div>';
 
-    // Photo campo mapping: fase→ array of {campo, label}
-    var ensFotoMap = {
-      fase1: [{campo:'fotos_fase1', label:'Fotos de recepción'}],
-      fase2: [
-        {campo:'fotos_base', label:'Fotos base y asiento'},
-        {campo:'fotos_manubrio', label:'Fotos manubrio'},
-        {campo:'fotos_llanta', label:'Fotos llanta delantera'},
-        {campo:'fotos_espejos', label:'Fotos espejos'}
-      ],
-      fase3: [{campo:'fotos_fase3', label:'Fotos validación final'}]
-    };
-
-    // Phase contents
+    // Phase contents — one photo zone INSIDE each section (customer asked for
+    // per-item evidence, implemented at section granularity as the practical
+    // balance — too many zones at the checkbox level slows operators down).
     ENSAMBLE_PHASES.forEach(function(ph){
       var isVisible = ph.key === activeFase;
       html += '<div class="clEnsPane" data-fase="'+ph.key+'" style="'+(isVisible?'':'display:none;')+'">';
       html += '<div style="font-weight:700;font-size:14px;margin-bottom:10px;">'+ph.title+'</div>';
 
       ph.sections.forEach(function(section){
-        html += '<div style="margin-bottom:14px;">';
+        html += '<div style="margin-bottom:18px;padding-bottom:12px;border-bottom:1px dashed var(--ad-border,#e8eef5);">';
         html += sectionTitle(section.title);
         section.fields.forEach(function(f){
           html += checkItem(f.key, f.label, data[f.key], isLocked);
         });
+
+        // Inline per-section photo zone
+        if (section.fotoCampo) {
+          var pFotos = [];
+          try { pFotos = JSON.parse(data[section.fotoCampo]||'[]'); } catch(e){}
+          if(!Array.isArray(pFotos)) pFotos = [];
+          html += '<div style="font-size:11px;font-weight:700;letter-spacing:.3px;color:var(--ad-primary,#039fe1);text-transform:uppercase;margin-top:10px;margin-bottom:4px;">Fotos · '+section.title+'</div>';
+          html += photoZone('clEnsFoto_'+section.fotoCampo, 'ensamble', motoId, section.fotoCampo, pFotos, isLocked);
+        }
+
         html += '</div>';
       });
 
-      // Phase photos (multiple zones for fase2)
-      var fotoEntries = ensFotoMap[ph.key] || [];
-      fotoEntries.forEach(function(fe){
-        var pFotos = [];
-        try { pFotos = JSON.parse(data[fe.campo]||'[]'); } catch(e){}
-        if(!Array.isArray(pFotos)) pFotos = [];
-        html += '<div style="font-size:12px;font-weight:600;color:var(--ad-dim);margin-top:8px;">'+fe.label+'</div>';
-        html += photoZone('clEnsFoto_'+fe.campo, 'ensamble', motoId, fe.campo, pFotos, isLocked);
-      });
+      // Legacy bulk photos (fotos_fase3): if the record has them, surface at
+      // the bottom of fase3 under a "Fotos generales (legado)" heading so the
+      // audit trail isn't lost. New uploads go into the section-specific zones.
+      if (ph.key === 'fase3' && data.fotos_fase3) {
+        var legacy = [];
+        try { legacy = JSON.parse(data.fotos_fase3||'[]'); } catch(e){}
+        if (Array.isArray(legacy) && legacy.length) {
+          html += '<div style="margin-top:14px;padding:10px;background:#FFFDE7;border-left:3px solid #FFC107;border-radius:4px;">';
+          html += '<div style="font-size:11px;font-weight:700;color:#795548;margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;">Fotos generales (legado)</div>';
+          html += photoZone('clEnsFoto_fotos_fase3', 'ensamble', motoId, 'fotos_fase3', legacy, isLocked);
+          html += '</div>';
+        }
+      }
 
       html += '</div>';
     });
@@ -794,8 +802,9 @@ window.AD_checklists = (function(){
   ENTREGA_PHASES.forEach(function(ph){ ph.sections.forEach(function(s){ s.fields.forEach(function(f){ ALL_ENTREGA_FIELDS.push(f.key); }); }); });
   var TOTAL_ENTREGA = ALL_ENTREGA_FIELDS.length;
 
-  function openEntregaForm(motoId, existing){
+  function openEntregaForm(motoId, existing, moto){
     var data = existing || {};
+    moto = moto || {};
     var isLocked = data.completado == 1;
 
     var activeFase = data.fase_actual || 'fase1';
@@ -926,34 +935,45 @@ window.AD_checklists = (function(){
         }
         html += '</div>';
 
-        // ── Firma 2: Pagaré (CINCEL) ──
+        // ── Firma 2: Plan de pago (SOLO para órdenes de crédito) ──
+        // Pagaré is a legal promissory note — only meaningful when the customer
+        // owes installments. For contado / MSI / SPEI / OXXO orders the full
+        // amount is already paid, so this block is hidden and only the acta
+        // signature above remains. (Customer feedback 2026-04-19.)
+        var tpagoLc = (moto.tpago || '').toLowerCase();
+        var isCreditFamily = ['credito','enganche','parcial'].indexOf(tpagoLc) >= 0;
+        if (isCreditFamily) {
         html += '<div style="padding:16px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;">';
-        html += '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">2. Finaliza tu compra</div>';
-        html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Firma pagaré — Documento PDF inmutable + Certificación NOM-151</div>';
+        html += '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">2. Confirma tu plan de pago</div>';
+        html += '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Acuerdo certificado digitalmente</div>';
 
-        // Pagaré PDF status area
-        html += '<div id="clPagareInfo" style="margin-bottom:10px;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;">';
-        if(data.pagare_pdf_path){
-          html += '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré generado</div>';
-          if(data.pagare_pdf_hash) html += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+data.pagare_pdf_hash+'</div>';
-          html += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(data.pagare_pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF</a>';
-        } else if(!isLocked){
-          html += '<div style="font-size:12px;color:#92400e;">El PDF del pagaré se generará automáticamente al firmar.</div>';
-          html += '<button class="ad-btn sm ghost" id="clPagarePreview" style="margin-top:6px;font-size:11px;border-color:#f59e0b;color:#92400e;">Vista previa del pagaré</button>';
-        }
+        // Native plan summary card (replaces the old PDF preview card)
+        var plan = (moto && moto.plan) ? moto.plan : {};
+        var planNombre  = plan.nombre || (moto && moto.cliente_nombre) || data.cliente_nombre || '—';
+        var planModelo  = (moto && moto.modelo) ? (moto.modelo + (moto.color ? ' · ' + moto.color : '')) : '—';
+        var planSemanal = plan.pago_semanal ? '$' + Number(plan.pago_semanal).toLocaleString('es-MX', {minimumFractionDigits:2}) + ' MXN' : '—';
+        var planPlazo   = plan.plazo_semanas ? plan.plazo_semanas + ' semanas' : (plan.plazo_meses ? plan.plazo_meses + ' meses' : '—');
+        var planPrimer  = 'Día de entrega';
+
+        html += '<div style="margin-bottom:12px;padding:14px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;">';
+        html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:8px 12px;font-size:13px;line-height:1.5;">';
+        html += '<div style="color:#64748b;">🏍️ Modelo:</div><div style="font-weight:600;color:#1a3a5c;">'+esc(planModelo)+'</div>';
+        html += '<div style="color:#64748b;">👤 Nombre:</div><div style="font-weight:600;color:#1a3a5c;">'+esc(planNombre)+'</div>';
+        html += '<div style="color:#64748b;">💳 Pago semanal:</div><div style="font-weight:700;color:#039fe1;">'+esc(planSemanal)+'</div>';
+        html += '<div style="color:#64748b;">⏳ Plazo:</div><div style="font-weight:600;color:#1a3a5c;">'+esc(planPlazo)+'</div>';
+        html += '<div style="color:#64748b;">📆 Primer pago:</div><div style="font-weight:600;color:#1a3a5c;">'+esc(planPrimer)+'</div>';
+        html += '</div>';
+        html += '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed #e5e7eb;font-size:12px;color:#64748b;text-align:center;">Al firmar aceptas tu plan de pago con <strong style="color:#1a3a5c;">VOLTIKA</strong>.</div>';
         html += '</div>';
 
         if(data.firma_pagare_data){
           html += '<div style="border:1px solid #ddd;border-radius:8px;padding:8px;display:inline-block;background:#fff;">'+
             '<img src="'+data.firma_pagare_data+'" style="max-width:300px;height:auto;"></div>';
-          html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;font-weight:600;">Firma pagaré capturada</div>';
-          if(data.firma_pagare_timestamp) html += '<div style="font-size:11px;color:#64748b;margin-top:2px;">Timestamp: '+data.firma_pagare_timestamp+'</div>';
-          if(data.firma_pagare_cincel_id) html += '<div style="font-size:11px;color:#64748b;">CINCEL ID: <code>'+data.firma_pagare_cincel_id+'</code></div>';
-          if(data.pagare_pdf_hash) html += '<div style="font-size:11px;color:#64748b;">PDF Hash: <code style="font-size:10px;">'+data.pagare_pdf_hash+'</code></div>';
+          html += '<div style="font-size:12px;color:#4CAF50;margin-top:4px;font-weight:600;">Firma capturada</div>';
         } else if(!isLocked){
           html += '<div id="clFirmaPagareWrapper" style="border:2px dashed #f59e0b;border-radius:8px;position:relative;background:#fff;">';
           html += '<canvas id="clFirmaPagareCanvas" style="width:100%;height:120px;display:block;cursor:crosshair;"></canvas>';
-          html += '<div id="clFirmaPagarePlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:13px;pointer-events:none;">Firmar aquí</div>';
+          html += '<div id="clFirmaPagarePlaceholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#bbb;font-size:13px;pointer-events:none;">Firma aquí</div>';
           html += '</div>';
           html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">';
           html += '<span id="clFirmaPagareStatus" style="font-size:12px;color:#999;">Pendiente de firma</span>';
@@ -963,6 +983,7 @@ window.AD_checklists = (function(){
           html += '<div style="font-size:13px;color:var(--ad-dim);">Sin firma registrada</div>';
         }
         html += '</div>';
+        } // end if(isCreditFamily)
 
       }
 
@@ -1077,30 +1098,8 @@ window.AD_checklists = (function(){
       if(f === 'fase5') initSignatureCanvas();
     });
 
-    // Pagaré preview button
-    $('#clPagarePreview').on('click', function(){
-      var $btn = $(this);
-      $btn.prop('disabled',true).html('<span class="ad-spin"></span> Generando...');
-      ADApp.api('checklists/generar-pagare.php', {moto_id: motoId}).done(function(r){
-        if(r.ok){
-          var infoHtml = '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré generado (vista previa)</div>';
-          if(r.datos && r.datos.nombre) infoHtml += '<div style="font-size:11px;color:#64748b;margin-top:2px;">Cliente: '+r.datos.nombre+'</div>';
-          if(r.datos && r.datos.monto_fmt) infoHtml += '<div style="font-size:11px;color:#64748b;">Monto: '+r.datos.monto_fmt+'</div>';
-          if(r.pdf_hash) infoHtml += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+r.pdf_hash+'</div>';
-          infoHtml += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(r.pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF</a>';
-          infoHtml += '<div style="font-size:11px;color:#92400e;margin-top:4px;">El PDF final se generará con la firma al guardar.</div>';
-          $('#clPagareInfo').html(infoHtml);
-        } else {
-          alert(r.error||'Error generando vista previa');
-          $btn.prop('disabled',false).html('Vista previa del pagaré');
-        }
-      }).fail(function(xhr){
-        var msg = 'Error de conexión';
-        if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
-        alert(msg);
-        $btn.prop('disabled',false).html('Vista previa del pagaré');
-      });
-    });
+    // Pagaré preview handler removed — legal document is backend-only, never
+    // exposed to the customer (customer feedback 2026-04-19).
 
     $('.clCheck').on('change', function(){
       updateProgressGeneric(ALL_ENTREGA_FIELDS, TOTAL_ENTREGA);
@@ -1147,23 +1146,18 @@ window.AD_checklists = (function(){
       // Step 2: Save pagaré signature (this triggers PDF generation + CINCEL)
       var pagarePromise;
       if(firmaPagare){
-        $('#clFirmaPagareStatus').text('Generando PDF y sellando NOM-151...').css('color','#92400e');
+        $('#clFirmaPagareStatus').text('Guardando firma...').css('color','#92400e');
         pagarePromise = ADApp.api('checklists/guardar-firma.php', { moto_id: motoId, tipo: 'pagare', firma_data: firmaPagare });
       } else {
         pagarePromise = $.Deferred().resolve({ok:true});
       }
 
       pagarePromise.done(function(pagareResp){
-        // Show pagaré result
-        if(pagareResp && pagareResp.pdf_hash){
-          var infoHtml = '<div style="font-size:12px;color:#4CAF50;font-weight:600;">PDF Pagaré firmado y sellado</div>';
-          if(pagareResp.pdf_hash) infoHtml += '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace;word-break:break-all;">Hash: '+pagareResp.pdf_hash+'</div>';
-          if(pagareResp.cincel_id) infoHtml += '<div style="font-size:11px;color:#64748b;">CINCEL ID: <code>'+pagareResp.cincel_id+'</code></div>';
-          if(pagareResp.pdf_path) infoHtml += '<a href="php/checklists/serve-pagare.php?f='+encodeURIComponent(pagareResp.pdf_path)+'" target="_blank" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;">Ver PDF firmado</a>';
-          $('#clPagareInfo').html(infoHtml);
-        }
-        if(pagareResp && pagareResp.cincel_warning){
-          $('#clFirmaPagareStatus').text('Firma guardada (CINCEL: '+pagareResp.cincel_warning+')').css('color','#FF9800');
+        // Legal document (pagaré + NOM-151 hash + CINCEL ID) is generated
+        // server-side on save but intentionally hidden from the customer-facing
+        // UI — do not surface pdf_hash, cincel_id, or download links here.
+        if(firmaPagare){
+          $('#clFirmaPagareStatus').text('Firma capturada').css('color','#4CAF50');
         }
       }).always(function(){
         // Step 3: Save checklist data

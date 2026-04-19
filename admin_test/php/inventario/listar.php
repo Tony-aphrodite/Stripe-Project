@@ -57,6 +57,16 @@ $summary = $pdo->query("SELECT
     SUM(punto_voltika_id IS NOT NULL AND estado NOT IN ('entregada','por_llegar','retenida')) as en_puntos
     FROM inventario_motos WHERE activo = 1")->fetch(PDO::FETCH_ASSOC);
 
+// Pagos pendientes count — payments the customer started but didn't complete
+try {
+    $pagosP = $pdo->query("SELECT COUNT(*) FROM transacciones
+        WHERE stripe_pi IS NOT NULL AND stripe_pi <> ''
+          AND pago_estado IN ('pendiente','fallido')")->fetchColumn();
+    $summary['pagos_pendientes'] = (int)$pagosP;
+} catch (Throwable $e) {
+    $summary['pagos_pendientes'] = 0;
+}
+
 // Model counts
 $porModelo = $pdo->query("SELECT modelo, COUNT(*) as cnt FROM inventario_motos WHERE activo = 1 GROUP BY modelo ORDER BY modelo")->fetchAll(PDO::FETCH_ASSOC);
 

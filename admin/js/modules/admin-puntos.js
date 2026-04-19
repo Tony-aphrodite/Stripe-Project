@@ -15,19 +15,38 @@ window.AD_puntos = (function(){
       '<button class="ad-btn primary" id="adNewPunto">+ Nuevo punto</button></div></div>';
 
     html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
-      '<th>Nombre</th><th>Tipo</th><th>Ciudad</th><th>Inventario</th>'+
-      '<th>Listas entrega</th><th>Envíos pend.</th><th>Cód. venta</th><th>Activo</th><th></th>'+
+      '<th>Nombre</th><th>Tipo</th><th>Ciudad</th>'+
+      '<th title="Total de motos en el punto">Total</th>'+
+      '<th title="Motos a consignación (venta directa en tienda)">Consig.</th>'+
+      '<th title="Motos reservadas para entrega web con cliente asignado">Entrega web</th>'+
+      '<th title="Motos en proceso de ensamble">Ensamble</th>'+
+      '<th title="Días transcurridos de la unidad más antigua sin vender en consignación">Aging</th>'+
+      '<th>Cód. venta</th><th>Activo</th><th></th>'+
       '</tr></thead><tbody>';
 
     puntosData.forEach(function(p){
       var tipoLabel = {center:'Center',certificado:'Certificado',entrega:'Entrega'};
+      // Aging color: ≤30d green, 31-60d amber, >60d red. Only show if there
+      // are consignación units to age (inv_consignacion > 0).
+      var aging = parseInt(p.aging_max_dias || 0);
+      var agingCell = '—';
+      if (parseInt(p.inv_consignacion||0) > 0 && aging > 0) {
+        var col = aging <= 30 ? '#059669' : aging <= 60 ? '#d97706' : '#dc2626';
+        agingCell = '<span style="font-weight:700;color:'+col+';">'+aging+' d</span>';
+      }
+      function cnt(v, color){
+        var n = Number(v||0);
+        return '<span style="font-weight:700;color:'+(n>0?color:'var(--ad-dim)')+';">'+n+'</span>';
+      }
       html += '<tr>'+
         '<td><strong>'+p.nombre+'</strong></td>'+
         '<td><span class="ad-badge '+(p.tipo==='center'?'blue':p.tipo==='certificado'?'green':'gray')+'">'+(tipoLabel[p.tipo]||p.tipo||'—')+'</span></td>'+
         '<td>'+(p.ciudad||'—')+', '+(p.estado||'')+'</td>'+
-        '<td>'+p.inventario_actual+'</td>'+
-        '<td>'+p.listas_entrega+'</td>'+
-        '<td>'+p.envios_pendientes+'</td>'+
+        '<td>'+cnt(p.inventario_actual, 'var(--ad-navy)')+'</td>'+
+        '<td>'+cnt(p.inv_consignacion, '#0ea5e9')+'</td>'+
+        '<td>'+cnt(p.inv_para_entrega, '#059669')+'</td>'+
+        '<td>'+cnt(p.inv_en_ensamble, '#6366f1')+'</td>'+
+        '<td>'+agingCell+'</td>'+
         '<td><code>'+(p.codigo_venta||'—')+'</code></td>'+
         '<td>'+(Number(p.activo)?'<span class="ad-badge green">Sí</span>':'<span class="ad-badge red">No</span>')+'</td>'+
         '<td><button class="ad-btn sm ghost adEditP" data-id="'+p.id+'">Editar</button></td>'+
@@ -128,7 +147,8 @@ window.AD_puntos = (function(){
     // ── Basic info ──
     html += sectionTitle('Información básica');
     html += '<input class="ad-input" id="pfNombre" placeholder="Nombre del punto" value="'+esc(p.nombre||'')+'" style="margin-bottom:8px">';
-    html += '<input class="ad-input" id="pfResponsable" placeholder="Nombre del responsable" value="'+esc(p.responsable||'')+'" style="margin-bottom:8px">';
+    html += '<input class="ad-input" id="pfResponsable" placeholder="Nombre del responsable" value="'+esc(p.responsable_nombre||p.responsable||'')+'" style="margin-bottom:8px">';
+    html += '<input class="ad-input" id="pfUbicacion" placeholder="Ubicación (ej: CDMX, Tulum)" value="'+esc(p.ubicacion||'')+'" style="margin-bottom:8px">';
     html += '<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:8px">'+
       '<select class="ad-select" id="pfTipo" style="width:100%;">'+
         '<option value="center"'+(p.tipo==='center'?' selected':'')+'>Voltika Center</option>'+
@@ -140,7 +160,8 @@ window.AD_puntos = (function(){
 
     // ── Address ──
     html += sectionTitle('Dirección');
-    html += '<input class="ad-input" id="pfDir" placeholder="Calle y número" value="'+esc(p.direccion||'')+'" style="margin-bottom:8px">';
+    html += '<input class="ad-input" id="pfDir" placeholder="Dirección completa" value="'+esc(p.direccion||'')+'" style="margin-bottom:8px">';
+    html += '<input class="ad-input" id="pfCalleNum" placeholder="Calle y número" value="'+esc(p.calle_numero||'')+'" style="margin-bottom:8px">';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
       '<input class="ad-input" id="pfCP" placeholder="Código postal" value="'+esc(p.cp||'')+'" maxlength="5" inputmode="numeric">'+
       '<input class="ad-input" id="pfTel" placeholder="Teléfono" value="'+esc(p.telefono||'')+'">'+
@@ -183,15 +204,32 @@ window.AD_puntos = (function(){
     html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:2px;display:block;">Tags / etiquetas (separados por coma):</label>';
     html += '<input class="ad-input" id="pfTags" placeholder="Exhibición, Prueba de manejo, Entrega" value="'+tags.join(', ')+'" style="margin-bottom:8px">';
 
+    // ── Capacidades del punto (6 flags SI/NO de la plantilla oficial) ──
+    html += sectionTitle('Capacidades del punto');
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:10px;font-size:13px;">';
+    function svcBox(id, field, label){
+      var checked = Number(p[field]) === 1 ? 'checked' : '';
+      return '<label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="'+id+'" '+checked+'> '+label+'</label>';
+    }
+    html += svcBox('pfSvcConfig',      'svc_configurador', 'Configurador');
+    html += svcBox('pfSvcEntrega',     'svc_entrega',      'Entrega');
+    html += svcBox('pfSvcExhibicion',  'svc_exhibicion',   'Exhibición y venta');
+    html += svcBox('pfSvcTecnico',     'svc_tecnico',      'Servicio técnico');
+    html += svcBox('pfSvcPruebas',     'svc_pruebas',      'Pruebas de manejo');
+    html += svcBox('pfSvcRefacciones', 'svc_refacciones',  'Refacciones');
+    html += '</div>';
+    html += '<label style="font-size:12px;color:var(--ad-dim);margin-bottom:2px;display:block;">Comisión de entrega (MXN)</label>';
+    html += '<input class="ad-input" id="pfComEntrega" type="number" step="0.01" min="0" placeholder="Ej: 500" value="'+(p.comision_entrega!=null?p.comision_entrega:'')+'" style="margin-bottom:8px">';
+
     // ── Referido codes ──
     if(!isNew){
       html += sectionTitle('Códigos de referido');
       html += '<div style="font-size:11px;color:var(--ad-dim);margin-bottom:6px;">Editá manualmente o apretá "Generar" para uno nuevo aleatorio.</div>';
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
-      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código venta en punto</label>'+
+      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Venta directa en tienda</label>'+
         '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodVenta" value="'+esc(p.codigo_venta||'')+'" placeholder="Ej: PVE4DCFC" style="flex:1;text-transform:uppercase;">'+
         '<button class="ad-btn sm ghost pfRegen" data-field="codigo_venta" title="Generar aleatorio" style="padding:4px 10px;font-size:11px;">Generar</button></div></div>';
-      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código venta online</label>'+
+      html += '<div><label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Ventas desde la Web Voltika</label>'+
         '<div style="display:flex;gap:4px;"><input class="ad-input" id="pfCodElec" value="'+esc(p.codigo_electronico||'')+'" placeholder="Ej: PE6AFC75" style="flex:1;text-transform:uppercase;">'+
         '<button class="ad-btn sm ghost pfRegen" data-field="codigo_electronico" title="Generar aleatorio" style="padding:4px 10px;font-size:11px;">Generar</button></div></div>';
       html += '</div>';
@@ -369,10 +407,15 @@ window.AD_puntos = (function(){
 
         modelos.forEach(function(m){
           var c = comMap[m.id]||{};
+          // Prefer fixed MXN amount (customer template uses $1,500 / $2,000 / $4,000 etc.)
+          // Fallback to legacy pct column for pre-import data.
+          var ventaVal   = parseFloat(c.comision_venta_monto);
+          if (!ventaVal || isNaN(ventaVal)) ventaVal = parseFloat(c.comision_venta_pct) || 0;
+          var entregaVal = parseFloat(c.comision_entrega_pct) || 0;
           ch += '<tr data-mid="'+m.id+'" style="border-bottom:1px solid #f0f0f0;">'+
             '<td style="padding:4px;font-weight:600;">'+esc(m.nombre)+'</td>'+
-            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComVenta" step="50" min="0" value="'+(parseFloat(c.comision_venta_pct)||0)+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
-            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComEntrega" step="50" min="0" value="'+(parseFloat(c.comision_entrega_pct)||0)+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
+            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComVenta" step="50" min="0" value="'+ventaVal+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
+            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComEntrega" step="50" min="0" value="'+entregaVal+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
           '</tr>';
         });
         ch += '</tbody></table>';
@@ -394,7 +437,9 @@ window.AD_puntos = (function(){
       var payload = {
         id: p.id||undefined,
         nombre: $('#pfNombre').val(),
-        responsable: $('#pfResponsable').val(),
+        responsable_nombre: $('#pfResponsable').val(),
+        ubicacion: $('#pfUbicacion').val() || null,
+        calle_numero: $('#pfCalleNum').val() || null,
         tipo: $('#pfTipo').val(),
         direccion: $('#pfDir').val(),
         colonia: $('#pfColonia').val(),
@@ -414,6 +459,13 @@ window.AD_puntos = (function(){
         lat: $('#pfLat').val()||null,
         lng: $('#pfLng').val()||null,
         autorizado: 1,
+        comision_entrega:   parseFloat($('#pfComEntrega').val()) || 0,
+        svc_configurador:   $('#pfSvcConfig').is(':checked') ? 1 : 0,
+        svc_entrega:        $('#pfSvcEntrega').is(':checked') ? 1 : 0,
+        svc_exhibicion:     $('#pfSvcExhibicion').is(':checked') ? 1 : 0,
+        svc_tecnico:        $('#pfSvcTecnico').is(':checked') ? 1 : 0,
+        svc_pruebas:        $('#pfSvcPruebas').is(':checked') ? 1 : 0,
+        svc_refacciones:    $('#pfSvcRefacciones').is(':checked') ? 1 : 0,
         codigo_venta:       ($('#pfCodVenta').val() || '').toUpperCase().trim() || null,
         codigo_electronico: ($('#pfCodElec').val()  || '').toUpperCase().trim() || null
       };
@@ -422,10 +474,15 @@ window.AD_puntos = (function(){
       var comisiones = [];
       $('#pfComisionesWrap tr[data-mid]').each(function(){
         var mid = $(this).data('mid');
+        var ventaAmt = parseFloat($(this).find('.pfComVenta').val()) || 0;
         comisiones.push({
           modelo_id: mid,
-          comision_venta_pct: parseFloat($(this).find('.pfComVenta').val())||0,
-          comision_entrega_pct: parseFloat($(this).find('.pfComEntrega').val())||0
+          // Save the same fixed MXN amount into monto (customer template) and
+          // leave pct null — keeps legacy pct-readers working via the monto
+          // fallback in the read path.
+          comision_venta_monto: ventaAmt,
+          comision_venta_pct: 0,
+          comision_entrega_pct: parseFloat($(this).find('.pfComEntrega').val()) || 0,
         });
       });
 

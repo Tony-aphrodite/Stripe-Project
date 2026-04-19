@@ -154,10 +154,11 @@ function handlePaymentSucceeded($paymentIntent) {
             // Bike assignment is now manual via Admin → Ventas panel
             webhookLog("Pedido VK-{$order['pedido']} awaiting manual bike assignment in admin panel");
 
-            sendConfirmationEmail($order, $methodLabel);
-
-            // ── WhatsApp / SMS notification (MSG 1 or MSG 2) ────────────────
-            sendPurchaseWhatsApp($order);
+            // ── Unified 4-way notification (email + WhatsApp + SMS) ─────────
+            // Single voltikaNotify() call per case covers all channels via the
+            // rich compra_confirmada_* template. Supersedes the separate
+            // sendConfirmationEmail + sendPurchaseWhatsApp split.
+            sendPurchaseNotifications($order);
 
             return;
         }
@@ -184,8 +185,7 @@ function handlePaymentSucceeded($paymentIntent) {
 
             if ($order) {
                 webhookLog("Found order in pedidos: pedido #{$order['pedido']} for {$order['email']}");
-                sendConfirmationEmail($order, $methodLabel);
-                sendPurchaseWhatsApp($order);
+                sendPurchaseNotifications($order);
                 return;
             }
         }
@@ -428,39 +428,97 @@ function handlePaymentPending($paymentIntent) {
 }
 
 /**
- * Send WhatsApp/SMS purchase notification (MSG 1 or MSG 2) + delayed portal message.
- * For OXXO/SPEI payments confirmed via webhook.
+ * Unified post-purchase notification dispatcher (email + WhatsApp + SMS).
+ *
+ * Routes to one of 4 `compra_confirmada_*` templates based on the two axes:
+ *   - tpago  → contado/MSI/unico vs credito/enganche/parcial
+ *   - punto  → preselected delivery point vs pending assignment
+ *
+ * Each template ships its own rich email_html + WhatsApp body + SMS variant
+ * (see voltikaBuildCompraTemplate() in voltika-notify.php). This replaces the
+ * old split between sendConfirmationEmail() (email-only) and
+ * sendPurchaseWhatsApp() (WA+SMS), which caused duplicate email sends and
+ * inconsistent wording across channels.
  */
-function sendPurchaseWhatsApp($order) {
+function sendPurchaseNotifications($order) {
     try {
         require_once __DIR__ . '/voltika-notify.php';
 
         $puntoNombre = trim($order['punto_nombre'] ?? '');
-        $tienePunto  = ($puntoNombre !== '');
-        $ciudad      = ($order['ciudad'] ?? '') . (($order['estado'] ?? '') ? ', ' . $order['estado'] : '');
+        $tienePunto  = ($puntoNombre !== '' && ($order['punto_id'] ?? '') !== 'centro-cercano');
+        $ciudadFull  = ($order['ciudad'] ?? '') . (($order['estado'] ?? '') ? ', ' . $order['estado'] : '');
         $tpago       = $order['tpago'] ?? 'contado';
         if ($tpago === 'unico') $tpago = 'contado';
+        $esCredito   = in_array($tpago, ['credito', 'enganche', 'parcial'], true);
 
-        $notifyData = [
-            'nombre'    => $order['nombre'] ?? '',
-            'modelo'    => $order['modelo'] ?? '',
-            'punto'     => $puntoNombre,
-            'ciudad'    => $ciudad,
-            'telefono'  => $order['telefono'] ?? '',
-            'email'     => $order['email'] ?? '',
-            'whatsapp'  => $order['telefono'] ?? '',
-            'cliente_id'=> null,
-        ];
-
-        // MSG 1 or MSG 2
+        // Resolve punto details + delivery ETA for the new template variables
+        $direccionPunto = '';
+        $linkMaps       = '';
         if ($tienePunto) {
-            voltikaNotify('compra_punto_definido', $notifyData);
-        } else {
-            voltikaNotify('compra_punto_pendiente', $notifyData);
+            try {
+                $pdo = getDB();
+                $ps = $pdo->prepare("SELECT direccion, ciudad, estado FROM puntos_voltika WHERE nombre = ? AND activo = 1 LIMIT 1");
+                $ps->execute([$puntoNombre]);
+                $pRow = $ps->fetch(PDO::FETCH_ASSOC);
+                if ($pRow) {
+                    $direccionPunto = trim($pRow['direccion'] ?? '');
+                    $mapsAddr = $puntoNombre . ($direccionPunto ? ', ' . $direccionPunto : '');
+                    if ($pRow['ciudad']) $mapsAddr .= ', ' . $pRow['ciudad'];
+                    if ($pRow['estado']) $mapsAddr .= ', ' . $pRow['estado'];
+                    $linkMaps = 'https://maps.google.com/?q=' . urlencode($mapsAddr);
+                }
+            } catch (Throwable $e) { webhookLog('punto lookup: ' . $e->getMessage()); }
         }
 
-        // MSG 1B/1C/1D — delayed 5 minutes
-        $esCredito = in_array($tpago, ['credito', 'enganche', 'parcial'], true);
+        // Estimated delivery date — use order field if set, otherwise today+10 days.
+        $fechaEstimada = '';
+        if (!empty($order['fecha_estimada_entrega'])) {
+            $ts = strtotime($order['fecha_estimada_entrega']);
+            if ($ts) $fechaEstimada = date('j/n/Y', $ts);
+        }
+        if (!$fechaEstimada) {
+            $fechaEstimada = date('j/n/Y', strtotime('+10 days'));
+        }
+
+        // Weekly payment amount for credit orders (if we can resolve it).
+        $montoSemanal = '';
+        if ($esCredito) {
+            try {
+                $pdo = getDB();
+                $ss = $pdo->prepare("SELECT monto_semanal FROM subscripciones_credito
+                    WHERE email = ? OR telefono = ? ORDER BY id DESC LIMIT 1");
+                $ss->execute([$order['email'] ?? '', $order['telefono'] ?? '']);
+                $ms = $ss->fetchColumn();
+                if ($ms) $montoSemanal = number_format((float)$ms, 2);
+            } catch (Throwable $e) {}
+        }
+
+        $notifyData = [
+            'pedido'          => $order['pedido'] ?? '',
+            'nombre'          => $order['nombre'] ?? '',
+            'modelo'          => $order['modelo'] ?? '',
+            'color'           => $order['color']  ?? '',
+            'punto'           => $puntoNombre,
+            'ciudad'          => $ciudadFull,
+            'direccion_punto' => $direccionPunto,
+            'link_maps'       => $linkMaps,
+            'fecha_estimada'  => $fechaEstimada,
+            'monto_semanal'   => $montoSemanal,
+            'telefono'        => $order['telefono'] ?? '',
+            'email'           => $order['email']    ?? '',
+            'whatsapp'        => $order['telefono'] ?? '',
+            'cliente_id'      => null,
+        ];
+
+        // Route to one of the 4 purchase-confirmation templates
+        $tpl = 'compra_confirmada_'
+             . ($esCredito ? 'credito' : 'contado')
+             . ($tienePunto ? '_punto' : '_sin_punto');
+        voltikaNotify($tpl, $notifyData);
+
+        // Delayed portal-access message (5 min after purchase confirmation).
+        // Customer-facing wording per 2026-04-19 brief — handled by
+        // portal_contado / portal_msi / portal_plazos.
         if ($esCredito) {
             voltikaNotifyDelayed('portal_plazos', $notifyData, 300);
         } elseif ($tpago === 'msi') {
@@ -469,9 +527,9 @@ function sendPurchaseWhatsApp($order) {
             voltikaNotifyDelayed('portal_contado', $notifyData, 300);
         }
 
-        webhookLog("WhatsApp/SMS notification sent for " . ($order['email'] ?? 'unknown'));
+        webhookLog("Purchase notification [$tpl] sent for " . ($order['email'] ?? 'unknown'));
     } catch (Throwable $e) {
-        webhookLog("WhatsApp notification error: " . $e->getMessage());
+        webhookLog("Purchase notification error: " . $e->getMessage());
     }
 }
 

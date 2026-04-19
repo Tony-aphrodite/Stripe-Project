@@ -96,7 +96,7 @@ window.AD_ventas = (function(){
 
       var extrasHtml = '';
       if(r.asesoria_placas) extrasHtml += '<span title="Solicitó asesoría para placas" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#FFF3E0;color:#E65100;border:1px solid #FFE0B2;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">PLACAS</span>';
-      if(r.seguro_qualitas) extrasHtml += '<span title="Solicitó seguro Quálitas" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">QUÁLITAS</span>';
+      if(r.seguro_qualitas) extrasHtml += '<span title="Solicitó seguro (Quálitas)" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">SEGURO</span>';
 
       html += '<tr>'+
         '<td><strong>VK-'+(r.pedido||r.id)+'</strong>'+extrasHtml+alertaHtml+'</td>'+
@@ -128,6 +128,7 @@ window.AD_ventas = (function(){
 
       var isOrphan = r.source === 'transacciones_errores' || r.source === 'subscripciones_credito';
       var motoCell, actions;
+      var actionsLayout = 'row';   // 'row' | 'stacked_pago_pendiente'
       var btnStyleBase = 'padding:5px 10px;font-size:12px;white-space:nowrap;';
       if(isOrphan){
         var isVksc = r.source === 'subscripciones_credito';
@@ -164,17 +165,40 @@ window.AD_ventas = (function(){
           if (canAssign) {
             actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
                        'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\'VK-'+(r.pedido||r.id)+'\')">Asignar</button>';
+          } else if (r.stripe_pi) {
+            // Payment not confirmed: Enviar link prominently on top (full width),
+            // Sinc + Ver on the bottom row. Prevents "Ver" from overflowing to
+            // the right when 3 buttons stack horizontally.
+            actionsLayout = 'stacked_pago_pendiente';
           } else {
             actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+';opacity:.55;cursor:not-allowed;" '+
                        'title="El pago de esta orden aún no ha sido confirmado" disabled>Pendiente</button>';
           }
         }
-        actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+        if (actionsLayout !== 'stacked_pago_pendiente') {
+          actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+        }
       }
-      html += '<td>'+motoCell+'</td>'+
-              '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
-              actions+
-              '</div></td>';
+      var actionTd;
+      if (actionsLayout === 'stacked_pago_pendiente') {
+        actionTd = '<td style="min-width:170px;"><div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;">'+
+          '<button class="ad-btn sm" style="'+btnStyleBase+';background:#d97706;color:#fff;width:100%;" '+
+            'title="Reenviar link de pago al cliente" '+
+            'onclick="AD_ventas.showEnviarLink('+r.id+')">Enviar link</button>'+
+          '<div style="display:flex;gap:5px;">'+
+            '<button class="ad-btn sm" style="'+btnStyleBase+';background:#0ea5e9;color:#fff;flex:1;" '+
+              'title="Verificar estado real con Stripe" '+
+              'onclick="AD_ventas.syncStripe('+r.id+', this)">🔄 Sinc</button>'+
+            '<button class="ad-btn sm ghost" style="'+btnStyleBase+';flex:1;" '+
+              'onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>'+
+          '</div>'+
+        '</div></td>';
+      } else {
+        actionTd = '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
+          actions +
+        '</div></td>';
+      }
+      html += '<td>'+motoCell+'</td>' + actionTd;
       html += '</tr>';
     });
 
@@ -300,6 +324,11 @@ window.AD_ventas = (function(){
     for(var i=0;i<rows.length;i++){ if(rows[i].id===transId){ r=rows[i]; break; } }
     if(!r) return;
 
+    // Silent Stripe re-check for non-paid orders on detail open.
+    // Fixes the common drift where Stripe already processed the payment but
+    // the DB still reads 'pendiente' because the webhook never landed.
+    _autoVerifyOnDetail(r);
+
     var isPending = r.punto_id==='centro-cercano';
 
     // ── Styled helpers (CEDIS pattern) ──
@@ -412,12 +441,48 @@ window.AD_ventas = (function(){
     // ── Section: Estatus de moto ──
     // Neutral heading so it reads naturally whether the moto is already
     // assigned (shows VIN + estado) or still pending (shows "Sin asignar").
+    // Customer feedback 2026-04-19: include physical location + aging so the
+    // operator knows where the moto physically sits right now.
     secIx = 0;
     html += secHead('Estatus de moto','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>');
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     if(r.moto_id){
       html += fRow('VIN', '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+(r.moto_vin||'****')+'</code>');
       html += fRow('Estado', ADApp.badgeEstado(r.moto_estado||'—'));
+
+      // Ubicación actual — where the moto physically is right now.
+      var motoEst = (r.moto_estado||'').toLowerCase();
+      var locHtml = '';
+      if (motoEst === 'entregada') {
+        locHtml = '<span style="color:#059669;font-weight:600;">Entregada al cliente</span>';
+      } else if (motoEst === 'por_llegar') {
+        locHtml = '<span style="color:#d97706;font-weight:600;">En tránsito desde CEDIS</span>';
+        if (r.punto_moto_nombre) locHtml += ' <span style="color:var(--ad-dim);">→ ' + esc(r.punto_moto_nombre) + '</span>';
+      } else if (r.punto_moto_nombre) {
+        var mapsAddr = r.punto_moto_nombre + (r.punto_moto_direccion ? ', ' + r.punto_moto_direccion : '') + (r.punto_moto_ciudad ? ', ' + r.punto_moto_ciudad : '');
+        locHtml = '<strong>' + esc(r.punto_moto_nombre) + '</strong>';
+        if (r.punto_moto_ciudad) locHtml += ' · <span style="color:var(--ad-dim);">' + esc(r.punto_moto_ciudad) + '</span>';
+        locHtml += ' <a href="https://maps.google.com/?q=' + encodeURIComponent(mapsAddr) + '" target="_blank" style="color:var(--ad-primary);font-size:11px;margin-left:4px;">📍 Maps</a>';
+      } else {
+        locHtml = '<span style="color:var(--ad-dim);">En CEDIS</span>';
+      }
+      html += fRow('Ubicación', locHtml);
+
+      // Aging in current state — color-coded per CEDIS "Por punto" convention.
+      if (r.dias_en_estado != null && motoEst !== 'entregada') {
+        var d = parseInt(r.dias_en_estado) || 0;
+        var col = d <= 7 ? '#059669' : d <= 30 ? '#d97706' : '#dc2626';
+        var label = d === 0 ? 'Hoy' : (d === 1 ? 'Hace 1 día' : 'Hace ' + d + ' días');
+        html += fRow('En este estado', '<span style="font-weight:700;color:' + col + ';">' + label + '</span>');
+      }
+
+      // Shipment status for in-transit motos (Skydrop or similar).
+      if (r.envio && (motoEst === 'por_llegar' || motoEst === 'recibida')) {
+        var envLine = esc(r.envio.carrier || 'Envío') + ' · ' + esc(r.envio.estado || 'en tránsito');
+        if (r.envio.fecha_estimada_llegada) envLine += ' · ETA ' + esc(String(r.envio.fecha_estimada_llegada).substring(0, 10));
+        if (r.envio.tracking_number) envLine += ' · <code style="font-size:11px;">' + esc(r.envio.tracking_number) + '</code>';
+        html += fRow('Envío', envLine);
+      }
     } else {
       html += fRow('Estado', '<span class="ad-badge red">Sin moto asignada</span>');
     }
@@ -471,13 +536,13 @@ window.AD_ventas = (function(){
     }
     h += '</div>';
 
-    // Seguro Quálitas
+    // Seguro
     h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
     if(seguro){
       var seguroEstado = (r.seguro_estado||'pendiente').toLowerCase();
       var seguroColor = seguroEstado==='activo' ? 'green' : (seguroEstado==='cotizado' ? 'blue' : 'yellow');
       var seguroLabel = seguroEstado==='activo' ? 'Póliza activa' : (seguroEstado==='cotizado' ? 'Cotizado' : 'Pendiente');
-      h += fRow('Seguro Quálitas', '<span class="ad-badge '+seguroColor+'">'+seguroLabel+'</span>');
+      h += fRow('Seguro', '<span class="ad-badge '+seguroColor+'">'+seguroLabel+'</span>');
       h += fRow('Modelo asegurar', (r.modelo||'—')+' · '+(r.color||'—'));
       if(r.seguro_cotizacion){
         h += fRow('Cotización', '$'+Number(r.seguro_cotizacion).toLocaleString('es-MX'));
@@ -489,7 +554,7 @@ window.AD_ventas = (function(){
         h += '<div style="grid-column:1/-1;padding:6px 10px;font-size:11px;color:var(--ad-dim);background:var(--ad-surface-2);border-radius:4px;margin:4px 0;"><strong>Nota:</strong> '+esc(r.seguro_nota)+'</div>';
       }
     } else {
-      h += fRow('Seguro Quálitas', '<span class="ad-badge gray">No solicitado</span>');
+      h += fRow('Seguro', '<span class="ad-badge gray">No solicitado</span>');
     }
     h += '</div>';
 
@@ -500,12 +565,113 @@ window.AD_ventas = (function(){
         h += '<button class="ad-btn sm ghost vkServicioAction" data-action="placas" data-id="'+(r.id||'')+'" data-pedido="'+(r.pedido||'')+'" style="font-size:11px;">Gestionar placas</button>';
       }
       if(seguro){
-        h += '<button class="ad-btn sm ghost vkServicioAction" data-action="seguro" data-id="'+(r.id||'')+'" data-pedido="'+(r.pedido||'')+'" style="font-size:11px;">Gestionar Quálitas</button>';
+        h += '<button class="ad-btn sm ghost vkServicioAction" data-action="seguro" data-id="'+(r.id||'')+'" data-pedido="'+(r.pedido||'')+'" style="font-size:11px;">Gestionar seguro</button>';
       }
       h += '</div>';
     }
 
     return h;
+  }
+
+  // ── Cotización file block — shared by seguro + placas modals ────────────
+  // Renders either the current attachment (with Ver/Reemplazar/Eliminar) or a
+  // plain file picker when nothing is attached yet. The block is keyed by
+  // `tipo` ('seguro'|'placas') so both modals can live side-by-side without
+  // DOM id collisions.
+  function cotizacionBlock(tipo, r, txId){
+    var has     = !!r[tipo+'_cotizacion_archivo'];
+    var subido  = r[tipo+'_cotizacion_subido'] || '';
+    var size    = r[tipo+'_cotizacion_size'] || 0;
+    var mime    = r[tipo+'_cotizacion_mime'] || '';
+    var urlBase = 'ventas/serve-cotizacion.php?transaccion_id='+txId+'&tipo='+tipo;
+    var h = '<div style="margin:0 0 10px;">';
+    h += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Archivo de cotización (PDF, JPG, PNG — máx 5 MB)</label>';
+    h += '<div id="vkCot_'+tipo+'_panel">';
+    if (has) {
+      var kb = size ? (size >= 1024*1024 ? (size/1024/1024).toFixed(1)+' MB' : Math.round(size/1024)+' KB') : '';
+      h += '<div style="display:flex;gap:8px;align-items:center;padding:10px 12px;background:#E8F4FD;border:1px solid #B3D4FC;border-radius:6px;flex-wrap:wrap;">'
+         +   '<span style="font-size:18px;">'+(mime.indexOf('pdf')>=0?'📄':'🖼️')+'</span>'
+         +   '<div style="flex:1;min-width:140px;font-size:12px;">'
+         +     '<div><strong>Archivo cargado</strong></div>'
+         +     '<div class="ad-dim" style="font-size:11px;">'+esc(subido)+(kb?(' · '+kb):'')+'</div>'
+         +   '</div>'
+         +   '<a href="/admin/php/'+urlBase+'&inline=1" target="_blank" class="ad-btn sm ghost" style="text-decoration:none;">Ver</a>'
+         +   '<button class="ad-btn sm ghost" id="vkCot_'+tipo+'_replace" type="button">Reemplazar</button>'
+         +   '<button class="ad-btn sm ghost" id="vkCot_'+tipo+'_delete"  type="button" style="color:#b91c1c;">Eliminar</button>'
+         + '</div>';
+    } else {
+      h += '<input type="file" id="vkCot_'+tipo+'_file" accept="application/pdf,image/jpeg,image/png,image/webp" style="width:100%;padding:8px;border:1.5px dashed var(--ad-border);border-radius:6px;font-size:12px;background:var(--ad-surface-2);">';
+    }
+    h += '</div>';
+    h += '<div id="vkCot_'+tipo+'_msg" style="font-size:11px;margin-top:4px;"></div>';
+    h += '</div>';
+    return h;
+  }
+
+  function wireCotizacionBlock(tipo, r, txId){
+    var $msg = $('#vkCot_'+tipo+'_msg');
+
+    function doUpload(file){
+      if (!file) return;
+      if (file.size > 5*1024*1024) { $msg.css('color','#b91c1c').text('Archivo excede 5 MB'); return; }
+      var fd = new FormData();
+      fd.append('transaccion_id', txId);
+      fd.append('tipo', tipo);
+      fd.append('file', file);
+      $msg.css('color','#555').html('<span class="ad-spin"></span> Subiendo...');
+      $.ajax({
+        url: 'php/ventas/subir-cotizacion.php',
+        type: 'POST', data: fd, processData:false, contentType:false,
+        xhrFields: { withCredentials: true }
+      }).done(function(resp){
+        if (resp && resp.ok){
+          $msg.css('color','#0e8f55').text('✓ Cargado');
+          // Reflect new state in the row obj + redraw the panel (stay in modal)
+          r[tipo+'_cotizacion_archivo'] = 'uploaded';
+          r[tipo+'_cotizacion_mime']    = resp.mime;
+          r[tipo+'_cotizacion_size']    = resp.size;
+          r[tipo+'_cotizacion_subido']  = (new Date()).toISOString().replace('T',' ').substring(0,19);
+          $('#vkCot_'+tipo+'_panel').replaceWith(
+            $('<div>'+cotizacionBlock(tipo, r, txId)+'</div>').find('#vkCot_'+tipo+'_panel')
+          );
+          wireCotizacionBlock(tipo, r, txId);
+        } else {
+          $msg.css('color','#b91c1c').text(resp && resp.error ? resp.error : 'Error al subir');
+        }
+      }).fail(function(xhr){
+        var err = 'Error de conexión';
+        try { err = JSON.parse(xhr.responseText).error || err; } catch(e){}
+        $msg.css('color','#b91c1c').text(err);
+      });
+    }
+
+    $('#vkCot_'+tipo+'_file').on('change', function(){ doUpload(this.files && this.files[0]); });
+
+    $('#vkCot_'+tipo+'_replace').on('click', function(){
+      var $inp = $('<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp">');
+      $inp.on('change', function(){ doUpload(this.files && this.files[0]); }).trigger('click');
+    });
+
+    $('#vkCot_'+tipo+'_delete').on('click', function(){
+      if (!confirm('¿Eliminar el archivo de cotización? Esta acción no se puede deshacer.')) return;
+      $msg.css('color','#555').html('<span class="ad-spin"></span> Eliminando...');
+      ADApp.api('ventas/eliminar-cotizacion.php', {transaccion_id: txId, tipo: tipo})
+        .done(function(resp){
+          if (resp && resp.ok){
+            r[tipo+'_cotizacion_archivo'] = null;
+            r[tipo+'_cotizacion_mime']    = null;
+            r[tipo+'_cotizacion_size']    = null;
+            r[tipo+'_cotizacion_subido']  = null;
+            $('#vkCot_'+tipo+'_panel').replaceWith(
+              $('<div>'+cotizacionBlock(tipo, r, txId)+'</div>').find('#vkCot_'+tipo+'_panel')
+            );
+            wireCotizacionBlock(tipo, r, txId);
+            $msg.text('');
+          } else {
+            $msg.css('color','#b91c1c').text(resp.error || 'Error al eliminar');
+          }
+        });
+    });
   }
 
   // ── Servicios adicionales: Gestión modals ───────────────────────────────
@@ -535,12 +701,15 @@ window.AD_ventas = (function(){
     html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Notas internas</label>';
     html += '<textarea class="ad-input" id="vkPlacasNota" style="width:100%;min-height:60px;margin-bottom:14px;">'+esc(r.placas_nota||'')+'</textarea>';
 
+    html += cotizacionBlock('placas', r, txId);
+
     html += '<div style="display:flex;gap:8px;">';
     html += '<button class="ad-btn ghost" id="vkPlacasCancel" style="flex:1;">Cancelar</button>';
     html += '<button class="ad-btn primary" id="vkPlacasSave" style="flex:1;">Guardar</button>';
     html += '</div>';
 
     ADApp.modal(html);
+    wireCotizacionBlock('placas', r, txId);
     $('#vkPlacasCancel').on('click', function(){ ADApp.closeModal(); showDetalle(r.id); });
     $('#vkPlacasSave').on('click', function(){
       var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span>');
@@ -574,7 +743,7 @@ window.AD_ventas = (function(){
 
   function openGestionSeguro(txId, r){
     var estado = (r.seguro_estado||'pendiente');
-    var html = '<div class="ad-h2">Gestión Seguro Quálitas</div>';
+    var html = '<div class="ad-h2">Gestión de seguro</div>';
     html += '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:14px;">Pedido <strong>VK-'+(r.pedido||txId)+'</strong> · '+(r.nombre||'')+'</div>';
     html += '<div style="background:var(--ad-surface-2);padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;">';
     html += '<strong>Cliente:</strong> '+(r.nombre||'—')+' · <a href="tel:'+(r.telefono||'')+'" style="color:var(--ad-primary);">'+(r.telefono||'')+'</a><br>';
@@ -598,12 +767,15 @@ window.AD_ventas = (function(){
     html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:4px;">Notas internas</label>';
     html += '<textarea class="ad-input" id="vkSeguroNota" style="width:100%;min-height:60px;margin-bottom:14px;">'+esc(r.seguro_nota||'')+'</textarea>';
 
+    html += cotizacionBlock('seguro', r, txId);
+
     html += '<div style="display:flex;gap:8px;">';
     html += '<button class="ad-btn ghost" id="vkSeguroCancel" style="flex:1;">Cancelar</button>';
     html += '<button class="ad-btn primary" id="vkSeguroSave" style="flex:1;">Guardar</button>';
     html += '</div>';
 
     ADApp.modal(html);
+    wireCotizacionBlock('seguro', r, txId);
     $('#vkSeguroCancel').on('click', function(){ ADApp.closeModal(); showDetalle(r.id); });
     $('#vkSeguroSave').on('click', function(){
       var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span>');
@@ -638,24 +810,29 @@ window.AD_ventas = (function(){
   var _activeTab = 'todas';
 
   function renderTabs(rows){
-    var counts = {todas:rows.length, completadas:0, en_proceso:0, pendientes:0, errores:0, extras:0};
+    var counts = {todas:rows.length, completadas:0, en_proceso:0, pendientes:0, pago_pendiente:0, errores:0, extras:0};
     rows.forEach(function(r){
       var cat = categorizePago(r);
       counts[cat]++;
+      if(isPagoPendiente(r)) counts.pago_pendiente++;
       if(r.asesoria_placas || r.seguro_qualitas) counts.extras++;
     });
     var tabs = [
-      {key:'todas',       label:'Todas'},
-      {key:'completadas', label:'Completadas'},
-      {key:'en_proceso',  label:'En proceso'},
-      {key:'pendientes',  label:'Pendientes'},
-      {key:'errores',     label:'Errores'},
-      {key:'extras',      label:'Con extras'}
+      {key:'todas',          label:'Todas'},
+      {key:'completadas',    label:'Completadas'},
+      {key:'en_proceso',     label:'En proceso'},
+      {key:'pendientes',     label:'Pendientes'},
+      {key:'pago_pendiente', label:'Pago pendiente'},
+      {key:'errores',        label:'Errores'},
+      {key:'extras',         label:'Con extras'}
     ];
     var html = '';
     tabs.forEach(function(t){
       var isActive = _activeTab === t.key;
-      var countColor = t.key==='errores' && counts[t.key]>0 ? '#b91c1c' : (t.key==='pendientes' && counts[t.key]>0 ? '#d97706' : 'var(--ad-dim)');
+      var countColor = 'var(--ad-dim)';
+      if(t.key==='errores' && counts[t.key]>0) countColor = '#b91c1c';
+      else if(t.key==='pendientes' && counts[t.key]>0) countColor = '#d97706';
+      else if(t.key==='pago_pendiente' && counts[t.key]>0) countColor = '#c41e3a';
       if(isActive) countColor = '#fff';
       html += '<button class="vtTab" data-tab="'+t.key+'" style="'+
         'padding:10px 18px;font-size:13px;font-weight:600;border:none;cursor:pointer;'+
@@ -681,9 +858,19 @@ window.AD_ventas = (function(){
     return 'pendientes';
   }
 
+  // Cliente inició el pago (tenemos stripe_pi) pero no ha sido confirmado.
+  // Estos son los que necesitan follow-up con link de pago.
+  function isPagoPendiente(r){
+    if (!r.stripe_pi) return false;
+    var pe = (r.pago_estado||'').toLowerCase();
+    // Credit orders: enganche is 'parcial' once captured — not "pending" for this view.
+    return pe === 'pendiente' || pe === 'fallido' || pe === '';
+  }
+
   function filterRows(rows){
     if(_activeTab === 'todas') return rows;
     if(_activeTab === 'extras') return rows.filter(function(r){ return r.asesoria_placas || r.seguro_qualitas; });
+    if(_activeTab === 'pago_pendiente') return rows.filter(isPagoPendiente);
     return rows.filter(function(r){ return categorizePago(r) === _activeTab; });
   }
 
@@ -868,5 +1055,196 @@ window.AD_ventas = (function(){
     });
   }
 
-  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc };
+  // ── Enviar link de pago (follow-up para pagos pendientes) ────────────────
+  function showEnviarLink(rowId){
+    var rows = _lastRows || [];
+    var r = null;
+    for(var i=0;i<rows.length;i++){
+      if(rows[i].id === rowId){ r = rows[i]; break; }
+    }
+    if(!r){ alert('Fila no encontrada'); return; }
+
+    var tel  = (r.telefono || '').trim();
+    var em   = (r.email    || '').trim();
+    var last = r.last_reminder_at || '';
+    var sentCount = r.reminders_sent_count || 0;
+    var hasAnyContact = !!(tel || em);
+
+    var h = '<div class="ad-h2">Enviar link de pago a cliente</div>';
+    h += '<div style="background:#FFF8E1;border-left:3px solid #FFC107;padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;color:#795548;">'+
+      'Se le reenviará al cliente un link para que complete el pago pendiente. Si es SPEI/OXXO se reutiliza la referencia original; si es tarjeta se genera un nuevo Checkout.'+
+    '</div>';
+
+    h += '<div style="font-size:13px;margin-bottom:10px;">';
+    h += '<strong>Pedido:</strong> VK-'+esc(r.pedido||r.id)+'<br>';
+    h += '<strong>Cliente:</strong> '+esc(r.nombre||'—')+'<br>';
+    h += '<strong>Modelo:</strong> '+esc(r.modelo||'—')+' · '+esc(r.color||'—')+'<br>';
+    h += '<strong>Monto:</strong> '+ADApp.money(r.monto)+'<br>';
+    h += '<strong>Método:</strong> '+esc(r.tipo||r.tpago||'—');
+    h += '</div>';
+
+    if(last){
+      h += '<div style="background:#FFFDE7;padding:8px 10px;border-radius:6px;font-size:11px;color:#666;margin-bottom:12px;">'+
+        'Último recordatorio: '+esc(last.substring(0,16))+' · Total envíos: '+sentCount+
+      '</div>';
+    }
+
+    // Warning if no contact info at all
+    if (!hasAnyContact) {
+      h += '<div style="background:#FDECEA;border-left:3px solid #c41e3a;padding:10px 12px;border-radius:6px;margin-bottom:12px;font-size:12px;color:#7a0e1f;">'+
+        '<strong>Sin datos de contacto.</strong> Esta orden no tiene email ni teléfono registrado. '+
+        'Puedes introducir los datos del cliente abajo para enviarle el link ahora. '+
+        'Los datos se guardarán en la orden para envíos futuros.'+
+      '</div>';
+    }
+
+    h += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">Canales de envío</div>';
+
+    // Email
+    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px;cursor:pointer;">';
+    h += '<input type="checkbox" id="elSendEmail" '+(em?'checked':'')+'>';
+    h += '<span style="flex:1;">📧 Email';
+    if (em) {
+      h += ' <span style="color:#666;font-size:11px;">'+esc(em)+'</span></span>';
+      h += '<input type="hidden" id="elEmailInput" value="'+esc(em)+'">';
+    } else {
+      h += '</span>';
+    }
+    h += '</label>';
+    if (!em) {
+      h += '<input type="email" id="elEmailInput" placeholder="cliente@ejemplo.com" class="ad-input" style="margin:-4px 0 8px 28px;width:calc(100% - 28px);font-size:12px;padding:6px 8px;">';
+    }
+
+    // SMS
+    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px;cursor:pointer;">';
+    h += '<input type="checkbox" id="elSendSms" '+(tel?'checked':'')+'>';
+    h += '<span style="flex:1;">📱 SMS';
+    if (tel) {
+      h += ' <span style="color:#666;font-size:11px;">'+esc(tel)+'</span></span>';
+      h += '<input type="hidden" id="elSmsInput" value="'+esc(tel)+'">';
+    } else {
+      h += '</span>';
+    }
+    h += '</label>';
+    if (!tel) {
+      h += '<input type="tel" id="elSmsInput" inputmode="numeric" maxlength="10" placeholder="10 dígitos" class="ad-input" style="margin:-4px 0 8px 28px;width:calc(100% - 28px);font-size:12px;padding:6px 8px;">';
+    }
+
+    // WhatsApp (shares the phone input if no tel)
+    h += '<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:10px;cursor:pointer;">';
+    h += '<input type="checkbox" id="elSendWa" '+(tel?'checked':'')+'>';
+    h += '<span style="flex:1;">💬 WhatsApp';
+    if (tel) h += ' <span style="color:#666;font-size:11px;">'+esc(tel)+'</span>';
+    else      h += ' <span style="color:#666;font-size:11px;">(usa el mismo número que SMS)</span>';
+    h += '</span></label>';
+
+    h += '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#666;margin-bottom:12px;cursor:pointer;">';
+    h += '<input type="checkbox" id="elForce"> Forzar envío aunque haya sido enviado en las últimas 24h';
+    h += '</label>';
+
+    h += '<div style="display:flex;gap:8px;margin-top:10px;">';
+    h += '<button class="ad-btn ghost" onclick="ADApp.closeModal()" style="flex:1;">Cancelar</button>';
+    h += '<button class="ad-btn primary" id="elSendBtn" style="flex:2;background:#d97706;">Enviar recordatorio</button>';
+    h += '</div>';
+
+    ADApp.modal(h);
+
+    $('#elSendBtn').on('click', function(){
+      var canales = [];
+      var emailVal = ($('#elEmailInput').val() || '').trim();
+      var smsVal   = ($('#elSmsInput').val()   || '').trim();
+
+      if($('#elSendEmail').is(':checked')) {
+        if (!emailVal || emailVal.indexOf('@') < 0) { alert('Ingresa un email válido'); return; }
+        canales.push('email');
+      }
+      if($('#elSendSms').is(':checked')) {
+        if (!smsVal || smsVal.replace(/\D/g,'').length < 10) { alert('Ingresa un teléfono de 10 dígitos'); return; }
+        canales.push('sms');
+      }
+      if($('#elSendWa').is(':checked')) {
+        if (!smsVal || smsVal.replace(/\D/g,'').length < 10) { alert('Para WhatsApp ingresa un teléfono de 10 dígitos'); return; }
+        canales.push('whatsapp');
+      }
+      if(!canales.length){ alert('Selecciona al menos un canal'); return; }
+
+      var $b = $(this).prop('disabled',true).html('<span class="ad-spin"></span> Enviando...');
+      ADApp.api('ventas/enviar-link-pago.php', {
+        transaccion_id: rowId,
+        canales: canales,
+        force: $('#elForce').is(':checked') ? 1 : 0,
+        // Manual overrides (used if the DB row is missing contact info)
+        email:    emailVal,
+        telefono: smsVal
+      }).done(function(resp){
+        if(resp.ok){
+          ADApp.closeModal();
+          var parts = [];
+          if(resp.sent_email)    parts.push('Email');
+          if(resp.sent_sms)      parts.push('SMS');
+          if(resp.sent_whatsapp) parts.push('WhatsApp');
+          alert('Recordatorio enviado · ' + (parts.length ? parts.join(' + ') : 'sin canal exitoso'));
+          render();
+        } else {
+          alert(resp.error||'Error al enviar');
+          $b.prop('disabled',false).html('Enviar recordatorio');
+        }
+      }).fail(function(xhr){
+        var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de conexión';
+        alert(msg);
+        $b.prop('disabled',false).html('Enviar recordatorio');
+      });
+    });
+  }
+
+  // ── Sincronizar fila con Stripe (fix DB drift when webhook missed it) ────
+  function syncStripe(transId, btnEl){
+    var $btn = $(btnEl);
+    var originalHtml = $btn.html();
+    $btn.prop('disabled', true).html('<span class="ad-spin"></span>');
+    ADApp.api('ventas/verificar-stripe-uno.php', { transaccion_id: transId }).done(function(resp){
+      if (!resp.ok) {
+        alert(resp.error || 'Error al verificar');
+        $btn.prop('disabled', false).html(originalHtml);
+        return;
+      }
+      if (resp.changed) {
+        ADApp.toast
+          ? ADApp.toast('Estado actualizado: ' + resp.before + ' → ' + resp.after + ' (Stripe: ' + resp.stripe_status + ')')
+          : alert('Estado actualizado: ' + resp.before + ' → ' + resp.after);
+        render(); // refresh the entire list so UI reflects new state
+      } else {
+        if (ADApp.toast) {
+          ADApp.toast('Ya estaba sincronizado (' + resp.stripe_status + ')');
+        } else {
+          alert('Ya estaba sincronizado con Stripe: ' + resp.stripe_status);
+        }
+        $btn.prop('disabled', false).html(originalHtml);
+      }
+    }).fail(function(xhr){
+      var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de conexión';
+      alert(msg);
+      $btn.prop('disabled', false).html(originalHtml);
+    });
+  }
+
+  // Auto-verify silently when operator opens detail for a non-paid order.
+  // Fixes drift without the operator having to click Sincronizar manually.
+  function _autoVerifyOnDetail(row){
+    if (!row || !row.stripe_pi) return;
+    var pe = (row.pago_estado || '').toLowerCase();
+    var tp = (row.tipo || row.tpago || '').toLowerCase();
+    var isCreditFam = ['credito','credito-orfano','enganche','parcial'].indexOf(tp) >= 0;
+    // Credit family: 'parcial' is the terminal state (enganche captured), so don't re-verify it.
+    if (pe === 'pagada' || (isCreditFam && pe === 'parcial')) return;
+    ADApp.api('ventas/verificar-stripe-uno.php', { transaccion_id: row.id }).done(function(resp){
+      if (resp && resp.ok && resp.changed) {
+        // Refresh the list so the caller sees updated state
+        if (ADApp.toast) ADApp.toast('Stripe indica ' + resp.after + ' — actualizado automáticamente');
+        render();
+      }
+    });
+  }
+
+  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink, syncStripe:syncStripe };
 })();

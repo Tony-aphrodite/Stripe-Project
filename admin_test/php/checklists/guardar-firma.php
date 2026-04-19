@@ -34,6 +34,29 @@ $row = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$row) adminJsonOut(['error' => 'Checklist de entrega no encontrado'], 404);
 if ($row['completado']) adminJsonOut(['error' => 'Checklist ya completado'], 403);
 
+// Pagaré signature only belongs to credit-family orders. Reject attempts to
+// save a pagaré for contado/MSI/SPEI/OXXO — these customers already paid in
+// full, there's no installment promise to sign (customer feedback 2026-04-19).
+if ($tipo === 'pagare') {
+    try {
+        $mStmt = $pdo->prepare("SELECT pedido_num FROM inventario_motos WHERE id = ? LIMIT 1");
+        $mStmt->execute([$motoId]);
+        $pedidoNum = $mStmt->fetchColumn() ?: '';
+        $tpagoOrder = '';
+        if ($pedidoNum) {
+            $pedido = preg_replace('/^VK-/', '', $pedidoNum);
+            $ts = $pdo->prepare("SELECT tpago FROM transacciones WHERE pedido = ? ORDER BY id DESC LIMIT 1");
+            $ts->execute([$pedido]);
+            $tpagoOrder = strtolower(trim($ts->fetchColumn() ?: ''));
+        }
+        if ($tpagoOrder !== '' && !in_array($tpagoOrder, ['credito','enganche','parcial'], true)) {
+            adminJsonOut([
+                'error' => 'Esta orden es de contado/MSI. No se requiere firma de pagaré — la compra ya está liquidada.'
+            ], 400);
+        }
+    } catch (Throwable $e) { error_log('guardar-firma pagaré guard: ' . $e->getMessage()); }
+}
+
 $checkId = $row['id'];
 $result = ['ok' => true, 'tipo' => $tipo];
 

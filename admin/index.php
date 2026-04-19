@@ -53,6 +53,7 @@ $asset = function(string $rel): string {
           <button data-route="entregas"><span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Tiempos Entrega</button>
           <button data-route="roles"><span><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span> Roles</button>
           <button data-route="notificaciones"><span><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span> Notificaciones</button>
+          <button data-route="gestores"><span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/><path d="M8 5V3"/><path d="M16 5V3"/></svg></span> Gestores de placas</button>
         </div>
       </div>
 
@@ -101,6 +102,7 @@ $asset = function(string $rel): string {
 <script src="<?= $asset('js/modules/admin-buscar.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-analytics.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-alertas.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-gestores.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-reportes.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-modelos.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-precios.js') ?>"></script>

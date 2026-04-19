@@ -113,6 +113,76 @@ adminLog('checklist_ensamble_' . ($vals['completado'] ? 'completado' : 'guardado
     'moto_id' => $motoId, 'checklist_id' => $checkId, 'fase' => $vals['fase_actual']
 ]);
 
+// When the full checklist is marked complete the bike is ready for pickup —
+// flip inventario state and notify the customer with the rich stage-D
+// template (permiso temporal, INE/OTP instructions, fecha_limite).
+if ($vals['completado']) {
+    try {
+        $pdo->prepare("UPDATE inventario_motos SET estado='lista_para_entrega', fecha_estado=NOW() WHERE id=?")
+           ->execute([$motoId]);
+    } catch (Throwable $e) { error_log('moto lista estado: ' . $e->getMessage()); }
+
+    try {
+        $infoStmt = $pdo->prepare("SELECT m.cliente_id, m.cliente_nombre, m.cliente_telefono, m.cliente_email,
+                                          m.modelo, m.color, m.pedido_num, m.punto_voltika_id,
+                                          pv.nombre AS punto_nombre, pv.ciudad AS punto_ciudad,
+                                          pv.direccion AS punto_direccion, pv.colonia AS punto_colonia,
+                                          pv.cp AS punto_cp, pv.lat AS punto_lat, pv.lng AS punto_lng,
+                                          pv.calle_numero AS punto_calle
+                                     FROM inventario_motos m
+                                LEFT JOIN puntos_voltika pv ON pv.id=m.punto_voltika_id
+                                    WHERE m.id=?");
+        $infoStmt->execute([$motoId]);
+        $info = $infoStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($info && ($info['cliente_telefono'] || $info['cliente_email'])) {
+            $_notifyPath = null;
+            foreach ([
+                __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php',
+                __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php',
+            ] as $_p) {
+                if (is_file($_p)) { $_notifyPath = $_p; break; }
+            }
+            if ($_notifyPath) require_once $_notifyPath;
+
+            if (function_exists('voltikaNotify')) {
+                $pedido = $info['pedido_num'] ?? '';
+                if ($pedido && str_starts_with($pedido, 'VK-')) $pedido = substr($pedido, 3);
+                $direccionPunto = trim(($info['punto_direccion'] ?? '')
+                    . ($info['punto_colonia'] ? ', ' . $info['punto_colonia'] : '')
+                    . ($info['punto_cp']      ? ' CP ' . $info['punto_cp']   : ''));
+                if (!$direccionPunto) $direccionPunto = $info['punto_calle'] ?? '';
+                $linkMaps = function_exists('voltikaBuildMapsLink')
+                    ? voltikaBuildMapsLink($direccionPunto, $info['punto_ciudad'] ?? '',
+                        isset($info['punto_lat']) ? (float)$info['punto_lat'] : null,
+                        isset($info['punto_lng']) ? (float)$info['punto_lng'] : null)
+                    : 'https://voltika.mx/mi-cuenta';
+                // fecha_limite: 15 días desde hoy para recoger (brief aún sin
+                // ventana explícita — 15 días deja margen cómodo antes de que
+                // empiece a acercarse el vencimiento de los 30 del permiso).
+                $fechaLimite = function_exists('voltikaFormatFechaHuman')
+                    ? voltikaFormatFechaHuman((new DateTime('+15 days'))->format('Y-m-d'))
+                    : (new DateTime('+15 days'))->format('Y-m-d');
+
+                voltikaNotify('moto_lista_entrega', [
+                    'cliente_id'      => $info['cliente_id'] ?? null,
+                    'nombre'          => $info['cliente_nombre'] ?? '',
+                    'pedido'          => $pedido,
+                    'modelo'          => $info['modelo'] ?? '',
+                    'color'           => $info['color']  ?? '',
+                    'punto'           => $info['punto_nombre']  ?? '',
+                    'ciudad'          => $info['punto_ciudad']  ?? '',
+                    'direccion_punto' => $direccionPunto,
+                    'link_maps'       => $linkMaps,
+                    'fecha_limite'    => $fechaLimite,
+                    'telefono'        => $info['cliente_telefono'] ?? '',
+                    'email'           => $info['cliente_email']    ?? '',
+                ]);
+            }
+        }
+    } catch (Throwable $e) { error_log('notify moto_lista_entrega: ' . $e->getMessage()); }
+}
+
 adminJsonOut([
     'ok' => true,
     'checklist_id' => $checkId,
