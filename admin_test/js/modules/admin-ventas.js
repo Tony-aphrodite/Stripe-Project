@@ -329,7 +329,7 @@ window.AD_ventas = (function(){
     // the DB still reads 'pendiente' because the webhook never landed.
     _autoVerifyOnDetail(r);
 
-    var isPending = r.punto_id==='centro-cercano';
+    var isPending = r.punto_id==='centro-cercano' || !r.punto_nombre;
 
     // ── Styled helpers (CEDIS pattern) ──
     var secIx = 0;
@@ -438,6 +438,19 @@ window.AD_ventas = (function(){
     }
     html += '</div>';
 
+    // [Asignar punto] / [Cambiar punto] button — always visible so admin can
+    // (re)assign a punto even after one has been picked. Pending orders get
+    // the prominent primary style; assigned orders get a subtle ghost style.
+    // Inline SVG (pin / pencil) instead of emoji — keeps admin UI clean.
+    var iconPin    = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+    var iconPencil = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    var asignBtnLabel = isPending ? (iconPin + 'Asignar punto') : (iconPencil + 'Cambiar punto');
+    var asignBtnCls   = isPending ? 'primary' : 'ghost sm';
+    html += '<div style="margin:0 0 14px;">'
+         +    '<button class="ad-btn '+asignBtnCls+' adAsignarPuntoBtn" data-tx="'+r.id+'" '
+         +      'style="'+(isPending?'width:100%;padding:11px;':'')+'">'+asignBtnLabel+'</button>'
+         +  '</div>';
+
     // ── Section: Estatus de moto ──
     // Neutral heading so it reads naturally whether the moto is already
     // assigned (shows VIN + estado) or still pending (shows "Sin asignar").
@@ -501,6 +514,126 @@ window.AD_ventas = (function(){
       var id     = $(this).data('id');
       if(action === 'placas')  openGestionPlacas(id, r);
       if(action === 'seguro')  openGestionSeguro(id, r);
+    });
+
+    // Wire [Asignar/Cambiar punto] button
+    $('.adAsignarPuntoBtn').off('click').on('click', function(){
+      openAsignarPuntoOrden(r);
+    });
+  }
+
+  // ── Modal: Asignar punto a la orden ─────────────────────────────────────
+  // Lists active puntos sorted by same-state-first. On confirm, calls the
+  // backend which updates transacciones + fires the punto_asignado notif.
+  function openAsignarPuntoOrden(r){
+    ADApp.modal('<div class="ad-h2">Cargando puntos...</div><div style="text-align:center;padding:30px;"><span class="ad-spin"></span></div>');
+    ADApp.api('puntos/listar.php').done(function(resp){
+      var puntos = (resp && resp.puntos) ? resp.puntos.filter(function(p){ return Number(p.activo) === 1; }) : [];
+      if (!puntos.length) {
+        ADApp.modal('<div class="ad-h2">Sin puntos activos</div>'+
+          '<div class="ad-dim" style="padding:20px;text-align:center;">No hay puntos Voltika activos en el catálogo.</div>');
+        return;
+      }
+      var orderEstado = (r.estado||'').toLowerCase();
+      var sameState  = puntos.filter(function(p){ return (p.estado||'').toLowerCase() === orderEstado; });
+      var otherState = puntos.filter(function(p){ return (p.estado||'').toLowerCase() !== orderEstado; });
+
+      function puntoCardHtml(p){
+        var dir = [p.direccion, p.colonia].filter(function(v){return v;}).join(', ');
+        var loc = [p.ciudad, p.estado, p.cp].filter(function(v){return v;}).join(', ');
+        var iconBox = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px;"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
+        var stockNote = (typeof p.inventario_actual !== 'undefined')
+          ? '<span style="font-size:11px;color:var(--ad-dim);">'+iconBox+(p.inventario_actual||0)+' unidades en este punto</span>'
+          : '';
+        var isCurrent = String(p.id) === String(r.punto_id);
+        return '<label class="adPickPunto" data-pid="'+p.id+'" '
+             +   'style="display:block;cursor:pointer;padding:12px;margin-bottom:6px;border:1.5px solid '
+             +   (isCurrent ? 'var(--ad-primary)' : 'var(--ad-border)')+';border-radius:8px;background:'
+             +   (isCurrent ? '#E8F4FD' : 'var(--ad-surface)')+';">'
+             +   '<div style="display:flex;gap:10px;align-items:flex-start;">'
+             +     '<input type="radio" name="puntoChoice" value="'+p.id+'" style="margin-top:4px;flex-shrink:0;" '+(isCurrent?'checked':'')+'>'
+             +     '<div style="flex:1;min-width:0;">'
+             +       '<div style="font-weight:700;font-size:14px;color:var(--ad-navy);">'+esc(p.nombre)+(isCurrent?' <span style="font-size:11px;color:var(--ad-primary);">· actual</span>':'')+'</div>'
+             +       (dir ? '<div style="font-size:12px;color:#555;margin-top:2px;">'+esc(dir)+'</div>' : '')
+             +       (loc ? '<div style="font-size:12px;color:var(--ad-dim);margin-top:2px;">'+esc(loc)+'</div>' : '')
+             +       (stockNote ? '<div style="margin-top:4px;">'+stockNote+'</div>' : '')
+             +     '</div>'
+             +   '</div>'
+             + '</label>';
+      }
+
+      var iconPinH = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+      var html = '<div class="ad-h2">'+iconPinH+'Asignar punto de entrega</div>'
+               + '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">Pedido <strong>'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'</strong> · '+esc(r.nombre||'')+'</div>'
+               + '<div style="background:var(--ad-surface-2);padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;">'
+               +   '<strong>Modelo:</strong> '+esc(r.modelo||'—')+' · '+esc(r.color||'—')+'<br>'
+               +   '<strong>Solicitado:</strong> '+esc(r.estado||'—')+(r.ciudad?' · '+esc(r.ciudad):'')+(r.cp?' · CP '+esc(r.cp):'')
+               + '</div>'
+               + '<div style="max-height:340px;overflow-y:auto;padding-right:4px;">';
+
+      if (sameState.length) {
+        html += '<div style="font-size:12px;font-weight:700;color:var(--ad-primary);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 6px;">Misma entidad ('+esc(r.estado||'')+')</div>';
+        sameState.forEach(function(p){ html += puntoCardHtml(p); });
+      }
+      if (otherState.length) {
+        html += '<div style="font-size:12px;font-weight:700;color:var(--ad-dim);text-transform:uppercase;letter-spacing:.5px;margin:'+(sameState.length?'14px':'4px')+' 0 6px;">Otros puntos</div>';
+        otherState.forEach(function(p){ html += puntoCardHtml(p); });
+      }
+
+      html += '</div>'
+            + '<div id="vkAsignPuntoMsg" style="font-size:12px;margin:10px 0 0;"></div>'
+            + '<div style="display:flex;gap:8px;margin-top:12px;">'
+            +   '<button class="ad-btn ghost" id="vkAsignPuntoCancel" style="flex:1;">Cancelar</button>'
+            +   '<button class="ad-btn primary" id="vkAsignPuntoSave" style="flex:1;" disabled>Confirmar asignación</button>'
+            + '</div>';
+
+      ADApp.modal(html);
+
+      // Pre-select if a current punto is already chosen (e.g. cambiar)
+      if ($('input[name="puntoChoice"]:checked').length) {
+        $('#vkAsignPuntoSave').prop('disabled', false);
+      }
+
+      $('.adPickPunto').on('click', function(){
+        $('.adPickPunto').css({borderColor:'var(--ad-border)', background:'var(--ad-surface)'});
+        $(this).css({borderColor:'var(--ad-primary)', background:'#E8F4FD'});
+        $(this).find('input[type="radio"]').prop('checked', true);
+        $('#vkAsignPuntoSave').prop('disabled', false);
+      });
+
+      $('#vkAsignPuntoCancel').on('click', function(){
+        ADApp.closeModal();
+        showDetalle(r.id);
+      });
+
+      $('#vkAsignPuntoSave').on('click', function(){
+        var pid = $('input[name="puntoChoice"]:checked').val();
+        if (!pid) { $('#vkAsignPuntoMsg').css('color','#b91c1c').text('Selecciona un punto'); return; }
+        var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Guardando...');
+        ADApp.api('ventas/asignar-punto-orden.php', {
+          transaccion_id: r.id,
+          punto_id: parseInt(pid)
+        }).done(function(res){
+          if (res && res.ok) {
+            var iconChk = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><polyline points="20 6 9 17 4 12"/></svg>';
+            $('#vkAsignPuntoMsg').css('color','#0e8f55').html(iconChk+'Punto asignado · Notificación enviada al cliente');
+            setTimeout(function(){
+              ADApp.closeModal();
+              showDetalle(r.id);
+            }, 700);
+          } else {
+            $('#vkAsignPuntoMsg').css('color','#b91c1c').text((res && res.error) || 'Error al guardar');
+            $btn.prop('disabled', false).text('Confirmar asignación');
+          }
+        }).fail(function(xhr){
+          var err = 'Error de conexión';
+          try { var p = JSON.parse(xhr.responseText); if (p && p.error) err = p.error; } catch(e){}
+          $('#vkAsignPuntoMsg').css('color','#b91c1c').text(err);
+          $btn.prop('disabled', false).text('Confirmar asignación');
+        });
+      });
+    }).fail(function(){
+      ADApp.modal('<div class="ad-h2">Error</div><div class="ad-dim" style="padding:20px;text-align:center;">No se pudieron cargar los puntos.</div>');
     });
   }
 
@@ -589,8 +722,10 @@ window.AD_ventas = (function(){
     h += '<div id="vkCot_'+tipo+'_panel">';
     if (has) {
       var kb = size ? (size >= 1024*1024 ? (size/1024/1024).toFixed(1)+' MB' : Math.round(size/1024)+' KB') : '';
+      var iconFile  = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#039fe1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+      var iconImage = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#039fe1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
       h += '<div style="display:flex;gap:8px;align-items:center;padding:10px 12px;background:#E8F4FD;border:1px solid #B3D4FC;border-radius:6px;flex-wrap:wrap;">'
-         +   '<span style="font-size:18px;">'+(mime.indexOf('pdf')>=0?'📄':'🖼️')+'</span>'
+         +   '<span style="display:inline-flex;align-items:center;">'+(mime.indexOf('pdf')>=0?iconFile:iconImage)+'</span>'
          +   '<div style="flex:1;min-width:140px;font-size:12px;">'
          +     '<div><strong>Archivo cargado</strong></div>'
          +     '<div class="ad-dim" style="font-size:11px;">'+esc(subido)+(kb?(' · '+kb):'')+'</div>'
@@ -625,7 +760,7 @@ window.AD_ventas = (function(){
         xhrFields: { withCredentials: true }
       }).done(function(resp){
         if (resp && resp.ok){
-          $msg.css('color','#0e8f55').text('✓ Cargado');
+          $msg.css('color','#0e8f55').html('<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg>Cargado');
           // Reflect new state in the row obj + redraw the panel (stay in modal)
           r[tipo+'_cotizacion_archivo'] = 'uploaded';
           r[tipo+'_cotizacion_mime']    = resp.mime;
