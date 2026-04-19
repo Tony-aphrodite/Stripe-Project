@@ -249,13 +249,19 @@ window.AD_envios = (function(){
         html += '</select>';
       }
 
-      // Punto selector — auto-select if order has a punto already
+      // Punto selector — auto-select if order has a punto already.
+      // Match by ID first; fall back to name match because legacy orders may
+      // store punto_id as a slug ("punto-5") or have it NULL while punto_nombre
+      // is set (configurador saved only the display name).
       var orderPuntoId = (orderInfo && orderInfo.punto_id) ? orderInfo.punto_id.toString().replace(/^punto-/,'') : '';
+      var orderPuntoName = (orderInfo && orderInfo.punto_nombre) ? orderInfo.punto_nombre.toString().toLowerCase().trim() : '';
       html += '<label style="font-weight:600;font-size:13px;">Punto destino:</label>'+
         '<select class="ad-select" id="adEnvPunto" style="margin-bottom:10px;width:100%;">';
       html += '<option value="">— Seleccionar punto —</option>';
       puntos.forEach(function(p){
-        var sel = (orderPuntoId && p.id.toString() === orderPuntoId) ? ' selected' : '';
+        var matchId   = orderPuntoId && p.id.toString() === orderPuntoId;
+        var matchName = !matchId && orderPuntoName && (p.nombre||'').toLowerCase().trim() === orderPuntoName;
+        var sel = (matchId || matchName) ? ' selected' : '';
         html += '<option value="'+p.id+'"'+sel+'>'+p.nombre+' · '+(p.ciudad||'')+'</option>';
       });
       html += '</select>';
