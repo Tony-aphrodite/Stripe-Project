@@ -160,7 +160,7 @@ if ($hora === 10 && ($dia === 1 || $dia === 15)) {
                 'telefono'   => $r['telefono'] ?? '',
                 'email'      => $r['email'] ?? '',
                 'whatsapp'   => $r['telefono'] ?? '',
-                'payment_link' => 'voltika.mx/clientes/',
+                'payment_link' => 'https://voltika.mx/clientes/?action=pay',
             ]);
             $stats['msg_e']++;
         }
@@ -223,7 +223,7 @@ function sendPaymentNotification(string $tipo, array $ciclo, string $marker): bo
         'semana'            => (string)($ciclo['semana_num'] ?? ''),
         'pedido'            => $pedido,
         'pedido_corto'      => $pedidoCorto,
-        'payment_link'      => 'https://voltika.mx/clientes/',
+        'payment_link'      => 'https://voltika.mx/clientes/?action=pay',
     ]);
 
     // Mark as sent to avoid duplicate sends

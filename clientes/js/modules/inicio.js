@@ -394,6 +394,13 @@ window.VK_inicio = (function(){
 
     wireVerTodas();
     $('#vkPayNow').on('click', function(){ pay('semanal'); });
+
+    // Deep-link from cobranza notifications (?action=pay) — auto-open the
+    // primary payment button once the inicio finishes rendering.
+    if (VKApp.state && VKApp.state.pendingAction === 'pay') {
+      VKApp.state.pendingAction = null;
+      setTimeout(function(){ $('#vkPayNow').trigger('click'); }, 450);
+    }
     $('.vk-prepay-opt').on('click', function(){
       var tipo = $(this).data('tipo');
       if(tipo === 'custom'){
