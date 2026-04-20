@@ -122,12 +122,21 @@ if ($colMap['vin'] === null) {
 }
 
 // ── Modelo name normalization ───────────────────────────────────────────
+// Must return the exact name the frontend productos.js uses for each model,
+// otherwise the configurador inventory lookup (which compares case-insensitive
+// but not spelling-variant) fails silently.
 function normalizeModelo(string $raw): string {
     $raw = trim($raw);
-    // "Voltika Tromox M05" / "Volrika Tromox MC10" → extract last token as model
-    if (preg_match('/\b(M\d+|MC\d+|Ukko\s*S\+?)\s*$/i', $raw, $m)) {
-        return strtoupper(trim($m[1]));
-    }
+    $low = strtolower($raw);
+    if ($low === '') return $raw;
+
+    if (strpos($low, 'pesgo plus') !== false) return 'Pesgo Plus';
+    if (strpos($low, 'mino')       !== false) return 'Mino-B';
+    if (strpos($low, 'ukko')       !== false) return 'Ukko S+';
+    if (strpos($low, 'mc10')       !== false) return 'MC10 Streetx';
+
+    if (preg_match('/\bM(\d+)\b/i', $raw, $m)) return 'M' . $m[1];
+
     return $raw;
 }
 

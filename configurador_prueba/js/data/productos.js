@@ -23,7 +23,8 @@ var VOLTIKA_PRODUCTOS = {
             colores: [
                 { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' },
                 { id: 'negro', nombre: 'Negro', hex: '#1A1A1A' },
-                { id: 'plata', nombre: 'Plata', hex: '#C0C0C0' }
+                { id: 'plata', nombre: 'Plata', hex: '#C0C0C0' },
+                { id: 'verde', nombre: 'Verde', hex: '#2E8B57' }
             ],
             colorDefault: 'gris',
             enInventario: true,

@@ -36,6 +36,34 @@ foreach ($colorMap as $from => $to) {
     }
 }
 
+// Modelo name normalization — must match frontend productos.js names exactly
+// or the configurador inventory lookup returns 0 for every color.
+$modeloMap = [
+    ["%pesgo plus%",    'Pesgo Plus'],
+    ["%mino%",          'Mino-B'],
+    ["UKKO S",          'Ukko S+'],
+    ["%ukko%",          'Ukko S+'],
+    ["MC10",            'MC10 Streetx'],
+    ["%voltika tromox m05%", 'M05'],
+    ["%voltika tromox m03%", 'M03'],
+];
+foreach ($modeloMap as [$pattern, $target]) {
+    try {
+        $op = strpos($pattern, '%') !== false ? 'LIKE' : '=';
+        $stmt = $pdo->prepare("UPDATE inventario_motos SET modelo = ?
+            WHERE $op = ? COLLATE utf8mb4_general_ci AND modelo != ?");
+        // The above uses a placeholder twice — simpler to inline:
+        $sql = ($op === 'LIKE')
+            ? "UPDATE inventario_motos SET modelo = ? WHERE LOWER(modelo) LIKE LOWER(?) AND modelo != ?"
+            : "UPDATE inventario_motos SET modelo = ? WHERE LOWER(modelo) = LOWER(?) AND modelo != ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$target, $pattern, $target]);
+        if ($stmt->rowCount() > 0) $result['modelo_' . preg_replace('/[^a-z0-9]/i', '_', $pattern) . '_to_' . $target] = $stmt->rowCount();
+    } catch (Throwable $e) {
+        $result['error_modelo_' . preg_replace('/[^a-z0-9]/i', '_', $pattern)] = $e->getMessage();
+    }
+}
+
 // Flag non-sellable units by scanning posicion_inventario + notas for markers.
 try {
     $sql = "UPDATE inventario_motos
