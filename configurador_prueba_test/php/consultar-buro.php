@@ -34,8 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-define('CDC_BASE_URL', 'https://services.circulodecredito.com.mx/sandbox/v2/rcc/ficoscore');
-define('CDC_FOLIO',    '0000080008');  // Folio otorgante de prueba
+// CDC endpoint — production by default. Override to the sandbox endpoint
+// via the CDC_BASE_URL env var only while testing with CDC test credentials:
+//   CDC_BASE_URL=https://services.circulodecredito.com.mx/sandbox/v2/rcc/ficoscore
+define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rcc/ficoscore');
+// Folio otorgante — sandbox uses 0000080008, production uses the real folio
+// assigned by Círculo de Crédito. Set CDC_FOLIO env var with the real value.
+define('CDC_FOLIO',    getenv('CDC_FOLIO') ?: '0000080008');
 
 session_start();
 
