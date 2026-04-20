@@ -113,10 +113,11 @@ var VOLTIKA_PRODUCTOS = {
             tieneMSI: true,
             enganchePorcentaje: 0.25,
             colores: [
-                { id: 'negro', nombre: 'Negro', hex: '#1A1A1A' },
-                { id: 'gris',  nombre: 'Gris',  hex: '#A0A0A0' },
-                { id: 'azul',  nombre: 'Azul',  hex: '#1E6FBF' },
-                { id: 'plata', nombre: 'Plata', hex: '#C0C0C0' }
+                { id: 'negro',  nombre: 'Negro',  hex: '#1A1A1A' },
+                { id: 'gris',   nombre: 'Gris',   hex: '#A0A0A0' },
+                { id: 'azul',   nombre: 'Azul',   hex: '#1E6FBF' },
+                { id: 'plata',  nombre: 'Plata',  hex: '#C0C0C0' },
+                { id: 'blanco', nombre: 'Blanco', hex: '#F5F5F5' }
             ],
             colorDefault: 'negro',
             enInventario: true,
