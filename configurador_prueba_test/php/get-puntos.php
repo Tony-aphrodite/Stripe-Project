@@ -12,10 +12,23 @@ require_once __DIR__ . '/config.php';
 $pdo = getDB();
 
 try {
+    // Probe for svc_* columns — they're added by the puntos importer but
+    // might not exist on older deployments. Select only what's there to
+    // avoid "Unknown column" errors.
+    $cols = [];
+    try {
+        $cols = $pdo->query("SHOW COLUMNS FROM puntos_voltika")->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Throwable $e) {}
+    $colSet = array_flip($cols);
+    $extra = '';
+    foreach (['svc_configurador','svc_entrega','svc_exhibicion','svc_tecnico','svc_pruebas','svc_refacciones'] as $c) {
+        if (isset($colSet[$c])) $extra .= ", $c";
+    }
+
     $rows = $pdo->query("
         SELECT id, slug, nombre, tipo, direccion, colonia, ciudad, estado, cp,
                telefono, email, lat, lng, horarios, servicios, tags, zonas,
-               descripcion, autorizado, COALESCE(orden,0) AS orden
+               descripcion, autorizado, COALESCE(orden,0) AS orden $extra
         FROM puntos_voltika
         WHERE activo = 1
         ORDER BY COALESCE(orden,0) ASC, FIELD(tipo, 'center', 'certificado', 'entrega'), nombre
@@ -60,6 +73,14 @@ try {
             'zonas'       => json_decode($r['zonas'] ?: '[]', true) ?: [],
             'descripcion' => $r['descripcion'] ?: '',
             'autorizado'  => (bool)$r['autorizado'],
+            'services'    => [
+                'configurador' => !empty($r['svc_configurador']),
+                'entrega'      => !empty($r['svc_entrega']),
+                'exhibicion'   => !empty($r['svc_exhibicion']),
+                'tecnico'      => !empty($r['svc_tecnico']),
+                'pruebas'      => !empty($r['svc_pruebas']),
+                'refacciones'  => !empty($r['svc_refacciones']),
+            ],
         ];
     }
 

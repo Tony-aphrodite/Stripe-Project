@@ -582,6 +582,47 @@ var Paso3 = {
         return '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxYTNhNWMiIHN0cm9rZS13aWR0aD0iMiI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48cGF0aCBkPSJNMTIgNnY2bDQgMiIvPjwvc3ZnPg==" alt="" style="width:14px;height:14px;vertical-align:middle;">';
     },
 
+    // Human-readable label for the normalized 'tipo' column value.
+    _tipoLabel: function(tipo) {
+        if (tipo === 'center')      return 'Voltika Center';
+        if (tipo === 'certificado') return 'Distribuidor Certificado';
+        if (tipo === 'entrega')     return 'Punto de Entrega Voltika';
+        return 'Punto Voltika';
+    },
+
+    // Inline SVG helper so services icons stay consistent & crisp regardless
+    // of the user's font setup. Returns a 2x3 grid of small chips — only the
+    // active services are rendered (not showing disabled ones keeps the card
+    // compact on mobile).
+    _servicesStrip: function(services) {
+        if (!services || typeof services !== 'object') return '';
+        var defs = [
+            { k: 'configurador', label: 'Configurador',
+              svg: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>' },
+            { k: 'entrega', label: 'Entrega',
+              svg: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>' },
+            { k: 'exhibicion', label: 'Exhibición',
+              svg: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' },
+            { k: 'tecnico', label: 'Servicio técnico',
+              svg: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>' },
+            { k: 'pruebas', label: 'Pruebas de manejo',
+              svg: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 14l4-7h4l2 3h4"/><path d="M9 7l3 7"/><path d="M15 10l4 4"/></svg>' },
+            { k: 'refacciones', label: 'Refacciones',
+              svg: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51h0a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>' }
+        ];
+        var active = defs.filter(function(d){ return services[d.k] === true; });
+        if (!active.length) return '';
+        var h = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px 10px;margin:0 0 12px;padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;">';
+        active.forEach(function(d){
+            h += '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#0c4a6e;font-weight:600;">'
+              + '<span style="color:#039fe1;display:inline-flex;">' + d.svg + '</span>'
+              + '<span>' + d.label + '</span>'
+              + '</div>';
+        });
+        h += '</div>';
+        return h;
+    },
+
     _renderCentroCard: function(centro) {
         var esCenter = (centro.tipo === 'center');
         if (esCenter) return this._renderCenterCard(centro);
@@ -602,6 +643,7 @@ var Paso3 = {
         h += '<div class="vk-radio-circle" data-radio-id="' + centro.id + '" style="width:20px;height:20px;border-radius:50%;background:transparent;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;"></div>';
         h += '<div style="flex:1;min-width:0;">';
         h += '<div style="font-weight:800;font-size:18px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
+        h += '<div style="font-size:11.5px;color:#1a3a5c;font-weight:700;letter-spacing:.3px;text-transform:uppercase;margin-top:1px;">' + self._tipoLabel(centro.tipo) + '</div>';
         h += '</div>';
         h += '</div>';
 
@@ -615,6 +657,9 @@ var Paso3 = {
         } else {
             h += '<div style="margin-bottom:12px;"></div>';
         }
+
+        // Service chips from svc_* columns (DB-backed)
+        h += self._servicesStrip(centro.services);
 
         // Services list with icons (no green checks)
         if (centro.servicios && centro.servicios.length) {
@@ -681,7 +726,11 @@ var Paso3 = {
         h += '</div>';
         h += '<div style="flex:1;min-width:0;">';
         h += '<div style="font-weight:800;font-size:15px;color:var(--vk-text-primary);">' + centro.nombre + '</div>';
-        h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;">';
+        // Tipo label — human-readable version of the normalized tipo value.
+        h += '<div style="font-size:11.5px;color:#1a3a5c;font-weight:700;letter-spacing:.3px;text-transform:uppercase;margin-top:1px;">';
+        h += self._tipoLabel(centro.tipo);
+        h += '</div>';
+        h += '<div style="font-size:12px;color:var(--vk-green-primary);font-weight:600;display:flex;align-items:center;gap:4px;margin-top:2px;">';
         h += self._shieldIcon() + ' Punto Voltika certificado';
         h += '</div>';
         h += '</div>';
@@ -692,6 +741,10 @@ var Paso3 = {
             h += '<div style="font-size:14px;color:var(--vk-text-primary);margin-bottom:2px;display:flex;align-items:center;gap:6px;">' + self._pinIcon() + ' <strong>' + centro.ubicacion + '</strong></div>';
         }
         h += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-bottom:10px;padding-left:22px;">' + centro.direccion + '</div>';
+
+        // Service chips (what the punto offers) — only rendered when at least
+        // one flag is true, to avoid an empty strip.
+        h += self._servicesStrip(centro.services);
 
         // Tags
         h += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;-webkit-text-size-adjust:none;text-size-adjust:none;">';
