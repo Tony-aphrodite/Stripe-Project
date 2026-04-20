@@ -54,7 +54,7 @@ $sample = [
     'fecha_vencimiento'   => '7 de mayo de 2026',
     'semana'              => '5',
     'proximo_pago'        => '14 de mayo de 2026',
-    'payment_link'        => 'https://voltika.mx/clientes/',
+    'payment_link'        => 'https://voltika.mx/clientes/?action=pay',
     'rol'                 => 'operador',
     'url'                 => 'voltika.mx/admin',
     'email'               => 'pepe@example.com',
@@ -93,9 +93,13 @@ $ordered = [
     'pago_recibido'                       => '✅ Cobranza M6 — pago recibido',
 ];
 
-// If a tipo was selected and raw=1 → output ONLY the email_html (for iframe)
+// If a tipo was selected and raw=1 → output ONLY the email_html (for iframe).
+// bootstrap.php sets Content-Type: application/json by default, so we must
+// override it here — otherwise the browser treats the iframe payload as JSON
+// and shows a "Pretty-print" source view instead of rendering the email HTML.
 if ($tipo && $raw) {
     if (!isset($templates[$tipo])) { http_response_code(404); exit('Plantilla no existe'); }
+    if (!headers_sent()) { header('Content-Type: text/html; charset=utf-8'); }
     $tpl = $templates[$tipo];
     $html = !empty($tpl['email_html']) ? $tpl['email_html'] : nl2br(htmlspecialchars($tpl['body'] ?? ''));
     echo voltikaNotifyInterpolate($html, $sample);
