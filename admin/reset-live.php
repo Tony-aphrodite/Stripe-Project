@@ -9,6 +9,11 @@
  */
 require_once __DIR__ . '/php/bootstrap.php';
 adminRequireAuth(['admin']);
+// bootstrap.php sets Content-Type: application/json by default for API calls.
+// Override it here since this file serves an HTML page.
+if (!headers_sent()) {
+    header('Content-Type: text/html; charset=utf-8');
+}
 ?><!DOCTYPE html>
 <html lang="es">
 <head>
