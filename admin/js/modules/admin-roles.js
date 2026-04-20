@@ -141,9 +141,7 @@ window.AD_roles = (function(){
       var $b = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Creando...');
       ADApp.api('roles/crear.php', payload).done(function(r){
         if (r.ok) {
-          ADApp.closeModal();
-          alert('Usuario creado.\n\nEmail: '+payload.email+'\nContraseña: '+payload.password+
-            (r.notify === 'enviado' ? '\n\nCredenciales enviadas por SMS/Email.' : ''));
+          showCredencialesCompartir(r, payload);
           load();
         } else {
           alert(r.error || 'Error al crear');
@@ -153,6 +151,64 @@ window.AD_roles = (function(){
         alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
         $b.prop('disabled', false).text('Crear usuario');
       });
+    });
+  }
+
+  // Shown after a user is created. Displays the credentials in a copy-ready
+  // card so the admin can forward them to the new user (e.g. a CEDIS
+  // controller hired externally). Includes WhatsApp share + copy buttons.
+  function showCredencialesCompartir(r, payload){
+    var rolLabel = (r.rol || payload.rol || '').toUpperCase();
+    var url = r.url || 'https://voltika.mx/admin';
+    var nombre = r.nombre || payload.nombre || '';
+    var email = r.email || payload.email || '';
+    var pass = payload.password || '';
+    var notify = r.notify === 'enviado'
+      ? '<div style="font-size:12.5px;color:#166534;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;padding:8px 10px;margin-top:10px;">✓ Credenciales ya enviadas por SMS / Email al usuario.</div>'
+      : '';
+
+    var shareMsg =
+      'Hola ' + nombre + ', tu acceso ' + rolLabel + ' de VOLTIKA ya está activo:\n\n' +
+      '🌐 ' + url + '\n' +
+      '👤 Usuario: ' + email + '\n' +
+      '🔒 Contraseña: ' + pass + '\n\n' +
+      '⚠️ Cambia tu contraseña en tu primer inicio de sesión.';
+
+    var html =
+      '<div class="ad-h2">✓ Usuario creado</div>'+
+      '<div class="ad-muted" style="font-size:13px;margin-bottom:12px;">Copia o comparte este mensaje con '+esc(nombre)+'.</div>'+
+
+      '<div style="background:#f5f7fa;border:1px solid #e1e8ee;border-radius:8px;padding:14px;margin-bottom:12px;">'+
+        '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:6px;">Mensaje listo para compartir</div>'+
+        '<textarea id="rlCredShare" readonly style="width:100%;height:130px;border:1px solid #cbd5e1;border-radius:6px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.55;background:#fff;resize:vertical;box-sizing:border-box;">'+esc(shareMsg)+'</textarea>'+
+      '</div>'+
+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'+
+        '<button class="ad-btn primary" id="rlCredCopy" style="flex:1;min-width:130px;">📋 Copiar</button>'+
+        '<a class="ad-btn ghost" id="rlCredWA" target="_blank" rel="noopener noreferrer" style="flex:1;min-width:130px;text-align:center;text-decoration:none;line-height:38px;">💬 Enviar por WhatsApp</a>'+
+      '</div>'+
+
+      notify+
+
+      '<div style="text-align:right;margin-top:14px;">'+
+        '<button class="ad-btn ghost" onclick="ADApp.closeModal()">Cerrar</button>'+
+      '</div>';
+
+    ADApp.modal(html);
+
+    $('#rlCredWA').attr('href', 'https://wa.me/?text=' + encodeURIComponent(shareMsg));
+
+    $('#rlCredCopy').on('click', function(){
+      var ta = document.getElementById('rlCredShare');
+      var done = function(){
+        $('#rlCredCopy').text('✓ Copiado');
+        setTimeout(function(){ $('#rlCredCopy').text('📋 Copiar'); }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ta.value).then(done, function(){ ta.select(); document.execCommand('copy'); done(); });
+      } else {
+        ta.select(); document.execCommand('copy'); done();
+      }
     });
   }
 

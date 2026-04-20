@@ -78,7 +78,7 @@ if ($clienteTel || $clienteEmail) {
                 ? voltikaBuildMapsLink($direccionPunto, $punto['ciudad'] ?? '',
                     isset($punto['lat']) ? (float)$punto['lat'] : null,
                     isset($punto['lng']) ? (float)$punto['lng'] : null)
-                : 'https://voltika.mx/mi-cuenta';
+                : 'https://voltika.mx/clientes/';
 
             // Estimated delivery — 10 days from today (matches confirmar-orden default)
             $fechaIso   = date('Y-m-d', strtotime('+10 days'));

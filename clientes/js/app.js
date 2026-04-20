@@ -96,6 +96,27 @@ window.VKApp = (function(){
     $tabbar.on('click','button',function(){ go($(this).data('route')); });
     // Restore any previously selected purchase
     state.activeCompra = _loadActiveFromStorage();
+
+    // Surface Checkout return status (pago=ok|cancelado, cambio_tarjeta=ok|cancelado).
+    // Also capture ?action=pay deep-link from cobranza notifications — consumed
+    // after auth so the inicio page can auto-open the payment flow.
+    // Strip the query string so a refresh doesn't re-trigger.
+    var pendingAction = null;
+    try {
+      var q = new URLSearchParams(window.location.search);
+      var pago = q.get('pago');
+      var ct   = q.get('cambio_tarjeta');
+      pendingAction   = q.get('action');
+      if (pago === 'ok')        setTimeout(function(){ toast('Pago recibido. Gracias.'); }, 400);
+      else if (pago === 'cancelado') setTimeout(function(){ toast('Pago cancelado.'); }, 400);
+      else if (ct === 'ok')          setTimeout(function(){ toast('Tarjeta actualizada.'); }, 400);
+      else if (ct === 'cancelado')   setTimeout(function(){ toast('Cambio de tarjeta cancelado.'); }, 400);
+      if (pago || ct || pendingAction) {
+        var clean = window.location.pathname + (window.location.hash || '');
+        window.history.replaceState({}, '', clean);
+      }
+    } catch (e) {}
+    state.pendingAction = pendingAction;
     api('auth/me.php').done(function(r){
       if(r && r.cliente){
         state.cliente = r.cliente;

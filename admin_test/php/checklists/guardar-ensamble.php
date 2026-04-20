@@ -166,7 +166,7 @@ if ($vals['completado']) {
                     ? voltikaBuildMapsLink($direccionPunto, $info['punto_ciudad'] ?? '',
                         isset($info['punto_lat']) ? (float)$info['punto_lat'] : null,
                         isset($info['punto_lng']) ? (float)$info['punto_lng'] : null)
-                    : 'https://voltika.mx/mi-cuenta';
+                    : 'https://voltika.mx/clientes/';
                 // fecha_limite: 15 días desde hoy para recoger (brief aún sin
                 // ventana explícita — 15 días deja margen cómodo antes de que
                 // empiece a acercarse el vencimiento de los 30 del permiso).

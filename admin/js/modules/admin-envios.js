@@ -50,7 +50,7 @@ window.AD_envios = (function(){
         '<td>'+ADApp.badgeEstado(e.estado)+'</td>'+
         '<td>'+(e.fecha_envio||'—')+'</td>'+
         '<td>'+(e.fecha_estimada_llegada||'—')+'</td>'+
-        '<td style="min-width:110px;"><div style="display:flex;flex-direction:column;gap:4px;align-items:stretch;">';
+        '<td style="min-width:130px;padding-right:18px;"><div style="display:flex;flex-direction:column;gap:4px;align-items:stretch;">';
 
       // Action buttons — stacked so they never get clipped by the viewport
       html += '<button class="ad-btn sm ghost adEditTracking" data-id="'+e.id+'" '+

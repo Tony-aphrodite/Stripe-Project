@@ -40,7 +40,7 @@ window.AD_dashboard = (function(){
     // Environment badge hidden in customer-facing dashboard — configurable via
     // the APP_ENV .env var. Re-enable below if you want a visible indicator.
     var envBadge = '';
-    var html = '<div class="ad-h1">Dashboard '+envBadge+'</div><div class="ad-kpis" style="grid-template-columns:repeat(4,1fr);">';
+    var html = '<div class="ad-h1">Dashboard '+envBadge+'</div><div class="ad-kpis">';
     kpis.forEach(function(kpi){
       html += '<div class="ad-kpi"><div class="label">'+kpi.label+'</div><div class="value '+kpi.cls+'">'+kpi.value+'</div></div>';
     });
