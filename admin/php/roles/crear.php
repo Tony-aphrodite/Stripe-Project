@@ -65,7 +65,11 @@ if ($notificar) {
         require_once $notifyPath;
         try {
             $portalUrl = ($rol === 'dealer') ? 'voltika.mx/puntosvoltika' : 'voltika.mx/admin';
-            voltikaNotify('credenciales_punto', [
+            // CEDIS gets its own dedicated template (no Punto line, inventory
+            // responsibilities focus). Every other role still uses the
+            // generic credenciales_punto template.
+            $tipoTpl = ($rol === 'cedis') ? 'credenciales_cedis' : 'credenciales_punto';
+            voltikaNotify($tipoTpl, [
                 'nombre'   => $nombre,
                 'email'    => $email,
                 'password' => $pass,
@@ -84,9 +88,13 @@ if ($notificar) {
     }
 }
 
+$portalUrl = ($rol === 'dealer') ? 'voltika.mx/puntosvoltika' : 'voltika.mx/admin';
 adminJsonOut([
     'ok'         => true,
     'usuario_id' => $userId,
     'email'      => $email,
+    'nombre'     => $nombre,
+    'rol'        => $rol,
+    'url'        => 'https://' . $portalUrl,
     'notify'     => $notifyResult,
 ]);

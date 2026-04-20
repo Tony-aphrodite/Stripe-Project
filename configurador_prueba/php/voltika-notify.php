@@ -1374,6 +1374,73 @@ function voltikaNotifyTemplates(): array {
                          . '</td></tr></table></body></html>',
         ],
 
+        // Sent when a CEDIS controller account is created. No Punto line,
+        // inventory-focused responsibilities.
+        'credenciales_cedis' => [
+            'subject' => '🏢 Acceso al CEDIS de VOLTIKA',
+            'body'    => "🏢 Hola {nombre}, bienvenido al equipo VOLTIKA ⚡\n\n"
+                       . "Ya tienes acceso al Panel de Administración como {rol}.\n"
+                       . "Desde aquí gestionas todo el inventario: recepción de motos, asignación a puntos, envíos y reportes.\n\n"
+                       . "🌐 Panel: https://{url}\n"
+                       . "👤 Usuario: {email}\n"
+                       . "🔒 Clave: {password}\n\n"
+                       . "⚠️ Cambia tu contraseña al entrar por primera vez.\n\n"
+                       . "¿Dudas? Contacto:\n"
+                       . "📧 ventas@voltika.mx\n"
+                       . "🕐 Lunes a Viernes 9:00 - 18:00 hrs\n\n"
+                       . "Este es un mensaje automático — no respondas aquí.",
+            'sms'     => 'VOLTIKA: Hola {nombre}, acceso CEDIS activo. Usuario: {email} Clave: {password} Panel: https://{url} Cambia tu clave al entrar.',
+            'email_html' => '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Acceso CEDIS · VOLTIKA</title></head>'
+                         . '<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;color:#1a3a5c;">'
+                         . '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;">'
+                         . '<tr><td align="center" style="padding:24px 12px;">'
+                         . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
+                         . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:28px;text-align:center;color:#fff;">'
+                         . '<div style="font-size:26px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
+                         . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Centro de Distribución</div>'
+                         . '<div style="font-size:17px;font-weight:700;margin-top:14px;">Acceso activo</div>'
+                         . '</td></tr>'
+                         . '<tr><td style="padding:26px 28px 10px;">'
+                         . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+                         . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Tu cuenta como <strong>{rol}</strong> del Centro de Distribución de VOLTIKA ya está activa. Desde el panel administras toda la operación del inventario.</p>'
+                         . '</td></tr>'
+                         . '<tr><td style="padding:14px 28px;">'
+                         . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🔑 Tus credenciales de acceso</div>'
+                         . '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;background:#f5f7fa;border-radius:8px;padding:4px;">'
+                         . '<tr><td style="padding:8px 14px;color:#666;">Panel</td><td style="padding:8px 14px;"><a href="https://{url}" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">https://{url}</a></td></tr>'
+                         . '<tr><td style="padding:8px 14px;color:#666;">Usuario</td><td style="padding:8px 14px;font-family:ui-monospace,Consolas,monospace;">{email}</td></tr>'
+                         . '<tr><td style="padding:8px 14px;color:#666;">Contraseña</td><td style="padding:8px 14px;font-family:ui-monospace,Consolas,monospace;font-weight:700;">{password}</td></tr>'
+                         . '</table>'
+                         . '<p style="font-size:12px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:4px;margin-top:12px;"><strong>⚠️ Cambia tu contraseña en tu primer inicio de sesión.</strong><br>Menú superior → tu nombre → Cambiar contraseña.</p>'
+                         . '</td></tr>'
+                         . '<tr><td style="padding:14px 28px;">'
+                         . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📦 Tus responsabilidades</div>'
+                         . '<ul style="font-size:13px;color:#444;line-height:1.8;padding-left:20px;margin:4px 0 12px;">'
+                         . '<li>Recepción e inventariado de motos que llegan al CEDIS</li>'
+                         . '<li>Asignación de motos a puntos de entrega</li>'
+                         . '<li>Gestión de envíos y cambios de estado</li>'
+                         . '<li>Importación/actualización de catálogo desde Excel</li>'
+                         . '<li>Reportes y trazabilidad por VIN</li>'
+                         . '</ul>'
+                         . '<div style="text-align:center;margin:16px 0;">'
+                         . '<a href="https://{url}" target="_blank" style="display:inline-block;background:#039fe1;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Entrar al panel</a>'
+                         . '</div>'
+                         . '</td></tr>'
+                         . '<tr><td style="padding:14px 28px 22px;">'
+                         . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">💬 Soporte</div>'
+                         . '<p style="font-size:13px;color:#444;line-height:1.7;margin:0;">'
+                         . '📧 Email: <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a><br>'
+                         . '🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
+                         . '</td></tr>'
+                         . '<tr><td style="background:#1a3a5c;padding:20px 28px;text-align:center;color:#fff;">'
+                         . '<div style="font-size:14px;font-weight:700;">voltika <span style="color:#22d37a;">⚡</span></div>'
+                         . '<div style="font-size:11px;opacity:.7;margin-top:4px;">Movilidad eléctrica · Red Nacional · México</div>'
+                         . '<div style="font-size:11px;opacity:.7;margin-top:2px;">voltika.mx · ventas@voltika.mx</div>'
+                         . '</td></tr>'
+                         . '</table>'
+                         . '</td></tr></table></body></html>',
+        ],
+
         // ═══════════════════════════════════════════════════════════════════
         // POST-PURCHASE MESSAGES
         // ═══════════════════════════════════════════════════════════════════
