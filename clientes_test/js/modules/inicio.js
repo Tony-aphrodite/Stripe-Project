@@ -60,17 +60,15 @@ window.VK_inicio = (function(){
     return html;
   }
 
-  // Wire the "Ver todas" banner button after every render so it survives the
-  // SPA re-renders inicio does. Uses delegated binding on document so a single
-  // attachment covers all future renders.
-  $(document).off('click.vkVerTodas').on('click.vkVerTodas', '.vkVerTodasCompras', function(e){
-    e.preventDefault();
-    if (window.VKApp && typeof VKApp.go === 'function') {
+  // Direct binding helper — called right after every VKApp.render() that
+  // includes the multi-purchase banner. Matches the pattern used by every
+  // other working button in this file (#vkPayNow, .vk-pay-action, etc).
+  function wireVerTodas(){
+    $('.vkVerTodasCompras').off('click').on('click', function(e){
+      e.preventDefault();
       VKApp.go('miscompras');
-    } else {
-      console.error('VKApp.go no disponible');
-    }
-  });
+    });
+  }
 
   // ── Main router ─────────────────────────────────────────────────
   function render(){
@@ -247,6 +245,7 @@ window.VK_inicio = (function(){
             '</div>';
 
     VKApp.render(html);
+    wireVerTodas();
 
     if (punto.direccion) window.punto_dir = punto.direccion;
   }
@@ -393,6 +392,7 @@ window.VK_inicio = (function(){
       '<a class="vk-link" onclick="VKApp.go(\'pagos\')">Ver todos mis pagos &rarr;</a>'
     );
 
+    wireVerTodas();
     $('#vkPayNow').on('click', function(){ pay('semanal'); });
     $('.vk-prepay-opt').on('click', function(){
       var tipo = $(this).data('tipo');
