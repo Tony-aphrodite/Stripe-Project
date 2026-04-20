@@ -201,7 +201,7 @@ html,body{
   text-transform:uppercase;letter-spacing:.8px;
   font-weight:700;margin-bottom:8px;text-align:center;
 }
-.ad-kpi .value{font-size:clamp(16px,2.5vw,26px);font-weight:800;color:#fff;line-height:1.1;white-space:nowrap;text-align:center}
+.ad-kpi .value{font-size:clamp(16px,2.5vw,26px);font-weight:800;color:#fff;line-height:1.1;text-align:center;overflow-wrap:anywhere;word-break:break-word}
 .ad-kpi .value.green{color:#fff}
 .ad-kpi .value.red{color:#fff}
 .ad-kpi .value.yellow{color:#fff}
@@ -517,7 +517,7 @@ html,body{
   .ad-main{margin-left:0;padding:16px}
   .ad-kpis{grid-template-columns:repeat(2,1fr);gap:10px}
   .ad-kpi{padding:14px 12px}
-  .ad-kpi .value{font-size:22px}
+  .ad-kpi .value{font-size:clamp(14px,4.2vw,22px)}
   .ad-kpi .label{font-size:10px;letter-spacing:.5px}
   .ad-table{font-size:12px;display:block;overflow-x:auto}
   .ad-h1{font-size:22px}
