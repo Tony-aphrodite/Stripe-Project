@@ -38,9 +38,13 @@ require_once __DIR__ . '/config.php';
 // via the CDC_BASE_URL env var only while testing with CDC test credentials:
 //   CDC_BASE_URL=https://services.circulodecredito.com.mx/sandbox/v2/rcc/ficoscore
 define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rcc/ficoscore');
-// Folio otorgante — sandbox uses 0000080008, production uses the real folio
-// assigned by Círculo de Crédito. Set CDC_FOLIO env var with the real value.
+// Folio otorgante — sandbox uses 0000080008, production uses the 10-digit
+// otorgante id assigned by CDC (e.g. 0000004694 for otorgante 4694).
 define('CDC_FOLIO',    getenv('CDC_FOLIO') ?: '0000080008');
+// HTTP Basic-Auth user/pass — CDC production endpoint requires both Basic
+// Auth and the x-api-key header. Leave these blank in sandbox.
+if (!defined('CDC_USER')) define('CDC_USER', getenv('CDC_USER') ?: '');
+if (!defined('CDC_PASS')) define('CDC_PASS', getenv('CDC_PASS') ?: '');
 
 session_start();
 
@@ -118,7 +122,7 @@ $headers = [
 ];
 
 $ch = curl_init();
-curl_setopt_array($ch, [
+$curlOpts = [
     CURLOPT_URL            => CDC_BASE_URL,
     CURLOPT_POST           => true,
     CURLOPT_POSTFIELDS     => $jsonBody,
@@ -127,7 +131,13 @@ curl_setopt_array($ch, [
     CURLOPT_TIMEOUT        => 30,
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_SSL_VERIFYHOST => 2,
-]);
+];
+// Attach HTTP Basic Auth when production credentials are configured.
+if (CDC_USER && CDC_PASS) {
+    $curlOpts[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
+    $curlOpts[CURLOPT_USERPWD]  = CDC_USER . ':' . CDC_PASS;
+}
+curl_setopt_array($ch, $curlOpts);
 
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
