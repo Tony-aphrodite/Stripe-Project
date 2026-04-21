@@ -135,8 +135,8 @@ window.AD_checklists = (function(){
     });
     html += '</div>';
 
-    // Filters
-    html += '<div class="ad-filters">'+
+    // Filters + bulk action toolbar
+    html += '<div class="ad-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">'+
       '<select class="ad-select" id="clFiltro" style="width:200px;">'+
         '<option value="">Todos</option>'+
         '<option value="sin_origen"'+(currentFilter==='sin_origen'?' selected':'')+'>Sin checklist origen</option>'+
@@ -146,16 +146,27 @@ window.AD_checklists = (function(){
         '<option value="completos"'+(currentFilter==='completos'?' selected':'')+'>3 checklists completos</option>'+
       '</select>'+
       '<button class="ad-btn sm ghost" id="clApply">Filtrar</button>'+
+      '<div style="flex:1;"></div>'+
+      '<button class="ad-btn sm primary" id="clBulkOrigen" disabled '+
+        'title="Selecciona motos abajo para activar" '+
+        'style="background:#22c55e;border-color:#22c55e;">'+
+        'Marcar origen Completo (<span id="clBulkCount">0</span>)'+
+      '</button>'+
     '</div>';
 
     // Table
     html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
+      '<th style="width:36px;"><input type="checkbox" id="clSelAll" title="Seleccionar todos en esta página"></th>'+
       '<th>VIN</th><th>Modelo</th><th>Color</th><th>Estado</th>'+
       '<th>Origen</th><th>Ensamble</th><th>Entrega</th><th></th>'+
     '</tr></thead><tbody>';
 
     (r.motos||[]).forEach(function(m){
+      var canCheck = !m.co_ok; // only allow selecting motos whose origen is NOT yet complete
       html += '<tr>'+
+        '<td>'+ (canCheck
+          ? '<input type="checkbox" class="clRowChk" data-id="'+m.id+'">'
+          : '<span style="color:#cbd5e1;font-size:11px;" title="Ya completado">&#10003;</span>') +'</td>'+
         '<td><strong>'+(m.vin_display||m.vin||'—')+'</strong></td>'+
         '<td>'+m.modelo+'</td>'+
         '<td>'+m.color+'</td>'+
@@ -180,6 +191,38 @@ window.AD_checklists = (function(){
     $('#clApply').on('click',function(){ currentFilter=$('#clFiltro').val(); load(); });
     $('.clOpen').on('click',function(){ showMotoChecklists($(this).data('id')); });
     $('.clPage').on('click',function(){ /* TODO pagination */ load(); });
+
+    // ── Bulk origen complete: row checkboxes + select-all + button ──────
+    function refreshBulkBtn(){
+      var n = $('.clRowChk:checked').length;
+      $('#clBulkCount').text(n);
+      $('#clBulkOrigen').prop('disabled', n === 0);
+    }
+    $(document).off('change.clBulk').on('change.clBulk', '.clRowChk', refreshBulkBtn);
+    $('#clSelAll').on('change', function(){
+      $('.clRowChk').prop('checked', this.checked);
+      refreshBulkBtn();
+    });
+    $('#clBulkOrigen').on('click', function(){
+      var ids = $('.clRowChk:checked').map(function(){ return parseInt($(this).data('id'),10); }).get();
+      if (!ids.length) return;
+      if (!confirm('¿Marcar como Completo el checklist de origen de ' + ids.length + ' motos? Esta acción queda registrada con tu usuario.')) return;
+      var $b = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Procesando...');
+      ADApp.api('checklists/bulk-complete-origen.php', { moto_ids: ids, notas: 'Inspección masiva desde panel admin' })
+        .done(function(r){
+          if (r.ok) {
+            alert('Listo:\n  Completados: ' + r.completados + '\n  Ya completos: ' + r.ya_completos + '\n  Errores: ' + r.errores);
+            load();
+          } else {
+            alert(r.error || 'Error');
+            $b.prop('disabled', false).text('Marcar origen Completo');
+          }
+        })
+        .fail(function(x){
+          alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+          $b.prop('disabled', false).text('Marcar origen Completo');
+        });
+    });
   }
 
   function clBadge(id, ok, fase){

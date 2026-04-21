@@ -244,14 +244,12 @@ for ($i = 1; $i < count($rows); $i++) {
             $pedido ?: null, $log, $bloqueado,
         ]);
 
-        // Auto-create completed checklist_origen so moto shows as available
-        $motoId = (int)$pdo->lastInsertId();
-        try {
-            $pdo->prepare("INSERT INTO checklist_origen (moto_id, dealer_id, vin, modelo, color, completado, bloqueado, hash_registro)
-                VALUES (?, ?, ?, ?, ?, 1, 1, ?)")
-                ->execute([$motoId, $uid, $vin, $modelo, $color, hash('sha256', "import-$motoId-" . date('c'))]);
-        } catch (Throwable $ignore) {}
-
+        // NOTE: We deliberately do NOT auto-complete the checklist_origen
+        // anymore. The CEDIS operator must physically inspect each moto and
+        // mark the checklist as complete from the panel — auto-completion
+        // misrepresented inventory state and made the dashboard show
+        // "130/130 completado" right after import even though no inspection
+        // had happened. Bikes will appear as "Pendiente" until inspected.
         $created++;
     } catch (Throwable $e) {
         $errores++;

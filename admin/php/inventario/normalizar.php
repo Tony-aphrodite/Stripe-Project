@@ -90,6 +90,22 @@ try {
     $result['error_bloqueados_estado'] = $e->getMessage();
 }
 
+// Wipe auto-created checklist_origen rows from prior imports so the dashboard
+// shows correct "Pendiente" state until operators physically inspect each
+// moto. Identification: motos whose log_estados records the import action.
+// Manually created/completed checklists by real operators are preserved.
+try {
+    $stmt = $pdo->prepare("DELETE FROM checklist_origen
+        WHERE moto_id IN (
+            SELECT id FROM inventario_motos
+            WHERE log_estados LIKE '%importacion_excel%'
+        )");
+    $stmt->execute();
+    $result['checklist_origen_reset'] = $stmt->rowCount();
+} catch (Throwable $e) {
+    $result['error_checklist_reset'] = $e->getMessage();
+}
+
 // Count current sellable inventory grouped by modelo+color
 try {
     $sql = "SELECT modelo, color, COUNT(*) AS total
