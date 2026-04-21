@@ -34,13 +34,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-// CDC endpoint — production /v2/ficoscore (standalone FICO Score product).
-// Discovered empirically: this is the endpoint where our Voltika Consumer
-// Key has a working subscription. The body must use top-level "folio" +
-// "persona" (NOT the older "folioOtorgante" name).
-// Override via the CDC_BASE_URL env var if the customer moves to a different
-// product (e.g. Reporte de Crédito Consolidado + FICO Score).
-define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/ficoscore');
+// CDC endpoint — /v1/rccficoscore (Reporte de Crédito Consolidado + FICO
+// Score V1). This is the product the Voltika app has activated, per the
+// official swagger at:
+//   /sites/default/files/swagger/1730437011/reporte-de-credito-consolidado-fico-score-v1-swagger.1.0.3.yaml
+// Body schema differs from the standalone /v2/ficoscore:
+//   - NO "folio"/"persona" wrappers — fields at top level
+//   - primerNombre (singular), rfc (lowercase)
+//   - domicilio uses codigoPostal / municipio / colonia
+// Override via the CDC_BASE_URL env var if the customer changes product.
+define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v1/consolidado/ficoscore');
 // Folio otorgante — 10-digit id assigned by CDC (0000004694 for Voltika).
 define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '0000080008');
 // CDC production auth model (confirmed via the official PHP client source):
@@ -94,29 +97,27 @@ if (!$primerNombre || !$apellidoPaterno) {
 }
 
 // ── Construir request body ──────────────────────────────────────────────────
-// The /v2/ficoscore endpoint expects a top-level "folio" field (not the older
-// "folioOtorgante") plus a nested "persona" object.
+// Body schema for /v1/rccficoscore (PersonaPeticion):
+//   - Flat — no "folio" or "persona" wrapper
+//   - primerNombre (singular), rfc (lowercase)
+//   - domicilio uses codigoPostal / municipio / colonia field names
 $requestBody = [
-    'folio'   => CDC_FOLIO,
-    'persona' => [
-        'primerNombre'    => $primerNombre,
-        'segundoNombre'   => '',
-        'apellidoPaterno' => $apellidoPaterno,
-        'apellidoMaterno' => $apellidoMaterno,
-        'fechaNacimiento' => $fechaNacimiento,
-        'RFC'             => $rfc,
-        'CURP'            => $curp,
-        'nacionalidad'    => 'MX',
-        'domicilio' => [
-            'direccion'           => $direccion ?: 'NO DISPONIBLE',
-            'coloniaPoblacion'    => $colonia ?: 'CENTRO',
-            'delegacionMunicipio' => $municipio ?: $ciudad ?: 'NO DISPONIBLE',
-            'ciudad'              => $ciudad ?: 'NO DISPONIBLE',
-            'estado'              => $estado ?: 'MX',
-            'CP'                  => $cp,
-        ],
+    'primerNombre'    => $primerNombre,
+    'apellidoPaterno' => $apellidoPaterno,
+    'apellidoMaterno' => $apellidoMaterno,
+    'fechaNacimiento' => $fechaNacimiento,
+    'rfc'             => $rfc,
+    'domicilio' => [
+        'direccion'    => $direccion ?: 'NO DISPONIBLE',
+        'colonia'      => $colonia ?: 'CENTRO',
+        'municipio'    => $municipio ?: $ciudad ?: 'NO DISPONIBLE',
+        'ciudad'       => $ciudad ?: 'NO DISPONIBLE',
+        // estado must match CatalogoEstados enum (CDMX, JAL, NL, MEX, etc.)
+        'estado'       => $estado ?: 'CDMX',
+        'codigoPostal' => $cp,
     ],
 ];
+if ($curp) $requestBody['curp'] = $curp;
 
 $jsonBody = json_encode($requestBody, JSON_UNESCAPED_UNICODE);
 

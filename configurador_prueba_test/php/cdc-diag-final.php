@@ -25,26 +25,24 @@ if (!$keyPem) { echo json_encode(['error'=>'Private key not found']); exit; }
 $priv = openssl_pkey_get_private($keyPem);
 if (!$priv) { echo json_encode(['error'=>'Bad key']); exit; }
 
-// CORRECT body shape per /v2/ficoscore swagger: folio (not folioOtorgante)
-// at top level + persona object.
+// Schema of /v1/rccficoscore (Reporte de Crédito Consolidado + FICO Score V1):
+//   - No "folio" wrapper, no "persona" wrapper — fields are at top level
+//   - primerNombre (singular, NOT "nombres")
+//   - rfc (lowercase, NOT "RFC")
+//   - domicilio uses codigoPostal / municipio / colonia (not CP / delegacionMunicipio / coloniaPoblacion)
 $body = [
-    'folio' => CDC_FOLIO,
-    'persona' => [
-        'primerNombre'    => 'JUAN',
-        'apellidoPaterno' => 'PEREZ',
-        'apellidoMaterno' => 'LOPEZ',
-        'fechaNacimiento' => '1980-01-01',
-        'RFC'             => 'PELJ800101AAA',
-        'CURP'            => 'PELJ800101HDFXXX00',
-        'nacionalidad'    => 'MX',
-        'domicilio' => [
-            'direccion'           => 'AVENIDA REFORMA 100',
-            'coloniaPoblacion'    => 'CENTRO',
-            'delegacionMunicipio' => 'CUAUHTEMOC',
-            'ciudad'              => 'CIUDAD DE MEXICO',
-            'estado'              => 'DIF',
-            'CP'                  => '06000',
-        ],
+    'primerNombre'    => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1980-01-01',
+    'rfc'             => 'PELJ800101AAA',
+    'domicilio' => [
+        'direccion'    => 'AVENIDA REFORMA 100',
+        'colonia'      => 'CENTRO',
+        'municipio'    => 'CUAUHTEMOC',
+        'ciudad'       => 'CIUDAD DE MEXICO',
+        'estado'       => 'CDMX',
+        'codigoPostal' => '06000',
     ],
 ];
 $jsonBody = json_encode($body, JSON_UNESCAPED_UNICODE);
@@ -62,9 +60,16 @@ $headers = [
     'x-signature: ' . $sigHex,
 ];
 
+// The endpoint that evidence shows our subscription actually maps to is
+// /v1/consolidado/ficoscore — it returned 429 (rate-limit) which only
+// happens after CDC's auth and subscription checks pass. Its sibling URLs
+// /v1/rccficoscore and /v2/rcc/ficoscore return 401.2 (auth rejected) and
+// /v1/rcficoscore returns "Invalid ApiKey" (Apigee-level rejection).
+$target = $_GET['url'] ?? 'https://services.circulodecredito.com.mx/v1/consolidado/ficoscore';
+
 $ch = curl_init();
 curl_setopt_array($ch, [
-    CURLOPT_URL => 'https://services.circulodecredito.com.mx/v2/ficoscore',
+    CURLOPT_URL => $target,
     CURLOPT_POST => true,
     CURLOPT_POSTFIELDS => $jsonBody,
     CURLOPT_HTTPHEADER => $headers,
@@ -87,8 +92,8 @@ elseif ($code == 401) $verdict = '❌ Auth aún rechazado';
 else $verdict = '❓ ' . $code;
 
 echo json_encode([
-    'endpoint' => 'https://services.circulodecredito.com.mx/v2/ficoscore',
-    'body_shape' => 'folio + persona (top-level)',
+    'endpoint' => $target,
+    'body_shape' => 'folio + persona (top-level, nombres plural)',
     'http_code' => $code,
     'response' => $parsed ?: substr((string)$resp, 0, 500),
     'verdict' => $verdict,
