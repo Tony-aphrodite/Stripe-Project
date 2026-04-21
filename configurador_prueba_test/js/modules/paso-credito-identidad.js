@@ -191,7 +191,14 @@ var PasoCreditoIdentidad = {
         }
         html += '</div>';
         html += '<div id="vk-status-' + id + '" class="vk-identidad-step__status">&#9711;</div>';
-        html += '<input type="file" id="vk-file-' + id + '" accept="image/*" capture="environment" style="display:none;">';
+        // Deliberately NOT setting capture="environment" on INE / comprobante —
+        // forcing the camera on mobile caused iOS Safari to reload the page
+        // after shooting (returning the user to paso 1 = "home"). With only
+        // accept="image/*" the user sees the native picker AND can still
+        // choose the camera from there. The selfie is the exception:
+        // for it we keep capture="user" (set in bindEvents) so the live
+        // selfie is always taken fresh.
+        html += '<input type="file" id="vk-file-' + id + '" accept="image/*" style="display:none;">';
         html += '<div id="vk-preview-' + id + '" style="display:none;margin-top:10px;grid-column:1/-1;">';
         html += '<img style="max-width:100%;max-height:120px;border-radius:6px;border:1px solid var(--vk-border);">';
         html += '</div>';
@@ -207,7 +214,15 @@ var PasoCreditoIdentidad = {
             jQuery(document).off('click', '#vk-upload-' + id);
             jQuery(document).on('click', '#vk-upload-' + id, function(e) {
                 if (e.target.tagName === 'INPUT') return;
-                jQuery('#vk-file-' + id).click();
+                // Defense: stop the click from bubbling to any ancestor that
+                // might navigate (e.g. a dropdown toggle or anchor wrapper).
+                e.preventDefault();
+                e.stopPropagation();
+                try {
+                    jQuery('#vk-file-' + id).click();
+                } catch (err) {
+                    jQuery('#vk-identidad-error').text('No se pudo abrir el selector de archivos. Intenta con otro navegador.').show();
+                }
             });
 
             jQuery(document).off('change', '#vk-file-' + id);
@@ -218,7 +233,12 @@ var PasoCreditoIdentidad = {
             });
         });
 
+        // Selfie is the only input where we force the live camera.
         jQuery('#vk-file-selfie').attr('capture', 'user');
+
+        // Arm navigation guard while the user has uploaded at least one file
+        // but hasn't submitted yet. Protects against accidental back / reload.
+        self._armBeforeUnload();
 
         // Checkbox: show/hide comprobante
         jQuery(document).off('change', '#vk-domicilio-diferente');
@@ -257,29 +277,126 @@ var PasoCreditoIdentidad = {
     _handleFile: function(id, file) {
         var self = this;
 
-        if (!file.type.startsWith('image/')) {
-            jQuery('#vk-identidad-error').text('Solo se permiten imágenes.').show();
+        // Accept HEIC/HEIF (iOS default) by checking extension too — some iOS
+        // versions report empty mime type for HEIC photos from the gallery.
+        var name = (file.name || '').toLowerCase();
+        var looksImage = file.type && file.type.indexOf('image/') === 0;
+        var looksHeic  = /\.(heic|heif)$/.test(name);
+        if (!looksImage && !looksHeic) {
+            jQuery('#vk-identidad-error').text('El archivo no parece ser una imagen. Intenta con JPG o PNG.').show();
             return;
         }
-        if (file.size > 10 * 1024 * 1024) {
-            jQuery('#vk-identidad-error').text('La imagen es muy grande. Máximo 10 MB.').show();
+        if (file.size > 25 * 1024 * 1024) {
+            jQuery('#vk-identidad-error').text('La imagen es muy grande. Máximo 25 MB.').show();
             return;
         }
+        if (looksHeic) {
+            // HEIC can't be rendered in <img> on Chrome/Firefox Android.
+            // Tell the user + still try to upload as-is (server handles it).
+            jQuery('#vk-identidad-error').text('Aviso: tu foto es formato HEIC (iPhone). Si no ves la vista previa cambia a JPG en Ajustes → Cámara → Formatos → Más compatible.').show();
+        }
 
-        if (id === 'ine-frente')   self._ineFrente = file;
-        if (id === 'ine-reverso')  self._ineReverso = file;
-        if (id === 'selfie')       self._selfie = file;
-        if (id === 'comprobante')  self._comprobante = file;
+        // Show a "processing" indicator while we resize to keep memory low.
+        jQuery('#vk-status-' + id).html('&#8987;').css('color', '#999');
 
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            jQuery('#vk-preview-' + id).show().find('img').attr('src', e.target.result);
+        self._resizeImage(file, 1920, 0.85).then(function(resized) {
+            if (id === 'ine-frente')   self._ineFrente   = resized;
+            if (id === 'ine-reverso')  self._ineReverso  = resized;
+            if (id === 'selfie')       self._selfie      = resized;
+            if (id === 'comprobante')  self._comprobante = resized;
+
+            // Preview from the resized blob (cheaper than the original).
+            var previewReader = new FileReader();
+            previewReader.onload = function(e) {
+                jQuery('#vk-preview-' + id).show().find('img').attr('src', e.target.result);
+                jQuery('#vk-status-' + id).html('&#10004;').css('color', 'var(--vk-green-primary)');
+                jQuery('#vk-upload-' + id).addClass('vk-identidad-step--done');
+                if (!looksHeic) jQuery('#vk-identidad-error').hide();
+                self._persistUploadedIds();
+            };
+            previewReader.onerror = function() {
+                jQuery('#vk-identidad-error').text('No se pudo leer la imagen. Intenta con otra foto.').show();
+                jQuery('#vk-status-' + id).html('&#10060;').css('color', '#C62828');
+            };
+            try {
+                previewReader.readAsDataURL(resized);
+            } catch (e) {
+                jQuery('#vk-identidad-error').text('Error al procesar la imagen. Intenta con otra.').show();
+                jQuery('#vk-status-' + id).html('&#10060;').css('color', '#C62828');
+            }
+        }).catch(function() {
+            // Resize failed (likely HEIC or corrupted) — fall back to using
+            // the original file so the user isn't blocked.
+            if (id === 'ine-frente')   self._ineFrente   = file;
+            if (id === 'ine-reverso')  self._ineReverso  = file;
+            if (id === 'selfie')       self._selfie      = file;
+            if (id === 'comprobante')  self._comprobante = file;
             jQuery('#vk-status-' + id).html('&#10004;').css('color', 'var(--vk-green-primary)');
             jQuery('#vk-upload-' + id).addClass('vk-identidad-step--done');
-        };
-        reader.readAsDataURL(file);
+            self._persistUploadedIds();
+        });
+    },
 
-        jQuery('#vk-identidad-error').hide();
+    // Canvas-based downscale. Returns a Promise resolving to a Blob.
+    // Keeps aspect ratio, converts to JPEG (smaller). Shrinks massive camera
+    // photos (often 10-20 MB from modern phones) down to ~1-2 MB, dramatically
+    // reducing mobile memory pressure and upload time.
+    _resizeImage: function(file, maxSide, quality) {
+        return new Promise(function(resolve, reject) {
+            try {
+                var url = URL.createObjectURL(file);
+                var img = new Image();
+                img.onload = function() {
+                    try {
+                        var w = img.width, h = img.height;
+                        if (!w || !h) { URL.revokeObjectURL(url); reject(); return; }
+                        var scale = Math.min(1, maxSide / Math.max(w, h));
+                        var tw = Math.round(w * scale), th = Math.round(h * scale);
+                        var canvas = document.createElement('canvas');
+                        canvas.width = tw; canvas.height = th;
+                        var ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, tw, th);
+                        URL.revokeObjectURL(url);
+                        canvas.toBlob(function(blob) {
+                            if (blob) resolve(blob); else reject();
+                        }, 'image/jpeg', quality);
+                    } catch (e) { URL.revokeObjectURL(url); reject(); }
+                };
+                img.onerror = function() { URL.revokeObjectURL(url); reject(); };
+                img.src = url;
+            } catch (e) { reject(); }
+        });
+    },
+
+    // Save which uploads are done so that if the page reloads or bfcache
+    // restores the user, we can remind them which files to re-pick.
+    _persistUploadedIds: function() {
+        try {
+            var done = [];
+            if (this._ineFrente)  done.push('ine-frente');
+            if (this._ineReverso) done.push('ine-reverso');
+            if (this._selfie)     done.push('selfie');
+            if (this._comprobante) done.push('comprobante');
+            sessionStorage.setItem('vk_identidad_uploads', done.join(','));
+        } catch (e) {}
+    },
+
+    // Warn the user before leaving the page if they've uploaded something
+    // but haven't submitted. Prevents lost work from accidental back/reload.
+    _armBeforeUnload: function() {
+        var self = this;
+        // Use the onbeforeunload property (not addEventListener) so we can
+        // disarm it cleanly when leaving the step.
+        window.onbeforeunload = function() {
+            var hasSomething = self._ineFrente || self._ineReverso || self._selfie || self._comprobante;
+            if (hasSomething) {
+                return 'Si sales ahora se perderán las fotos que ya subiste. ¿Seguro que deseas salir?';
+            }
+        };
+    },
+
+    _disarmBeforeUnload: function() {
+        window.onbeforeunload = null;
     },
 
     _verificar: function() {
@@ -320,9 +437,6 @@ var PasoCreditoIdentidad = {
                 state._truoraResult = res;
                 state._identidadVerificada = true;
 
-                // If face match ran and explicitly failed, block and ask the
-                // user to retake the selfie. If it passed or did not run
-                // (e.g. feature flag off / fallback), let them continue.
                 if (res && res.face && res.face.match === false) {
                     jQuery('#vk-identidad-continuar').prop('disabled', false);
                     jQuery('#vk-identidad-label').show();
@@ -333,11 +447,15 @@ var PasoCreditoIdentidad = {
                     return;
                 }
 
+                self._disarmBeforeUnload();
+                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
                 self.app.irAPaso('credito-enganche');
             },
             error: function() {
                 state._truoraResult = { status: 'approved', fallback: true };
                 state._identidadVerificada = true;
+                self._disarmBeforeUnload();
+                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
                 self.app.irAPaso('credito-enganche');
             }
         });
