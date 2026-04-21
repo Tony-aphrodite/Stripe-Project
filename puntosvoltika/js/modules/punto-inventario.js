@@ -135,18 +135,24 @@ window.PV_inventario = (function(){
     }
     h += '</div>';
 
-    // State-transition action buttons (diagram: reception → assembly → lista_para_entrega)
-    // Safety gate: even in the 'entrega' bucket, require recepcion_id — protects
-    // against data where estado='recibida' was set without the physical receipt.
-    if (tipo === 'entrega' && m.recepcion_id) {
+    // State-transition action buttons (diagram: reception → assembly → lista_para_entrega).
+    // Assembly applies to BOTH buckets (entrega + venta) — a showroom moto also needs
+    // physical assembly before it's sellable. "Marcar lista para entrega" only makes
+    // sense when there's a cliente waiting, so it stays gated on tipo==='entrega'.
+    // Safety gate: require recepcion_id — guards against data where estado='recibida'
+    // was set without the physical receipt.
+    if ((tipo === 'entrega' || tipo === 'venta') && m.recepcion_id) {
+      var ensambleBtn = '<button class="ad-btn ghost sm pv-estado-btn" data-id="'+m.id+'" data-action="ensamble"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> Iniciar ensamble</button>';
+      var listaBtn    = '<button class="ad-btn primary sm pv-estado-btn" data-id="'+m.id+'" data-action="lista"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg> Marcar lista para entrega</button>';
       if (m.estado === 'recibida') {
         h += '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">';
-        h += '<button class="ad-btn ghost sm pv-estado-btn" data-id="'+m.id+'" data-action="ensamble"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> Iniciar ensamble</button>';
-        h += '<button class="ad-btn primary sm pv-estado-btn" data-id="'+m.id+'" data-action="lista"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg> Marcar lista para entrega</button>';
+        h += ensambleBtn;
+        if (tipo === 'entrega') h += listaBtn;
         h += '</div>';
       } else if (m.estado === 'en_ensamble') {
-        h += '<div style="margin-top:8px">';
-        h += '<button class="ad-btn primary sm pv-estado-btn" data-id="'+m.id+'" data-action="lista"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg> Marcar lista para entrega</button>';
+        h += '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">';
+        h += ensambleBtn;
+        if (tipo === 'entrega') h += listaBtn;
         h += '</div>';
       }
     }
