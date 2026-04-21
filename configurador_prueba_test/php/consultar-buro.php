@@ -34,14 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-// CDC endpoint — /v1/rccficoscore (Reporte de Crédito Consolidado + FICO
-// Score V1). This is the product the Voltika app has activated, per the
-// official swagger at:
-//   /sites/default/files/swagger/1730437011/reporte-de-credito-consolidado-fico-score-v1-swagger.1.0.3.yaml
-// Body schema differs from the standalone /v2/ficoscore:
-//   - NO "folio"/"persona" wrappers — fields at top level
-//   - primerNombre (singular), rfc (lowercase)
-//   - domicilio uses codigoPostal / municipio / colonia
+// CDC endpoint — /v2/rccficoscore (Reporte de Crédito Consolidado + FICO
+// Score V2). This is the product the Voltika app has activated, confirmed
+// by the customer's subscription screenshot and the v2 swagger at:
+//   /sites/default/files/swagger/1730437066/reporte-de-credito-consolidado-fico-score-v2-1-swagger.2.1.2.yaml
+// Body schema (FLAT, no wrapper):
+//   primerNombre + apellidoPaterno + apellidoMaterno + fechaNacimiento +
+//   RFC (uppercase) + nacionalidad + domicilio{direccion, coloniaPoblacion,
+//   delegacionMunicipio, ciudad, estado (enum), CP}
 // Override via the CDC_BASE_URL env var if the customer changes product.
 define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rccficoscore');
 // Folio otorgante — 10-digit id assigned by CDC (0000004694 for Voltika).
