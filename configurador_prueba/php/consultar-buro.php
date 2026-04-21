@@ -43,7 +43,7 @@ require_once __DIR__ . '/config.php';
 //   - primerNombre (singular), rfc (lowercase)
 //   - domicilio uses codigoPostal / municipio / colonia
 // Override via the CDC_BASE_URL env var if the customer changes product.
-define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v1/consolidado/ficoscore');
+define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rccficoscore');
 // Folio otorgante — 10-digit id assigned by CDC (0000004694 for Voltika).
 define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '0000080008');
 // CDC production auth model (confirmed via the official PHP client source):
@@ -97,27 +97,29 @@ if (!$primerNombre || !$apellidoPaterno) {
 }
 
 // ── Construir request body ──────────────────────────────────────────────────
-// Body schema for /v1/rccficoscore (PersonaPeticion):
-//   - Flat — no "folio" or "persona" wrapper
-//   - primerNombre (singular), rfc (lowercase)
-//   - domicilio uses codigoPostal / municipio / colonia field names
+// Body schema for /v2/rccficoscore (swagger v2.1.2):
+//   - FLAT (no folio/persona wrapper)
+//   - primerNombre singular + RFC UPPERCASE + nacionalidad required
+//   - domicilio uses coloniaPoblacion / delegacionMunicipio / CP
 $requestBody = [
     'primerNombre'    => $primerNombre,
     'apellidoPaterno' => $apellidoPaterno,
     'apellidoMaterno' => $apellidoMaterno,
     'fechaNacimiento' => $fechaNacimiento,
-    'rfc'             => $rfc,
+    'RFC'             => $rfc,
+    'nacionalidad'    => 'MX',
     'domicilio' => [
-        'direccion'    => $direccion ?: 'NO DISPONIBLE',
-        'colonia'      => $colonia ?: 'CENTRO',
-        'municipio'    => $municipio ?: $ciudad ?: 'NO DISPONIBLE',
-        'ciudad'       => $ciudad ?: 'NO DISPONIBLE',
-        // estado must match CatalogoEstados enum (CDMX, JAL, NL, MEX, etc.)
-        'estado'       => $estado ?: 'CDMX',
-        'codigoPostal' => $cp,
+        'direccion'           => $direccion ?: 'NO DISPONIBLE',
+        'coloniaPoblacion'    => $colonia ?: 'CENTRO',
+        'delegacionMunicipio' => $municipio ?: $ciudad ?: 'NO DISPONIBLE',
+        'ciudad'              => $ciudad ?: 'NO DISPONIBLE',
+        // estado must match CatalogoEstados v2 enum
+        // (CDMX, JAL, NL, MEX, BC, BCS, and the rest of Mexican states)
+        'estado'              => $estado ?: 'CDMX',
+        'CP'                  => $cp,
     ],
 ];
-if ($curp) $requestBody['curp'] = $curp;
+if ($curp) $requestBody['CURP'] = $curp;
 
 $jsonBody = json_encode($requestBody, JSON_UNESCAPED_UNICODE);
 
