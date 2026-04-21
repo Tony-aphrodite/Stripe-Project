@@ -156,13 +156,20 @@ window.PV_inventario = (function(){
   }
   function iniciarEnsamble(motoId){
     if (!motoId) return;
-    if (!confirm('¿Iniciar ensamble de esta moto?')) return;
+    // Open the full assembly checklist (3 phases, 40+ verification items)
+    // instead of just flipping the state flag. "en_ensamble" state is set
+    // implicitly in the background so the moto card reflects the change
+    // while the operator works through the checklist.
+    if (!window.PV_checklistEnsamble || typeof PV_checklistEnsamble.open !== 'function') {
+      alert('Módulo de checklist no disponible. Recarga la página.');
+      return;
+    }
     PVApp.api('inventario/cambiar-estado.php', {
       moto_id: motoId,
       nuevo_estado: 'en_ensamble'
-    }).done(function(r){
-      if (r.ok) { PVApp.toast('Moto en ensamble'); render(); }
-    }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
+    }).always(function(){
+      PV_checklistEnsamble.open(motoId);
+    });
   }
   function marcarLista(motoId){
     if (!motoId) return;

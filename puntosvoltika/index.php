@@ -57,6 +57,7 @@ $sharedV = file_exists($sharedAdminCssPath) ? filemtime($sharedAdminCssPath) : t
 <script src="<?= $asset('js/modules/punto-login.js') ?>"></script>
 <script src="<?= $asset('js/modules/punto-inicio.js') ?>"></script>
 <script src="<?= $asset('js/modules/punto-inventario.js') ?>"></script>
+<script src="<?= $asset('js/modules/punto-checklist-ensamble.js') ?>"></script>
 <script src="<?= $asset('js/modules/punto-recepcion.js') ?>"></script>
 <script src="<?= $asset('js/modules/punto-entrega.js') ?>"></script>
 <script src="<?= $asset('js/modules/punto-venta.js') ?>"></script>
