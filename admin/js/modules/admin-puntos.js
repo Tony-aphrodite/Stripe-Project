@@ -409,20 +409,19 @@ window.AD_puntos = (function(){
         var ch = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
         ch += '<thead><tr style="border-bottom:1px solid #ddd;">'+
           '<th style="text-align:left;padding:4px;">Modelo</th>'+
-          '<th style="text-align:center;padding:4px;">$ Comisión venta</th>'+
-          '<th style="text-align:center;padding:4px;">$ Comisión entrega</th></tr></thead><tbody>';
+          '<th style="text-align:center;padding:4px;">$ Comisión venta</th></tr></thead><tbody>';
 
+        // Per-model delivery commission column removed — only the general
+        // "Comisión de entrega (MXN)" field above is read by the payment
+        // code. Keeping a per-model column here confused admins because the
+        // values looked functional but were never used.
         modelos.forEach(function(m){
           var c = comMap[m.id]||{};
-          // Prefer fixed MXN amount (customer template uses $1,500 / $2,000 / $4,000 etc.)
-          // Fallback to legacy pct column for pre-import data.
           var ventaVal   = parseFloat(c.comision_venta_monto);
           if (!ventaVal || isNaN(ventaVal)) ventaVal = parseFloat(c.comision_venta_pct) || 0;
-          var entregaVal = parseFloat(c.comision_entrega_pct) || 0;
           ch += '<tr data-mid="'+m.id+'" style="border-bottom:1px solid #f0f0f0;">'+
             '<td style="padding:4px;font-weight:600;">'+esc(m.nombre)+'</td>'+
             '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComVenta" step="50" min="0" value="'+ventaVal+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
-            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComEntrega" step="50" min="0" value="'+entregaVal+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
           '</tr>';
         });
         ch += '</tbody></table>';
@@ -477,7 +476,8 @@ window.AD_puntos = (function(){
         codigo_electronico: ($('#pfCodElec').val()  || '').toUpperCase().trim() || null
       };
 
-      // Collect commission data
+      // Collect commission data (per-model sale commission only — delivery
+      // commission is the single top-level "Comisión de entrega" field).
       var comisiones = [];
       $('#pfComisionesWrap tr[data-mid]').each(function(){
         var mid = $(this).data('mid');
@@ -489,7 +489,9 @@ window.AD_puntos = (function(){
           // fallback in the read path.
           comision_venta_monto: ventaAmt,
           comision_venta_pct: 0,
-          comision_entrega_pct: parseFloat($(this).find('.pfComEntrega').val()) || 0,
+          // Always 0 — the real delivery commission lives in puntos_voltika
+          // .comision_entrega (single field). DB column kept for legacy schema.
+          comision_entrega_pct: 0,
         });
       });
 
