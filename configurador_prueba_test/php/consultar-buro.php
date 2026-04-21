@@ -34,15 +34,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-// CDC endpoint — production by default. Override to the sandbox endpoint
-// via the CDC_BASE_URL env var only while testing with CDC test credentials:
-//   CDC_BASE_URL=https://services.circulodecredito.com.mx/sandbox/v2/rcc/ficoscore
-define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rcc/ficoscore');
-// Folio otorgante — sandbox uses 0000080008, production uses the 10-digit
-// otorgante id assigned by CDC (e.g. 0000004694 for otorgante 4694).
-define('CDC_FOLIO',    getenv('CDC_FOLIO') ?: '0000080008');
-// HTTP Basic-Auth user/pass — CDC production endpoint requires both Basic
-// Auth and the x-api-key header. Leave these blank in sandbox.
+// CDC endpoint — production /v2/ficoscore (standalone FICO Score product).
+// Discovered empirically: this is the endpoint where our Voltika Consumer
+// Key has a working subscription. The body must use top-level "folio" +
+// "persona" (NOT the older "folioOtorgante" name).
+// Override via the CDC_BASE_URL env var if the customer moves to a different
+// product (e.g. Reporte de Crédito Consolidado + FICO Score).
+define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/ficoscore');
+// Folio otorgante — 10-digit id assigned by CDC (0000004694 for Voltika).
+define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '0000080008');
+// CDC production auth model (confirmed via the official PHP client source):
+//   - username and password go as CUSTOM headers, NOT HTTP Basic Auth
+//   - x-api-key carries the Consumer Key from the CDC developer portal
+//   - x-signature carries the SHA256 hash of the request body, HEX encoded
 if (!defined('CDC_USER')) define('CDC_USER', getenv('CDC_USER') ?: '');
 if (!defined('CDC_PASS')) define('CDC_PASS', getenv('CDC_PASS') ?: '');
 
@@ -90,8 +94,10 @@ if (!$primerNombre || !$apellidoPaterno) {
 }
 
 // ── Construir request body ──────────────────────────────────────────────────
+// The /v2/ficoscore endpoint expects a top-level "folio" field (not the older
+// "folioOtorgante") plus a nested "persona" object.
 $requestBody = [
-    'folioOtorgante' => CDC_FOLIO,
+    'folio'   => CDC_FOLIO,
     'persona' => [
         'primerNombre'    => $primerNombre,
         'segundoNombre'   => '',
@@ -114,12 +120,37 @@ $requestBody = [
 
 $jsonBody = json_encode($requestBody, JSON_UNESCAPED_UNICODE);
 
+// ── Sign the body with our private key (x-signature header) ────────────────
+// CDC production requires the body to be SHA256-signed with our private key
+// and the signature passed as a HEX-encoded x-signature header. The matching
+// public certificate must already be uploaded to the CDC developer portal.
+$signatureHex = '';
+$keyPem = $_SESSION['cdc_key_pem'] ?? null;
+if (!$keyPem) {
+    $keyFile = __DIR__ . '/certs/cdc_private.key';
+    if (file_exists($keyFile)) $keyPem = @file_get_contents($keyFile);
+}
+if ($keyPem) {
+    $priv = openssl_pkey_get_private($keyPem);
+    if ($priv) {
+        $sig = '';
+        if (openssl_sign($jsonBody, $sig, $priv, OPENSSL_ALGO_SHA256)) {
+            $signatureHex = bin2hex($sig);
+        }
+    }
+}
+
 // ── Llamada a la API ────────────────────────────────────────────────────────
+// Auth per CDC production spec: x-api-key + username/password as custom
+// headers (NOT HTTP Basic Auth) + x-signature hex.
 $headers = [
     'Content-Type: application/json',
     'Accept: application/json',
     'x-api-key: ' . CDC_API_KEY,
 ];
+if (CDC_USER)      $headers[] = 'username: ' . CDC_USER;
+if (CDC_PASS)      $headers[] = 'password: ' . CDC_PASS;
+if ($signatureHex) $headers[] = 'x-signature: ' . $signatureHex;
 
 $ch = curl_init();
 $curlOpts = [
@@ -132,11 +163,6 @@ $curlOpts = [
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_SSL_VERIFYHOST => 2,
 ];
-// Attach HTTP Basic Auth when production credentials are configured.
-if (CDC_USER && CDC_PASS) {
-    $curlOpts[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
-    $curlOpts[CURLOPT_USERPWD]  = CDC_USER . ':' . CDC_PASS;
-}
 curl_setopt_array($ch, $curlOpts);
 
 $response = curl_exec($ch);
