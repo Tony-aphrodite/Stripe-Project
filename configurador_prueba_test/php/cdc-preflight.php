@@ -43,6 +43,32 @@ $certPem = $row['certificate'];
 $priv = openssl_pkey_get_private($keyPem);
 if (!$priv) { echo '<div class="step fail">❌ Key no parsea</div></body></html>'; exit; }
 
+// ── Local self-verification: prove our private key matches our cert ─────────
+// If this fails, our DB has inconsistent key+cert pair (regen bug) and there
+// is no way CDC portal can verify us. Fix locally before touching CDC.
+$pub = openssl_pkey_get_public($certPem);
+if (!$pub) {
+    echo '<div class="step fail">❌ Cert PEM no parsea. DB está corrupta — regenerar.</div></body></html>'; exit;
+}
+$pubDetails = openssl_pkey_get_details($pub);
+$keyDetailsTop = openssl_pkey_get_details($priv);
+$sameBits = ($pubDetails['bits'] ?? 0) === ($keyDetailsTop['bits'] ?? 0);
+$sameType = ($pubDetails['type'] ?? -1) === ($keyDetailsTop['type'] ?? -2);
+$detType = ($pubDetails['type'] === OPENSSL_KEYTYPE_EC) ? 'ECDSA' : (($pubDetails['type'] === OPENSSL_KEYTYPE_RSA) ? 'RSA ' . $pubDetails['bits'] : '#' . $pubDetails['type']);
+
+$sig = ''; openssl_sign('self-test', $sig, $priv, OPENSSL_ALGO_SHA256);
+$selfVerify = openssl_verify('self-test', $sig, $pub, OPENSSL_ALGO_SHA256);
+
+if ($selfVerify === 1 && $sameType && $sameBits) {
+    echo '<div class="step pass">✅ Auto-verificación local OK. Key y cert coinciden. Tipo: <strong>' . $detType . '</strong>. Si CDC portal rechaza nuestra firma, el cert subido NO es éste.</div>';
+} else {
+    echo '<div class="step fail">❌ <strong>Auto-verificación FALLA.</strong> Nuestra llave privada no coincide con nuestro certificado en DB. openssl_verify=' . $selfVerify . ', sameType=' . ($sameType?'sí':'no') . ', sameBits=' . ($sameBits?'sí':'no') . '. <br>Regenerar con <a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&regen=1&type=ecdsa">ECDSA</a> o <a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&regen=1&type=rsa">RSA</a> y re-subir a CDC.</div>';
+}
+
+// Show the PEM so user can copy-paste and confirm what they uploaded to CDC
+echo '<div class="step"><details><summary><strong>Ver PEM del cert en DB (copia y compara con lo subido a CDC)</strong></summary>';
+echo '<pre style="color:#333;background:#f5f5f5;">' . htmlspecialchars($certPem) . '</pre></details></div>';
+
 // ── Helper: signed request ──────────────────────────────────────────────────
 function call(string $label, string $url, string $body, string $encoding, array $authMode, $priv, string $certPem, string $keyPem, array $extraHeaders = []): array {
     $sig = '';
