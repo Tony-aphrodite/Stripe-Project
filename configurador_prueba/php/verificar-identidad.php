@@ -379,18 +379,22 @@ if (!$checkId) {
     exit;
 }
 
-// ── Short polling (max 6 seconds) ──────────────────────────────────────────
-// Person check is async — Truora typically needs 3-15 seconds for government
-// DB matching. We poll BRIEFLY so the user doesn't wait forever. Even if the
-// person check is still "not_started", we continue to the FACE check which is
-// synchronous and is the primary fraud gate (selfie vs INE photo).
-$elapsed = 0;
-$result  = null;
-$shortPollMax = 6; // seconds — short enough not to block UX, long enough for fast checks
+// ── Polling for completion (up to ~25 seconds) ───────────────────────────
+// Customer report 2026-04-23: Truora dashboard showed all checks as
+// "Expirado" because we were only polling 6 seconds — Truora's person
+// validation usually needs 3–15 s and can spike to 25 s under load. When
+// our short loop timed out we returned to the UI; the user advanced and
+// the check was abandoned mid-flight, expiring on Truora's side. Now we
+// wait long enough for the typical case to finish before returning.
+$elapsed       = 0;
+$result        = null;
+$shortPollMax  = 25;  // seconds — accommodates Truora person-check tail latency
+$pollStep      = 2;
+$lastPollData  = null;
 
 while ($elapsed < $shortPollMax) {
-    sleep(2);
-    $elapsed += 2;
+    sleep($pollStep);
+    $elapsed += $pollStep;
 
     $ch2 = curl_init(TRUORA_API_URL . '/' . $checkId);
     curl_setopt_array($ch2, [
@@ -404,12 +408,27 @@ while ($elapsed < $shortPollMax) {
 
     if ($pollCode >= 200 && $pollCode < 300) {
         $pollData = json_decode($pollResponse, true);
+        $lastPollData = $pollData;
         $status   = $pollData['check']['status'] ?? $pollData['status'] ?? 'unknown';
+        @file_put_contents($logFile, json_encode([
+            'timestamp' => date('c'),
+            'action'    => 'poll_tick',
+            'check_id'  => $checkId,
+            'elapsed_s' => $elapsed,
+            'status'    => $status,
+        ]) . "\n", FILE_APPEND | LOCK_EX);
         if ($status === 'completed' || $status === 'error') {
             $result = $pollData;
             break;
         }
     }
+}
+
+// If we ran out of time, persist the LAST poll snapshot (so admin can see
+// the check_id and partial status on the verificaciones_identidad row and
+// follow up via the Truora dashboard).
+if (!$result && $lastPollData) {
+    $result = $lastPollData;
 }
 
 // If polling timed out, use whatever we got from the initial create response —
@@ -752,15 +771,57 @@ function truoraDocumentValidation(string $ineFrontePath, string $ineReversoPath,
     }
 
     $data = json_decode($response, true);
+    $docCheckId = $data['document_validation']['check_id']
+               ?? $data['check_id']
+               ?? $data['validation_id']
+               ?? null;
+    $docStatus  = $data['document_validation']['status']
+               ?? $data['status']
+               ?? 'in_progress';
+
+    // Poll for the document validation to actually finish (Truora processes
+    // OCR + tampering checks asynchronously). Without this loop the check
+    // sits in "in_progress" on Truora's dashboard forever and eventually
+    // expires — which is exactly what the customer flagged 2026-04-23 when
+    // every "Validación de documento" entry showed "Expirado".
+    $finalData = $data;
+    if ($docCheckId && in_array($docStatus, ['in_progress', 'not_started', 'pending'], true)) {
+        $elapsed = 0;
+        $maxWait = 25; // seconds — same budget as person check
+        while ($elapsed < $maxWait) {
+            sleep(2); $elapsed += 2;
+            $chP = curl_init('https://api.checks.truora.com/v1/checks/' . $docCheckId);
+            curl_setopt_array($chP, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => ['Truora-API-Key: ' . TRUORA_API_KEY],
+                CURLOPT_TIMEOUT        => 5,
+            ]);
+            $pollRaw  = curl_exec($chP);
+            $pollHttp = curl_getinfo($chP, CURLINFO_HTTP_CODE);
+            curl_close($chP);
+            if ($pollHttp >= 200 && $pollHttp < 300) {
+                $pollData = json_decode($pollRaw, true);
+                $pollStatus = $pollData['check']['status'] ?? $pollData['status'] ?? 'unknown';
+                @file_put_contents($logFile, json_encode([
+                    'timestamp' => date('c'),
+                    'action'    => 'doc_poll_tick',
+                    'check_id'  => $docCheckId,
+                    'elapsed_s' => $elapsed,
+                    'status'    => $pollStatus,
+                ]) . "\n", FILE_APPEND | LOCK_EX);
+                if ($pollStatus === 'completed' || $pollStatus === 'error') {
+                    $finalData = $pollData;
+                    $docStatus = $pollStatus;
+                    break;
+                }
+            }
+        }
+    }
+
     return [
-        'check_id' => $data['document_validation']['check_id']
-                   ?? $data['check_id']
-                   ?? $data['validation_id']
-                   ?? null,
-        'status'   => $data['document_validation']['status']
-                   ?? $data['status']
-                   ?? 'completed',
-        'data'     => $data,
+        'check_id' => $docCheckId,
+        'status'   => $docStatus,
+        'data'     => $finalData,
     ];
 }
 
