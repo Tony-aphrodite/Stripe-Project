@@ -129,19 +129,23 @@ window.AD_checklists = (function(){
 
     // KPIs
     html += '<div class="ad-kpis">';
-    [{l:'Total motos',v:s.total,c:'blue'},{l:'Con origen',v:s.con_origen,c:'blue'},
-     {l:'Con ensamble',v:s.con_ensamble,c:'yellow'},{l:'Con entrega',v:s.con_entrega,c:'green'},
-     {l:'Completos',v:s.completos,c:'green'}].forEach(function(k){
+    [{l:'Total motos',v:s.total,c:'blue'},
+     {l:'Origen real',v:s.con_origen,c:'green'},
+     {l:'Origen forzado',v:s.origen_forzado,c:'yellow'},
+     {l:'Con ensamble',v:s.con_ensamble,c:'yellow'},
+     {l:'Con entrega',v:s.con_entrega,c:'green'},
+     {l:'3 checklists OK',v:s.completos,c:'green'}].forEach(function(k){
       html += '<div class="ad-kpi"><div class="label">'+k.l+'</div><div class="value '+(k.c||'')+'">'+Number(k.v||0)+'</div></div>';
     });
     html += '</div>';
 
     // Filters + bulk action toolbar
     html += '<div class="ad-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">'+
-      '<select class="ad-select" id="clFiltro" style="width:200px;">'+
+      '<select class="ad-select" id="clFiltro" style="width:240px;">'+
         '<option value="">Todos</option>'+
         '<option value="sin_origen"'+(currentFilter==='sin_origen'?' selected':'')+'>Sin checklist origen</option>'+
-        '<option value="con_origen"'+(currentFilter==='con_origen'?' selected':'')+'>Con origen completo</option>'+
+        '<option value="origen_forzado"'+(currentFilter==='origen_forzado'?' selected':'')+'>⚠ Origen forzado (pendiente inspección)</option>'+
+        '<option value="con_origen"'+(currentFilter==='con_origen'?' selected':'')+'>Con origen real</option>'+
         '<option value="sin_ensamble"'+(currentFilter==='sin_ensamble'?' selected':'')+'>Sin ensamble</option>'+
         '<option value="con_ensamble"'+(currentFilter==='con_ensamble'?' selected':'')+'>Con ensamble completo</option>'+
         '<option value="completos"'+(currentFilter==='completos'?' selected':'')+'>3 checklists completos</option>'+
@@ -163,16 +167,19 @@ window.AD_checklists = (function(){
     '</tr></thead><tbody>';
 
     (r.motos||[]).forEach(function(m){
-      var canCheck = !m.co_ok; // only allow selecting motos whose origen is NOT yet complete
+      // Allow selecting motos whose origen is NOT yet complete OR was force-completed
+      // (so admin can re-bulk if they want — though re-running bulk on already-forced
+      // is a no-op, kept for consistency)
+      var canCheck = !m.co_ok || m.co_force == 1;
       html += '<tr>'+
         '<td>'+ (canCheck
           ? '<input type="checkbox" class="clRowChk" data-id="'+m.id+'">'
-          : '<span style="color:#cbd5e1;font-size:11px;" title="Ya completado">&#10003;</span>') +'</td>'+
+          : '<span style="color:#cbd5e1;font-size:11px;" title="Ya completado correctamente">&#10003;</span>') +'</td>'+
         '<td><strong>'+(m.vin_display||m.vin||'—')+'</strong></td>'+
         '<td>'+m.modelo+'</td>'+
         '<td>'+m.color+'</td>'+
         '<td>'+ADApp.badgeEstado(m.estado)+'</td>'+
-        '<td>'+clBadge(m.co_id, m.co_ok)+'</td>'+
+        '<td>'+clBadge(m.co_id, m.co_ok, null, m.co_force)+'</td>'+
         '<td>'+clBadge(m.ce_id, m.ce_ok, m.ce_fase)+'</td>'+
         '<td>'+clBadge(m.cv_id, m.cv_ok, m.cv_fase)+'</td>'+
         '<td><button class="ad-btn sm primary clOpen" data-id="'+m.id+'">Abrir</button></td>'+
@@ -239,8 +246,12 @@ window.AD_checklists = (function(){
     });
   }
 
-  function clBadge(id, ok, fase){
+  function clBadge(id, ok, fase, isForce){
     if(!id) return '<span class="ad-badge gray">Pendiente</span>';
+    if(ok && isForce == 1) {
+      // Force-completed (bulk button) — show warning, NOT "Completo"
+      return '<span class="ad-badge" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b" title="Marcado completo sin inspección física. Abrir para reabrir y completar correctamente.">⚠ Pendiente inspección</span>';
+    }
     if(ok) return '<span class="ad-badge green">Completo</span>';
     if(fase) return '<span class="ad-badge yellow">'+fase+'</span>';
     return '<span class="ad-badge yellow">En progreso</span>';
