@@ -389,14 +389,28 @@ var PasoCreditoConsentimiento = {
                 aceptacion_tyc:    'SI'
             }),
             success: function(res) {
+                // Backend now returns success:false with error details when
+                // CDC fails, instead of fake fallback approved. Surface it.
+                if (res && res.success === false) {
+                    var msg = (res.message || 'No pudimos consultar tu historial crediticio. Intenta de nuevo.');
+                    jQuery('#vk-cons-error').html(msg)
+                        .css({'color':'#C62828','background':'#FFEBEE'}).show();
+                    self._resetCTA();
+                    return;
+                }
                 state._buroResult  = res;
                 state._buroConsent = true;
                 self._routeByBuroResult(res);
             },
-            error: function() {
-                state._buroResult  = { success: false, fallback: true };
-                state._buroConsent = true;
-                self.app.irAPaso('credito-loading');
+            error: function(xhr) {
+                var msg = 'No pudimos conectar con Círculo de Crédito. Intenta de nuevo.';
+                try {
+                    var body = xhr && xhr.responseJSON;
+                    if (body && body.message) msg = body.message;
+                } catch (e) {}
+                jQuery('#vk-cons-error').html(msg)
+                    .css({'color':'#C62828','background':'#FFEBEE'}).show();
+                self._resetCTA();
             }
         });
     },

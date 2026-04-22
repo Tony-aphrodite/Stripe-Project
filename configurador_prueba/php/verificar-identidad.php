@@ -127,15 +127,14 @@ file_put_contents($logFile, json_encode([
 
 // ── Truora identity check ───────────────────────────────────────────────────
 if (!TRUORA_API_KEY) {
-    // No API key → fallback approve
-    $_SESSION['truora_status'] = 'fallback_approved';
-    $_SESSION['truora_score']  = null;
+    // No API key is a config error in production. Surface it instead of
+    // pretending the customer was approved.
+    $_SESSION['truora_status'] = 'error';
+    http_response_code(500);
     echo json_encode([
-        'status'   => 'approved',
-        'score'    => null,
-        'fallback' => true,
-        'files'    => $savedFiles,
-        'message'  => 'Verificación pendiente (API key no configurada)',
+        'status'  => 'error',
+        'error'   => 'TRUORA_API_KEY no configurada en el servidor',
+        'message' => 'Configuración incompleta. Contacta soporte.',
     ]);
     exit;
 }
@@ -181,15 +180,20 @@ file_put_contents($logFile, json_encode([
 ]) . "\n", FILE_APPEND | LOCK_EX);
 
 // ── Evaluate response ───────────────────────────────────────────────────────
+// NO SILENT FALLBACK: if Truora fails, surface the real error so the customer
+// (and support) can see what's wrong. The old "fallback approved" behaviour
+// masked 100% failures as success, which is why queries weren't showing up
+// in the Truora dashboard despite customers seeing "aprobado" on screen.
 if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
-    $_SESSION['truora_status'] = 'fallback_approved';
-    $_SESSION['truora_score']  = null;
+    $_SESSION['truora_status'] = 'error';
+    http_response_code(502);
     echo json_encode([
-        'status'   => 'approved',
-        'score'    => null,
-        'fallback' => true,
-        'files'    => $savedFiles,
-        'message'  => 'Verificación pendiente (modo estimado)',
+        'status'   => 'error',
+        'error'    => 'Truora API falló',
+        'http'     => $httpCode,
+        'curl_err' => $curlErr ?: null,
+        'body'     => substr((string)$response, 0, 400),
+        'message'  => 'No pudimos conectar con el servicio de verificación. Intenta de nuevo o contacta soporte.',
     ]);
     exit;
 }
@@ -198,13 +202,13 @@ $data = json_decode($response, true);
 $checkId = $data['check']['check_id'] ?? $data['check_id'] ?? null;
 
 if (!$checkId) {
-    $_SESSION['truora_status'] = 'fallback_approved';
-    $_SESSION['truora_score']  = null;
+    $_SESSION['truora_status'] = 'error';
+    http_response_code(502);
     echo json_encode([
-        'status'   => 'approved',
-        'score'    => null,
-        'fallback' => true,
-        'files'    => $savedFiles,
+        'status'  => 'error',
+        'error'   => 'Truora respondió sin check_id',
+        'raw'     => $data,
+        'message' => 'Respuesta inesperada del servicio de verificación. Contacta soporte.',
     ]);
     exit;
 }
@@ -361,16 +365,18 @@ if ($result) {
     exit;
 }
 
-// Timeout → fallback approve
-$_SESSION['truora_status']   = 'fallback_approved';
+// Timeout → Truora check is still processing. Return "pending" (not approved)
+// so the frontend doesn't advance the customer falsely. The check_id is
+// saved; the truora-webhook.php endpoint will update the DB when Truora
+// finishes. Customer can retry.
+$_SESSION['truora_status']   = 'pending';
 $_SESSION['truora_check_id'] = $checkId;
+http_response_code(202);
 echo json_encode([
-    'status'   => 'approved',
-    'score'    => null,
+    'status'   => 'pending',
     'check_id' => $checkId,
-    'fallback' => true,
     'files'    => $savedFiles,
-    'message'  => 'Verificación en proceso, aprobación provisional',
+    'message'  => 'Truora aún está procesando la verificación. Espera un momento y vuelve a intentar.',
 ]);
 
 // ═════════════════════════════════════════════════════════════════════════════

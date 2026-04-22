@@ -187,21 +187,20 @@ file_put_contents($logFile, json_encode([
 ]) . "\n", FILE_APPEND | LOCK_EX);
 
 // ── Evaluar respuesta ───────────────────────────────────────────────────────
+// NO SILENT FALLBACK: if CDC fails, surface the real error so we can see
+// why. The old "fallback approved" masked 100% failures — customer saw
+// "evaluación estimada" and thought it worked, but no query was ever
+// registered in CDC.
 if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
-    // API error → fallback: sin datos de Círculo
-    $_SESSION['cdc_score']             = null;
-    $_SESSION['cdc_pago_mensual_buro'] = 0;
-    $_SESSION['cdc_dpd90_flag']        = null;
-    $_SESSION['cdc_dpd_max']           = null;
-
+    $_SESSION['cdc_score'] = null;
+    http_response_code(502);
     echo json_encode([
-        'success'           => false,
-        'fallback'          => true,
-        'score'             => null,
-        'pago_mensual_buro' => 0,
-        'dpd90_flag'        => null,
-        'dpd_max'           => null,
-        'message'           => 'Sin datos de Círculo — evaluación estimada',
+        'success'  => false,
+        'error'    => 'CDC API falló',
+        'http'     => $httpCode,
+        'curl_err' => $curlErr ?: null,
+        'body'     => substr((string)$response, 0, 600),
+        'message'  => 'No pudimos consultar tu historial crediticio. Intenta de nuevo o contacta soporte.',
     ]);
     exit;
 }
@@ -209,11 +208,12 @@ if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
 $data = json_decode($response, true);
 if (!$data) {
     $_SESSION['cdc_score'] = null;
+    http_response_code(502);
     echo json_encode([
-        'success'  => false,
-        'fallback' => true,
-        'score'    => null,
-        'message'  => 'No se pudo interpretar la respuesta de Círculo de Crédito',
+        'success' => false,
+        'error'   => 'Respuesta de CDC no es JSON válido',
+        'body'    => substr((string)$response, 0, 600),
+        'message' => 'Respuesta inesperada del buró. Contacta soporte.',
     ]);
     exit;
 }
