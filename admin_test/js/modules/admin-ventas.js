@@ -603,6 +603,12 @@ window.AD_ventas = (function(){
     html += fRow('Tipo de pago', '<span class="ad-badge '+tm.color+'" style="font-size:11px;">'+tm.label+'</span>');
     html += fRow('Monto', '<span style="font-size:15px;font-weight:800;">'+ADApp.money(r.monto)+'</span>');
     html += fRow('Fecha', r.fecha ? r.fecha.substring(0,10) : '—');
+    // Surface the ETA captured in "Asignar punto". Highlighted so the admin
+    // can spot missing dates at a glance and trigger the flow to set one.
+    var etaTxt = r.fecha_estimada_entrega
+      ? '<span style="font-weight:700;color:#0e8f55;">'+String(r.fecha_estimada_entrega).substring(0,10)+'</span>'
+      : '<span style="color:#b91c1c;font-size:12px;">Sin definir — asigna punto para capturarla</span>';
+    html += fRow('ETA entrega', etaTxt);
     html += '</div>';
 
     // ── Section: Detalle del crédito (only for enganche/credito) ──
@@ -895,8 +901,29 @@ window.AD_ventas = (function(){
         otherState.forEach(function(p){ html += puntoCardHtml(p); });
       }
 
-      html += '</div>'
-            + '<div id="vkAsignPuntoMsg" style="font-size:12px;margin:10px 0 0;"></div>'
+      html += '</div>';
+
+      // ETA input: default to today + 10 days, matching the notification text.
+      // Customer feedback 2026-04-22: previously the modal had no date field,
+      // so transacciones.fecha_estimada_entrega was never set and the Envíos
+      // page ETA column stayed empty. Capturing it here closes that gap.
+      var d = new Date(); d.setDate(d.getDate() + 10);
+      var defaultEta = d.toISOString().slice(0, 10);
+      var minEta     = new Date().toISOString().slice(0, 10);
+      // If the order already has an ETA, preselect it so the admin can edit
+      // rather than overwrite blindly on re-open of the modal.
+      var currentEta = r.fecha_estimada_entrega ? String(r.fecha_estimada_entrega).slice(0, 10) : '';
+      html += '<div style="background:var(--ad-surface-2);padding:10px 12px;border-radius:6px;margin-top:10px;">'
+            +   '<label style="display:block;font-size:12px;font-weight:700;color:var(--ad-navy);margin-bottom:6px;">'
+            +     'Fecha estimada de entrega'
+            +     '<span style="color:var(--ad-dim);font-weight:500;margin-left:6px;">(se mostrará al cliente y en Envíos)</span>'
+            +   '</label>'
+            +   '<input type="date" id="vkAsignPuntoEta" class="ad-input" '
+            +     'min="'+minEta+'" value="'+(currentEta || defaultEta)+'" '
+            +     'style="font-family:ui-monospace,Menlo,Consolas,monospace;">'
+            + '</div>';
+
+      html += '<div id="vkAsignPuntoMsg" style="font-size:12px;margin:10px 0 0;"></div>'
             + '<div style="display:flex;gap:8px;margin-top:12px;">'
             +   '<button class="ad-btn ghost" id="vkAsignPuntoCancel" style="flex:1;">Cancelar</button>'
             +   '<button class="ad-btn primary" id="vkAsignPuntoSave" style="flex:1;" disabled>Confirmar asignación</button>'
@@ -924,10 +951,13 @@ window.AD_ventas = (function(){
       $('#vkAsignPuntoSave').on('click', function(){
         var pid = $('input[name="puntoChoice"]:checked').val();
         if (!pid) { $('#vkAsignPuntoMsg').css('color','#b91c1c').text('Selecciona un punto'); return; }
+        var eta = ($('#vkAsignPuntoEta').val() || '').trim();
+        if (!eta) { $('#vkAsignPuntoMsg').css('color','#b91c1c').text('Selecciona la fecha estimada de entrega'); return; }
         var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Guardando...');
         ADApp.api('ventas/asignar-punto-orden.php', {
           transaccion_id: r.id,
-          punto_id: parseInt(pid)
+          punto_id: parseInt(pid),
+          fecha_estimada_entrega: eta
         }).done(function(res){
           if (res && res.ok) {
             var iconChk = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><polyline points="20 6 9 17 4 12"/></svg>';

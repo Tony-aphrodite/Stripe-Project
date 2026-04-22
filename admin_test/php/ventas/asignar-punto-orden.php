@@ -18,8 +18,22 @@ $uid = adminRequireAuth(['admin','cedis']);
 $d     = adminJsonIn();
 $txId  = (int)($d['transaccion_id'] ?? 0);
 $pId   = (int)($d['punto_id'] ?? 0);
+$etaIn = trim($d['fecha_estimada_entrega'] ?? '');
 if (!$txId) adminJsonOut(['error' => 'transaccion_id requerido'], 400);
 if (!$pId)  adminJsonOut(['error' => 'punto_id requerido'], 400);
+
+// Validate ETA: required (client-side enforces), must be YYYY-MM-DD and >= today.
+// Fallback to +10 days (previous hardcoded default) if empty, to keep the
+// endpoint tolerant to older callers that don't send the field yet.
+$etaIso = '';
+if ($etaIn !== '') {
+    $ts = strtotime($etaIn);
+    if ($ts === false) adminJsonOut(['error' => 'fecha_estimada_entrega inválida'], 400);
+    $etaIso = date('Y-m-d', $ts);
+    if ($etaIso < date('Y-m-d')) adminJsonOut(['error' => 'La fecha estimada no puede ser en el pasado'], 400);
+} else {
+    $etaIso = date('Y-m-d', strtotime('+10 days'));
+}
 
 $pdo = getDB();
 
@@ -34,18 +48,24 @@ $tStmt->execute([$txId]);
 $tx = $tStmt->fetch(PDO::FETCH_ASSOC);
 if (!$tx) adminJsonOut(['error' => 'Transacción no encontrada'], 404);
 
-// Ensure the punto_nota column exists (idempotent)
+// Ensure the punto_nota and fecha_estimada_entrega columns exist (idempotent).
+// fecha_estimada_entrega should already exist per master-bootstrap but double-
+// guard so legacy DBs don't throw on the UPDATE below.
 try {
     $cols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
     if (!in_array('punto_nota', $cols, true)) {
         $pdo->exec("ALTER TABLE transacciones ADD COLUMN punto_nota TEXT NULL");
     }
+    if (!in_array('fecha_estimada_entrega', $cols, true)) {
+        $pdo->exec("ALTER TABLE transacciones ADD COLUMN fecha_estimada_entrega DATE NULL");
+    }
 } catch (Throwable $e) { error_log('asignar-punto-orden ensure column: ' . $e->getMessage()); }
 
-// Update transacciones
+// Update transacciones — persist the admin-picked ETA so Envíos / cliente
+// panel / emails can all read the same canonical value.
 $nota = 'Asignado manualmente por admin uid=' . $uid . ' el ' . date('Y-m-d H:i:s');
-$pdo->prepare("UPDATE transacciones SET punto_id=?, punto_nombre=?, punto_nota=? WHERE id=?")
-   ->execute([(string)$punto['id'], $punto['nombre'], $nota, $txId]);
+$pdo->prepare("UPDATE transacciones SET punto_id=?, punto_nombre=?, punto_nota=?, fecha_estimada_entrega=? WHERE id=?")
+   ->execute([(string)$punto['id'], $punto['nombre'], $nota, $etaIso, $txId]);
 
 adminLog('orden_punto_asignar', [
     'tx_id' => $txId, 'punto_id' => $pId, 'punto_nombre' => $punto['nombre'],
@@ -80,8 +100,11 @@ if ($clienteTel || $clienteEmail) {
                     isset($punto['lng']) ? (float)$punto['lng'] : null)
                 : 'https://voltika.mx/clientes/';
 
-            // Estimated delivery — 10 days from today (matches confirmar-orden default)
-            $fechaIso   = date('Y-m-d', strtotime('+10 days'));
+            // Estimated delivery — use the value the admin entered in the modal
+            // (persisted to transacciones.fecha_estimada_entrega above). This
+            // replaces the old hardcoded +10 days so the customer sees the
+            // actual committed date.
+            $fechaIso   = $etaIso;
             $fechaHuman = function_exists('voltikaFormatFechaHuman')
                 ? voltikaFormatFechaHuman($fechaIso)
                 : $fechaIso;
@@ -117,14 +140,15 @@ if ($clienteTel || $clienteEmail) {
 }
 
 adminJsonOut([
-    'ok'           => true,
-    'tx_id'        => $txId,
-    'punto'        => [
+    'ok'                     => true,
+    'tx_id'                  => $txId,
+    'punto'                  => [
         'id'     => (int)$punto['id'],
         'nombre' => $punto['nombre'],
         'ciudad' => $punto['ciudad'] ?? '',
         'estado' => $punto['estado'] ?? '',
     ],
-    'pedido_corto' => $pedidoCorto ?? null,
-    'notify'       => $notifyResult,
+    'pedido_corto'           => $pedidoCorto ?? null,
+    'fecha_estimada_entrega' => $etaIso,
+    'notify'                 => $notifyResult,
 ]);
