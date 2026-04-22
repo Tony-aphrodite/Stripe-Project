@@ -737,6 +737,82 @@ $body28 = json_encode([
 render(call('Probe 28: domicilio direccion="" vacío', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body28, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
+// Probe 29: domicilio.direccion = null
+$body29 = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilio' => [
+        'direccion'           => null,
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 29: domicilio.direccion = null', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body29, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 30: domicilio.DIRECCION (uppercase, sensitivity test)
+$body30 = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilio' => [
+        'DIRECCION'           => 'AV REFORMA 100',
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 30: domicilio.DIRECCION (UPPERCASE)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body30, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 31: order direccion FIRST in domicilio (might affect Apigee policy)
+$body31 = json_encode([
+    'domicilio' => [
+        'direccion' => 'AV REFORMA 100',
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+]);
+render(call('Probe 31: domicilio FIRST in body (orden)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body31, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 32: domicilio.direccion is OBJECT instead of string (workaround)
+$body32 = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilio' => [
+        'direccion'           => 'X',
+        'coloniaPoblacion'    => 'X',
+        'delegacionMunicipio' => 'X',
+        'ciudad'              => 'X',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 32: TODOS los valores = "X" (no espacios)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body32, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
 // Probe 17: sign flat body but SEND nested body (canonicalization hypothesis)
 $nestedBody = json_encode([
     'primerNombre'    => 'JUAN',
