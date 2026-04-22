@@ -98,12 +98,24 @@ if (file_exists($logFile)) {
     echo '<div class="step err">Log file no existe: ' . htmlspecialchars($logFile) . '</div>';
 }
 
-// Cert/key presence
-echo '<div class="step"><div><strong>Certificados en disco:</strong></div><ul>';
+// Cert/key presence — DB first (canonical), disk second (legacy)
+echo '<div class="step"><div><strong>Llaves disponibles:</strong></div><ul>';
+try {
+    require_once __DIR__ . '/config.php';
+    $pdoPf = getDB();
+    $rowPf = $pdoPf->query("SELECT id, fingerprint, freg FROM cdc_certificates WHERE active = 1 ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    if ($rowPf) {
+        echo '<li><span class="ok">✅ Base de datos: cert #' . $rowPf['id'] . ' (fingerprint ' . substr($rowPf['fingerprint'],0,16) . '…, creado ' . $rowPf['freg'] . ')</span></li>';
+    } else {
+        echo '<li><span class="err">❌ Base de datos: sin certificado activo. Corre generar-certificado-cdc.php?key=voltika_cdc_cert_2026&regen=1</span></li>';
+    }
+} catch (Throwable $e) {
+    echo '<li><span class="err">❌ Base de datos: ' . htmlspecialchars($e->getMessage()) . '</span></li>';
+}
 $certFile = __DIR__ . '/certs/cdc_certificate.pem';
 $keyFile  = __DIR__ . '/certs/cdc_private.key';
-echo '<li>' . ($keyFile  ? (file_exists($keyFile)  ? '<span class="ok">✅ cdc_private.key    (' . filesize($keyFile)  . ' bytes)</span>' : '<span class="err">❌ cdc_private.key    MISSING</span>') : '') . '</li>';
-echo '<li>' . ($certFile ? (file_exists($certFile) ? '<span class="ok">✅ cdc_certificate.pem (' . filesize($certFile) . ' bytes)</span>' : '<span class="err">❌ cdc_certificate.pem MISSING</span>') : '') . '</li>';
+echo '<li>' . (file_exists($keyFile)  ? '<span class="ok">✅ Disco: cdc_private.key ('    . filesize($keyFile)  . ' bytes)</span>' : '<span style="color:#999">— Disco: cdc_private.key no existe (opcional)</span>') . '</li>';
+echo '<li>' . (file_exists($certFile) ? '<span class="ok">✅ Disco: cdc_certificate.pem (' . filesize($certFile) . ' bytes)</span>' : '<span style="color:#999">— Disco: cdc_certificate.pem no existe (opcional)</span>') . '</li>';
 echo '</ul></div>';
 
 echo '</body></html>';
