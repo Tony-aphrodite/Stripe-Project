@@ -619,6 +619,67 @@ $bodyRfcOnly = json_encode([
 render(call('Probe 21: minimal + RFC (prueba si RFC rompe sig)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyRfcOnly, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
+// Probe 22: domicilio 6 fields but SHORT values (no spaces, short strings)
+$bodyShort = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilio' => [
+        'direccion'           => 'AV',
+        'coloniaPoblacion'    => 'JUA',
+        'delegacionMunicipio' => 'CUA',
+        'ciudad'              => 'CDMX',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 22: 6 fields SHORT values (sin espacios)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyShort, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 23: domicilio 2 fields (CP + estado)
+$body23 = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilio' => ['CP' => '03100', 'estado' => 'CDMX'],
+]);
+render(call('Probe 23: domicilio 2 fields', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body23, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 24: domicilio 3 fields
+$body24 = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilio' => ['CP' => '03100', 'estado' => 'CDMX', 'ciudad' => 'CDMX'],
+]);
+render(call('Probe 24: domicilio 3 fields', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body24, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 25: domicilio 5 fields (everything except direccion — direccion has spaces)
+$body25 = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilio' => [
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CDMX',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 25: domicilio 5 fields (sin direccion)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body25, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
 // Probe 17: sign flat body but SEND nested body (canonicalization hypothesis)
 $nestedBody = json_encode([
     'primerNombre'    => 'JUAN',
