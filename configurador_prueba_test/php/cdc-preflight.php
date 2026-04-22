@@ -106,34 +106,57 @@ function render($r) {
     echo '<pre>' . htmlspecialchars($bodyExcerpt) . '</pre></div>';
 }
 
-// ── Test 1: SecurityTest — verifies our signing independent of product ──────
-echo '<h2>Test 1: SecurityTest (verifica que nuestra firma funciona)</h2>';
-$secBody = json_encode(['Peticion' => 'Esto es un mensaje de prueba']);
-// SecurityTest is documented with base64 signature of the "Peticion" string
-$stSig = '';
-openssl_sign('Esto es un mensaje de prueba', $stSig, $priv, OPENSSL_ALGO_SHA256);
-$ch = curl_init('https://services.circulodecredito.com.mx/v1/securitytest');
-$tmpC = tempnam(sys_get_temp_dir(), 'c'); $tmpK = tempnam(sys_get_temp_dir(), 'k');
-file_put_contents($tmpC, $certPem); file_put_contents($tmpK, $keyPem);
-curl_setopt_array($ch, [
-    CURLOPT_POST => true, CURLOPT_POSTFIELDS => $secBody,
-    CURLOPT_HTTPHEADER => ['Content-Type: application/json','Accept: application/json','x-api-key: '.CDC_API_KEY,'x-signature: '.base64_encode($stSig)],
-    CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_TIMEOUT => 20,
-    CURLOPT_SSLCERT => $tmpC, CURLOPT_SSLKEY => $tmpK,
-]);
-$stResp = curl_exec($ch);
-$stCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$stHdrSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-$stErr  = curl_error($ch);
-curl_close($ch);
-@unlink($tmpC); @unlink($tmpK);
-$stBody = substr((string)$stResp, $stHdrSize);
-render(['label' => '/v1/securitytest (base64 sig, mTLS)', 'url' => 'https://services.circulodecredito.com.mx/v1/securitytest', 'http' => $stCode, 'curl_err' => $stErr, 'resp_headers' => '', 'resp_body' => $stBody, 'sig_enc' => 'base64', 'auth' => ['type'=>'headers','mtls'=>true]]);
+// ── Test 1: SecurityTest — try multiple hash algos + signing subjects ──────
+echo '<h2>Test 1: SecurityTest — probando combinaciones (hash × contenido firmado × encoding)</h2>';
 
-if ($stCode >= 200 && $stCode < 300) {
-    echo '<div class="step pass">🎉 <strong>Nuestra firma es válida.</strong> El problema con rccficoscore es producto/permiso, NO firma.</div>';
-} elseif ($stCode == 401 || $stCode == 403) {
-    echo '<div class="step fail">❌ SecurityTest rechaza la firma — el certificado en CDC portal NO coincide con el que generamos. Re-subir el cert.</div>';
+function secTest($label, $signSubject, $algo, $encoding, $priv, $certPem, $keyPem) {
+    $sig = '';
+    openssl_sign($signSubject, $sig, $priv, $algo);
+    $sigEnc = $encoding === 'hex' ? bin2hex($sig) : base64_encode($sig);
+    $body = json_encode(['Peticion' => 'Esto es un mensaje de prueba']);
+    $tmpC = tempnam(sys_get_temp_dir(), 'c'); $tmpK = tempnam(sys_get_temp_dir(), 'k');
+    file_put_contents($tmpC, $certPem); file_put_contents($tmpK, $keyPem);
+    $ch = curl_init('https://services.circulodecredito.com.mx/v1/securitytest');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json','Accept: application/json','x-api-key: '.CDC_API_KEY,'x-signature: '.$sigEnc],
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_TIMEOUT => 15,
+        CURLOPT_SSLCERT => $tmpC, CURLOPT_SSLKEY => $tmpK,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $hdrSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    @unlink($tmpC); @unlink($tmpK);
+    $respBody = substr((string)$resp, $hdrSize);
+    return [
+        'label' => $label, 'url' => 'https://services.circulodecredito.com.mx/v1/securitytest',
+        'http' => $code, 'curl_err' => $err, 'resp_headers' => '', 'resp_body' => $respBody,
+        'sig_enc' => $encoding, 'auth' => ['type'=>'headers','mtls'=>true],
+    ];
+}
+
+$subject = 'Esto es un mensaje de prueba';
+$winnerLabel = null;
+$variants = [
+    ['SHA256+base64 (sign=string)', $subject,                                       OPENSSL_ALGO_SHA256, 'base64'],
+    ['SHA384+base64 (sign=string)', $subject,                                       OPENSSL_ALGO_SHA384, 'base64'],
+    ['SHA256+hex    (sign=string)', $subject,                                       OPENSSL_ALGO_SHA256, 'hex'],
+    ['SHA384+hex    (sign=string)', $subject,                                       OPENSSL_ALGO_SHA384, 'hex'],
+    ['SHA256+base64 (sign=JSON)',   json_encode(['Peticion'=>$subject]),            OPENSSL_ALGO_SHA256, 'base64'],
+    ['SHA384+base64 (sign=JSON)',   json_encode(['Peticion'=>$subject]),            OPENSSL_ALGO_SHA384, 'base64'],
+];
+foreach ($variants as $v) {
+    $r = secTest($v[0], $v[1], $v[2], $v[3], $priv, $certPem, $keyPem);
+    render($r);
+    if ($r['http'] >= 200 && $r['http'] < 300 && !$winnerLabel) $winnerLabel = $v[0];
+}
+
+if ($winnerLabel) {
+    echo '<div class="step pass">🎉 <strong>Combo ganador: ' . htmlspecialchars($winnerLabel) . '</strong> — aplicar en consultar-buro.php</div>';
+} else {
+    echo '<div class="step fail">❌ Ningún combo pasa el SecurityTest. Significa que el cert en CDC portal NO coincide con nuestra DB. Volver a generar-certificado + re-subir a CDC + esperar activación (5-15 min).</div>';
 }
 
 // ── Test 2: /v2/rccficoscore — variants ─────────────────────────────────────
