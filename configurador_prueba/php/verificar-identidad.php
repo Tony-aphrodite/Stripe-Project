@@ -28,9 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-define('TRUORA_API_URL',          'https://api.truora.com/v1/checks');
-define('TRUORA_FACE_URL',         'https://api.truora.com/v1/face-validation');
-define('TRUORA_DOC_URL',          'https://api.truora.com/v1/document-validations');
+// Truora migrated their API away from api.truora.com (now blocked at TLS level)
+// to subdomain-based endpoints. Confirmed by truora-diag.php that
+// api.checks.truora.com accepts our existing Truora-API-Key auth.
+define('TRUORA_API_URL',          'https://api.checks.truora.com/v1/checks');
+define('TRUORA_FACE_URL',         'https://api.validations.truora.com/v1/face-validation');
+define('TRUORA_DOC_URL',          'https://api.validations.truora.com/v1/document-validations');
 define('TRUORA_POLL_MAX',         20);
 define('TRUORA_POLL_INTERVAL',    2);
 define('TRUORA_FACE_THRESHOLD',   0.70);   // 70% similarity to consider a match

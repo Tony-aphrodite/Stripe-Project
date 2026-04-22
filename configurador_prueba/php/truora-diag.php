@@ -132,6 +132,41 @@ if (!empty($_GET['test'])) {
     truoraTryUrl('K. mx.api.truora.com',           'https://mx.api.truora.com/v1/checks', $body, $apiKey);
     truoraTryUrl('L. api.validations.truora.com',  'https://api.validations.truora.com/v1/checks', $body, $apiKey);
 
+    // Body type variations (api.checks accepted auth, just rejected "type")
+    echo '<h3 style="margin-top:20px">api.checks.truora.com — probando "type" values</h3>';
+    foreach (['identity','background','identity_questions','identity-validation','document','document-validation','person'] as $checkType) {
+        $b = http_build_query([
+            'country' => 'MX', 'type' => $checkType, 'user_authorized' => 'true',
+            'first_name' => 'JUAN', 'last_name' => 'GARCIA LOPEZ',
+            'date_of_birth' => '1985-03-15', 'phone_number' => '5512345678', 'email' => 'test@voltika.mx',
+        ]);
+        truoraTryUrl('type=' . $checkType, 'https://api.checks.truora.com/v1/checks', $b, $apiKey);
+    }
+
+    // Also try Bearer auth header
+    echo '<h3 style="margin-top:20px">api.identity.truora.com — Authorization Bearer header</h3>';
+    {
+        $ch = curl_init('https://api.identity.truora.com/v1/checks');
+        $verboseStream = fopen('php://temp', 'w+');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $apiKey, 'Content-Type: application/x-www-form-urlencoded'],
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+            CURLOPT_VERBOSE => true, CURLOPT_STDERR => $verboseStream,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+        rewind($verboseStream); $verbose = stream_get_contents($verboseStream); fclose($verboseStream);
+        $css = ($code >= 200 && $code < 500 && $code != 0) ? 'ok' : 'err';
+        echo '<div class="step"><strong>Bearer + identity</strong> → <span class="' . $css . '">HTTP ' . $code . '</span><br>';
+        if ($err) echo '<span class="err">' . htmlspecialchars($err) . '</span><br>';
+        echo '<details><summary>Verbose</summary><pre style="font-size:10px">' . htmlspecialchars(substr($verbose, 0, 1500)) . '</pre></details>';
+        if ($resp) echo '<pre style="max-height:120px">' . htmlspecialchars(substr($resp, 0, 600)) . '</pre>';
+        echo '</div>';
+    }
+
     // Test if we can reach Truora at all (just GET to base URL)
     echo '<h3 style="margin-top:20px">Test conectividad básica</h3>';
     function truoraConnTest($label, $url) {
