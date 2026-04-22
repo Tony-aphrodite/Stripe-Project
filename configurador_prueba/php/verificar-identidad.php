@@ -295,23 +295,25 @@ if (!$checkId) {
     exit;
 }
 
-// ── Polling ─────────────────────────────────────────────────────────────────
+// ── Short polling (max 6 seconds) ──────────────────────────────────────────
+// Person check is async — Truora typically needs 3-15 seconds for government
+// DB matching. We poll BRIEFLY so the user doesn't wait forever. Even if the
+// person check is still "not_started", we continue to the FACE check which is
+// synchronous and is the primary fraud gate (selfie vs INE photo).
 $elapsed = 0;
 $result  = null;
+$shortPollMax = 6; // seconds — short enough not to block UX, long enough for fast checks
 
-while ($elapsed < TRUORA_POLL_MAX) {
-    sleep(TRUORA_POLL_INTERVAL);
-    $elapsed += TRUORA_POLL_INTERVAL;
+while ($elapsed < $shortPollMax) {
+    sleep(2);
+    $elapsed += 2;
 
     $ch2 = curl_init(TRUORA_API_URL . '/' . $checkId);
     curl_setopt_array($ch2, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER     => [
-            'Truora-API-Key: ' . TRUORA_API_KEY,
-        ],
-        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_HTTPHEADER     => ['Truora-API-Key: ' . TRUORA_API_KEY],
+        CURLOPT_TIMEOUT        => 5,
     ]);
-
     $pollResponse = curl_exec($ch2);
     $pollCode     = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
     curl_close($ch2);
@@ -319,12 +321,17 @@ while ($elapsed < TRUORA_POLL_MAX) {
     if ($pollCode >= 200 && $pollCode < 300) {
         $pollData = json_decode($pollResponse, true);
         $status   = $pollData['check']['status'] ?? $pollData['status'] ?? 'unknown';
-
         if ($status === 'completed' || $status === 'error') {
             $result = $pollData;
             break;
         }
     }
+}
+
+// If polling timed out, use whatever we got from the initial create response —
+// scores will be 0/-1 but we continue to face check below.
+if (!$result) {
+    $result = $data;  // initial create-check response (has check_id, null scores)
 }
 
 if ($result) {
@@ -393,12 +400,20 @@ if ($result) {
         );
     }
 
-    // Combine all results: approved only if BOTH name check AND face match pass
-    // (document validation is informational until confirmed working).
+    // Approval logic — face match is the PRIMARY fraud gate:
+    //   Face match FAILED    → rejected (identity theft / mismatched photos)
+    //   Face match PASSED    → approved (selfie matches INE photo owner)
+    //   Face match SKIPPED   → fall back to name/id govt DB match
+    // Person check (govt DB) is secondary — many thin-file customers (young,
+    // rural, no gov data) have score=0 even though they're real people.
     $faceMatched = $faceResult ? (bool)$faceResult['match'] : null;
-    $finalApproved = $approved;
     if ($faceResult !== null) {
-        $finalApproved = $approved && $faceMatched;
+        // Face check ran — it's decisive
+        $finalApproved = $faceMatched;
+    } else {
+        // Face check didn't run (no photos uploaded or feature disabled)
+        // Fall back to person check result
+        $finalApproved = $approved;
     }
 
     // ── Guardar en BD ─────────────────────────────────────────────────────────
@@ -462,18 +477,14 @@ if ($result) {
     exit;
 }
 
-// Timeout → Truora check is still processing. Return "pending" (not approved)
-// so the frontend doesn't advance the customer falsely. The check_id is
-// saved; the truora-webhook.php endpoint will update the DB when Truora
-// finishes. Customer can retry.
-$_SESSION['truora_status']   = 'pending';
-$_SESSION['truora_check_id'] = $checkId;
-http_response_code(202);
+// Unreachable — $result is always set now (either poll hit or fallback to
+// initial create response). Kept as defensive fallback.
+$_SESSION['truora_status'] = 'error';
+http_response_code(500);
 echo json_encode([
-    'status'   => 'pending',
-    'check_id' => $checkId,
-    'files'    => $savedFiles,
-    'message'  => 'Truora aún está procesando la verificación. Espera un momento y vuelve a intentar.',
+    'status'  => 'error',
+    'error'   => 'Flujo inesperado — result no fue procesado',
+    'message' => 'Error interno. Contacta soporte.',
 ]);
 
 // ═════════════════════════════════════════════════════════════════════════════
