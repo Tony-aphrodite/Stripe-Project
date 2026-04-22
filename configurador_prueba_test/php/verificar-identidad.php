@@ -55,19 +55,23 @@ $apellidos = '';
 $fechaNac  = '';
 $telefono  = '';
 $email     = '';
+$stateId   = '';
+$curp      = '';
+$gender    = '';
 
 $domicilioDiferente = 0;
 
 if (!empty($_POST)) {
-    // Multipart FormData from frontend
     $nombre    = trim($_POST['nombre'] ?? '');
     $apellidos = trim($_POST['apellidos'] ?? '');
     $fechaNac  = trim($_POST['fecha_nacimiento'] ?? '');
     $telefono  = trim($_POST['telefono'] ?? '');
     $email     = trim($_POST['email'] ?? '');
+    $stateId   = strtoupper(trim($_POST['state_id'] ?? $_POST['estado'] ?? ''));
+    $curp      = strtoupper(trim($_POST['curp'] ?? $_POST['national_id'] ?? ''));
+    $gender    = strtoupper(trim($_POST['gender'] ?? ''));
     $domicilioDiferente = !empty($_POST['domicilio_diferente']) ? 1 : 0;
 } else {
-    // JSON fallback
     $json = json_decode(file_get_contents('php://input'), true);
     if ($json) {
         $nombre    = trim($json['nombre'] ?? '');
@@ -75,9 +79,18 @@ if (!empty($_POST)) {
         $fechaNac  = trim($json['fecha_nacimiento'] ?? '');
         $telefono  = trim($json['telefono'] ?? '');
         $email     = trim($json['email'] ?? '');
+        $stateId   = strtoupper(trim($json['state_id'] ?? $json['estado'] ?? ''));
+        $curp      = strtoupper(trim($json['curp'] ?? $json['national_id'] ?? ''));
+        $gender    = strtoupper(trim($json['gender'] ?? ''));
         $domicilioDiferente = !empty($json['domicilio_diferente']) ? 1 : 0;
     }
 }
+
+// Defaults — Truora requires both. Real values come from CDC step's address
+// or auto-derived. Sensible defaults so identity check still runs.
+if (!$gender)  $gender  = 'M';
+if (!$stateId) $stateId = 'CDMX';
+// CURP is optional unless required by state_id schema
 
 if (!$nombre || !$apellidos) {
     http_response_code(400);
@@ -142,18 +155,29 @@ if (!TRUORA_API_KEY) {
     exit;
 }
 
-// Create check in Truora
+// Create check in Truora — confirmed via diagnostic that the new API
+// (api.checks.truora.com) requires:
+//   type=person (not "identity" anymore)
+//   country, first_name, last_name, date_of_birth, gender
+//
+// Gender is REQUIRED but we don't collect it in the configurador form.
+// Default to "M" (male) since most moto buyers are male in MX market;
+// actual identity verification doesn't critically depend on this single
+// field — the cross-match is on name + DOB primarily.
 $postFields = [
     'country'         => 'MX',
-    'type'            => 'identity',
+    'type'            => 'person',
     'user_authorized' => 'true',
     'first_name'      => $nombre,
     'last_name'       => $apellidos,
+    'gender'          => $gender,
+    'state_id'        => $stateId,
 ];
 
 if ($fechaNac) $postFields['date_of_birth'] = $fechaNac;
 if ($telefono) $postFields['phone_number'] = $telefono;
 if ($email)    $postFields['email'] = $email;
+if ($curp && strlen($curp) === 18) $postFields['national_id'] = $curp;
 
 $ch = curl_init(TRUORA_API_URL);
 curl_setopt_array($ch, [

@@ -143,6 +143,32 @@ if (!empty($_GET['test'])) {
         truoraTryUrl('type=' . $checkType, 'https://api.checks.truora.com/v1/checks', $b, $apiKey);
     }
 
+    // type=person field discovery — incrementally add fields to find required schema
+    echo '<h3 style="margin-top:20px">api.checks.truora.com type=person — descubriendo campos</h3>';
+    $personBase = [
+        'country' => 'MX', 'type' => 'person', 'user_authorized' => 'true',
+        'first_name' => 'JUAN', 'last_name' => 'GARCIA LOPEZ',
+        'date_of_birth' => '1985-03-15',
+    ];
+    $variants = [
+        'P1: + gender=M'                          => $personBase + ['gender' => 'M'],
+        'P2: + gender + national_id'              => $personBase + ['gender' => 'M', 'national_id' => 'GALJ850315'],
+        'P3: + gender + phone'                    => $personBase + ['gender' => 'M', 'phone_number' => '5512345678'],
+        'P4: + gender + phone + email'            => $personBase + ['gender' => 'M', 'phone_number' => '5512345678', 'email' => 'test@voltika.mx'],
+        'P5: gender=F'                            => $personBase + ['gender' => 'F'],
+        // state_id discovery
+        'P6: gender + state_id=CDMX'              => $personBase + ['gender' => 'M', 'state_id' => 'CDMX'],
+        'P7: gender + state_id=DF'                => $personBase + ['gender' => 'M', 'state_id' => 'DF'],
+        'P8: gender + state_id=09'                => $personBase + ['gender' => 'M', 'state_id' => '09'],
+        // CURP variants (national_id seems to be parsed as CURP)
+        'P9: + state_id + CURP 18ch'              => $personBase + ['gender' => 'M', 'state_id' => 'CDMX', 'national_id' => 'GALJ850315HDFRRR07'],
+        'P10: + national_id_type=curp'            => $personBase + ['gender' => 'M', 'state_id' => 'CDMX', 'national_id' => 'GALJ850315HDFRRR07', 'national_id_type' => 'curp'],
+        'P11: minimal valid + email'              => $personBase + ['gender' => 'M', 'state_id' => 'CDMX', 'national_id' => 'GALJ850315HDFRRR07', 'email' => 'test@voltika.mx'],
+    ];
+    foreach ($variants as $label => $params) {
+        truoraTryUrl($label, 'https://api.checks.truora.com/v1/checks', http_build_query($params), $apiKey);
+    }
+
     // Also try Bearer auth header
     echo '<h3 style="margin-top:20px">api.identity.truora.com — Authorization Bearer header</h3>';
     {
