@@ -544,6 +544,49 @@ $bodySibling = json_encode([
 render(call('Probe 16: persona + domicilio SIBLINGS (depth 2)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodySibling, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
+// Probe 18: nested body + disable Expect: 100-continue (curl adds this for large bodies)
+{
+    $sig18 = '';
+    openssl_sign($nestedBody, $sig18, $priv, OPENSSL_ALGO_SHA256);
+    $sigEnc18 = bin2hex($sig18);
+    $tmpC18 = tempnam(sys_get_temp_dir(), 'c'); $tmpK18 = tempnam(sys_get_temp_dir(), 'k');
+    file_put_contents($tmpC18, $certPem); file_put_contents($tmpK18, $keyPem);
+    $ch18 = curl_init('https://services.circulodecredito.com.mx/v2/rccficoscore');
+    curl_setopt_array($ch18, [
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $nestedBody,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'x-api-key: '.CDC_API_KEY,
+            'username: '.CDC_USER,
+            'password: '.CDC_PASS,
+            'x-signature: '.$sigEnc18,
+            'Expect:',   // disable the 100-continue pre-ack
+        ],
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_TIMEOUT => 15,
+        CURLOPT_SSLCERT => $tmpC18, CURLOPT_SSLKEY => $tmpK18,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    ]);
+    $resp18 = curl_exec($ch18);
+    $code18 = curl_getinfo($ch18, CURLINFO_HTTP_CODE);
+    $hdrSize18 = curl_getinfo($ch18, CURLINFO_HEADER_SIZE);
+    curl_close($ch18); @unlink($tmpC18); @unlink($tmpK18);
+    render(['label'=>'Probe 18: nested + Expect: vacío', 'url'=>'https://services.circulodecredito.com.mx/v2/rccficoscore', 'http'=>$code18, 'curl_err'=>null, 'resp_headers'=>'', 'resp_body'=>substr((string)$resp18, $hdrSize18), 'sig_enc'=>'hex', 'auth'=>['type'=>'no-expect','mtls'=>true]]);
+}
+usleep(400000);
+
+// Probe 19: minimal nested body (just primerNombre + domicilio with 1 field)
+$bodyMin = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilio' => ['CP' => '03100'],
+]);
+render(call('Probe 19: nested MINIMAL (domicilio con solo CP)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyMin, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
 // Probe 17: sign flat body but SEND nested body (canonicalization hypothesis)
 $nestedBody = json_encode([
     'primerNombre'    => 'JUAN',
