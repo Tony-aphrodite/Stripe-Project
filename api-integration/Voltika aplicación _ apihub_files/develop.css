@@ -1,0 +1,57 @@
+.table-dev {
+  margin-bottom: 6rem;
+  margin-top: 3rem;
+}
+.table-dev .wrap-table {
+  background-color: #F1F4F8;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+.table-dev .wrap-table:nth-child(2n) {
+  background-color: #FFFFFF;
+}
+
+.wrap-heaf {
+  background-color: #812ED4;
+  border-radius: 10px 10px 0 0;
+  color: #FFFFFF;
+}
+.wrap-heaf .text-center {
+  padding-bottom: 5px;
+  padding-top: 5px;
+}
+
+.wrap-table a {
+  padding: 5px;
+  margin: 10px 5px;
+  display: block;
+}
+.wrap-table .simulacion a,
+.wrap-table .produccion a {
+  padding: 5px;
+  border-radius: 0.8rem;
+  margin: 10px 5px;
+  display: block;
+}
+@media (max-width: 991px) {
+  .wrap-table .simulacion a,
+  .wrap-table .produccion a {
+    font-size: 0.8rem;
+  }
+}
+.wrap-table .simulacion a {
+  border: 1px solid #812ED4;
+  color: #812ED4;
+}
+.wrap-table .simulacion a:hover, .wrap-table .simulacion a:focus {
+  border-color: #511C86;
+  color: #511C86;
+}
+.wrap-table .produccion a {
+  border: 1px solid #FF5831;
+  color: #FF5831;
+}
+.wrap-table .produccion a:hover, .wrap-table .produccion a:focus {
+  border-color: #D4300C;
+  color: #D4300C;
+}/*# sourceMappingURL=develop.css.map */

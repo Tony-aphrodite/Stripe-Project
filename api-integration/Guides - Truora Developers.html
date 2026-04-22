@@ -1,0 +1,2689 @@
+<!DOCTYPE html>
+<!-- saved from url=(0061)https://dev.truora.com/guides/?product=Electronic%20Signature -->
+<html lang="en" data-section="guides"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>Guides - Truora Developers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="icon" type="image/png" href="https://dev.truora.com/truora_fav.png">
+  
+
+  
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com/">
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+
+  <link href="./Guides - Truora Developers_files/css2" rel="stylesheet">
+  <link href="./Guides - Truora Developers_files/css2(1)" rel="stylesheet">
+  <link href="./Guides - Truora Developers_files/css2(2)" rel="stylesheet"> 
+
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="./Guides - Truora Developers_files/tailwind.min.be9685434ca33b971ad6792ad03e9cc5a2041ad10e82f28d95ab81a6ece5bd26.css">
+  <link rel="stylesheet" href="./Guides - Truora Developers_files/main.min.0332e5b937121861b50d193d6c9bdbcf91bf18b0745fa988409773ecdf8797eb.css">
+  
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="./Guides - Truora Developers_files/style.min.453e63ca3486b153d0c55cb7b378ce9fdb8da44597c9312d4ebba4ed399266d4.css">
+  
+
+  
+
+  
+  
+  
+  <meta property="og:title" content="Guides">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://developer.truora.com/guides/">
+  
+  
+  <meta name="twitter:card" content="summary">
+  
+  
+  
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+<script async="" src="./Guides - Truora Developers_files/js"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag('js', new Date());
+  gtag('config', 'G-674FCH3RT8');
+</script>
+
+
+
+</head>
+
+<body id="body" class="page page-cases-list">
+  
+
+<div id="main-menu-mobile" class="main-menu-mobile">
+  <ul>
+    
+    
+    <li class="menu-item-api reference">
+      <a href="https://dev.truora.com/docs/">
+        <span>API Reference</span>
+      </a>
+    </li>
+    
+    <li class="menu-item-guides">
+      <a href="https://dev.truora.com/guides/">
+        <span>Guides</span>
+      </a>
+    </li>
+    
+    <li class="menu-item-status">
+      <a href="https://status.truora.com/">
+        <span>Status</span>
+      </a>
+    </li>
+    
+  </ul>
+</div>
+
+
+
+  <div class="wrapper">
+    <link href="./Guides - Truora Developers_files/pagefind-ui.css" rel="stylesheet">
+<script src="./Guides - Truora Developers_files/pagefind-ui.js.download"></script>
+
+
+
+
+  <script src="./Guides - Truora Developers_files/search_modal.min.f510cb0d825291e8c2891e7ed3e07c11124fe97e6456945deed0691db2a79c94.js.download" defer=""></script>
+
+
+
+<div id="searchOverlay" class="fixed inset-0 z-40 hidden bg-gray-600/60 opacity-0 backdrop-blur-0 transition-opacity duration-100"></div>
+
+
+<div id="searchModal" class="fixed left-1/2 top-0 z-[300] hidden max-h-[90vh] w-[95%] -translate-x-1/2 scale-95 overflow-y-auto rounded-lg border border-gray-300 bg-gray-100 text-xs opacity-0 shadow-xl transition-opacity duration-300 md:max-h-[80vh] md:w-[70%] lg:top-5 lg:w-[600px]">
+  <div id="search" class="pagefind-ui p-4"></div>
+</div>
+
+
+<div class="header">
+  <div class="container">
+    <div class="logo">
+      <a href="https://dev.truora.com/"><img height="25px" alt="Truora" src="./Guides - Truora Developers_files/logo-truora-dev.svg"></a>
+    </div>
+
+    <button class="openSearch hidden h-fit w-48 items-center justify-start rounded-xl border-[1.5px] border-[#C2C2CB] px-1 py-1.5 font-poppins hover:border-blue-400 xl:inline-flex">
+      <div class="px-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" class="w-4">
+    <path class="stroke-[#515C63] p-2" d="M14 14L10 10M11.3333 6.66667C11.3333 7.2795 11.2126 7.88634 10.9781 8.45252C10.7436 9.01871 10.3998 9.53316 9.9665 9.9665C9.53316 10.3998 9.01871 10.7436 8.45252 10.9781C7.88634 11.2126 7.2795 11.3333 6.66667 11.3333C6.05383 11.3333 5.447 11.2126 4.88081 10.9781C4.31462 10.7436 3.80018 10.3998 3.36683 9.9665C2.93349 9.53316 2.58975 9.01871 2.35523 8.45252C2.12071 7.88634 2 7.2795 2 6.66667C2 5.42899 2.49167 4.242 3.36683 3.36683C4.242 2.49167 5.42899 2 6.66667 2C7.90434 2 9.09133 2.49167 9.9665 3.36683C10.8417 4.242 11.3333 5.42899 11.3333 6.66667Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+      </div>
+      <span class="text-xs font-light">Search</span>
+    </button>
+
+    
+
+
+
+
+<script type="text/javascript" src="./Guides - Truora Developers_files/dropdown_menu.min.0f1722e6d40b95dfe09280f49c50fe58c029b90ca984b8e3cbe708020a1b5a01.js.download"></script>
+
+
+<div class=" hidden sm:flex sm:items-center">
+  
+  <ul class="flex items-center justify-start space-x-3 xs:space-x-5 sm:space-x-6 lg:space-x-10">
+
+    
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://dev.truora.com/" class="flex py-1 text-[#010130] hover:underline  font-normal ">
+        Home
+      </a>
+    </li>
+    
+    
+    <li class="font-poppins text-[#010130] text-[10px]/3 xs:text-xs sm:text-sm list-none relative inline-block">
+      <button id="toggle-dropdown-button" class="header-dropdown-menu cursor-pointer flex border-[1.5px] border-[#C2C2CB] rounded pl-2 pr-1 py-0.5 lg:py-1.5 items-center focus:outline-none hover:bg-gray-100 aria-expanded:bg-gray-100 " type="button" aria-expanded="false" aria-controls="headerMenu">
+        <span class="hidden lg:flex">Documentation</span>
+        <span class="lg:hidden">Docs</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="inline size-4 ml-1 mt-1 transition-transform duration-300 ease-in-out">
+          <path fill-rule="evenodd" d="M10 12l-6-6 1.5-1.5L10 9l4.5-4.5L16 6z" clip-rule="evenodd"></path>
+        </svg>
+      </button>
+      
+      
+      <div id="headerMenu" class="absolute z-[60] hidden min-w-60 sm:min-w-72 rounded-lg bg-[#f9f9f9] shadow-lg shadow-gray-500 ">
+        
+          <a href="https://dev.truora.com/checks/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Background Checks
+          </a>
+        
+          <a href="https://dev.truora.com/digital-identity/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Digital Identity - Web/Mobile
+          </a>
+        
+          <a href="https://dev.truora.com/validators/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Digital Identity - Validators API
+          </a>
+        
+          <a href="https://dev.truora.com/customer-engagement/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Customer Engagement
+          </a>
+        
+      </div>
+    </li>
+    
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://dev.truora.com/docs/" class="flex text-[#010130] hover:underline  font-normal ">
+        <span class="hidden lg:flex"> API Reference</span>
+        <span class="lg:hidden">API</span>
+      </a>
+    </li>
+
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://dev.truora.com/guides/" class="flex text-[#010130] hover:underline  font-bold hover:no-underline">
+        Guides
+      </a>
+    </li>
+
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://status.truora.com/" class="flex text-[#010130] font-normal hover:underline">
+        Status
+      </a>
+    </li>
+  </ul>
+</div>
+
+    
+
+<script type="text/javascript" src="./Guides - Truora Developers_files/hamburger_menu.min.b915697e0b776334d6f1b99c7a81f04a89ea0b04415db1cbd688878b2d0e4ffb.js.download"></script>
+
+
+
+
+<button id="toggle-main-menu-mobile" class="hamburger hamburger--squeeze p-2" type="button" aria-label="Mobile Menu aria" aria-expanded="false" aria-controls="hamburgerMenu">
+  <span class="hamburger-box">
+    <span class="hamburger-inner"></span>
+  </span>
+</button>
+
+<div id="hamburgerMenu" class="absolute right-0 top-0 z-10 hidden max-h-screen w-screen origin-top overflow-y-auto rounded-md border bg-white p-6 shadow-md">  
+  <ul class="pt-3 font-poppins font-normal dark:text-gray-200">
+    
+    
+    <li><a href="https://dev.truora.com/" class="mt-10 block p-1 text-base text-blue-500 hover:bg-[#f1f1f1]">⌂ Home</a></li>
+
+    
+    <hr class="my-2 border-t border-gray-400 pb-4">
+
+    
+    <ul class="pb-4">
+      
+      
+      
+      
+      <li class="menu-item-api reference ">
+        <a href="https://dev.truora.com/docs/" class=" text-[#515C63] p-1 no-underline block hover:bg-[#f1f1f1]">
+          API Reference
+        </a>
+      </li>
+      
+      
+      
+      
+      <li class="menu-item-guides active">
+        <a href="https://dev.truora.com/guides/" class=" text-[#515C63] p-1 no-underline block hover:bg-[#f1f1f1]">
+          Guides
+        </a>
+      </li>
+      
+      
+      
+      
+      <li class="menu-item-status ">
+        <a href="https://status.truora.com/" class=" text-[#515C63] p-1 no-underline block hover:bg-[#f1f1f1]">
+          Status
+        </a>
+      </li>
+      
+    </ul>
+
+    
+    <hr class="my-2 border-t border-gray-400">
+
+    <li class="p-1 text-blue-500">Documentation:</li>
+
+    
+    
+    
+    
+    <li>
+      <a href="https://dev.truora.com/checks/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Background Checks
+      </a>
+    </li>
+    
+    
+    
+    <li>
+      <a href="https://dev.truora.com/digital-identity/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Digital Identity - Web/Mobile
+      </a>
+    </li>
+    
+    
+    
+    <li>
+      <a href="https://dev.truora.com/validators/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Digital Identity - Validators API
+      </a>
+    </li>
+    
+    
+    
+    <li>
+      <a href="https://dev.truora.com/customer-engagement/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Customer Engagement
+      </a>
+    </li>
+    
+  </ul>
+</div>
+    <div class="logo-mobile w-52">
+      <a href="https://dev.truora.com/"><img height="30px" alt="Truora" src="./Guides - Truora Developers_files/logo-truora-dev.svg"></a>
+    </div>
+
+    <button class="openSearch inline-flex p-1 xl:hidden">
+      <div class="px-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" class="w-4">
+    <path class="stroke-[#515C63] p-2" d="M14 14L10 10M11.3333 6.66667C11.3333 7.2795 11.2126 7.88634 10.9781 8.45252C10.7436 9.01871 10.3998 9.53316 9.9665 9.9665C9.53316 10.3998 9.01871 10.7436 8.45252 10.9781C7.88634 11.2126 7.2795 11.3333 6.66667 11.3333C6.05383 11.3333 5.447 11.2126 4.88081 10.9781C4.31462 10.7436 3.80018 10.3998 3.36683 9.9665C2.93349 9.53316 2.58975 9.01871 2.35523 8.45252C2.12071 7.88634 2 7.2795 2 6.66667C2 5.42899 2.49167 4.242 3.36683 3.36683C4.242 2.49167 5.42899 2 6.66667 2C7.90434 2 9.09133 2.49167 9.9665 3.36683C10.8417 4.242 11.3333 5.42899 11.3333 6.66667Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+      </div>
+    </button>
+  </div>
+</div>
+
+
+
+    
+
+
+
+    
+<section class="intro-cases">
+  <div class="d-flex container flex-row">
+  <div class="wrapper-use-case position-relative">
+    <div class="content-back"></div>
+    <nav class="nav-wrapper">
+      <span>Filter by:</span>
+      <ul data-id="filters">
+        <li class="filter-type">
+          <button data-id="0" class="btn-filter">See all</button>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  <div class="content-guides-list" id="page-content">
+    
+    
+    <div class="guides-wrapper">
+      <div class="content-title">
+        <div id="pageBreadcrumb" class="flex items-start justify-between">
+    <div class="mb-6 text-base font-normal text-[#808191]">
+        <a class="hover:text-[#5584eb] dark:text-white" href="https://dev.truora.com/">Home</a>
+        
+        
+        
+        
+        
+        <span> / </span>
+        
+        <a class="hover:text-[#5584eb] dark:text-white" href="https://dev.truora.com/guides/?product=Electronic%20Signature#">Guides</a>
+        
+        
+        
+        
+        
+    </div>
+</div>
+
+<div class="filter-guides-by">
+  <nav class="nav-wrapper mobil-filter-nav mb-2 hidden">
+    <span>Filter by:</span>
+    <ul data-id="filters">
+      <li class="filter-type">
+        <div data-id="0" class="btn-filter cursor-pointer">See all</div>
+      </li>
+    </ul>
+  </nav>
+</div>
+        <h1 class="title-wrapper">Featured Guides</h1>
+      </div>
+      <ul class="list-cases ml-0">
+        
+        <li class="badge-guides" data-usecase="API">
+          <img class="guide-image" src="./Guides - Truora Developers_files/api_integration_guide.png" alt="API Integration Guide" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">API Integration Guide</p>
+            <p class="badge-description">API integration step by step</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/api_integration_guide/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=API" class="link-guides_usecase">Others: API</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Webhooks/Automations">
+          <img class="guide-image" src="./Guides - Truora Developers_files/bre_events_variables.png" alt="Webhooks: Events and variables" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Webhooks: Events and variables</p>
+            <p class="badge-description">Learn about available events and variables useful in the Webhooks service</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/webhook_events_and_variables/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Webhooks%2fAutomations" class="link-guides_usecase">Others: Webhooks/Automations</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Webhooks/Automations">
+          <img class="guide-image" src="./Guides - Truora Developers_files/rules_webhooks.png" alt="Create a rule to receive webhooks" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Create a rule to receive webhooks</p>
+            <p class="badge-description">Learn to configure a rule for any event and trigger actions such as Webhooks.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/webhook_rule/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Webhooks%2fAutomations" class="link-guides_usecase">Others: Webhooks/Automations</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Webhooks/Automations">
+          <img class="guide-image" src="./Guides - Truora Developers_files/labels.png" alt="Labels" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Labels</p>
+            <p class="badge-description">Labels provide a way to filter Background Checks information using rules.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/labels/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Webhooks%2fAutomations" class="link-guides_usecase">Others: Webhooks/Automations</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Webhooks/Automations">
+          <img class="guide-image" src="./Guides - Truora Developers_files/wa_rules_webhooks.png" alt="Subscribe a Webhook to get WhatsApp flows results" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Subscribe a Webhook to get WhatsApp flows results</p>
+            <p class="badge-description">Learn how to Configure a webhook to receive the results of Customer Engagement processes.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/wa_webhooks/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Webhooks%2fAutomations" class="link-guides_usecase">Others: Webhooks/Automations</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Webhooks/Automations">
+          <img class="guide-image" src="./Guides - Truora Developers_files/web_rules_webhooks.png" alt="Subscribe a Webhook to get Web flows results" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Subscribe a Webhook to get Web flows results</p>
+            <p class="badge-description">Learn how to Configure a webhook to receive the results of Web flows processes.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/web_webhooks/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Webhooks%2fAutomations" class="link-guides_usecase">Others: Webhooks/Automations</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/member.png" alt="Account Setup and Access" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Account Setup and Access</p>
+            <p class="badge-description">Learn how to create and access your Truora account.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/account/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/dashboard.png" alt="How to use the Dashboard" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">How to use the Dashboard</p>
+            <p class="badge-description">How you can use the Dashboard</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/dashboard/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/account_access_and_permissions.png" alt="Understanding Account Access and Permissions" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Understanding Account Access and Permissions</p>
+            <p class="badge-description">Learn how permissions, roles, and members are structured in Truora — and what you can manage directly from the dashboard.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/ac_understand_access_and_permissions/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/create_member_assign_role.png" alt="Create Member and Assign Role" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Create Member and Assign Role</p>
+            <p class="badge-description">Learn how to add new members and assign roles in your Truora account.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/ac_create_member/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/manage_members.png" alt="Account Members Management" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Account Members Management</p>
+            <p class="badge-description">How to edit, delete, enable, or disable members within an Truora platform account</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/ac_members_management/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/auth.png" alt="Authentication Guide" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Authentication Guide</p>
+            <p class="badge-description">How to generate API Keys to perform the integration with Truora</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/authentication/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/account_id.png" alt="Create Account to link processes by user" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Create Account to link processes by user</p>
+            <p class="badge-description">Learn how to generate an account_id in Truora´s system to link processes by user and store user data.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/account_id/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/profile_config.png" alt="Profile Config" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Profile Config</p>
+            <p class="badge-description">Learn how to manage your Truora profile settings, including password reset, language, 2FA, and linked accounts.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/ac_profile_config/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/2fa_setup.png" alt="Two-step Verification Setup" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Two-step Verification Setup</p>
+            <p class="badge-description">Learn how to set up Two-step verification on your Truora account using an authentication app or SMS.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/ac_2fa_setup/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/usage_1.png" alt="Verify your Usage" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Verify your Usage</p>
+            <p class="badge-description">How to verify your products usage</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/usage/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/encoded_request.png" alt="Sending Encoded Requests" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Sending Encoded Requests</p>
+            <p class="badge-description">Ensure security in your requests with signed and encoded JWT through Truora</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/sending_encoded_request/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/sso_google.png" alt="Google as identity provider - SSO Setup" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Google as identity provider - SSO Setup</p>
+            <p class="badge-description">Learn to set up SSO authentication using Google as an identity provider.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/sso_google/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="Account">
+          <img class="guide-image" src="./Guides - Truora Developers_files/sso_azure.png" alt="Azure as identity provider - SSO Setup" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Azure as identity provider - SSO Setup</p>
+            <p class="badge-description">Learn to set up SSO authentication using Azure as an identity provider.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/sso_azure/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=Account" class="link-guides_usecase">Others: Account</a>
+              
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/understand_background_checks.png" alt="Understanding Background Checks" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Understanding Background Checks</p>
+            <p class="badge-description">Understand how Background Checks works</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/understading_background_checks/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/checks_deep.png" alt="Checks Lifecycle: Deep Dive" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Checks Lifecycle: Deep Dive</p>
+            <p class="badge-description">Explore the intricate journey of a background check, considering various factors impacting execution.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/checks_lifecycle_deep_dive/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/datasets_scores_types.png" alt="Datasets, Scores and Types" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Datasets, Scores and Types</p>
+            <p class="badge-description">Discover essential concepts like datasets, scores, and types within the context of background checks.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/datasets_scores_types/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/crimes_categories.png" alt="Crime Categories" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Crime Categories</p>
+            <p class="badge-description">Truora follows United Nations ICCS categories for crime, simplifying global crime description standardization</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/crimes_categories/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/create_check.png" alt="Creating a Background Check" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Creating a Background Check</p>
+            <p class="badge-description">Learn to initiate a background check using our API, with essential prerequisites included.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/creating_a_background_check/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/person.png" alt="Use the Check Type Person" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Use the Check Type Person</p>
+            <p class="badge-description">How to use the Check Type Person in a Background Checks</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/check_type_person_guide/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/vehicle.png" alt="Use the Check Type Vehicle" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Use the Check Type Vehicle</p>
+            <p class="badge-description">How to use the Check Type Vehicle in a Background Checks</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/check_type_vehicle_guide/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/company.png" alt="Use the Check Type Company" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Use the Check Type Company</p>
+            <p class="badge-description">How to use the Check Type Company in a Background Checks</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/check_type_company_guide/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/checks_guide_image.png" alt="Background Checks via dashboard" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Background Checks via dashboard</p>
+            <p class="badge-description">Create a Background Check via dashboard</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/checks/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/attachments_guide.png" alt="Background Checks: PDF, Variables and Attachments" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Background Checks: PDF, Variables and Attachments</p>
+            <p class="badge-description">How to access features such as PDF, Variables, and Attachments, through the API or the Dashboard.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/checks_pdf_variables_and_attachments/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/custom_type.png" alt="How to Create a Custom Type for Background Check" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">How to Create a Custom Type for Background Check</p>
+            <p class="badge-description">Create a custom background check for more accurate results</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/background_check_custom_type/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/check_continuos.png" alt="Background Checks: Continuous Checks and Status Monitor" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Background Checks: Continuous Checks and Status Monitor</p>
+            <p class="badge-description">How to use the Continuous Checks and the Status Monitor</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/checks_continuous_and_status/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/checks_batch.png" alt="How to Submit a Background Check Batch" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">How to Submit a Background Check Batch</p>
+            <p class="badge-description">Carry out Batch Background Checks</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/checks_batch/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/check_settings.png" alt="Background Checks Configuration Module" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Background Checks Configuration Module</p>
+            <p class="badge-description">Learn how to configure Background Checks global settings and create custom check types through the dashboard</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/checks_configuration_module/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/checks_batch_api.png" alt="Background Checks Batch via API" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Background Checks Batch via API</p>
+            <p class="badge-description">Learn how to submit a Background Checks Batch via API</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/checks_batch_api/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/credit_history_credentials_management_mx.png" alt="Credit History Credentials Management (Mexico)" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Credit History Credentials Management (Mexico)</p>
+            <p class="badge-description">Learn how to configure and manage your credit history credentials for Mexico directly from the Truora platform</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/credit_history_credentials_mx/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/check_settings.png" alt="Configure Background Checks Parameters" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Configure Background Checks Parameters</p>
+            <p class="badge-description">How to check and configure Background Checks settings</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/checks_setting/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Background Checks">
+          <img class="guide-image" src="./Guides - Truora Developers_files/migrate_endpoints.png" alt="Migration to new production environment step-by-step" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Migration to new production environment step-by-step</p>
+            <p class="badge-description">Migrate to new production environment</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/migration_new_prod_end/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="link-guides_product">Product: Background Checks</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/di_main_concepts.png" alt="Digital Identity - Main Concepts" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Digital Identity - Main Concepts</p>
+            <p class="badge-description">Get to know the core concepts of Digital Identity on Truora's platform.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/di_main_concepts/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/dv-flow.png" alt="Using Decision Variables in Flow Conditions" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Using Decision Variables in Flow Conditions</p>
+            <p class="badge-description">Create smart business rules using Decision Variables based on user history and contextual data</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/decision_variables_in_flow/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/flow_execution_view.png" alt="Flow execution view" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Flow execution view</p>
+            <p class="badge-description">Visualize the path taken by a process and review the inputs, outputs, and events of each block.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/flow_execution_view/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/flow.png" alt="Create a Web flow in 5 minutes or less" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Create a Web flow in 5 minutes or less</p>
+            <p class="badge-description">Quickly create a Web flow to use it in any app</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/flows_web/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/flow-metrics-overview.png" alt="Analyze the performance of a flow" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Analyze the performance of a flow</p>
+            <p class="badge-description">Optimize flows by identifying dropouts, failures, and bottlenecks.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/analyze_flow_performance/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/web.png" alt="Web Integration Token Guide" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Web Integration Token Guide</p>
+            <p class="badge-description">How to generate tokens to integrate via Web</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/web_integration_token/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/document.png" alt="Document Validation" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Document Validation</p>
+            <p class="badge-description">How to use Document Validation in Dashboard</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/document/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/face.png" alt="Face Validation" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Face Validation</p>
+            <p class="badge-description">How to use Face Recognition of Dashboard</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/face/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/documentandface.png" alt="Document and Face Validation" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Document and Face Validation</p>
+            <p class="badge-description">How to use the Document and Face Validation in Dashboard</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/documentandface/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/phone_email.png" alt="Phone Validation Guide Via OTP" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Phone Validation Guide Via OTP</p>
+            <p class="badge-description">Validate the phone number of your end users with OTP (One-Time Password)</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/phone_validation/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/email_validation.png" alt="Email Validation Guide Via OTP" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Email Validation Guide Via OTP</p>
+            <p class="badge-description">Validate the email address of your end users with OTP (One-Time Password)</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/email_validation/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/forms.png" alt="Create forms" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Create forms</p>
+            <p class="badge-description">Allows you to create custom forms to use in identity flows</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/forms/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/forms.png" alt="Preconfigured lists (Form Builder)" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Preconfigured lists (Form Builder)</p>
+            <p class="badge-description">How to use preconfigured lists as options in List, Checkbox, and Radio questions in the form builder</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/preconfigured_lists_form_builder/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/forms_in_flow.png" alt="Integrate a Form into a Validation Flow" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Integrate a Form into a Validation Flow</p>
+            <p class="badge-description">Explains how to use the form block in an identity flow</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/forms_in_di_flow/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/customize_web_flow.png" alt="Customize your web flow" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Customize your web flow</p>
+            <p class="badge-description">How to configure the behavior and appearance of a web flow</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/customize_web_flow/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/get_results.png" alt="Guide to Get Results" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Guide to Get Results</p>
+            <p class="badge-description">How to search and retrieve Processes and Validations results</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/get_result/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/declined_reasons.png" alt="Declined Reasons Details" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Declined Reasons Details</p>
+            <p class="badge-description">Detailed explanation of reasons for declined document validations by Truora's API</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/declined_reasons_details/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/expired_reasons.png" alt="Expired Reasons Details" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Expired Reasons Details</p>
+            <p class="badge-description">Detailed explanation of reasons for expired validations by Truora's API</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/expired_reasons_details/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/download_pdf.png" alt="Download an Identity Process PDF" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Download an Identity Process PDF</p>
+            <p class="badge-description">How to download an Identity Process as a PDF</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/download_process_pdf/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/iframe.png" alt="WebView Integration Guide" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">WebView Integration Guide</p>
+            <p class="badge-description">How to integrate with Truora using WebView</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/webview/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/iframe_integration.png" alt="Iframe Integration Guide" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Iframe Integration Guide</p>
+            <p class="badge-description">How to integrate with Truora using Iframes</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/iframe_integration/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/android_sdk.png" alt="Android SDK" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Android SDK</p>
+            <p class="badge-description">How to integrate Digital Identity using Android SDK</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/android_sdk/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/ios_sdk.png" alt="iOS SDK" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">iOS SDK</p>
+            <p class="badge-description">How to integrate Digital Identity using iOS SDK</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/ios_sdk/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/flutter_sdk.png" alt="Flutter SDK" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Flutter SDK</p>
+            <p class="badge-description">How to integrate Digital Identity using Flutter SDK</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/flutter_sdk/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="SDK" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/validations_shared_logic.svg" alt="Validations SDK: Shared logic" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Validations SDK: Shared logic</p>
+            <p class="badge-description">Shared concepts for all Truora Validations SDK integrations: API keys, userId, language, and UI customization.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/validations_sdk_shared_logic/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=SDK" class="link-guides_usecase">Others: SDK</a>
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/user_recovery.png" alt="Activate User Recovery" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Activate User Recovery</p>
+            <p class="badge-description">Recover your abandoned users with our automatic and user-activated recovery methods</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/user_recovery/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="SDK" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/validations_document_face_flow.svg" alt="Validations SDK: Document + Face combined flow" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Validations SDK: Document + Face combined flow</p>
+            <p class="badge-description">Run Document validation and Face validation as a single user experience using the same userId and an extracted reference face.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/validations_sdk_document_face_combined_flow/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=SDK" class="link-guides_usecase">Others: SDK</a>
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="SDK" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/validations_android.svg" alt="Validations SDK: Android getting started" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Validations SDK: Android getting started</p>
+            <p class="badge-description">Integrate Truora Validations (Document/Face) into your Android app using the native SDK.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/validations_sdk_android/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=SDK" class="link-guides_usecase">Others: SDK</a>
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="SDK" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/validations_ios.svg" alt="Validations SDK: iOS getting started" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Validations SDK: iOS getting started</p>
+            <p class="badge-description">Integrate Truora Validations (Document/Face) into your iOS app using the native SDK.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/validations_sdk_ios/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=SDK" class="link-guides_usecase">Others: SDK</a>
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/geolocation.png" alt="Get Geolocation info" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Get Geolocation info</p>
+            <p class="badge-description">Obtain the real geographic location of your users</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/geolocation_and_vpn/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="SDK" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/validations_flutter.svg" alt="Validations SDK: Flutter plugin getting started" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Validations SDK: Flutter plugin getting started</p>
+            <p class="badge-description">Integrate Truora Validations into your Flutter app using the official Flutter plugin.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/validations_sdk_flutter/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=SDK" class="link-guides_usecase">Others: SDK</a>
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-usecase="SDK" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/validations_react_native.svg" alt="Validations SDK: React Native plugin getting started" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Validations SDK: React Native plugin getting started</p>
+            <p class="badge-description">Integrate Truora Validations into your React Native app using the official React Native plugin.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/validations_sdk_react_native/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              <a href="https://dev.truora.com/guides/index.html?usecase=SDK" class="link-guides_usecase">Others: SDK</a>
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/manual_review.png" alt="Manual Review" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Manual Review</p>
+            <p class="badge-description">Manual review from the Truora platform</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/manual_review/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/override_process.png" alt="Identity Process Override Status" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Identity Process Override Status</p>
+            <p class="badge-description">Learn how to manually change the final status of an identity process when needed - Authorization required.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/override_process/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/user_authorization.png" alt="Authorization guide" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Authorization guide</p>
+            <p class="badge-description">Get explicit authorization for using personal data and others from your users</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/authorization/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/tips_doc_picture.png" alt="Tips for document pictures" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Tips for document pictures</p>
+            <p class="badge-description">Useful tips to capture good document photos for smooth and successful validations</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/tip_for_document_photo/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/common_errors.png" alt="Common errors" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Common errors</p>
+            <p class="badge-description">Guide for common errors in Truora's identity verification process.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/common_errors/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/di_system.png" alt="Digital Identity Verification Flow" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Digital Identity Verification Flow</p>
+            <p class="badge-description">Create Digital Identity Flow</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/di_dashboard/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/download_di_data.png" alt="Download DI Process Data" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Download DI Process Data</p>
+            <p class="badge-description">Explains how to download Digital Identity Process Data (Self-serve).</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/download_di_data/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/di_validations_steps.png" alt="Validations Steps" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Validations Steps</p>
+            <p class="badge-description">Understanding validation steps in Truora</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/di_validations_steps/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/verify_identity.png" alt="Verify Identity Steps via API" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Verify Identity Steps via API</p>
+            <p class="badge-description">Learn how verify process steps using Truora's API Verify Identity endpoint, for custom front-end solutions</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/verify_identity_api/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/validators_main_concepts.png" alt="Validators - Main Concepts" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Validators - Main Concepts</p>
+            <p class="badge-description">Get to know the core concepts of Validators on Truora's API.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/validators_main_concepts/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/document_validation.png" alt="Document Validation via API" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Document Validation via API</p>
+            <p class="badge-description">Learn to perform a Document Validation using our API.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/document_validation_api/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/face_validation.png" alt="Face Validation via API" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Face Validation via API</p>
+            <p class="badge-description">Learn to perform a Face Validation using our API.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/face_validation_api/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/face_revalidation.png" alt="Face Re-Validation via API" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Face Re-Validation via API</p>
+            <p class="badge-description">Learn to perform a Face Re-Validation using our API.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/face_revalidation_api/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/phone_validation_api.png" alt="Phone Validation via API" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Phone Validation via API</p>
+            <p class="badge-description">Learn to perform a Phone Validation using our API.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/phone_validation_api/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/email_validation_api.png" alt="Email Validation via API" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Email Validation via API</p>
+            <p class="badge-description">Learn to perform an Email Validation using our API.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/email_validation_api/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/truface.png" alt="TruFace Validation" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">TruFace Validation</p>
+            <p class="badge-description">Identify and block fraudsters faces with TruFace validation.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/truface/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/config_validators.png" alt="Config Validators" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Config Validators</p>
+            <p class="badge-description">How to use the Validators Config via API</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/config_validators/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/config_document.png" alt="Document Validator Config" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Document Validator Config</p>
+            <p class="badge-description">How to use the Document Validator Config via API</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/config_document/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/config_face.png" alt="Face Validator Config" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Face Validator Config</p>
+            <p class="badge-description">How to use the Face Validator Config via API</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/config_face/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/config_phone.png" alt="Phone Validator Config" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Phone Validator Config</p>
+            <p class="badge-description">How to use the Phone Validator Config via API</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/config_phone/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/config_email.png" alt="Email Validator Config" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Email Validator Config</p>
+            <p class="badge-description">How to use the Email Validator Config via API</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/config_email/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/facial_recognition_methods.png" alt="Facial Recognition Methods" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Facial Recognition Methods</p>
+            <p class="badge-description">About Truora´s "similarity" and "liveness detection" methods and how to activate them</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/facial_recognition_methods/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Validators">
+          <img class="guide-image" src="./Guides - Truora Developers_files/truidentidad.png" alt="TruIdentidad" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">TruIdentidad</p>
+            <p class="badge-description">How integrate face validation solution with Registraduria for secure and efficient user validation.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/truidentidad/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Validators" class="link-guides_product">Product: Validators</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/wa_main_concepts.png" alt="Whatsapp CE - Main Concepts" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Whatsapp CE - Main Concepts</p>
+            <p class="badge-description">Get to know the core concepts of Whatsapp Customer Engagement in Truora</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/whatsapp_ce_main_concepts/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/meta_considerations.png" alt="WhatsApp CE - META Considerations" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">WhatsApp CE - META Considerations</p>
+            <p class="badge-description">Essential META information for Truora Customer Engagement setup.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/meta_considerations/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/verify_fba.png" alt="How to Verify Your Facebook Business Account with Truora" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">How to Verify Your Facebook Business Account with Truora</p>
+            <p class="badge-description">Learn how to verify your Facebook business account with Truora to boost credibility.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/wa_fbm_verification/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/waba_acquisition.png" alt="How to Acquire WhatsApp Lines" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">How to Acquire WhatsApp Lines</p>
+            <p class="badge-description">Learn more about the acquisition methods for WhatsApp lines.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/waba_acquisition/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/activate_line_whatsapp.png" alt="Activate your line for WhatsApp in Truora" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Activate your line for WhatsApp in Truora</p>
+            <p class="badge-description">Activate your line for WhatsApp in Truora</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/activate_line_whatsapp/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/migrate_line.png" alt="Migrate your WhatsApp line to Truora" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Migrate your WhatsApp line to Truora</p>
+            <p class="badge-description">Learn more about the WhatsApp lines migration.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/migrate_line_whatsapp/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/waba_rules.png" alt="WhatsApp Lines Rules and Best Practices for Messaging" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">WhatsApp Lines Rules and Best Practices for Messaging</p>
+            <p class="badge-description">Learn the key rules for managing WhatsApp lines and best practices for effective messaging.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/waba_rules/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/customer_engagement_start.png" alt="Customer Engagement - Getting Started" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Customer Engagement - Getting Started</p>
+            <p class="badge-description">Getting started with WhatsApp customer engagement</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/customer_engagement_getting_started/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/marketing.png" alt="Create a WhatsApp flow in 5 minutes or less" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Create a WhatsApp flow in 5 minutes or less</p>
+            <p class="badge-description">Quickly create a WhatsApp flow to use it in any app</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/flows/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/variables_in_flow.png" alt="Include variables in your WhatsApp flow" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Include variables in your WhatsApp flow</p>
+            <p class="badge-description">How to use the responses obtained within the flow</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/variables/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/variables_mass_campaigns.jpg" alt="How to Include Variables in a Mass Campaign" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">How to Include Variables in a Mass Campaign</p>
+            <p class="badge-description">Learn how to add variables in your massive campaigns for personalized communication.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/variables_mass_campaigns/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/inbound.png" alt="Inbound Message Guide" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Inbound Message Guide</p>
+            <p class="badge-description">How to set and use inbound messages with Truora's Dashboard</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/inbound/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/outbound.png" alt="Outbound Message Guide" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Outbound Message Guide</p>
+            <p class="badge-description">How to create and send an outbound message with Truora´s Dashboard</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/outbound/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/wa_agent.png" alt="Agents: Starting and Reconnecting Conversations" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Agents: Starting and Reconnecting Conversations</p>
+            <p class="badge-description">Learn how agents can start or reconnect conversations</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/agents_start_conversation/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/variables_main_image.png" alt="How to Use WhatsApp to Validate Identity" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">How to Use WhatsApp to Validate Identity</p>
+            <p class="badge-description">Use identity Validators with WhatsApp</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/how_use_whatsapp_kyc/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/wpp_flow_guide_image.jpg" alt="Live Capture for Identity Validations on WhatsApp" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Live Capture for Identity Validations on WhatsApp</p>
+            <p class="badge-description">Add an extra layer of security to your whatsapp flow by using the live capture for image inputs</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/create_a_whatsapp_flow_with_photopicker/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/massive_campaigns_whatsapp.png" alt="Create Massive WhatsApp Campaigns" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Create Massive WhatsApp Campaigns</p>
+            <p class="badge-description">Create Massive WhatsApp Campaigns</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/massive_campaigns_whatsapp/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/wa_agents.png" alt="Conversations and Agents Management" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Conversations and Agents Management</p>
+            <p class="badge-description">Learn more about the Conversations and Agents Management</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/wa_agents/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/wa_forms.png" alt="Create Forms for WhatsApp flows" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Create Forms for WhatsApp flows</p>
+            <p class="badge-description">Learn how to create custom forms to collect user data and use them in WhatsApp Flows</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/wa_forms/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/wa_get_results.png" alt="Get Results from Whatsapp Chatbot Processes" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Get Results from Whatsapp Chatbot Processes</p>
+            <p class="badge-description">How to bring the results of whatsapp chatbot processes</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/wa_get_results/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/wa_campaigns_result.png" alt="Campaigns Results" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Campaigns Results</p>
+            <p class="badge-description">Learn how to get Campaigns Results</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/wa_campaigns_result/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/contacts_batch.png" alt="Contacts Management" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Contacts Management</p>
+            <p class="badge-description">Manage and organize your contacts in Truora's WhatsApp platform</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/wa_contacts/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/external_api.png" alt="Custom integrations: Connect an external API with your WhatsApp Flows" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Custom integrations: Connect an external API with your WhatsApp Flows</p>
+            <p class="badge-description">Learn to configure a custom integration with an external service to later use it in your WhatsApp flows</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/api_external_connection_wa_flows/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/external_api.png" alt="Custom integrations: Connect an external API with your Web Flows" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Custom integrations: Connect an external API with your Web Flows</p>
+            <p class="badge-description">Learn to configure a custom integration with an external service to later use it in your Web flows</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/api_external_connection_web_flows/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/perform_api_request.png" alt="Configure your flows to perform API requests" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Configure your flows to perform API requests</p>
+            <p class="badge-description">Learn to use custom integrations with external services inside our flow builder</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/api_external_connection_wa/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/perform_api_request.png" alt="Configure your flows to perform API requests" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Configure your flows to perform API requests</p>
+            <p class="badge-description">Learn to use custom integrations with external services inside our flow builder</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/api_external_connection_web/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/advanced_blocks_guide_image.png" alt="Advanced Blocks in the Flow Builder" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Advanced Blocks in the Flow Builder</p>
+            <p class="badge-description">Learn about the Advanced Blocks available in the Flow Builder to create powerful identity verification flows</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/web_advanced_blocks/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/hubspot.png" alt="HubSpot integration with Truora" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">HubSpot integration with Truora</p>
+            <p class="badge-description">Step-by-step guide on integrating HubSpot with Truora´s platform</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/hubspot/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/test_hubspot.png" alt="Test your WhatsApp - HubSpot integration" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Test your WhatsApp - HubSpot integration</p>
+            <p class="badge-description">How to test your WhatsApp - HubSpot integration within Truora´s WhatsApp Flows</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/test_hubspot/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/zendesk_integration.png" alt="Create a WhatsApp &lt;&gt; Zendesk Integration" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Create a WhatsApp &lt;&gt; Zendesk Integration</p>
+            <p class="badge-description">Learn how to create a WhatsApp &lt;&gt; Zendesk integration</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/wa_zendesk/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/start_conversation_via_api.png" alt="Start Conversations via API" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Start Conversations via API</p>
+            <p class="badge-description">Learn to use our API to trigger automated WhatsApp conversations</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/start_conversation_via_api/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="WhatsApp Customer Engagement">
+          <img class="guide-image" src="./Guides - Truora Developers_files/get_images_in_flow.png" alt="Use Custom Integrations to get WA flow images" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Use Custom Integrations to get WA flow images</p>
+            <p class="badge-description">Learn how to use a Custom Integration to get user uploaded images from your flows</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/integration_to_get_wa_flow_images/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="link-guides_product">Product: WhatsApp Customer Engagement</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Digital Identity Verification">
+          <img class="guide-image" src="./Guides - Truora Developers_files/forms.png" alt="Retrieve uploaded files from form responses" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Retrieve uploaded files from form responses</p>
+            <p class="badge-description">How to read file-type answers via the Forms API, resolve media IDs with the Account media API, and use uploads in flows</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/forms_retrieve_uploaded_files/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="link-guides_product">Product: Digital Identity Verification</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Electronic Signature">
+          <img class="guide-image" src="./Guides - Truora Developers_files/electronic_signature.png" alt="Electronic Signature" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Electronic Signature</p>
+            <p class="badge-description">Provides a link for performing electronic signature on online document and validates whether the person signed it or not.</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/electronic_signature/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Electronic%20Signature" class="link-guides_product">Product: Electronic Signature</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Electronic Signature">
+          <img class="guide-image" src="./Guides - Truora Developers_files/dinamic_document.png" alt="Create a dynamic template at ZapSign" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Create a dynamic template at ZapSign</p>
+            <p class="badge-description">How to create and include a dynamic template in your flows using a ZapSign ID</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/dynamic_template_and_zapsign_id/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Electronic%20Signature" class="link-guides_product">Product: Electronic Signature</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Electronic Signature">
+          <img class="guide-image" src="./Guides - Truora Developers_files/electronic_signature_brand.png" alt="Electronic Signature branding" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Electronic Signature branding</p>
+            <p class="badge-description">Customize your ZapSign colors and branding</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/electronic_signature_brand/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Electronic%20Signature" class="link-guides_product">Product: Electronic Signature</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Electronic Signature">
+          <img class="guide-image" src="./Guides - Truora Developers_files/electronic_signature_manage.png" alt="Electronic Signature Manage" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Electronic Signature Manage</p>
+            <p class="badge-description">Manage electronic signature templates and forms</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/electronic_signature_manage_docs/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Electronic%20Signature" class="link-guides_product">Product: Electronic Signature</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Electronic Signature">
+          <img class="guide-image" src="./Guides - Truora Developers_files/electronic_signature_manage_docs.png" alt="Manage Electronic Signature of Documents" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Manage Electronic Signature of Documents</p>
+            <p class="badge-description">Manage fixed documents for electronic signature</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/electronic_signature_documents_send/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Electronic%20Signature" class="link-guides_product">Product: Electronic Signature</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Electronic Signature">
+          <img class="guide-image" src="./Guides - Truora Developers_files/zapsign_web_2.png" alt="Integrate Electronic Signature in Web flows" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Integrate Electronic Signature in Web flows</p>
+            <p class="badge-description">How to integrate Electronic Signature in Web flows</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/electronic_signature_web_flow/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Electronic%20Signature" class="link-guides_product">Product: Electronic Signature</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Electronic Signature">
+          <img class="guide-image" src="./Guides - Truora Developers_files/zapsign_wa_main_image.png" alt="Integrate Electronic Signature in WhatsApp flows" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Integrate Electronic Signature in WhatsApp flows</p>
+            <p class="badge-description">How to integrate Electronic Signature in WhatsApp flows</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/electronic_signature_wa_flow/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Electronic%20Signature" class="link-guides_product">Product: Electronic Signature</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="badge-guides" data-product="Electronic Signature">
+          <img class="guide-image" src="./Guides - Truora Developers_files/electronic_sign_doc.png" alt="Add document and face to electronic signature validation" width="362" height="54">
+          <div class="description-wrapper">
+            <p class="badge-title">Add document and face to electronic signature validation</p>
+            <p class="badge-description">Allows you to add validation of face, document or both to the end of the signed document</p>
+            <div class="redirect-icon">
+              <a href="https://dev.truora.com/guides/electronic_signature_face_and_document/">Read guide</a>
+            </div>
+            <div class="button-tags">
+              
+              
+              <a href="https://dev.truora.com/guides/index.html?product=Electronic%20Signature" class="link-guides_product">Product: Electronic Signature</a>
+              
+            </div>
+          </div>
+        </li>
+        
+        <li class="not-found" style="display:none">
+          <img src="./Guides - Truora Developers_files/not_found.png" alt="not found">
+          <p>No guides matched your search.</p>
+          <p>Try to using another filter. For example, "TruConnect"</p>
+        </li>
+      </ul>
+    </div>
+    
+  </div>
+</div>
+</section>
+
+  </div>
+
+  
+
+
+
+  <script type="text/javascript" src="./Guides - Truora Developers_files/filter.min.faa51bdf6f3f5f65ee1e348b75a2c4e05c537dd13f1494d2b05e48732e3ab54b.js.download"></script>
+  
+
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="./Guides - Truora Developers_files/theme.min.c32e946169819c41344f5fb77923a8f0a06f110a1ea7dfc6a983f1eb8e75c854.js.download"></script>
+  <script type="text/javascript" src="./Guides - Truora Developers_files/scripts.min.3815fc28b0f660b887c7998e517cef7c36e8317bc0d9e5158a8725dbedb40793.js.download"></script></body></html>

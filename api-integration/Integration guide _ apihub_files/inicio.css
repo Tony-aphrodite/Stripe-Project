@@ -1,0 +1,244 @@
+.blue {
+  color: #AEEEFF !important;
+}
+
+.yellow {
+  color: #FAE64E !important;
+}
+
+.orange {
+  color: #FF5831 !important;
+}
+
+.purple {
+  color: #812ED4 !important;
+}
+
+.bg-purple h2,
+.bg-orange h2,
+.bg-yellow h2,
+.bg-blue h2,
+.bg-black h2 {
+  color: #FFFFFF;
+  margin-top: 1rem;
+}
+
+.bg-purple,
+.bg-orange,
+.bg-yellow,
+.bg-blue,
+.bg-black,
+.about_us {
+  margin-right: -15px;
+  margin-left: -15px;
+  padding: 16px;
+}
+.bg-purple p,
+.bg-orange p,
+.bg-yellow p,
+.bg-blue p,
+.bg-black p,
+.about_us p {
+  margin-top: 1rem;
+  margin-bottom: 3rem;
+}
+
+.bg-purple {
+  background-color: #812ED4;
+}
+.bg-purple p, .bg-purple ul, .bg-purple ol, .bg-purple li {
+  color: #FFFFFF;
+}
+
+.bg-orange {
+  background-color: #FF5831;
+}
+
+.bg-blue {
+  background-color: #AEEEFF;
+}
+
+.bg-yellow {
+  background-color: #FAE64E;
+}
+
+.about_us {
+  text-align: center;
+}
+.about_us h2 {
+  font-size: 2.2rem;
+  margin-bottom: 2rem;
+}
+.about_us h3 {
+  margin-top: 2rem;
+}
+.about_us p {
+  margin-bottom: 2rem;
+}
+.about_us ul {
+  margin-bottom: 2rem;
+}
+
+ul {
+  list-style: inside disc;
+}
+
+.bg-black {
+  background-color: #2A2C2D;
+  background-repeat: no-repeat;
+  color: #FFFFFF;
+}
+.bg-black h2 {
+  color: #AEEEFF;
+  margin-bottom: 2rem;
+  margin-top: 2rem;
+}
+.bg-black p {
+  margin-bottom: 3rem;
+}
+
+.respaldo h2 {
+  margin-bottom: 2rem;
+}
+.respaldo p {
+  margin-bottom: 4rem;
+}
+
+@media (min-width: 1200px) {
+  .bg-purple,
+  .bg-blue {
+    border-radius: 2rem 0 0 0;
+  }
+  .bg-orange,
+  .bg-yellow {
+    border-radius: 0 0 2rem 0;
+  }
+  .bg-purple,
+  .bg-orange,
+  .bg-blue,
+  .bg-yellow {
+    margin-bottom: 22rem;
+  }
+  .bg-purple .field--name-field-image,
+  .bg-orange .field--name-field-image,
+  .bg-blue .field--name-field-image,
+  .bg-yellow .field--name-field-image {
+    margin-top: 6rem;
+    position: absolute;
+  }
+  .bg-black {
+    background-image: url("../assets/img/dont_worry_be_api.svg");
+    background-size: 52rem;
+    background-position-x: -4rem;
+    background-position-y: center;
+  }
+  .bg-black,
+  .respaldo {
+    margin-bottom: 10rem;
+  }
+}
+@media (min-width: 992px) and (max-width: 1199px) {
+  .bg-purple,
+  .bg-blue {
+    border-radius: 2rem 0 0 0;
+  }
+  .bg-orange,
+  .bg-yellow {
+    border-radius: 0 0 2rem 0;
+  }
+  .bg-purple,
+  .bg-orange,
+  .bg-blue,
+  .bg-yellow {
+    margin-bottom: 14rem;
+  }
+  .bg-purple .field--name-field-image,
+  .bg-orange .field--name-field-image,
+  .bg-blue .field--name-field-image,
+  .bg-yellow .field--name-field-image {
+    margin-top: 6rem;
+    position: absolute;
+  }
+  .bg-black {
+    background-image: url("../assets/img/dont_worry_be_api.svg");
+    background-size: 52rem;
+    background-position-x: -8rem;
+    background-position-y: center;
+  }
+  .bg-black,
+  .respaldo {
+    margin-bottom: 8rem;
+  }
+}
+@media (min-width: 768px) and (max-width: 991px) {
+  .bg-purple,
+  .bg-blue {
+    border-radius: 2rem 0 0 0;
+  }
+  .bg-orange,
+  .bg-yellow {
+    border-radius: 0 0 2rem 0;
+  }
+  .bg-purple,
+  .bg-orange,
+  .bg-blue,
+  .bg-yellow {
+    margin-bottom: 6rem;
+  }
+  .bg-purple .field--name-field-image,
+  .bg-orange .field--name-field-image,
+  .bg-blue .field--name-field-image,
+  .bg-yellow .field--name-field-image {
+    margin-top: 4rem;
+    position: absolute;
+  }
+  .bg-black {
+    background-image: url("../assets/img/dont_worry_be_api.svg");
+    background-size: 49rem;
+    background-position-x: -14rem;
+    background-position-y: center;
+  }
+  .bg-black,
+  .respaldo {
+    margin-bottom: 5rem;
+  }
+}
+@media (min-width: 576px) and (max-width: 767px) {
+  .bg-purple,
+  .bg-blue {
+    border-radius: 1.5rem 0 0 0;
+  }
+  .bg-orange,
+  .bg-yellow {
+    border-radius: 0 0 1.5rem 0;
+    padding-bottom: 3em;
+  }
+  .bg-purple,
+  .bg-orange,
+  .bg-blue,
+  .bg-yellow {
+    margin-bottom: 3rem;
+  }
+  .bg-purple .field--name-field-image,
+  .bg-orange .field--name-field-image,
+  .bg-blue .field--name-field-image,
+  .bg-yellow .field--name-field-image {
+    margin-top: 2rem;
+  }
+  .bg-black,
+  .respaldo {
+    margin-bottom: 5rem;
+  }
+}
+@media (max-width: 575px) {
+  .bg-purple .field--name-field-image,
+  .bg-orange .field--name-field-image,
+  .bg-blue .field--name-field-image,
+  .bg-yellow .field--name-field-image {
+    margin-top: 2rem;
+  }
+  .bg-black,
+  .respaldo {
+    margin-bottom: 2rem;
+  }
+}/*# sourceMappingURL=inicio.css.map */

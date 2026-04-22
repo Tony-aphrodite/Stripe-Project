@@ -1,0 +1,1 @@
+document.addEventListener("DOMContentLoaded",function(){const e=document.querySelectorAll(".button-copy"),t=e=>{const t=e.srcElement.parentElement,n=t.querySelector("p").innerText;navigator.clipboard.writeText(n)};e.forEach(e=>e.addEventListener("click",t))})

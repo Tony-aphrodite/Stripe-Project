@@ -1,0 +1,23 @@
+<svg width="724" height="108" viewBox="0 0 724 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="724" y2="108" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0EA5E9"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="720" height="104" rx="16" fill="url(#bg)" />
+  <rect x="2" y="2" width="720" height="104" rx="16" stroke="#0F172A" stroke-opacity="0.15" stroke-width="4" />
+  <g opacity="0.9">
+    <rect x="36" y="30" width="48" height="48" rx="12" fill="#FFFFFF" fill-opacity="0.18"/>
+    <circle cx="60" cy="54" r="6" stroke="#FFFFFF" stroke-width="4"/>
+    <ellipse cx="60" cy="54" rx="20" ry="8" stroke="#FFFFFF" stroke-width="4"/>
+    <ellipse cx="60" cy="54" rx="8" ry="20" stroke="#FFFFFF" stroke-width="4"/>
+  </g>
+  <text x="108" y="48" fill="#FFFFFF" font-family="Poppins, ui-sans-serif, system-ui" font-size="22" font-weight="700">
+    Validations SDK
+  </text>
+  <text x="108" y="74" fill="#FFFFFF" font-family="Open Sans, ui-sans-serif, system-ui" font-size="16" font-weight="600" opacity="0.92">
+    React Native plugin getting started
+  </text>
+</svg>
+

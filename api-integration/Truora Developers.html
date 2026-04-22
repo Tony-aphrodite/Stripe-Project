@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<!-- saved from url=(0023)https://dev.truora.com/ -->
+<html lang="en" data-section=""><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta name="generator" content="Hugo 0.148.1">
+  
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>Truora Developers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="icon" type="image/png" href="https://dev.truora.com/truora_fav.png">
+  
+
+  
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com/">
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+
+  <link href="./Truora Developers_files/css2" rel="stylesheet">
+  <link href="./Truora Developers_files/css2(1)" rel="stylesheet">
+  <link href="./Truora Developers_files/css2(2)" rel="stylesheet"> 
+
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="./Truora Developers_files/tailwind.min.be9685434ca33b971ad6792ad03e9cc5a2041ad10e82f28d95ab81a6ece5bd26.css">
+  <link rel="stylesheet" href="./Truora Developers_files/main.min.0332e5b937121861b50d193d6c9bdbcf91bf18b0745fa988409773ecdf8797eb.css">
+  
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="./Truora Developers_files/style.min.453e63ca3486b153d0c55cb7b378ce9fdb8da44597c9312d4ebba4ed399266d4.css">
+  
+
+  
+
+  
+  
+  <meta name="description" content="Start building your apps and integrations. Truora&#39;s APIs simplify access to your digital services and securely enhance your relationship with customers">
+  
+  <meta property="og:title" content="Truora Developers">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://developer.truora.com/">
+  
+  
+  <meta property="og:description" content="Start building your apps and integrations. Truora&#39;s APIs simplify access to your digital services and securely enhance your relationship with customers">
+  <meta name="twitter:card" content="summary">
+  
+  
+  
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+<script async="" src="./Truora Developers_files/js"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag('js', new Date());
+  gtag('config', 'G-674FCH3RT8');
+</script>
+
+
+
+</head>
+
+<body id="body" class="page page-home">
+  
+
+<div id="main-menu-mobile" class="main-menu-mobile">
+  <ul>
+    
+    
+    <li class="menu-item-api reference">
+      <a href="https://dev.truora.com/docs/">
+        <span>API Reference</span>
+      </a>
+    </li>
+    
+    <li class="menu-item-guides">
+      <a href="https://dev.truora.com/guides/">
+        <span>Guides</span>
+      </a>
+    </li>
+    
+    <li class="menu-item-status">
+      <a href="https://status.truora.com/">
+        <span>Status</span>
+      </a>
+    </li>
+    
+  </ul>
+</div>
+
+
+
+  <div class="wrapper">
+    <link href="./Truora Developers_files/pagefind-ui.css" rel="stylesheet">
+<script src="./Truora Developers_files/pagefind-ui.js.download"></script>
+
+
+
+
+  <script src="./Truora Developers_files/search_modal.min.f510cb0d825291e8c2891e7ed3e07c11124fe97e6456945deed0691db2a79c94.js.download" defer=""></script>
+
+
+
+<div id="searchOverlay" class="fixed inset-0 z-40 hidden bg-gray-600/60 opacity-0 backdrop-blur-0 transition-opacity duration-100"></div>
+
+
+<div id="searchModal" class="fixed left-1/2 top-0 z-[300] hidden max-h-[90vh] w-[95%] -translate-x-1/2 scale-95 overflow-y-auto rounded-lg border border-gray-300 bg-gray-100 text-xs opacity-0 shadow-xl transition-opacity duration-300 md:max-h-[80vh] md:w-[70%] lg:top-5 lg:w-[600px]">
+  <div id="search" class="pagefind-ui p-4"><div class="pagefind-ui svelte-e9gkc3 pagefind-ui--reset"><form class="pagefind-ui__form svelte-e9gkc3" role="search" aria-label="Search this site" action="javascript:void(0);"><input class="pagefind-ui__search-input svelte-e9gkc3" type="text" placeholder="Search" title="Search" autocapitalize="none" enterkeyhint="search"> <button class="pagefind-ui__search-clear svelte-e9gkc3 pagefind-ui__suppressed">Clear</button> <div class="pagefind-ui__drawer svelte-e9gkc3 pagefind-ui__hidden"> </div></form></div></div>
+</div>
+
+
+<div class="header">
+  <div class="container">
+    <div class="logo">
+      <a href="https://dev.truora.com/"><img height="25px" alt="Truora" src="./Truora Developers_files/logo-truora-dev.svg"></a>
+    </div>
+
+    <button class="openSearch hidden h-fit w-48 items-center justify-start rounded-xl border-[1.5px] border-[#C2C2CB] px-1 py-1.5 font-poppins hover:border-blue-400 xl:inline-flex">
+      <div class="px-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" class="w-4">
+    <path class="stroke-[#515C63] p-2" d="M14 14L10 10M11.3333 6.66667C11.3333 7.2795 11.2126 7.88634 10.9781 8.45252C10.7436 9.01871 10.3998 9.53316 9.9665 9.9665C9.53316 10.3998 9.01871 10.7436 8.45252 10.9781C7.88634 11.2126 7.2795 11.3333 6.66667 11.3333C6.05383 11.3333 5.447 11.2126 4.88081 10.9781C4.31462 10.7436 3.80018 10.3998 3.36683 9.9665C2.93349 9.53316 2.58975 9.01871 2.35523 8.45252C2.12071 7.88634 2 7.2795 2 6.66667C2 5.42899 2.49167 4.242 3.36683 3.36683C4.242 2.49167 5.42899 2 6.66667 2C7.90434 2 9.09133 2.49167 9.9665 3.36683C10.8417 4.242 11.3333 5.42899 11.3333 6.66667Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+      </div>
+      <span class="text-xs font-light">Search</span>
+    </button>
+
+    
+
+
+
+
+<script type="text/javascript" src="./Truora Developers_files/dropdown_menu.min.0f1722e6d40b95dfe09280f49c50fe58c029b90ca984b8e3cbe708020a1b5a01.js.download"></script>
+
+
+<div class=" hidden sm:flex sm:items-center">
+  
+  <ul class="flex items-center justify-start space-x-3 xs:space-x-5 sm:space-x-6 lg:space-x-10">
+
+    
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://dev.truora.com/" class="flex py-1 text-[#010130] hover:underline  font-bold hover:no-underline">
+        Home
+      </a>
+    </li>
+    
+    
+    <li class="font-poppins text-[#010130] text-[10px]/3 xs:text-xs sm:text-sm list-none relative inline-block">
+      <button id="toggle-dropdown-button" class="header-dropdown-menu cursor-pointer flex border-[1.5px] border-[#C2C2CB] rounded pl-2 pr-1 py-0.5 lg:py-1.5 items-center focus:outline-none hover:bg-gray-100 aria-expanded:bg-gray-100 " type="button" aria-expanded="false" aria-controls="headerMenu">
+        <span class="hidden lg:flex">Documentation</span>
+        <span class="lg:hidden">Docs</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="inline size-4 ml-1 mt-1 transition-transform duration-300 ease-in-out">
+          <path fill-rule="evenodd" d="M10 12l-6-6 1.5-1.5L10 9l4.5-4.5L16 6z" clip-rule="evenodd"></path>
+        </svg>
+      </button>
+      
+      
+      <div id="headerMenu" class="absolute z-[60] hidden min-w-60 sm:min-w-72 rounded-lg bg-[#f9f9f9] shadow-lg shadow-gray-500 ">
+        
+          <a href="https://dev.truora.com/checks/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Background Checks
+          </a>
+        
+          <a href="https://dev.truora.com/digital-identity/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Digital Identity - Web/Mobile
+          </a>
+        
+          <a href="https://dev.truora.com/validators/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Digital Identity - Validators API
+          </a>
+        
+          <a href="https://dev.truora.com/customer-engagement/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Customer Engagement
+          </a>
+        
+      </div>
+    </li>
+    
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://dev.truora.com/docs/" class="flex text-[#010130] hover:underline  font-normal ">
+        <span class="hidden lg:flex"> API Reference</span>
+        <span class="lg:hidden">API</span>
+      </a>
+    </li>
+
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://dev.truora.com/guides/" class="flex text-[#010130] hover:underline  font-normal ">
+        Guides
+      </a>
+    </li>
+
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://status.truora.com/" class="flex text-[#010130] font-normal hover:underline">
+        Status
+      </a>
+    </li>
+  </ul>
+</div>
+
+    
+
+<script type="text/javascript" src="./Truora Developers_files/hamburger_menu.min.b915697e0b776334d6f1b99c7a81f04a89ea0b04415db1cbd688878b2d0e4ffb.js.download"></script>
+
+
+
+
+<button id="toggle-main-menu-mobile" class="hamburger hamburger--squeeze p-2" type="button" aria-label="Mobile Menu aria" aria-expanded="false" aria-controls="hamburgerMenu">
+  <span class="hamburger-box">
+    <span class="hamburger-inner"></span>
+  </span>
+</button>
+
+<div id="hamburgerMenu" class="absolute right-0 top-0 z-10 hidden max-h-screen w-screen origin-top overflow-y-auto rounded-md border bg-white p-6 shadow-md">  
+  <ul class="pt-3 font-poppins font-normal dark:text-gray-200">
+    
+    
+    <li><a href="https://dev.truora.com/" class="mt-10 block p-1 text-base text-blue-500 hover:bg-[#f1f1f1]">⌂ Home</a></li>
+
+    
+    <hr class="my-2 border-t border-gray-400 pb-4">
+
+    
+    <ul class="pb-4">
+      
+      
+      
+      
+      <li class="menu-item-api reference ">
+        <a href="https://dev.truora.com/docs/" class=" text-[#515C63] p-1 no-underline block hover:bg-[#f1f1f1]">
+          API Reference
+        </a>
+      </li>
+      
+      
+      
+      
+      <li class="menu-item-guides ">
+        <a href="https://dev.truora.com/guides/" class=" text-[#515C63] p-1 no-underline block hover:bg-[#f1f1f1]">
+          Guides
+        </a>
+      </li>
+      
+      
+      
+      
+      <li class="menu-item-status ">
+        <a href="https://status.truora.com/" class=" text-[#515C63] p-1 no-underline block hover:bg-[#f1f1f1]">
+          Status
+        </a>
+      </li>
+      
+    </ul>
+
+    
+    <hr class="my-2 border-t border-gray-400">
+
+    <li class="p-1 text-blue-500">Documentation:</li>
+
+    
+    
+    
+    
+    <li>
+      <a href="https://dev.truora.com/checks/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Background Checks
+      </a>
+    </li>
+    
+    
+    
+    <li>
+      <a href="https://dev.truora.com/digital-identity/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Digital Identity - Web/Mobile
+      </a>
+    </li>
+    
+    
+    
+    <li>
+      <a href="https://dev.truora.com/validators/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Digital Identity - Validators API
+      </a>
+    </li>
+    
+    
+    
+    <li>
+      <a href="https://dev.truora.com/customer-engagement/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Customer Engagement
+      </a>
+    </li>
+    
+  </ul>
+</div>
+    <div class="logo-mobile w-52">
+      <a href="https://dev.truora.com/"><img height="30px" alt="Truora" src="./Truora Developers_files/logo-truora-dev.svg"></a>
+    </div>
+
+    <button class="openSearch inline-flex p-1 xl:hidden">
+      <div class="px-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" class="w-4">
+    <path class="stroke-[#515C63] p-2" d="M14 14L10 10M11.3333 6.66667C11.3333 7.2795 11.2126 7.88634 10.9781 8.45252C10.7436 9.01871 10.3998 9.53316 9.9665 9.9665C9.53316 10.3998 9.01871 10.7436 8.45252 10.9781C7.88634 11.2126 7.2795 11.3333 6.66667 11.3333C6.05383 11.3333 5.447 11.2126 4.88081 10.9781C4.31462 10.7436 3.80018 10.3998 3.36683 9.9665C2.93349 9.53316 2.58975 9.01871 2.35523 8.45252C2.12071 7.88634 2 7.2795 2 6.66667C2 5.42899 2.49167 4.242 3.36683 3.36683C4.242 2.49167 5.42899 2 6.66667 2C7.90434 2 9.09133 2.49167 9.9665 3.36683C10.8417 4.242 11.3333 5.42899 11.3333 6.66667Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+      </div>
+    </button>
+  </div>
+</div>
+
+
+
+    
+
+
+
+    
+    
+
+
+<div class="intro main">
+  <div class="container">
+    <div class="align-items-center mx-auto flex flex-row flex-wrap justify-center md:justify-between">
+      <div class="w-full md:w-[60%]">
+        <h1 class="font-poppins">Connect with Truora</h1>
+        <p class="mt-3 font-poppins">Start building your apps and integrations. Truora's APIs simplify access to your digital services and securely enhance your relationship with customers.</p>
+      </div>
+      
+      <div class="relative order-2 mt-4 max-w-[300px] md:w-[40%]">
+        <img alt="Connect with Truora" class="intro-image" src="./Truora Developers_files/code.png">
+      </div>
+            
+    </div>
+  </div>
+</div>
+<div class="bg-gray-100 pb-20 pt-12">
+  <div class="container mx-auto px-5">
+    <div class="mb-3 flex flex-row items-center justify-center">
+      <div class="mr-6 flex aspect-square w-[60px] items-center justify-center rounded-[20px] bg-[#C5EEFA] px-4 shadow-md">
+        <img src="./Truora Developers_files/div-logo.png" class="size-9" alt="">
+      </div>
+      <h3 class="font-poppins text-2xl font-semibold text-[#010130] md:text-3xl md:tracking-widest">Digital Identity</h3>
+    </div>
+  
+    <div class="flex flex-wrap justify-center gap-4 p-4">
+      <div class="min-w-72 max-w-80 items-start rounded-xl border bg-gray-50 p-4 shadow-md transition-shadow duration-300 hover:bg-white hover:shadow-[0px_8px_18px_0px_rgba(0,20,150,0.2)] md:basis-[30%]">
+        <h3 class="mb-6 text-xl font-bold text-[#2D2E82]">Web / Mobile
+          <hr class="my-2 h-1 rounded border-none bg-gradient-to-r from-[#a0dcf4] from-40%">
+        </h3>
+        <div class="flex">
+          <a href="https://dev.truora.com/digital-identity/" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+            <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+            </svg>Documentation</a>
+        </div>
+        <div class="flex">
+          <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+            <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+            </svg>Guides</a>
+        </div>
+        <div class="flex">
+          <a href="https://dev.truora.com/docs/#digital-identity_web-section" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+            <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+            </svg>API Reference</a>
+        </div>
+      </div>
+  
+      <div class="min-w-72 max-w-80 items-start rounded-xl border bg-gray-50 p-4 shadow-md transition-shadow duration-300 hover:bg-white hover:shadow-[0px_8px_18px_0px_rgba(0,20,150,0.2)] md:basis-[30%]">
+        <div class="mb-6 text-xl font-bold text-[#2D2E82]">Validators API
+          <hr class="my-2 h-1 rounded border-none bg-gradient-to-r from-[#a0dcf4] from-40%">
+        </div>
+        <div class="flex">
+          <a href="https://dev.truora.com/validators/" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+            <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+            </svg>Documentation</a>
+        </div>
+        <div class="flex">
+          <a href="https://dev.truora.com/guides/index.html?product=Validators" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+            <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+            </svg>Guides</a>
+        </div>
+        <div class="flex">
+          <a href="https://dev.truora.com/docs/#main-validator-suite-api-section" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+            <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+            </svg>API Reference</a>
+        </div>
+      </div>
+  
+      
+    </div>
+    <hr class="mt-2">
+  </div>
+
+  <div class="container mx-auto pt-12">
+
+    <div class="flex flex-wrap justify-center gap-8">
+      
+      <div class="mr-4 flex min-w-72 max-w-80 basis-full flex-col items-start md:basis-[30%]">
+        
+        <div class="mb-3 flex items-center justify-start">
+          <div class="mr-3 flex aspect-square w-[60px] items-center justify-center rounded-[20px] bg-[#EFE3FB] px-4 shadow-md">
+            <img src="./Truora Developers_files/bc-logo.png" class="size-7" alt="">
+          </div>
+          <h3 class="font-poppins text-2xl font-semibold text-[#2D2E82]">Background<br>Checks</h3>
+        </div>
+        
+        <div class="w-full grow items-start rounded-xl border bg-gray-50 p-4 shadow-md transition-shadow duration-300 hover:bg-white hover:shadow-[0px_8px_18px_0px_rgba(0,20,150,0.2)]">
+          <hr class="mb-6 mt-2 h-1 rounded border-none bg-gradient-to-r from-[#dcc7f8] from-40%">
+          <div class="flex">
+            <a href="https://dev.truora.com/checks/" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+              <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+              </svg>Documentation</a>
+          </div>
+          <div class="flex">
+            <a href="https://dev.truora.com/guides/?product=Background%20Checks" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+              <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+              </svg>Guides</a>
+          </div>
+          <div class="flex">
+            <a href="https://dev.truora.com/docs/" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+              <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+              </svg>API Reference</a>
+          </div>
+        </div>
+      </div>
+  
+      <div class="mr-4 flex min-w-72 max-w-80 basis-full flex-col items-start md:basis-[30%]">
+        
+        <div class="mb-3 flex items-center justify-start">
+          <div class="mr-3 flex aspect-square w-[60px] items-center justify-center rounded-[20px] bg-[#C5EEFA] px-4 shadow-md">
+            <img src="./Truora Developers_files/zap-logo.png" class="size-8" alt="">
+          </div>
+          <h3 class="font-poppins text-2xl font-semibold text-[#2D2E82]">Electronic<br>Signature</h3>
+        </div>
+        
+        <div class="w-full grow items-start rounded-xl border bg-gray-50 p-4 shadow-md transition-shadow duration-300 hover:bg-white hover:shadow-[0px_8px_18px_0px_rgba(0,20,150,0.2)]">
+          <hr class="mb-6 mt-2 h-1 rounded border-none bg-gradient-to-r from-[#b1e3fa] from-40%">
+          <div class="flex">
+            <a href="https://dev.truora.com/guides/?product=Electronic%20Signature" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+              <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+              </svg>Guides</a>
+          </div>
+          <div class="flex">
+            <a href="https://docs.zapsign.com.br/v/english/?_gl=1*1gqsudv*_gcl_au*NTc0NDA3NjE1LjE2ODkxOTUxNjk.*_ga*MjExNTE2NTY5Ny4xNjg5MTk1MTY5*_ga_KBFKYW3QWP*MTY4OTI2MzQ4Mi4yLjAuMTY4OTI2MzQ4My41OS4wLjA.*_ga_NM8J9CGQWE*MTY4OTI2MzQ4Mi4yLjAuMTY4OTI2MzQ4My41OS4wLjA." target="_blank" class="flex items-center stroke-[#5584EB] px-[0.25rem] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:stroke-[#3866CD] hover:text-[#3866CD]">
+              <svg width="30" height="24" viewBox="0 0 34 31" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8c0-1.1.9-2 2-2h5M15 3h6v6M10 14L20.2 3.8"></path>
+              </svg>API Reference</a>
+          </div>
+        </div>
+      </div>
+  
+      <div class="mr-4 flex min-w-72 max-w-80 basis-full flex-col items-start md:basis-[30%]">
+        
+        <div class="mb-3 flex items-center justify-start">
+          <div class="mr-3 flex aspect-square w-[60px] items-center justify-center rounded-[20px] bg-[#BAFFF4] px-4 shadow-md">
+            <img src="./Truora Developers_files/ce-logo.png" class="size-7" alt="">
+          </div>
+          <h3 class="font-poppins text-2xl font-semibold text-[#2D2E82]">Whatsapp<br><span class="text-lg tracking-tight">Customer Engagement</span></h3>
+        </div>
+        
+        <div class="w-full grow items-start rounded-xl border bg-gray-50 p-4 shadow-md transition-shadow duration-300 hover:bg-white hover:shadow-[0px_8px_18px_0px_rgba(0,20,150,0.2)]">
+          <hr class="mb-6 mt-2 h-1 rounded border-none bg-gradient-to-r from-[#aaffef] from-40%">
+          <div class="flex">
+            <a href="https://dev.truora.com/customer-engagement/" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+              <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+              </svg>Documentation</a>
+          </div>
+          <div class="flex">
+            <a href="https://dev.truora.com/guides/?product=WhatsApp%20Customer%20Engagement" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+              <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+              </svg>Guides</a>
+          </div>
+          <div class="flex">
+            <a href="https://dev.truora.com/docs/#digital-identity-section" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+              <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+              </svg>API Reference</a>
+          </div>
+        </div>
+      </div>
+  
+      <div class="mr-4 flex min-w-72 max-w-80 basis-full flex-col items-start md:basis-[30%]">
+        
+        <div class="mb-3 flex items-center justify-start">
+          <div class="mr-3 flex aspect-square w-[60px] items-center justify-center rounded-[20px] bg-[#B8D0F9] px-4 shadow-md">
+            <img src="./Truora Developers_files/ac-logo.png" class="size-7" alt="">
+          </div>
+          <h3 class="font-poppins text-2xl font-semibold text-[#2D2E82]">Accounts</h3>
+        </div>
+        
+        <div class="w-full grow items-start rounded-xl border bg-gray-50 p-4 shadow-md transition-shadow duration-300 hover:bg-white hover:shadow-[0px_8px_18px_0px_rgba(0,20,150,0.2)]">
+          <hr class="mb-6 mt-2 h-1 rounded border-none bg-gradient-to-r from-[#B8D0F9] from-40%">
+          <div class="flex">
+            <a href="https://dev.truora.com/guides/?usecase=Account" class="flex items-center fill-[#5584EB] font-poppins text-[14px] font-medium text-[#3B82F6] transition-all duration-300 ease-out hover:fill-[#3866CD] hover:text-[#3866CD]">
+              <svg width="30" height="24" viewBox="0 0 34 30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M25.8758 14.8515L26.8701 13.7284L28.1387 14.8515L26.8701 15.9747L25.8758 14.8515ZM8.957 16.3515C8.12858 16.3515 7.457 15.68 7.457 14.8515C7.457 14.0231 8.12858 13.3515 8.957 13.3515V16.3515ZM21.2305 8.73577L26.8701 13.7284L24.8815 15.9747L19.2419 10.982L21.2305 8.73577ZM26.8701 15.9747L21.2305 20.9673L19.2419 18.7211L24.8815 13.7284L26.8701 15.9747ZM25.8758 16.3515H8.957V13.3515H25.8758V16.3515Z"></path>
+              </svg>Guides</a>
+          </div>
+        </div>
+      </div>
+  
+    </div>
+  </div>
+</div>
+<div class="bg-[#D5DDEC80] pb-20 pt-9">
+    <div class="container">
+        <div class="text-center">
+            <h2 class="text-[32px] font-semibold">Featured Guides</h2>
+        </div>
+        <div class="mt-8 flex flex-row flex-wrap justify-center gap-4">
+            <div id="featured-guide" class="flex flex-col rounded-lg bg-white p-4">
+                <img class="rounded-lg" src="./Truora Developers_files/auth.png" alt="">
+                <h5 class="mt-2 font-poppins text-sm font-bold">Authentication Guide</h5>
+                <span class="mt-5 font-poppins text-xs">How to generate API Keys to perform the
+                    integration with
+                    Truora</span>
+                <div class="mt-3">
+                    <a class="inline-flex items-center rounded-lg bg-[#01022E] pl-1 pr-3 text-white no-underline hover:bg-[#343558] hover:no-underline" href="https://dev.truora.com/guides/authentication/"><img src="./Truora Developers_files/arrow_right_white.svg" alt="Truora-Authentication-Guide"> Read
+                        guide</a>
+                </div>
+            </div>
+            <div id="featured-guide" class="flex flex-col justify-between rounded-lg bg-white p-4">
+                <img class="rounded-lg" src="./Truora Developers_files/marketing.png" alt="">
+                <h5 class="mt-2 font-poppins text-sm font-bold">WhatsApp integration Guide</h5>
+                <span class="mt-5 font-poppins text-xs">The integration guide for WhatsApp</span>
+                <div class="mt-3">
+                    <a class="inline-flex items-center rounded-lg bg-[#01022E] pl-1 pr-3 text-white no-underline hover:bg-[#343558] hover:no-underline" href="https://dev.truora.com/guides/whatsapp/"><img src="./Truora Developers_files/arrow_right_white.svg" alt="Truora-Whatsapp-Integration-Guide"> Read
+                        guide</a>
+                </div>
+            </div>
+            <div id="featured-guide" class="flex flex-col justify-between rounded-lg bg-white p-4">
+                <img class="rounded-lg" src="./Truora Developers_files/web.png" alt="">
+                <h5 class="mt-2 font-poppins text-sm font-bold">Web Integration Token Guide</h5>
+                <span class="mt-5 font-poppins text-xs">How to generate tokens to integrate via Web</span>
+                <div class="mt-3">
+                    <a class="inline-flex items-center rounded-lg bg-[#01022E] pl-1 pr-3 text-white no-underline hover:bg-[#343558] hover:no-underline" href="https://dev.truora.com/guides/web_integration_token/"><img src="./Truora Developers_files/arrow_right_white.svg" alt="Truora-Integration-Web-Token">
+                        Read
+                        guide</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+<div class="sub-footer">
+    <div class="container sub-footer-wrapper">
+        <img src="./Truora Developers_files/logo-truora-white.svg" alt="logo_Truora" width="150" height="62">
+        
+        
+        
+        <ul class="sub-footer-inner">
+            <li class="sub-footer-title ">
+                <a href="https://dev.truora.com/#">
+                    
+                    <span class="sub-footer-item-title">PRODUCTS</span>
+                </a>
+            </li>
+            <li>
+                <ul class="sub-menu">
+                    
+                    <li class="sub-footer-item ">
+                        <a href="https://dev.truora.com/guides/index.html?product=Background%20Checks" class="sub-footer-item">Background Checks</a>
+                    </li>
+                    
+                    <li class="sub-footer-item ">
+                        <a href="https://dev.truora.com/guides/index.html?product=Digital%20Identity%20Verification" class="sub-footer-item">Digital Identity</a>
+                    </li>
+                    
+                    <li class="sub-footer-item ">
+                        <a href="https://dev.truora.com/guides/index.html?product=Electronic%20Signature" class="sub-footer-item">Electronic Signature</a>
+                    </li>
+                    
+                    <li class="sub-footer-item ">
+                        <a href="https://dev.truora.com/guides/index.html?product=WhatsApp%20Customer%20Engagement" class="sub-footer-item">WhatsApp</a>
+                    </li>
+                    
+                </ul>
+            </li>
+        </ul>
+        
+        
+        
+        
+        
+        <ul class="sub-footer-inner">
+            <li class="sub-footer-title ">
+                <a href="https://dev.truora.com/#">
+                    
+                    <span class="sub-footer-item-title">TOOLS</span>
+                </a>
+            </li>
+            <li>
+                <ul class="sub-menu">
+                    
+                    <li class="sub-footer-item ">
+                        <a href="https://status.truora.com/" class="sub-footer-item">API Status</a>
+                    </li>
+                    
+                    <li class="sub-footer-item ">
+                        <a href="https://dev.truora.com/guides/webhook_rule/" class="sub-footer-item">Automations</a>
+                    </li>
+                    
+                </ul>
+            </li>
+        </ul>
+        
+        
+        
+        
+    </div>
+</div>
+
+
+    
+<div class="footer">
+  <div class="container">
+    <div class="row">
+      <div class="col-12">
+        <div class="footer-inner">
+          <span class="footer-title uppercase">2026 © truora</span>
+          
+
+<div id="footer-menu" class="footer-menu">
+  <ul>
+    
+    
+    
+    
+    <li class="menu-item- ">
+      <a href="https://www.truora.com/contact-us" class="">
+        Contact Us
+      </a>
+    </li>
+    
+    
+    
+    <li class="menu-item- ">
+      <a href="https://www.truora.com/integral-privacy-notice" class="">
+        Privacy policy
+      </a>
+    </li>
+    
+    
+    
+    <li class="menu-item- ">
+      <a href="https://www.truora.com/terms-and-conditions" class="">
+        Terms and conditions
+      </a>
+    </li>
+    
+  </ul>
+</div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+  </div>
+
+  
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="./Truora Developers_files/theme.min.c32e946169819c41344f5fb77923a8f0a06f110a1ea7dfc6a983f1eb8e75c854.js.download"></script>
+  <script type="text/javascript" src="./Truora Developers_files/scripts.min.3815fc28b0f660b887c7998e517cef7c36e8317bc0d9e5158a8725dbedb40793.js.download"></script>
+  <script type="text/javascript" src="./Truora Developers_files/apiReference.min.7ea07a0fcb20539e4b627685e3d4f02dd9bb0df78148fd10855b822e2ea4f0c5.js.download"></script>
+  <script type="text/javascript" src="./Truora Developers_files/copyAnchor.min.0061062dc13265c208c0caa3f90047b38bd8f414f4239d81bbdb5b526fb512ab.js.download"></script>
+
+  
+
+  
+
+
+</body></html>

@@ -1,0 +1,31 @@
+{
+    "name": "apihub-cdc/security-test-client",
+    "description": "",
+    "keywords": [
+        "apihub",
+        "php",
+        "sdk",
+        "api"
+    ],
+    "homepage": "http://developer.circulodecredito.com.mx",
+    "require": {
+        "php": ">=5.5",
+        "ext-curl": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "guzzlehttp/guzzle": "^6.2",
+        "monolog/monolog": "^1.24",
+        "apihub-cdc/signature-manager": "1.0.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^5.7",
+        "squizlabs/php_codesniffer": "~2.6",
+        "friendsofphp/php-cs-fixer": "~2.12"
+    },
+    "autoload": {
+        "psr-4": { "Security\\Test\\" : "lib/" }
+    },
+    "autoload-dev": {
+        "psr-4": { "Security\\Test\\" : "test/" }
+    }
+}
