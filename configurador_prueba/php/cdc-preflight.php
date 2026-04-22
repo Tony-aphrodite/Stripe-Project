@@ -220,20 +220,40 @@ function secTestFmt($label, $signSubject, $algo, $format, $encoding, $priv, $cer
         'sig_enc' => $encoding, 'auth' => ['type'=>'headers','mtls'=>true]];
 }
 
+$bodyJson = json_encode(['Peticion' => $subject]);
+$bodyJsonSpaces = json_encode(['Peticion' => $subject], JSON_PRETTY_PRINT);
+
 $variants = [
-    // DER format (OpenSSL default)
-    ['DER SHA256+base64 sign=string', $subject, OPENSSL_ALGO_SHA256, 'der', 'base64'],
-    ['DER SHA384+base64 sign=string', $subject, OPENSSL_ALGO_SHA384, 'der', 'base64'],
-    ['DER SHA256+hex    sign=string', $subject, OPENSSL_ALGO_SHA256, 'der', 'hex'],
-    ['DER SHA384+hex    sign=string', $subject, OPENSSL_ALGO_SHA384, 'der', 'hex'],
+    // --- sign the "Peticion" value (what CDC docs show) ---
+    ['sign=string         · SHA256 · base64', $subject,                       OPENSSL_ALGO_SHA256, 'der', 'base64'],
+    ['sign=string         · SHA384 · base64', $subject,                       OPENSSL_ALGO_SHA384, 'der', 'base64'],
+    ['sign=string         · SHA256 · hex',    $subject,                       OPENSSL_ALGO_SHA256, 'der', 'hex'],
+    ['sign=string         · SHA384 · hex',    $subject,                       OPENSSL_ALGO_SHA384, 'der', 'hex'],
+    // --- sign the FULL JSON body (standard API pattern) ---
+    ['sign=body JSON      · SHA256 · base64', $bodyJson,                      OPENSSL_ALGO_SHA256, 'der', 'base64'],
+    ['sign=body JSON      · SHA384 · base64', $bodyJson,                      OPENSSL_ALGO_SHA384, 'der', 'base64'],
+    ['sign=body JSON      · SHA256 · hex',    $bodyJson,                      OPENSSL_ALGO_SHA256, 'der', 'hex'],
+    ['sign=body JSON      · SHA384 · hex',    $bodyJson,                      OPENSSL_ALGO_SHA384, 'der', 'hex'],
+    // --- sign with trailing newline (some Apigee policies add \n) ---
+    ['sign=string+newline · SHA256 · base64', $subject . "\n",                OPENSSL_ALGO_SHA256, 'der', 'base64'],
+    ['sign=body+newline   · SHA256 · base64', $bodyJson . "\n",               OPENSSL_ALGO_SHA256, 'der', 'base64'],
+    // --- sign JSON with quotes around value ---
+    ['sign="\"value\""    · SHA256 · base64', '"' . $subject . '"',           OPENSSL_ALGO_SHA256, 'der', 'base64'],
+    // --- sign hex-hash of the content (some systems double-hash) ---
+    ['sign=hex(sha256(str))· SHA256 · base64', hash('sha256', $subject),      OPENSSL_ALGO_SHA256, 'der', 'base64'],
+    ['sign=hex(sha256(body))· SHA256 · base64', hash('sha256', $bodyJson),    OPENSSL_ALGO_SHA256, 'der', 'base64'],
+    // --- sign raw-binary hash ---
+    ['sign=raw(sha256(str))· SHA256 · base64', hash('sha256', $subject, true), OPENSSL_ALGO_SHA256, 'der', 'base64'],
+    ['sign=raw(sha256(body))· SHA256 · base64', hash('sha256', $bodyJson, true), OPENSSL_ALGO_SHA256, 'der', 'base64'],
+    // --- spaced JSON (Apigee often canonicalizes) ---
+    ['sign=JSON_PRETTY    · SHA256 · base64', $bodyJsonSpaces,                OPENSSL_ALGO_SHA256, 'der', 'base64'],
 ];
 if ($isECDSA) {
     $variants = array_merge($variants, [
-        // IEEE P1363 raw r||s — common ECDSA alternative
-        ['P1363 SHA256+base64 sign=string', $subject, OPENSSL_ALGO_SHA256, 'p1363', 'base64'],
-        ['P1363 SHA384+base64 sign=string', $subject, OPENSSL_ALGO_SHA384, 'p1363', 'base64'],
-        ['P1363 SHA256+hex    sign=string', $subject, OPENSSL_ALGO_SHA256, 'p1363', 'hex'],
-        ['P1363 SHA384+hex    sign=string', $subject, OPENSSL_ALGO_SHA384, 'p1363', 'hex'],
+        ['P1363 sign=string · SHA256 · base64', $subject, OPENSSL_ALGO_SHA256, 'p1363', 'base64'],
+        ['P1363 sign=string · SHA384 · base64', $subject, OPENSSL_ALGO_SHA384, 'p1363', 'base64'],
+        ['P1363 sign=body   · SHA256 · base64', $bodyJson, OPENSSL_ALGO_SHA256, 'p1363', 'base64'],
+        ['P1363 sign=body   · SHA384 · base64', $bodyJson, OPENSSL_ALGO_SHA384, 'p1363', 'base64'],
     ]);
 }
 foreach ($variants as $v) {
