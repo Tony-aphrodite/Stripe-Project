@@ -169,14 +169,30 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlErr  = curl_error($ch);
 curl_close($ch);
 
-// Logging
-file_put_contents($logFile, json_encode([
-    'timestamp' => date('c'),
-    'action'    => 'create_check',
-    'nombre'    => $nombre,
-    'httpCode'  => $httpCode,
-    'curlErr'   => $curlErr,
-    'response'  => $response,
+// Logging — DB (reliable on Plesk) + file (best-effort)
+try {
+    require_once __DIR__ . '/config.php';
+    $pdoLog = getDB();
+    $pdoLog->exec("CREATE TABLE IF NOT EXISTS truora_query_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        action VARCHAR(50),
+        nombre VARCHAR(200),
+        apellidos VARCHAR(200),
+        email VARCHAR(200),
+        http_code INT,
+        body_sent TEXT,
+        response MEDIUMTEXT,
+        curl_err VARCHAR(500),
+        check_id VARCHAR(100),
+        approved TINYINT(1),
+        freg DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdoLog->prepare("INSERT INTO truora_query_log (action, nombre, apellidos, email, http_code, body_sent, response, curl_err) VALUES (?,?,?,?,?,?,?,?)")
+        ->execute(['create_check', $nombre, $apellidos, $email, $httpCode, http_build_query($postFields), substr((string)$response, 0, 5000), substr((string)$curlErr, 0, 500)]);
+} catch (Throwable $e) {}
+@file_put_contents($logFile, json_encode([
+    'timestamp' => date('c'), 'action' => 'create_check', 'nombre' => $nombre,
+    'httpCode' => $httpCode, 'curlErr' => $curlErr, 'response' => $response,
 ]) . "\n", FILE_APPEND | LOCK_EX);
 
 // ── Evaluate response ───────────────────────────────────────────────────────
