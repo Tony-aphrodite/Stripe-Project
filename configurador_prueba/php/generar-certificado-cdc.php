@@ -27,12 +27,33 @@ $dn = [
     'emailAddress'           => 'ivan.clavel@voltika.mx',
 ];
 
-// Force regeneration if requested
+// Force regeneration if requested — also deactivates the DB row so a fresh
+// cert is created instead of being re-loaded below.
 if (!empty($_GET['regen'])) {
     unset($_SESSION['cdc_cert_pem'], $_SESSION['cdc_key_pem']);
+    try {
+        require_once __DIR__ . '/config.php';
+        getDB()->exec("UPDATE cdc_certificates SET active = 0");
+    } catch (Throwable $e) {}
 }
 
-// Generate or retrieve from session
+// CRITICAL: before generating, try to load the existing active cert from DB.
+// Previously this script generated a NEW cert every time the session was
+// empty (different browser, expired cookie), which silently broke the whole
+// CDC integration — the private key in DB diverged from the public cert
+// uploaded to CDC portal → every signature failed verification.
+if (empty($_SESSION['cdc_cert_pem']) || empty($_SESSION['cdc_key_pem'])) {
+    try {
+        require_once __DIR__ . '/config.php';
+        $row = getDB()->query("SELECT private_key, certificate FROM cdc_certificates WHERE active=1 ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $_SESSION['cdc_cert_pem'] = $row['certificate'];
+            $_SESSION['cdc_key_pem']  = $row['private_key'];
+        }
+    } catch (Throwable $e) {}
+}
+
+// Generate or retrieve from session/DB
 if (!empty($_SESSION['cdc_cert_pem']) && !empty($_SESSION['cdc_key_pem'])) {
     $certPem = $_SESSION['cdc_cert_pem'];
     $keyPem  = $_SESSION['cdc_key_pem'];
@@ -99,7 +120,19 @@ if (!empty($_SESSION['cdc_cert_pem']) && !empty($_SESSION['cdc_key_pem'])) {
     }
 }
 
-// Download mode
+// Download mode — ALWAYS serve the DB-active cert, never a session-stale one.
+// This eliminates any chance of the downloaded file diverging from what
+// consultar-buro.php uses to sign.
+if (!empty($_GET['download'])) {
+    try {
+        require_once __DIR__ . '/config.php';
+        $row = getDB()->query("SELECT private_key, certificate FROM cdc_certificates WHERE active=1 ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $certPem = $row['certificate'];
+            $keyPem  = $row['private_key'];
+        }
+    } catch (Throwable $e) {}
+}
 $download = $_GET['download'] ?? '';
 if ($download === 'cert' && $certPem) {
     header('Content-Type: application/x-pem-file');
@@ -147,9 +180,12 @@ if ($ds) {
 }
 
 $certData = openssl_x509_parse($certPem);
+$fp = '';
+try { $fp = openssl_x509_fingerprint($certPem, 'sha256') ?: ''; } catch (Throwable $e) {}
 echo '<table border="1" cellpadding="8" style="border-collapse:collapse;margin-bottom:20px;">';
 echo '<tr><th>Campo</th><th>Valor</th></tr>';
 echo '<tr><td>Tipo de llave</td><td><strong>ECDSA secp384r1</strong> (requerido por CDC)</td></tr>';
+echo '<tr><td><strong>Fingerprint SHA-256</strong></td><td><code style="font-size:11px">' . htmlspecialchars($fp) . '</code><br><small style="color:#666">Verifica que este mismo fingerprint aparezca en el portal de CDC después de subir el cert.</small></td></tr>';
 echo '<tr><td>Organización</td><td>' . ($certData['subject']['O'] ?? '') . '</td></tr>';
 echo '<tr><td>Common Name</td><td>' . ($certData['subject']['CN'] ?? '') . '</td></tr>';
 echo '<tr><td>Email</td><td>' . ($certData['subject']['emailAddress'] ?? '') . '</td></tr>';
