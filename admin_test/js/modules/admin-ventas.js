@@ -272,20 +272,58 @@ window.AD_ventas = (function(){
       html += '<div class="ad-banner warn" style="margin-bottom:10px;">No hay motos del mismo color. Mostrando otras unidades del mismo modelo.</div>';
     }
 
+    // Index motos by id so the Confirmar handler can look up checklist status
+    // without having to re-parse DOM data attributes.
+    var motoIndex = {};
+    motos.forEach(function(m){ motoIndex[m.id] = m; });
+
     html += '<div style="max-height:340px;overflow-y:auto;padding-right:4px;">';
     motos.forEach(function(m, i){
       var vinTxt   = m.vin_display || m.vin || '—';
       var metaTxt  = (m.modelo || '') + (m.color ? ' · ' + m.color : '') + (m.estado ? ' · ' + m.estado : '');
       var locTxt   = m.punto_nombre ? m.punto_nombre : 'En CEDIS';
+
+      // Checklist status: three states rendered as colored pills.
+      //  - green  "Checklist OK"       → co_ok=1 and co_force=0
+      //  - orange "Revisión pendiente" → co_force=1 (bulk-completed without inspection)
+      //  - red    "Sin checklist"      → no checklist_origen row at all
+      var coOk    = Number(m.co_ok)    === 1;
+      var coForce = Number(m.co_force) === 1;
+      var hasCl   = !!m.co_id;
+      var badgeHtml, ctaHtml;
+      if (coOk && !coForce) {
+        badgeHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#E8F5E9;color:#2E7D32;font-size:11px;font-weight:700;">✓ Checklist OK</span>';
+        ctaHtml = '';
+      } else if (coForce) {
+        badgeHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#FFF3E0;color:#E65100;font-size:11px;font-weight:700;">⚠️ Revisión pendiente</span>';
+        ctaHtml = '<button type="button" class="ad-btn sm vtClFill" data-mid="'+m.id+'" '+
+                    'style="margin-top:6px;background:#FB8C00;color:#fff;border-color:#FB8C00;font-size:12px;padding:4px 10px;">'+
+                    '🔧 Completar checklist</button>';
+      } else if (hasCl) {
+        badgeHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#FFF8E1;color:#B28704;font-size:11px;font-weight:700;">En progreso</span>';
+        ctaHtml = '<button type="button" class="ad-btn sm vtClFill" data-mid="'+m.id+'" '+
+                    'style="margin-top:6px;background:#F9A825;color:#fff;border-color:#F9A825;font-size:12px;padding:4px 10px;">'+
+                    '▶ Continuar checklist</button>';
+      } else {
+        badgeHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#FDECEA;color:#B71C1C;font-size:11px;font-weight:700;">✗ Sin checklist</span>';
+        ctaHtml = '<button type="button" class="ad-btn sm vtClFill" data-mid="'+m.id+'" '+
+                    'style="margin-top:6px;background:#C62828;color:#fff;border-color:#C62828;font-size:12px;padding:4px 10px;">'+
+                    '＋ Iniciar checklist</button>';
+      }
+
       html += '<label class="adPickMoto" data-mid="'+m.id+'" '+
                 'style="display:block;cursor:pointer;padding:11px 13px;margin-bottom:6px;'+
                        'border:1.5px solid var(--ad-border);border-radius:8px;background:var(--ad-surface);">'+
                 '<div style="display:flex;gap:10px;align-items:flex-start;">'+
                   '<input type="radio" name="motoChoice" value="'+m.id+'" style="margin-top:3px;flex-shrink:0;"'+(i===0?' checked':'')+'>'+
                   '<div style="flex:1;min-width:0;">'+
-                    '<div style="font-weight:700;font-size:13.5px;color:var(--ad-navy);font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;">'+vinTxt+'</div>'+
+                    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+                      '<div style="font-weight:700;font-size:13.5px;color:var(--ad-navy);font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;">'+vinTxt+'</div>'+
+                      badgeHtml+
+                    '</div>'+
                     '<div style="font-size:12px;color:var(--ad-dim);margin-top:3px;">'+metaTxt+'</div>'+
                     '<div style="font-size:11.5px;color:#666;margin-top:2px;">'+locTxt+'</div>'+
+                    (ctaHtml ? '<div>'+ctaHtml+'</div>' : '')+
                   '</div>'+
                 '</div>'+
               '</label>';
@@ -307,9 +345,30 @@ window.AD_ventas = (function(){
     }
     syncHighlight();
 
-    $('.adPickMoto').on('click', function(){
+    $('.adPickMoto').on('click', function(e){
+      // Avoid swallowing clicks on the inner "Completar checklist" button
+      if ($(e.target).closest('.vtClFill').length) return;
       $(this).find('input[type="radio"]').prop('checked', true);
       syncHighlight();
+    });
+
+    // Fast-fill: open checklist modal without losing the Asignar context.
+    // When the inner modal closes, re-open Asignar so the list refreshes with
+    // up-to-date checklist status.
+    $('.vtClFill').on('click', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var mid = parseInt($(this).data('mid'), 10);
+      if (!window.AD_checklists || typeof window.AD_checklists.openOrigenById !== 'function') {
+        alert('Módulo de checklists no disponible');
+        return;
+      }
+      // Close the Asignar modal first, then open the checklist. After the user
+      // finishes (or cancels), re-open Asignar so they can confirm the bike.
+      ADApp.closeModal();
+      window.AD_checklists.openOrigenById(mid, function(){
+        showAsignar(transId, modelo, (motoIndex[mid] && motoIndex[mid].color) || '', pedido);
+      });
     });
 
     $('#vtMotosCancel').on('click', function(){ ADApp.closeModal(); });
@@ -317,6 +376,18 @@ window.AD_ventas = (function(){
     $('#vtMotosSave').on('click', function(){
       var motoId = parseInt($('input[name="motoChoice"]:checked').val(), 10);
       if (!motoId) { $('#vtMotosMsg').css('color','#b91c1c').text('Selecciona una moto'); return; }
+      var m = motoIndex[motoId] || {};
+      var coOk    = Number(m.co_ok)    === 1;
+      var coForce = Number(m.co_force) === 1;
+      // Block assignment when the bike has no real origin inspection.
+      // User can still override by clicking Confirmar a second time after
+      // acknowledging — avoids a hard-stop while nudging correct workflow.
+      if (!coOk || coForce) {
+        var msg = coForce
+          ? 'Esta moto tiene el checklist marcado como "completado" pero no fue inspeccionada (bulk-complete).\n\n¿Asignar de todas formas sin revisión física?'
+          : 'Esta moto NO tiene checklist de origen completado.\n\n¿Asignar de todas formas? (No recomendado — la moto debería inspeccionarse antes de entregar al cliente.)';
+        if (!confirm(msg)) return;
+      }
       doAsignar(transId, motoId);
     });
   }

@@ -36,11 +36,25 @@ if (!empty($_GET['color'])) {
     $params[] = $_GET['color'];
 }
 
+// co_force: completado=1 but key inspection items still at 0 (bulk-force-completed
+// without actual physical inspection). Helps the assignment modal flag bikes
+// that need proper checklist review before handover.
 $sql = "SELECT m.id, m.vin, m.vin_display, m.modelo, m.color, m.estado,
                m.fecha_llegada, m.freg,
-               pv.nombre AS punto_nombre
+               pv.nombre AS punto_nombre,
+               co.id AS co_id,
+               COALESCE(co.completado, 0) AS co_ok,
+               CASE WHEN co.completado = 1
+                     AND (COALESCE(co.frame_completo,0) = 0
+                          OR COALESCE(co.validacion_final,0) = 0)
+                    THEN 1 ELSE 0 END AS co_force
         FROM inventario_motos m
         LEFT JOIN puntos_voltika pv ON pv.id = m.punto_voltika_id
+        LEFT JOIN (
+            SELECT moto_id, id, completado, frame_completo, validacion_final
+            FROM checklist_origen
+            WHERE id IN (SELECT MAX(id) FROM checklist_origen GROUP BY moto_id)
+        ) co ON co.moto_id = m.id
         WHERE " . implode(' AND ', $where) . "
         ORDER BY m.fecha_llegada ASC, m.freg ASC";
 

@@ -1525,5 +1525,28 @@ window.AD_checklists = (function(){
     return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  return { render: render };
+  // Public helper: open the Checklist de Origen modal for a specific moto.
+  // Fetches detalle first so external modules (e.g. Ventas "Asignar moto")
+  // can trigger fast-fill without knowing the internal data shape.
+  function openOrigenById(motoId, onAfterClose){
+    ADApp.api('checklists/detalle.php?moto_id=' + motoId).done(function(rd){
+      if (!rd || rd.ok === false) {
+        alert((rd && rd.error) || 'No se pudo cargar el checklist');
+        return;
+      }
+      openOrigenForm(motoId, rd.origen, rd.moto);
+      if (typeof onAfterClose === 'function') {
+        // Stash callback so the "close" chrome of the form can invoke it.
+        window.AD_checklists._onOrigenClose = onAfterClose;
+      }
+    }).fail(function(x){
+      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+    });
+  }
+
+  return {
+    render: render,
+    openOrigenForm: openOrigenForm,
+    openOrigenById: openOrigenById
+  };
 })();
