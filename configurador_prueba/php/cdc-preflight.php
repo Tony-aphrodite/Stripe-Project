@@ -837,6 +837,62 @@ $body34 = json_encode([
 render(call('Probe 34: "domicilios" (plural)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body34, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
+// Probe 36: duplicate domicilio keys — one without direccion, one with direccion
+// JSON parsers handle duplicates differently. Apigee policy might use first
+// (no direccion → no transformation), schema validator might use last (has direccion).
+{
+    $bodyDup = '{"primerNombre":"JUAN","apellidoPaterno":"PEREZ","apellidoMaterno":"LOPEZ","fechaNacimiento":"1985-03-15","nacionalidad":"MX","domicilio":{"coloniaPoblacion":"JUAREZ","delegacionMunicipio":"CUAUHTEMOC","ciudad":"CIUDAD DE MEXICO","estado":"CDMX","CP":"03100"},"domicilio":{"direccion":"AV REFORMA 100","coloniaPoblacion":"JUAREZ","delegacionMunicipio":"CUAUHTEMOC","ciudad":"CIUDAD DE MEXICO","estado":"CDMX","CP":"03100"}}';
+    $sigDup = '';
+    openssl_sign($bodyDup, $sigDup, $priv, OPENSSL_ALGO_SHA256);
+    $tmpC36 = tempnam(sys_get_temp_dir(), 'c'); $tmpK36 = tempnam(sys_get_temp_dir(), 'k');
+    file_put_contents($tmpC36, $certPem); file_put_contents($tmpK36, $keyPem);
+    $ch36 = curl_init('https://services.circulodecredito.com.mx/v2/rccficoscore');
+    curl_setopt_array($ch36, [
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $bodyDup,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json','Accept: application/json','x-api-key: '.CDC_API_KEY,'username: '.CDC_USER,'password: '.CDC_PASS,'x-signature: '.bin2hex($sigDup)],
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_TIMEOUT => 15,
+        CURLOPT_SSLCERT => $tmpC36, CURLOPT_SSLKEY => $tmpK36,
+    ]);
+    $r36 = curl_exec($ch36);
+    $c36 = curl_getinfo($ch36, CURLINFO_HTTP_CODE);
+    $h36 = curl_getinfo($ch36, CURLINFO_HEADER_SIZE);
+    curl_close($ch36); @unlink($tmpC36); @unlink($tmpK36);
+    render(['label'=>'Probe 36: domicilio DUPLICADO (1 sin, 1 con direccion)', 'url'=>'https://services.circulodecredito.com.mx/v2/rccficoscore', 'http'=>$c36, 'curl_err'=>null, 'resp_headers'=>'', 'resp_body'=>substr((string)$r36, $h36), 'sig_enc'=>'hex', 'auth'=>['type'=>'duplicate-key','mtls'=>true]]);
+}
+usleep(400000);
+
+// Probe 37: very long direccion value (might trigger different policy path)
+$bodyLong = json_encode([
+    'primerNombre' => 'JUAN', 'apellidoPaterno' => 'PEREZ', 'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15', 'nacionalidad' => 'MX',
+    'domicilio' => [
+        'direccion'           => str_repeat('A', 500),
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 37: direccion 500 chars (length attack)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyLong, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 38: direccion contains literal quote character (might break Apigee parser)
+$body38 = json_encode([
+    'primerNombre' => 'JUAN', 'apellidoPaterno' => 'PEREZ', 'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15', 'nacionalidad' => 'MX',
+    'domicilio' => [
+        'direccion'           => 'AV REFORMA 100 INT 5',
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 38: direccion con "INT 5" (test contenido)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body38, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
 // Probe 35: domicilio with extra ignore field that satisfies API count limit
 $body35 = json_encode([
     'primerNombre' => 'JUAN',
