@@ -459,6 +459,26 @@ usleep(400000);
 render(call('Probe 11: /v2/ficoscore PRODUCTION con body nested', 'https://services.circulodecredito.com.mx/v2/ficoscore', $body5, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
+// Probe 12: PRODUCTION /v2/rccficoscore with FINAL schema (flat + nested domicilio + nacionalidad)
+$bodyProd = json_encode([
+    'primerNombre'    => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'RFC'             => 'PELJ850315AAA',
+    'nacionalidad'    => 'MX',
+    'domicilio' => [
+        'direccion'           => 'AV REFORMA 100',
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 12: /v2/rccficoscore PRODUCTION schema FINAL', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyProd, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
 // ── Test 3: alt endpoints ───────────────────────────────────────────────────
 echo '<h2>Test 3: endpoints alternos</h2>';
 foreach ([

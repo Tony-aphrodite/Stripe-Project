@@ -34,22 +34,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-// CDC endpoint — /sandbox/v2/ficoscore (FICO Score v2 MX). Confirmed working
-// by preflight diagnostic: returns HTTP 404 "persona no encontrada" for test
-// data (JUAN PEREZ), which means signature+auth+schema ALL pass. With real
-// customer data this returns their credit score.
+// CDC endpoint — /v2/rccficoscore (PRODUCTION Reporte de Crédito Consolidado
+// con FICO Score v2 MX). Confirmed by preflight: returns 400 schema errors
+// (not 403 signature / not 401 auth) → signature+auth+api-key binding all
+// pass, production access is active for this app.
 //
-// Why sandbox instead of production: this api-key is subscribed to the
-// sandbox product ("FICO Score v2 MX Sandbox"). Production /v2/ficoscore
-// returns 401 "Invalid ApiKey for given resource" — production access
-// requires a separate subscription request at CDC portal.
-//
-// Body schema: {folio, persona{nombres, apellidoPaterno, apellidoMaterno,
-//   fechaNacimiento, domicilio{direccion, coloniaPoblacion,
-//   delegacionMunicipio, ciudad, estado, CP}}} — field names confirmed by
-// 400 schema errors from CDC's JSON validator.
-// Override via the CDC_BASE_URL env var if production access is granted.
-define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/sandbox/v2/ficoscore');
+// Body schema (PRODUCTION):
+//   - FLAT (no folio/persona wrapper — that's the sandbox/ficoscore schema)
+//   - primerNombre (not "nombres" which is the ficoscore field name)
+//   - nacionalidad required
+//   - domicilio nested: {direccion, coloniaPoblacion, delegacionMunicipio,
+//                        ciudad, estado, CP}
+define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rccficoscore');
 // Folio otorgante — 10-digit id assigned by CDC (0000004694 for Voltika).
 define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '0000080008');
 // CDC production auth model (confirmed via the official PHP client source):
@@ -129,21 +125,15 @@ if (strlen($rfc) === 10) $rfc .= 'XXX';
 $estadoNorm = cdcEstadoEnum($estado);
 
 // ── Construir request body ──────────────────────────────────────────────────
-// Body schema for /v2/ficoscore (FICO Score v2 MX):
-//   { "folio": "0000004694",
-//     "persona": { primerNombre, apellidoPaterno, apellidoMaterno,
-//                  fechaNacimiento, RFC, domicilio{...} } }
-// Confirmed by preflight diagnostic returning 400 "Object has missing
-// required properties (['folio','persona'])".
-// FICO Score v2 MX schema — field names confirmed by 400 schema probes:
-//   persona required:   nombres, apellidoPaterno, apellidoMaterno, fechaNacimiento, domicilio
-//   domicilio required: coloniaPoblacion, delegacionMunicipio (+ other fields)
-//   RFC is OPTIONAL (not in required list)
-$persona = [
-    'nombres'         => $primerNombre,
+// Body schema for PRODUCTION /v2/rccficoscore — confirmed by preflight v2:
+//   FLAT (no persona wrapper), primerNombre, nacionalidad required,
+//   domicilio as nested object.
+$requestBody = [
+    'primerNombre'    => $primerNombre,
     'apellidoPaterno' => $apellidoPaterno,
     'apellidoMaterno' => $apellidoMaterno ?: 'X',
     'fechaNacimiento' => $fechaNacimiento,
+    'nacionalidad'    => 'MX',
     'domicilio' => [
         'direccion'           => $direccion ?: 'NO DISPONIBLE',
         'coloniaPoblacion'    => $colonia ?: 'CENTRO',
@@ -153,13 +143,8 @@ $persona = [
         'CP'                  => $cp ?: '00000',
     ],
 ];
-if ($rfc)  $persona['RFC']  = $rfc;
-if ($curp) $persona['CURP'] = $curp;
-
-$requestBody = [
-    'folio'   => CDC_FOLIO,
-    'persona' => $persona,
-];
+if ($rfc)  $requestBody['RFC']  = $rfc;
+if ($curp) $requestBody['CURP'] = $curp;
 
 $jsonBody = json_encode($requestBody, JSON_UNESCAPED_UNICODE);
 
