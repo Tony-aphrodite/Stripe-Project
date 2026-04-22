@@ -651,8 +651,12 @@ window.AD_inventario = (function(){
               'Punto seleccionado por el cliente: <strong>'+pname+'</strong>'+
             '</div>'
           ).show();
-          // Find punto_voltika_id from punto_id string
-          lookupPuntoId(pid, function(pvId, cp){
+          // Find punto_voltika_id from punto_id string. Pass motoId/tid so
+          // the fallback path (punto not found in catalog) can still show
+          // the selector WITH the correct transaccion_id — the previous
+          // version leaked closure vars and dropped transId, causing the
+          // "transaccion_id requerido para tipo venta" 400 error.
+          lookupPuntoId(pid, motoId, tid, function(pvId, cp){
             showQuoteAndConfirm(motoId, pvId, 'venta', tid, cp);
           });
         } else {
@@ -664,7 +668,7 @@ window.AD_inventario = (function(){
     });
   }
 
-  function lookupPuntoId(puntoIdStr, callback){
+  function lookupPuntoId(puntoIdStr, motoId, transId, callback){
     ADApp.api('puntos/listar.php').done(function(r){
       var found = null;
       (r.puntos||[]).forEach(function(p){
@@ -676,9 +680,11 @@ window.AD_inventario = (function(){
       if(found){
         callback(found.id, found.cp||'');
       } else {
-        // Fallback: use first punto or show error
+        // Fallback: show the manual selector with the original motoId +
+        // transId preserved. Dropping transId here is what caused the
+        // 400 "transaccion_id requerido" bug.
         $('#adQuoteInfo').html('<div style="color:orange;">No se encontró el punto del cliente. Selecciona manualmente.</div>').show();
-        loadPuntosForVenta(arguments[0], arguments[1]); // won't work perfectly, fallback
+        loadPuntosForVenta(motoId, transId);
       }
     });
   }

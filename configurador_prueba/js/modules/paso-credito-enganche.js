@@ -372,33 +372,54 @@ var PasoCreditoEnganche = {
 
         var centro = self.app.state.centroEntrega || {};
 
+        // Build the full name (nombre + apellidoPaterno + apellidoMaterno) so
+        // the admin panel shows the complete identity, matching the contado
+        // flow (paso4a-checkout.js _fullName). Previously only customerData.nombre
+        // was sent → admin saw first name only. Reported by customers 2026-04-22.
+        var st = self.app.state || {};
+        var fullName = [st.nombre || customerData.nombre, st.apellidoPaterno, st.apellidoMaterno]
+            .filter(function(p){ return p && String(p).trim(); })
+            .join(' ').trim();
+        if (!fullName) fullName = customerData.nombre;
+
+        var payload = {
+            paymentIntentId: paymentIntentId,
+            pagoTipo:  'enganche',
+            nombre:    fullName,
+            email:     customerData.email,
+            telefono:  customerData.telefono,
+            modelo:    customerData.modelo,
+            color:     customerData.color,
+            ciudad:    customerData.ciudad,
+            estado:    customerData.estado,
+            cp:        customerData.cp,
+            total:     enganche,
+            metodoPago: 'credito',
+            enganchePct: self.app.state.enganchePorcentaje,
+            plazoMeses:  self.app.state.plazoMeses,
+            pagoSemanal: VkCalculadora.calcular(modelo.precioContado, self.app.state.enganchePorcentaje || 0.30, self.app.state.plazoMeses || 36).pagoSemanal,
+            asesoriaPlacas: self.app.state.asesoriaPlacos || false,
+            seguroQualitas: self.app.state.seguro || false,
+            punto_id:      centro.id || '',
+            punto_nombre:  centro.nombre || '',
+            punto_tipo:    centro.tipo || ''
+        };
+
+        // Safety net: persist so server-side webhook + page-load retry can
+        // finish the job if this AJAX drops mid-flight.
+        try {
+            localStorage.setItem('vk_pending_confirm', JSON.stringify({
+                url: self.ORDER_CONFIRM_URL, payload: payload, ts: Date.now()
+            }));
+        } catch (e) {}
+
         jQuery.ajax({
             url: self.ORDER_CONFIRM_URL,
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({
-                paymentIntentId: paymentIntentId,
-                pagoTipo:  'enganche',
-                nombre:    customerData.nombre,
-                email:     customerData.email,
-                telefono:  customerData.telefono,
-                modelo:    customerData.modelo,
-                color:     customerData.color,
-                ciudad:    customerData.ciudad,
-                estado:    customerData.estado,
-                cp:        customerData.cp,
-                total:     enganche,
-                metodoPago: 'credito',
-                enganchePct: self.app.state.enganchePorcentaje,
-                plazoMeses:  self.app.state.plazoMeses,
-                pagoSemanal: VkCalculadora.calcular(modelo.precioContado, self.app.state.enganchePorcentaje || 0.30, self.app.state.plazoMeses || 36).pagoSemanal,
-                asesoriaPlacas: self.app.state.asesoriaPlacos || false,
-                seguroQualitas: self.app.state.seguro || false,
-                punto_id:      centro.id || '',
-                punto_nombre:  centro.nombre || '',
-                punto_tipo:    centro.tipo || ''
-            }),
+            data: JSON.stringify(payload),
             success: function(resp) {
+                try { localStorage.removeItem('vk_pending_confirm'); } catch (e) {}
                 self._setLoading(false);
                 // Guardar número de pedido devuelto por el servidor para
                 // que pasos posteriores (contrato, autopago) lo referencien.

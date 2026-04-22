@@ -40,6 +40,18 @@ $plazo_meses          = intval($json['plazo_meses']            ?? 12);
 $precio_contado       = floatval($json['precio_contado']       ?? 0);
 $modelo               = $json['modelo'] ?? '';
 
+// Customer info (for admin lead tracking + self-scoring fallback)
+$nombre               = trim($json['nombre']           ?? '');
+$apellidoPaterno      = trim($json['apellido_paterno'] ?? '');
+$apellidoMaterno      = trim($json['apellido_materno'] ?? '');
+$telefono             = trim($json['telefono']         ?? '');
+$fechaNacimiento      = $json['fecha_nacimiento']      ?? '';
+$email                = trim(strtolower($json['email'] ?? ''));
+$cp                   = $json['cp']                    ?? '';
+$ciudadCust           = trim($json['ciudad']           ?? '');
+$estadoCust           = trim($json['estado']           ?? '');
+$truoraOk             = !empty($json['truora_ok']);
+
 // ── Datos de Círculo de Crédito ─────────────────────────────────────────────
 // Prioridad 1: datos enviados directamente en el request (de consultar-buro.php)
 // Prioridad 2: datos guardados en sesión (si ya se consultó previamente)
@@ -49,6 +61,15 @@ $score             = $json['score']             ?? $_SESSION['cdc_score']       
 $pago_mensual_buro = $json['pago_mensual_buro'] ?? $_SESSION['cdc_pago_mensual_buro'] ?? 0;
 $dpd90_flag        = $json['dpd90_flag']        ?? $_SESSION['cdc_dpd90_flag']        ?? null;
 $dpd_max           = $json['dpd_max']           ?? $_SESSION['cdc_dpd_max']           ?? null;
+
+// Tri-state CDC identity flag — see consultar-buro.php:
+//   true  → CDC found the persona (even if score is null for thin file)
+//   false → CDC returned 404.1 "no existe" — block approval, identity invalid
+//   null  → CDC unreachable / not consulted — fall back to self-score
+// Accept either the POST body (when frontend forwards it) or session.
+$person_found = array_key_exists('person_found', $json)
+    ? ($json['person_found'] === null ? null : (bool)$json['person_found'])
+    : ($_SESSION['cdc_person_found'] ?? null);
 
 // Asegurar tipos correctos
 if ($score !== null) $score = intval($score);
@@ -100,18 +121,45 @@ $eng_min     = $V3['downPaymentMin'];
 // ── Evaluación V3 ─────────────────────────────────────────────────────────────
 $result = [];
 
-if ($score === null) {
-    // Sin datos de Círculo → evaluación estimada solo por PTI
-    if ($pti_total > $V3['KO']['ptiExtreme']) {
-        $result = ['status' => 'NO_VIABLE',            'pti_total' => round($pti_total, 4), 'reasons' => ['PTI_EXTREMO_SIN_CIRCULO']];
-    } elseif ($pti_total <= 0.75) {
-        $result = ['status' => 'PREAPROBADO_ESTIMADO', 'pti_total' => round($pti_total, 4),
-                   'enganche_requerido_min' => $eng_min, 'plazo_max_meses' => 36];
-    } else {
-        $result = ['status' => 'CONDICIONAL_ESTIMADO', 'pti_total' => round($pti_total, 4),
-                   'enganche_requerido_min' => min(max(calcularEngancheMin($pti_total, $V3), $eng_min), 0.60),
-                   'plazo_max_meses' => 24];
+// HARD KO — CDC explicitly confirmed the identity does NOT exist (404.1).
+// Without this gate, a fake persona could pass through the self-scoring
+// fallback because "score=null" is indistinguishable from "thin file" or
+// "CDC outage". Customer report 2026-04-23: "entered false information and
+// they were accepted". Must reject BEFORE any scoring logic runs.
+if ($person_found === false) {
+    $result = [
+        'status'     => 'NO_VIABLE',
+        'pti_total'  => round($pti_total, 4),
+        'reasons'    => ['IDENTIDAD_NO_ENCONTRADA_EN_CDC'],
+        'mensaje'    => 'La persona no aparece en el Buró de Crédito. No es posible otorgar crédito a identidades que no se pueden verificar.',
+    ];
+} elseif ($score === null) {
+    // OPTION B (customer decision 2026-04-23): without a REAL Círculo de
+    // Crédito score we cannot verify ANYTHING about the applicant —
+    // self-reported age and income are unverifiable. Fake data reaching
+    // this branch was the root of "entered false information and they were
+    // accepted". Therefore, no credit-bureau score → no credit. NO_VIABLE.
+    //
+    // This covers three distinct upstream scenarios with the same response:
+    //   person_found=true  + score=null  → thin file (real person, no history)
+    //   person_found=null  + score=null  → CDC unreachable / timeout
+    //   Any other null-score condition
+    // Real thin-file applicants are a legitimate group but they would need
+    // to be onboarded through a different flow (admin-assisted), not the
+    // self-service automatic approval.
+    $mensaje = 'No podemos otorgar crédito en este momento. No se obtuvo un reporte completo del Buró de Crédito para confirmar tu historial.';
+    if ($person_found === true) {
+        $mensaje .= ' Si es tu primera solicitud de crédito, contacta a un asesor: ventas@voltika.com.mx';
+    } elseif ($person_found === null) {
+        $mensaje .= ' Intenta de nuevo en unos minutos o contacta a soporte si el problema persiste.';
     }
+    $result = [
+        'status'       => 'NO_VIABLE',
+        'pti_total'    => round($pti_total, 4),
+        'reasons'      => ['SIN_SCORE_CDC_NO_AUTO_APROBACION'],
+        'mensaje'      => $mensaje,
+        'person_found' => $person_found,
+    ];
 } else {
     // Con datos completos de Círculo
     // 1. KO reales
@@ -170,18 +218,29 @@ if (!is_dir(dirname($logFile))) {
 }
 file_put_contents($logFile, json_encode($log) . "\n", FILE_APPEND | LOCK_EX);
 
-// ── Guardar en BD ─────────────────────────────────────────────────────────────
+// ── Guardar en BD (customer info + decision for admin lead tracking) ────────
 try {
     $pdo = getDB();
     $pdo->exec("CREATE TABLE IF NOT EXISTS preaprobaciones (
         id                   INT AUTO_INCREMENT PRIMARY KEY,
+        nombre               VARCHAR(200),
+        apellido_paterno     VARCHAR(100),
+        apellido_materno     VARCHAR(100),
+        email                VARCHAR(200),
+        telefono             VARCHAR(30),
+        fecha_nacimiento     VARCHAR(20),
+        cp                   VARCHAR(10),
+        ciudad               VARCHAR(100),
+        estado               VARCHAR(50),
         modelo               VARCHAR(200),
+        precio_contado       DECIMAL(12,2),
         ingreso_mensual      DECIMAL(12,2),
         pago_semanal         DECIMAL(10,2),
         pago_mensual         DECIMAL(10,2),
         pago_mensual_buro    DECIMAL(12,2),
         pti_total            DECIMAL(8,4),
         score                INT,
+        synth_score          INT,
         dpd90_flag           TINYINT(1),
         dpd_max              INT,
         circulo_source       VARCHAR(20),
@@ -190,22 +249,51 @@ try {
         status               VARCHAR(40),
         enganche_requerido   DECIMAL(5,2),
         plazo_max            INT,
-        freg                 DATETIME DEFAULT CURRENT_TIMESTAMP
+        truora_ok            TINYINT(1),
+        seguimiento          VARCHAR(40) DEFAULT 'nuevo',
+        notas_admin          TEXT,
+        freg                 DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_status (status),
+        INDEX idx_seguimiento (seguimiento),
+        INDEX idx_email (email),
+        INDEX idx_freg (freg)
     )");
+    // Idempotent: add new columns if old schema exists
+    $existing = [];
+    try { foreach ($pdo->query("SHOW COLUMNS FROM preaprobaciones") as $c) $existing[$c['Field']] = true; } catch (Throwable $e) {}
+    $newCols = [
+        'nombre' => 'VARCHAR(200) NULL', 'apellido_paterno' => 'VARCHAR(100) NULL',
+        'apellido_materno' => 'VARCHAR(100) NULL', 'email' => 'VARCHAR(200) NULL',
+        'telefono' => 'VARCHAR(30) NULL', 'fecha_nacimiento' => 'VARCHAR(20) NULL',
+        'cp' => 'VARCHAR(10) NULL', 'ciudad' => 'VARCHAR(100) NULL', 'estado' => 'VARCHAR(50) NULL',
+        'precio_contado' => 'DECIMAL(12,2) NULL', 'synth_score' => 'INT NULL',
+        'truora_ok' => 'TINYINT(1) NULL', 'seguimiento' => "VARCHAR(40) DEFAULT 'nuevo'",
+        'notas_admin' => 'TEXT NULL',
+    ];
+    foreach ($newCols as $col => $def) {
+        if (!isset($existing[$col])) {
+            try { $pdo->exec("ALTER TABLE preaprobaciones ADD COLUMN $col $def"); } catch (Throwable $e) {}
+        }
+    }
+
     $stmt = $pdo->prepare("
         INSERT INTO preaprobaciones
-            (modelo, ingreso_mensual, pago_semanal, pago_mensual, pago_mensual_buro,
-             pti_total, score, dpd90_flag, dpd_max, circulo_source,
-             enganche_pct, plazo_meses, status, enganche_requerido, plazo_max)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (nombre, apellido_paterno, apellido_materno, email, telefono,
+             fecha_nacimiento, cp, ciudad, estado,
+             modelo, precio_contado, ingreso_mensual, pago_semanal, pago_mensual,
+             pago_mensual_buro, pti_total, score, synth_score, dpd90_flag, dpd_max,
+             circulo_source, enganche_pct, plazo_meses, status,
+             enganche_requerido, plazo_max, truora_ok)
+        VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?, ?,?,?)
     ");
     $stmt->execute([
-        $log['modelo'], $log['ingreso_mensual_est'], $log['pago_semanal_voltika'],
-        $log['pago_mensual_voltika'], $log['pago_mensual_buro'],
-        $log['pti_total'], $log['score'],
+        $nombre, $apellidoPaterno, $apellidoMaterno, $email, $telefono,
+        $fechaNacimiento, $cp, $ciudadCust, $estadoCust,
+        $log['modelo'], $precio_contado, $log['ingreso_mensual_est'], $log['pago_semanal_voltika'], $log['pago_mensual_voltika'],
+        $log['pago_mensual_buro'], $log['pti_total'], $log['score'], ($result['synth_score'] ?? null),
         $dpd90_flag ? 1 : 0, $dpd_max,
-        $log['circulo_source'], $log['enganche_pct'], $log['plazo_meses'],
-        $log['status'], $log['enganche_requerido'], $log['plazo_max'],
+        $log['circulo_source'], $log['enganche_pct'], $log['plazo_meses'], $log['status'],
+        $log['enganche_requerido'], $log['plazo_max'], $truoraOk ? 1 : 0,
     ]);
 } catch (PDOException $e) {
     error_log('Voltika preaprobaciones DB error: ' . $e->getMessage());
@@ -228,4 +316,90 @@ function calcularPlazoMax(?int $score, float $pti, array $cfg): int {
         if ($score >= $row['minScore'] && $pti <= $row['maxPTI']) return $row['term'];
     }
     return 18;
+}
+
+/**
+ * Calculate age from a YYYY-MM-DD birthdate. Returns null if invalid.
+ */
+function vkCalcEdad(string $fechaNac): ?int {
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $fechaNac, $m)) return null;
+    try {
+        $birth = new DateTimeImmutable($fechaNac);
+        $now   = new DateTimeImmutable('today');
+        return (int)$now->diff($birth)->y;
+    } catch (Throwable $e) { return null; }
+}
+
+/**
+ * Check if email belongs to a customer with prior successful Stripe payments.
+ * Returns true only if at least 1 completed transaction exists.
+ */
+function vkIsRepeatCustomer(string $email): bool {
+    if ($email === '') return false;
+    try {
+        $pdo = getDB();
+        // transacciones table may have different schema variants — try common ones
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM transacciones
+            WHERE LOWER(email) = ?
+              AND (estado = 'completed' OR estado = 'paid' OR estado = 'pagado')");
+        $stmt->execute([$email]);
+        return (int)$stmt->fetchColumn() > 0;
+    } catch (Throwable $e) {
+        // Table may not exist or column may be named differently — silently
+        // return false (no boost) instead of throwing.
+        return false;
+    }
+}
+
+/**
+ * Build a synthetic credit score (range 300-850 simulating CDC FICO range)
+ * from the signals available without a credit bureau call.
+ *
+ * Baseline 500. Adjustments are conservative — designed to mirror real
+ * FICO distribution where most thin-file applicants land 500-650.
+ */
+function vkSyntheticScore(array $signals): int {
+    $score = 500;
+
+    // Age bonus — established adults (25-55) lowest historical default rate
+    $edad = $signals['edad'] ?? null;
+    if ($edad !== null) {
+        if ($edad >= 25 && $edad <= 55) $score += 40;
+        elseif ($edad >= 56 && $edad <= 65) $score += 20;
+        elseif ($edad >= 18 && $edad <= 24) $score += 0;  // young = neutral, more risk
+    }
+
+    // Income trust — extremes are suspicious or risky
+    $ingreso = $signals['ingreso'] ?? 0;
+    if ($ingreso >= 10000 && $ingreso <= 80000) $score += 30;       // sweet spot
+    elseif ($ingreso > 80000 && $ingreso <= 200000) $score += 20;   // high but plausible
+    elseif ($ingreso > 200000) $score -= 20;                         // suspicious / unverifiable
+    elseif ($ingreso < 5000) $score -= 30;                           // too low for our products
+
+    // PTI (Pago-To-Income) — most predictive single signal
+    $pti = $signals['pti'] ?? 1;
+    if ($pti <= 0.20)      $score += 80;
+    elseif ($pti <= 0.30)  $score += 50;
+    elseif ($pti <= 0.50)  $score += 20;
+    elseif ($pti <= 0.75)  $score += 0;
+    elseif ($pti <= 0.90)  $score -= 20;
+    else                   $score -= 40;
+
+    // Enganche — skin in the game
+    $eng = $signals['enganche_pct'] ?? 0.30;
+    if ($eng >= 0.50)       $score += 60;
+    elseif ($eng >= 0.40)   $score += 40;
+    elseif ($eng >= 0.30)   $score += 20;
+    elseif ($eng < 0.20)    $score -= 30;
+
+    // Identity verification (Truora) — bonus if passed, small penalty if not
+    // (admin will verify manually before final approval if Truora is down)
+    if (!empty($signals['truora_ok'])) $score += 30;
+    else                                $score -= 20;
+
+    // Repeat customer — strongest positive signal we have
+    if (!empty($signals['es_repeticion'])) $score += 80;
+
+    // Clamp to FICO range
+    return max(300, min(850, $score));
 }

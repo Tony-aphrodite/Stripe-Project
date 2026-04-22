@@ -31,17 +31,35 @@ echo '</style></head><body>';
 
 echo '<h1>🔐 Prueba de Seguridad — Círculo de Crédito</h1>';
 
-// ── Step 1: Load our private key ─────────────────────────────────────────────
+// ── Step 1: Load our private key + cert ──────────────────────────────────────
+// Resolution order matches consultar-buro.php: session → DB → disk.
+// Disk on Plesk is often non-writable, so DB is the canonical source after
+// the active=1 row in cdc_certificates is the source of truth.
 echo '<div class="step"><div class="step-title">Paso 1: Cargar llave privada</div>';
 
-$keyPem = $_SESSION['cdc_key_pem'] ?? null;
+$keySource  = 'none';
+$dbRowCount = 0;
+$keyPem  = $_SESSION['cdc_key_pem']  ?? null;
+$certPem = $_SESSION['cdc_cert_pem'] ?? null;
+if ($keyPem) $keySource = 'session';
 
-// Try from disk if not in session
+try {
+    $dbRowCount = (int) getDB()->query("SELECT COUNT(*) FROM cdc_certificates WHERE active = 1")->fetchColumn();
+} catch (Throwable $e) {}
+
+if (!$keyPem || !$certPem) {
+    try {
+        $row = getDB()->query("SELECT private_key, certificate FROM cdc_certificates WHERE active = 1 ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            if (!$keyPem)  { $keyPem  = $row['private_key']; $keySource = 'db'; }
+            if (!$certPem) { $certPem = $row['certificate']; }
+        }
+    } catch (Throwable $e) {}
+}
+
 if (!$keyPem) {
     $keyFile = __DIR__ . '/certs/cdc_private.key';
-    if (file_exists($keyFile)) {
-        $keyPem = file_get_contents($keyFile);
-    }
+    if (file_exists($keyFile)) { $keyPem = file_get_contents($keyFile); $keySource = 'disk'; }
 }
 
 if (!$keyPem) {
@@ -59,57 +77,55 @@ if (!$privateKey) {
 
 $keyDetails = openssl_pkey_get_details($privateKey);
 $keyType = $keyDetails['type'] === OPENSSL_KEYTYPE_EC ? 'ECDSA' : 'RSA';
+$certFingerprint = $certPem ? (@openssl_x509_fingerprint($certPem, 'sha256') ?: '') : '';
 echo '<span class="ok">✅ Llave privada cargada (' . $keyType . ')</span>';
-echo '</div>';
+echo '<div style="font-size:12px;color:#666;margin-top:4px;">';
+echo 'Fuente: <code>' . $keySource . '</code> &nbsp;|&nbsp; DB active=1 rows: <code>' . $dbRowCount . '</code><br>';
+echo 'Cert fingerprint SHA-256: <code>' . htmlspecialchars($certFingerprint) . '</code>';
+echo '</div></div>';
 
-// ── Step 2: Prepare and sign message ─────────────────────────────────────────
-echo '<div class="step"><div class="step-title">Paso 2: Firmar mensaje de prueba</div>';
+// ── Step 2: Sign request body ────────────────────────────────────────────────
+// Same convention as consultar-buro.php: sign the exact JSON body bytes with
+// OPENSSL_ALGO_SHA256, then hex-encode for the x-signature header.
+echo '<div class="step"><div class="step-title">Paso 2: Firmar cuerpo de petición</div>';
 
 $testMessage = 'Esto es un mensaje de prueba';
+$requestBody = json_encode(['Peticion' => $testMessage]);
 
-// Sign the message with our private key
 $signature = '';
-$signResult = openssl_sign($testMessage, $signature, $privateKey, OPENSSL_ALGO_SHA256);
-
-if (!$signResult) {
+if (!openssl_sign($requestBody, $signature, $privateKey, OPENSSL_ALGO_SHA256)) {
     echo '<span class="err">❌ Error firmando: ' . openssl_error_string() . '</span>';
     echo '</div></body></html>';
     exit;
 }
-
-$signatureB64 = base64_encode($signature);
-echo '<span class="ok">✅ Mensaje firmado correctamente</span>';
+$signatureHex = bin2hex($signature);
+echo '<span class="ok">✅ Body firmado correctamente</span>';
 echo '<div style="font-size:12px;color:#666;margin-top:6px;">';
-echo 'Mensaje: <code>' . htmlspecialchars($testMessage) . '</code><br>';
-echo 'Firma (Base64): <code style="word-break:break-all;">' . htmlspecialchars(substr($signatureB64, 0, 80)) . '...</code>';
+echo 'Body: <code>' . htmlspecialchars($requestBody) . '</code><br>';
+echo 'Firma (HEX, primeros 80): <code style="word-break:break-all;">' . htmlspecialchars(substr($signatureHex, 0, 80)) . '...</code>';
 echo '</div></div>';
 
-// ── Step 3: Send to CDC SecurityTest API ─────────────────────────────────────
+// ── Step 3: Send to CDC SecurityTest ─────────────────────────────────────────
 echo '<div class="step"><div class="step-title">Paso 3: Enviar a Círculo de Crédito</div>';
 
 $apiUrl = 'https://services.circulodecredito.com.mx/v1/securitytest';
 $apiKey = defined('CDC_API_KEY') ? CDC_API_KEY : '';
 
-$requestBody = json_encode([
-    'Peticion' => $testMessage
-]);
-
-// Load our certificate for the request
-$certPem = $_SESSION['cdc_cert_pem'] ?? null;
+// cert was already loaded in Paso 1 (session → DB → disk). Only fall back to
+// disk now if somehow still empty.
 if (!$certPem) {
     $certFile = __DIR__ . '/certs/cdc_certificate.pem';
     if (file_exists($certFile)) $certPem = file_get_contents($certFile);
 }
 
-// Setup cURL
-$ch = curl_init($apiUrl);
-
 $headers = [
     'Content-Type: application/json',
     'Accept: application/json',
     'x-api-key: ' . $apiKey,
-    'x-signature: ' . $signatureB64,
+    'x-signature: ' . $signatureHex,
 ];
+if (defined('CDC_USER') && CDC_USER) $headers[] = 'username: ' . CDC_USER;
+if (defined('CDC_PASS') && CDC_PASS) $headers[] = 'password: ' . CDC_PASS;
 
 $curlOpts = [
     CURLOPT_POST           => true,
@@ -120,29 +136,24 @@ $curlOpts = [
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_SSL_VERIFYHOST => 2,
 ];
-
-// If we have our cert + key, use them for mutual TLS
+$tmpCert = $tmpKey = null;
 if ($certPem && $keyPem) {
-    // Save temp files for cURL (it needs file paths)
     $tmpCert = tempnam(sys_get_temp_dir(), 'cdc_cert_');
     $tmpKey  = tempnam(sys_get_temp_dir(), 'cdc_key_');
     file_put_contents($tmpCert, $certPem);
     file_put_contents($tmpKey, $keyPem);
-
     $curlOpts[CURLOPT_SSLCERT] = $tmpCert;
     $curlOpts[CURLOPT_SSLKEY]  = $tmpKey;
 }
 
+$ch = curl_init($apiUrl);
 curl_setopt_array($ch, $curlOpts);
-
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlErr  = curl_error($ch);
 curl_close($ch);
-
-// Cleanup temp files
-if (isset($tmpCert)) @unlink($tmpCert);
-if (isset($tmpKey))  @unlink($tmpKey);
+if ($tmpCert) @unlink($tmpCert);
+if ($tmpKey)  @unlink($tmpKey);
 
 echo '<div style="font-size:12px;color:#666;margin-bottom:8px;">';
 echo 'URL: <code>' . $apiUrl . '</code><br>';

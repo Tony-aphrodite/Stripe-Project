@@ -35,6 +35,7 @@ $asset = function(string $rel): string {
       <!-- ═══ OPERACIONES ═══ -->
       <button data-route="dashboard" class="active"><span><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span> Dashboard</button>
       <button data-route="ventas"><span><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></span> Ventas</button>
+      <button data-route="preaprobaciones"><span><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></span> Solicitudes</button>
       <button data-route="inventario"><span><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span> CEDIS</button>
       <button data-route="envios"><span><svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> Envíos</button>
       <button data-route="pagos"><span><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> Pagos</button>
@@ -87,6 +88,11 @@ $asset = function(string $rel): string {
     <div id="adModalBody"></div>
   </div>
 </div>
+<!-- Shared catalog so admin modals (referidos commissions, etc.) can read
+     model slugs + nombres from the same single source of truth the store
+     and clientes portal use. Avoids hardcoded fallbacks drifting out of sync. -->
+<script src="<?= $asset('../configurador_prueba/js/data/productos.js') ?>"></script>
+<script src="<?= $asset('js/voltika-image-compress.js') ?>"></script>
 <script src="<?= $asset('js/admin-app.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-login.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-dashboard.js') ?>"></script>
@@ -98,6 +104,7 @@ $asset = function(string $rel): string {
 <script src="<?= $asset('js/modules/admin-ventas.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-checklists.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-buro.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-preaprobaciones.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-cobranza.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-buscar.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-analytics.js') ?>"></script>

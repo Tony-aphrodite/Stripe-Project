@@ -19,14 +19,13 @@ $asset = function(string $rel): string {
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Voltika — Mi cuenta (TEST)</title>
-<link rel="icon" type="image/svg+xml" href="../configurador_prueba_test/img/favicon.svg">
+<title>Voltika — Mi cuenta</title>
+<link rel="icon" type="image/svg+xml" href="../configurador_prueba/img/favicon.svg">
 <link rel="stylesheet" href="<?= $asset('css/portal.css') ?>">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
-<div id="vk-test-banner" style="background:#ff9800;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:99999;">MODO DE PRUEBA — Portal de clientes (test)</div>
-<div id="vkApp" class="vk-app" style="padding-top:32px;">
+<div id="vkApp" class="vk-app">
   <div id="vkScreen" class="vk-screen"></div>
   <nav id="vkTabbar" class="vk-tabbar" style="display:none">
     <button data-route="inicio"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><em>Inicio</em></button>
@@ -39,6 +38,12 @@ $asset = function(string $rel): string {
     <button data-route="ayuda"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><em>Ayuda</em></button>
   </nav>
 </div>
+<!-- Shared catalog: same productos.js used by the configurador home page.
+     Loading it here makes the clientes portal pull speed/autonomy from the
+     single source of truth instead of a duplicated, drift-prone hardcoded map
+     that was causing the M05 "85 km/h / 120 km" bug. -->
+<script src="<?= $asset('../configurador_prueba/js/data/productos.js') ?>"></script>
+<script src="<?= $asset('js/data/catalogo-specs.js') ?>"></script>
 <script src="<?= $asset('js/app.js') ?>"></script>
 <script src="<?= $asset('js/modules/login.js') ?>"></script>
 <script src="<?= $asset('js/modules/recovery.js') ?>"></script>

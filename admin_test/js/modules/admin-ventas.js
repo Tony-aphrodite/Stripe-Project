@@ -9,6 +9,8 @@ window.AD_ventas = (function(){
         '<div class="ad-h1">Ventas / Ordenes</div>'+
         '<div style="display:flex;align-items:center;gap:10px;">'+
           '<span id="vtLastUpdate" style="font-size:11px;color:var(--ad-dim);"></span>'+
+          '<button class="ad-btn" id="vtNormalizar" style="background:#fff4e5;color:#b26200;border-color:#f0c378;padding:6px 12px;font-size:13px;" title="Normalizar modelo/color de ventas legacy (&quot;Voltika Tromox Pesgo&quot; → &quot;Pesgo Plus&quot;, &quot;Gris moderno&quot; → &quot;gris&quot;) para que encuentren motos disponibles">'+
+            '🔧 Normalizar catálogo</button>'+
           '<button class="ad-btn" id="vtRefresh" style="background:#f0f4f8;color:var(--ad-navy);padding:6px 14px;font-size:13px;">'+
             '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;margin-right:4px;"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>'+
             'Actualizar</button>'+
@@ -22,6 +24,99 @@ window.AD_ventas = (function(){
     $('#vtRefresh').on('click', function(){
       $('#vtTable').html('<div style="text-align:center;padding:40px;"><span class="ad-spin"></span> Actualizando...</div>');
       loadData();
+    });
+    $('#vtNormalizar').on('click', showNormalizarCatalogo);
+  }
+
+  // Modal: preview + commit de normalización de modelo/color en transacciones.
+  // Convierte ventas legacy ("Voltika Tromox Pesgo" / "Gris moderno") al
+  // código corto que usa inventario_motos para que puedan asignarse.
+  function showNormalizarCatalogo(){
+    ADApp.modal(
+      '<div class="ad-h2">🔧 Normalizar catálogo</div>'+
+      '<div style="font-size:13px;color:var(--ad-dim);margin-bottom:12px;line-height:1.5;">'+
+        'Busca pedidos con valores legacy en <code>modelo</code>/<code>color</code> '+
+        '(ej. <code>Voltika Tromox Pesgo</code>, <code>Gris moderno</code>) y los '+
+        'reemplaza por el código corto del catálogo nuevo (<code>Pesgo Plus</code>, <code>gris</code>). '+
+        'Después, el pedido podrá encontrar motos disponibles en el inventario.'+
+      '</div>'+
+      '<div id="vtNormContent" style="min-height:80px;">'+
+        '<div style="text-align:center;padding:30px;"><span class="ad-spin"></span> Analizando pedidos...</div>'+
+      '</div>'
+    );
+    ADApp.api('ventas/normalizar-catalogo.php').done(function(r){
+      if (!r.ok) { $('#vtNormContent').html('<div class="ad-banner warn">'+(r.error||'Error')+'</div>'); return; }
+      if (!r.changes || !r.changes.length){
+        $('#vtNormContent').html(
+          '<div style="background:#E8F5E9;padding:14px;border-radius:8px;color:#2E7D32;font-size:14px;">'+
+            '✅ No se detectaron pedidos con valores legacy. Todo está en formato canónico.'+
+          '</div>'+
+          '<div style="display:flex;justify-content:flex-end;margin-top:12px;">'+
+            '<button class="ad-btn ghost" id="vtNormClose">Cerrar</button>'+
+          '</div>'
+        );
+        $('#vtNormClose').on('click', function(){ ADApp.closeModal(); });
+        return;
+      }
+      var html = '<div style="background:#FFF3E0;padding:10px 14px;border-radius:8px;color:#E65100;font-size:13px;margin-bottom:10px;">'+
+        'Se encontraron <strong>'+r.changes.length+'</strong> pedidos para normalizar. Revisa y confirma.'+
+        '</div>';
+      html += '<div style="max-height:380px;overflow-y:auto;border:1px solid var(--ad-border);border-radius:8px;">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12.5px;">'+
+              '<thead style="background:#f0f4f8;position:sticky;top:0;">'+
+                '<tr>'+
+                  '<th style="text-align:left;padding:8px;">Pedido</th>'+
+                  '<th style="text-align:left;padding:8px;">Cliente</th>'+
+                  '<th style="text-align:left;padding:8px;">Modelo</th>'+
+                  '<th style="text-align:left;padding:8px;">Color</th>'+
+                '</tr>'+
+              '</thead><tbody>';
+      r.changes.forEach(function(c){
+        html += '<tr style="border-top:1px solid var(--ad-border);">'+
+          '<td style="padding:8px;"><code style="font-size:11px;">'+esc(c.pedido||'')+'</code></td>'+
+          '<td style="padding:8px;">'+esc(c.nombre||'')+'</td>'+
+          '<td style="padding:8px;">'+
+            (c.changed_m
+              ? '<span style="color:#b91c1c;text-decoration:line-through;">'+esc(c.modelo_old||'')+'</span> → <strong style="color:#1e7e34;">'+esc(c.modelo_new||'')+'</strong>'
+              : '<span style="color:var(--ad-dim);">'+esc(c.modelo_new||'')+'</span>')+
+          '</td>'+
+          '<td style="padding:8px;">'+
+            (c.changed_c
+              ? '<span style="color:#b91c1c;text-decoration:line-through;">'+esc(c.color_old||'')+'</span> → <strong style="color:#1e7e34;">'+esc(c.color_new||'')+'</strong>'
+              : '<span style="color:var(--ad-dim);">'+esc(c.color_new||'')+'</span>')+
+          '</td>'+
+        '</tr>';
+      });
+      html += '</tbody></table></div>';
+      html += '<div style="display:flex;gap:8px;margin-top:12px;">'+
+              '<button class="ad-btn ghost" id="vtNormCancel" style="flex:1;">Cancelar</button>'+
+              '<button class="ad-btn primary" id="vtNormApply" style="flex:1;background:#FB8C00;border-color:#FB8C00;">Aplicar normalización ('+r.changes.length+')</button>'+
+            '</div>';
+      html += '<div id="vtNormMsg" style="font-size:12px;margin-top:8px;"></div>';
+      $('#vtNormContent').html(html);
+
+      $('#vtNormCancel').on('click', function(){ ADApp.closeModal(); });
+      $('#vtNormApply').on('click', function(){
+        if (!confirm('Se actualizarán '+r.changes.length+' registros de transacciones. ¿Continuar?')) return;
+        var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Aplicando...');
+        ADApp.api('ventas/normalizar-catalogo.php', {
+          method: 'POST', contentType: 'application/json',
+          data: JSON.stringify({ confirm: true })
+        }).done(function(rr){
+          if (rr.ok){
+            $('#vtNormMsg').css('color','#1e7e34').text(rr.message || 'Aplicado');
+            setTimeout(function(){ ADApp.closeModal(); loadData(); }, 800);
+          } else {
+            $btn.prop('disabled', false).text('Aplicar normalización');
+            $('#vtNormMsg').css('color','#b91c1c').text(rr.error || 'Error');
+          }
+        }).fail(function(x){
+          $btn.prop('disabled', false).text('Aplicar normalización');
+          $('#vtNormMsg').css('color','#b91c1c').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+        });
+      });
+    }).fail(function(x){
+      $('#vtNormContent').html('<div class="ad-banner warn">'+((x.responseJSON && x.responseJSON.error) || 'Error de conexión')+'</div>');
     });
   }
 
@@ -272,20 +367,58 @@ window.AD_ventas = (function(){
       html += '<div class="ad-banner warn" style="margin-bottom:10px;">No hay motos del mismo color. Mostrando otras unidades del mismo modelo.</div>';
     }
 
+    // Index motos by id so the Confirmar handler can look up checklist status
+    // without having to re-parse DOM data attributes.
+    var motoIndex = {};
+    motos.forEach(function(m){ motoIndex[m.id] = m; });
+
     html += '<div style="max-height:340px;overflow-y:auto;padding-right:4px;">';
     motos.forEach(function(m, i){
       var vinTxt   = m.vin_display || m.vin || '—';
       var metaTxt  = (m.modelo || '') + (m.color ? ' · ' + m.color : '') + (m.estado ? ' · ' + m.estado : '');
       var locTxt   = m.punto_nombre ? m.punto_nombre : 'En CEDIS';
+
+      // Checklist status: three states rendered as colored pills.
+      //  - green  "Checklist OK"       → co_ok=1 and co_force=0
+      //  - orange "Revisión pendiente" → co_force=1 (bulk-completed without inspection)
+      //  - red    "Sin checklist"      → no checklist_origen row at all
+      var coOk    = Number(m.co_ok)    === 1;
+      var coForce = Number(m.co_force) === 1;
+      var hasCl   = !!m.co_id;
+      var badgeHtml, ctaHtml;
+      if (coOk && !coForce) {
+        badgeHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#E8F5E9;color:#2E7D32;font-size:11px;font-weight:700;">✓ Checklist OK</span>';
+        ctaHtml = '';
+      } else if (coForce) {
+        badgeHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#FFF3E0;color:#E65100;font-size:11px;font-weight:700;">⚠️ Revisión pendiente</span>';
+        ctaHtml = '<button type="button" class="ad-btn sm vtClFill" data-mid="'+m.id+'" '+
+                    'style="margin-top:6px;background:#FB8C00;color:#fff;border-color:#FB8C00;font-size:12px;padding:4px 10px;">'+
+                    '🔧 Completar checklist</button>';
+      } else if (hasCl) {
+        badgeHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#FFF8E1;color:#B28704;font-size:11px;font-weight:700;">En progreso</span>';
+        ctaHtml = '<button type="button" class="ad-btn sm vtClFill" data-mid="'+m.id+'" '+
+                    'style="margin-top:6px;background:#F9A825;color:#fff;border-color:#F9A825;font-size:12px;padding:4px 10px;">'+
+                    '▶ Continuar checklist</button>';
+      } else {
+        badgeHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#FDECEA;color:#B71C1C;font-size:11px;font-weight:700;">✗ Sin checklist</span>';
+        ctaHtml = '<button type="button" class="ad-btn sm vtClFill" data-mid="'+m.id+'" '+
+                    'style="margin-top:6px;background:#C62828;color:#fff;border-color:#C62828;font-size:12px;padding:4px 10px;">'+
+                    '＋ Iniciar checklist</button>';
+      }
+
       html += '<label class="adPickMoto" data-mid="'+m.id+'" '+
                 'style="display:block;cursor:pointer;padding:11px 13px;margin-bottom:6px;'+
                        'border:1.5px solid var(--ad-border);border-radius:8px;background:var(--ad-surface);">'+
                 '<div style="display:flex;gap:10px;align-items:flex-start;">'+
                   '<input type="radio" name="motoChoice" value="'+m.id+'" style="margin-top:3px;flex-shrink:0;"'+(i===0?' checked':'')+'>'+
                   '<div style="flex:1;min-width:0;">'+
-                    '<div style="font-weight:700;font-size:13.5px;color:var(--ad-navy);font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;">'+vinTxt+'</div>'+
+                    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+                      '<div style="font-weight:700;font-size:13.5px;color:var(--ad-navy);font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;">'+vinTxt+'</div>'+
+                      badgeHtml+
+                    '</div>'+
                     '<div style="font-size:12px;color:var(--ad-dim);margin-top:3px;">'+metaTxt+'</div>'+
                     '<div style="font-size:11.5px;color:#666;margin-top:2px;">'+locTxt+'</div>'+
+                    (ctaHtml ? '<div>'+ctaHtml+'</div>' : '')+
                   '</div>'+
                 '</div>'+
               '</label>';
@@ -307,9 +440,30 @@ window.AD_ventas = (function(){
     }
     syncHighlight();
 
-    $('.adPickMoto').on('click', function(){
+    $('.adPickMoto').on('click', function(e){
+      // Avoid swallowing clicks on the inner "Completar checklist" button
+      if ($(e.target).closest('.vtClFill').length) return;
       $(this).find('input[type="radio"]').prop('checked', true);
       syncHighlight();
+    });
+
+    // Fast-fill: open checklist modal without losing the Asignar context.
+    // When the inner modal closes, re-open Asignar so the list refreshes with
+    // up-to-date checklist status.
+    $('.vtClFill').on('click', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var mid = parseInt($(this).data('mid'), 10);
+      if (!window.AD_checklists || typeof window.AD_checklists.openOrigenById !== 'function') {
+        alert('Módulo de checklists no disponible');
+        return;
+      }
+      // Close the Asignar modal first, then open the checklist. After the user
+      // finishes (or cancels), re-open Asignar so they can confirm the bike.
+      ADApp.closeModal();
+      window.AD_checklists.openOrigenById(mid, function(){
+        showAsignar(transId, modelo, (motoIndex[mid] && motoIndex[mid].color) || '', pedido);
+      });
     });
 
     $('#vtMotosCancel').on('click', function(){ ADApp.closeModal(); });
@@ -317,6 +471,18 @@ window.AD_ventas = (function(){
     $('#vtMotosSave').on('click', function(){
       var motoId = parseInt($('input[name="motoChoice"]:checked').val(), 10);
       if (!motoId) { $('#vtMotosMsg').css('color','#b91c1c').text('Selecciona una moto'); return; }
+      var m = motoIndex[motoId] || {};
+      var coOk    = Number(m.co_ok)    === 1;
+      var coForce = Number(m.co_force) === 1;
+      // Block assignment when the bike has no real origin inspection.
+      // User can still override by clicking Confirmar a second time after
+      // acknowledging — avoids a hard-stop while nudging correct workflow.
+      if (!coOk || coForce) {
+        var msg = coForce
+          ? 'Esta moto tiene el checklist marcado como "completado" pero no fue inspeccionada (bulk-complete).\n\n¿Asignar de todas formas sin revisión física?'
+          : 'Esta moto NO tiene checklist de origen completado.\n\n¿Asignar de todas formas? (No recomendado — la moto debería inspeccionarse antes de entregar al cliente.)';
+        if (!confirm(msg)) return;
+      }
       doAsignar(transId, motoId);
     });
   }
@@ -437,6 +603,12 @@ window.AD_ventas = (function(){
     html += fRow('Tipo de pago', '<span class="ad-badge '+tm.color+'" style="font-size:11px;">'+tm.label+'</span>');
     html += fRow('Monto', '<span style="font-size:15px;font-weight:800;">'+ADApp.money(r.monto)+'</span>');
     html += fRow('Fecha', r.fecha ? r.fecha.substring(0,10) : '—');
+    // Surface the ETA captured in "Asignar punto". Highlighted so the admin
+    // can spot missing dates at a glance and trigger the flow to set one.
+    var etaTxt = r.fecha_estimada_entrega
+      ? '<span style="font-weight:700;color:#0e8f55;">'+String(r.fecha_estimada_entrega).substring(0,10)+'</span>'
+      : '<span style="color:#b91c1c;font-size:12px;">Sin definir — asigna punto para capturarla</span>';
+    html += fRow('ETA entrega', etaTxt);
     html += '</div>';
 
     // ── Section: Detalle del crédito (only for enganche/credito) ──
@@ -463,6 +635,19 @@ window.AD_ventas = (function(){
     html += fRow('Payment Intent', piVal);
     html += fRow('Estado de pago', '<span class="ad-badge '+pagoColor+'">'+pagoLabel+'</span>');
     html += '</div>';
+    // Recovery CTA when stripe_pi is missing. Eduardo Gonzalez Lopez's order
+    // (VK-1776828725) paid successfully but the webhook never stored the PI —
+    // this lets the operator auto-match it against Stripe by email + monto.
+    if (!r.stripe_pi){
+      html += '<div style="background:#FFF3E0;border:1px solid #FFE0B2;border-radius:8px;padding:10px 12px;margin-bottom:10px;">'+
+              '<div style="font-size:12.5px;color:#E65100;margin-bottom:8px;">'+
+                'Esta orden no tiene <code>stripe_pi</code>. Si el cliente pagó, busca el cargo en Stripe para vincularlo.'+
+              '</div>'+
+              '<button class="ad-btn sm primary vtBuscarStripe" data-tid="'+r.id+'" '+
+                'style="background:#FB8C00;border-color:#FB8C00;font-weight:700;">🔍 Buscar pago en Stripe</button>'+
+              '<div id="vtBuscarStripeOut_'+r.id+'" style="margin-top:8px;font-size:12px;"></div>'+
+              '</div>';
+    }
 
     // ── Section: Punto de entrega ──
     secIx = 0;
@@ -571,6 +756,91 @@ window.AD_ventas = (function(){
     $('.adAsignarPuntoBtn').off('click').on('click', function(){
       openAsignarPuntoOrden(r);
     });
+
+    // Wire "Buscar pago en Stripe" (orders without stripe_pi)
+    $('.vtBuscarStripe').off('click').on('click', function(){
+      var tid = $(this).data('tid');
+      buscarStripePi(tid);
+    });
+  }
+
+  // Auto-match Stripe PaymentIntent for a transacción that lost its stripe_pi.
+  // Shows candidates by email+amount+date and lets the admin link one.
+  function buscarStripePi(tid){
+    var $out = $('#vtBuscarStripeOut_' + tid);
+    $out.html('<span class="ad-spin"></span> Buscando en Stripe...');
+    $.get('php/ventas/buscar-stripe-pi.php?transaccion_id=' + encodeURIComponent(tid))
+      .done(function(rr){
+        if (!rr.ok) { $out.html('<span style="color:#b91c1c;">'+(rr.error||'Error')+'</span>'); return; }
+        if (rr.already_linked) {
+          $out.html('<span style="color:#1e7e34;">Ya estaba vinculado: <code>'+rr.stripe_pi+'</code></span>');
+          return;
+        }
+        var sum = rr.summary || {exact:0,amount:0,email:0};
+        var total = (sum.exact||0)+(sum.amount||0)+(sum.email||0);
+        if (total === 0) {
+          $out.html(
+            '<div style="color:var(--ad-dim);margin-bottom:6px;">No se encontraron PaymentIntents para '+
+              '<strong>'+(rr.order && rr.order.email || '—')+'</strong> por <strong>$'+(rr.order && rr.order.total || 0).toLocaleString()+'</strong>.</div>'+
+            '<div style="display:flex;gap:6px;">'+
+              '<input type="text" id="vtManualPi_'+tid+'" placeholder="pi_xxx..." class="ad-input" style="flex:1;font-family:monospace;font-size:11px;">'+
+              '<button class="ad-btn sm primary" id="vtManualLink_'+tid+'">Vincular</button>'+
+            '</div>'
+          );
+          $('#vtManualLink_'+tid).on('click', function(){
+            var pi = ($('#vtManualPi_'+tid).val()||'').trim();
+            if (pi) vincularStripePi(tid, pi);
+          });
+          return;
+        }
+
+        var h = '<div style="background:#fff;border:1px solid var(--ad-border);border-radius:6px;padding:8px;max-height:260px;overflow-y:auto;">';
+        function tier(title, bg, items){
+          if (!items || !items.length) return '';
+          var t = '<div style="font-size:11px;color:var(--ad-dim);font-weight:600;margin:6px 0 3px;">'+title+'</div>';
+          items.forEach(function(it){
+            t += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:'+bg+';border-radius:5px;margin-bottom:3px;gap:6px;">'+
+                 '<div style="flex:1;min-width:0;font-size:11.5px;">'+
+                   '<div><code style="font-size:10.5px;">'+(it.id||'')+'</code> · '+(it.status||'')+'</div>'+
+                   '<div style="color:var(--ad-dim);margin-top:2px;">'+ADApp.money(it.amount||0)+' · '+(it.email||'—')+' · '+(it.created||'')+'</div>'+
+                 '</div>'+
+                 '<button class="ad-btn sm primary vtLinkPi" data-tid="'+tid+'" data-pi="'+it.id+'">Vincular</button>'+
+                 '</div>';
+          });
+          return t;
+        }
+        h += tier('Coincidencia exacta (email + monto)', '#E8F5E9', rr.matches.exact);
+        h += tier('Solo monto',  '#FFF8E1', rr.matches.amount);
+        h += tier('Solo email',  '#FFF3E0', rr.matches.email);
+        h += '</div>';
+        $out.html(h);
+        $('.vtLinkPi').off('click').on('click', function(){
+          vincularStripePi($(this).data('tid'), $(this).data('pi'));
+        });
+      })
+      .fail(function(x){
+        $out.html('<span style="color:#b91c1c;">'+((x.responseJSON && x.responseJSON.error) || 'Error de conexión')+'</span>');
+      });
+  }
+
+  function vincularStripePi(tid, pi){
+    if (!confirm('¿Vincular '+pi+' a este pedido? Se recalculará el estado de pago.')) return;
+    $.ajax({
+      url: 'php/ventas/buscar-stripe-pi.php',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ transaccion_id: parseInt(tid,10), stripe_pi: pi })
+    }).done(function(rr){
+      if (rr.ok){
+        alert('Vinculado. Estado: '+rr.pago_estado);
+        ADApp.closeModal();
+        render();
+      } else {
+        alert(rr.error || 'Error');
+      }
+    }).fail(function(x){
+      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+    });
   }
 
   // ── Modal: Asignar punto a la orden ─────────────────────────────────────
@@ -631,8 +901,29 @@ window.AD_ventas = (function(){
         otherState.forEach(function(p){ html += puntoCardHtml(p); });
       }
 
-      html += '</div>'
-            + '<div id="vkAsignPuntoMsg" style="font-size:12px;margin:10px 0 0;"></div>'
+      html += '</div>';
+
+      // ETA input: default to today + 10 days, matching the notification text.
+      // Customer feedback 2026-04-22: previously the modal had no date field,
+      // so transacciones.fecha_estimada_entrega was never set and the Envíos
+      // page ETA column stayed empty. Capturing it here closes that gap.
+      var d = new Date(); d.setDate(d.getDate() + 10);
+      var defaultEta = d.toISOString().slice(0, 10);
+      var minEta     = new Date().toISOString().slice(0, 10);
+      // If the order already has an ETA, preselect it so the admin can edit
+      // rather than overwrite blindly on re-open of the modal.
+      var currentEta = r.fecha_estimada_entrega ? String(r.fecha_estimada_entrega).slice(0, 10) : '';
+      html += '<div style="background:var(--ad-surface-2);padding:10px 12px;border-radius:6px;margin-top:10px;">'
+            +   '<label style="display:block;font-size:12px;font-weight:700;color:var(--ad-navy);margin-bottom:6px;">'
+            +     'Fecha estimada de entrega'
+            +     '<span style="color:var(--ad-dim);font-weight:500;margin-left:6px;">(se mostrará al cliente y en Envíos)</span>'
+            +   '</label>'
+            +   '<input type="date" id="vkAsignPuntoEta" class="ad-input" '
+            +     'min="'+minEta+'" value="'+(currentEta || defaultEta)+'" '
+            +     'style="font-family:ui-monospace,Menlo,Consolas,monospace;">'
+            + '</div>';
+
+      html += '<div id="vkAsignPuntoMsg" style="font-size:12px;margin:10px 0 0;"></div>'
             + '<div style="display:flex;gap:8px;margin-top:12px;">'
             +   '<button class="ad-btn ghost" id="vkAsignPuntoCancel" style="flex:1;">Cancelar</button>'
             +   '<button class="ad-btn primary" id="vkAsignPuntoSave" style="flex:1;" disabled>Confirmar asignación</button>'
@@ -660,10 +951,13 @@ window.AD_ventas = (function(){
       $('#vkAsignPuntoSave').on('click', function(){
         var pid = $('input[name="puntoChoice"]:checked').val();
         if (!pid) { $('#vkAsignPuntoMsg').css('color','#b91c1c').text('Selecciona un punto'); return; }
+        var eta = ($('#vkAsignPuntoEta').val() || '').trim();
+        if (!eta) { $('#vkAsignPuntoMsg').css('color','#b91c1c').text('Selecciona la fecha estimada de entrega'); return; }
         var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Guardando...');
         ADApp.api('ventas/asignar-punto-orden.php', {
           transaccion_id: r.id,
-          punto_id: parseInt(pid)
+          punto_id: parseInt(pid),
+          fecha_estimada_entrega: eta
         }).done(function(res){
           if (res && res.ok) {
             var iconChk = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><polyline points="20 6 9 17 4 12"/></svg>';

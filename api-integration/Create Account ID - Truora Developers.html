@@ -1,0 +1,3359 @@
+<!DOCTYPE html>
+<!-- saved from url=(0058)https://dev.truora.com/digital-identity/create_account_id/ -->
+<html lang="en" data-section="digital-identity"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>Create Account ID - Truora Developers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="icon" type="image/png" href="https://dev.truora.com/truora_fav.png">
+  
+
+  
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com/">
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+
+  <link href="./Create Account ID - Truora Developers_files/css2" rel="stylesheet">
+  <link href="./Create Account ID - Truora Developers_files/css2(1)" rel="stylesheet">
+  <link href="./Create Account ID - Truora Developers_files/css2(2)" rel="stylesheet"> 
+
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="./Create Account ID - Truora Developers_files/tailwind.min.be9685434ca33b971ad6792ad03e9cc5a2041ad10e82f28d95ab81a6ece5bd26.css">
+  <link rel="stylesheet" href="./Create Account ID - Truora Developers_files/main.min.0332e5b937121861b50d193d6c9bdbcf91bf18b0745fa988409773ecdf8797eb.css">
+  
+
+  
+  
+  
+
+  
+
+
+ 
+<link rel="stylesheet" href="./Create Account ID - Truora Developers_files/tailwind.min.be9685434ca33b971ad6792ad03e9cc5a2041ad10e82f28d95ab81a6ece5bd26.css">
+
+
+
+<style>
+  #page-content ul {
+    margin-left: 30px;
+  }
+
+  html {
+    scroll-padding-top: 15%;
+  }
+</style>
+
+  
+<link rel="stylesheet" href="./Create Account ID - Truora Developers_files/truora.min.7f987c9690cd4b32ace103faa5e0b4740e11d0ea3b785bc2790c85f2474e7192.css">
+<link rel="stylesheet" href="./Create Account ID - Truora Developers_files/truora.min.7f987c9690cd4b32ace103faa5e0b4740e11d0ea3b785bc2790c85f2474e7192.css">
+ 
+
+  
+  
+  
+  <meta property="og:title" content="Create Account ID">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://developer.truora.com/digital-identity/create_account_id/">
+  
+  
+  <meta name="twitter:card" content="summary">
+  
+  
+  
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+<script async="" src="./Create Account ID - Truora Developers_files/js"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag('js', new Date());
+  gtag('config', 'G-674FCH3RT8');
+</script>
+
+
+
+</head>
+
+<body id="body" class="page page-guides-single">
+  
+
+
+
+  <div class="wrapper">
+    <link href="./Create Account ID - Truora Developers_files/pagefind-ui.css" rel="stylesheet">
+<script src="./Create Account ID - Truora Developers_files/pagefind-ui.js.download"></script>
+
+
+
+
+  <script src="./Create Account ID - Truora Developers_files/search_modal.min.f510cb0d825291e8c2891e7ed3e07c11124fe97e6456945deed0691db2a79c94.js.download" defer=""></script>
+
+
+
+<div id="searchOverlay" class="fixed inset-0 z-40 hidden bg-gray-600/60 opacity-0 backdrop-blur-0 transition-opacity duration-100"></div>
+
+
+<div id="searchModal" class="fixed left-1/2 top-0 z-[300] hidden max-h-[90vh] w-[95%] -translate-x-1/2 scale-95 overflow-y-auto rounded-lg border border-gray-300 bg-gray-100 text-xs opacity-0 shadow-xl transition-opacity duration-300 md:max-h-[80vh] md:w-[70%] lg:top-5 lg:w-[600px]">
+  <div id="search" class="pagefind-ui p-4"></div>
+</div>
+
+
+
+<div id="api-reference-header" class="sticky top-0 z-50 bg-white shadow-md">
+  <div class="flex items-center justify-between px-4 py-5 md:px-14">
+    <div class="flex items-center md:hidden">
+      <button id="hamburger-api-reference" class="flex h-full items-center justify-center">
+        <div class="flex flex-col justify-center space-y-1.5">
+          <div class="h-0.5 w-6 bg-gray-600"></div>
+          <div class="h-0.5 w-6 bg-gray-600"></div>
+          <div class="h-0.5 w-6 bg-gray-600"></div>
+        </div>
+      </button>
+    </div>
+    <div class="hidden shrink-0 md:block">
+      <a href="https://dev.truora.com/">
+        <img class="h-9" src="./Create Account ID - Truora Developers_files/logo-truora-dev.svg" alt="Truora">
+      </a>
+    </div>
+
+    <button class="openSearch hidden h-fit w-48 items-center justify-start rounded-xl border-[1.5px] border-[#C2C2CB] px-1 py-1.5 font-poppins hover:border-blue-400 xl:inline-flex">
+      <div class="px-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" class="w-4">
+    <path class="stroke-[#515C63] p-2" d="M14 14L10 10M11.3333 6.66667C11.3333 7.2795 11.2126 7.88634 10.9781 8.45252C10.7436 9.01871 10.3998 9.53316 9.9665 9.9665C9.53316 10.3998 9.01871 10.7436 8.45252 10.9781C7.88634 11.2126 7.2795 11.3333 6.66667 11.3333C6.05383 11.3333 5.447 11.2126 4.88081 10.9781C4.31462 10.7436 3.80018 10.3998 3.36683 9.9665C2.93349 9.53316 2.58975 9.01871 2.35523 8.45252C2.12071 7.88634 2 7.2795 2 6.66667C2 5.42899 2.49167 4.242 3.36683 3.36683C4.242 2.49167 5.42899 2 6.66667 2C7.90434 2 9.09133 2.49167 9.9665 3.36683C10.8417 4.242 11.3333 5.42899 11.3333 6.66667Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+      </div>
+      <span class="text-xs font-light">Search</span>
+    </button>
+
+    
+
+
+
+
+<script type="text/javascript" src="./Create Account ID - Truora Developers_files/dropdown_menu.min.0f1722e6d40b95dfe09280f49c50fe58c029b90ca984b8e3cbe708020a1b5a01.js.download"></script>
+
+
+<div class=" flex items-center ml-2 ">
+  
+  <ul class="flex items-center justify-start space-x-3 xs:space-x-5 sm:space-x-6 lg:space-x-10">
+
+    
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://dev.truora.com/" class="flex py-1 text-[#010130] hover:underline  font-normal ">
+        Home
+      </a>
+    </li>
+    
+    
+    <li class="font-poppins text-[#010130] text-[10px]/3 xs:text-xs sm:text-sm list-none relative inline-block">
+      <button id="toggle-dropdown-button" class="header-dropdown-menu cursor-pointer flex border-[1.5px] border-[#C2C2CB] rounded pl-2 pr-1 py-0.5 lg:py-1.5 items-center focus:outline-none hover:bg-gray-100 aria-expanded:bg-gray-100  font-bold" type="button" aria-expanded="false" aria-controls="headerMenu">
+        <span class="hidden lg:flex">Documentation</span>
+        <span class="lg:hidden">Docs</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="inline size-4 ml-1 mt-1 transition-transform duration-300 ease-in-out">
+          <path fill-rule="evenodd" d="M10 12l-6-6 1.5-1.5L10 9l4.5-4.5L16 6z" clip-rule="evenodd"></path>
+        </svg>
+      </button>
+      
+      
+      <div id="headerMenu" class="absolute z-[60] hidden min-w-60 sm:min-w-72 rounded-lg bg-[#f9f9f9] shadow-lg shadow-gray-500 ">
+        
+          <a href="https://dev.truora.com/checks/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Background Checks
+          </a>
+        
+          <a href="https://dev.truora.com/digital-identity/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Digital Identity - Web/Mobile
+          </a>
+        
+          <a href="https://dev.truora.com/validators/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Digital Identity - Validators API
+          </a>
+        
+          <a href="https://dev.truora.com/customer-engagement/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Customer Engagement
+          </a>
+        
+      </div>
+    </li>
+    
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://dev.truora.com/docs/" class="flex text-[#010130] hover:underline  font-normal ">
+        <span class="hidden lg:flex"> API Reference</span>
+        <span class="lg:hidden">API</span>
+      </a>
+    </li>
+
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://dev.truora.com/guides/" class="flex text-[#010130] hover:underline  font-normal ">
+        Guides
+      </a>
+    </li>
+
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://status.truora.com/" class="flex text-[#010130] font-normal hover:underline">
+        Status
+      </a>
+    </li>
+  </ul>
+</div>
+
+    <button class="openSearch inline-flex p-1 xl:hidden">
+      <div class="px-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" class="w-4">
+    <path class="stroke-[#515C63] p-2" d="M14 14L10 10M11.3333 6.66667C11.3333 7.2795 11.2126 7.88634 10.9781 8.45252C10.7436 9.01871 10.3998 9.53316 9.9665 9.9665C9.53316 10.3998 9.01871 10.7436 8.45252 10.9781C7.88634 11.2126 7.2795 11.3333 6.66667 11.3333C6.05383 11.3333 5.447 11.2126 4.88081 10.9781C4.31462 10.7436 3.80018 10.3998 3.36683 9.9665C2.93349 9.53316 2.58975 9.01871 2.35523 8.45252C2.12071 7.88634 2 7.2795 2 6.66667C2 5.42899 2.49167 4.242 3.36683 3.36683C4.242 2.49167 5.42899 2 6.66667 2C7.90434 2 9.09133 2.49167 9.9665 3.36683C10.8417 4.242 11.3333 5.42899 11.3333 6.66667Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+      </div>
+    </button>
+  </div>
+</div>
+
+
+
+    
+      <div id="api-reference-sidebar" class="hidden bg-white dark:bg-truora-950 overflow-auto z-10 md:block md:dark:border-r-2 w-[276px] top-0 md:top-[77px] h-full md:h-[calc(100%-80px)] absolute">
+        <div class="p-2 md:hidden">
+          <button id="close-sidebar-api-reference">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24">
+              <path class="stroke-black dark:stroke-white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        
+        <ul id="sidebar-list" class="p-4 dark:bg-truora-950 bg-white dark:text-white">
+          <div class="search-wrapper flex flex-row py-2">
+            <div class="flex flex-row justify-start mr-12">
+              <svg width="80" version="1.1" viewBox="0 0 102.15 25.602" xmlns="http://www.w3.org/2000/svg">
+    <g transform="translate(-3.9966 -7.3)">
+        <path class="m-0 fill-truora-700 p-0 dark:!fill-white" transform="translate(-40.943)" d="m105.91 14.73c1.2 0 2.38 0.23 3.49 0.71 1.06 0.46 2.02 1.12 2.84 1.94 0.81 0.83 1.46 1.81 1.91 2.89 0.47 1.12 0.71 2.33 0.7 3.55 0 1.21-0.23 2.41-0.7 3.52-0.45 1.08-1.1 2.05-1.91 2.89s-1.78 1.5-2.84 1.96c-2.23 0.95-4.74 0.95-6.97 0-1.05-0.46-2.01-1.13-2.81-1.96-0.81-0.83-1.45-1.81-1.91-2.89-0.47-1.11-0.71-2.31-0.7-3.52 0-1.22 0.23-2.43 0.7-3.55 0.45-1.08 1.09-2.06 1.91-2.89 0.81-0.82 1.76-1.48 2.81-1.94 1.1-0.48 2.29-0.72 3.49-0.71zm-22.61 0.33v9.51c0 2.77 1.48 3.89 3.46 3.89s3.47-1.15 3.47-3.89v-9.5h4.55v9.91c0 5.46-3.79 7.8101-8.03 7.8101s-8.04-2.3501-8.04-7.8101v-9.92h4.58zm59.15 1.65 0.14 0.17c0-1.05 0.85-1.9 1.89-1.9h2.61v17.26h-4.49v-1.9101c-1.24 1.55-3.12 2.42-5.09 2.35-4.7 0-8.26-3.9-8.26-9.08s3.56-9.08 8.26-9.08c1.9-0.07 3.72 0.74 4.95 2.2zm-77.36-9.41c0 2.58-2.06 4.67-4.59 4.67h-3.04v15.38c0 2.7-2.11 4.9-4.74 4.99h-0.17v-20.37h-7.61c0-2.58 2.06-4.67 4.59-4.67h15.57zm11.75 7.58-0.68 4.62c-0.88-0.37-1.82-0.56-2.78-0.57-2.13 0-3.59 1.32-3.59 3.89v4.76c0 1.24-0.48 2.42-1.34 3.29-0.81 0.82-1.89 1.31-3.03 1.36h-0.21v-17.26h4.45v1.89c1.07-1.63 2.71-2.35 4.8-2.35 0.81-0.02 1.62 0.11 2.39 0.37zm51.75 0-0.69 4.62c-0.88-0.37-1.82-0.56-2.77-0.57-2.13 0-3.59 1.32-3.59 3.89v4.76c0 1.24-0.48 2.42-1.34 3.29-0.81 0.82-1.89 1.31-3.03 1.36h-0.21v-17.26h4.45v1.89c1.07-1.63 2.7-2.35 4.79-2.35 0.81-0.02 1.62 0.11 2.39 0.37zm-22.67 4.12c-1.25-0.02-2.46 0.48-3.33 1.39-0.91 0.9-1.42 2.14-1.4 3.43 0 0.6201 0.12 1.24 0.37 1.81 0.25 0.58 0.6 1.1101 1.03 1.5701 0.87 0.92 2.07 1.4399 3.33 1.4199 0.62 0 1.23-0.12 1.8-0.36 0.58-0.24 1.1-0.6 1.52-1.0599 1.36-1.3701 1.76-3.4401 1.03-5.2301-0.73-1.8-2.45-2.97-4.36-2.97zm32.41-0.17c-2.63 0-4.4 2.12-4.4 4.76s1.7 4.75 4.4 4.75 4.4-2.03 4.4-4.75-1.77-4.76-4.4-4.76z"></path>
+    </g>
+</svg>
+              <span class="text-sm font-bold text-blue-500 ml-1"> DOCS</span>
+            </div>
+            <button id="switch-theme-button"></button>
+          </div>
+          
+  
+  
+
+  
+    
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+      
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left ">Introduction</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/account_set_up/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left ">Set up an account</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/authentication/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left ">Authentication</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class=" inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="219835647-button" collapse-id="219835647" parent-id="sidebar-list" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>DI - Main Concepts</button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left "></a>
+    </div>
+  </div>
+
+        
+          <ul class=" hidden " id="219835647" parent-id="sidebar-list">
+            
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/use_cases/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Use cases</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/main_concepts/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Main Concepts</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/validators/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Validators Description</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+
+          </ul>
+        
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+      
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class=" inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="365482179-button" collapse-id="365482179" parent-id="sidebar-list" aria-expanded="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(180deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>Getting Started</button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left "></a>
+    </div>
+  </div>
+
+        
+          <ul class="" id="365482179" parent-id="sidebar-list">
+            
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/create_first_flow/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Create your first Flow</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+      
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1 dark:bg-[#343558] bg-[#DDE8FD] ">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class=" text-blue-500 dark:text-sky-600 api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Create Account ID</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/create_process_link/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Create a Process Link</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+
+          </ul>
+        
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class=" inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="921763584-button" collapse-id="921763584" parent-id="sidebar-list" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>Using DI Validators</button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left "></a>
+    </div>
+  </div>
+
+        
+          <ul class=" hidden " id="921763584" parent-id="sidebar-list">
+            
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/document/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Document Validation</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/face/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Face Validation</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/documentandface/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Document &amp; Face Validation</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/phone_validation/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Phone Validation</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/email_validation/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Email Validation</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/electronic_signature_web_flow/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">E-Signature Validation</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/truface/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">TruFace Validation</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+
+          </ul>
+        
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class=" inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="164257893-button" collapse-id="164257893" parent-id="sidebar-list" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>Flow Configurations</button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left "></a>
+    </div>
+  </div>
+
+        
+          <ul class=" hidden " id="164257893" parent-id="sidebar-list">
+            
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/customize_web_flow/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Customize Web Flows</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+
+          </ul>
+        
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class=" inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="315297486-button" collapse-id="315297486" parent-id="sidebar-list" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>Get &amp; Understand Results</button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left "></a>
+    </div>
+  </div>
+
+        
+          <ul class=" hidden " id="315297486" parent-id="sidebar-list">
+            
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/get_results/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Get Results</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/declined_reasons/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Declined Reasons</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/expired_reasons/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Expired Reasons</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/download_process_pdf/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Download PDF</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+
+          </ul>
+        
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class=" inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="351829476-button" collapse-id="351829476" parent-id="sidebar-list" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>WebHooks/Automations</button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left "></a>
+    </div>
+  </div>
+
+        
+          <ul class=" hidden " id="351829476" parent-id="sidebar-list">
+            
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/webhook_events_and_variables/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Events &amp; Variables</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/web_webhooks/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Creating a Rule</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+
+          </ul>
+        
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class=" inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="564317982-button" collapse-id="564317982" parent-id="sidebar-list" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>Other Integration Methods</button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left "></a>
+    </div>
+  </div>
+
+        
+          <ul class=" hidden " id="564317982" parent-id="sidebar-list">
+            
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/webview_integration/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">WebView</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/iframe_integration/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">iFrame</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/android_sdk/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Android SDK</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/ios_sdk/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">iOS SDK</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/flutter_integration/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Flutter SDK</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/whatsapp_validate_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">WA - Validate ID</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/whatsapp_e_signature/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">WA - E-Signature</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+
+          </ul>
+        
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class=" inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="728931465-button" collapse-id="728931465" parent-id="sidebar-list" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>Advanced Features</button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left "></a>
+    </div>
+  </div>
+
+        
+          <ul class=" hidden " id="728931465" parent-id="sidebar-list">
+            
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/user_recovery/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Activate User Recovery</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/manual_review/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Manual Review</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/advanced_blocks/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Advanced Blocks</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/geolocation_and_vpn/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Geolocation + VPN restriction</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/api_external_connection_web_flows/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Create Custom Integration</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/api_external_connection/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Add Integration to Flow</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+
+          </ul>
+        
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class=" inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="317485269-button" collapse-id="317485269" parent-id="sidebar-list" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>Security Considerations</button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left "></a>
+    </div>
+  </div>
+
+        
+          <ul class=" hidden " id="317485269" parent-id="sidebar-list">
+            
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/user_consent/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">User Conscent</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+
+          </ul>
+        
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+      
+    
+
+    <li class="py-3 border-b border-[#343558] last:border-b-0">
+      
+      
+        
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class=" inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="738612549-button" collapse-id="738612549" parent-id="sidebar-list" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>Useful Guides &amp; Resources</button>
+      <a href="https://dev.truora.com/digital-identity/create_account_id/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-medium leading-6 text-[0.9rem] tracking-normal text-left "></a>
+    </div>
+  </div>
+
+        
+          <ul class=" hidden " id="738612549" parent-id="sidebar-list">
+            
+  
+  
+  
+
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/tips_doc_photo/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Tips for Document Photo</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/common_errors/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">Common User Errors</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+    
+    
+    
+    
+
+    
+
+    
+    
+    
+
+    <li class="last:border-b-0">
+      
+      
+        
+  
+
+  
+    
+  
+
+  
+  
+
+  <div class="duration-100 ease-out dark:hover:bg-[#343558] hover:bg-[#DDE8FD] rounded-md my-0.5 py-0.5 pl-1">
+    <div class="group flex w-full items-center text-[#515C63] dark:text-gray-100">
+      <button class="invisible inline-flex font-poppins font-medium text-[0.9rem] leading-6 tracking-normal api-method-link sidebar-button border-slate-700 ml-3" id="-button" collapse-id="" parent-id="" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="21.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=" transform: rotate(0deg); ">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg></button>
+      <a href="https://dev.truora.com/digital-identity/di_dashboard/" class="api-method-link font-poppins flex-1 text-sm inline-block dark:text-gray-100 text-[#515C63] ml-0 font-normal leading-5 text-[0.9rem] tracking-normal text-left ">DI Flow with Dashboard</a>
+    </div>
+  </div>
+
+      
+    </li>
+  
+
+          </ul>
+        
+      
+    </li>
+  
+
+  
+
+
+        </ul>
+        
+      </div>
+    
+
+    
+      <article id="content" class="dark:bg-truora-950 bg-truora-50 top-[67px] md:top-[77px] h-[calc(100%-72px)] md:h-[calc(100%-80px)] absolute lg:pl-10 md:px-5 overflow-y-auto overflow-x-hidden pt-10 left-0 right-0 md:left-[276px] dark:text-slate-200 text-[#282828]">
+        
+<div id="guide-content" class="mx-[10vw] my-10 text-[#282828] dark:text-slate-200">
+  <div id="pageBreadcrumb" class="flex items-start justify-between">
+    <div class="mb-6 text-base font-normal text-[#808191]">
+        <a class="hover:text-[#5584eb] dark:text-white" href="https://dev.truora.com/">Home</a>
+        
+        
+        
+        
+        
+        <span> / </span>
+        
+        
+        <a class="hover:text-[#5584eb] dark:text-white" href="https://dev.truora.com/digital-identity">Digital identity</a>
+        
+        
+        
+        <span> / </span>
+        
+        <a class="hover:text-[#5584eb] dark:text-white" href="https://dev.truora.com/digital-identity/create_account_id/#">Create account ID</a>
+        
+        
+        
+        
+        
+    </div>
+</div>
+
+<div class="filter-guides-by">
+  <nav class="nav-wrapper mobil-filter-nav mb-2 hidden">
+    <span>Filter by:</span>
+    <ul data-id="filters">
+      <li class="filter-type">
+        <div data-id="0" class="btn-filter cursor-pointer">See all</div>
+      </li>
+    </ul>
+  </nav>
+</div>
+  
+<h1 id="create-account-to-link-processes-by-user" class="font-poppins text-3xl font-semibold tracking-[0.25px] text-[#282828] dark:text-white">
+    Create Account to link processes by user
+</h1>
+<div class="my-8 w-fit rounded bg-gray-200 p-2 hover:bg-[#5584eb] dark:bg-gray-700">
+  
+    <a class="link-guides_usecase mb-3 mr-1 p-3" href="https://dev.truora.com/guides/index.html?usecase=Account">
+      Others: Account
+    </a>
+  
+
+  
+</div>
+
+<p>An account identifies users in Truora’s system and is represented by an <code>account_id</code>.
+This unique identifier enables tracking <strong>validations</strong> and <strong>processes</strong> while allowing access to the associated user’s data.</p>
+<p>In this guide, you’ll learn about the available options for creating account IDs in Truora’s system.</p>
+
+<h2 id="account-creation-options" class="api-method-section relative my-8 font-poppins text-[22px] font-semibold tracking-[0.25px] text-[#282828] dark:text-white">
+    <span class="group flex items-baseline sm:inline-block">
+        
+
+<button type="button" class="copy-anchor-link relative sm:absolute left-0 top-0 translate-y-[20%] sm:translate-y-[20%] sm:translate-x-[-105%] sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 mr-1" data-anchor="account-creation-options" aria-label="Copy link to section">
+
+  
+  <div class="tooltip pointer-events-none absolute left-0 top-0 z-10 translate-x-[-20%] translate-y-[-130%] whitespace-nowrap rounded border border-gray-200 bg-gray-300 px-2 py-1 text-xs text-gray-800
+              opacity-0 transition-opacity dark:border-gray-700 dark:bg-[#282c50] dark:text-gray-200 lg:translate-x-[-55%]" data-default="Click to copy" data-copied="Link copied !">
+
+    
+    <div class="absolute inset-x-[25%] bottom-[-5px] z-[-1] size-2 -translate-x-1/3 rotate-45
+                border-b border-r border-gray-200 bg-gray-300
+                dark:border-gray-600 dark:bg-[#282c50] lg:inset-x-[64%]">
+    </div>
+  </div>
+
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-5 fill-blue-500 hover:fill-blue-700">
+      <path d="M 9.26,13 A 2,2 0 0 1 9.27,10.99 3,3 0 0 0 9,5 H 5 a 3,3 0 0 0 0,6 h 0.08 a 6.06,6.06 0 0 0 0,2 H 5 A 5,5 0 0 1 5,3 H 9 A 5.0016897,5.0016897 0 0 1 9.26,13 Z M 10.74,7 A 2,2 0 0 1 10.73,9.01 3,3 0 0 0 11,15 h 4 a 3,3 0 0 0 0,-6 h -0.08 a 6.06,6.06 0 0 0 0,-2 H 15 a 5,5 0 0 1 0,10 H 11 A 5.0016897,5.0016897 0 0 1 10.74,7 Z"></path>
+  </svg>
+
+</button>
+        Account creation options
+    </span>
+</h2>
+<p>There are three ways to generate an <code>account_id</code>:</p>
+<ul>
+<li><strong>Use your user’s ID</strong> as the <code>account_id</code> in Truora’s system.</li>
+<li><strong>Use an automatically generated</strong> <code>account_id</code>, assigned by Truora’s system.</li>
+<li><strong>Create a customized account</strong> using the <strong>Create Validation Account</strong> endpoint.</li>
+</ul>
+<p>The following sections explain each option so you can choose the best approach for your use case.</p>
+
+<h3 id="use-your-user-id-as-the-account_id" class="api-method-section relative my-8 font-poppins text-[18px] font-semibold tracking-[0.25px] text-[#282828] dark:text-white">
+    <span class="group flex items-baseline sm:inline-block">
+        
+
+<button type="button" class="copy-anchor-link relative sm:absolute left-0 top-0 translate-y-[20%] sm:translate-y-[32%] sm:translate-x-[-105%] sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 mr-1" data-anchor="use-your-user-id-as-the-account_id" aria-label="Copy link to section">
+
+  
+  <div class="tooltip pointer-events-none absolute left-0 top-0 z-10 translate-x-[-20%] translate-y-[-130%] whitespace-nowrap rounded border border-gray-200 bg-gray-300 px-2 py-1 text-xs text-gray-800
+              opacity-0 transition-opacity dark:border-gray-700 dark:bg-[#282c50] dark:text-gray-200 lg:translate-x-[-55%]" data-default="Click to copy" data-copied="Link copied !">
+
+    
+    <div class="absolute inset-x-[25%] bottom-[-5px] z-[-1] size-2 -translate-x-1/3 rotate-45
+                border-b border-r border-gray-200 bg-gray-300
+                dark:border-gray-600 dark:bg-[#282c50] lg:inset-x-[64%]">
+    </div>
+  </div>
+
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-4 fill-blue-500 hover:fill-blue-700">
+      <path d="M 9.26,13 A 2,2 0 0 1 9.27,10.99 3,3 0 0 0 9,5 H 5 a 3,3 0 0 0 0,6 h 0.08 a 6.06,6.06 0 0 0 0,2 H 5 A 5,5 0 0 1 5,3 H 9 A 5.0016897,5.0016897 0 0 1 9.26,13 Z M 10.74,7 A 2,2 0 0 1 10.73,9.01 3,3 0 0 0 11,15 h 4 a 3,3 0 0 0 0,-6 h -0.08 a 6.06,6.06 0 0 0 0,-2 H 15 a 5,5 0 0 1 0,10 H 11 A 5.0016897,5.0016897 0 0 1 10.74,7 Z"></path>
+  </svg>
+
+</button>
+        Use your user ID as the account_id
+    </span>
+</h3>
+<p>If your system already assigns a unique identifier to users, you can use it as the <code>account_id</code> in Truora’s system.
+This approach will initially create an empty account, but you can update or add data to it later as needed.</p>
+<p>To use this option:</p>
+<ul>
+<li>When generating a 
+
+
+
+
+<a href="https://dev.truora.com/guides/web_integration_token/" class="" target="_blank" rel="noopener noreferrer">Web Token</a> for user processes or creating a 
+
+
+
+
+<a href="https://dev.truora.com/validators/" class="" target="_blank" rel="noopener noreferrer">Validation</a>, provide your system’s user identifier as the value for the <code>account_id</code> parameter.</li>
+<li>Ensure that the same <code>account_id</code> is used consistently across all user processes in Truora’s system to maintain correct associations with the user account and data.</li>
+</ul>
+<blockquote>
+<p><strong>Note:</strong></p>
+<ul>
+<li>Only Account IDs matching the regex pattern [a-zA-Z0-9_.-]+ are supported.</li>
+</ul></blockquote>
+
+<h3 id="use-an-account_id-generate-by-truoras-system" class="api-method-section relative my-8 font-poppins text-[18px] font-semibold tracking-[0.25px] text-[#282828] dark:text-white">
+    <span class="group flex items-baseline sm:inline-block">
+        
+
+<button type="button" class="copy-anchor-link relative sm:absolute left-0 top-0 translate-y-[20%] sm:translate-y-[32%] sm:translate-x-[-105%] sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 mr-1" data-anchor="use-an-account_id-generate-by-truoras-system" aria-label="Copy link to section">
+
+  
+  <div class="tooltip pointer-events-none absolute left-0 top-0 z-10 translate-x-[-20%] translate-y-[-130%] whitespace-nowrap rounded border border-gray-200 bg-gray-300 px-2 py-1 text-xs text-gray-800
+              opacity-0 transition-opacity dark:border-gray-700 dark:bg-[#282c50] dark:text-gray-200 lg:translate-x-[-55%]" data-default="Click to copy" data-copied="Link copied !">
+
+    
+    <div class="absolute inset-x-[25%] bottom-[-5px] z-[-1] size-2 -translate-x-1/3 rotate-45
+                border-b border-r border-gray-200 bg-gray-300
+                dark:border-gray-600 dark:bg-[#282c50] lg:inset-x-[64%]">
+    </div>
+  </div>
+
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-4 fill-blue-500 hover:fill-blue-700">
+      <path d="M 9.26,13 A 2,2 0 0 1 9.27,10.99 3,3 0 0 0 9,5 H 5 a 3,3 0 0 0 0,6 h 0.08 a 6.06,6.06 0 0 0 0,2 H 5 A 5,5 0 0 1 5,3 H 9 A 5.0016897,5.0016897 0 0 1 9.26,13 Z M 10.74,7 A 2,2 0 0 1 10.73,9.01 3,3 0 0 0 11,15 h 4 a 3,3 0 0 0 0,-6 h -0.08 a 6.06,6.06 0 0 0 0,-2 H 15 a 5,5 0 0 1 0,10 H 11 A 5.0016897,5.0016897 0 0 1 10.74,7 Z"></path>
+  </svg>
+
+</button>
+        Use an account_id generate by Truora’s system
+    </span>
+</h3>
+<p>This option provides a unique, automatically generated <code>account_id</code>, creating an empty account initially. You can update or add data to the account later as needed.</p>
+<ul>
+<li>When generating the 
+
+
+
+
+<a href="https://dev.truora.com/guides/web_integration_token/" class="" target="_blank" rel="noopener noreferrer">Web Token</a> for user processes or creating a 
+
+
+
+
+<a href="https://dev.truora.com/validators/" class="" target="_blank" rel="noopener noreferrer">Validation</a>, leave the <code>account_id</code> parameter empty.
+This tells the system to generate a random alphanumeric <code>account_id</code> automatically.</li>
+</ul>
+<blockquote>
+<p><strong>Note:</strong> Be sure to save the generated <code>account_id</code> and use it consistently across all user processes within Truora’s system.</p></blockquote>
+
+<h3 id="create-validation-account-endpoint" class="api-method-section relative my-8 font-poppins text-[18px] font-semibold tracking-[0.25px] text-[#282828] dark:text-white">
+    <span class="group flex items-baseline sm:inline-block">
+        
+
+<button type="button" class="copy-anchor-link relative sm:absolute left-0 top-0 translate-y-[20%] sm:translate-y-[32%] sm:translate-x-[-105%] sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 mr-1" data-anchor="create-validation-account-endpoint" aria-label="Copy link to section">
+
+  
+  <div class="tooltip pointer-events-none absolute left-0 top-0 z-10 translate-x-[-20%] translate-y-[-130%] whitespace-nowrap rounded border border-gray-200 bg-gray-300 px-2 py-1 text-xs text-gray-800
+              opacity-0 transition-opacity dark:border-gray-700 dark:bg-[#282c50] dark:text-gray-200 lg:translate-x-[-55%]" data-default="Click to copy" data-copied="Link copied !">
+
+    
+    <div class="absolute inset-x-[25%] bottom-[-5px] z-[-1] size-2 -translate-x-1/3 rotate-45
+                border-b border-r border-gray-200 bg-gray-300
+                dark:border-gray-600 dark:bg-[#282c50] lg:inset-x-[64%]">
+    </div>
+  </div>
+
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-4 fill-blue-500 hover:fill-blue-700">
+      <path d="M 9.26,13 A 2,2 0 0 1 9.27,10.99 3,3 0 0 0 9,5 H 5 a 3,3 0 0 0 0,6 h 0.08 a 6.06,6.06 0 0 0 0,2 H 5 A 5,5 0 0 1 5,3 H 9 A 5.0016897,5.0016897 0 0 1 9.26,13 Z M 10.74,7 A 2,2 0 0 1 10.73,9.01 3,3 0 0 0 11,15 h 4 a 3,3 0 0 0 0,-6 h -0.08 a 6.06,6.06 0 0 0 0,-2 H 15 a 5,5 0 0 1 0,10 H 11 A 5.0016897,5.0016897 0 0 1 10.74,7 Z"></path>
+  </svg>
+
+</button>
+        Create Validation Account endpoint
+    </span>
+</h3>
+<p>This feature allows you to create an <code>account_id</code> while also storing user information within Truora’s system. The stored data can be accessed or updated as needed.</p>
+<p>To create an account follow these steps. You may also refer to our 
+
+
+
+
+<a href="https://dev.truora.com/docs/#main-validator-suite-api_accounts-section" class="" target="_blank" rel="noopener noreferrer">API Reference</a>:</p>
+<ol>
+<li>Create a <code>POST</code> request to the endpoint <code>https://api.validations.truora.com/v1/accounts</code>.</li>
+<li>Add the next headers
+<ul>
+<li><code>Truora-API-Key</code>: Your 
+
+
+
+
+<a href="https://dev.truora.com/guides/authentication/" class="" target="_blank" rel="noopener noreferrer">Truora API-key</a>.</li>
+<li><code>Content-Type</code>: Set to <code>application/x-www-form-urlencoded</code>.</li>
+</ul>
+</li>
+<li>Add the following <code>key : value</code> params in the request <code>body</code> using <code>x-www-form-urlencoded</code> format:
+<ul>
+<li><code>account_id</code> [<em><strong>Optional</strong></em>]: Customized ID for the validation account being created. Only account IDs matching the pattern [a-zA-Z0-9_.-]+ are supported. If omitted, a random alphanumeric account ID is automatically created.</li>
+<li><code>email</code> [<em><strong>Optional</strong></em>]: Email address of the person associated with the account.</li>
+<li><code>country</code> [<em><strong>Optional</strong></em>]: Country where the person associated with the account is located, specified in ISO 3166 Alpha-2 format (e.g., CO for Colombia). See the full list of <a href="https://www.iso.org/obp/ui#search/code/" class="underline text-[#4381F0]" target="_blank" rel="noopener">ISO Country Codes</a>.</li>
+<li><code>document_number</code> [<em><strong>Optional</strong></em>]: Document number of the person associated with the account.</li>
+<li><code>document_type</code> [<em><strong>Optional</strong></em>]: Allowed: <code>national-id</code> | <code>foreign-id</code> | <code>identity-card</code>| <code>passport</code>. Type of document for the person associated with the account.</li>
+<li><code>document_issue_date</code> [<em><strong>Optional</strong></em>]: Issue date of the person’s document, formatted in RFC3339 (e.g., 2000-05-24).</li>
+<li><code>first_name</code> [<em><strong>Optional</strong></em>]: First name of the person associated with the account.</li>
+<li><code>last_name</code> [<em><strong>Optional</strong></em>]: Last name of the person associated with the account.</li>
+<li><code>phone_number</code> [<em><strong>Optional</strong></em>]: Phone number of the person associated with the account.</li>
+<li><code>facebook_user</code> [<em><strong>Optional</strong></em>]: Facebook username of the person associated with the account.</li>
+<li><code>twitter_user</code> [<em><strong>Optional</strong></em>]: X (formerly Twitter) username of the person associated with the account.</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p><strong>Notes:</strong></p>
+<ul>
+<li>Only Account IDs following the regex pattern [a-zA-Z0-9_.-]+ are supported.</li>
+<li>All parameters are optional:
+<ul>
+<li>If only <code>account_id</code> is provided, an empty account is created with that ID. You can update other parameters later.</li>
+<li>If no <code>account_id</code> is provided but other parameters are included, an <code>account_id</code> will be randomly generated, incorporating the provided parameters.</li>
+<li>If no parameters are provided, an empty account is created with a randomly generated <code>account_id</code>. You can update other parameters later.</li>
+</ul>
+</li>
+<li>Save the <code>account_id</code>, as it will be the unique identifier for your user in Truora’s system. All identity-related processes performed on your user should be associated with this <code>account_id</code>.</li>
+</ul></blockquote>
+<p>Send the request. A successful account creation should show the details of the account, including the parameters provided in the <strong>Create Validation Account</strong> request.</p>
+<p><strong>Example Request and Response</strong></p>
+<p>A request with the following parameters:</p>
+<ul>
+<li><code>account_id</code>: “<em><strong>my_test_account_6543</strong></em>”</li>
+<li><code>first_name</code>: “<em><strong>John</strong></em>”</li>
+<li><code>last_name</code>: “<em><strong>Doe</strong></em>”</li>
+<li><code>email</code>: “<em><strong><code>jhon.doe@demo.com</code></strong></em>”"</li>
+</ul>
+<p>Generates the following response:</p>
+
+
+
+
+
+
+
+<div class="code-picker mb-10 mt-6 rounded-2xl border-2 border-[#DDE8FD] dark:border dark:border-white">
+    <div class="rounded-t-2xl border-b-2 border-[#DDE8FD] bg-[#DDE8FD] px-6 py-4 dark:border-b dark:border-white dark:bg-[#01022e]">
+        <div class="flex flex-row items-center justify-between">
+            <div class="font-poppins text-lg font-semibold">
+                    <span class=""> POST<br><span class="text-sm font-medium">https://api.validations.truora.com/v1/accounts<span></span>  </span>
+            </span></div>
+            <div class="flex flex-row items-center gap-3">
+                <div class="flex flex-row items-center dropdown-code-lang">
+                    <button class="dropdown-code-button flex flex-row items-center justify-center gap-2 capitalize">
+                        <span class="font-poppins"></span>
+                        <svg width="14" height="7">
+                            <path d="M11 1L6 6L1 0.999999" stroke="#F3F5FC" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </button>
+                    <div role="tooltip" id="5a97e0d0014bdc07379510d54bc41ae8-select" method-id="5a97e0d0014bdc07379510d54bc41ae8" class="dropdown-code-select flex min-w-[130px] max-w-full flex-col gap-1 rounded border bg-white px-1 py-2 shadow-xl dark:border-none dark:bg-truora-950">
+                        <a role="button" class="rounded px-[14px] py-1 text-base capitalize text-black hover:bg-[#DDE8FD] hover:font-semibold dark:text-white dark:hover:bg-[#343558] dark:hover:text-[#4381F0]" id="5a97e0d0014bdc07379510d54bc41ae8" value="5a97e0d0014bdc07379510d54bc41ae8"> Success  </a>
+                    </div>
+                </div>
+                <div>
+                    <svg width="2" height="28" viewBox="0 0 2 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1.5L0.999999 26.5" stroke="#515C63" stroke-width="2" stroke-linecap="round"></path>
+                    </svg>
+                </div>
+                <div class="ml-2 flex">
+                    <button type="button" id="5a97e0d0014bdc07379510d54bc41ae8-clipboard-button" class="codepicker-clipboard-button" method-id="5a97e0d0014bdc07379510d54bc41ae8">
+                        <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10.2727 0H1.54546C0.745457 0 0.0909119 0.654545 0.0909119 1.45455V11.6364H1.54546V1.45455H10.2727V0ZM12.4545 2.90909H4.45455C3.65455 2.90909 3 3.56364 3 4.36364V14.5455C3 15.3455 3.65455 16 4.45455 16H12.4545C13.2545 16 13.9091 15.3455 13.9091 14.5455V4.36364C13.9091 3.56364 13.2545 2.90909 12.4545 2.90909ZM12.4545 14.5455H4.45455V4.36364H12.4545V14.5455Z" fill="#5584EB"></path>
+                        </svg>
+                    </button>
+                    <div id="5a97e0d0014bdc07379510d54bc41ae8-tooltip" class="invisible absolute z-10 inline-block rounded-lg bg-gray-700 px-3 py-2 text-sm font-medium text-white opacity-0 shadow-sm transition-opacity duration-300" role="tooltip">
+                        Click to copy
+                        <div class="tooltip-arrow" data-popper-arrow=""></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="code_scrollbar overflow-visible rounded-b-2xl bg-white text-[#000000] dark:bg-[#343558] dark:text-[#FFFFFF]">
+        <div id="5a97e0d0014bdc07379510d54bc41ae8-code-dropdown-display" class="max-h-96 w-full overflow-x-auto bg-transparent p-4 text-xs">
+            <pre id="5a97e0d0014bdc07379510d54bc41ae8-code-dropdown-content" class="h-full">                <code lang="language-json" class="rounded-b-2xl hljs language-json">
+    {
+        "account_id": "my_test_account_1234",
+        "email": "jhon.doe@demo.com",
+        "first_name": "JOHN",
+        "last_name": "DOE",
+        "creation_date": "2025-02-10T21:18:02.688990977Z",
+        "validators_prepared": {
+            "authenticate": false,
+            "document-validation": false,
+            "electronic-signature": false,
+            "email-verification": false,
+            "face-recognition": false,
+            "face-search": false,
+            "phone-verification": false
+        }
+    }
+</code>
+            </pre>
+        </div>
+    </div>
+</div>
+
+<hr>
+
+<h2 id="additional-account-management-endpoints" class="api-method-section relative my-8 font-poppins text-[22px] font-semibold tracking-[0.25px] text-[#282828] dark:text-white">
+    <span class="group flex items-baseline sm:inline-block">
+        
+
+<button type="button" class="copy-anchor-link relative sm:absolute left-0 top-0 translate-y-[20%] sm:translate-y-[20%] sm:translate-x-[-105%] sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 mr-1" data-anchor="additional-account-management-endpoints" aria-label="Copy link to section">
+
+  
+  <div class="tooltip pointer-events-none absolute left-0 top-0 z-10 translate-x-[-20%] translate-y-[-130%] whitespace-nowrap rounded border border-gray-200 bg-gray-300 px-2 py-1 text-xs text-gray-800
+              opacity-0 transition-opacity dark:border-gray-700 dark:bg-[#282c50] dark:text-gray-200 lg:translate-x-[-55%]" data-default="Click to copy" data-copied="Link copied !">
+
+    
+    <div class="absolute inset-x-[25%] bottom-[-5px] z-[-1] size-2 -translate-x-1/3 rotate-45
+                border-b border-r border-gray-200 bg-gray-300
+                dark:border-gray-600 dark:bg-[#282c50] lg:inset-x-[64%]">
+    </div>
+  </div>
+
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-5 fill-blue-500 hover:fill-blue-700">
+      <path d="M 9.26,13 A 2,2 0 0 1 9.27,10.99 3,3 0 0 0 9,5 H 5 a 3,3 0 0 0 0,6 h 0.08 a 6.06,6.06 0 0 0 0,2 H 5 A 5,5 0 0 1 5,3 H 9 A 5.0016897,5.0016897 0 0 1 9.26,13 Z M 10.74,7 A 2,2 0 0 1 10.73,9.01 3,3 0 0 0 11,15 h 4 a 3,3 0 0 0 0,-6 h -0.08 a 6.06,6.06 0 0 0 0,-2 H 15 a 5,5 0 0 1 0,10 H 11 A 5.0016897,5.0016897 0 0 1 10.74,7 Z"></path>
+  </svg>
+
+</button>
+        Additional account management endpoints
+    </span>
+</h2>
+<p>The following account-related endpoints can help with user account management and integration into Truora’s system. For more details and additional endpoints, refer to our 
+
+
+
+
+<a href="https://dev.truora.com/docs/#get-validation-account-section" class="" target="_blank" rel="noopener noreferrer">API Reference</a>.</p>
+
+<h3 id="get-account" class="api-method-section relative my-8 font-poppins text-[18px] font-semibold tracking-[0.25px] text-[#282828] dark:text-white">
+    <span class="group flex items-baseline sm:inline-block">
+        
+
+<button type="button" class="copy-anchor-link relative sm:absolute left-0 top-0 translate-y-[20%] sm:translate-y-[32%] sm:translate-x-[-105%] sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 mr-1" data-anchor="get-account" aria-label="Copy link to section">
+
+  
+  <div class="tooltip pointer-events-none absolute left-0 top-0 z-10 translate-x-[-20%] translate-y-[-130%] whitespace-nowrap rounded border border-gray-200 bg-gray-300 px-2 py-1 text-xs text-gray-800
+              opacity-0 transition-opacity dark:border-gray-700 dark:bg-[#282c50] dark:text-gray-200 lg:translate-x-[-55%]" data-default="Click to copy" data-copied="Link copied !">
+
+    
+    <div class="absolute inset-x-[25%] bottom-[-5px] z-[-1] size-2 -translate-x-1/3 rotate-45
+                border-b border-r border-gray-200 bg-gray-300
+                dark:border-gray-600 dark:bg-[#282c50] lg:inset-x-[64%]">
+    </div>
+  </div>
+
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-4 fill-blue-500 hover:fill-blue-700">
+      <path d="M 9.26,13 A 2,2 0 0 1 9.27,10.99 3,3 0 0 0 9,5 H 5 a 3,3 0 0 0 0,6 h 0.08 a 6.06,6.06 0 0 0 0,2 H 5 A 5,5 0 0 1 5,3 H 9 A 5.0016897,5.0016897 0 0 1 9.26,13 Z M 10.74,7 A 2,2 0 0 1 10.73,9.01 3,3 0 0 0 11,15 h 4 a 3,3 0 0 0 0,-6 h -0.08 a 6.06,6.06 0 0 0 0,-2 H 15 a 5,5 0 0 1 0,10 H 11 A 5.0016897,5.0016897 0 0 1 10.74,7 Z"></path>
+  </svg>
+
+</button>
+        Get Account
+    </span>
+</h3>
+<p>Allows you to retrieve details of a specific validation <code>account_id</code>.</p>
+<p>To get the account details, follow these steps. You may also refer to our 
+
+
+
+
+<a href="https://dev.truora.com/docs/#get-validation-account-section" class="" target="_blank" rel="noopener noreferrer">API Reference</a>:</p>
+<ol>
+<li>Create a <code>GET</code> request to the endpoint <code>https://api.validations.truora.com/v1/accounts/{{account_id}}</code>.</li>
+<li>Add the next headers
+<ul>
+<li><code>Truora-API-Key</code>: Your 
+
+
+
+
+<a href="https://dev.truora.com/guides/authentication/" class="" target="_blank" rel="noopener noreferrer">Truora API-key</a>.</li>
+<li><code>Content-Type</code>: Set to <code>application/x-www-form-urlencoded</code>.</li>
+</ul>
+</li>
+</ol>
+<p>Send the request. A successful request should show the details of the account.</p>
+<p><strong>Example Request and Response</strong></p>
+<p>A request using the <code>account_id</code> from the example in the <a href="https://dev.truora.com/digital-identity/create_account_id/#create-validation-account-endpoint">Create Validation Account</a> section, “<em><strong>my_test_account_6543</strong></em>”, generates the following response:</p>
+
+
+
+
+
+
+
+<div class="code-picker mb-10 mt-6 rounded-2xl border-2 border-[#DDE8FD] dark:border dark:border-white">
+    <div class="rounded-t-2xl border-b-2 border-[#DDE8FD] bg-[#DDE8FD] px-6 py-4 dark:border-b dark:border-white dark:bg-[#01022e]">
+        <div class="flex flex-row items-center justify-between">
+            <div class="font-poppins text-lg font-semibold">
+                    <span class=""> GET<br><span class="text-sm font-medium">https://api.validations.truora.com/v1/accounts/{{account_id}}<span></span>  </span>
+            </span></div>
+            <div class="flex flex-row items-center gap-3">
+                <div class="flex flex-row items-center dropdown-code-lang">
+                    <button class="dropdown-code-button flex flex-row items-center justify-center gap-2 capitalize">
+                        <span class="font-poppins"></span>
+                        <svg width="14" height="7">
+                            <path d="M11 1L6 6L1 0.999999" stroke="#F3F5FC" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </button>
+                    <div role="tooltip" id="e791ec405c5053d771dd140084baa09b-select" method-id="e791ec405c5053d771dd140084baa09b" class="dropdown-code-select flex min-w-[130px] max-w-full flex-col gap-1 rounded border bg-white px-1 py-2 shadow-xl dark:border-none dark:bg-truora-950">
+                        <a role="button" class="rounded px-[14px] py-1 text-base capitalize text-black hover:bg-[#DDE8FD] hover:font-semibold dark:text-white dark:hover:bg-[#343558] dark:hover:text-[#4381F0]" id="e791ec405c5053d771dd140084baa09b" value="e791ec405c5053d771dd140084baa09b"> Success  </a>
+                    </div>
+                </div>
+                <div>
+                    <svg width="2" height="28" viewBox="0 0 2 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1.5L0.999999 26.5" stroke="#515C63" stroke-width="2" stroke-linecap="round"></path>
+                    </svg>
+                </div>
+                <div class="ml-2 flex">
+                    <button type="button" id="e791ec405c5053d771dd140084baa09b-clipboard-button" class="codepicker-clipboard-button" method-id="e791ec405c5053d771dd140084baa09b">
+                        <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10.2727 0H1.54546C0.745457 0 0.0909119 0.654545 0.0909119 1.45455V11.6364H1.54546V1.45455H10.2727V0ZM12.4545 2.90909H4.45455C3.65455 2.90909 3 3.56364 3 4.36364V14.5455C3 15.3455 3.65455 16 4.45455 16H12.4545C13.2545 16 13.9091 15.3455 13.9091 14.5455V4.36364C13.9091 3.56364 13.2545 2.90909 12.4545 2.90909ZM12.4545 14.5455H4.45455V4.36364H12.4545V14.5455Z" fill="#5584EB"></path>
+                        </svg>
+                    </button>
+                    <div id="e791ec405c5053d771dd140084baa09b-tooltip" class="invisible absolute z-10 inline-block rounded-lg bg-gray-700 px-3 py-2 text-sm font-medium text-white opacity-0 shadow-sm transition-opacity duration-300" role="tooltip">
+                        Click to copy
+                        <div class="tooltip-arrow" data-popper-arrow=""></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="code_scrollbar overflow-visible rounded-b-2xl bg-white text-[#000000] dark:bg-[#343558] dark:text-[#FFFFFF]">
+        <div id="e791ec405c5053d771dd140084baa09b-code-dropdown-display" class="max-h-96 w-full overflow-x-auto bg-transparent p-4 text-xs">
+            <pre id="e791ec405c5053d771dd140084baa09b-code-dropdown-content" class="h-full">                <code lang="language-json" class="rounded-b-2xl hljs language-json">
+    {
+        "account_id": "my_test_account_1234",
+        "email": "jhon.doe@demo.com",
+        "first_name": "JOHN",
+        "last_name": "DOE",
+        "creation_date": "2025-02-10T21:18:02.688990977Z",
+        "validators_prepared": {
+            "authenticate": false,
+            "document-validation": false,
+            "electronic-signature": false,
+            "email-verification": false,
+            "face-recognition": false,
+            "face-search": false,
+            "phone-verification": false
+        }
+    }
+</code>
+            </pre>
+        </div>
+    </div>
+</div>
+
+
+<h3 id="list-validation-accounts" class="api-method-section relative my-8 font-poppins text-[18px] font-semibold tracking-[0.25px] text-[#282828] dark:text-white">
+    <span class="group flex items-baseline sm:inline-block">
+        
+
+<button type="button" class="copy-anchor-link relative sm:absolute left-0 top-0 translate-y-[20%] sm:translate-y-[32%] sm:translate-x-[-105%] sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 mr-1" data-anchor="list-validation-accounts" aria-label="Copy link to section">
+
+  
+  <div class="tooltip pointer-events-none absolute left-0 top-0 z-10 translate-x-[-20%] translate-y-[-130%] whitespace-nowrap rounded border border-gray-200 bg-gray-300 px-2 py-1 text-xs text-gray-800
+              opacity-0 transition-opacity dark:border-gray-700 dark:bg-[#282c50] dark:text-gray-200 lg:translate-x-[-55%]" data-default="Click to copy" data-copied="Link copied !">
+
+    
+    <div class="absolute inset-x-[25%] bottom-[-5px] z-[-1] size-2 -translate-x-1/3 rotate-45
+                border-b border-r border-gray-200 bg-gray-300
+                dark:border-gray-600 dark:bg-[#282c50] lg:inset-x-[64%]">
+    </div>
+  </div>
+
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-4 fill-blue-500 hover:fill-blue-700">
+      <path d="M 9.26,13 A 2,2 0 0 1 9.27,10.99 3,3 0 0 0 9,5 H 5 a 3,3 0 0 0 0,6 h 0.08 a 6.06,6.06 0 0 0 0,2 H 5 A 5,5 0 0 1 5,3 H 9 A 5.0016897,5.0016897 0 0 1 9.26,13 Z M 10.74,7 A 2,2 0 0 1 10.73,9.01 3,3 0 0 0 11,15 h 4 a 3,3 0 0 0 0,-6 h -0.08 a 6.06,6.06 0 0 0 0,-2 H 15 a 5,5 0 0 1 0,10 H 11 A 5.0016897,5.0016897 0 0 1 10.74,7 Z"></path>
+  </svg>
+
+</button>
+        List Validation Accounts
+    </span>
+</h3>
+<p>Allows you to retrieve all validation accounts created under your client account in Truora´s system.</p>
+<p>To get a list of accounts, follow these steps. You may also refer to our 
+
+
+
+
+<a href="https://dev.truora.com/docs/#list-validation-accounts-section" class="" target="_blank" rel="noopener noreferrer">API Reference</a>:</p>
+<ol>
+<li>Create a <code>GET</code> request to the endpoint <code>https://api.validations.truora.com/v1/accounts</code>.</li>
+<li>Add the next headers
+<ul>
+<li><code>Truora-API-Key</code>: Your 
+
+
+
+
+<a href="https://dev.truora.com/guides/authentication/" class="" target="_blank" rel="noopener noreferrer">Truora API-key</a>.</li>
+<li><code>Content-Type</code>: Set to <code>application/x-www-form-urlencoded</code>.</li>
+</ul>
+</li>
+<li>Use the optional <code>start_key</code> query parameter for pagination.</li>
+</ol>
+<p>Send the request. A successful response will look similar to the following:</p>
+
+
+
+
+
+
+
+<div class="code-picker mb-10 mt-6 rounded-2xl border-2 border-[#DDE8FD] dark:border dark:border-white">
+    <div class="rounded-t-2xl border-b-2 border-[#DDE8FD] bg-[#DDE8FD] px-6 py-4 dark:border-b dark:border-white dark:bg-[#01022e]">
+        <div class="flex flex-row items-center justify-between">
+            <div class="font-poppins text-lg font-semibold">
+                    <span class=""> GET<br><span class="text-sm font-medium">https://api.validations.truora.com/v1/accounts<span></span>  </span>
+            </span></div>
+            <div class="flex flex-row items-center gap-3">
+                <div class="flex flex-row items-center dropdown-code-lang">
+                    <button class="dropdown-code-button flex flex-row items-center justify-center gap-2 capitalize">
+                        <span class="font-poppins"></span>
+                        <svg width="14" height="7">
+                            <path d="M11 1L6 6L1 0.999999" stroke="#F3F5FC" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </button>
+                    <div role="tooltip" id="bc7e179574b044da5d0931a5c01800ed-select" method-id="bc7e179574b044da5d0931a5c01800ed" class="dropdown-code-select flex min-w-[130px] max-w-full flex-col gap-1 rounded border bg-white px-1 py-2 shadow-xl dark:border-none dark:bg-truora-950">
+                        <a role="button" class="rounded px-[14px] py-1 text-base capitalize text-black hover:bg-[#DDE8FD] hover:font-semibold dark:text-white dark:hover:bg-[#343558] dark:hover:text-[#4381F0]" id="bc7e179574b044da5d0931a5c01800ed" value="bc7e179574b044da5d0931a5c01800ed"> Success  </a>
+                    </div>
+                </div>
+                <div>
+                    <svg width="2" height="28" viewBox="0 0 2 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1.5L0.999999 26.5" stroke="#515C63" stroke-width="2" stroke-linecap="round"></path>
+                    </svg>
+                </div>
+                <div class="ml-2 flex">
+                    <button type="button" id="bc7e179574b044da5d0931a5c01800ed-clipboard-button" class="codepicker-clipboard-button" method-id="bc7e179574b044da5d0931a5c01800ed">
+                        <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10.2727 0H1.54546C0.745457 0 0.0909119 0.654545 0.0909119 1.45455V11.6364H1.54546V1.45455H10.2727V0ZM12.4545 2.90909H4.45455C3.65455 2.90909 3 3.56364 3 4.36364V14.5455C3 15.3455 3.65455 16 4.45455 16H12.4545C13.2545 16 13.9091 15.3455 13.9091 14.5455V4.36364C13.9091 3.56364 13.2545 2.90909 12.4545 2.90909ZM12.4545 14.5455H4.45455V4.36364H12.4545V14.5455Z" fill="#5584EB"></path>
+                        </svg>
+                    </button>
+                    <div id="bc7e179574b044da5d0931a5c01800ed-tooltip" class="invisible absolute z-10 inline-block rounded-lg bg-gray-700 px-3 py-2 text-sm font-medium text-white opacity-0 shadow-sm transition-opacity duration-300" role="tooltip">
+                        Click to copy
+                        <div class="tooltip-arrow" data-popper-arrow=""></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="code_scrollbar overflow-visible rounded-b-2xl bg-white text-[#000000] dark:bg-[#343558] dark:text-[#FFFFFF]">
+        <div id="bc7e179574b044da5d0931a5c01800ed-code-dropdown-display" class="max-h-96 w-full overflow-x-auto bg-transparent p-4 text-xs">
+            <pre id="bc7e179574b044da5d0931a5c01800ed-code-dropdown-content" class="h-full">                <code lang="language-json" class="rounded-b-2xl hljs language-json">{
+    "self": "/v1/accounts",
+    "next": "/v1/accounts?start_key=ACC008ffXXXXXXXX",
+    "accounts": [
+        {
+            "account_id": "ACC0004cXXXXXXXX",
+            "creation_date": "2023-08-18T07:41:21.283968711Z",
+            "validators_prepared": {
+                "document-validation": true,
+                "electronic-signature": false,
+                "email-verification": false,
+                "enterprise-data": false,
+                "face-recognition": false,
+                "face-search": false,
+                "identity-questions": false,
+                "phone-verification": false,
+                "voice-recognition": false
+            }
+        },
+        {"...":"..."},
+        {"...":"..."},
+        {"...":"..."},
+        {
+            "account_id": "ACC008ffXXXXXXXX",
+            "creation_date": "2025-02-05T15:23:42.92770442Z",
+            "validators_prepared": {
+                "authenticate": false,
+                "document-validation": true,
+                "electronic-signature": false,
+                "email-verification": false,
+                "face-recognition": false,
+                "face-search": false,
+                "phone-verification": false
+            }
+        }
+    ]
+}</code>
+            </pre>
+        </div>
+    </div>
+</div>
+
+
+<h3 id="get-account-validations" class="api-method-section relative my-8 font-poppins text-[18px] font-semibold tracking-[0.25px] text-[#282828] dark:text-white">
+    <span class="group flex items-baseline sm:inline-block">
+        
+
+<button type="button" class="copy-anchor-link relative sm:absolute left-0 top-0 translate-y-[20%] sm:translate-y-[32%] sm:translate-x-[-105%] sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 mr-1" data-anchor="get-account-validations" aria-label="Copy link to section">
+
+  
+  <div class="tooltip pointer-events-none absolute left-0 top-0 z-10 translate-x-[-20%] translate-y-[-130%] whitespace-nowrap rounded border border-gray-200 bg-gray-300 px-2 py-1 text-xs text-gray-800
+              opacity-0 transition-opacity dark:border-gray-700 dark:bg-[#282c50] dark:text-gray-200 lg:translate-x-[-55%]" data-default="Click to copy" data-copied="Link copied !">
+
+    
+    <div class="absolute inset-x-[25%] bottom-[-5px] z-[-1] size-2 -translate-x-1/3 rotate-45
+                border-b border-r border-gray-200 bg-gray-300
+                dark:border-gray-600 dark:bg-[#282c50] lg:inset-x-[64%]">
+    </div>
+  </div>
+
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-4 fill-blue-500 hover:fill-blue-700">
+      <path d="M 9.26,13 A 2,2 0 0 1 9.27,10.99 3,3 0 0 0 9,5 H 5 a 3,3 0 0 0 0,6 h 0.08 a 6.06,6.06 0 0 0 0,2 H 5 A 5,5 0 0 1 5,3 H 9 A 5.0016897,5.0016897 0 0 1 9.26,13 Z M 10.74,7 A 2,2 0 0 1 10.73,9.01 3,3 0 0 0 11,15 h 4 a 3,3 0 0 0 0,-6 h -0.08 a 6.06,6.06 0 0 0 0,-2 H 15 a 5,5 0 0 1 0,10 H 11 A 5.0016897,5.0016897 0 0 1 10.74,7 Z"></path>
+  </svg>
+
+</button>
+        Get Account Validations
+    </span>
+</h3>
+<p>Allows you to retrieve all validations linked to a specific <code>account_id.</code></p>
+<p>To get all validations of an account, follow these steps. You may also refer to our 
+
+
+
+
+<a href="https://dev.truora.com/docs/#get-account-validations-section" class="" target="_blank" rel="noopener noreferrer">API Reference</a>:</p>
+<ol>
+<li>Create a <code>GET</code> request to the endpoint <code>https://api.validations.truora.com/v1/accounts/{{account_id}}/validations</code>.</li>
+<li>Add the next headers
+<ul>
+<li><code>Truora-API-Key</code>: Your 
+
+
+
+
+<a href="https://dev.truora.com/guides/authentication/" class="" target="_blank" rel="noopener noreferrer">Truora API-key</a>.</li>
+<li><code>Content-Type</code>: Set to <code>application/x-www-form-urlencoded</code>.</li>
+</ul>
+</li>
+</ol>
+<p>Send the request. A successful response will return the validation history of the specified <code>account_id</code>, similar to the following example:</p>
+
+
+
+
+
+
+
+<div class="code-picker mb-10 mt-6 rounded-2xl border-2 border-[#DDE8FD] dark:border dark:border-white">
+    <div class="rounded-t-2xl border-b-2 border-[#DDE8FD] bg-[#DDE8FD] px-6 py-4 dark:border-b dark:border-white dark:bg-[#01022e]">
+        <div class="flex flex-row items-center justify-between">
+            <div class="font-poppins text-lg font-semibold">
+                    <span class=""> GET<br><span class="text-sm font-medium">https://api.validations.truora.com/v1/accounts/{{account_id}}/validations<span></span>  </span>
+            </span></div>
+            <div class="flex flex-row items-center gap-3">
+                <div class="flex flex-row items-center dropdown-code-lang">
+                    <button class="dropdown-code-button flex flex-row items-center justify-center gap-2 capitalize">
+                        <span class="font-poppins"></span>
+                        <svg width="14" height="7">
+                            <path d="M11 1L6 6L1 0.999999" stroke="#F3F5FC" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </button>
+                    <div role="tooltip" id="84c30bd0451947d5a010071a5eebcd97-select" method-id="84c30bd0451947d5a010071a5eebcd97" class="dropdown-code-select flex min-w-[130px] max-w-full flex-col gap-1 rounded border bg-white px-1 py-2 shadow-xl dark:border-none dark:bg-truora-950">
+                        <a role="button" class="rounded px-[14px] py-1 text-base capitalize text-black hover:bg-[#DDE8FD] hover:font-semibold dark:text-white dark:hover:bg-[#343558] dark:hover:text-[#4381F0]" id="84c30bd0451947d5a010071a5eebcd97" value="84c30bd0451947d5a010071a5eebcd97"> Success  </a>
+                    </div>
+                </div>
+                <div>
+                    <svg width="2" height="28" viewBox="0 0 2 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1.5L0.999999 26.5" stroke="#515C63" stroke-width="2" stroke-linecap="round"></path>
+                    </svg>
+                </div>
+                <div class="ml-2 flex">
+                    <button type="button" id="84c30bd0451947d5a010071a5eebcd97-clipboard-button" class="codepicker-clipboard-button" method-id="84c30bd0451947d5a010071a5eebcd97">
+                        <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10.2727 0H1.54546C0.745457 0 0.0909119 0.654545 0.0909119 1.45455V11.6364H1.54546V1.45455H10.2727V0ZM12.4545 2.90909H4.45455C3.65455 2.90909 3 3.56364 3 4.36364V14.5455C3 15.3455 3.65455 16 4.45455 16H12.4545C13.2545 16 13.9091 15.3455 13.9091 14.5455V4.36364C13.9091 3.56364 13.2545 2.90909 12.4545 2.90909ZM12.4545 14.5455H4.45455V4.36364H12.4545V14.5455Z" fill="#5584EB"></path>
+                        </svg>
+                    </button>
+                    <div id="84c30bd0451947d5a010071a5eebcd97-tooltip" class="invisible absolute z-10 inline-block rounded-lg bg-gray-700 px-3 py-2 text-sm font-medium text-white opacity-0 shadow-sm transition-opacity duration-300" role="tooltip">
+                        Click to copy
+                        <div class="tooltip-arrow" data-popper-arrow=""></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="code_scrollbar overflow-visible rounded-b-2xl bg-white text-[#000000] dark:bg-[#343558] dark:text-[#FFFFFF]">
+        <div id="84c30bd0451947d5a010071a5eebcd97-code-dropdown-display" class="max-h-96 w-full overflow-x-auto bg-transparent p-4 text-xs">
+            <pre id="84c30bd0451947d5a010071a5eebcd97-code-dropdown-content" class="h-full">                <code lang="language-json" class="rounded-b-2xl hljs language-json">{
+    "self": "/v1/accounts/my_test_account_1234/validations",
+    "next": "",
+    "history": [
+        {
+            "validation_id": "VLDa881c7XXXX",
+            "ip_address": "186.XXX.XXX.XXX",
+            "account_id": "my_test_account_1234",
+            "type": "face-recognition",
+            "validation_status": "success",
+            "threshold": 0.65,
+            "creation_date": "2025-02-05T16:38:19.916821179Z",
+            "details": {
+                "face_recognition_validations": {
+                    "...":{}
+                }
+            },
+            "identity_process_id": "IDP62f3dd9XXXX"
+        },
+        {
+            "validation_id": "VLDdfd542XXXX",
+            "ip_address": "186.XXX.XXX.XXX",
+            "account_id": "my_test_account_1234",
+            "type": "document-validation",
+            "validation_status": "success",
+            "creation_date": "2025-02-05T16:33:51.464521422Z",
+            "details": {
+                "...":{}
+            },
+            "identity_process_id": "IDP62f3dd9XXXX",
+            "attachment_status": "valid",
+            "allowed_retries": 2,
+            "remaining_retries": 2
+        },
+        {
+            "validation_id": "VLD06f466XXXX",
+            "ip_address": "186.XXX.XXX.XXX",
+            "account_id": "my_test_account_1234",
+            "type": "phone-verification",
+            "validation_status": "success",
+            "creation_date": "2024-11-20T18:40:39.135367055Z",
+            "identity_process_id": "IDPa2319XXXX",
+            "allowed_retries": 3,
+            "remaining_retries": 3
+        }
+    ]
+}</code>
+            </pre>
+        </div>
+    </div>
+</div>
+
+
+<h3 id="list-identity" class="api-method-section relative my-8 font-poppins text-[18px] font-semibold tracking-[0.25px] text-[#282828] dark:text-white">
+    <span class="group flex items-baseline sm:inline-block">
+        
+
+<button type="button" class="copy-anchor-link relative sm:absolute left-0 top-0 translate-y-[20%] sm:translate-y-[32%] sm:translate-x-[-105%] sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 mr-1" data-anchor="list-identity" aria-label="Copy link to section">
+
+  
+  <div class="tooltip pointer-events-none absolute left-0 top-0 z-10 translate-x-[-20%] translate-y-[-130%] whitespace-nowrap rounded border border-gray-200 bg-gray-300 px-2 py-1 text-xs text-gray-800
+              opacity-0 transition-opacity dark:border-gray-700 dark:bg-[#282c50] dark:text-gray-200 lg:translate-x-[-55%]" data-default="Click to copy" data-copied="Link copied !">
+
+    
+    <div class="absolute inset-x-[25%] bottom-[-5px] z-[-1] size-2 -translate-x-1/3 rotate-45
+                border-b border-r border-gray-200 bg-gray-300
+                dark:border-gray-600 dark:bg-[#282c50] lg:inset-x-[64%]">
+    </div>
+  </div>
+
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-4 fill-blue-500 hover:fill-blue-700">
+      <path d="M 9.26,13 A 2,2 0 0 1 9.27,10.99 3,3 0 0 0 9,5 H 5 a 3,3 0 0 0 0,6 h 0.08 a 6.06,6.06 0 0 0 0,2 H 5 A 5,5 0 0 1 5,3 H 9 A 5.0016897,5.0016897 0 0 1 9.26,13 Z M 10.74,7 A 2,2 0 0 1 10.73,9.01 3,3 0 0 0 11,15 h 4 a 3,3 0 0 0 0,-6 h -0.08 a 6.06,6.06 0 0 0 0,-2 H 15 a 5,5 0 0 1 0,10 H 11 A 5.0016897,5.0016897 0 0 1 10.74,7 Z"></path>
+  </svg>
+
+</button>
+        List Identity
+    </span>
+</h3>
+<p>Allows you to retrieve the current status and details of all identity <strong>processes</strong>. Use query parameters to filter results based on specific criteria, such as <code>account_id</code>:</p>
+<ul>
+<li>Use the <code>search</code> <strong>query parameter</strong> to filter processes by <code>account_id</code>, or other attributes associated with the processes.</li>
+</ul>
+<blockquote>
+<p>For complete details on this endpoint and its filtering options, refer to our 
+
+
+
+
+<a href="https://dev.truora.com/docs/#list-identity-section" class="" target="_blank" rel="noopener noreferrer">API Reference</a>.</p></blockquote>
+<p>The following example retrieves processes associated with a specific <code>account_id</code> using the <code>search</code> <strong>query parameter</strong>:</p>
+<ol>
+<li>Create a <code>GET</code> request to the <strong>endpoint</strong>: <code>https://api.identity.truora.com/v1/processes/</code>.</li>
+<li>Add the next headers
+<ul>
+<li><code>Truora-API-Key</code>: <code>&lt;api key&gt;</code> Get an <a href="https://dev.truora.com/guides/authentication/"><strong>API key</strong></a></li>
+<li><code>Content-Type</code>: <code>application/x-www-form-urlencoded</code></li>
+</ul>
+</li>
+<li>Include the next query-string parameter:
+<ul>
+<li><code>search</code>: The <code>account_id</code> whose processes you want to retrieve.</li>
+</ul>
+</li>
+</ol>
+<p>The response will list all processes performed under the specified <code>account_id</code>, such as in this example using “<em><strong>1234567_client</strong></em>”:</p>
+
+
+
+
+
+
+
+<div class="code-picker mb-10 mt-6 rounded-2xl border-2 border-[#DDE8FD] dark:border dark:border-white">
+    <div class="rounded-t-2xl border-b-2 border-[#DDE8FD] bg-[#DDE8FD] px-6 py-4 dark:border-b dark:border-white dark:bg-[#01022e]">
+        <div class="flex flex-row items-center justify-between">
+            <div class="font-poppins text-lg font-semibold">
+                    <span class=""> GET<br><span class="text-sm font-medium">https://api.identity.truora.com/v1/processes/?search=1234567_client<span></span>  </span>
+            </span></div>
+            <div class="flex flex-row items-center gap-3">
+                <div class="flex flex-row items-center dropdown-code-lang">
+                    <button class="dropdown-code-button flex flex-row items-center justify-center gap-2 capitalize">
+                        <span class="font-poppins"></span>
+                        <svg width="14" height="7">
+                            <path d="M11 1L6 6L1 0.999999" stroke="#F3F5FC" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </button>
+                    <div role="tooltip" id="bc9b31894747c5ad07104e15e05da00d-select" method-id="bc9b31894747c5ad07104e15e05da00d" class="dropdown-code-select flex min-w-[130px] max-w-full flex-col gap-1 rounded border bg-white px-1 py-2 shadow-xl dark:border-none dark:bg-truora-950">
+                        <a role="button" class="rounded px-[14px] py-1 text-base capitalize text-black hover:bg-[#DDE8FD] hover:font-semibold dark:text-white dark:hover:bg-[#343558] dark:hover:text-[#4381F0]" id="bc9b31894747c5ad07104e15e05da00d" value="bc9b31894747c5ad07104e15e05da00d"> Success  </a>
+                    </div>
+                </div>
+                <div>
+                    <svg width="2" height="28" viewBox="0 0 2 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1.5L0.999999 26.5" stroke="#515C63" stroke-width="2" stroke-linecap="round"></path>
+                    </svg>
+                </div>
+                <div class="ml-2 flex">
+                    <button type="button" id="bc9b31894747c5ad07104e15e05da00d-clipboard-button" class="codepicker-clipboard-button" method-id="bc9b31894747c5ad07104e15e05da00d">
+                        <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10.2727 0H1.54546C0.745457 0 0.0909119 0.654545 0.0909119 1.45455V11.6364H1.54546V1.45455H10.2727V0ZM12.4545 2.90909H4.45455C3.65455 2.90909 3 3.56364 3 4.36364V14.5455C3 15.3455 3.65455 16 4.45455 16H12.4545C13.2545 16 13.9091 15.3455 13.9091 14.5455V4.36364C13.9091 3.56364 13.2545 2.90909 12.4545 2.90909ZM12.4545 14.5455H4.45455V4.36364H12.4545V14.5455Z" fill="#5584EB"></path>
+                        </svg>
+                    </button>
+                    <div id="bc9b31894747c5ad07104e15e05da00d-tooltip" class="invisible absolute z-10 inline-block rounded-lg bg-gray-700 px-3 py-2 text-sm font-medium text-white opacity-0 shadow-sm transition-opacity duration-300" role="tooltip">
+                        Click to copy
+                        <div class="tooltip-arrow" data-popper-arrow=""></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="code_scrollbar overflow-visible rounded-b-2xl bg-white text-[#000000] dark:bg-[#343558] dark:text-[#FFFFFF]">
+        <div id="bc9b31894747c5ad07104e15e05da00d-code-dropdown-display" class="max-h-96 w-full overflow-x-auto bg-transparent p-4 text-xs">
+            <pre id="bc9b31894747c5ad07104e15e05da00d-code-dropdown-content" class="h-full">                <code lang="language-json" class="rounded-b-2xl hljs language-json">{
+    "self": "/v1/processes?search=1234567_client",
+    "next": "",
+    "identity_processes": [
+        {
+            "process_id": "IDP0000000000",
+            "account_id": "1234567_client",
+            "client_id": "client_id",
+            "flow_id": "client_id",
+            "country": "CO",
+            "status": "pending",
+            "geolocalization": "geolocalization",
+            "city": "city",
+            "time_to_live": 120,
+            "config": {
+                "redirect_urls": {
+                    "failure": "https://truora.com",
+                    "pending": "https://truora.com",
+                    "success": "https://truora.com"
+                },
+                "continue_flow_in_new_device": true,
+                "enable_desktop_flow": true,
+                "time_to_live": 120,
+                "follow_up_delay": 120,
+                "follow_up_message": "Tienes un proceso activo en curso",
+                "start_business_hours": "2021-01-01T13:00:00Z",
+                "end_business_hours": "2021-01-01T00:00:00Z"
+            },
+            "redirect_url": "https://dev.truora.com",
+            "creation_date": "2023-07-31T14:34:43.019112173Z",
+            "update_date": "2023-07-31T14:34:43.024034634Z",
+            "steps": [
+                {
+                    "step_id": "IPS4875XXXXXXXX",
+                    "type": "enter_document_type",
+                    "verification_output": null,
+                    "redirect_url": "",
+                    "config": {
+                        "allowed_document_types": [
+                            {
+                                "country": "CO",
+                                "documents": [
+                                    {
+                                        "document_type": "national-id"
+                                    }
+                                ]
+                            }
+                        ],
+                        "retries": 2,
+                        "timeout": 300
+                    },
+                    "expected_inputs": [
+                        {
+                            "type": "select",
+                            "value": "CO",
+                            "name": "country",
+                            "placeholder": "Ingresa el pais",
+                            "description": "¿Cuál es el país de tu documento de identificación?",
+                            "length": 0,
+                            "read_only": true
+                        },
+                        {
+                            "type": "select",
+                            "value": "national-id",
+                            "name": "document_type",
+                            "placeholder": "Selecciona el tipo de documento",
+                            "description": "¿Cuál es el tipo de tu documento de identificación?",
+                            "length": 0,
+                            "read_only": true
+                        }
+                    ],
+                    "files_upload_urls": null,
+                    "remaining_retries": 0,
+                    "async_step": null
+                },
+                {
+                    "step_id": "IPSf5f3XXXXXXXX",
+                    "type": "take_document_photo",
+                    "verification_output": null,
+                    "redirect_url": "",
+                    "config": {
+                        "allowed_document_types": [
+                            {
+                                "country": "CO",
+                                "documents": [
+                                    {
+                                        "document_type": "national-id"
+                                    }
+                                ]
+                            }
+                        ],
+                        "retries": 2,
+                        "timeout": 300
+                    },
+                    "expected_inputs": null,
+                    "files_upload_urls": [
+                        {
+                            "name": "document_front",
+                            "url": "",
+                            "description": "Toma una foto del frente de tu documento de identidad."
+                        },
+                        {
+                            "name": "document_back",
+                            "url": "",
+                            "description": "🔁 Ahora toma una foto de la parte de atrás de tu documento."
+                        }
+                    ],
+                    "remaining_retries": 2,
+                    "async_step": true
+                }
+            ],
+            "current_step_type": "enter_document_type",
+            "variables": {
+                "document_validation": {}
+            },
+            "created_via": "web"
+        }
+    ]
+}</code>
+            </pre>
+        </div>
+    </div>
+</div>
+
+
+
+  
+
+
+
+
+<br><br><br>
+
+
+
+  
+<div class="feedback-card max-w-[500px] flex-row gap-16 rounded-[14px] bg-white px-8 py-4 dark:bg-[#343558]">
+    <div class="flex flex-col items-center justify-between gap-4 md:flex-row md:space-y-0">
+        <div class="font-open-sans text-base font-normal not-italic tracking-normal text-[#01022e] dark:text-white">Was this helpful?</div>
+        <div class="grid grid-cols-2 gap-6">
+            <button data="/digital-identity/create_account_id/" class="feedback-yes h-9 w-[108px] shrink-0 gap-2 rounded-lg border border-white bg-[#F3F5FC] px-5 py-0 font-[&#39;Poppins&#39;] text-[14px] font-semibold not-italic leading-normal tracking-tighter text-[#515C63] hover:bg-[#DDE8FD] hover:text-[#01022E] dark:bg-[#01022E] dark:text-white dark:hover:bg-white dark:hover:text-[#01022E] md:px-8">Yes👍</button>
+            <button disabled-data="/digital-identity/create_account_id/" data-open="/digital-identity/create_account_id/-modal" class="modalTrigger h-9 w-[108px] shrink-0 gap-2 rounded-lg border border-white bg-[#F3F5FC] px-5 py-0 font-[&#39;Poppins&#39;] text-[14px] font-semibold not-italic leading-normal tracking-tighter text-[#515C63] hover:bg-[#DDE8FD] hover:text-[#01022E] dark:bg-[#01022E] dark:text-white dark:hover:bg-white dark:hover:text-[#01022E] md:px-8">No👎</button>
+        </div>
+    </div>
+    <div id="/digital-identity/create_account_id/-modal" class="fixed inset-0 z-[70] hidden max-h-full p-4">
+        <div class="relative max-h-full w-full md:w-auto md:min-w-[418px]">
+            <div class="relative rounded-lg bg-white p-5 shadow">
+                <button id="close-modal" class="absolute right-3 top-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M11.8241 0.175948C11.5895 -0.0586493 11.2103 -0.0586493 10.9757 0.175948L6 5.15169L1.02432 0.175948C0.78973 -0.0586493 0.41054 -0.0586493 0.175946 0.175948C-0.0586485 0.410545 -0.0586485 0.78974 0.175946 1.02434L5.15162 6.00007L0.175946 10.9758C-0.0586485 11.2104 -0.0586485 11.5896 0.175946 11.8242C0.292943 11.9412 0.446539 12 0.600135 12C0.753731 12 0.907327 11.9412 1.02432 11.8242L6 6.84846L10.9757 11.8242C11.0927 11.9412 11.2463 12 11.3999 12C11.5535 12 11.7071 11.9412 11.8241 11.8242C12.0586 11.5896 12.0586 11.2104 11.8241 10.9758L6.84838 6.00007L11.8241 1.02434C12.0586 0.78974 12.0586 0.410545 11.8241 0.175948Z" fill="black"></path>
+                    </svg>
+                </button>
+                <form class="feedback-form flex flex-col gap-1" content-modal="/digital-identity/create_account_id/">
+                    <div class="mt-5">
+                        <span class="font-poppins text-xl font-medium leading-6 text-gray-900">Give us
+                            feedback</span>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <div>
+                            <span class="font-poppins text-sm font-normal tracking-wide text-[#1D262C]">Tap a star
+                                to give your rating.</span>
+                        </div>
+                        <div id="stars-container" class="mt-1 flex flex-row space-x-1 transition-all duration-500 ease-in-out">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 25 25" fill="none">
+                                <path d="M12.6816 1L16.2432 8.58725L24.2079 9.81139L18.4447 15.7139L19.8049 24.0526L12.6816 20.1136L5.55833 24.0526L6.91843 15.7139L1.15527 9.81139L9.11996 8.58725L12.6816 1Z" stroke="black" stroke-opacity="0.4" stroke-width="0.864474" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 25 25" fill="none">
+                                <path d="M12.6816 1L16.2432 8.58725L24.2079 9.81139L18.4447 15.7139L19.8049 24.0526L12.6816 20.1136L5.55833 24.0526L6.91843 15.7139L1.15527 9.81139L9.11996 8.58725L12.6816 1Z" stroke="black" stroke-opacity="0.4" stroke-width="0.864474" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 25 25" fill="none">
+                                <path d="M12.6816 1L16.2432 8.58725L24.2079 9.81139L18.4447 15.7139L19.8049 24.0526L12.6816 20.1136L5.55833 24.0526L6.91843 15.7139L1.15527 9.81139L9.11996 8.58725L12.6816 1Z" stroke="black" stroke-opacity="0.4" stroke-width="0.864474" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 25 25" fill="none">
+                                <path d="M12.6816 1L16.2432 8.58725L24.2079 9.81139L18.4447 15.7139L19.8049 24.0526L12.6816 20.1136L5.55833 24.0526L6.91843 15.7139L1.15527 9.81139L9.11996 8.58725L12.6816 1Z" stroke="black" stroke-opacity="0.4" stroke-width="0.864474" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 25 25" fill="none">
+                                <path d="M12.6816 1L16.2432 8.58725L24.2079 9.81139L18.4447 15.7139L19.8049 24.0526L12.6816 20.1136L5.55833 24.0526L6.91843 15.7139L1.15527 9.81139L9.11996 8.58725L12.6816 1Z" stroke="black" stroke-opacity="0.4" stroke-width="0.864474" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex flex-col">
+                        <label class="mb-2 font-poppins text-sm tracking-wide text-[#1D262C]" for="feedback">Tell us
+                            how we can improve?</label>
+                        <textarea rows="3" name="feedback" id="feedback" class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-[#5584EB] dark:text-gray-900 sm:text-sm" maxlength="255" type="text"></textarea>
+                    </div>
+                    <div class="mt-5 grid w-full grid-cols-2 gap-12 text-right">
+                        <button id="close-modal" type="button" class="flex w-1/2 justify-center rounded-md bg-white px-4 py-2 font-poppins text-base font-medium text-[#5584EB] hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm">Cancel</button>
+                        <button type="submit" class="flex w-1/2 justify-center rounded-md border border-transparent bg-[#5584EB] px-4 py-2 font-poppins text-base font-semibold text-white shadow-lg hover:bg-[#3a6ee0] focus:outline-none sm:w-auto sm:text-sm ">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+  </div>
+
+      </article>
+    
+  </div>
+
+  
+
+
+
+
+
+  
+
+<script type="text/javascript" src="./Create Account ID - Truora Developers_files/highlight.min.6c03c475a94bc344aa80854b67fa3a6767b1aac686613d7d31b7c69b4ea1db7b.js.download"></script></body></html>

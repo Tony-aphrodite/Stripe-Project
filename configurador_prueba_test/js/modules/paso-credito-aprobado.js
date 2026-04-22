@@ -8,6 +8,18 @@ var PasoCreditoAprobado = {
 
     init: function(app) {
         this.app = app;
+        // FINAL GATE: the green "¡Felicidades!" screen is reserved for
+        // applicants whose REAL Círculo de Crédito score crossed the PRE
+        // threshold (status === 'PREAPROBADO'). CONDICIONAL and _ESTIMADO
+        // variants lack the credit-bureau confirmation needed to claim
+        // approval — they bounce to credito-resultado (yellow screen)
+        // instead. Without this strict check, fake-data applicants that
+        // the self-scoring thin-file path passed through would land here.
+        var resultado = (app.state && app.state._resultadoFinal) || {};
+        if (resultado.status !== 'PREAPROBADO') {
+            app.irAPaso('credito-resultado');
+            return;
+        }
         this.render();
         this.bindEvents();
     },

@@ -52,6 +52,11 @@ var PreaprobacionV3 = {
         var buro   = inputs.pago_mensual_buro || 0;
         var dpd90  = inputs.dpd90_flag;
         var dpdMax = inputs.dpd_max;
+        // Tri-state identity flag from consultar-buro.php:
+        //   true  → CDC confirmed the persona exists (approval flow continues)
+        //   false → CDC returned 404.1 "no existe"  → hard REJECT
+        //   undefined/null → CDC unreachable or not consulted → self-score OK
+        var personFound = (inputs.person_found === undefined) ? null : inputs.person_found;
         var cfg    = this.config;
 
         if (!isFinite(ing) || ing <= 0 || !isFinite(psv) || psv <= 0) {
@@ -61,6 +66,18 @@ var PreaprobacionV3 = {
         var pmv  = psv * 4.3333;
         var pti  = (buro + pmv) / ing;
         var mora = dpd90 === true || (dpdMax != null && dpdMax >= 90);
+
+        // HARD KO — CDC explicitly says the persona does NOT exist. Reject
+        // before any scoring runs. Customer report 2026-04-23: fake
+        // identities were passing through self-scoring when `score=null`.
+        if (personFound === false) {
+            return {
+                status:    'NO_VIABLE',
+                pti:       pti,
+                reasons:   ['IDENTIDAD_NO_ENCONTRADA_EN_CDC'],
+                mensaje:   'La persona no aparece en el Buró de Crédito. No es posible otorgar crédito a identidades que no se pueden verificar.'
+            };
+        }
 
         // Sin datos de Círculo → evaluación estimada solo por PTI
         if (score === null || score === undefined) {
@@ -107,21 +124,18 @@ var PreaprobacionV3 = {
         };
     },
 
-    // Sin Círculo: evaluación estimada solo por PTI
+    // Sin Círculo: option B (customer decision 2026-04-23). Without a REAL
+    // credit-bureau score we cannot verify any claim the applicant made, so
+    // we reject outright instead of self-scoring. This mirrors the server
+    // behavior in preaprobacion-v3.php and prevents fake identities from
+    // reaching the conditional-approval screen when CDC returns thin-file
+    // or is unreachable.
     _evaluarSinCirculo: function(pti) {
-        var cfg    = this.config;
-        var engMin = cfg.downPaymentMin;
-        if (pti > cfg.KO.ptiExtreme) {
-            return { status: 'NO_VIABLE', pti: pti, reasons: ['PTI_EXTREMO_SIN_CIRCULO'] };
-        }
-        if (pti <= 0.75) {
-            return { status: 'PREAPROBADO_ESTIMADO', pti: pti, enganche_requerido_min: engMin, plazo_max_meses: 36 };
-        }
         return {
-            status: 'CONDICIONAL_ESTIMADO',
-            pti: pti,
-            enganche_requerido_min: Math.min(Math.max(this._engancheMin(pti), engMin), 0.60),
-            plazo_max_meses: 24
+            status:  'NO_VIABLE',
+            pti:     pti,
+            reasons: ['SIN_SCORE_CDC_NO_AUTO_APROBACION'],
+            mensaje: 'No podemos otorgar crédito en este momento. No se obtuvo un reporte completo del Buró de Crédito para confirmar tu historial.'
         };
     },
 

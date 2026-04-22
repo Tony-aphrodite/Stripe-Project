@@ -1,0 +1,20 @@
+# Voltika — PHP upload limits (safety net; client-side image compressor
+# should keep most requests far under these values).
+<IfModule mod_php.c>
+    php_value upload_max_filesize 25M
+    php_value post_max_size 30M
+    php_value memory_limit 128M
+    php_value max_execution_time 60
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 25M
+    php_value post_max_size 30M
+    php_value memory_limit 128M
+    php_value max_execution_time 60
+</IfModule>
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 25M
+    php_value post_max_size 30M
+    php_value memory_limit 128M
+    php_value max_execution_time 60
+</IfModule>

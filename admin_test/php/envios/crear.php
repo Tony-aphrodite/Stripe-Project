@@ -133,6 +133,14 @@ if ($transaccionId) {
     if (!$notas) $notas = 'Venta - Pedido ' . $pedidoNum;
 }
 
+// Inherit ETA from transacciones.fecha_estimada_entrega when the admin set it
+// in the "Asignar punto" step. This closes the gap reported by the customer:
+// the Envíos page ETA column used to be empty because nothing upstream ever
+// populated fecha_estimada_llegada. Explicit POST value still wins.
+if (!$fechaEstimada && $transaccionId && !empty($order['fecha_estimada_entrega'])) {
+    $fechaEstimada = $order['fecha_estimada_entrega'];
+}
+
 // Auto-quote via Skydropx if no date provided (optional, failures are silent)
 if (!$fechaEstimada && function_exists('skydropxCotizar')) {
     try {

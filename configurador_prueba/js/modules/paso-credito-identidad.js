@@ -408,24 +408,48 @@ var PasoCreditoIdentidad = {
         jQuery('#vk-identidad-spinner').show();
         jQuery('#vk-identidad-error').hide();
 
+        // Compress all images before upload (resize 1600px, JPEG q=0.82).
+        // Prevents the "tamaño máximo del servidor" error on large phone
+        // photos and dramatically speeds up mobile uploads. If the compress
+        // util is missing, the originals are sent untouched (feature-detect).
+        var _compress = window.voltikaCompressImage || function(f){ return Promise.resolve(f); };
+        Promise.all([
+            _compress(self._ineFrente),
+            _compress(self._ineReverso),
+            _compress(self._selfie),
+            self._comprobante ? _compress(self._comprobante) : Promise.resolve(null)
+        ]).then(function(compressed){
         var formData = new FormData();
-        formData.append('ine_frente', self._ineFrente);
-        formData.append('ine_reverso', self._ineReverso);
-        formData.append('selfie', self._selfie);
-        if (self._comprobante) {
-            formData.append('comprobante_domicilio', self._comprobante);
+        formData.append('ine_frente', compressed[0]);
+        formData.append('ine_reverso', compressed[1]);
+        formData.append('selfie', compressed[2]);
+        if (compressed[3]) {
+            formData.append('comprobante_domicilio', compressed[3]);
             formData.append('domicilio_diferente', '1');
         }
 
-        var partes    = (state.nombre || '').trim().split(/\s+/);
-        var nombre    = partes.length > 0 ? partes[0] : '';
-        var apellidos = partes.length > 1 ? partes.slice(1).join(' ') : '';
+        // Use the dedicated fields collected in paso-credito-nombre.js
+        // (apellidoPaterno + apellidoMaterno). Falling back to splitting
+        // state.nombre on whitespace fails when nombre is a single word
+        // (no apellido) → 400 from verificar-identidad.php.
+        var nombre = (state.nombre || '').trim();
+        var apellidos = ((state.apellidoPaterno || '') + ' ' + (state.apellidoMaterno || '')).trim();
+        if (!apellidos && nombre.indexOf(' ') > 0) {
+            // Last-resort: state.nombre might already include surname
+            var parts = nombre.split(/\s+/);
+            nombre = parts[0];
+            apellidos = parts.slice(1).join(' ');
+        }
 
         formData.append('nombre', nombre);
         formData.append('apellidos', apellidos);
         formData.append('fecha_nacimiento', state.fechaNacimiento || '');
         formData.append('telefono', state.telefono || '');
         formData.append('email', state.email || '');
+        // Truora new schema requires gender + state_id
+        formData.append('gender', state.sexo || state.gender || 'M');
+        formData.append('state_id', state.estadoDomicilio || state.estado || 'CDMX');
+        if (state.curp) formData.append('curp', state.curp);
 
         // Helper: show an error below the Continuar button and re-enable it.
         // If the backend returned HTTP/body detail, render them so we can
@@ -465,13 +489,26 @@ var PasoCreditoIdentidad = {
                 }
 
                 state._truoraResult = res;
-                state._identidadVerificada = true;
 
+                // BLOCK if face match explicitly failed (selfie ≠ INE photo)
                 if (res && res.face && res.face.match === false) {
-                    showError('No pudimos confirmar que la selfie coincide con la foto de tu INE. Por favor vuelve a tomarte la selfie con buena iluminación y rostro despejado.');
+                    var err = 'No pudimos confirmar que la selfie coincide con la foto de tu INE. Toma la selfie con buena iluminación y rostro despejado, usando la MISMA persona que aparece en la INE.';
+                    if (res.face.error === 'face_match_api_error') {
+                        err = 'El servicio de verificación facial está temporalmente no disponible. Vuelve a intentar en un momento.';
+                    } else if (res.face.similarity !== null && res.face.similarity !== undefined) {
+                        err += ' (similitud: ' + Math.round(res.face.similarity * 100) + '%, mínimo 70%)';
+                    }
+                    showError(err, detailFromRes(res.face));
                     return;
                 }
 
+                // BLOCK if overall Truora status is rejected (no face check, bad identity)
+                if (res && res.status === 'rejected') {
+                    showError('No pudimos verificar tu identidad con el gobierno. Revisa que tu nombre, fecha de nacimiento, CURP y estado coincidan con los datos oficiales de tu INE.', detailFromRes(res));
+                    return;
+                }
+
+                state._identidadVerificada = true;
                 self._disarmBeforeUnload();
                 try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
                 self.app.irAPaso('credito-enganche');
@@ -482,5 +519,6 @@ var PasoCreditoIdentidad = {
                 showError(msg, detailFromRes(body || { http: xhr && xhr.status }));
             }
         });
+        });  // Promise.all(_compress).then
     }
 };

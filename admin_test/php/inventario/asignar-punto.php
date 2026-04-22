@@ -20,9 +20,29 @@ $transaccionId  = (int)($d['transaccion_id'] ?? 0);
 $fechaEstimada  = $d['fecha_estimada'] ?? null;
 
 if (!$motoId || !$puntoId) adminJsonOut(['error' => 'moto_id y punto_id requeridos'], 400);
-if ($tipo === 'venta' && !$transaccionId) adminJsonOut(['error' => 'transaccion_id requerido para tipo venta'], 400);
 
 $pdo = getDB();
+
+// Defensive recovery: if the admin UI didn't include transaccion_id but the
+// moto is already linked to an order (via pedido_num), resolve it here. This
+// prevents the "transaccion_id requerido para tipo venta" false-positive
+// reported 2026-04-22 when the UI closure lost its transId on a fallback path.
+if ($tipo === 'venta' && !$transaccionId) {
+    try {
+        $q = $pdo->prepare("
+            SELECT t.id FROM transacciones t
+            JOIN inventario_motos m ON m.pedido_num = CONCAT('VK-', t.pedido)
+            WHERE m.id = ? AND m.activo = 1
+            ORDER BY t.id DESC LIMIT 1
+        ");
+        $q->execute([$motoId]);
+        $transaccionId = (int)($q->fetchColumn() ?: 0);
+    } catch (PDOException $e) {
+        error_log('asignar-punto transaccionId recovery: ' . $e->getMessage());
+    }
+}
+
+if ($tipo === 'venta' && !$transaccionId) adminJsonOut(['error' => 'transaccion_id requerido para tipo venta (moto no vinculada a ningún pedido)'], 400);
 
 // Verify moto exists
 $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id=? AND activo=1");

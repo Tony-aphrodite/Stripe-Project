@@ -134,13 +134,15 @@ if (!$originalSelfie || !file_exists($originalSelfie)) {
 // ── Truora Face Validation API ───────────────────────────────────────────────
 $newPhotoPath = $uploadDir . '/' . $savedFiles['foto'];
 
-// Truora face validation: compare two face images
-$ch = curl_init('https://api.truora.com/v1/face-validation');
+// Uses the same endpoint + payload pattern as verificar-identidad.php
+// (api.truora.com/v1/face-validation was legacy and is now blocked at TLS).
+$ch = curl_init('https://api.checks.truora.com/v1/checks');
 $postFields = [
-    'type'          => 'face-recognition',
-    'account_id'    => '',
-    'image1'        => new CURLFile($originalSelfie, 'image/jpeg', 'selfie_original.jpg'),
-    'image2'        => new CURLFile($newPhotoPath, 'image/jpeg', 'selfie_pickup.jpg'),
+    'country'         => 'MX',
+    'type'            => 'face-recognition',
+    'user_authorized' => 'true',
+    'selfie_image'    => new CURLFile($newPhotoPath,   'image/jpeg', 'selfie_pickup.jpg'),
+    'document_image'  => new CURLFile($originalSelfie, 'image/jpeg', 'selfie_original.jpg'),
 ];
 
 curl_setopt_array($ch, [
@@ -185,9 +187,16 @@ if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
     exit;
 }
 
-// Truora returns similarity score
-$similarity = $result['face_validation']['similarity'] ?? $result['similarity'] ?? $result['score'] ?? null;
-$match      = $result['face_validation']['match'] ?? $result['match'] ?? null;
+// Truora returns similarity score. New api.checks.truora.com response shape
+// nests fields under "check"; older shapes kept as fallbacks.
+$check      = $result['check'] ?? $result;
+$similarity = $check['face_recognition_score']
+           ?? $result['face_validation']['similarity']
+           ?? $check['score']
+           ?? $result['similarity']
+           ?? $result['score']
+           ?? null;
+$match      = $result['face_validation']['match'] ?? $check['match'] ?? $result['match'] ?? null;
 
 // Determine if faces match (threshold: 70%)
 $isMatch = false;

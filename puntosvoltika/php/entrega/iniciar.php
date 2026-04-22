@@ -65,12 +65,58 @@ $pdo->prepare("INSERT INTO entregas (moto_id, pedido_num, cliente_nombre, client
         $otp, $expires, $ctx['user_id']
     ]);
 
-// Send SMS
+// ── Delivery channels ─────────────────────────────────────────────────────
+// Customer feedback 2026-04-23: OTP was not received. Previously this
+// endpoint only tried SMSmasivos; if that API timed out or returned an error
+// body, the OTP vanished silently and the customer couldn't pick up the bike.
+//
+// Now we try in sequence:
+//   1. voltikaNotify('otp_entrega', ...) — rich template, sends WhatsApp +
+//      email + SMS simultaneously (whatever channel the customer has), same
+//      mechanism used by admin/php/checklists/enviar-otp.php.
+//   2. Direct SMSmasivos call as a belt-and-braces fallback.
+// The call reports per-channel outcomes so the dealer UI can warn loudly
+// when EVERY channel failed and staff must read the OTP aloud.
 $tel = preg_replace('/\D/', '', $moto['cliente_telefono']);
 if (strlen($tel) === 10) $tel = '52' . $tel;
 $msg = "Voltika: Tu código de entrega es {$otp}. Muéstralo al asesor en el punto. No lo compartas.";
+
+// 1) Multi-channel via voltikaNotify (whatsapp + email + sms template)
+$notifyResult = null;
+$notifyPath = null;
+foreach ([
+    __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php',
+    __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php',
+] as $_p) {
+    if (is_file($_p)) { $notifyPath = $_p; break; }
+}
+if ($notifyPath) { try { require_once $notifyPath; } catch (Throwable $e) { error_log('notify include: ' . $e->getMessage()); } }
+if (function_exists('voltikaNotify')) {
+    try {
+        $notifyResult = voltikaNotify('otp_entrega', [
+            'cliente_id' => $moto['cliente_id'] ?? null,
+            'nombre'     => $moto['cliente_nombre'] ?? '',
+            'modelo'     => $moto['modelo'] ?? '',
+            'color'      => $moto['color']  ?? '',
+            'pedido'     => $moto['pedido_num'] ?? '',
+            'otp'        => $otp,
+            'codigo'     => $otp,
+            'telefono'   => $moto['cliente_telefono'],
+            'whatsapp'   => $moto['cliente_telefono'],
+            'email'      => $moto['cliente_email'] ?? '',
+        ]);
+    } catch (Throwable $e) {
+        error_log('notify otp_entrega: ' . $e->getMessage());
+        $notifyResult = ['error' => $e->getMessage()];
+    }
+}
+
+// 2) SMSmasivos direct fallback — always attempt, even when voltikaNotify
+// succeeds, so SMS lands on carriers the template doesn't cover.
 $smsKey = defined('SMSMASIVOS_API_KEY') ? SMSMASIVOS_API_KEY : (getenv('SMSMASIVOS_API_KEY') ?: '');
 $smsSent = false;
+$smsHttpCode = null;
+$smsError    = null;
 if ($smsKey) {
     $ch = curl_init('https://api.smsmasivos.com.mx/sms/send');
     curl_setopt_array($ch, [
@@ -79,14 +125,42 @@ if ($smsKey) {
         CURLOPT_POSTFIELDS => json_encode(['phone_number'=>$tel,'message'=>$msg]),
         CURLOPT_TIMEOUT => 8,
     ]);
-    $res = curl_exec($ch); curl_close($ch);
-    $smsSent = !empty($res);
+    $res = curl_exec($ch);
+    $smsHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $smsError    = curl_error($ch) ?: null;
+    curl_close($ch);
+    $smsSent = ($smsHttpCode >= 200 && $smsHttpCode < 300 && !empty($res));
 }
 
-puntoLog('entrega_otp_enviado', ['moto_id' => $motoId]);
+// Detect whether at least one channel reported success — the UI uses this
+// to warn the operator loudly when nothing reached the customer.
+$notifyOk = is_array($notifyResult) && empty($notifyResult['error']) && (
+      !empty($notifyResult['whatsapp_sent'])
+   || !empty($notifyResult['email_sent'])
+   || !empty($notifyResult['sms_sent'])
+   || !empty($notifyResult['sent'])
+);
+$anyChannelOk = $notifyOk || $smsSent;
+
+puntoLog('entrega_otp_enviado', [
+    'moto_id'     => $motoId,
+    'notify_ok'   => $notifyOk,
+    'sms_ok'      => $smsSent,
+    'sms_http'    => $smsHttpCode,
+    'sms_error'   => $smsError,
+    'any_channel' => $anyChannelOk,
+]);
+
 puntoJsonOut([
-    'ok' => true,
-    'sms_enviado' => $smsSent,
-    'test_code' => $smsSent ? null : $otp, // fallback for dev
-    'cliente' => ['nombre' => $moto['cliente_nombre'], 'telefono' => $moto['cliente_telefono']]
+    'ok'           => true,
+    'sms_enviado'  => $smsSent,
+    'notify'       => $notifyResult,
+    'any_channel'  => $anyChannelOk,
+    // test_code is only surfaced when every channel failed, so staff can
+    // read the code to the customer in person as last-resort fallback.
+    'test_code'    => $anyChannelOk ? null : $otp,
+    'warning'      => $anyChannelOk
+        ? null
+        : 'No se pudo entregar el código por ningún canal. Léelo al cliente en persona y revisa la conexión del proveedor SMS.',
+    'cliente'      => ['nombre' => $moto['cliente_nombre'], 'telefono' => $moto['cliente_telefono']]
 ]);

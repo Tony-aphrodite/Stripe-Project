@@ -62,7 +62,17 @@ window.PV_entrega = (function(){
     $('#pvS1').on('click', function(){
       var $b=$(this).prop('disabled',true).html('<span class="ad-spin"></span>');
       PVApp.api('entrega/iniciar.php',{moto_id:ctx.moto_id}).done(function(r){
-        if(r.ok){ ctx.testCode=r.test_code; step2(); }
+        if(r.ok){
+          ctx.testCode = r.test_code;
+          // When no channel delivered the OTP (warning present + test_code
+          // returned), surface it loudly so staff reads the code aloud
+          // instead of silently letting the flow stall. Customer reported
+          // "OTP didn't receive it" — this makes that case actionable.
+          if (r.warning) {
+            alert('⚠️ ' + r.warning + '\n\nCódigo del cliente: ' + (r.test_code || ctx.testCode || '(no disponible)'));
+          }
+          step2();
+        }
       }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); $b.prop('disabled',false).text('Enviar código por SMS'); });
     });
   }

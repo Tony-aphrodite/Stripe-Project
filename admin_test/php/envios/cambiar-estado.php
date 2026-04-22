@@ -12,8 +12,19 @@ $uid = adminRequireAuth(['admin','cedis']);
 $d = adminJsonIn();
 $envioId = (int)($d['envio_id'] ?? 0);
 $nuevoEstado = $d['estado'] ?? '';
+// Optional ETA override — the "Enviar" confirm modal in admin-envios.js lets
+// the admin update fecha_estimada_llegada at the same time as flipping state.
+// Empty string = don't touch; valid YYYY-MM-DD = overwrite. We also normalize
+// fecha_envio the same way so operators can backdate a shipment if needed.
+$etaIn   = isset($d['fecha_estimada_llegada']) ? trim((string)$d['fecha_estimada_llegada']) : '';
+$fenvIn  = isset($d['fecha_envio'])            ? trim((string)$d['fecha_envio'])            : '';
 if (!$envioId || !in_array($nuevoEstado, ['enviada','recibida'])) {
     adminJsonOut(['error' => 'envio_id y estado válido requeridos'], 400);
+}
+foreach ([['fecha_estimada_llegada', $etaIn], ['fecha_envio', $fenvIn]] as $pair) {
+    if ($pair[1] !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $pair[1])) {
+        adminJsonOut(['error' => $pair[0] . ' debe ser YYYY-MM-DD'], 400);
+    }
 }
 
 $pdo = getDB();
@@ -88,8 +99,21 @@ $notifyData = [
 ];
 
 $updates = ['estado' => $nuevoEstado];
+// Apply ETA override (if any) BEFORE sending the notification so the email /
+// WhatsApp carry the updated arrival date.
+if ($etaIn !== '') {
+    $updates['fecha_estimada_llegada'] = $etaIn;
+    // Refresh the human-formatted copy used in notifyData, otherwise the
+    // client would get the stale value fetched above.
+    $fechaHumanUpdated = function_exists('voltikaFormatFechaHuman')
+        ? voltikaFormatFechaHuman($etaIn)
+        : $etaIn;
+    $notifyData['fecha']               = $fechaHumanUpdated;
+    $notifyData['fecha_llegada_punto'] = $fechaHumanUpdated;
+}
 if ($nuevoEstado === 'enviada') {
-    $updates['fecha_envio'] = date('Y-m-d');
+    // Admin may pass an explicit fecha_envio (backdate). Default to today.
+    $updates['fecha_envio'] = $fenvIn !== '' ? $fenvIn : date('Y-m-d');
     $pdo->prepare("UPDATE inventario_motos SET estado='por_llegar' WHERE id=?")->execute([$envio['moto_id']]);
     if (function_exists('voltikaNotify') && ($envio['cliente_telefono'] || $envio['cliente_email'])) {
         try { voltikaNotify('moto_enviada', $notifyData); }

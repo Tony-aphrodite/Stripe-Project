@@ -48,9 +48,19 @@ var PasoCreditoLoading = {
         var self = this;
         if (this._timer) clearTimeout(this._timer);
 
-        // Auto-advance after 4.5 seconds
+        // Auto-advance after 4.5 seconds. "¡Felicidades!" (credito-aprobado)
+        // is only for applicants with a REAL, above-threshold CDC score.
+        // Everything else — CONDICIONAL (even real CDC), any _ESTIMADO
+        // (self-score), NO_VIABLE, or missing status — routes to
+        // credito-resultado so the applicant sees the honest decision
+        // instead of a green approval they might not qualify for.
         this._timer = setTimeout(function() {
-            self.app.irAPaso('credito-aprobado');
+            var resultado = (self.app.state && self.app.state._resultadoFinal) || {};
+            if (resultado.status === 'PREAPROBADO') {
+                self.app.irAPaso('credito-aprobado');
+            } else {
+                self.app.irAPaso('credito-resultado');
+            }
         }, 4500);
     }
 };

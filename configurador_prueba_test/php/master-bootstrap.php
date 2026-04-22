@@ -9,6 +9,7 @@
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/catalog-normalize.php';
 
 function voltikaEnsureSchema(): void {
     static $done = false;
@@ -391,6 +392,22 @@ function voltikaEnsureSchema(): void {
         UNIQUE KEY uk_punto_modelo (punto_id, modelo_id),
         INDEX idx_punto (punto_id),
         FOREIGN KEY (punto_id) REFERENCES puntos_voltika(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Comisiones por referido y modelo — fix $ amount (not %) per customer
+    // feedback 2026-04-23. Each referido earns a pre-configured cash amount
+    // per moto sold; populates comisiones_log on venta confirmation.
+    // modelo_slug matches productos.js id (lowercase, dash form) so the
+    // same key works across configurador + admin + puntos panels.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS referido_comisiones (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        referido_id      INT NOT NULL,
+        modelo_slug      VARCHAR(50) NOT NULL COMMENT 'productos.js id — m05, pesgo-plus, mino, ukko-s, ...',
+        comision_monto   DECIMAL(12,2) DEFAULT 0.00 COMMENT 'Fixed MXN amount per sale',
+        fmod             DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_referido_modelo (referido_id, modelo_slug),
+        INDEX idx_referido (referido_id),
+        FOREIGN KEY (referido_id) REFERENCES referidos(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
     // Log de comisiones generadas

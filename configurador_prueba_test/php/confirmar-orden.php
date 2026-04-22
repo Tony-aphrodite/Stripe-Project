@@ -35,8 +35,12 @@ if ($pagoTipo === 'unico') $pagoTipo = 'contado';
 $nombre          = $json['nombre']          ?? '';
 $email           = $json['email']           ?? '';
 $telefono        = $json['telefono']        ?? '';
-$modelo          = $json['modelo']          ?? '';
-$color           = $json['color']           ?? '';
+// Normalize modelo/color at the entrance: the legacy Ship.js configurador
+// posts "Voltika Tromox Pesgo" / "Gris moderno" while the new one posts
+// "Pesgo Plus" / "gris". Inventario_motos only stores the short codes, so
+// without this step any legacy-origin order cannot be matched to stock.
+$modelo          = voltikaNormalizeModelo($json['modelo'] ?? '');
+$color           = voltikaNormalizeColor($json['color']  ?? '');
 $ciudad          = $json['ciudad']          ?? '';
 $estado          = $json['estado']          ?? '';
 $cp              = $json['cp']              ?? '';
@@ -383,6 +387,30 @@ try {
             ")->execute([$referidoId]);
         } catch (PDOException $e) {
             error_log('Voltika referidos counter error: ' . $e->getMessage());
+        }
+
+        // Auto-calc influencer commission: look up the fixed MXN amount the
+        // admin configured per model in `referido_comisiones` and write it
+        // to comisiones_log so the Referidos dashboard stops showing $0.00.
+        // Silent miss if the admin hasn't configured this model — no fake
+        // defaults, payouts are always explicit.
+        try {
+            $slug = strtolower(preg_replace('/[^a-z0-9\-]+/i', '-', (string)$modelo));
+            $slug = trim(preg_replace('/-+/', '-', $slug), '-');
+            if ($slug !== '') {
+                $stmt = $pdo->prepare("SELECT comision_monto FROM referido_comisiones WHERE referido_id = ? AND modelo_slug = ? LIMIT 1");
+                $stmt->execute([$referidoId, $slug]);
+                $comMonto = (float)($stmt->fetchColumn() ?: 0);
+                if ($comMonto > 0) {
+                    $pdo->prepare("
+                        INSERT INTO comisiones_log
+                            (punto_id, referido_id, pedido_num, modelo, monto_venta, comision_pct, comision_monto, tipo)
+                        VALUES (NULL, ?, ?, ?, ?, NULL, ?, 'venta')
+                    ")->execute([$referidoId, $pedidoNum, $modelo, $total, $comMonto]);
+                }
+            }
+        } catch (PDOException $e) {
+            error_log('Voltika referido comision auto-calc error: ' . $e->getMessage());
         }
     }
 
@@ -889,6 +917,23 @@ $tplKey = 'compra_confirmada_'
         . ($tienePunto ? '_punto' : '_sin_punto');
 voltikaNotify($tplKey, $notifyData);
 $emailSent = !empty($email);
+
+// Flag the row so stripe-webhook.php (which may arrive later for the same
+// PaymentIntent) knows notifications were already dispatched here, avoiding
+// duplicate emails/WhatsApps. The column is lazy-created on webhook side.
+if (!empty($paymentIntentId)) {
+    try {
+        $pdo = getDB();
+        $cols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('notif_sent_at', $cols, true)) {
+            $pdo->exec("ALTER TABLE transacciones ADD COLUMN notif_sent_at DATETIME NULL");
+        }
+        $pdo->prepare("UPDATE transacciones SET notif_sent_at = NOW() WHERE stripe_pi = ? AND notif_sent_at IS NULL")
+            ->execute([$paymentIntentId]);
+    } catch (Throwable $e) {
+        error_log('confirmar-orden notif_sent_at update: ' . $e->getMessage());
+    }
+}
 
 // MSG 1B/1C/1D — delayed 5 minutes based on purchase type
 if ($esCredito) {

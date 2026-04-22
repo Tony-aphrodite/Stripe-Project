@@ -137,6 +137,10 @@ window.PV_venta = (function(){
   }
 
   // ── Modal: walk-in direct sale (CASE 4) ──
+  // Customer feedback 2026-04-23: the precio input was removed — prices are
+  // fixed per model and come from the configurador, not editable by the
+  // point staff. The backend now looks up the canonical price from the
+  // `modelos` catalog, so this modal only collects the CLIENT data.
   function showDirectSaleModal(ctx){
     PVApp.modal(
       '<div class="ad-h2">Venta directa: '+esc(ctx.modelo)+' '+esc(ctx.color)+'</div>'+
@@ -151,8 +155,6 @@ window.PV_venta = (function(){
       '<input id="pvVE" class="ad-input" type="email">'+
       '<label class="ad-label">Teléfono</label>'+
       '<input id="pvVT" class="ad-input" inputmode="numeric" maxlength="10">'+
-      '<label class="ad-label">Precio</label>'+
-      '<input id="pvVP" class="ad-input" type="number">'+
       '<button id="pvVSave" class="ad-btn primary" style="width:100%;margin-top:14px">Registrar venta</button>'+
       '<button class="ad-btn ghost" onclick="PVApp.closeModal()" style="width:100%;margin-top:6px;">Cancelar</button>'
     );
@@ -161,7 +163,8 @@ window.PV_venta = (function(){
       PVApp.api('asignar/referido.php',{
         moto_id: ctx.moto_id, canal: $('#pvCanal').val(),
         cliente_nombre: $('#pvVN').val(), cliente_email: $('#pvVE').val(),
-        cliente_telefono: $('#pvVT').val(), precio: parseFloat($('#pvVP').val())||0
+        cliente_telefono: $('#pvVT').val()
+        // precio intentionally omitted — backend derives it from modelos
       }).done(function(r){
         if(r.ok){ PVApp.closeModal(); PVApp.toast('Venta registrada. Cliente notificado.'); render(); }
         else { alert(r.error||'Error'); $b.prop('disabled', false).text('Registrar venta'); }

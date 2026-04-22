@@ -128,7 +128,7 @@ function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPa
 <tr><td ' . $tdl . '>Cliente</td><td ' . $td . '><strong>' . $n . '</strong></td></tr>
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Orden</td><td ' . $td . '><strong>#' . $pedidoNum . '</strong></td></tr>
 <tr><td ' . $tdl . '>Modelo</td><td ' . $td . '>' . $m . '</td></tr>
-<tr><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
+<tr style="background:#F9FAFB;"><td ' . $tdl . '>Color</td><td ' . $td . '>' . $c . '</td></tr>
 <tr style="background:#F9FAFB;"><td ' . $tdl . '>Monto pendiente</td><td ' . $td . '><strong style="color:#E53935;">' . $montoFmt . '</strong></td></tr>
 <tr><td ' . $tdl . '>M&eacute;todo de pago</td><td ' . $td . '>' . htmlspecialchars($metodo) . '</td></tr>
 </table>
@@ -256,18 +256,31 @@ if ($method === 'oxxo') {
 
 // ── Crear PaymentIntent ───────────────────────────────────────────────────────
 try {
+    // Metadata is our safety net for webhook-based order recovery. If the
+    // client's POST to confirmar-orden.php ever fails (network drop,
+    // browser close, etc.), stripe-webhook.php can reconstruct the order
+    // from these fields alone — so include every field transacciones
+    // needs to be auditable.
     $intentData = [
         'amount'               => $amount,
         'currency'             => 'mxn',
         'payment_method_types' => $paymentMethodTypes,
         'description'          => 'Voltika - ' . ($customer['modelo'] ?? 'Moto electrica'),
         'metadata'             => [
-            'nombre'   => $customer['nombre']    ?? '',
-            'modelo'   => $customer['modelo']   ?? '',
-            'color'    => $customer['color']     ?? '',
-            'ciudad'   => $customer['ciudad']    ?? '',
-            'telefono' => $customer['telefono']  ?? '',
-            'method'   => $method,
+            'nombre'    => $customer['nombre']    ?? '',
+            'apellidos' => $customer['apellidos'] ?? '',
+            'email'     => $customer['email']     ?? '',
+            'telefono'  => $customer['telefono']  ?? '',
+            'modelo'    => $customer['modelo']    ?? '',
+            'color'     => $customer['color']     ?? '',
+            'ciudad'    => $customer['ciudad']    ?? '',
+            'estado'    => $customer['estado']    ?? '',
+            'cp'        => $customer['cp']        ?? '',
+            'method'    => $method,
+            'tpago'     => $customer['tpago']     ?? ($installments ? 'msi' : $method),
+            'msi_meses' => $installments ? (string)$msiMeses : '0',
+            'punto_id'     => $customer['punto_id']     ?? '',
+            'punto_nombre' => $customer['punto_nombre'] ?? '',
         ],
     ];
 

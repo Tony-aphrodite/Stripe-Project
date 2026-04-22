@@ -10,6 +10,20 @@ adminRequireAuth(['admin']);
 
 $pdo = getDB();
 
+// Ensure per-model commission table exists. Each influencer is paid a
+// fixed MXN amount per model sale (set in the Editar form). The auto-calc
+// in confirmar-orden.php uses this table to populate comisiones_log.
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS referido_comisiones (
+            referido_id    INT NOT NULL,
+            modelo_slug    VARCHAR(50) NOT NULL,
+            comision_monto DECIMAL(10,2) NOT NULL DEFAULT 0,
+            PRIMARY KEY (referido_id, modelo_slug)
+        )
+    ");
+} catch (Throwable $e) {}
+
 // Individual referidos (influencers)
 $referidos = [];
 try {
@@ -26,6 +40,21 @@ try {
 } catch (Throwable $e) {
     // referidos table may not exist yet
 }
+
+// Attach per-model commissions so the Editar form can pre-fill them. Shape:
+// $ref['comisiones'] = { 'm05': 500, 'pesgo-plus': 800, ... }
+try {
+    $commRows = $pdo->query("SELECT referido_id, modelo_slug, comision_monto FROM referido_comisiones")
+        ->fetchAll(PDO::FETCH_ASSOC);
+    $byRef = [];
+    foreach ($commRows as $c) {
+        $byRef[(int)$c['referido_id']][$c['modelo_slug']] = (float)$c['comision_monto'];
+    }
+    foreach ($referidos as &$ref) {
+        $ref['comisiones'] = $byRef[(int)$ref['id']] ?? (object)[];
+    }
+    unset($ref);
+} catch (Throwable $e) {}
 
 // Punto codes (codigo_venta + codigo_electronico)
 $puntos = [];
@@ -70,10 +99,25 @@ try {
     foreach ($rows as $r) $comisionesRef[$r['referido_id']] = $r;
 } catch (Throwable $e) {}
 
+// Per-model configured commissions, keyed by referido_id then modelo_slug.
+// The admin edit form uses this map to pre-fill inputs so a re-save doesn't
+// wipe values that weren't shown.
+$comisionesPorModelo = [];
+try {
+    $rows = $pdo->query("SELECT referido_id, modelo_slug, comision_monto
+                         FROM referido_comisiones")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as $r) {
+        $rid = (int)$r['referido_id'];
+        if (!isset($comisionesPorModelo[$rid])) $comisionesPorModelo[$rid] = [];
+        $comisionesPorModelo[$rid][$r['modelo_slug']] = (float)$r['comision_monto'];
+    }
+} catch (Throwable $e) {}
+
 // Enrich with commission data
 foreach ($referidos as &$ref) {
     $c = $comisionesRef[$ref['id']] ?? [];
     $ref['comision_calculada'] = floatval($c['total_comision'] ?? 0);
+    $ref['comisiones'] = $comisionesPorModelo[(int)$ref['id']] ?? new stdClass();
 }
 foreach ($puntos as &$pt) {
     $c = $comisionesPunto[$pt['id']] ?? [];

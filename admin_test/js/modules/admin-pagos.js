@@ -57,7 +57,12 @@ window.AD_pagos = (function(){
       if(!r.ok){ ADApp.modal('<div class="adPD-error"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><div style="margin-top:8px;font-weight:700;font-size:16px;color:#dc2626;">Error</div><div style="margin-top:4px;font-size:13px;color:var(--ad-dim);">'+(r.error||'Error desconocido')+'</div></div>'); return; }
 
       var o = r.orden||{};
-      var s = r.stripe||{};
+      // IMPORTANT: do NOT default stripe to `{}`. When the order has no
+      // stripe_pi stored, detalle.php returns stripe=null. A `{}` fallback
+      // would make `if(s && !s.error)` truthy, rendering the Stripe section
+      // with every field empty ("Estado: undefined", "Creado: —"). Preserve
+      // null so the "Sin ID de Stripe asociado" branch fires correctly.
+      var s = r.stripe;
 
       // ── Modal header with icon ──
       var html = '<div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:20px;border-bottom:2px solid var(--ad-border);">';
@@ -73,11 +78,15 @@ window.AD_pagos = (function(){
       html += fieldRow('Cliente', o.nombre||'—', 1);
       html += fieldRow('Email', o.email||'—', 2);
       html += fieldRow('Teléfono', o.telefono||'—', 3);
-      html += fieldRow('Modelo', ((o.modelo||'')+' '+(o.color||'')).trim()||'—', 4);
-      html += fieldRow('Tipo de pago', '<span style="display:inline-block;padding:2px 10px;border-radius:20px;background:rgba(3,159,225,.08);color:#039fe1;font-size:12px;font-weight:600;">'+(o.tipo_pago||'—')+'</span>', 5);
-      html += fieldRow('Monto', '<span style="font-size:16px;font-weight:800;color:var(--ad-navy);">'+ADApp.money(o.monto)+'</span>', 6);
-      html += fieldRow('Fecha', (o.fecha||'').substring(0,10), 7);
-      if(o.punto_nombre) html += fieldRow('Punto', o.punto_nombre, 8);
+      // Separate Modelo / Color rows so legacy rows with multi-word modelo
+      // ("Voltika Tromox Pesgo") do not end up concatenated with color into
+      // one giant unreadable string ("Voltika Tromox Pesgo Gris moderno").
+      html += fieldRow('Modelo', o.modelo||'—', 4);
+      html += fieldRow('Color',  o.color||'—', 5);
+      html += fieldRow('Tipo de pago', '<span style="display:inline-block;padding:2px 10px;border-radius:20px;background:rgba(3,159,225,.08);color:#039fe1;font-size:12px;font-weight:600;">'+(o.tipo_pago||'—')+'</span>', 6);
+      html += fieldRow('Monto', '<span style="font-size:16px;font-weight:800;color:var(--ad-navy);">'+ADApp.money(o.monto)+'</span>', 7);
+      html += fieldRow('Fecha', (o.fecha||'').substring(0,10), 8);
+      if(o.punto_nombre) html += fieldRow('Punto', o.punto_nombre, 9);
       html += '</div>';
 
       // ── Credit details section ──
@@ -96,7 +105,10 @@ window.AD_pagos = (function(){
       }
 
       // ── Stripe info section ──
-      if(s && !s.error){
+      // Require s.id so a defensive `{}` (from a future caller) doesn't paint
+      // the whole section with undefined values. Real Stripe responses always
+      // include the id; its absence means there's nothing useful to show.
+      if(s && !s.error && s.id){
         html += sectionHeader('Información de Stripe', '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 100 4 2 2 0 000-4z"/></svg>');
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:16px;">';
         html += fieldRow('Stripe ID', '<code style="font-size:11px;background:var(--ad-surface-2);padding:3px 8px;border-radius:4px;font-family:monospace;letter-spacing:-.3px;">'+(s.id||'—')+'</code>', 0);
@@ -141,14 +153,122 @@ window.AD_pagos = (function(){
         html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#E65100" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
         html += '<span style="font-size:13px;color:#E65100;">'+s.error+'</span></div>';
       } else if(!stripePi){
-        html += '<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:var(--ad-surface-2);border-radius:10px;margin-top:8px;">';
-        html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--ad-dim)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
-        html += '<span style="font-size:13px;color:var(--ad-dim);">Sin ID de Stripe asociado</span></div>';
+        // No stripe_pi stored. This happens when the legacy configurador
+        // created the transacciones row but the webhook never linked the
+        // PaymentIntent (e.g. Eduardo Gonzalez Lopez VK-1776828725: user
+        // reports "payment was successful but shows unpaid"). Offer a
+        // direct search-in-Stripe action so the admin can recover it.
+        html += sectionHeader('Información de Stripe', '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/></svg>');
+        html += '<div style="padding:16px 18px;background:#FFF3E0;border-radius:10px;border:1px solid #FFE0B2;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
+        html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#E65100" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+        html += '<span style="font-size:14px;color:#E65100;font-weight:700;">Sin PaymentIntent vinculado</span></div>';
+        html += '<div style="font-size:12.5px;color:#333;line-height:1.55;margin-bottom:12px;">Este pedido no tiene <code>stripe_pi</code> registrado. Si el cliente ya pagó, la referencia de Stripe se perdió en el webhook. Puedes buscarla automáticamente por email y monto.</div>';
+        html += '<button class="ad-btn primary" id="adPBuscarStripe" data-tid="'+(o.id||'')+'" style="background:#FB8C00;border-color:#FB8C00;padding:8px 16px;font-weight:700;">🔍 Buscar pago en Stripe</button>';
+        html += '<div id="adPBuscarResult" style="margin-top:12px;"></div>';
+        html += '</div>';
       }
 
       ADApp.modal(html);
+
+      // Wire up the "Buscar pago en Stripe" backfill action (only present when
+      // empty-state fired — empty-state branch above).
+      $('#adPBuscarStripe').on('click', function(){
+        var tid = $(this).data('tid');
+        var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Buscando en Stripe...');
+        $.get('php/ventas/buscar-stripe-pi.php?transaccion_id=' + encodeURIComponent(tid))
+          .done(function(rr){
+            $btn.prop('disabled', false).html('🔍 Buscar pago en Stripe');
+            if (!rr.ok) { $('#adPBuscarResult').html('<div style="color:#b91c1c;font-size:12.5px;margin-top:8px;">'+(rr.error||'Error')+'</div>'); return; }
+            if (rr.already_linked) {
+              $('#adPBuscarResult').html('<div style="color:#1e7e34;font-size:12.5px;margin-top:8px;">Ya estaba vinculado: <code>'+rr.stripe_pi+'</code>. Recarga el detalle.</div>');
+              return;
+            }
+            renderBuscarResults(rr, tid);
+          })
+          .fail(function(x){
+            $btn.prop('disabled', false).html('🔍 Buscar pago en Stripe');
+            $('#adPBuscarResult').html('<div style="color:#b91c1c;font-size:12.5px;margin-top:8px;">'+((x.responseJSON && x.responseJSON.error) || 'Error de conexión')+'</div>');
+          });
+      });
     }).fail(function(){
       ADApp.modal('<div class="adPD-error"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><div style="margin-top:8px;font-weight:700;color:#dc2626;">Error de conexión</div></div>');
+    });
+  }
+
+  // Render the candidate list from buscar-stripe-pi.php. Shows three tiers:
+  // exact (email+amount), amount-only, email-only. Each row has a Vincular
+  // button that POSTs back to the same endpoint.
+  function renderBuscarResults(rr, tid){
+    var sum = rr.summary || {exact:0,amount:0,email:0};
+    var totalMatches = (sum.exact||0) + (sum.amount||0) + (sum.email||0);
+    if (totalMatches === 0){
+      $('#adPBuscarResult').html(
+        '<div style="padding:12px;background:#fff;border-radius:8px;border:1px solid var(--ad-border);font-size:12.5px;color:var(--ad-dim);margin-top:10px;">'+
+          'No se encontraron PaymentIntents en Stripe para <strong>'+(rr.order && rr.order.email || '—')+'</strong> por <strong>$'+(rr.order && rr.order.total || 0).toLocaleString()+'</strong> en ±'+rr.searched_window_days+' días.'+
+          '<div style="margin-top:8px;">Puedes vincular manualmente con el ID de Stripe:</div>'+
+          '<div style="display:flex;gap:6px;margin-top:6px;">'+
+            '<input type="text" id="adPManualPi" placeholder="pi_xxxxxxxx" class="ad-input" style="flex:1;font-family:monospace;">'+
+            '<button class="ad-btn sm primary" id="adPManualLink" data-tid="'+tid+'">Vincular</button>'+
+          '</div>'+
+        '</div>'
+      );
+      $('#adPManualLink').on('click', function(){
+        var pi = ($('#adPManualPi').val()||'').trim();
+        if (!pi) return;
+        linkStripePi(tid, pi);
+      });
+      return;
+    }
+
+    var html = '<div style="margin-top:10px;background:#fff;border-radius:8px;border:1px solid var(--ad-border);padding:10px;">';
+    html += '<div style="font-size:12.5px;font-weight:700;margin-bottom:8px;">Se encontraron '+totalMatches+' candidato(s):</div>';
+
+    function tier(title, bgColor, items){
+      if (!items || !items.length) return '';
+      var h = '<div style="margin-bottom:8px;">';
+      h += '<div style="font-size:11.5px;color:var(--ad-dim);font-weight:600;margin-bottom:4px;">'+title+'</div>';
+      items.forEach(function(it){
+        h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:'+bgColor+';border-radius:6px;margin-bottom:4px;font-size:12px;">';
+        h += '<div style="flex:1;min-width:0;">'+
+               '<div><code style="font-size:10.5px;">'+(it.id||'')+'</code> '+stripeStatusBadge(it.status)+'</div>'+
+               '<div style="color:var(--ad-dim);margin-top:2px;">'+ADApp.money(it.amount||0)+' '+(it.currency||'')+' · '+(it.email||'—')+' · '+(it.created||'')+(it.card?' · '+it.card:'')+'</div>'+
+             '</div>';
+        h += '<button class="ad-btn sm primary adPLink" data-tid="'+tid+'" data-pi="'+it.id+'" style="margin-left:8px;">Vincular</button>';
+        h += '</div>';
+      });
+      h += '</div>';
+      return h;
+    }
+
+    html += tier('Coincidencia exacta (email + monto)', '#E8F5E9', rr.matches.exact);
+    html += tier('Solo monto',  '#FFF8E1', rr.matches.amount);
+    html += tier('Solo email',  '#FFF3E0', rr.matches.email);
+    html += '</div>';
+    $('#adPBuscarResult').html(html);
+
+    $('.adPLink').on('click', function(){
+      linkStripePi($(this).data('tid'), $(this).data('pi'));
+    });
+  }
+
+  function linkStripePi(tid, pi){
+    if (!confirm('¿Vincular PaymentIntent '+pi+' al pedido #'+tid+'? Se actualizará el estado de pago según Stripe.')) return;
+    $.ajax({
+      url: 'php/ventas/buscar-stripe-pi.php',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ transaccion_id: parseInt(tid,10), stripe_pi: pi })
+    }).done(function(rr){
+      if (rr.ok){
+        alert('Vinculado. Estado de pago: '+rr.pago_estado);
+        ADApp.closeModal();
+        render();
+      } else {
+        alert(rr.error || 'Error al vincular');
+      }
+    }).fail(function(x){
+      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
     });
   }
 
@@ -166,6 +286,7 @@ window.AD_pagos = (function(){
   }
 
   function stripeStatusBadge(status){
+    if (!status) return '<span class="ad-badge gray">desconocido</span>';
     var colors = {succeeded:'green', requires_payment_method:'red', requires_action:'yellow',
       processing:'blue', canceled:'red', requires_confirmation:'yellow'};
     var c = colors[status]||'gray';

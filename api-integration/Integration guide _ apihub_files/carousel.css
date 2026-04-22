@@ -1,0 +1,91 @@
+.carousel {
+  margin-bottom: 2rem;
+  padding: 0 16px;
+}
+.carousel h1 {
+  margin-top: 2rem;
+  min-height: 4rem;
+}
+.carousel .carousel-indicators {
+  margin-bottom: -2rem;
+  margin-left: 0;
+  margin-right: 0;
+  right: auto;
+}
+.carousel .carousel-indicators li {
+  background-color: #DEDFE0;
+  background-clip: padding-box;
+  border-top: 0.6rem solid none;
+  border-bottom: 0.6rem solid none;
+  border-radius: 50%;
+  height: 1rem;
+  width: 1rem;
+}
+.carousel .carousel-indicators li.active {
+  background-color: #AEEEFF;
+}
+.carousel .btn {
+  display: grid !important;
+  margin-top: 15px !important;
+}
+.carousel .btn a {
+  border-color: transparent;
+  border-radius: 10px;
+  border-style: solid;
+  border-width: 1px;
+  font-size: 1.4rem;
+  padding: 5px 10px;
+  text-align: center;
+  background-color: #812ED4;
+  color: #FFFFFF;
+}
+.carousel .btn a:hover, .carousel .btn a:focus {
+  text-decoration: none;
+}
+.carousel .btn a:hover, .carousel .btn a:focus {
+  background-color: #FFFFFF;
+  border-color: #511C86;
+  color: #511C86;
+}
+
+.carousel-control-next,
+.carousel-control-prev {
+  opacity: 1;
+  width: 8%;
+}
+.carousel-control-next:focus, .carousel-control-next:hover,
+.carousel-control-prev:focus,
+.carousel-control-prev:hover {
+  opacity: 1;
+}
+.carousel-control-next .back,
+.carousel-control-prev .back {
+  content: url("../assets/img/back.svg");
+}
+.carousel-control-next .back:focus, .carousel-control-next .back:hover,
+.carousel-control-prev .back:focus,
+.carousel-control-prev .back:hover {
+  content: url("../assets/img/back_hover.svg");
+}
+.carousel-control-next .next,
+.carousel-control-prev .next {
+  content: url("../assets/img/next.svg");
+}
+.carousel-control-next .next:focus, .carousel-control-next .next:hover,
+.carousel-control-prev .next:focus,
+.carousel-control-prev .next:hover {
+  content: url("../assets/img/next_hover.svg");
+}
+.carousel-control-next .back, .carousel-control-next .next,
+.carousel-control-prev .back,
+.carousel-control-prev .next {
+  height: 1.8rem;
+  width: 1.8rem;
+}
+
+.testimonial {
+  margin-bottom: 6em;
+}
+.testimonial img {
+  border-radius: 1rem;
+}/*# sourceMappingURL=carousel.css.map */

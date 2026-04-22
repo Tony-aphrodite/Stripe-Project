@@ -256,18 +256,31 @@ if ($method === 'oxxo') {
 
 // ── Crear PaymentIntent ───────────────────────────────────────────────────────
 try {
+    // Metadata is our safety net for webhook-based order recovery. If the
+    // client's POST to confirmar-orden.php ever fails (network drop,
+    // browser close, etc.), stripe-webhook.php can reconstruct the order
+    // from these fields alone — so include every field transacciones
+    // needs to be auditable.
     $intentData = [
         'amount'               => $amount,
         'currency'             => 'mxn',
         'payment_method_types' => $paymentMethodTypes,
         'description'          => 'Voltika - ' . ($customer['modelo'] ?? 'Moto electrica'),
         'metadata'             => [
-            'nombre'   => $customer['nombre']    ?? '',
-            'modelo'   => $customer['modelo']   ?? '',
-            'color'    => $customer['color']     ?? '',
-            'ciudad'   => $customer['ciudad']    ?? '',
-            'telefono' => $customer['telefono']  ?? '',
-            'method'   => $method,
+            'nombre'    => $customer['nombre']    ?? '',
+            'apellidos' => $customer['apellidos'] ?? '',
+            'email'     => $customer['email']     ?? '',
+            'telefono'  => $customer['telefono']  ?? '',
+            'modelo'    => $customer['modelo']    ?? '',
+            'color'     => $customer['color']     ?? '',
+            'ciudad'    => $customer['ciudad']    ?? '',
+            'estado'    => $customer['estado']    ?? '',
+            'cp'        => $customer['cp']        ?? '',
+            'method'    => $method,
+            'tpago'     => $customer['tpago']     ?? ($installments ? 'msi' : $method),
+            'msi_meses' => $installments ? (string)$msiMeses : '0',
+            'punto_id'     => $customer['punto_id']     ?? '',
+            'punto_nombre' => $customer['punto_nombre'] ?? '',
         ],
     ];
 

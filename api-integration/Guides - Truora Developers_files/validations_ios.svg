@@ -1,0 +1,23 @@
+<svg width="724" height="108" viewBox="0 0 724 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="724" y2="108" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#475569"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="720" height="104" rx="16" fill="url(#bg)" />
+  <rect x="2" y="2" width="720" height="104" rx="16" stroke="#0F172A" stroke-opacity="0.22" stroke-width="4" />
+  <g opacity="0.9">
+    <rect x="36" y="30" width="48" height="48" rx="12" fill="#FFFFFF" fill-opacity="0.16"/>
+    <path d="M60 42c6 8 6 20 0 28c-6-8-6-20 0-28Z" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M56 52c-6 2-10 8-10 14c10 0 16-4 18-10" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M64 52c6 2 10 8 10 14c-10 0-16-4-18-10" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="108" y="48" fill="#FFFFFF" font-family="Poppins, ui-sans-serif, system-ui" font-size="22" font-weight="700">
+    Validations SDK
+  </text>
+  <text x="108" y="74" fill="#FFFFFF" font-family="Open Sans, ui-sans-serif, system-ui" font-size="16" font-weight="600" opacity="0.92">
+    iOS getting started
+  </text>
+</svg>
+

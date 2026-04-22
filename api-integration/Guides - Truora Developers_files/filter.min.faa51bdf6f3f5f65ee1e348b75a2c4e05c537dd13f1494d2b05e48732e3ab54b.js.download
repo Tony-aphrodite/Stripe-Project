@@ -1,0 +1,19 @@
+let pageData=[],pageFilters={};const attrValues=["product","usecase"];document.addEventListener("DOMContentLoaded",function(){attrValues.forEach(e=>{const t=document.querySelectorAll(`[data-${e}]`),n=[...t];n.forEach(t=>{let n=-1;pageData.length>0?n=pageData.findIndex(e=>e.node.isSameNode(t)):n=-1;let s=t.dataset[e];if(n>=0)pageData[n][e]=s;else{const n={node:t,[e]:s};pageData=[...pageData,n]}})}),attrValues.forEach(e=>{pageData.forEach(t=>{const n=t[e];Object.hasOwn(pageFilters,e)&&pageFilters[e]instanceof Set?n&&pageFilters[e].add(n):(pageFilters[e]=new Set,n&&pageFilters[e].add(n))})});function t(t,n){pageData.forEach(e=>{e[t]===n?e.node.style.display="flex":e.node.style.display="none"});const s=new URL(window.location);attrValues.forEach(e=>{e===t?s.searchParams.set(t,n):s.searchParams.delete(e)}),window.history.pushState({},"",s),e(n)}const n=document.querySelectorAll("[data-id='filters']");attrValues.forEach(e=>{n.forEach(n=>{const s=document.createElement("li"),o=document.createElement("ul");e==="usecase"?s.innerHTML="Other":s.innerHTML=e.charAt(0).toUpperCase()+e.slice(1),s.classList.add("filter-type"),o.classList.add("filter-list"),n.appendChild(s),s.appendChild(o),pageFilters[e].forEach(n=>{const i=document.createElement("li"),s=document.createElement("button");s.innerHTML=n,s.classList.add("btn-filter"),s.addEventListener("click",function(s){s.preventDefault();const o=s.target.closest(".mobil-filter-nav");o&&o.classList.toggle("hidden"),t(e,n)}),o.appendChild(i),i.appendChild(s)})})});function s(){pageData.forEach(e=>{const t=e.node;t.style.display="flex"}),window.history.replaceState({},"",`${window.location.pathname}`),window.location.reload()}const o=document.querySelectorAll("[data-id='0']");o.forEach(e=>{e.addEventListener("click",function(e){e.preventDefault(),s()})});function i(e,t){const n=pageData.filter(n=>n[e]!==t);n.forEach(e=>{e.node.style.display="none"})}const a=new URL(document.location).searchParams;attrValues.forEach(t=>{const n=a.get(t);n&&(i(t,n),e(n))}),window.addEventListener("popstate",()=>{window.location.reload()});function e(e){const t=document.querySelector(".title-wrapper");document.title=`Guides - ${e}`,t.textContent=`Guides - ${e}`}function r(){const e=new RegExp(`\\bguides\\b`).test(window.location.pathname);if(!e)return;const t=`
+         <div id="filterToggle" class="cursor-pointer flex-row border-0 p-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 class="icon icon-tabler icons-tabler-outline icon-tabler-adjustments-horizontal">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M14 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+                <path d="M4 6l8 0"/>
+                <path d="M16 6l4 0"/>
+                <path d="M8 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+                <path d="M4 12l2 0"/>
+                <path d="M10 12l10 0"/>
+                <path d="M17 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+                <path d="M4 18l11 0"/>
+                <path d="M19 18l1 0"/>
+            </svg>
+            <span class="ml-2 block">Filter</span>
+          </div>
+        `;document.getElementById("pageBreadcrumb").insertAdjacentHTML("beforeend",t),document.getElementById("filterToggle").addEventListener("click",function(){const e=document.querySelector(".filter-guides-by"),t=e.querySelector(".nav-wrapper");t.classList.toggle("hidden")})}r()})

@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Anti-cache: the credit evaluation flow was blocked by stale JS + state
+         after Ctrl+Shift+R. Ensure the configurador HTML + scripts are always
+         re-fetched so verification-logic fixes propagate immediately. -->
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Configura tu Voltika - Elige tu moto electrica</title>
     <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
 
@@ -65,7 +71,7 @@
     <!-- Localhost fallback: replicates main.css navbar rules (not available on localhost) -->
     <!-- On production this block is redundant but harmless — main.css takes effect anyway -->
     <style>
-        .main-header { z-index: 999999999; -webkit-transition: all linear .3s; transition: all linear .3s; top: 32px !important; }
+        .main-header { z-index: 999999999; -webkit-transition: all linear .3s; transition: all linear .3s; }
         .main-header.header-white { background: #fff; }
         .main-header.header-white.sticky-nav { background: #fff; }
         .main-header .navbar { padding: 0; min-height: 6.063rem; position: relative; }
@@ -163,8 +169,7 @@
     </style>
 </head>
 
-<body style="padding-top:32px">
-    <div id="vk-test-banner" style="background:#ff9800;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:9999999999;">MODO DE PRUEBA — Los pagos no son reales</div>
+<body>
     <div class="preloader" id="pageLoad">
         <div class="holder">
             <img src="img/voltika_logo.svg" alt="Voltika" style="width:100%; max-width: 150px;">
@@ -696,7 +701,12 @@
         success: function(r) {
           if (r.ok) {
             window.VOLTIKA_CONFIG = r;
-            // Banner is hardcoded in <body> for test environment
+            if (r.env === 'test') {
+              $(function(){
+                $('body').prepend('<div id="vk-test-banner" style="background:#ff9800;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:700;position:fixed;top:0;left:0;right:0;z-index:99999;">MODO DE PRUEBA — Los pagos no son reales</div>');
+                $('body').css('padding-top', '32px');
+              });
+            }
           }
         }
       });
@@ -716,8 +726,9 @@
     <script src="js/modules/paso2-color.js?v=20260322"></script>
     <script src="js/modules/paso3-delivery.js?v=20260327"></script>
     <script src="js/modules/paso4a-checkout.js?v=20260329"></script>
-    <script src="js/modules/paso4b-credito.js?v=20260322"></script>
+    <script src="js/modules/paso4b-credito.js?v=20260423c"></script>
     <script src="js/modules/paso5-resumen.js?v=20260327b"></script>
+    <script src="js/voltika-image-compress.js?v=20260422"></script>
     <script src="js/modules/paso-credito-datos.js?v=20260322"></script>
     <script src="js/modules/paso-credito-nombre.js?v=20260322"></script>
     <script src="js/modules/paso-credito-nacimiento.js?v=20260322"></script>
@@ -725,11 +736,11 @@
     <script src="js/modules/paso-credito-domicilio.js?v=20260322"></script>
     <script src="js/modules/paso-credito-ingresos.js?v=20260322"></script>
     <script src="js/modules/paso-credito-otp.js?v=20260322"></script>
-    <script src="js/modules/paso-credito-consentimiento.js?v=20260322"></script>
-    <script src="js/modules/paso-credito-loading.js?v=20260322"></script>
-    <script src="js/modules/paso-credito-aprobado.js?v=20260322"></script>
+    <script src="js/modules/paso-credito-consentimiento.js?v=20260423b"></script>
+    <script src="js/modules/paso-credito-loading.js?v=20260423b"></script>
+    <script src="js/modules/paso-credito-aprobado.js?v=20260423b"></script>
     <script src="js/modules/paso-credito-identidad.js?v=20260322"></script>
-    <script src="js/modules/paso-credito-resultado.js?v=20260322"></script>
+    <script src="js/modules/paso-credito-resultado.js?v=20260423c"></script>
     <script src="js/modules/paso-credito-pago.js?v=20260322"></script>
     <script src="js/modules/paso-credito-enganche.js?v=20260322"></script>
     <script src="js/modules/paso-credito-contrato.js?v=20260322"></script>
@@ -737,7 +748,7 @@
     <script src="js/modules/paso-credito-facturacion.js?v=20260411"></script>
     <script src="js/modules/paso-facturacion.js?v=20260322"></script>
     <script src="js/modules/paso-exito.js?v=20260329"></script>
-    <script src="js/configurador.js?v=20260324b"></script>
+    <script src="js/configurador.js?v=20260423b"></script>
 
     <!-- Model tabs fixed nav — body level to avoid CSS transform stacking context -->
     <div id="vk-modelo-nav-fixed" class="vk-modelo-nav-fixed" style="display:none;">

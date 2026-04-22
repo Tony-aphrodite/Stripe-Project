@@ -83,6 +83,13 @@ if (!defined('TRUORA_WEBHOOK_SECRET')) {
 if (!defined('CDC_API_KEY')) {
     define('CDC_API_KEY', getenv('CDC_API_KEY') ?: '5WdpF9Eqw7925TFAosGKifwkZ7nDuNUN');
 }
+// CDC credentials — these go as custom HTTP headers (not Basic Auth).
+// Defined centrally so every endpoint that calls CDC (preflight, consultar,
+// diagnostics) sees the same values. Without these being defined globally,
+// PHP 8+ fatal-errors on "undefined constant CDC_USER" before any code runs.
+if (!defined('CDC_USER'))  define('CDC_USER',  getenv('CDC_USER')  ?: '');
+if (!defined('CDC_PASS'))  define('CDC_PASS',  getenv('CDC_PASS')  ?: '');
+if (!defined('CDC_FOLIO')) define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '');
 
 // Envia.com (shipping / tracking)
 if (!defined('ENVIA_API_KEY'))  define('ENVIA_API_KEY',  getenv('ENVIA_API_KEY')  ?: '');

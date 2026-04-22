@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en" data-section="">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>404 Page not found - Truora Developers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="icon" type="image/png" href="/truora_fav.png">
+  
+
+  
+
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&amp;display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Open&#43;Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&amp;display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira&#43;Code:wght@300;400&amp;display=swap" rel="stylesheet"> 
+
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="/tailwind.min.be9685434ca33b971ad6792ad03e9cc5a2041ad10e82f28d95ab81a6ece5bd26.css" />
+  <link rel="stylesheet" href="/main.min.0332e5b937121861b50d193d6c9bdbcf91bf18b0745fa988409773ecdf8797eb.css" />
+  
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="/css/style.min.453e63ca3486b153d0c55cb7b378ce9fdb8da44597c9312d4ebba4ed399266d4.css">
+  
+
+  
+
+  
+  
+  
+  <meta property="og:title" content="404 Page not found" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://developer.truora.com/404.html" />
+  
+  
+  <meta name="twitter:card" content="summary" />
+  
+  
+  
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-674FCH3RT8"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag('js', new Date());
+  gtag('config', 'G-674FCH3RT8');
+</script>
+
+
+
+</head>
+
+<body id="body" class='page '>
+  
+
+<div id="main-menu-mobile" class="main-menu-mobile">
+  <ul>
+    
+    
+    <li class="menu-item-api reference">
+      <a href="/docs/">
+        <span>API Reference</span>
+      </a>
+    </li>
+    
+    <li class="menu-item-guides">
+      <a href="/guides/">
+        <span>Guides</span>
+      </a>
+    </li>
+    
+    <li class="menu-item-status">
+      <a href="https://status.truora.com/">
+        <span>Status</span>
+      </a>
+    </li>
+    
+  </ul>
+</div>
+
+
+
+  <div class="wrapper">
+    <link href="/pagefind/pagefind-ui.css" rel="stylesheet">
+<script src="/pagefind/pagefind-ui.js"></script>
+
+
+
+
+  <script src="/js/search_modal.min.f510cb0d825291e8c2891e7ed3e07c11124fe97e6456945deed0691db2a79c94.js" defer></script>
+
+
+
+<div id="searchOverlay" class="fixed inset-0 z-40 hidden bg-gray-600/60 opacity-0 backdrop-blur-0 transition-opacity duration-100"></div>
+
+
+<div id="searchModal"
+  class="fixed left-1/2 top-0 z-[300] hidden max-h-[90vh] w-[95%] -translate-x-1/2 scale-95 overflow-y-auto rounded-lg border border-gray-300 bg-gray-100 text-xs opacity-0 shadow-xl transition-opacity duration-300 md:max-h-[80vh] md:w-[70%] lg:top-5 lg:w-[600px]">
+  <div id="search" class="pagefind-ui p-4"></div>
+</div>
+
+
+<div class='header'>
+  <div class="container">
+    <div class="logo">
+      <a href="/"><img height=25px alt="Truora"
+          src="/images/logo/logo-truora-dev.svg" /></a>
+    </div>
+
+    <button
+      class="openSearch hidden h-fit w-48 items-center justify-start rounded-xl border-[1.5px] border-[#C2C2CB] px-1 py-1.5 font-poppins hover:border-blue-400 xl:inline-flex">
+      <div class="px-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" class="w-4">
+    <path class="stroke-[#515C63] p-2"
+        d="M14 14L10 10M11.3333 6.66667C11.3333 7.2795 11.2126 7.88634 10.9781 8.45252C10.7436 9.01871 10.3998 9.53316 9.9665 9.9665C9.53316 10.3998 9.01871 10.7436 8.45252 10.9781C7.88634 11.2126 7.2795 11.3333 6.66667 11.3333C6.05383 11.3333 5.447 11.2126 4.88081 10.9781C4.31462 10.7436 3.80018 10.3998 3.36683 9.9665C2.93349 9.53316 2.58975 9.01871 2.35523 8.45252C2.12071 7.88634 2 7.2795 2 6.66667C2 5.42899 2.49167 4.242 3.36683 3.36683C4.242 2.49167 5.42899 2 6.66667 2C7.90434 2 9.09133 2.49167 9.9665 3.36683C10.8417 4.242 11.3333 5.42899 11.3333 6.66667Z"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
+      </div>
+      <span class="text-xs font-light">Search</span>
+    </button>
+
+    
+
+
+
+
+<script type="text/javascript" src="/js/dropdown_menu.min.0f1722e6d40b95dfe09280f49c50fe58c029b90ca984b8e3cbe708020a1b5a01.js"></script>
+
+
+<div class=" hidden sm:flex sm:items-center">
+  
+  <ul class="flex items-center justify-start space-x-3 xs:space-x-5 sm:space-x-6 lg:space-x-10">
+
+    
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="/" class="flex py-1 text-[#010130] hover:underline  font-normal ">
+        Home
+      </a>
+    </li>
+    
+    
+    <li class="font-poppins text-[#010130] text-[10px]/3 xs:text-xs sm:text-sm list-none relative inline-block">
+      <button id="toggle-dropdown-button" class="header-dropdown-menu cursor-pointer flex border-[1.5px] border-[#C2C2CB] rounded pl-2 pr-1 py-0.5 lg:py-1.5 items-center focus:outline-none hover:bg-gray-100 aria-expanded:bg-gray-100 " type="button" aria-expanded="false" aria-controls="headerMenu">
+        <span class="hidden lg:flex">Documentation</span>
+        <span class="lg:hidden">Docs</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="inline size-4 ml-1 mt-1 transition-transform duration-300 ease-in-out">
+          <path fill-rule="evenodd" d="M10 12l-6-6 1.5-1.5L10 9l4.5-4.5L16 6z" clip-rule="evenodd" />
+        </svg>
+      </button>
+      
+      
+      <div id="headerMenu" class="absolute z-[60] hidden min-w-60 sm:min-w-72 rounded-lg bg-[#f9f9f9] shadow-lg shadow-gray-500 ">
+        
+          <a href="/checks/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Background Checks
+          </a>
+        
+          <a href="/digital-identity/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Digital Identity - Web/Mobile
+          </a>
+        
+          <a href="/validators/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Digital Identity - Validators API
+          </a>
+        
+          <a href="/customer-engagement/" class="font-poppins text-[#010130] p-3 block hover:bg-slate-200 hover:rounded-lg hover:no-underline">
+            Customer Engagement
+          </a>
+        
+      </div>
+    </li>
+    
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="/docs/" class="flex text-[#010130] hover:underline  font-normal ">
+        <span class="hidden lg:flex"> API Reference</span>
+        <span class="lg:hidden">API</span>
+      </a>
+    </li>
+
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="/guides/" class="flex text-[#010130] hover:underline  font-normal ">
+        Guides
+      </a>
+    </li>
+
+    
+    <li class="font-poppins text-[10px]/3 xs:text-xs sm:text-sm list-none">
+      <a href="https://status.truora.com/" class="flex text-[#010130] font-normal hover:underline">
+        Status
+      </a>
+    </li>
+  </ul>
+</div>
+
+    
+
+<script type="text/javascript" src="/js/hamburger_menu.min.b915697e0b776334d6f1b99c7a81f04a89ea0b04415db1cbd688878b2d0e4ffb.js"></script>
+
+
+
+
+<button id="toggle-main-menu-mobile" class="hamburger hamburger--squeeze p-2" type="button" aria-label="Mobile Menu aria" aria-expanded="false" aria-controls="hamburgerMenu">
+  <span class="hamburger-box">
+    <span class="hamburger-inner"></span>
+  </span>
+</button>
+
+<div id="hamburgerMenu" class="absolute right-0 top-0 z-10 hidden max-h-screen w-screen origin-top overflow-y-auto rounded-md border bg-white p-6 shadow-md">  
+  <ul class="pt-3 font-poppins font-normal dark:text-gray-200">
+    
+    
+    <li><a href="/" class="mt-10 block p-1 text-base text-blue-500 hover:bg-[#f1f1f1]">⌂ Home</a></li>
+
+    
+    <hr class="my-2 border-t border-gray-400 pb-4">
+
+    
+    <ul class="pb-4">
+      
+      
+      
+      
+      <li class="menu-item-api reference ">
+        <a href="/docs/" class=" text-[#515C63] p-1 no-underline block hover:bg-[#f1f1f1]">
+          API Reference
+        </a>
+      </li>
+      
+      
+      
+      
+      <li class="menu-item-guides ">
+        <a href="/guides/" class=" text-[#515C63] p-1 no-underline block hover:bg-[#f1f1f1]">
+          Guides
+        </a>
+      </li>
+      
+      
+      
+      
+      <li class="menu-item-status ">
+        <a href="https://status.truora.com/" class=" text-[#515C63] p-1 no-underline block hover:bg-[#f1f1f1]">
+          Status
+        </a>
+      </li>
+      
+    </ul>
+
+    
+    <hr class="my-2 border-t border-gray-400">
+
+    <li class="p-1 text-blue-500">Documentation:</li>
+
+    
+    
+    
+    
+    <li>
+      <a href="/checks/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Background Checks
+      </a>
+    </li>
+    
+    
+    
+    <li>
+      <a href="/digital-identity/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Digital Identity - Web/Mobile
+      </a>
+    </li>
+    
+    
+    
+    <li>
+      <a href="/validators/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Digital Identity - Validators API
+      </a>
+    </li>
+    
+    
+    
+    <li>
+      <a href="/customer-engagement/" class=" text-[#515C63] p-1.5 no-underline block hover:bg-[#f1f1f1]">
+        - Customer Engagement
+      </a>
+    </li>
+    
+  </ul>
+</div>
+    <div class="logo-mobile w-52">
+      <a href="/"><img height=30px alt="Truora"
+          src="/images/logo/logo-truora-dev.svg" /></a>
+    </div>
+
+    <button
+      class="openSearch inline-flex p-1 xl:hidden">
+      <div class="px-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" class="w-4">
+    <path class="stroke-[#515C63] p-2"
+        d="M14 14L10 10M11.3333 6.66667C11.3333 7.2795 11.2126 7.88634 10.9781 8.45252C10.7436 9.01871 10.3998 9.53316 9.9665 9.9665C9.53316 10.3998 9.01871 10.7436 8.45252 10.9781C7.88634 11.2126 7.2795 11.3333 6.66667 11.3333C6.05383 11.3333 5.447 11.2126 4.88081 10.9781C4.31462 10.7436 3.80018 10.3998 3.36683 9.9665C2.93349 9.53316 2.58975 9.01871 2.35523 8.45252C2.12071 7.88634 2 7.2795 2 6.66667C2 5.42899 2.49167 4.242 3.36683 3.36683C4.242 2.49167 5.42899 2 6.66667 2C7.90434 2 9.09133 2.49167 9.9665 3.36683C10.8417 4.242 11.3333 5.42899 11.3333 6.66667Z"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
+      </div>
+    </button>
+  </div>
+</div>
+
+
+
+    
+
+
+
+    
+
+<div class="flex flex-col min-h-screen bg-white dark:!bg-gray-900">
+  
+  <div class="flex flex-col md:flex-row flex-wrap items-center justify-center pt-2 sm:!pt-16 px-8 pb-4 sm:!pb-16 gap-8 max-w-[1400px] mx-auto w-full">
+    <div class="flex flex-1 max-w-full md:max-w-[50%] text-center items-center justify-center">
+      <img class="max-w-[85%] sm:max-w-[70%] md:max-w-full h-auto" src="/images/illustrations/404.png" alt="404 image">
+    </div>
+    <div class="flex flex-col flex-1 max-w-full md:max-w-[50%] items-center text-center">
+      <p class="text-6xl md:text-7xl lg:text-8xl font-open-sans font-extrabold text-amber-400">Error 404</p>
+      <p class="text-2xl md:text-3xl lg:text-[40px] font-sans font-medium text-warmGray-600 dark:text-gray-200 mb-6 lg:!mb-14">Page Not Found</p>
+      <p class="text-base md:text-xl lg:text-2xl font-medium text-warmGray-600 dark:text-gray-100 mb-3"><span class="font-bold text-amber-400">Oops!</span> This page doesn't exist or has been moved.</p>
+      <p class="text-sm md:text-base lg:text-xl font-normal dark:font-light text-warmGray-600 dark:text-gray-100 mb-2 sm:!mb-4 md:!mb-10">Return to the <b>Truora DevPortal</b> homepage to continue exploring the documentation.</p>
+      <a href="/"
+         class="relative inline-block px-5 py-3 rounded-full bg-blue-600 text-white text-base font-medium overflow-hidden group no-underline hover:no-underline"
+         aria-label="Go back to the Truora DevPortal homepage">
+        <span class="absolute inset-0 bg-blue-900 transform -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></span>
+        <span class="relative z-10">Back to home</span>
+      </a>
+    </div>
+  </div>
+    
+    
+
+<div class="bg-[#010130] py-6 text-white">
+  <div class="mx-auto max-w-[1400px] px-4">
+    <div class="flex flex-col items-center justify-center gap-8 md:flex-row">
+      <div class="flex w-full items-center justify-center md:w-1/2">
+        <img src="/images/logo/logo-truora-white.svg" alt="logo_truora" width="150" height="62">
+      </div>
+      <div class="flex w-full flex-col items-center justify-center gap-2 text-center md:w-1/2">
+        <div class="mb-4 flex flex-wrap justify-center gap-6 text-xs md:text-base">
+          <a href="https://www.truora.com/contact-us" class="text-white hover:underline">Contact Us</a>
+          <a href="https://www.truora.com/integral-privacy-notice" class="text-white hover:underline">Privacy Policy</a>
+          <a href="https://www.truora.com/terms-and-conditions" class="text-white hover:underline">Terms and
+            Conditions</a>
+        </div>
+        <span class="text-[10px] font-normal uppercase sm:text-xs ">2026 © truora</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+    
+  <div class="flex-grow !bg-gradient-to-b from-[#010130] to-[#000000]"></div>
+</div>
+
+
+  </div>
+
+  
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="/js/theme.min.c32e946169819c41344f5fb77923a8f0a06f110a1ea7dfc6a983f1eb8e75c854.js"></script>
+  <script type="text/javascript" src="/js/scripts.min.3815fc28b0f660b887c7998e517cef7c36e8317bc0d9e5158a8725dbedb40793.js"></script>
+  <script type="text/javascript" src="/js/apiReference.min.7ea07a0fcb20539e4b627685e3d4f02dd9bb0df78148fd10855b822e2ea4f0c5.js"></script>
+  <script type="text/javascript" src="/js/copyAnchor.min.0061062dc13265c208c0caa3f90047b38bd8f414f4239d81bbdb5b526fb512ab.js"></script>
+
+  
+
+  
+</body>
+
+</html>

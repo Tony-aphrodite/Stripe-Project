@@ -1,0 +1,211 @@
+.navbar-brand {
+  color: #2A2C2D;
+  font-family: "Literata";
+  font-style: italic;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0;
+  width: 10rem;
+}
+.navbar-brand > div {
+  font-size: 2rem;
+  margin-top: -0.2rem;
+  padding-left: 0.5rem;
+}
+.navbar-brand > div span {
+  font-size: 0.36rem;
+  display: block;
+  margin-top: -0.5rem;
+  position: absolute;
+  right: 0;
+}
+
+span.nav-link {
+  color: #2A2C2D;
+}
+span.nav-link:focus {
+  color: #2A2C2D;
+}
+span.nav-link:hover {
+  color: #2A2C2D;
+}
+
+.nav-link {
+  color: #2A2C2D;
+  font-size: 1rem;
+}
+.nav-link:focus {
+  color: #812ED4;
+}
+.nav-link:hover {
+  color: #812ED4;
+}
+
+.user {
+  list-style: none;
+  display: flex;
+  padding-left: 0;
+  margin-bottom: 0;
+  list-style: none;
+}
+
+.navbar-toggler-icon {
+  background-image: url("../assets/img/bars.svg");
+}
+
+.dropdown-menu {
+  background-color: #2A2C2D;
+  filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.25));
+}
+.dropdown-menu .dropdown-item {
+  background-color: transparent;
+  color: white;
+}
+.dropdown-menu .dropdown-item:focus {
+  color: #FF5831;
+}
+.dropdown-menu .dropdown-item:hover {
+  color: #FF5831;
+}
+.dropdown-menu .dropdown-item a {
+  display: block;
+}
+.dropdown-menu .dropdown-item a:focus {
+  color: #FF5831;
+}
+.dropdown-menu .dropdown-item a:hover {
+  color: #FF5831;
+  text-decoration: none;
+}
+
+@media (min-width: 992px) {
+  .block-colmena-barrio-account-menu {
+    margin-left: 3rem;
+  }
+}
+@media (min-width: 768px) {
+  .dropdown-item {
+    color: #FFFFFF;
+  }
+  .dropdown-item a {
+    color: #FFFFFF;
+  }
+  .dropdown-menu {
+    border-radius: 1rem;
+    left: -2rem;
+  }
+  .dropdown-menu::before {
+    content: url(../assets/img/polygon_arrow.svg);
+    position: absolute;
+    margin-top: -1.5rem;
+    left: 0;
+    right: 0;
+    text-align: center;
+  }
+  .dropdown-menu.account {
+    left: -3rem;
+    right: 0;
+  }
+  .navbar-expand-md .navbar-nav li .dropdown-menu {
+    left: -5rem;
+    margin-top: 0.7rem;
+    position: absolute;
+  }
+  .navbar-expand-md .navbar-nav li:last-child .dropdown-menu {
+    left: -2.5rem;
+  }
+  .user {
+    flex-direction: row;
+  }
+  .user .dropdown-menu:before {
+    left: 5rem;
+  }
+  .navbar-collapse {
+    width: 100%;
+  }
+}
+@media (max-width: 767px) {
+  .dropdown-menu {
+    border: none;
+    border-radius: 0;
+  }
+  .dropdown-menu a:hover,
+  .dropdown-menu a:focus {
+    text-decoration: none;
+    color: #FF5831;
+    font-weight: 600;
+  }
+  .dropdown-item.active,
+  .dropdown-item:active {
+    color: #FFFFFF;
+    text-decoration: none;
+    background-color: #AEEEFF;
+    font-weight: 600;
+  }
+  .navbar-collapse {
+    margin-left: -16px;
+    padding: 16px;
+    margin-right: -16px;
+  }
+  .navbar-collapse .user {
+    position: relative;
+    width: 100%;
+  }
+  .navbar-collapse .user li {
+    width: 100%;
+  }
+  .navbar-collapse .user li span {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .navbar-collapse .user li .account {
+    width: 100%;
+  }
+}
+.mini-nav {
+  margin-bottom: 3rem;
+}
+.mini-nav .before a,
+.mini-nav .next a {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+.mini-nav .pagination {
+  margin: 0 auto;
+  display: table;
+}
+.mini-nav li {
+  display: table-cell;
+}
+.mini-nav .page {
+  color: #812ED4;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 5px;
+  padding-top: 5px;
+}
+.mini-nav .arrow_before {
+  background-image: url("./../assets/img/back.svg");
+  background-repeat: no-repeat;
+  background-position: bottom;
+  font-size: 0;
+  height: 30px;
+  width: 30px;
+}
+.mini-nav .arrow_before:hover, .mini-nav .arrow_before:focus {
+  box-shadow: none;
+  background-image: url("./../assets/img/back_hover.svg");
+}
+.mini-nav .arrow_next {
+  background-image: url("./../assets/img/next.svg");
+  background-repeat: no-repeat;
+  background-position: bottom;
+  font-size: 0;
+  height: 30px;
+  width: 30px;
+}
+.mini-nav .arrow_next:hover, .mini-nav .arrow_next:focus {
+  box-shadow: none;
+  background-image: url("./../assets/img/next_hover.svg");
+}/*# sourceMappingURL=navbar.css.map */

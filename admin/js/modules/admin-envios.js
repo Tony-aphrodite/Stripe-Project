@@ -59,7 +59,9 @@ window.AD_envios = (function(){
         'style="width:100%;">Tracking</button>';
 
       if(e.estado==='lista_para_enviar')
-        html += '<button class="ad-btn sm primary adChg" data-id="'+e.id+'" data-est="enviada" style="width:100%;">Enviar</button>';
+        html += '<button class="ad-btn sm primary adChg" data-id="'+e.id+'" data-est="enviada" '+
+                'data-eta="'+(e.fecha_estimada_llegada||'')+'" data-pedido="'+esc(e.pedido_num||'Inventario')+'" '+
+                'style="width:100%;">Enviar</button>';
 
       html += '</div></td></tr>';
     });
@@ -69,11 +71,7 @@ window.AD_envios = (function(){
 
     $('#adNewEnvio').on('click', showCrearEnvio);
     $('.adChg').on('click', function(){
-      var id=$(this).data('id'), est=$(this).data('est');
-      if(!confirm('Marcar este envío como enviada?')) return;
-      ADApp.api('envios/cambiar-estado.php',{envio_id:id,estado:est}).done(function(r2){
-        if(r2.ok) render(); else alert(r2.error);
-      });
+      showEnviarModal($(this).data('id'), $(this).data('eta'), $(this).data('pedido'));
     });
     $('.adEditTracking').on('click', function(){
       showEditTracking($(this).data('id'), $(this).data('tracking'), $(this).data('carrier'),
@@ -354,6 +352,61 @@ window.AD_envios = (function(){
         });
       });
     }, 50);
+    });
+  }
+
+  // ── "Enviar" confirm modal ────────────────────────────────────────────
+  // Previously a plain confirm() — no opportunity to correct the ETA even
+  // though it's the exact value that gets pushed to the customer in the
+  // moto_enviada notification. Now shows current ETA + lets admin adjust
+  // both the ETA and the shipment date in one step.
+  function showEnviarModal(envioId, currentEta, pedidoLabel){
+    var today = new Date().toISOString().slice(0,10);
+    var d     = new Date(); d.setDate(d.getDate() + 7);
+    var defaultEta = d.toISOString().slice(0,10);
+    var etaVal = currentEta || defaultEta;
+
+    var html = '<div class="ad-h2">Marcar como enviada</div>'+
+      '<div class="ad-dim" style="font-size:12.5px;margin-bottom:12px;">'+
+        '<strong>'+esc(pedidoLabel||'Envío')+'</strong> — se enviará la notificación al cliente con esta fecha.'+
+      '</div>'+
+      '<label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px;">Fecha de envío:</label>'+
+      '<input type="date" class="ad-input" id="adEnvFechaEnvio" value="'+today+'" style="margin-bottom:10px;">'+
+      '<label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px;">ETA (fecha estimada de llegada al punto):</label>'+
+      '<input type="date" class="ad-input" id="adEnvFechaEta" min="'+today+'" value="'+etaVal+'" style="margin-bottom:14px;">'+
+      (!currentEta
+        ? '<div style="background:#FFF3E0;border:1px solid #FFE0B2;padding:8px 10px;border-radius:6px;color:#E65100;font-size:12px;margin-bottom:14px;">Este envío no tenía ETA guardada. Define una fecha para que el cliente la vea en su notificación.</div>'
+        : '')+
+      '<div id="adEnvMsg" style="font-size:12px;margin-bottom:8px;"></div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<button class="ad-btn ghost" id="adEnvCancel" style="flex:1;">Cancelar</button>'+
+        '<button class="ad-btn primary" id="adEnvConfirm" style="flex:1;">Confirmar envío</button>'+
+      '</div>';
+    ADApp.modal(html);
+
+    $('#adEnvCancel').on('click', function(){ ADApp.closeModal(); });
+    $('#adEnvConfirm').on('click', function(){
+      var eta  = ($('#adEnvFechaEta').val()||'').trim();
+      var fenv = ($('#adEnvFechaEnvio').val()||'').trim();
+      if (!eta) { $('#adEnvMsg').css('color','#b91c1c').text('Selecciona la fecha estimada de llegada'); return; }
+      var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Guardando...');
+      ADApp.api('envios/cambiar-estado.php', {
+        envio_id: envioId,
+        estado: 'enviada',
+        fecha_estimada_llegada: eta,
+        fecha_envio: fenv || null
+      }).done(function(r2){
+        if (r2.ok){
+          ADApp.closeModal();
+          render();
+        } else {
+          $btn.prop('disabled', false).text('Confirmar envío');
+          $('#adEnvMsg').css('color','#b91c1c').text(r2.error || 'Error');
+        }
+      }).fail(function(xhr){
+        $btn.prop('disabled', false).text('Confirmar envío');
+        $('#adEnvMsg').css('color','#b91c1c').text((xhr.responseJSON && xhr.responseJSON.error) || 'Error de conexión');
+      });
     });
   }
 

@@ -34,15 +34,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-// CDC endpoint — /v2/rccficoscore (Reporte de Crédito Consolidado + FICO
-// Score V2). This is the product the Voltika app has activated, confirmed
-// by the customer's subscription screenshot and the v2 swagger at:
-//   /sites/default/files/swagger/1730437066/reporte-de-credito-consolidado-fico-score-v2-1-swagger.2.1.2.yaml
-// Body schema (FLAT, no wrapper):
-//   primerNombre + apellidoPaterno + apellidoMaterno + fechaNacimiento +
-//   RFC (uppercase) + nacionalidad + domicilio{direccion, coloniaPoblacion,
-//   delegacionMunicipio, ciudad, estado (enum), CP}
-// Override via the CDC_BASE_URL env var if the customer changes product.
+// CDC endpoint — /v2/rccficoscore (PRODUCTION Reporte de Crédito Consolidado
+// con FICO Score v2 MX). Confirmed by preflight: returns 400 schema errors
+// (not 403 signature / not 401 auth) → signature+auth+api-key binding all
+// pass, production access is active for this app.
+//
+// Body schema (PRODUCTION):
+//   - FLAT (no folio/persona wrapper — that's the sandbox/ficoscore schema)
+//   - primerNombre (not "nombres" which is the ficoscore field name)
+//   - nacionalidad required
+//   - domicilio nested: {direccion, coloniaPoblacion, delegacionMunicipio,
+//                        ciudad, estado, CP}
 define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rccficoscore');
 // Folio otorgante — 10-digit id assigned by CDC (0000004694 for Voltika).
 define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '0000080008');
@@ -123,16 +125,14 @@ if (strlen($rfc) === 10) $rfc .= 'XXX';
 $estadoNorm = cdcEstadoEnum($estado);
 
 // ── Construir request body ──────────────────────────────────────────────────
-// Body schema for /v2/rccficoscore (swagger v2.1.2):
-//   - FLAT (no folio/persona wrapper)
-//   - primerNombre singular + RFC UPPERCASE + nacionalidad required
-//   - domicilio uses coloniaPoblacion / delegacionMunicipio / CP
+// Body schema for PRODUCTION /v2/rccficoscore — confirmed by preflight v2:
+//   FLAT (no persona wrapper), primerNombre, nacionalidad required,
+//   domicilio as nested object.
 $requestBody = [
     'primerNombre'    => $primerNombre,
     'apellidoPaterno' => $apellidoPaterno,
     'apellidoMaterno' => $apellidoMaterno ?: 'X',
     'fechaNacimiento' => $fechaNacimiento,
-    'RFC'             => $rfc,
     'nacionalidad'    => 'MX',
     'domicilio' => [
         'direccion'           => $direccion ?: 'NO DISPONIBLE',
@@ -143,6 +143,7 @@ $requestBody = [
         'CP'                  => $cp ?: '00000',
     ],
 ];
+if ($rfc)  $requestBody['RFC']  = $rfc;
 if ($curp) $requestBody['CURP'] = $curp;
 
 $jsonBody = json_encode($requestBody, JSON_UNESCAPED_UNICODE);
@@ -212,6 +213,10 @@ if (CDC_PASS)      $headers[] = 'password: ' . CDC_PASS;
 if ($signatureHex) $headers[] = 'x-signature: ' . $signatureHex;
 
 $ch = curl_init();
+// Capture response headers so we can verify CDC's x-signature against the
+// response body (required per apihub docs — responses are signed with CDC's
+// private key; we verify with the public cert downloaded from the portal).
+$responseHeaders = [];
 $curlOpts = [
     CURLOPT_URL            => CDC_BASE_URL,
     CURLOPT_POST           => true,
@@ -221,6 +226,16 @@ $curlOpts = [
     CURLOPT_TIMEOUT        => 30,
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_SSL_VERIFYHOST => 2,
+    CURLOPT_HEADERFUNCTION => function ($ch, $header) use (&$responseHeaders) {
+        $len = strlen($header);
+        $pos = strpos($header, ':');
+        if ($pos !== false) {
+            $name = strtolower(trim(substr($header, 0, $pos)));
+            $val  = trim(substr($header, $pos + 1));
+            $responseHeaders[$name] = $val;
+        }
+        return $len;
+    },
 ];
 
 // Mutual TLS — many CDC v2 products require the client certificate at the
@@ -245,21 +260,54 @@ curl_close($ch);
 if ($tmpCert) @unlink($tmpCert);
 if ($tmpKey)  @unlink($tmpKey);
 
+// ── Verify response signature with CDC's server certificate ────────────────
+// apihub signs every response (payload) with CDC's private key. We must
+// verify against the public cert downloaded from the portal (certs/
+// cdc_server_certificate.pem). Encoding isn't documented for v2 — try HEX
+// first (matches request convention) then base64 (matches SecurityTest v1).
+// Failure doesn't abort the flow, but is logged so operators can audit.
+$responseSigStatus = 'not_checked';
+$cdcServerCertFile = __DIR__ . '/certs/cdc_server_certificate.pem';
+$respSigHeader     = $responseHeaders['x-signature'] ?? '';
+if (!empty($response) && $respSigHeader !== '' && file_exists($cdcServerCertFile)) {
+    $cdcPubKey = @openssl_pkey_get_public(@file_get_contents($cdcServerCertFile));
+    if ($cdcPubKey) {
+        $attempts = array_filter([
+            @hex2bin($respSigHeader),
+            base64_decode($respSigHeader, true) ?: null,
+        ]);
+        $responseSigStatus = 'invalid';
+        foreach ($attempts as $sigBin) {
+            if (@openssl_verify((string)$response, $sigBin, $cdcPubKey, OPENSSL_ALGO_SHA256) === 1) {
+                $responseSigStatus = 'valid';
+                break;
+            }
+        }
+    } else {
+        $responseSigStatus = 'cdc_cert_unreadable';
+    }
+} elseif ($respSigHeader === '') {
+    $responseSigStatus = 'no_sig_header';
+} elseif (!file_exists($cdcServerCertFile)) {
+    $responseSigStatus = 'cdc_cert_missing';
+}
+
 // ── Logging (file + DB) ─────────────────────────────────────────────────────
 // DB log is the reliable source — file logs need a writable logs/ dir which
 // Plesk hostings often deny.
 $logEntry = [
-    'timestamp' => date('c'),
-    'nombre'    => $primerNombre . ' ' . $apellidoPaterno,
-    'rfc_used'  => $rfc,
-    'estado'    => $estadoNorm,
-    'cp'        => $cp,
-    'has_sig'   => $signatureHex !== '',
-    'sig_len'   => strlen($signatureHex),
-    'body_sent' => substr($jsonBody, 0, 2000),
-    'httpCode'  => $httpCode,
-    'curlErr'   => $curlErr,
-    'response'  => substr((string)$response, 0, 2000),
+    'timestamp'    => date('c'),
+    'nombre'       => $primerNombre . ' ' . $apellidoPaterno,
+    'rfc_used'     => $rfc,
+    'estado'       => $estadoNorm,
+    'cp'           => $cp,
+    'has_sig'      => $signatureHex !== '',
+    'sig_len'      => strlen($signatureHex),
+    'body_sent'    => substr($jsonBody, 0, 2000),
+    'httpCode'     => $httpCode,
+    'curlErr'      => $curlErr,
+    'response'     => substr((string)$response, 0, 2000),
+    'resp_sig_ok'  => $responseSigStatus,
 ];
 try {
     $pdoLog = getDB();
@@ -281,20 +329,66 @@ if (!is_dir(dirname($logFile))) @mkdir(dirname($logFile), 0755, true);
 @file_put_contents($logFile, json_encode($logEntry) . "\n", FILE_APPEND | LOCK_EX);
 
 // ── Evaluar respuesta ───────────────────────────────────────────────────────
-// NO SILENT FALLBACK: if CDC fails, surface the real error so we can see
-// why. The old "fallback approved" masked 100% failures — customer saw
-// "evaluación estimada" and thought it worked, but no query was ever
-// registered in CDC.
-if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
-    $_SESSION['cdc_score'] = null;
-    http_response_code(502);
+// Special case: HTTP 404 with code 404.1 "No se encontró a la persona" is a
+// VALID CDC response meaning the person has no credit history. This is
+// common for first-time credit applicants — treat as success with null
+// score so the downstream evaluation (PreaprobacionV3) can handle it as
+// "thin file" (sin historial).
+$parsedResp = json_decode((string)$response, true);
+$isPersonNotFound = $httpCode === 404
+    && isset($parsedResp['errores'][0]['codigo'])
+    && $parsedResp['errores'][0]['codigo'] === '404.1';
+
+// IMPORTANT: preserve the CDC "person found" semantics downstream. Previously
+// 404.1 (no existe en CDC) and a transient CDC outage both collapsed to
+// `score: null`, which the preaprobacion self-scoring fallback treated as
+// "thin file" → could APPROVE a completely fake identity. Customer report
+// 2026-04-23: "I entered false information and yet they accepted it".
+// `cdc_person_found` now carries tri-state info:
+//   true  → CDC returned the person (score may be null for thin file)
+//   false → CDC explicitly said 404.1 "no existe"  → MUST reject
+//   null  → CDC unreachable / timeout / transport error → self-score OK
+if ($isPersonNotFound) {
+    $_SESSION['cdc_score']             = null;
+    $_SESSION['cdc_pago_mensual_buro'] = 0;
+    $_SESSION['cdc_dpd90_flag']        = false;
+    $_SESSION['cdc_dpd_max']           = 0;
+    $_SESSION['cdc_person_found']      = false; // <── new, prevents fake-identity approval
     echo json_encode([
-        'success'  => false,
-        'error'    => 'CDC API falló',
-        'http'     => $httpCode,
-        'curl_err' => $curlErr ?: null,
-        'body'     => substr((string)$response, 0, 600),
-        'message'  => 'No pudimos consultar tu historial crediticio. Intenta de nuevo o contacta soporte.',
+        'success'           => true,
+        'sin_historial'     => false,          // legitimate thin-file path uses this; we removed it here
+        'person_found'      => false,          // explicit signal to the frontend
+        'score'             => null,
+        'pago_mensual_buro' => 0,
+        'dpd90_flag'        => false,
+        'dpd_max'           => 0,
+        'num_cuentas'       => 0,
+        'message'           => 'La persona no aparece en el Buró de Crédito. No es posible otorgar crédito a nombres que no existen en el Registro.',
+    ]);
+    exit;
+}
+
+// CDC failure → controlled fallback. Returns success:true with score:null
+// so the frontend can call preaprobacion-v3 which has self-scoring logic
+// based on age + income + repeat-customer signals (no credit bureau needed).
+// The original error is logged for diagnostics but NOT shown to the user.
+if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
+    $_SESSION['cdc_score']             = null;
+    $_SESSION['cdc_pago_mensual_buro'] = 0;
+    $_SESSION['cdc_dpd90_flag']        = false;
+    $_SESSION['cdc_dpd_max']           = 0;
+    $_SESSION['cdc_person_found']      = null; // unreachable — identity not confirmed, not denied
+    echo json_encode([
+        'success'           => true,
+        'score'             => null,
+        'sin_cdc'           => true,
+        'person_found'      => null,
+        'pago_mensual_buro' => 0,
+        'dpd90_flag'        => false,
+        'dpd_max'           => 0,
+        'num_cuentas'       => 0,
+        'cdc_http'          => $httpCode,
+        'cdc_error_summary' => substr((string)$response, 0, 200),
     ]);
     exit;
 }
@@ -321,6 +415,10 @@ $_SESSION['cdc_pago_mensual_buro'] = $result['pago_mensual_buro'];
 $_SESSION['cdc_dpd90_flag']        = $result['dpd90_flag'];
 $_SESSION['cdc_dpd_max']           = $result['dpd_max'];
 $_SESSION['cdc_folio_consulta']    = $result['folioConsulta'];
+// CDC returned actual data: identity exists. Even if score is null (thin file),
+// the persona was located → preaprobacion can safely use self-score knowing
+// that no fake identity is getting through.
+$_SESSION['cdc_person_found']      = true;
 
 // ── Guardar en BD ─────────────────────────────────────────────────────────────
 try {

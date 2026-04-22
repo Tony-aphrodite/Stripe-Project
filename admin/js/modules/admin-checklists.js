@@ -129,19 +129,23 @@ window.AD_checklists = (function(){
 
     // KPIs
     html += '<div class="ad-kpis">';
-    [{l:'Total motos',v:s.total,c:'blue'},{l:'Con origen',v:s.con_origen,c:'blue'},
-     {l:'Con ensamble',v:s.con_ensamble,c:'yellow'},{l:'Con entrega',v:s.con_entrega,c:'green'},
-     {l:'Completos',v:s.completos,c:'green'}].forEach(function(k){
+    [{l:'Total motos',v:s.total,c:'blue'},
+     {l:'Origen real',v:s.con_origen,c:'green'},
+     {l:'Origen forzado',v:s.origen_forzado,c:'yellow'},
+     {l:'Con ensamble',v:s.con_ensamble,c:'yellow'},
+     {l:'Con entrega',v:s.con_entrega,c:'green'},
+     {l:'3 checklists OK',v:s.completos,c:'green'}].forEach(function(k){
       html += '<div class="ad-kpi"><div class="label">'+k.l+'</div><div class="value '+(k.c||'')+'">'+Number(k.v||0)+'</div></div>';
     });
     html += '</div>';
 
     // Filters + bulk action toolbar
     html += '<div class="ad-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">'+
-      '<select class="ad-select" id="clFiltro" style="width:200px;">'+
+      '<select class="ad-select" id="clFiltro" style="width:240px;">'+
         '<option value="">Todos</option>'+
         '<option value="sin_origen"'+(currentFilter==='sin_origen'?' selected':'')+'>Sin checklist origen</option>'+
-        '<option value="con_origen"'+(currentFilter==='con_origen'?' selected':'')+'>Con origen completo</option>'+
+        '<option value="origen_forzado"'+(currentFilter==='origen_forzado'?' selected':'')+'>⚠ Origen forzado (pendiente inspección)</option>'+
+        '<option value="con_origen"'+(currentFilter==='con_origen'?' selected':'')+'>Con origen real</option>'+
         '<option value="sin_ensamble"'+(currentFilter==='sin_ensamble'?' selected':'')+'>Sin ensamble</option>'+
         '<option value="con_ensamble"'+(currentFilter==='con_ensamble'?' selected':'')+'>Con ensamble completo</option>'+
         '<option value="completos"'+(currentFilter==='completos'?' selected':'')+'>3 checklists completos</option>'+
@@ -163,16 +167,19 @@ window.AD_checklists = (function(){
     '</tr></thead><tbody>';
 
     (r.motos||[]).forEach(function(m){
-      var canCheck = !m.co_ok; // only allow selecting motos whose origen is NOT yet complete
+      // Allow selecting motos whose origen is NOT yet complete OR was force-completed
+      // (so admin can re-bulk if they want — though re-running bulk on already-forced
+      // is a no-op, kept for consistency)
+      var canCheck = !m.co_ok || m.co_force == 1;
       html += '<tr>'+
         '<td>'+ (canCheck
           ? '<input type="checkbox" class="clRowChk" data-id="'+m.id+'">'
-          : '<span style="color:#cbd5e1;font-size:11px;" title="Ya completado">&#10003;</span>') +'</td>'+
+          : '<span style="color:#cbd5e1;font-size:11px;" title="Ya completado correctamente">&#10003;</span>') +'</td>'+
         '<td><strong>'+(m.vin_display||m.vin||'—')+'</strong></td>'+
         '<td>'+m.modelo+'</td>'+
         '<td>'+m.color+'</td>'+
         '<td>'+ADApp.badgeEstado(m.estado)+'</td>'+
-        '<td>'+clBadge(m.co_id, m.co_ok)+'</td>'+
+        '<td>'+clBadge(m.co_id, m.co_ok, null, m.co_force)+'</td>'+
         '<td>'+clBadge(m.ce_id, m.ce_ok, m.ce_fase)+'</td>'+
         '<td>'+clBadge(m.cv_id, m.cv_ok, m.cv_fase)+'</td>'+
         '<td><button class="ad-btn sm primary clOpen" data-id="'+m.id+'">Abrir</button></td>'+
@@ -215,7 +222,12 @@ window.AD_checklists = (function(){
     $('#clBulkOrigen').on('click', function(){
       var ids = $('.clRowChk:checked').map(function(){ return parseInt($(this).data('id'),10); }).get();
       if (!ids.length) return;
-      if (!confirm('¿Marcar como Completo el checklist de origen de ' + ids.length + ' motos? Esta acción queda registrada con tu usuario.')) return;
+      var msg = '⚠️ MARCADO MASIVO SIN INSPECCIÓN\n\n' +
+                ids.length + ' motos serán marcadas como Completo SIN realizar la inspección detallada de 55 items + fotos.\n\n' +
+                'Úsalo solo para hacer visible el stock en el configurador rápidamente. ' +
+                'La inspección física correcta debe hacerse luego abriendo cada moto y reabriendo el checklist.\n\n' +
+                '¿Continuar?';
+      if (!confirm(msg)) return;
       var $b = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Procesando...');
       ADApp.api('checklists/bulk-complete-origen.php', { moto_ids: ids, notas: 'Inspección masiva desde panel admin' })
         .done(function(r){
@@ -234,8 +246,12 @@ window.AD_checklists = (function(){
     });
   }
 
-  function clBadge(id, ok, fase){
+  function clBadge(id, ok, fase, isForce){
     if(!id) return '<span class="ad-badge gray">Pendiente</span>';
+    if(ok && isForce == 1) {
+      // Force-completed (bulk button) — show warning, NOT "Completo"
+      return '<span class="ad-badge" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b" title="Marcado completo sin inspección física. Abrir para reabrir y completar correctamente.">⚠ Pendiente inspección</span>';
+    }
     if(ok) return '<span class="ad-badge green">Completo</span>';
     if(fase) return '<span class="ad-badge yellow">'+fase+'</span>';
     return '<span class="ad-badge yellow">En progreso</span>';
@@ -334,16 +350,34 @@ window.AD_checklists = (function(){
     var m    = moto || {};
     var isLocked = data.completado == 1;
 
+    // Detect "force-completed" state: completado=1 but most items are 0
+    // (typically from bulk-complete-origen.php). Allow reopen for proper inspection.
+    var doneCount = countDone(data, ALL_ORIGEN_FIELDS);
+    var isForceCompleted = isLocked && doneCount < (TOTAL_ORIGEN * 0.5);
+
     var html = '<div class="ad-h2">Checklist de Origen</div>';
 
     // Progress bar
-    var done = countDone(data, ALL_ORIGEN_FIELDS);
+    var done = doneCount;
     var pct = TOTAL_ORIGEN > 0 ? Math.round(done/TOTAL_ORIGEN*100) : 0;
     html += progressBar(done, TOTAL_ORIGEN, pct);
 
     if(isLocked){
-      html += '<div style="background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:12px;font-size:13px;color:#2E7D32;">'+
-        'Este checklist fue completado y no se puede modificar. Hash: <code>'+(data.hash_registro||'')+'</code></div>';
+      if(isForceCompleted){
+        // Force-completed via bulk button — show option to reopen
+        html += '<div style="background:#FFF3E0;border:2px solid #FB8C00;padding:14px 16px;border-radius:8px;margin-bottom:12px;font-size:13px;color:#E65100;">'+
+          '<div style="font-weight:700;font-size:14px;margin-bottom:6px;">⚠️ Checklist marcado como completado sin inspección detallada</div>'+
+          '<div style="margin-bottom:10px;">Solo '+done+'/'+TOTAL_ORIGEN+' items están marcados, pero el checklist está cerrado. Probablemente fue activado con el botón "Marcar origen Completo" para que la moto aparezca como stock disponible en el configurador.</div>'+
+          '<div style="margin-bottom:10px;">Para realizar la inspección física correcta (marcar 55 items + subir 10 categorías de fotos), <strong>reabre el checklist</strong>.</div>'+
+          '<button class="ad-btn primary" id="clReabrirOrigen" style="background:#FB8C00;border-color:#FB8C00;padding:8px 18px;font-weight:700;">🔓 Reabrir y completar correctamente</button>'+
+        '</div>';
+      } else {
+        // Genuinely completed — fully locked
+        html += '<div style="background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:12px;font-size:13px;color:#2E7D32;">'+
+          '<div style="font-weight:700;margin-bottom:4px">✅ Checklist completado correctamente ('+done+'/'+TOTAL_ORIGEN+')</div>'+
+          '<div>Este checklist está bloqueado para preservar el registro de inspección. Hash: <code style="font-size:10px;word-break:break-all">'+(data.hash_registro||'')+'</code></div>'+
+        '</div>';
+      }
     }
 
     // IDENTIFICACIÓN DE UNIDAD
@@ -494,6 +528,31 @@ window.AD_checklists = (function(){
     $('#clBackToMoto').on('click', function(){
       ADApp.closeModal();
       showMotoChecklists(motoId);
+    });
+
+    // Reabrir force-completed checklist
+    $('#clReabrirOrigen').on('click', function(){
+      var motivo = prompt('¿Por qué reabres este checklist?\n(Ej: "Inspección física pendiente desde llegada de inventario")', 'Inspección física manual en CEDIS');
+      if (motivo === null) return; // user cancelled
+      var $btn = $(this).prop('disabled', true).text('Procesando...');
+      ADApp.api('checklists/reabrir-origen.php', {
+        method: 'POST', contentType: 'application/json',
+        data: JSON.stringify({ moto_id: motoId, motivo: motivo })
+      }).done(function(r){
+        if (r.ok) {
+          ADApp.closeModal();
+          // Re-fetch and re-open the form (now editable)
+          ADApp.api('checklists/detalle.php?moto_id=' + motoId).done(function(rd){
+            openOrigenForm(motoId, rd.origen, rd.moto);
+          });
+        } else {
+          alert(r.error || 'Error');
+          $btn.prop('disabled', false).text('🔓 Reabrir y completar correctamente');
+        }
+      }).fail(function(x){
+        alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+        $btn.prop('disabled', false).text('🔓 Reabrir y completar correctamente');
+      });
     });
   }
 
@@ -1109,12 +1168,13 @@ window.AD_checklists = (function(){
 
     // Face compare
     $('#clFaceInput').on('change', function(){
-      var file = this.files[0];
-      if(!file) return;
+      var rawFile = this.files[0];
+      if(!rawFile) return;
+      $('#clFaceStatus').html('<span class="ad-spin"></span> Comparando...').css('color','var(--ad-dim)');
+      (window.voltikaCompressImage ? window.voltikaCompressImage(rawFile) : Promise.resolve(rawFile)).then(function(file){
       var fd = new FormData();
       fd.append('foto', file);
       fd.append('moto_id', motoId);
-      $('#clFaceStatus').html('<span class="ad-spin"></span> Comparando...').css('color','var(--ad-dim)');
       $.ajax({
         url: 'php/checklists/face-compare.php',
         method: 'POST', data: fd, processData: false, contentType: false,
@@ -1137,6 +1197,7 @@ window.AD_checklists = (function(){
         if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
         $('#clFaceStatus').html(msg).css('color','#F44336');
       });
+      });  // voltikaCompressImage
     });
 
     // Tab switching
@@ -1381,39 +1442,41 @@ window.AD_checklists = (function(){
       var $input = $(this);
 
       for(var i = 0; i < files.length; i++){
-        (function(file){
-          var fd = new FormData();
-          fd.append('foto', file);
-          fd.append('checklist_tipo', tipo);
-          fd.append('moto_id', motoId);
-          fd.append('campo', campo);
-
-          // Show uploading placeholder
+        (function(rawFile){
+          // Show uploading placeholder immediately (compression is async)
           var placeholderId = 'ph_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
           $grid.append('<div id="'+placeholderId+'" style="width:64px;height:64px;border-radius:6px;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;background:#f5f5f5;"><span class="ad-spin"></span></div>');
 
-          $.ajax({
-            url: 'php/checklists/subir-foto.php',
-            method: 'POST',
-            data: fd,
-            processData: false,
-            contentType: false,
-            xhrFields: { withCredentials: true },
-            dataType: 'json'
-          }).done(function(r){
-            if(r.ok){
-              $('#'+placeholderId).replaceWith(photoThumb(r.url, false));
-              bindPhotoRemoveEvents();
-              refreshPhotoCatCounter($zone);
-            } else {
+          (window.voltikaCompressImage ? window.voltikaCompressImage(rawFile) : Promise.resolve(rawFile)).then(function(file){
+            var fd = new FormData();
+            fd.append('foto', file);
+            fd.append('checklist_tipo', tipo);
+            fd.append('moto_id', motoId);
+            fd.append('campo', campo);
+
+            $.ajax({
+              url: 'php/checklists/subir-foto.php',
+              method: 'POST',
+              data: fd,
+              processData: false,
+              contentType: false,
+              xhrFields: { withCredentials: true },
+              dataType: 'json'
+            }).done(function(r){
+              if(r.ok){
+                $('#'+placeholderId).replaceWith(photoThumb(r.url, false));
+                bindPhotoRemoveEvents();
+                refreshPhotoCatCounter($zone);
+              } else {
+                $('#'+placeholderId).remove();
+                alert(r.error||'Error al subir foto');
+              }
+            }).fail(function(xhr){
               $('#'+placeholderId).remove();
-              alert(r.error||'Error al subir foto');
-            }
-          }).fail(function(xhr){
-            $('#'+placeholderId).remove();
-            var msg = 'Error de conexión al subir foto';
-            if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
-            alert(msg);
+              var msg = 'Error de conexión al subir foto';
+              if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+              alert(msg);
+            });
           });
         })(files[i]);
       }
@@ -1466,5 +1529,28 @@ window.AD_checklists = (function(){
     return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  return { render: render };
+  // Public helper: open the Checklist de Origen modal for a specific moto.
+  // Fetches detalle first so external modules (e.g. Ventas "Asignar moto")
+  // can trigger fast-fill without knowing the internal data shape.
+  function openOrigenById(motoId, onAfterClose){
+    ADApp.api('checklists/detalle.php?moto_id=' + motoId).done(function(rd){
+      if (!rd || rd.ok === false) {
+        alert((rd && rd.error) || 'No se pudo cargar el checklist');
+        return;
+      }
+      openOrigenForm(motoId, rd.origen, rd.moto);
+      if (typeof onAfterClose === 'function') {
+        // Stash callback so the "close" chrome of the form can invoke it.
+        window.AD_checklists._onOrigenClose = onAfterClose;
+      }
+    }).fail(function(x){
+      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+    });
+  }
+
+  return {
+    render: render,
+    openOrigenForm: openOrigenForm,
+    openOrigenById: openOrigenById
+  };
 })();
