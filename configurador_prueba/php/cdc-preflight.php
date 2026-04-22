@@ -359,6 +359,19 @@ render(call('hex+headers (no mTLS)', $url, $body, 'hex',    ['type'=>'headers','
 render(call('base64+headers+mTLS', $url, $body, 'base64', ['type'=>'headers','mtls'=>true],  $priv, $certPem, $keyPem)); usleep(400000);
 render(call('hex+basic+mTLS',      $url, $body, 'hex',    ['type'=>'basic','mtls'=>true],    $priv, $certPem, $keyPem));
 
+// ── Test 2b: /v2/ficoscore with CORRECT {folio, persona} body ──────────────
+echo '<h2>Test 2b: /v2/ficoscore con body {folio, persona} — endpoint real</h2>';
+$bodyFicoscore = json_encode([
+    'folio' => defined('CDC_FOLIO') ? CDC_FOLIO : '0000004694',
+    'persona' => [
+        'primerNombre' => 'JUAN', 'apellidoPaterno' => 'PEREZ', 'apellidoMaterno' => 'LOPEZ',
+        'fechaNacimiento' => '1985-03-15', 'RFC' => 'PELJ850315AAA',
+        'domicilio' => ['direccion'=>'AV REFORMA 100','coloniaPoblacion'=>'JUAREZ','delegacionMunicipio'=>'CUAUHTEMOC','ciudad'=>'CIUDAD DE MEXICO','estado'=>'CDMX','CP'=>'03100'],
+    ],
+]);
+render(call('ficoscore · hex+headers+mTLS',   'https://services.circulodecredito.com.mx/v2/ficoscore', $bodyFicoscore, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
 // ── Test 3: alt endpoints ───────────────────────────────────────────────────
 echo '<h2>Test 3: endpoints alternos</h2>';
 foreach ([

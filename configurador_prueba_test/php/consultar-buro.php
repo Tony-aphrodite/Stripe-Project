@@ -34,16 +34,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-// CDC endpoint — /v2/rccficoscore (Reporte de Crédito Consolidado + FICO
-// Score V2). This is the product the Voltika app has activated, confirmed
-// by the customer's subscription screenshot and the v2 swagger at:
-//   /sites/default/files/swagger/1730437066/reporte-de-credito-consolidado-fico-score-v2-1-swagger.2.1.2.yaml
-// Body schema (FLAT, no wrapper):
-//   primerNombre + apellidoPaterno + apellidoMaterno + fechaNacimiento +
-//   RFC (uppercase) + nacionalidad + domicilio{direccion, coloniaPoblacion,
-//   delegacionMunicipio, ciudad, estado (enum), CP}
+// CDC endpoint — /v2/ficoscore (FICO Score v2 MX). Confirmed by preflight
+// v2 diagnostic that this app's api-key is bound to ficoscore, NOT
+// rccficoscore (which returned 403 for signature because the app wasn't
+// subscribed to that product).
+//
+// Body schema requires {folio, persona} wrapper (NOT flat):
+//   { "folio": "0000004694",
+//     "persona": { primerNombre, apellidoPaterno, apellidoMaterno,
+//                  fechaNacimiento, RFC, domicilio{...} } }
 // Override via the CDC_BASE_URL env var if the customer changes product.
-define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rccficoscore');
+define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/ficoscore');
 // Folio otorgante — 10-digit id assigned by CDC (0000004694 for Voltika).
 define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '0000080008');
 // CDC production auth model (confirmed via the official PHP client source):
@@ -123,17 +124,18 @@ if (strlen($rfc) === 10) $rfc .= 'XXX';
 $estadoNorm = cdcEstadoEnum($estado);
 
 // ── Construir request body ──────────────────────────────────────────────────
-// Body schema for /v2/rccficoscore (swagger v2.1.2):
-//   - FLAT (no folio/persona wrapper)
-//   - primerNombre singular + RFC UPPERCASE + nacionalidad required
-//   - domicilio uses coloniaPoblacion / delegacionMunicipio / CP
-$requestBody = [
+// Body schema for /v2/ficoscore (FICO Score v2 MX):
+//   { "folio": "0000004694",
+//     "persona": { primerNombre, apellidoPaterno, apellidoMaterno,
+//                  fechaNacimiento, RFC, domicilio{...} } }
+// Confirmed by preflight diagnostic returning 400 "Object has missing
+// required properties (['folio','persona'])".
+$persona = [
     'primerNombre'    => $primerNombre,
     'apellidoPaterno' => $apellidoPaterno,
     'apellidoMaterno' => $apellidoMaterno ?: 'X',
     'fechaNacimiento' => $fechaNacimiento,
     'RFC'             => $rfc,
-    'nacionalidad'    => 'MX',
     'domicilio' => [
         'direccion'           => $direccion ?: 'NO DISPONIBLE',
         'coloniaPoblacion'    => $colonia ?: 'CENTRO',
@@ -143,7 +145,12 @@ $requestBody = [
         'CP'                  => $cp ?: '00000',
     ],
 ];
-if ($curp) $requestBody['CURP'] = $curp;
+if ($curp) $persona['CURP'] = $curp;
+
+$requestBody = [
+    'folio'   => CDC_FOLIO,
+    'persona' => $persona,
+];
 
 $jsonBody = json_encode($requestBody, JSON_UNESCAPED_UNICODE);
 
