@@ -59,11 +59,35 @@ if (!empty($_SESSION['cdc_cert_pem']) && !empty($_SESSION['cdc_key_pem'])) {
     $_SESSION['cdc_cert_pem'] = $certPem;
     $_SESSION['cdc_key_pem']  = $keyPem;
 
-    // Try saving to disk
+    // Persist to disk — this is REQUIRED for customer credit flows because
+    // customer sessions don't have access to the admin's $_SESSION. If the
+    // write fails here, every subsequent consultar-buro.php call will 503
+    // because it can't sign the request.
     $certsDir = __DIR__ . '/certs';
-    @mkdir($certsDir, 0700, true);
-    @file_put_contents($certsDir . '/cdc_private.key', $keyPem);
-    @file_put_contents($certsDir . '/cdc_certificate.pem', $certPem);
+    $GLOBALS['cdc_disk_status'] = ['dir_exists'=>false,'dir_writable'=>false,'key_saved'=>false,'cert_saved'=>false,'errors'=>[]];
+
+    if (!is_dir($certsDir)) {
+        if (!@mkdir($certsDir, 0700, true)) {
+            $GLOBALS['cdc_disk_status']['errors'][] = 'mkdir falló: ' . (error_get_last()['message'] ?? 'unknown');
+        }
+    }
+    $GLOBALS['cdc_disk_status']['dir_exists']   = is_dir($certsDir);
+    $GLOBALS['cdc_disk_status']['dir_writable'] = is_writable($certsDir);
+
+    if ($GLOBALS['cdc_disk_status']['dir_writable']) {
+        $keyFile  = $certsDir . '/cdc_private.key';
+        $certFile = $certsDir . '/cdc_certificate.pem';
+        $keyOk  = @file_put_contents($keyFile,  $keyPem);
+        $certOk = @file_put_contents($certFile, $certPem);
+        $GLOBALS['cdc_disk_status']['key_saved']  = ($keyOk  !== false);
+        $GLOBALS['cdc_disk_status']['cert_saved'] = ($certOk !== false);
+        if ($keyOk  !== false) @chmod($keyFile,  0600);
+        if ($certOk !== false) @chmod($certFile, 0644);
+        if ($keyOk  === false) $GLOBALS['cdc_disk_status']['errors'][] = 'Escritura de cdc_private.key falló: '  . (error_get_last()['message'] ?? 'unknown');
+        if ($certOk === false) $GLOBALS['cdc_disk_status']['errors'][] = 'Escritura de cdc_certificate.pem falló: ' . (error_get_last()['message'] ?? 'unknown');
+    } else {
+        $GLOBALS['cdc_disk_status']['errors'][] = 'Directorio no escribible: ' . $certsDir;
+    }
 }
 
 // Download mode
@@ -90,6 +114,29 @@ echo '.btn{display:inline-block;padding:12px 24px;background:#039fe1;color:#fff;
 echo '.btn:hover{background:#027db0;} .warn{color:#C62828;font-weight:700;}</style></head><body>';
 
 echo '<h1>✅ Certificado ECDSA secp384r1 generado</h1>';
+
+// Disk-persistence status — critical for customer credit flows
+$ds = $GLOBALS['cdc_disk_status'] ?? null;
+if ($ds) {
+    $allOk = $ds['key_saved'] && $ds['cert_saved'];
+    $bg = $allOk ? '#d1fae5' : '#fee2e2';
+    $col = $allOk ? '#065f46' : '#991b1b';
+    echo '<div style="background:'.$bg.';color:'.$col.';padding:14px;border-radius:8px;margin-bottom:16px;">';
+    echo '<strong>Persistencia en disco:</strong><br>';
+    echo ($ds['dir_exists']   ? '✅' : '❌') . ' Directorio certs/ existe<br>';
+    echo ($ds['dir_writable'] ? '✅' : '❌') . ' Directorio escribible<br>';
+    echo ($ds['key_saved']    ? '✅' : '❌') . ' cdc_private.key guardado<br>';
+    echo ($ds['cert_saved']   ? '✅' : '❌') . ' cdc_certificate.pem guardado<br>';
+    if (!empty($ds['errors'])) {
+        echo '<strong>Errores:</strong><ul>';
+        foreach ($ds['errors'] as $e) echo '<li>' . htmlspecialchars($e) . '</li>';
+        echo '</ul>';
+        echo '<div style="margin-top:8px;font-size:13px;">Solución: por SSH ejecutar <code>chown www-data:www-data ' . __DIR__ . '/certs && chmod 700 ' . __DIR__ . '/certs</code></div>';
+    }
+    echo '</div>';
+} else {
+    echo '<div style="background:#fef3c7;color:#78350f;padding:10px;border-radius:6px;margin-bottom:16px;">Llaves recuperadas de sesión (ya generadas antes). Para forzar regeneración y re-escritura a disco: <a href="?key=voltika_cdc_cert_2026&regen=1">Regenerar</a></div>';
+}
 
 $certData = openssl_x509_parse($certPem);
 echo '<table border="1" cellpadding="8" style="border-collapse:collapse;margin-bottom:20px;">';
