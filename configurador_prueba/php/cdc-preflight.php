@@ -329,6 +329,31 @@ $body = json_encode([
     'domicilio' => ['direccion'=>'AV REFORMA 100','coloniaPoblacion'=>'JUAREZ','delegacionMunicipio'=>'CUAUHTEMOC','ciudad'=>'CIUDAD DE MEXICO','estado'=>'CDMX','CP'=>'03100'],
 ]);
 $url = 'https://services.circulodecredito.com.mx/v2/rccficoscore';
+
+// Call /v2/rccficoscore WITHOUT x-signature header — some Apigee configs
+// use mTLS-only auth for production endpoints, no signature needed.
+function callNoSig($url, $body, $certPem, $keyPem) {
+    $tmpC = tempnam(sys_get_temp_dir(), 'c'); $tmpK = tempnam(sys_get_temp_dir(), 'k');
+    file_put_contents($tmpC, $certPem); file_put_contents($tmpK, $keyPem);
+    $headers = ['Content-Type: application/json','Accept: application/json','x-api-key: '.CDC_API_KEY];
+    if (defined('CDC_USER') && CDC_USER) $headers[] = 'username: ' . CDC_USER;
+    if (defined('CDC_PASS') && CDC_PASS) $headers[] = 'password: ' . CDC_PASS;
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url, CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_TIMEOUT => 20,
+        CURLOPT_SSLCERT => $tmpC, CURLOPT_SSLKEY => $tmpK,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $hdrSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    @unlink($tmpC); @unlink($tmpK);
+    return ['label'=>'NO x-signature · mTLS only', 'url'=>$url, 'http'=>$code, 'curl_err'=>$err, 'resp_headers'=>'', 'resp_body'=>substr((string)$resp,$hdrSize), 'sig_enc'=>'-', 'auth'=>['type'=>'mtls-only','mtls'=>true]];
+}
+render(callNoSig($url, $body, $certPem, $keyPem)); usleep(400000);
 render(call('hex+headers+mTLS',   $url, $body, 'hex',    ['type'=>'headers','mtls'=>true],  $priv, $certPem, $keyPem)); usleep(400000);
 render(call('hex+headers (no mTLS)', $url, $body, 'hex',    ['type'=>'headers','mtls'=>false], $priv, $certPem, $keyPem)); usleep(400000);
 render(call('base64+headers+mTLS', $url, $body, 'base64', ['type'=>'headers','mtls'=>true],  $priv, $certPem, $keyPem)); usleep(400000);
