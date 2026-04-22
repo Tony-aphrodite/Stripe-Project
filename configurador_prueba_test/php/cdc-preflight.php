@@ -794,6 +794,69 @@ $body31 = json_encode([
 render(call('Probe 31: domicilio FIRST in body (orden)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body31, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
+// Probe 33: domicilio.direccion key as JSON unicode escape "\u0064ireccion"
+// JSON parser sees it as "direccion", but Apigee regex on raw bytes might miss
+{
+    $bodyEsc = '{"primerNombre":"JUAN","apellidoPaterno":"PEREZ","apellidoMaterno":"LOPEZ","fechaNacimiento":"1985-03-15","nacionalidad":"MX","domicilio":{"\u0064ireccion":"AV REFORMA 100","coloniaPoblacion":"JUAREZ","delegacionMunicipio":"CUAUHTEMOC","ciudad":"CIUDAD DE MEXICO","estado":"CDMX","CP":"03100"}}';
+    $sig33 = '';
+    openssl_sign($bodyEsc, $sig33, $priv, OPENSSL_ALGO_SHA256);
+    $sigEnc33 = bin2hex($sig33);
+    $tmpC33 = tempnam(sys_get_temp_dir(), 'c'); $tmpK33 = tempnam(sys_get_temp_dir(), 'k');
+    file_put_contents($tmpC33, $certPem); file_put_contents($tmpK33, $keyPem);
+    $ch33 = curl_init('https://services.circulodecredito.com.mx/v2/rccficoscore');
+    curl_setopt_array($ch33, [
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $bodyEsc,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json','Accept: application/json','x-api-key: '.CDC_API_KEY,'username: '.CDC_USER,'password: '.CDC_PASS,'x-signature: '.$sigEnc33],
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_TIMEOUT => 15,
+        CURLOPT_SSLCERT => $tmpC33, CURLOPT_SSLKEY => $tmpK33,
+    ]);
+    $resp33 = curl_exec($ch33);
+    $code33 = curl_getinfo($ch33, CURLINFO_HTTP_CODE);
+    $hdrSize33 = curl_getinfo($ch33, CURLINFO_HEADER_SIZE);
+    curl_close($ch33); @unlink($tmpC33); @unlink($tmpK33);
+    render(['label'=>'Probe 33: \\u0064ireccion (JSON unicode escape)', 'url'=>'https://services.circulodecredito.com.mx/v2/rccficoscore', 'http'=>$code33, 'curl_err'=>null, 'resp_headers'=>'', 'resp_body'=>substr((string)$resp33, $hdrSize33), 'sig_enc'=>'hex', 'auth'=>['type'=>'unicode-key','mtls'=>true]]);
+}
+usleep(400000);
+
+// Probe 34: try "domicilios" (plural) — alternative schema
+$body34 = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilios' => [
+        'direccion'           => 'AV REFORMA 100',
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 34: "domicilios" (plural)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body34, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 35: domicilio with extra ignore field that satisfies API count limit
+$body35 = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilio' => [
+        'direccion'           => 'AV REFORMA 100',
+        'numExt'              => '100',
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 35: domicilio 7 fields (added numExt)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body35, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
 // Probe 32: domicilio.direccion is OBJECT instead of string (workaround)
 $body32 = json_encode([
     'primerNombre' => 'JUAN',
