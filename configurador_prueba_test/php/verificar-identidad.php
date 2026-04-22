@@ -197,9 +197,26 @@ $postFields = [
 ];
 
 if ($fechaNac) $postFields['date_of_birth'] = $fechaNac;
-if ($telefono) $postFields['phone_number'] = $telefono;
 if ($email)    $postFields['email'] = $email;
 if ($curp && strlen($curp) === 18) $postFields['national_id'] = $curp;
+
+// Phone formatting — Truora wants "+52 5512345678" (country code + space + 10 digits).
+// Strip everything non-digit, then prepend +52 if MX number.
+if ($telefono) {
+    $digits = preg_replace('/\D/', '', $telefono);
+    // Strip leading 52 if user already typed 52xxxxxxxxxx (12 digits)
+    if (strlen($digits) === 12 && substr($digits, 0, 2) === '52') {
+        $digits = substr($digits, 2);
+    }
+    // Strip leading 1 (Mexican mobile prefix sometimes typed as 521xxxxxxxxxx = 13 digits)
+    if (strlen($digits) === 13 && substr($digits, 0, 3) === '521') {
+        $digits = substr($digits, 3);
+    }
+    if (strlen($digits) === 10) {
+        $postFields['phone_number'] = '+52 ' . $digits;
+    }
+    // If still wrong length, omit phone — Truora doesn't require it
+}
 
 $ch = curl_init(TRUORA_API_URL);
 curl_setopt_array($ch, [
