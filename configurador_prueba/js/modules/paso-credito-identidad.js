@@ -427,12 +427,25 @@ var PasoCreditoIdentidad = {
         formData.append('telefono', state.telefono || '');
         formData.append('email', state.email || '');
 
-        // Helper: show an error below the Continuar button and re-enable it
-        function showError(msg) {
+        // Helper: show an error below the Continuar button and re-enable it.
+        // If the backend returned HTTP/body detail, render them so we can
+        // diagnose Truora-side failures (signature, 503, etc.).
+        function showError(msg, detail) {
             jQuery('#vk-identidad-continuar').prop('disabled', false);
             jQuery('#vk-identidad-label').show();
             jQuery('#vk-identidad-spinner').hide();
-            jQuery('#vk-identidad-error').text(msg).show();
+            var html = '<strong>' + msg + '</strong>';
+            if (detail) html += '<div style="margin-top:8px;font-size:11px;color:#666;white-space:pre-wrap;">' + detail + '</div>';
+            jQuery('#vk-identidad-error').html(html).show();
+        }
+
+        function detailFromRes(res) {
+            if (!res) return '';
+            var parts = [];
+            if (res.http)     parts.push('HTTP: ' + res.http);
+            if (res.curl_err) parts.push('curl: ' + res.curl_err);
+            if (res.body)     parts.push('resp: ' + String(res.body).substring(0,400));
+            return parts.join('\n');
         }
 
         jQuery.ajax({
@@ -442,14 +455,12 @@ var PasoCreditoIdentidad = {
             processData: false,
             contentType: false,
             success: function(res) {
-                // Backend now returns status:'error' or status:'pending' on
-                // failure instead of fake 'approved'. Don't advance on those.
                 if (res && res.status === 'error') {
-                    showError(res.message || 'No pudimos verificar tu identidad. Intenta de nuevo.');
+                    showError(res.message || 'No pudimos verificar tu identidad.', detailFromRes(res));
                     return;
                 }
                 if (res && res.status === 'pending') {
-                    showError(res.message || 'Truora aún está procesando. Espera un momento y reintenta.');
+                    showError(res.message || 'Truora aún está procesando. Espera un momento y reintenta.', detailFromRes(res));
                     return;
                 }
 
@@ -466,13 +477,9 @@ var PasoCreditoIdentidad = {
                 self.app.irAPaso('credito-enganche');
             },
             error: function(xhr) {
-                // Surface the real error instead of silently advancing.
-                var msg = 'No pudimos conectar con el servicio de verificación. Intenta de nuevo.';
-                try {
-                    var body = xhr && xhr.responseJSON;
-                    if (body && body.message) msg = body.message;
-                } catch (e) {}
-                showError(msg);
+                var body = (xhr && xhr.responseJSON) || null;
+                var msg  = (body && body.message) || 'No pudimos conectar con el servicio de verificación.';
+                showError(msg, detailFromRes(body || { http: xhr && xhr.status }));
             }
         });
     }

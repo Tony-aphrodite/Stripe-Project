@@ -392,10 +392,7 @@ var PasoCreditoConsentimiento = {
                 // Backend now returns success:false with error details when
                 // CDC fails, instead of fake fallback approved. Surface it.
                 if (res && res.success === false) {
-                    var msg = (res.message || 'No pudimos consultar tu historial crediticio. Intenta de nuevo.');
-                    jQuery('#vk-cons-error').html(msg)
-                        .css({'color':'#C62828','background':'#FFEBEE'}).show();
-                    self._resetCTA();
+                    self._showCdcError(res);
                     return;
                 }
                 state._buroResult  = res;
@@ -403,14 +400,8 @@ var PasoCreditoConsentimiento = {
                 self._routeByBuroResult(res);
             },
             error: function(xhr) {
-                var msg = 'No pudimos conectar con Círculo de Crédito. Intenta de nuevo.';
-                try {
-                    var body = xhr && xhr.responseJSON;
-                    if (body && body.message) msg = body.message;
-                } catch (e) {}
-                jQuery('#vk-cons-error').html(msg)
-                    .css({'color':'#C62828','background':'#FFEBEE'}).show();
-                self._resetCTA();
+                var body = (xhr && xhr.responseJSON) || null;
+                self._showCdcError(body || { error: 'Sin conexión', http: xhr && xhr.status });
             }
         });
     },
@@ -450,5 +441,22 @@ var PasoCreditoConsentimiento = {
         jQuery('#vk-cons-evaluar').prop('disabled', false);
         jQuery('#vk-cons-label').show();
         jQuery('#vk-cons-spinner').hide();
+    },
+
+    // Show the real CDC error (HTTP code + body excerpt) so we can diagnose
+    // why Círculo is rejecting the call, instead of a generic "try again".
+    _showCdcError: function(res) {
+        var msg = (res && res.message) || 'No pudimos consultar tu historial crediticio.';
+        var detail = '';
+        if (res) {
+            if (res.http)     detail += 'HTTP: ' + res.http + '<br>';
+            if (res.curl_err) detail += 'curl: ' + res.curl_err + '<br>';
+            if (res.body)     detail += 'resp: <code style="word-break:break-all;">' + jQuery('<div/>').text(String(res.body).substring(0,400)).html() + '</code>';
+        }
+        var html = '<strong>' + msg + '</strong>';
+        if (detail) html += '<div style="margin-top:8px;font-size:11px;color:#666;">' + detail + '</div>';
+        jQuery('#vk-cons-error').html(html)
+            .css({'color':'#C62828','background':'#FFEBEE','padding':'12px','border-radius':'6px'}).show();
+        this._resetCTA();
     }
 };
