@@ -83,9 +83,38 @@ if (!empty($_SESSION['cdc_cert_pem']) && !empty($_SESSION['cdc_key_pem'])) {
 
     openssl_pkey_export($privateKey, $keyPem);
 
-    $csr = openssl_csr_new($dn, $privateKey, ['digest_alg' => 'sha256']);
-    $cert = openssl_csr_sign($csr, null, $privateKey, 365, ['digest_alg' => 'sha256']);
+    // Write an OpenSSL config file that marks the cert as an END-ENTITY
+    // client cert (not a CA). Default PHP openssl.cnf signs with v3_ca
+    // extensions, which some APIs (including Apigee with signature
+    // verification policies) reject because CA certs should not be used
+    // for client authentication or signing user payloads.
+    $tmpCnf = tempnam(sys_get_temp_dir(), 'cdc_cnf_');
+    file_put_contents($tmpCnf, "
+[req]
+distinguished_name = dn
+req_extensions     = v3_req
+prompt             = no
+
+[dn]
+CN = {$cn}
+
+[v3_req]
+basicConstraints     = critical, CA:FALSE
+keyUsage             = critical, digitalSignature, nonRepudiation, keyEncipherment
+extendedKeyUsage     = clientAuth, serverAuth
+");
+
+    $configArgs = [
+        'digest_alg'       => 'sha256',
+        'config'           => $tmpCnf,
+        'req_extensions'   => 'v3_req',
+        'x509_extensions'  => 'v3_req',
+    ];
+
+    $csr  = openssl_csr_new($dn, $privateKey, $configArgs);
+    $cert = openssl_csr_sign($csr, null, $privateKey, 365, $configArgs);
     openssl_x509_export($cert, $certPem);
+    @unlink($tmpCnf);
 
     $_SESSION['cdc_cert_pem'] = $certPem;
     $_SESSION['cdc_key_pem']  = $keyPem;
