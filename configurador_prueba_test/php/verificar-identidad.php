@@ -400,20 +400,27 @@ if ($result) {
         );
     }
 
-    // Approval logic — face match is the PRIMARY fraud gate:
-    //   Face match FAILED    → rejected (identity theft / mismatched photos)
-    //   Face match PASSED    → approved (selfie matches INE photo owner)
-    //   Face match SKIPPED   → fall back to name/id govt DB match
-    // Person check (govt DB) is secondary — many thin-file customers (young,
-    // rural, no gov data) have score=0 even though they're real people.
+    // Approval logic — 3-way decision:
+    //   1. Face check REAL MISMATCH (similarity < 70%) → rejected (fraud)
+    //   2. Face check REAL MATCH (similarity >= 70%)    → approved
+    //   3. Face check API ERROR (endpoint issue, 403, etc) → fall back to
+    //      person check (don't auto-reject real customers because of our
+    //      integration issues)
     $faceMatched = $faceResult ? (bool)$faceResult['match'] : null;
-    if ($faceResult !== null) {
-        // Face check ran — it's decisive
+    $faceHadApiError = $faceResult && isset($faceResult['error']);
+
+    if ($faceResult !== null && !$faceHadApiError) {
+        // Face check actually RAN and returned a real similarity score
         $finalApproved = $faceMatched;
-    } else {
-        // Face check didn't run (no photos uploaded or feature disabled)
-        // Fall back to person check result
+        $decisionReason = $faceMatched ? 'face_match' : 'face_mismatch';
+    } elseif ($faceHadApiError) {
+        // Face check API had an error — fall back to person check + log
         $finalApproved = $approved;
+        $decisionReason = 'face_api_error_fallback_to_person';
+    } else {
+        // No face check at all (no photos) → person check
+        $finalApproved = $approved;
+        $decisionReason = 'no_face_photos';
     }
 
     // ── Guardar en BD ─────────────────────────────────────────────────────────
@@ -466,13 +473,16 @@ if ($result) {
     }
 
     echo json_encode([
-        'status'     => $finalApproved ? 'approved' : 'rejected',
-        'score'      => $score,
-        'check_id'   => $checkId,
-        'identity'   => $identityStatus,
-        'files'      => $savedFiles,
-        'face'       => $faceResult,
-        'document'   => $docResult,
+        'status'          => $finalApproved ? 'approved' : 'rejected',
+        'score'           => $score,
+        'name_score'      => $nameScore,
+        'id_score'        => $idScore,
+        'check_id'        => $checkId,
+        'identity'        => $identityStatus,
+        'files'           => $savedFiles,
+        'face'            => $faceResult,
+        'document'        => $docResult,
+        'decision_reason' => $decisionReason,
     ]);
     exit;
 }

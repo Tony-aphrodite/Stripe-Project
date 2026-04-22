@@ -222,6 +222,66 @@ if (!empty($_GET['test'])) {
     echo '<strong>cURL SSL version:</strong> ' . htmlspecialchars(curl_version()['ssl_version']) . '</div>';
 }
 
+// 2b. Face-recognition endpoint probe
+if (!empty($_GET['test'])) {
+    echo '<h2>2b. Face-recognition endpoint probe</h2>';
+    // Create a tiny test image on the fly
+    $tmpImg1 = tempnam(sys_get_temp_dir(), 'img1') . '.jpg';
+    $tmpImg2 = tempnam(sys_get_temp_dir(), 'img2') . '.jpg';
+    $img = imagecreate(100, 100);
+    imagecolorallocate($img, 255, 200, 150);
+    imagejpeg($img, $tmpImg1);
+    imagejpeg($img, $tmpImg2);
+    imagedestroy($img);
+
+    function faceProbe($label, $url, $fields, $apiKey) {
+        $ch = curl_init($url);
+        $verboseStream = fopen('php://temp', 'w+');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $fields,
+            CURLOPT_HTTPHEADER => ['Truora-API-Key: ' . $apiKey],
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20,
+            CURLOPT_VERBOSE => true, CURLOPT_STDERR => $verboseStream,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+        $css = ($code >= 200 && $code < 500 && $code != 0) ? 'ok' : 'err';
+        echo '<div class="step"><strong>' . htmlspecialchars($label) . '</strong> → <span class="' . $css . '">HTTP ' . $code . '</span><br>';
+        echo '<small>' . htmlspecialchars($url) . '</small><br>';
+        if ($err) echo '<span class="err">curl: ' . htmlspecialchars($err) . '</span><br>';
+        if ($resp) echo '<pre style="max-height:150px;font-size:11px">' . htmlspecialchars(substr($resp, 0, 800)) . '</pre>';
+        echo '</div>';
+    }
+
+    $f1 = new CURLFile($tmpImg1, 'image/jpeg', 'selfie.jpg');
+    $f2 = new CURLFile($tmpImg2, 'image/jpeg', 'ine.jpg');
+
+    faceProbe('F1: /v1/checks type=face-recognition + selfie_image+document_image',
+        'https://api.checks.truora.com/v1/checks',
+        ['country'=>'MX','type'=>'face-recognition','user_authorized'=>'true','selfie_image'=>$f1,'document_image'=>$f2],
+        $apiKey);
+    faceProbe('F2: /v1/checks type=face-recognition + image1+image2',
+        'https://api.checks.truora.com/v1/checks',
+        ['country'=>'MX','type'=>'face-recognition','user_authorized'=>'true','image1'=>$f1,'image2'=>$f2],
+        $apiKey);
+    faceProbe('F3: /v1/face-recognition',
+        'https://api.checks.truora.com/v1/face-recognition',
+        ['country'=>'MX','selfie_image'=>$f1,'document_image'=>$f2],
+        $apiKey);
+    faceProbe('F4: api.validations /v1/face-recognition',
+        'https://api.validations.truora.com/v1/face-recognition',
+        ['country'=>'MX','selfie_image'=>$f1,'document_image'=>$f2],
+        $apiKey);
+    faceProbe('F5: api.validations /v1/face-validation',
+        'https://api.validations.truora.com/v1/face-validation',
+        ['country'=>'MX','image1'=>$f1,'image2'=>$f2],
+        $apiKey);
+
+    @unlink($tmpImg1); @unlink($tmpImg2);
+}
+
 // 3. Recent Truora calls
 echo '<h2>3. Últimas 20 llamadas a Truora (BD)</h2><div class="step">';
 try {
