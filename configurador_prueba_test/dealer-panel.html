@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="css/admin.css">
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="js/voltika-image-compress.js?v=20260422"></script>
 <style>
   /* Page-specific overrides */
   .section-wrap { margin-bottom: 28px; }
@@ -896,15 +897,20 @@ async function sendFaceCompare() {
     return;
   }
 
+  // Compress before upload so mobile photos don't hit PHP upload_max_filesize
+  const _compress = window.voltikaCompressImage || (f => Promise.resolve(f));
+  const compressedBlob = await _compress(blob);
+
   const formData = new FormData();
   formData.append('moto_id', faceMotoId);
   formData.append('tipo', faceTipo);
-  formData.append('foto', blob, 'delivery_photo.jpg');
+  formData.append('foto', compressedBlob, 'delivery_photo.jpg');
 
   // INE photo for contado
   const ineInput = document.getElementById('face-ine-input');
   if (ineInput && ineInput.files[0]) {
-    formData.append('ine_foto', ineInput.files[0]);
+    const ineCompressed = await _compress(ineInput.files[0]);
+    formData.append('ine_foto', ineCompressed);
   }
 
   try {

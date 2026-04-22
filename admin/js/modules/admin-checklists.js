@@ -1168,12 +1168,13 @@ window.AD_checklists = (function(){
 
     // Face compare
     $('#clFaceInput').on('change', function(){
-      var file = this.files[0];
-      if(!file) return;
+      var rawFile = this.files[0];
+      if(!rawFile) return;
+      $('#clFaceStatus').html('<span class="ad-spin"></span> Comparando...').css('color','var(--ad-dim)');
+      (window.voltikaCompressImage ? window.voltikaCompressImage(rawFile) : Promise.resolve(rawFile)).then(function(file){
       var fd = new FormData();
       fd.append('foto', file);
       fd.append('moto_id', motoId);
-      $('#clFaceStatus').html('<span class="ad-spin"></span> Comparando...').css('color','var(--ad-dim)');
       $.ajax({
         url: 'php/checklists/face-compare.php',
         method: 'POST', data: fd, processData: false, contentType: false,
@@ -1196,6 +1197,7 @@ window.AD_checklists = (function(){
         if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
         $('#clFaceStatus').html(msg).css('color','#F44336');
       });
+      });  // voltikaCompressImage
     });
 
     // Tab switching
@@ -1440,39 +1442,41 @@ window.AD_checklists = (function(){
       var $input = $(this);
 
       for(var i = 0; i < files.length; i++){
-        (function(file){
-          var fd = new FormData();
-          fd.append('foto', file);
-          fd.append('checklist_tipo', tipo);
-          fd.append('moto_id', motoId);
-          fd.append('campo', campo);
-
-          // Show uploading placeholder
+        (function(rawFile){
+          // Show uploading placeholder immediately (compression is async)
           var placeholderId = 'ph_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
           $grid.append('<div id="'+placeholderId+'" style="width:64px;height:64px;border-radius:6px;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;background:#f5f5f5;"><span class="ad-spin"></span></div>');
 
-          $.ajax({
-            url: 'php/checklists/subir-foto.php',
-            method: 'POST',
-            data: fd,
-            processData: false,
-            contentType: false,
-            xhrFields: { withCredentials: true },
-            dataType: 'json'
-          }).done(function(r){
-            if(r.ok){
-              $('#'+placeholderId).replaceWith(photoThumb(r.url, false));
-              bindPhotoRemoveEvents();
-              refreshPhotoCatCounter($zone);
-            } else {
+          (window.voltikaCompressImage ? window.voltikaCompressImage(rawFile) : Promise.resolve(rawFile)).then(function(file){
+            var fd = new FormData();
+            fd.append('foto', file);
+            fd.append('checklist_tipo', tipo);
+            fd.append('moto_id', motoId);
+            fd.append('campo', campo);
+
+            $.ajax({
+              url: 'php/checklists/subir-foto.php',
+              method: 'POST',
+              data: fd,
+              processData: false,
+              contentType: false,
+              xhrFields: { withCredentials: true },
+              dataType: 'json'
+            }).done(function(r){
+              if(r.ok){
+                $('#'+placeholderId).replaceWith(photoThumb(r.url, false));
+                bindPhotoRemoveEvents();
+                refreshPhotoCatCounter($zone);
+              } else {
+                $('#'+placeholderId).remove();
+                alert(r.error||'Error al subir foto');
+              }
+            }).fail(function(xhr){
               $('#'+placeholderId).remove();
-              alert(r.error||'Error al subir foto');
-            }
-          }).fail(function(xhr){
-            $('#'+placeholderId).remove();
-            var msg = 'Error de conexión al subir foto';
-            if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
-            alert(msg);
+              var msg = 'Error de conexión al subir foto';
+              if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+              alert(msg);
+            });
           });
         })(files[i]);
       }

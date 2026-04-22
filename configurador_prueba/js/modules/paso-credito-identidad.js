@@ -408,12 +408,23 @@ var PasoCreditoIdentidad = {
         jQuery('#vk-identidad-spinner').show();
         jQuery('#vk-identidad-error').hide();
 
+        // Compress all images before upload (resize 1600px, JPEG q=0.82).
+        // Prevents the "tamaño máximo del servidor" error on large phone
+        // photos and dramatically speeds up mobile uploads. If the compress
+        // util is missing, the originals are sent untouched (feature-detect).
+        var _compress = window.voltikaCompressImage || function(f){ return Promise.resolve(f); };
+        Promise.all([
+            _compress(self._ineFrente),
+            _compress(self._ineReverso),
+            _compress(self._selfie),
+            self._comprobante ? _compress(self._comprobante) : Promise.resolve(null)
+        ]).then(function(compressed){
         var formData = new FormData();
-        formData.append('ine_frente', self._ineFrente);
-        formData.append('ine_reverso', self._ineReverso);
-        formData.append('selfie', self._selfie);
-        if (self._comprobante) {
-            formData.append('comprobante_domicilio', self._comprobante);
+        formData.append('ine_frente', compressed[0]);
+        formData.append('ine_reverso', compressed[1]);
+        formData.append('selfie', compressed[2]);
+        if (compressed[3]) {
+            formData.append('comprobante_domicilio', compressed[3]);
             formData.append('domicilio_diferente', '1');
         }
 
@@ -508,5 +519,6 @@ var PasoCreditoIdentidad = {
                 showError(msg, detailFromRes(body || { http: xhr && xhr.status }));
             }
         });
+        });  // Promise.all(_compress).then
     }
 };

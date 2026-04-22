@@ -88,6 +88,7 @@ $asset = function(string $rel): string {
     <div id="adModalBody"></div>
   </div>
 </div>
+<script src="<?= $asset('js/voltika-image-compress.js') ?>"></script>
 <script src="<?= $asset('js/admin-app.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-login.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-dashboard.js') ?>"></script>
