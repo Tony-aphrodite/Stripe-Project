@@ -587,6 +587,38 @@ $bodyMin = json_encode([
 render(call('Probe 19: nested MINIMAL (domicilio con solo CP)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyMin, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
+// Probe 20: nested WITHOUT RFC — all fields needed
+$bodyNoRfc = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'nacionalidad' => 'MX',
+    'domicilio' => [
+        'direccion'           => 'AV REFORMA 100',
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 20: nested COMPLETO sin RFC', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyNoRfc, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 21: nested + RFC only (minimal domicilio)
+$bodyRfcOnly = json_encode([
+    'primerNombre' => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'RFC' => 'PELJ850315AAA',
+    'nacionalidad' => 'MX',
+    'domicilio' => ['CP' => '03100'],
+]);
+render(call('Probe 21: minimal + RFC (prueba si RFC rompe sig)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyRfcOnly, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
 // Probe 17: sign flat body but SEND nested body (canonicalization hypothesis)
 $nestedBody = json_encode([
     'primerNombre'    => 'JUAN',
