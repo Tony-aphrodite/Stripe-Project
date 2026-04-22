@@ -132,6 +132,57 @@ function render($r) {
     echo '<pre>' . htmlspecialchars($bodyExcerpt) . '</pre></div>';
 }
 
+// ── Test 0: OAuth2 token endpoint (auth2 product is Activado in portal) ────
+echo '<h2>Test 0: OAuth2 token (/auth2/token) — probando autenticación alternativa</h2>';
+
+function testOAuth2($label, $url, $bodyFormat, $auth) {
+    $body = '';
+    if ($bodyFormat === 'form_basic') {
+        $body = 'grant_type=client_credentials';
+    } elseif ($bodyFormat === 'form_full') {
+        $body = 'grant_type=client_credentials&client_id=' . urlencode(CDC_API_KEY);
+    } elseif ($bodyFormat === 'json') {
+        $body = json_encode(['grant_type' => 'client_credentials', 'client_id' => CDC_API_KEY]);
+    }
+    $ch = curl_init($url);
+    $headers = ['Accept: application/json'];
+    if ($bodyFormat === 'json') $headers[] = 'Content-Type: application/json';
+    else $headers[] = 'Content-Type: application/x-www-form-urlencoded';
+    $opts = [
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_TIMEOUT => 15,
+    ];
+    if ($auth === 'basic_api') {
+        $opts[CURLOPT_USERPWD] = CDC_API_KEY . ':' . (defined('CDC_PASS') ? CDC_PASS : '');
+        $opts[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
+    } elseif ($auth === 'basic_user') {
+        $opts[CURLOPT_USERPWD] = (defined('CDC_USER') ? CDC_USER : '') . ':' . (defined('CDC_PASS') ? CDC_PASS : '');
+        $opts[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
+    } elseif ($auth === 'x-api-key') {
+        $headers[] = 'x-api-key: ' . CDC_API_KEY;
+        $opts[CURLOPT_HTTPHEADER] = $headers;
+    }
+    curl_setopt_array($ch, $opts);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $hdrSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    return ['label' => $label, 'url' => $url, 'http' => $code, 'curl_err' => $err, 'resp_headers' => '', 'resp_body' => substr((string)$resp, $hdrSize), 'sig_enc' => '-', 'auth' => ['type'=>$auth,'mtls'=>false]];
+}
+
+$oauth2Urls = [
+    'https://services.circulodecredito.com.mx/auth2/token',
+    'https://services.circulodecredito.com.mx/v1/oauth/token',
+    'https://services.circulodecredito.com.mx/oauth/token',
+    'https://services.circulodecredito.com.mx/auth/token',
+];
+foreach ($oauth2Urls as $u) {
+    render(testOAuth2("$u · basic(apikey:pass)", $u, 'form_basic', 'basic_api')); usleep(350000);
+    render(testOAuth2("$u · form+x-api-key",     $u, 'form_full',  'x-api-key')); usleep(350000);
+}
+
 // ── Test 1: SecurityTest — try multiple hash algos + signing subjects ──────
 echo '<h2>Test 1: SecurityTest — probando combinaciones (hash × contenido firmado × encoding)</h2>';
 
