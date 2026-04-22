@@ -99,6 +99,60 @@ if (!empty($_GET['test'])) {
         CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
     ], $body, $apiKey);
+
+    // Try different Truora URLs
+    echo '<h3 style="margin-top:20px">URLs alternativas</h3>';
+    function truoraTryUrl($label, $url, $body, $apiKey) {
+        $ch = curl_init($url);
+        $verboseStream = fopen('php://temp', 'w+');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => ['Truora-API-Key: ' . $apiKey, 'Content-Type: application/x-www-form-urlencoded'],
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+            CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+            CURLOPT_VERBOSE => true, CURLOPT_STDERR => $verboseStream,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+        rewind($verboseStream); $verbose = stream_get_contents($verboseStream); fclose($verboseStream);
+        $css = ($code >= 200 && $code < 500 && $code != 0) ? 'ok' : 'err';
+        echo '<div class="step"><strong>' . htmlspecialchars($label) . '</strong> → <span class="' . $css . '">HTTP ' . $code . '</span><br>';
+        echo '<small>' . htmlspecialchars($url) . '</small><br>';
+        if ($err) echo '<span class="err">curl: ' . htmlspecialchars($err) . '</span><br>';
+        echo '<details><summary>Verbose</summary><pre style="font-size:10px">' . htmlspecialchars(substr($verbose, 0, 1500)) . '</pre></details>';
+        if ($resp) echo '<pre style="max-height:120px;font-size:10px">' . htmlspecialchars(substr($resp, 0, 600)) . '</pre>';
+        echo '</div>';
+    }
+
+    truoraTryUrl('H. api.identity.truora.com',     'https://api.identity.truora.com/v1/checks', $body, $apiKey);
+    truoraTryUrl('I. api.checks.truora.com',       'https://api.checks.truora.com/v1/checks', $body, $apiKey);
+    truoraTryUrl('J. api-mexico.truora.com',       'https://api-mexico.truora.com/v1/checks', $body, $apiKey);
+    truoraTryUrl('K. mx.api.truora.com',           'https://mx.api.truora.com/v1/checks', $body, $apiKey);
+    truoraTryUrl('L. api.validations.truora.com',  'https://api.validations.truora.com/v1/checks', $body, $apiKey);
+
+    // Test if we can reach Truora at all (just GET to base URL)
+    echo '<h3 style="margin-top:20px">Test conectividad básica</h3>';
+    function truoraConnTest($label, $url) {
+        $ch = curl_init($url);
+        $verboseStream = fopen('php://temp', 'w+');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10, CURLOPT_NOBODY => true,
+            CURLOPT_VERBOSE => true, CURLOPT_STDERR => $verboseStream,
+        ]);
+        curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+        rewind($verboseStream); $verbose = stream_get_contents($verboseStream); fclose($verboseStream);
+        echo '<div class="step"><strong>' . htmlspecialchars($label) . '</strong> → HTTP ' . $code;
+        if ($err) echo ' <span class="err">' . htmlspecialchars($err) . '</span>';
+        echo '<details><summary>Verbose</summary><pre style="font-size:10px">' . htmlspecialchars(substr($verbose, 0, 800)) . '</pre></details></div>';
+    }
+    truoraConnTest('GET https://truora.com/', 'https://truora.com/');
+    truoraConnTest('GET https://www.truora.com/', 'https://www.truora.com/');
+    truoraConnTest('GET https://api.truora.com/', 'https://api.truora.com/');
 } else {
     echo '<h2>2. Probar SSL handshake</h2>';
     echo '<p><a class="btn" href="?key=voltika_cdc_2026&test=1">🚀 Probar 7 configuraciones SSL</a></p>';
