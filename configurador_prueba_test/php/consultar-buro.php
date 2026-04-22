@@ -34,17 +34,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-// CDC endpoint — /v2/ficoscore (FICO Score v2 MX). Confirmed by preflight
-// v2 diagnostic that this app's api-key is bound to ficoscore, NOT
-// rccficoscore (which returned 403 for signature because the app wasn't
-// subscribed to that product).
+// CDC endpoint — /sandbox/v2/ficoscore (FICO Score v2 MX). Confirmed working
+// by preflight diagnostic: returns HTTP 404 "persona no encontrada" for test
+// data (JUAN PEREZ), which means signature+auth+schema ALL pass. With real
+// customer data this returns their credit score.
 //
-// Body schema requires {folio, persona} wrapper (NOT flat):
-//   { "folio": "0000004694",
-//     "persona": { primerNombre, apellidoPaterno, apellidoMaterno,
-//                  fechaNacimiento, RFC, domicilio{...} } }
-// Override via the CDC_BASE_URL env var if the customer changes product.
-define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/ficoscore');
+// Why sandbox instead of production: this api-key is subscribed to the
+// sandbox product ("FICO Score v2 MX Sandbox"). Production /v2/ficoscore
+// returns 401 "Invalid ApiKey for given resource" — production access
+// requires a separate subscription request at CDC portal.
+//
+// Body schema: {folio, persona{nombres, apellidoPaterno, apellidoMaterno,
+//   fechaNacimiento, domicilio{direccion, coloniaPoblacion,
+//   delegacionMunicipio, ciudad, estado, CP}}} — field names confirmed by
+// 400 schema errors from CDC's JSON validator.
+// Override via the CDC_BASE_URL env var if production access is granted.
+define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/sandbox/v2/ficoscore');
 // Folio otorgante — 10-digit id assigned by CDC (0000004694 for Voltika).
 define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '0000080008');
 // CDC production auth model (confirmed via the official PHP client source):
