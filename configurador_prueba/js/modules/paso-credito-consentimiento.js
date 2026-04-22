@@ -439,6 +439,10 @@ var PasoCreditoConsentimiento = {
                 pago_mensual_buro:    buroRes.pago_mensual_buro || 0,
                 dpd90_flag:           buroRes.dpd90_flag || false,
                 dpd_max:              buroRes.dpd_max || 0,
+                // Tri-state identity signal — consultar-buro.php returns
+                // person_found=false when CDC says the persona doesn't exist.
+                // Forwarding it lets preaprobacion-v3.php enforce the hard KO.
+                person_found:         (buroRes.person_found === undefined) ? null : buroRes.person_found,
                 // Customer info (for admin lead tracking)
                 nombre:               state.nombre || '',
                 apellido_paterno:     state.apellidoPaterno || '',
@@ -468,7 +472,12 @@ var PasoCreditoConsentimiento = {
                         score:                buroRes.score || null,
                         pago_mensual_buro:    buroRes.pago_mensual_buro || 0,
                         dpd90_flag:           buroRes.dpd90_flag || false,
-                        dpd_max:              buroRes.dpd_max || 0
+                        dpd_max:              buroRes.dpd_max || 0,
+                        // Identity signal — same semantics as server-side
+                        // (false = CDC 404.1 → reject). Without this a server
+                        // outage would let fake identities through the client
+                        // fallback.
+                        person_found:         (buroRes.person_found === undefined) ? null : buroRes.person_found
                     });
                 }
                 self.app.irAPaso('credito-loading');

@@ -27,14 +27,20 @@ var PasoCreditoResultado = {
             state.plazoMeses || 12
         );
 
-        // Re-evaluate with real bureau data
+        // Re-evaluate with real bureau data. IMPORTANT: forward the
+        // tri-state person_found signal so this re-run cannot flip a
+        // server-side rejection (404.1 "identidad no encontrada") into an
+        // approval. Without this, a fake identity could be rejected by
+        // preaprobacion-v3.php and then silently re-approved here because
+        // `score=null` alone would send it into _evaluarSinCirculo().
         state._resultadoFinal = PreaprobacionV3.evaluar({
             ingreso_mensual_est:   state._ingresoMensual || 10000,
             pago_semanal_voltika:  credito.pagoSemanal,
             score:                 buro.score || null,
             pago_mensual_buro:     buro.pagoMensual || 0,
             dpd90_flag:            buro.dpd90 || false,
-            dpd_max:               buro.dpdMax || 0
+            dpd_max:               buro.dpdMax || 0,
+            person_found:          (buro.person_found === undefined) ? null : buro.person_found
         });
     },
 
