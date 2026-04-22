@@ -290,11 +290,26 @@ while ($elapsed < TRUORA_POLL_MAX) {
 
 if ($result) {
     $check = $result['check'] ?? $result;
-    $score = $check['score'] ?? null;
+    // New api.checks.truora.com response shape:
+    //   score (-1 = not started, 0-1 = match confidence)
+    //   name_score (0-1 = name match against govt DB)
+    //   id_score (0-1 = national_id match, only if national_id was sent)
+    //   status (not_started | in_progress | completed)
+    $score      = $check['score']       ?? null;
+    $nameScore  = $check['name_score']  ?? null;
+    $idScore    = $check['id_score']    ?? null;
     $identityStatus = $check['summary']['identity_status']
-                   ?? $check['result'] ?? 'unknown';
+                   ?? $check['result'] ?? $check['status'] ?? 'unknown';
 
-    $approved = ($identityStatus === 'valid' || ($score !== null && $score >= 0.5));
+    // Approval logic:
+    //  - explicit "valid" identity_status (legacy)
+    //  - OR overall score >= 0.5 (good match)
+    //  - OR name_score >= 0.6 (name matched against govt records — strongest signal)
+    //  - OR id_score >= 0.7 (CURP/national ID matched — very strong)
+    $approved = ($identityStatus === 'valid')
+              || ($score     !== null && $score     >= 0.5)
+              || ($nameScore !== null && $nameScore >= 0.6)
+              || ($idScore   !== null && $idScore   >= 0.7);
 
     $_SESSION['truora_status']   = $approved ? 'approved' : 'rejected';
     $_SESSION['truora_score']    = $score;
