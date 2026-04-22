@@ -48,18 +48,17 @@ var PasoCreditoLoading = {
         var self = this;
         if (this._timer) clearTimeout(this._timer);
 
-        // Auto-advance after 4.5 seconds — but only if the evaluation
-        // actually produced an approval. Without this gate the loading
-        // screen blindly routes NO_VIABLE cases into credito-aprobado
-        // which renders "¡Felicidades!" regardless of the real decision.
+        // Auto-advance after 4.5 seconds. "¡Felicidades!" (credito-aprobado)
+        // is only for applicants with a REAL, above-threshold CDC score.
+        // Everything else — CONDICIONAL (even real CDC), any _ESTIMADO
+        // (self-score), NO_VIABLE, or missing status — routes to
+        // credito-resultado so the applicant sees the honest decision
+        // instead of a green approval they might not qualify for.
         this._timer = setTimeout(function() {
             var resultado = (self.app.state && self.app.state._resultadoFinal) || {};
-            var s = resultado.status || '';
-            if (s === 'PREAPROBADO' || s === 'PREAPROBADO_ESTIMADO' ||
-                s === 'CONDICIONAL' || s === 'CONDICIONAL_ESTIMADO') {
+            if (resultado.status === 'PREAPROBADO') {
                 self.app.irAPaso('credito-aprobado');
             } else {
-                // NO_VIABLE, ERROR, empty — render the real decision UI
                 self.app.irAPaso('credito-resultado');
             }
         }, 4500);

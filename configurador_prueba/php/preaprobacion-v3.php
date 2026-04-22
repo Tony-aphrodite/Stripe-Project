@@ -180,18 +180,22 @@ if ($person_found === false) {
                        'enganche_min' => $eng_min, 'reasons' => ['GUARDRAIL_SCORE_PTI'],
                        'synth_score' => $synthScore];
         }
-        elseif ($synthScore >= $V3['PRE']['scoreMin'] && $pti_total <= $V3['PRE']['ptiMax']) {
-            $result = ['status' => 'PREAPROBADO', 'pti_total' => round($pti_total, 4),
-                       'enganche_min' => $eng_min, 'enganche_requerido_min' => $eng_min,
-                       'plazo_max_meses' => calcularPlazoMax($synthScore, $pti_total, $V3),
-                       'synth_score' => $synthScore];
-        }
         else {
+            // SIN CDC: self-score can NEVER produce PREAPROBADO. Customer
+            // report 2026-04-23: fake data was reaching "¡Felicidades!"
+            // because a thin-file / CDC-unreachable path let self-score
+            // return PREAPROBADO_ESTIMADO on plausible self-reported
+            // age/income. With no real credit-bureau signal we cannot
+            // confirm ANY claim the applicant made, so the ceiling is
+            // CONDICIONAL_ESTIMADO — which routes to the yellow result
+            // screen (not the green "approved" screen) and requires
+            // either identity re-verification or admin review.
             $eng_req = min(max(calcularEngancheMin($pti_total, $V3), $eng_min), 0.60);
-            $result  = ['status' => 'CONDICIONAL', 'pti_total' => round($pti_total, 4),
+            $result  = ['status' => 'CONDICIONAL_ESTIMADO', 'pti_total' => round($pti_total, 4),
                         'enganche_min' => $eng_min, 'enganche_requerido_min' => $eng_req,
                         'plazo_max_meses' => calcularPlazoMax($synthScore, $pti_total, $V3),
-                        'synth_score' => $synthScore];
+                        'synth_score' => $synthScore,
+                        'reasons' => ['SIN_DATOS_BURO_CREDITICIO']];
         }
     }
 } else {

@@ -124,21 +124,27 @@ var PreaprobacionV3 = {
         };
     },
 
-    // Sin Círculo: evaluación estimada solo por PTI
+    // Sin Círculo: evaluación estimada solo por PTI.
+    // IMPORTANT: without a real credit-bureau score we have NO way to confirm
+    // the applicant's identity, so self-scoring can NEVER produce PREAPROBADO.
+    // The ceiling is CONDICIONAL_ESTIMADO, which routes to the yellow result
+    // screen (not the green "¡Felicidades!" approval). This is what blocks
+    // fake-data applicants from reaching the approval screen when CDC
+    // returned a thin-file response instead of the explicit 404.1.
     _evaluarSinCirculo: function(pti) {
         var cfg    = this.config;
         var engMin = cfg.downPaymentMin;
         if (pti > cfg.KO.ptiExtreme) {
             return { status: 'NO_VIABLE', pti: pti, reasons: ['PTI_EXTREMO_SIN_CIRCULO'] };
         }
-        if (pti <= 0.75) {
-            return { status: 'PREAPROBADO_ESTIMADO', pti: pti, enganche_requerido_min: engMin, plazo_max_meses: 36 };
-        }
+        // PREAPROBADO_ESTIMADO removed — all non-KO self-score results now
+        // collapse to CONDICIONAL_ESTIMADO.
         return {
             status: 'CONDICIONAL_ESTIMADO',
             pti: pti,
             enganche_requerido_min: Math.min(Math.max(this._engancheMin(pti), engMin), 0.60),
-            plazo_max_meses: 24
+            plazo_max_meses: 24,
+            reasons: ['SIN_DATOS_BURO_CREDITICIO']
         };
     },
 

@@ -8,16 +8,15 @@ var PasoCreditoAprobado = {
 
     init: function(app) {
         this.app = app;
-        // FINAL GATE: refuse to render the approval UI if the decision was
-        // anything other than a true approval. This is the last line of
-        // defense — even if an upstream step routes here incorrectly, we
-        // redirect to the real decision screen instead of cheerfully
-        // telling a rejected applicant they were approved.
+        // FINAL GATE: the green "¡Felicidades!" screen is reserved for
+        // applicants whose REAL Círculo de Crédito score crossed the PRE
+        // threshold (status === 'PREAPROBADO'). CONDICIONAL and _ESTIMADO
+        // variants lack the credit-bureau confirmation needed to claim
+        // approval — they bounce to credito-resultado (yellow screen)
+        // instead. Without this strict check, fake-data applicants that
+        // the self-scoring thin-file path passed through would land here.
         var resultado = (app.state && app.state._resultadoFinal) || {};
-        var s = resultado.status || '';
-        var approved = (s === 'PREAPROBADO' || s === 'PREAPROBADO_ESTIMADO' ||
-                        s === 'CONDICIONAL' || s === 'CONDICIONAL_ESTIMADO');
-        if (!approved) {
+        if (resultado.status !== 'PREAPROBADO') {
             app.irAPaso('credito-resultado');
             return;
         }

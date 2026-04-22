@@ -457,19 +457,18 @@ var PasoCreditoConsentimiento = {
             }),
             success: function(resultado) {
                 state._resultadoFinal = resultado;
-                // HARD GATE: any non-approval status must NEVER continue to
-                // credito-loading → credito-aprobado (that path renders
-                // "¡Felicidades!" without re-checking status and was letting
-                // fake-identity NO_VIABLE decisions through). Route straight
-                // to credito-resultado, which renders the actual decision.
-                if (resultado.status !== 'PREAPROBADO' &&
-                    resultado.status !== 'PREAPROBADO_ESTIMADO' &&
-                    resultado.status !== 'CONDICIONAL' &&
-                    resultado.status !== 'CONDICIONAL_ESTIMADO') {
+                // The "¡Felicidades!" approval screen is reserved for
+                // applicants with a REAL Círculo score that crossed the PRE
+                // threshold. CONDICIONAL and every _ESTIMADO variant lack
+                // verified credit-bureau data, so they must render in the
+                // yellow credito-resultado screen (where the applicant can
+                // still proceed if they accept the conditions) — NOT in the
+                // green approval screen. NO_VIABLE lands in resultado too.
+                if (resultado.status === 'PREAPROBADO') {
+                    self.app.irAPaso('credito-loading');
+                } else {
                     self.app.irAPaso('credito-resultado');
-                    return;
                 }
-                self.app.irAPaso('credito-loading');
             },
             error: function() {
                 // Last-resort client-side eval if server endpoint is down
