@@ -297,10 +297,36 @@ if (!is_dir(dirname($logFile))) @mkdir(dirname($logFile), 0755, true);
 @file_put_contents($logFile, json_encode($logEntry) . "\n", FILE_APPEND | LOCK_EX);
 
 // ── Evaluar respuesta ───────────────────────────────────────────────────────
-// NO SILENT FALLBACK: if CDC fails, surface the real error so we can see
-// why. The old "fallback approved" masked 100% failures — customer saw
-// "evaluación estimada" and thought it worked, but no query was ever
-// registered in CDC.
+// Special case: HTTP 404 with code 404.1 "No se encontró a la persona" is a
+// VALID CDC response meaning the person has no credit history. This is
+// common for first-time credit applicants — treat as success with null
+// score so the downstream evaluation (PreaprobacionV3) can handle it as
+// "thin file" (sin historial).
+$parsedResp = json_decode((string)$response, true);
+$isPersonNotFound = $httpCode === 404
+    && isset($parsedResp['errores'][0]['codigo'])
+    && $parsedResp['errores'][0]['codigo'] === '404.1';
+
+if ($isPersonNotFound) {
+    $_SESSION['cdc_score']             = null;
+    $_SESSION['cdc_pago_mensual_buro'] = 0;
+    $_SESSION['cdc_dpd90_flag']        = false;
+    $_SESSION['cdc_dpd_max']           = 0;
+    echo json_encode([
+        'success'           => true,
+        'sin_historial'     => true,
+        'score'             => null,
+        'pago_mensual_buro' => 0,
+        'dpd90_flag'        => false,
+        'dpd_max'           => 0,
+        'num_cuentas'       => 0,
+        'message'           => 'Sin historial crediticio registrado (primer crédito).',
+    ]);
+    exit;
+}
+
+// Real CDC errors (non-2xx, non-404.1) — surface the error instead of
+// silent fallback. The old "fallback approved" masked failures.
 if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
     $_SESSION['cdc_score'] = null;
     http_response_code(502);

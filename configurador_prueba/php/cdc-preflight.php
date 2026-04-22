@@ -416,7 +416,47 @@ render(call('Probe 7: /sandbox/v2/rccficoscore (SANDBOX)', 'https://services.cir
 usleep(400000);
 
 // Probe 8: /v2/rccficoscore (PRODUCTION) with correct body
-render(call('Probe 8: /v2/rccficoscore (PRODUCTION) con body correcto', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body5, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+render(call('Probe 8: /v2/rccficoscore (PRODUCTION) con body nested', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body5, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 9: /v2/rccficoscore PRODUCTION with FLAT body (no persona wrapper)
+// Apigee JSON Threat Protection rejected the nested body — try flat schema
+$bodyFlat = json_encode([
+    'primerNombre'    => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'RFC'             => 'PELJ850315AAA',
+    'nacionalidad'    => 'MX',
+    'direccion'       => 'AV REFORMA 100',
+    'coloniaPoblacion' => 'JUAREZ',
+    'delegacionMunicipio' => 'CUAUHTEMOC',
+    'ciudad'          => 'CIUDAD DE MEXICO',
+    'estado'          => 'CDMX',
+    'CP'              => '03100',
+]);
+render(call('Probe 9: /v2/rccficoscore PRODUCTION con body FLAT', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyFlat, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 10: flat body + nombres field (if that's what production expects)
+$bodyFlat2 = json_encode([
+    'folio'           => $FOLIO,
+    'nombres'         => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'direccion'       => 'AV REFORMA 100',
+    'coloniaPoblacion' => 'JUAREZ',
+    'delegacionMunicipio' => 'CUAUHTEMOC',
+    'ciudad'          => 'CIUDAD DE MEXICO',
+    'estado'          => 'CDMX',
+    'CP'              => '03100',
+]);
+render(call('Probe 10: /v2/rccficoscore flat con folio+nombres', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyFlat2, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 11: PRODUCTION /v2/ficoscore with nested body — see if cert bound for prod
+render(call('Probe 11: /v2/ficoscore PRODUCTION con body nested', 'https://services.circulodecredito.com.mx/v2/ficoscore', $body5, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
 // ── Test 3: alt endpoints ───────────────────────────────────────────────────
