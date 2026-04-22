@@ -404,7 +404,19 @@ $body5 = json_encode(['folio' => $FOLIO, 'persona' => [
         'CP' => '03100',
     ],
 ]]);
-render(call('Probe 5: schema FINAL (coloniaPoblacion + delegacionMunicipio)', 'https://services.circulodecredito.com.mx/v2/ficoscore', $body5, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+render(call('Probe 5: schema FINAL (production /v2/ficoscore)', 'https://services.circulodecredito.com.mx/v2/ficoscore', $body5, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 6: SANDBOX endpoint — app is subscribed mostly to Sandbox products
+render(call('Probe 6: /sandbox/v2/ficoscore (SANDBOX)', 'https://services.circulodecredito.com.mx/sandbox/v2/ficoscore', $body5, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 7: /sandbox/v2/rccficoscore (Reporte Consolidado — Sandbox)
+render(call('Probe 7: /sandbox/v2/rccficoscore (SANDBOX)', 'https://services.circulodecredito.com.mx/sandbox/v2/rccficoscore', $body5, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 8: /v2/rccficoscore (PRODUCTION) with correct body
+render(call('Probe 8: /v2/rccficoscore (PRODUCTION) con body correcto', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $body5, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
 // ── Test 3: alt endpoints ───────────────────────────────────────────────────
