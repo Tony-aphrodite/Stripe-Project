@@ -359,17 +359,36 @@ render(call('hex+headers (no mTLS)', $url, $body, 'hex',    ['type'=>'headers','
 render(call('base64+headers+mTLS', $url, $body, 'base64', ['type'=>'headers','mtls'=>true],  $priv, $certPem, $keyPem)); usleep(400000);
 render(call('hex+basic+mTLS',      $url, $body, 'hex',    ['type'=>'basic','mtls'=>true],    $priv, $certPem, $keyPem));
 
-// ── Test 2b: /v2/ficoscore with CORRECT {folio, persona} body ──────────────
-echo '<h2>Test 2b: /v2/ficoscore con body {folio, persona} — endpoint real</h2>';
-$bodyFicoscore = json_encode([
-    'folio' => defined('CDC_FOLIO') ? CDC_FOLIO : '0000004694',
-    'persona' => [
-        'primerNombre' => 'JUAN', 'apellidoPaterno' => 'PEREZ', 'apellidoMaterno' => 'LOPEZ',
-        'fechaNacimiento' => '1985-03-15', 'RFC' => 'PELJ850315AAA',
-        'domicilio' => ['direccion'=>'AV REFORMA 100','coloniaPoblacion'=>'JUAREZ','delegacionMunicipio'=>'CUAUHTEMOC','ciudad'=>'CIUDAD DE MEXICO','estado'=>'CDMX','CP'=>'03100'],
-    ],
-]);
-render(call('ficoscore · hex+headers+mTLS',   'https://services.circulodecredito.com.mx/v2/ficoscore', $bodyFicoscore, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+// ── Test 2b: /v2/ficoscore body schema discovery ────────────────────────────
+echo '<h2>Test 2b: /v2/ficoscore — descubriendo el schema correcto</h2>';
+$FOLIO = defined('CDC_FOLIO') && CDC_FOLIO ? CDC_FOLIO : '0000004694';
+
+// Probe 1: minimal body — just nombres
+$body1 = json_encode(['folio' => $FOLIO, 'persona' => ['nombres' => 'JUAN']]);
+render(call('Probe 1: solo "nombres"', 'https://services.circulodecredito.com.mx/v2/ficoscore', $body1, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 2: nombres + apellidoPaterno + apellidoMaterno
+$body2 = json_encode(['folio' => $FOLIO, 'persona' => [
+    'nombres' => 'JUAN', 'apellidoPaterno' => 'PEREZ', 'apellidoMaterno' => 'LOPEZ',
+]]);
+render(call('Probe 2: nombres + apellidos', 'https://services.circulodecredito.com.mx/v2/ficoscore', $body2, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 3: nombres + primerApellido + segundoApellido (alt schema)
+$body3 = json_encode(['folio' => $FOLIO, 'persona' => [
+    'nombres' => 'JUAN', 'primerApellido' => 'PEREZ', 'segundoApellido' => 'LOPEZ',
+]]);
+render(call('Probe 3: nombres + primerApellido + segundoApellido', 'https://services.circulodecredito.com.mx/v2/ficoscore', $body3, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 4: add fechaNacimiento + RFC + domicilio
+$body4 = json_encode(['folio' => $FOLIO, 'persona' => [
+    'nombres' => 'JUAN', 'apellidoPaterno' => 'PEREZ', 'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15', 'RFC' => 'PELJ850315AAA',
+    'domicilio' => ['direccion'=>'AV REFORMA 100','colonia'=>'JUAREZ','delegacion'=>'CUAUHTEMOC','ciudad'=>'CDMX','estado'=>'CDMX','CP'=>'03100'],
+]]);
+render(call('Probe 4: body completo variante A', 'https://services.circulodecredito.com.mx/v2/ficoscore', $body4, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
 // ── Test 3: alt endpoints ───────────────────────────────────────────────────
