@@ -29,11 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/config.php';
 
 // Truora migrated their API away from api.truora.com (now blocked at TLS level)
-// to subdomain-based endpoints. Confirmed by truora-diag.php that
-// api.checks.truora.com accepts our existing Truora-API-Key auth.
+// to subdomain-based endpoints. Face match uses the same api.checks.truora.com
+// endpoint with type=face-recognition (same auth as person check).
 define('TRUORA_API_URL',          'https://api.checks.truora.com/v1/checks');
-define('TRUORA_FACE_URL',         'https://api.validations.truora.com/v1/face-validation');
-define('TRUORA_DOC_URL',          'https://api.validations.truora.com/v1/document-validations');
+define('TRUORA_FACE_URL',         'https://api.checks.truora.com/v1/checks');
+define('TRUORA_DOC_URL',          'https://api.checks.truora.com/v1/checks');
 define('TRUORA_POLL_MAX',         20);
 define('TRUORA_POLL_INTERVAL',    2);
 define('TRUORA_FACE_THRESHOLD',   0.70);   // 70% similarity to consider a match
@@ -494,10 +494,16 @@ function truoraFaceMatch(string $imagePath1, string $imagePath2, string $logFile
     if (!TRUORA_API_KEY) return null;
 
     $ch = curl_init(TRUORA_FACE_URL);
+    // Truora api.checks.truora.com face-recognition expects:
+    //   type=face-recognition, country=MX, user_authorized=true
+    //   selfie_image (customer photo) + document_image (ID card photo)
+    // Response includes: face_recognition_score (0-1), status, check_id
     $postFields = [
-        'type'   => 'face-recognition',
-        'image1' => new CURLFile($imagePath1, 'image/jpeg', 'selfie.jpg'),
-        'image2' => new CURLFile($imagePath2, 'image/jpeg', 'ine_frente.jpg'),
+        'country'          => 'MX',
+        'type'             => 'face-recognition',
+        'user_authorized'  => 'true',
+        'selfie_image'     => new CURLFile($imagePath1, 'image/jpeg', 'selfie.jpg'),
+        'document_image'   => new CURLFile($imagePath2, 'image/jpeg', 'ine_frente.jpg'),
     ];
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
@@ -522,18 +528,46 @@ function truoraFaceMatch(string $imagePath1, string $imagePath2, string $logFile
         'response'  => substr((string)$response, 0, 500),
     ]) . "\n", FILE_APPEND | LOCK_EX);
 
-    if ($curlErr || $httpCode < 200 || $httpCode >= 300) return null;
+    // Log to DB for truora-diag visibility
+    try {
+        $pdoFm = getDB();
+        $pdoFm->prepare("INSERT INTO truora_query_log (action, nombre, http_code, body_sent, response, curl_err) VALUES (?,?,?,?,?,?)")
+            ->execute(['face_match', '', $httpCode, 'face-recognition image upload', substr((string)$response, 0, 2000), substr((string)$curlErr, 0, 500)]);
+    } catch (Throwable $e) {}
+
+    // If Truora face endpoint fails, return explicit mismatch + error reason
+    // (NOT null) so downstream logic treats it as a real face-check failure
+    // instead of silently skipping it.
+    if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
+        return [
+            'match'       => false,
+            'similarity'  => null,
+            'check_id'    => null,
+            'error'       => 'face_match_api_error',
+            'http'        => $httpCode,
+            'curl_err'    => $curlErr ?: null,
+        ];
+    }
 
     $data = json_decode($response, true);
-    if (!$data) return null;
+    if (!$data) {
+        return [ 'match' => false, 'similarity' => null, 'check_id' => null, 'error' => 'invalid_response' ];
+    }
 
-    // Truora response fields vary by product version. Support both shapes.
-    $similarity = $data['face_validation']['similarity']
+    // Support multiple Truora response shapes across API versions:
+    //  - Legacy: face_validation.similarity / .match / .check_id
+    //  - New checks API: check.face_recognition_score / .score / .check_id
+    //  - Both: .similarity / .match / .check_id at root
+    $check = $data['check'] ?? $data;
+    $similarity = $check['face_recognition_score']
+               ?? $data['face_validation']['similarity']
+               ?? $check['score']
                ?? $data['similarity']
                ?? $data['score']
                ?? null;
-    $matchFlag  = $data['face_validation']['match'] ?? $data['match'] ?? null;
-    $checkId    = $data['face_validation']['check_id']
+    $matchFlag  = $data['face_validation']['match'] ?? $check['match'] ?? $data['match'] ?? null;
+    $checkId    = $check['check_id']
+               ?? $data['face_validation']['check_id']
                ?? $data['check_id']
                ?? $data['face_recognition_id']
                ?? null;

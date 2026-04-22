@@ -478,13 +478,26 @@ var PasoCreditoIdentidad = {
                 }
 
                 state._truoraResult = res;
-                state._identidadVerificada = true;
 
+                // BLOCK if face match explicitly failed (selfie ≠ INE photo)
                 if (res && res.face && res.face.match === false) {
-                    showError('No pudimos confirmar que la selfie coincide con la foto de tu INE. Por favor vuelve a tomarte la selfie con buena iluminación y rostro despejado.');
+                    var err = 'No pudimos confirmar que la selfie coincide con la foto de tu INE. Toma la selfie con buena iluminación y rostro despejado, usando la MISMA persona que aparece en la INE.';
+                    if (res.face.error === 'face_match_api_error') {
+                        err = 'El servicio de verificación facial está temporalmente no disponible. Vuelve a intentar en un momento.';
+                    } else if (res.face.similarity !== null && res.face.similarity !== undefined) {
+                        err += ' (similitud: ' + Math.round(res.face.similarity * 100) + '%, mínimo 70%)';
+                    }
+                    showError(err, detailFromRes(res.face));
                     return;
                 }
 
+                // BLOCK if overall Truora status is rejected (no face check, bad identity)
+                if (res && res.status === 'rejected') {
+                    showError('No pudimos verificar tu identidad con el gobierno. Revisa que tu nombre, fecha de nacimiento, CURP y estado coincidan con los datos oficiales de tu INE.', detailFromRes(res));
+                    return;
+                }
+
+                state._identidadVerificada = true;
                 self._disarmBeforeUnload();
                 try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
                 self.app.irAPaso('credito-enganche');
