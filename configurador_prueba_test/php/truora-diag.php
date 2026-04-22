@@ -279,6 +279,55 @@ if (!empty($_GET['test'])) {
         ['country'=>'MX','image1'=>$f1,'image2'=>$f2],
         $apiKey);
 
+    // F6: Query string for country+type, multipart body for images only
+    faceProbe('F6: ?country=MX&type=face-recognition → body only images',
+        'https://api.checks.truora.com/v1/checks?country=MX&type=face-recognition&user_authorized=true',
+        ['selfie_image'=>new CURLFile($tmpImg1,'image/jpeg','selfie.jpg'),'document_image'=>new CURLFile($tmpImg2,'image/jpeg','ine.jpg')],
+        $apiKey);
+
+    // F7: Create check first (no images), then upload images to it
+    echo '<div class="step"><strong>F7: 2-step (create → upload)</strong>';
+    $ch = curl_init('https://api.checks.truora.com/v1/checks');
+    curl_setopt_array($ch, [
+        CURLOPT_POST=>true,
+        CURLOPT_POSTFIELDS=>http_build_query(['country'=>'MX','type'=>'face-recognition','user_authorized'=>'true']),
+        CURLOPT_HTTPHEADER=>['Truora-API-Key: '.$apiKey,'Content-Type: application/x-www-form-urlencoded'],
+        CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>15,
+    ]);
+    $r7 = curl_exec($ch); $c7 = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+    echo '<br>Step 1 (create): HTTP ' . $c7 . '<pre style="max-height:100px;font-size:10px">' . htmlspecialchars(substr((string)$r7, 0, 500)) . '</pre>';
+    $d7 = json_decode($r7, true);
+    $fcId = $d7['check']['check_id'] ?? $d7['check_id'] ?? null;
+    if ($fcId) {
+        // Upload images
+        $ch = curl_init('https://api.checks.truora.com/v1/checks/'.$fcId.'/uploads');
+        curl_setopt_array($ch, [
+            CURLOPT_POST=>true,
+            CURLOPT_POSTFIELDS=>['selfie_image'=>new CURLFile($tmpImg1,'image/jpeg','selfie.jpg'),'document_image'=>new CURLFile($tmpImg2,'image/jpeg','ine.jpg')],
+            CURLOPT_HTTPHEADER=>['Truora-API-Key: '.$apiKey],
+            CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>15,
+        ]);
+        $r7b = curl_exec($ch); $c7b = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+        echo 'Step 2 (upload): HTTP ' . $c7b . '<pre style="max-height:120px;font-size:10px">' . htmlspecialchars(substr((string)$r7b, 0, 600)) . '</pre>';
+    }
+    echo '</div>';
+
+    // F8: JSON body with image URLs (Truora fetches them)
+    faceProbe('F8: JSON body + image URLs',
+        'https://api.checks.truora.com/v1/checks',
+        json_encode([
+            'country'=>'MX','type'=>'face-recognition','user_authorized'=>true,
+            'selfie_url'=>'https://www.gravatar.com/avatar/test?s=200',
+            'document_url'=>'https://www.gravatar.com/avatar/test?s=200',
+        ]),
+        $apiKey);
+
+    // F9: same as F1 but without user_authorized in body
+    faceProbe('F9: mixed multipart (no user_authorized)',
+        'https://api.checks.truora.com/v1/checks',
+        ['country'=>'MX','type'=>'face-recognition','selfie_image'=>new CURLFile($tmpImg1,'image/jpeg','selfie.jpg'),'document_image'=>new CURLFile($tmpImg2,'image/jpeg','ine.jpg')],
+        $apiKey);
+
     @unlink($tmpImg1); @unlink($tmpImg2);
 }
 

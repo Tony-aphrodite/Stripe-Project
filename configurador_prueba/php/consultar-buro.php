@@ -213,6 +213,10 @@ if (CDC_PASS)      $headers[] = 'password: ' . CDC_PASS;
 if ($signatureHex) $headers[] = 'x-signature: ' . $signatureHex;
 
 $ch = curl_init();
+// Capture response headers so we can verify CDC's x-signature against the
+// response body (required per apihub docs — responses are signed with CDC's
+// private key; we verify with the public cert downloaded from the portal).
+$responseHeaders = [];
 $curlOpts = [
     CURLOPT_URL            => CDC_BASE_URL,
     CURLOPT_POST           => true,
@@ -222,6 +226,16 @@ $curlOpts = [
     CURLOPT_TIMEOUT        => 30,
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_SSL_VERIFYHOST => 2,
+    CURLOPT_HEADERFUNCTION => function ($ch, $header) use (&$responseHeaders) {
+        $len = strlen($header);
+        $pos = strpos($header, ':');
+        if ($pos !== false) {
+            $name = strtolower(trim(substr($header, 0, $pos)));
+            $val  = trim(substr($header, $pos + 1));
+            $responseHeaders[$name] = $val;
+        }
+        return $len;
+    },
 ];
 
 // Mutual TLS — many CDC v2 products require the client certificate at the
@@ -246,21 +260,54 @@ curl_close($ch);
 if ($tmpCert) @unlink($tmpCert);
 if ($tmpKey)  @unlink($tmpKey);
 
+// ── Verify response signature with CDC's server certificate ────────────────
+// apihub signs every response (payload) with CDC's private key. We must
+// verify against the public cert downloaded from the portal (certs/
+// cdc_server_certificate.pem). Encoding isn't documented for v2 — try HEX
+// first (matches request convention) then base64 (matches SecurityTest v1).
+// Failure doesn't abort the flow, but is logged so operators can audit.
+$responseSigStatus = 'not_checked';
+$cdcServerCertFile = __DIR__ . '/certs/cdc_server_certificate.pem';
+$respSigHeader     = $responseHeaders['x-signature'] ?? '';
+if (!empty($response) && $respSigHeader !== '' && file_exists($cdcServerCertFile)) {
+    $cdcPubKey = @openssl_pkey_get_public(@file_get_contents($cdcServerCertFile));
+    if ($cdcPubKey) {
+        $attempts = array_filter([
+            @hex2bin($respSigHeader),
+            base64_decode($respSigHeader, true) ?: null,
+        ]);
+        $responseSigStatus = 'invalid';
+        foreach ($attempts as $sigBin) {
+            if (@openssl_verify((string)$response, $sigBin, $cdcPubKey, OPENSSL_ALGO_SHA256) === 1) {
+                $responseSigStatus = 'valid';
+                break;
+            }
+        }
+    } else {
+        $responseSigStatus = 'cdc_cert_unreadable';
+    }
+} elseif ($respSigHeader === '') {
+    $responseSigStatus = 'no_sig_header';
+} elseif (!file_exists($cdcServerCertFile)) {
+    $responseSigStatus = 'cdc_cert_missing';
+}
+
 // ── Logging (file + DB) ─────────────────────────────────────────────────────
 // DB log is the reliable source — file logs need a writable logs/ dir which
 // Plesk hostings often deny.
 $logEntry = [
-    'timestamp' => date('c'),
-    'nombre'    => $primerNombre . ' ' . $apellidoPaterno,
-    'rfc_used'  => $rfc,
-    'estado'    => $estadoNorm,
-    'cp'        => $cp,
-    'has_sig'   => $signatureHex !== '',
-    'sig_len'   => strlen($signatureHex),
-    'body_sent' => substr($jsonBody, 0, 2000),
-    'httpCode'  => $httpCode,
-    'curlErr'   => $curlErr,
-    'response'  => substr((string)$response, 0, 2000),
+    'timestamp'    => date('c'),
+    'nombre'       => $primerNombre . ' ' . $apellidoPaterno,
+    'rfc_used'     => $rfc,
+    'estado'       => $estadoNorm,
+    'cp'           => $cp,
+    'has_sig'      => $signatureHex !== '',
+    'sig_len'      => strlen($signatureHex),
+    'body_sent'    => substr($jsonBody, 0, 2000),
+    'httpCode'     => $httpCode,
+    'curlErr'      => $curlErr,
+    'response'     => substr((string)$response, 0, 2000),
+    'resp_sig_ok'  => $responseSigStatus,
 ];
 try {
     $pdoLog = getDB();

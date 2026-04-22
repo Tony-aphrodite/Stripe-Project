@@ -622,11 +622,19 @@ function truoraDocumentValidation(string $ineFrontePath, string $ineReversoPath,
     if (!TRUORA_API_KEY) return null;
 
     $ch = curl_init(TRUORA_DOC_URL);
+    // /v1/checks mandates type + user_authorized for API key V1+. The
+    // "document-validation" type value assumes the customer's Truora account
+    // has a matching custom type configured in the dashboard. If the account
+    // only supports document validation via the Digital Identity flow
+    // (POST /v1/processes), this path will 400 — enable the feature flag
+    // after verifying the dashboard has a "document-validation" custom type.
     $postFields = [
-        'country'        => 'MX',
-        'document_type'  => 'national-id',
-        'front_image'    => new CURLFile($ineFrontePath,  'image/jpeg', 'ine_frente.jpg'),
-        'back_image'     => new CURLFile($ineReversoPath, 'image/jpeg', 'ine_reverso.jpg'),
+        'country'         => 'MX',
+        'type'            => 'document-validation',
+        'user_authorized' => 'true',
+        'document_type'   => 'national-id',
+        'front_image'     => new CURLFile($ineFrontePath,  'image/jpeg', 'ine_frente.jpg'),
+        'back_image'      => new CURLFile($ineReversoPath, 'image/jpeg', 'ine_reverso.jpg'),
     ];
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
