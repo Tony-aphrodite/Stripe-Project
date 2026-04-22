@@ -166,7 +166,11 @@ window.AD_preaprobaciones = (function(){
       if (!ids.length) return;
       var msg = '⚠️ ELIMINACIÓN PERMANENTE\n\n' + ids.length + ' solicitud(es) serán BORRADAS de la base de datos.\n\nEsta acción NO se puede deshacer (solo queda audit log).\n\nEscriba "ELIMINAR" para confirmar:';
       var typed = prompt(msg);
-      if (typed !== 'ELIMINAR') return;
+      if (typed === null) return;                         // Cancel
+      if (String(typed).trim().toUpperCase() !== 'ELIMINAR') {
+        alert('Texto incorrecto. Debes escribir exactamente: ELIMINAR');
+        return;
+      }
       ADApp.api('preaprobaciones/eliminar.php', {
         method:'POST', contentType:'application/json',
         data: JSON.stringify({ ids: ids, modo: 'eliminar' })
@@ -302,7 +306,11 @@ window.AD_preaprobaciones = (function(){
     $('#apEditDelete').on('click', function(){
       var msg = '⚠️ ELIMINACIÓN PERMANENTE\n\nSolicitud de "' + fullName + '" será BORRADA de la base de datos.\n\nNo se puede deshacer (solo audit log).\n\nEscriba "ELIMINAR" para confirmar:';
       var typed = prompt(msg);
-      if (typed !== 'ELIMINAR') return;
+      if (typed === null) return;                         // Cancel
+      if (String(typed).trim().toUpperCase() !== 'ELIMINAR') {
+        alert('Texto incorrecto. Debes escribir exactamente: ELIMINAR');
+        return;
+      }
       ADApp.api('preaprobaciones/eliminar.php', {
         method:'POST', contentType:'application/json',
         data: JSON.stringify({ id: row.id, modo: 'eliminar' })
