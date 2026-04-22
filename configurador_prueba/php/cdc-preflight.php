@@ -391,6 +391,22 @@ $body4 = json_encode(['folio' => $FOLIO, 'persona' => [
 render(call('Probe 4: body completo variante A', 'https://services.circulodecredito.com.mx/v2/ficoscore', $body4, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
+// Probe 5: final schema — coloniaPoblacion + delegacionMunicipio
+$body5 = json_encode(['folio' => $FOLIO, 'persona' => [
+    'nombres' => 'JUAN', 'apellidoPaterno' => 'PEREZ', 'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'domicilio' => [
+        'direccion' => 'AV REFORMA 100',
+        'coloniaPoblacion' => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad' => 'CIUDAD DE MEXICO',
+        'estado' => 'CDMX',
+        'CP' => '03100',
+    ],
+]]);
+render(call('Probe 5: schema FINAL (coloniaPoblacion + delegacionMunicipio)', 'https://services.circulodecredito.com.mx/v2/ficoscore', $body5, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
 // ── Test 3: alt endpoints ───────────────────────────────────────────────────
 echo '<h2>Test 3: endpoints alternos</h2>';
 foreach ([

@@ -130,23 +130,25 @@ $estadoNorm = cdcEstadoEnum($estado);
 //                  fechaNacimiento, RFC, domicilio{...} } }
 // Confirmed by preflight diagnostic returning 400 "Object has missing
 // required properties (['folio','persona'])".
-// FICO Score v2 MX schema uses "nombres" (not "primerNombre") and unwrapped
-// domicilio fields. Field names confirmed by 400 schema errors from CDC.
+// FICO Score v2 MX schema — field names confirmed by 400 schema probes:
+//   persona required:   nombres, apellidoPaterno, apellidoMaterno, fechaNacimiento, domicilio
+//   domicilio required: coloniaPoblacion, delegacionMunicipio (+ other fields)
+//   RFC is OPTIONAL (not in required list)
 $persona = [
     'nombres'         => $primerNombre,
     'apellidoPaterno' => $apellidoPaterno,
     'apellidoMaterno' => $apellidoMaterno ?: 'X',
     'fechaNacimiento' => $fechaNacimiento,
-    'RFC'             => $rfc,
     'domicilio' => [
-        'direccion' => $direccion ?: 'NO DISPONIBLE',
-        'colonia'   => $colonia ?: 'CENTRO',
-        'delegacion'=> $municipio ?: $ciudad ?: 'NO DISPONIBLE',
-        'ciudad'    => $ciudad ?: 'NO DISPONIBLE',
-        'estado'    => $estadoNorm,
-        'CP'        => $cp ?: '00000',
+        'direccion'           => $direccion ?: 'NO DISPONIBLE',
+        'coloniaPoblacion'    => $colonia ?: 'CENTRO',
+        'delegacionMunicipio' => $municipio ?: $ciudad ?: 'NO DISPONIBLE',
+        'ciudad'              => $ciudad ?: 'NO DISPONIBLE',
+        'estado'              => $estadoNorm,
+        'CP'                  => $cp ?: '00000',
     ],
 ];
+if ($rfc)  $persona['RFC']  = $rfc;
 if ($curp) $persona['CURP'] = $curp;
 
 $requestBody = [
