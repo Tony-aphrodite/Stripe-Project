@@ -16,19 +16,25 @@ window.AD_preaprobaciones = (function(){
   function fmtPct(n){ if (n == null) return '—'; return Math.round(Number(n) * 100) + '%'; }
 
   function statusBadge(s){
-    var color = { PREAPROBADO: '#10b981', CONDICIONAL: '#d97706', NO_VIABLE: '#dc2626' }[s] || '#6b7280';
-    return '<span style="background:'+color+';color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700">'+esc(s)+'</span>';
+    var theme = {
+      PREAPROBADO: { bg:'#10b981', label:'PREAPROBADO' },
+      CONDICIONAL: { bg:'#d97706', label:'CONDICIONAL' },
+      NO_VIABLE:   { bg:'#dc2626', label:'NO VIABLE'   }
+    }[s] || { bg:'#6b7280', label: s };
+    return '<span style="background:'+theme.bg+';color:#fff;padding:4px 10px;border-radius:12px;font-size:10px;font-weight:800;letter-spacing:0.3px;white-space:nowrap">'+esc(theme.label)+'</span>';
   }
 
   function segBadge(s){
-    var styles = {
-      nuevo:       'background:#fef3c7;color:#78350f',
-      contactado:  'background:#dbeafe;color:#1e40af',
-      vendido:     'background:#d1fae5;color:#065f46',
-      descartado:  'background:#f3f4f6;color:#6b7280'
+    var themes = {
+      nuevo:      { bg:'#fef3c7', tx:'#78350f', dot:'#f59e0b', lbl:'Nuevo' },
+      contactado: { bg:'#dbeafe', tx:'#1e40af', dot:'#3b82f6', lbl:'Contactado' },
+      vendido:    { bg:'#d1fae5', tx:'#065f46', dot:'#10b981', lbl:'Vendido' },
+      descartado: { bg:'#f3f4f6', tx:'#6b7280', dot:'#9ca3af', lbl:'Descartado' }
     };
-    var st = styles[s] || styles.nuevo;
-    return '<span style="'+st+';padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700">'+esc(s||'nuevo')+'</span>';
+    var theme = themes[s] || themes.nuevo;
+    return '<span style="background:'+theme.bg+';color:'+theme.tx+';padding:3px 10px 3px 8px;border-radius:12px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px">'
+         + '<span style="width:7px;height:7px;border-radius:50%;background:'+theme.dot+';display:inline-block"></span>'
+         + esc(theme.lbl)+'</span>';
   }
 
   function paint(r){
@@ -126,58 +132,130 @@ window.AD_preaprobaciones = (function(){
   function showDetail(id, rows){
     var row = (rows || []).find(function(r){ return r.id == id; });
     if (!row) return;
-    var fullName = [row.nombre, row.apellido_paterno, row.apellido_materno].filter(Boolean).join(' ') || '—';
-    var html = '<h2>Solicitud #'+row.id+' — '+esc(fullName)+'</h2>';
-    html += '<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:13px;margin:10px 0">';
-    html += '<tr><td><strong>Email</strong></td><td>'+esc(row.email||'—')+'</td>';
-    html += '<td><strong>Teléfono</strong></td><td>'+esc(row.telefono||'—')+'</td></tr>';
-    html += '<tr><td><strong>Fecha nac.</strong></td><td>'+esc(row.fecha_nacimiento||'—')+'</td>';
-    html += '<td><strong>CP</strong></td><td>'+esc(row.cp||'—')+'</td></tr>';
-    html += '<tr><td><strong>Ciudad / Estado</strong></td><td colspan="3">'+esc((row.ciudad||'—')+' / '+(row.estado||'—'))+'</td></tr>';
-    html += '<tr><td colspan="4" style="background:#f8fafc"><strong>Crédito solicitado</strong></td></tr>';
-    html += '<tr><td><strong>Modelo</strong></td><td>'+esc(row.modelo||'—')+'</td>';
-    html += '<td><strong>Precio</strong></td><td>'+fmtMoney(row.precio_contado)+'</td></tr>';
-    html += '<tr><td><strong>Ingreso mensual</strong></td><td>'+fmtMoney(row.ingreso_mensual)+'</td>';
-    html += '<td><strong>Pago semanal</strong></td><td>'+fmtMoney(row.pago_semanal)+'</td></tr>';
-    html += '<tr><td><strong>PTI</strong></td><td>'+fmtPct(row.pti_total)+'</td>';
-    html += '<td><strong>Score</strong></td><td>'+(row.score||row.synth_score||'—')+(row.synth_score?' <small>(sintético)</small>':'')+'</td></tr>';
-    html += '<tr><td colspan="4" style="background:#f8fafc"><strong>Decisión</strong></td></tr>';
-    html += '<tr><td><strong>Status</strong></td><td>'+statusBadge(row.status)+'</td>';
-    html += '<td><strong>Source</strong></td><td>'+esc(row.circulo_source||'—')+'</td></tr>';
-    html += '<tr><td><strong>Enganche req.</strong></td><td>'+fmtPct(row.enganche_requerido)+'</td>';
-    html += '<td><strong>Plazo máx</strong></td><td>'+(row.plazo_max||'—')+' meses</td></tr>';
-    html += '<tr><td><strong>Truora ID OK</strong></td><td colspan="3">'+(row.truora_ok==1?'✅ Sí':'❌ No / desconocido')+'</td></tr>';
-    html += '</table>';
+    var fullName = [row.nombre, row.apellido_paterno, row.apellido_materno].filter(Boolean).join(' ') || 'Sin nombre';
 
-    html += '<h3>Seguimiento</h3>';
-    html += '<select id="apEditSeg" style="padding:8px;width:100%;margin-bottom:10px">';
+    // Status color theme
+    var statusColors = {
+      PREAPROBADO: { bg: '#10b981', text: '#fff', light: '#d1fae5', dark: '#065f46' },
+      CONDICIONAL: { bg: '#d97706', text: '#fff', light: '#fef3c7', dark: '#78350f' },
+      NO_VIABLE:   { bg: '#dc2626', text: '#fff', light: '#fee2e2', dark: '#991b1b' }
+    };
+    var color = statusColors[row.status] || statusColors.NO_VIABLE;
+
+    var html = '';
+    // ── Header banner ─────────────────────────────────────────────────────
+    html += '<div style="background:linear-gradient(135deg,'+color.bg+',#0ea5e9);color:#fff;padding:24px 28px;border-radius:12px 12px 0 0;margin:-20px -20px 0 -20px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">';
+    html += '<div><div style="font-size:13px;opacity:0.85;margin-bottom:4px">SOLICITUD #'+row.id+'</div>';
+    html += '<div style="font-size:24px;font-weight:800;line-height:1.2">'+esc(fullName)+'</div>';
+    html += '<div style="font-size:13px;opacity:0.85;margin-top:6px">'+esc(row.email||'sin email')+(row.telefono?' · '+esc(row.telefono):'')+'</div></div>';
+    html += '<div style="background:#fff;color:'+color.bg+';padding:8px 16px;border-radius:6px;font-weight:800;font-size:14px;letter-spacing:0.5px">'+esc(row.status)+'</div>';
+    html += '</div></div>';
+
+    // ── Decision summary cards ─────────────────────────────────────────────
+    html += '<div style="background:'+color.light+';color:'+color.dark+';padding:18px 28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin:0 -20px 20px -20px">';
+    html += summaryCard('Enganche requerido', row.enganche_requerido ? Math.round(row.enganche_requerido*100)+'%' : '—');
+    html += summaryCard('Plazo máximo', (row.plazo_max||'—')+' meses');
+    html += summaryCard('PTI', fmtPct(row.pti_total));
+    html += summaryCard('Score', (row.score || row.synth_score || '—') + (row.synth_score && !row.score ? ' (est.)' : ''));
+    html += '</div>';
+
+    // ── Two-column body ──────────────────────────────────────────────────
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0 8px">';
+
+    // Persona
+    html += '<div>';
+    html += sectionTitle('👤', 'Datos personales');
+    html += dataRow('Email', row.email || '—');
+    html += dataRow('Teléfono', row.telefono || '—');
+    html += dataRow('Fecha nac.', row.fecha_nacimiento || '—');
+    html += dataRow('CP', row.cp || '—');
+    html += dataRow('Ciudad', row.ciudad || '—');
+    html += dataRow('Estado', row.estado || '—');
+    html += '</div>';
+
+    // Crédito
+    html += '<div>';
+    html += sectionTitle('🏍', 'Crédito solicitado');
+    html += dataRow('Modelo', row.modelo || '—');
+    html += dataRow('Precio moto', fmtMoney(row.precio_contado));
+    html += dataRow('Ingreso mensual', fmtMoney(row.ingreso_mensual));
+    html += dataRow('Pago semanal', fmtMoney(row.pago_semanal));
+    html += dataRow('Pago mensual', fmtMoney(row.pago_mensual));
+    html += dataRow('Source', sourceLabel(row.circulo_source));
+    html += dataRow('Truora ID', row.truora_ok == 1 ? '<span style="color:#10b981;font-weight:700">✓ Verificado</span>' : '<span style="color:#dc2626">✗ No verificado</span>');
+    html += '</div>';
+
+    html += '</div>'; // end grid
+
+    // ── Seguimiento section ──────────────────────────────────────────────
+    html += '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:20px;margin:24px 8px 8px 8px">';
+    html += '<div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#374151;display:flex;align-items:center;gap:8px">';
+    html += '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+    html += 'Seguimiento de venta</div>';
+
+    html += '<label style="font-size:12px;color:#6b7280;display:block;margin-bottom:6px">Estado</label>';
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">';
     ['nuevo','contactado','vendido','descartado'].forEach(function(s){
-      html += '<option value="'+s+'"'+(row.seguimiento===s?' selected':'')+'>'+s+'</option>';
+      var isActive = (row.seguimiento || 'nuevo') === s;
+      var bgC = isActive ? (s==='vendido'?'#10b981':s==='contactado'?'#3b82f6':s==='descartado'?'#9ca3af':'#f59e0b') : '#fff';
+      var txC = isActive ? '#fff' : '#374151';
+      var brdC = isActive ? bgC : '#d1d5db';
+      html += '<label style="cursor:pointer;background:'+bgC+';color:'+txC+';border:2px solid '+brdC+';padding:10px;border-radius:8px;text-align:center;font-weight:600;font-size:13px;transition:all .15s">';
+      html += '<input type="radio" name="apSegRadio" value="'+s+'" style="display:none"'+(isActive?' checked':'')+'>';
+      html += s.charAt(0).toUpperCase()+s.slice(1)+'</label>';
     });
-    html += '</select>';
-    html += '<textarea id="apEditNotas" rows="4" placeholder="Notas (visita, llamada, etc)" style="width:100%;padding:8px;">'+esc(row.notas_admin||'')+'</textarea>';
-    html += '<div style="margin-top:10px;display:flex;gap:8px">';
-    html += '<button id="apEditSave" class="ad-btn">Guardar</button>';
-    html += '<button id="apEditClose" class="ad-btn ghost">Cerrar</button>';
+    html += '</div>';
+
+    html += '<label style="font-size:12px;color:#6b7280;display:block;margin-bottom:6px">Notas (llamada, visita, recordatorio, etc.)</label>';
+    html += '<textarea id="apEditNotas" rows="4" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box">'+esc(row.notas_admin||'')+'</textarea>';
+    html += '</div>';
+
+    // ── Action bar ───────────────────────────────────────────────────────
+    html += '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;padding:0 8px">';
+    html += '<button id="apEditClose" style="padding:10px 22px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:6px;font-weight:600;cursor:pointer">Cerrar</button>';
+    html += '<button id="apEditSave" style="padding:10px 22px;background:'+color.bg+';color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer">💾 Guardar cambios</button>';
     html += '</div>';
 
     ADApp.modal(html);
 
+    // Make seguimiento radios visually clickable as cards
+    $('input[name="apSegRadio"]').on('change', function(){
+      $('label').filter(function(){ return $(this).find('input[name="apSegRadio"]').length; }).each(function(){
+        var $lbl = $(this), checked = $lbl.find('input').is(':checked');
+        var s = $lbl.find('input').val();
+        var bgC = checked ? (s==='vendido'?'#10b981':s==='contactado'?'#3b82f6':s==='descartado'?'#9ca3af':'#f59e0b') : '#fff';
+        $lbl.css({background: bgC, color: checked ? '#fff' : '#374151', borderColor: checked ? bgC : '#d1d5db'});
+      });
+    });
+
     $('#apEditSave').on('click', function(){
+      var seg = $('input[name="apSegRadio"]:checked').val() || 'nuevo';
       ADApp.api('preaprobaciones/actualizar.php', {
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({
-          id: row.id,
-          seguimiento: $('#apEditSeg').val(),
-          notas_admin: $('#apEditNotas').val()
-        })
-      }).done(function(){
-        ADApp.closeModal();
-        load();
-      });
+        data: JSON.stringify({ id: row.id, seguimiento: seg, notas_admin: $('#apEditNotas').val() })
+      }).done(function(){ ADApp.closeModal(); load(); });
     });
     $('#apEditClose').on('click', function(){ ADApp.closeModal(); });
+  }
+
+  function summaryCard(label, value) {
+    return '<div style="text-align:center"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;opacity:0.7;margin-bottom:4px">'+esc(label)+'</div>'
+         + '<div style="font-size:20px;font-weight:800">'+esc(value)+'</div></div>';
+  }
+  function sectionTitle(icon, txt) {
+    return '<div style="font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e5e7eb;padding-bottom:8px;margin-bottom:12px">'+icon+' '+esc(txt)+'</div>';
+  }
+  function dataRow(label, value) {
+    return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:13px">'
+         + '<span style="color:#6b7280">'+esc(label)+'</span>'
+         + '<span style="font-weight:600;color:#111827;text-align:right">'+value+'</span></div>';
+  }
+  function sourceLabel(s) {
+    if (s === 'real') return '<span style="color:#10b981;font-weight:700">CDC real</span>';
+    if (s === 'estimado') return '<span style="color:#d97706;font-weight:700">Score estimado</span>';
+    return esc(s || '—');
   }
 
   return { render: render };
