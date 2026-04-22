@@ -45,34 +45,66 @@ if (!$apiKey) {
 }
 echo '</div>';
 
-// 2. Test ping
+// 2. SSL handshake diagnosis — try multiple TLS configurations
 if (!empty($_GET['test'])) {
-    echo '<h2>2. Test create_check</h2><div class="step">';
+    echo '<h2>2. Test SSL/TLS — probando múltiples configuraciones</h2>';
+
     $body = http_build_query([
         'country' => 'MX', 'type' => 'identity', 'user_authorized' => 'true',
         'first_name' => 'JUAN', 'last_name' => 'GARCIA LOPEZ',
         'date_of_birth' => '1985-03-15', 'phone_number' => '5512345678',
         'email' => 'test@voltika.mx',
     ]);
-    $ch = curl_init('https://api.truora.com/v1/checks');
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
-        CURLOPT_HTTPHEADER => ['Truora-API-Key: ' . $apiKey, 'Content-Type: application/x-www-form-urlencoded'],
-        CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 30,
-    ]);
-    $resp = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-    echo '<strong>HTTP:</strong> ' . $code . '<br>';
-    if ($err) echo '<span class="err">curl error: ' . htmlspecialchars($err) . '</span><br>';
-    if ($code === 200 || $code === 201) echo '<span class="ok">✅ Truora API responde — sistema accesible</span>';
-    elseif ($code === 401 || $code === 403) echo '<span class="err">❌ HTTP ' . $code . ' — API key sin permisos</span>';
-    else echo '<span class="err">❌ HTTP ' . $code . '</span>';
-    echo '<pre>' . htmlspecialchars($resp ?: '(vacío)') . '</pre>';
-    echo '</div>';
+
+    function truoraTry($label, $opts, $body, $apiKey) {
+        $ch = curl_init('https://api.truora.com/v1/checks');
+        $verboseStream = fopen('php://temp', 'w+');
+        $base = [
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => ['Truora-API-Key: ' . $apiKey, 'Content-Type: application/x-www-form-urlencoded'],
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20,
+            CURLOPT_VERBOSE => true, CURLOPT_STDERR => $verboseStream,
+        ];
+        curl_setopt_array($ch, $base + $opts);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+        rewind($verboseStream);
+        $verbose = stream_get_contents($verboseStream);
+        fclose($verboseStream);
+        $css = ($code >= 200 && $code < 500 && $code != 0) ? 'ok' : 'err';
+        echo '<div class="step">';
+        echo '<strong>' . htmlspecialchars($label) . '</strong> → <span class="' . $css . '">HTTP ' . $code . '</span><br>';
+        if ($err) echo '<span class="err">curl: ' . htmlspecialchars($err) . '</span><br>';
+        echo '<details><summary>Verbose log</summary><pre>' . htmlspecialchars(substr($verbose, 0, 2500)) . '</pre></details>';
+        if ($resp) echo '<pre style="max-height:150px">' . htmlspecialchars(substr($resp, 0, 800)) . '</pre>';
+        echo '</div>';
+        return ['code' => $code, 'err' => $err];
+    }
+
+    truoraTry('A. Default (no TLS forcing)', [], $body, $apiKey);
+    truoraTry('B. Force TLS 1.2', [CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2], $body, $apiKey);
+    truoraTry('C. Force TLS 1.3', [CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_3], $body, $apiKey);
+    truoraTry('D. TLS 1.2 + custom UA', [CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2, CURLOPT_USERAGENT => 'Mozilla/5.0'], $body, $apiKey);
+    truoraTry('E. TLS 1.2 + cipher list (modern)', [
+        CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+        CURLOPT_SSL_CIPHER_LIST => 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256',
+    ], $body, $apiKey);
+    truoraTry('F. SSL_VERIFYPEER off (DEBUG only)', [
+        CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+        CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => false,
+    ], $body, $apiKey);
+    truoraTry('G. HTTP/1.1 forced', [
+        CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    ], $body, $apiKey);
 } else {
-    echo '<p><a class="btn" href="?key=voltika_cdc_2026&test=1">🚀 Ejecutar test ping a Truora</a></p>';
+    echo '<h2>2. Probar SSL handshake</h2>';
+    echo '<p><a class="btn" href="?key=voltika_cdc_2026&test=1">🚀 Probar 7 configuraciones SSL</a></p>';
+    echo '<div class="step"><strong>OpenSSL version on this server:</strong> ' . htmlspecialchars(OPENSSL_VERSION_TEXT) . '<br>';
+    echo '<strong>cURL version:</strong> ' . htmlspecialchars(curl_version()['version']) . '<br>';
+    echo '<strong>cURL SSL version:</strong> ' . htmlspecialchars(curl_version()['ssl_version']) . '</div>';
 }
 
 // 3. Recent Truora calls
