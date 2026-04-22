@@ -714,6 +714,69 @@ if ($tipo === 'seguro') {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// RECIBO — redirect to Stripe's hosted receipt page for this payment
+// ═══════════════════════════════════════════════════════════════════════
+// Introduced 2026-04-23 per customer brief: customers need one-click access
+// to a clean, branded receipt. Stripe already hosts a fully-formatted page
+// per charge, so we just redirect there — no PDF generation, no data
+// duplication.
+if ($tipo === 'recibo' || $tipo === 'comprobante_contado') {
+    $piId = (string)($trans['stripe_pi'] ?? '');
+    if (!$piId) {
+        header('Content-Type: application/json');
+        portalJsonOut(['error' => 'No hay recibo disponible — la compra no tiene PaymentIntent asociado'], 404);
+    }
+
+    // Config file lives next to stripe-webhook.php in the configurador tree.
+    $cfgPath = null;
+    foreach ([
+        __DIR__ . '/../../../configurador_prueba/php/config.php',
+        __DIR__ . '/../../../configurador_prueba_test/php/config.php',
+    ] as $_p) { if (is_file($_p)) { $cfgPath = $_p; break; } }
+    if ($cfgPath) { try { require_once $cfgPath; } catch (Throwable $e) {} }
+
+    $stripeKey = defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : '';
+    if (!$stripeKey) {
+        header('Content-Type: application/json');
+        portalJsonOut(['error' => 'Stripe no configurado'], 500);
+    }
+
+    // Retrieve PaymentIntent expanded with charges.
+    $ch = curl_init('https://api.stripe.com/v1/payment_intents/' . urlencode($piId) . '?expand[]=latest_charge');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $stripeKey],
+        CURLOPT_TIMEOUT        => 15,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $receiptUrl = null;
+    if ($code === 200 && ($data = json_decode($resp, true))) {
+        // Preferred: latest_charge.receipt_url (Stripe's hosted receipt page)
+        $receiptUrl = $data['latest_charge']['receipt_url']
+                   ?? $data['charges']['data'][0]['receipt_url']
+                   ?? null;
+    }
+
+    if ($receiptUrl) {
+        header('Location: ' . $receiptUrl, true, 302);
+        exit;
+    }
+
+    // Fallback: for OXXO/SPEI or PIs without a card charge yet, hand back
+    // the customer_portal-style hosted voucher if available.
+    if (!empty($data['next_action']['oxxo_display_details']['hosted_voucher_url'])) {
+        header('Location: ' . $data['next_action']['oxxo_display_details']['hosted_voucher_url'], true, 302);
+        exit;
+    }
+
+    header('Content-Type: application/json');
+    portalJsonOut(['error' => 'Recibo aun no disponible en Stripe para esta compra'], 404);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // DEFAULT: unknown tipo
 // ═══════════════════════════════════════════════════════════════════════
 header('Content-Type: application/json');

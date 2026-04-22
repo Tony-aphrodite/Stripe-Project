@@ -85,27 +85,18 @@ window.VK_inicio = (function(){
   //  Customer brief 2026-04-19: hero moto card + payment summary.
   // ================================================================
 
-  // Static specs map per modelo. Customer can fill in real values later;
-  // values come from the brand's product sheet. M05 row matches the
-  // wireframe the customer sent (85km/h, 120km, 60V).
-  var MODELO_SPECS = {
-    'M03':           { vel: '60km/h',  auton: '80km',  bat: '48V'  },
-    'M05':           { vel: '85km/h',  auton: '120km', bat: '60V'  },
-    'MC10':          { vel: '95km/h',  auton: '140km', bat: '72V'  },
-    'MC10 Streetx':  { vel: '95km/h',  auton: '140km', bat: '72V'  },
-    'Pesgo plus':    { vel: '85km/h',  auton: '110km', bat: '60V'  },
-    'mino B':        { vel: '50km/h',  auton: '70km',  bat: '48V'  },
-    'Ukko S':        { vel: '85km/h',  auton: '110km', bat: '60V'  },
-    'Ukko S+':       { vel: '95km/h',  auton: '130km', bat: '72V'  }
-  };
+  // Specs are resolved from the SHARED catalog (configurador_prueba/js/data/
+  // productos.js + clientes/js/data/catalogo-specs.js) so that velocidad and
+  // autonomía always match the configurador home page — no more drift
+  // between the store ("M05 75 km/h 90 km") and the portal ("M05 85 km/h
+  // 120 km"). Battery voltage lives in catalogo-specs.js because
+  // productos.js doesn't carry it.
   function specsFor(modelo){
-    if (!modelo) return { vel: '—', auton: '—', bat: '—' };
-    if (MODELO_SPECS[modelo]) return MODELO_SPECS[modelo];
-    // Loose match — strip case + spaces
-    var key = String(modelo).toLowerCase().replace(/[\s_-]+/g, '');
-    for (var k in MODELO_SPECS) {
-      if (k.toLowerCase().replace(/[\s_-]+/g, '') === key) return MODELO_SPECS[k];
+    if (window.VK_SPECS && typeof window.VK_SPECS.forModel === 'function') {
+      return window.VK_SPECS.forModel(modelo);
     }
+    // Emergency fallback only — VK_SPECS is loaded in index.php before this
+    // module, so in normal operation this branch never runs.
     return { vel: '—', auton: '—', bat: '—' };
   }
   function modeloImg(modelo, color){
@@ -398,7 +389,7 @@ window.VK_inicio = (function(){
     // Deep-link from cobranza notifications (?action=pay) — auto-open the
     // primary payment button once the inicio finishes rendering.
     if (VKApp.state && VKApp.state.pendingAction === 'pay') {
-      VKApp.state.pendingAction = null; // consume once
+      VKApp.state.pendingAction = null;
       setTimeout(function(){ $('#vkPayNow').trigger('click'); }, 450);
     }
     $('.vk-prepay-opt').on('click', function(){

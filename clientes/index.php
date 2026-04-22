@@ -38,6 +38,12 @@ $asset = function(string $rel): string {
     <button data-route="ayuda"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><em>Ayuda</em></button>
   </nav>
 </div>
+<!-- Shared catalog: same productos.js used by the configurador home page.
+     Loading it here makes the clientes portal pull speed/autonomy from the
+     single source of truth instead of a duplicated, drift-prone hardcoded map
+     that was causing the M05 "85 km/h / 120 km" bug. -->
+<script src="<?= $asset('../configurador_prueba/js/data/productos.js') ?>"></script>
+<script src="<?= $asset('js/data/catalogo-specs.js') ?>"></script>
 <script src="<?= $asset('js/app.js') ?>"></script>
 <script src="<?= $asset('js/modules/login.js') ?>"></script>
 <script src="<?= $asset('js/modules/recovery.js') ?>"></script>

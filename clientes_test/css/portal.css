@@ -1019,20 +1019,24 @@ button{font-family:inherit}
    Hero moto card + payment summary card.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* Hero moto card */
+/* Hero moto card
+   Light background so the bike stands out without the dark navy panel the
+   customer flagged as too oscuro. Subtle gradient gives depth without
+   competing with the photo. */
 .vk-moto-hero{padding:0;overflow:hidden}
 .vk-moto-hero-photo{
-  position:relative;background:#0c2340;
+  position:relative;
+  background:linear-gradient(180deg,#ffffff 0%,#f3f6fb 100%);
   aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;
 }
-.vk-moto-hero-photo img{max-width:88%;max-height:88%;object-fit:contain;filter:drop-shadow(0 4px 14px rgba(0,0,0,.4))}
-.vk-moto-hero-photo.no-img::before{content:'Tu moto';color:rgba(255,255,255,.4);font-size:14px;font-weight:600;letter-spacing:1px}
-.vk-moto-placeholder{color:rgba(255,255,255,.45);font-size:14px;font-weight:600;letter-spacing:.5px}
+.vk-moto-hero-photo img{max-width:88%;max-height:88%;object-fit:contain;filter:drop-shadow(0 6px 14px rgba(12,35,64,.18))}
+.vk-moto-hero-photo.no-img::before{content:'Tu moto';color:#94a3b8;font-size:14px;font-weight:600;letter-spacing:1px}
+.vk-moto-placeholder{color:#94a3b8;font-size:14px;font-weight:600;letter-spacing:.5px}
 .vk-moto-vintag{
   position:absolute;bottom:10px;right:12px;
   font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;
-  color:rgba(255,255,255,.85);background:rgba(0,0,0,.35);
-  padding:3px 8px;border-radius:4px;
+  color:#475569;background:rgba(255,255,255,.85);
+  padding:3px 8px;border-radius:4px;border:1px solid #e2e8f0;
 }
 .vk-moto-hero-body{padding:16px 18px}
 .vk-moto-hero-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap}
