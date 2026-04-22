@@ -476,7 +476,50 @@ $bodyProd = json_encode([
         'CP'                  => '03100',
     ],
 ]);
-render(call('Probe 12: /v2/rccficoscore PRODUCTION schema FINAL', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyProd, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+render(call('Probe 12: /v2/rccficoscore nested domicilio', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyProd, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 13: /v2/rccficoscore with domicilio as ARRAY (CDC v2 swagger uses array of domicilios)
+$bodyDomArr = json_encode([
+    'primerNombre'    => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'RFC'             => 'PELJ850315AAA',
+    'nacionalidad'    => 'MX',
+    'domicilio' => [[
+        'direccion'           => 'AV REFORMA 100',
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ]],
+]);
+render(call('Probe 13: /v2/rccficoscore domicilio ARRAY', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyDomArr, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 14: /v2/rccficoscore with domicilio as STRING
+$bodyDomStr = json_encode([
+    'primerNombre'    => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'RFC'             => 'PELJ850315AAA',
+    'nacionalidad'    => 'MX',
+    'domicilio' => 'AV REFORMA 100 JUAREZ CUAUHTEMOC CIUDAD DE MEXICO CDMX 03100',
+]);
+render(call('Probe 14: /v2/rccficoscore domicilio STRING', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyDomStr, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 15: repeat Probe 9 (flat) to confirm it STILL works — rules out caching
+$bodyFlat2 = json_encode([
+    'primerNombre' => 'JUAN', 'apellidoPaterno' => 'PEREZ', 'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15', 'RFC' => 'PELJ850315AAA', 'nacionalidad' => 'MX',
+    'direccion' => 'AV REFORMA 100', 'coloniaPoblacion' => 'JUAREZ', 'delegacionMunicipio' => 'CUAUHTEMOC',
+    'ciudad' => 'CIUDAD DE MEXICO', 'estado' => 'CDMX', 'CP' => '03100',
+]);
+render(call('Probe 15: REPEAT Probe 9 flat (verificación)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyFlat2, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
 // ── Test 3: alt endpoints ───────────────────────────────────────────────────
