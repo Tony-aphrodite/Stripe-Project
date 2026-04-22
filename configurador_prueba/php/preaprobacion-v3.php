@@ -40,11 +40,17 @@ $plazo_meses          = intval($json['plazo_meses']            ?? 12);
 $precio_contado       = floatval($json['precio_contado']       ?? 0);
 $modelo               = $json['modelo'] ?? '';
 
-// Extra signals for self-scoring when CDC is unavailable
-$fechaNacimiento      = $json['fecha_nacimiento'] ?? '';
+// Customer info (for admin lead tracking + self-scoring fallback)
+$nombre               = trim($json['nombre']           ?? '');
+$apellidoPaterno      = trim($json['apellido_paterno'] ?? '');
+$apellidoMaterno      = trim($json['apellido_materno'] ?? '');
+$telefono             = trim($json['telefono']         ?? '');
+$fechaNacimiento      = $json['fecha_nacimiento']      ?? '';
 $email                = trim(strtolower($json['email'] ?? ''));
-$cp                   = $json['cp'] ?? '';
-$truoraOk             = !empty($json['truora_ok']);   // true if Truora identity passed
+$cp                   = $json['cp']                    ?? '';
+$ciudadCust           = trim($json['ciudad']           ?? '');
+$estadoCust           = trim($json['estado']           ?? '');
+$truoraOk             = !empty($json['truora_ok']);
 
 // ── Datos de Círculo de Crédito ─────────────────────────────────────────────
 // Prioridad 1: datos enviados directamente en el request (de consultar-buro.php)
@@ -225,18 +231,29 @@ if (!is_dir(dirname($logFile))) {
 }
 file_put_contents($logFile, json_encode($log) . "\n", FILE_APPEND | LOCK_EX);
 
-// ── Guardar en BD ─────────────────────────────────────────────────────────────
+// ── Guardar en BD (customer info + decision for admin lead tracking) ────────
 try {
     $pdo = getDB();
     $pdo->exec("CREATE TABLE IF NOT EXISTS preaprobaciones (
         id                   INT AUTO_INCREMENT PRIMARY KEY,
+        nombre               VARCHAR(200),
+        apellido_paterno     VARCHAR(100),
+        apellido_materno     VARCHAR(100),
+        email                VARCHAR(200),
+        telefono             VARCHAR(30),
+        fecha_nacimiento     VARCHAR(20),
+        cp                   VARCHAR(10),
+        ciudad               VARCHAR(100),
+        estado               VARCHAR(50),
         modelo               VARCHAR(200),
+        precio_contado       DECIMAL(12,2),
         ingreso_mensual      DECIMAL(12,2),
         pago_semanal         DECIMAL(10,2),
         pago_mensual         DECIMAL(10,2),
         pago_mensual_buro    DECIMAL(12,2),
         pti_total            DECIMAL(8,4),
         score                INT,
+        synth_score          INT,
         dpd90_flag           TINYINT(1),
         dpd_max              INT,
         circulo_source       VARCHAR(20),
@@ -245,22 +262,51 @@ try {
         status               VARCHAR(40),
         enganche_requerido   DECIMAL(5,2),
         plazo_max            INT,
-        freg                 DATETIME DEFAULT CURRENT_TIMESTAMP
+        truora_ok            TINYINT(1),
+        seguimiento          VARCHAR(40) DEFAULT 'nuevo',
+        notas_admin          TEXT,
+        freg                 DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_status (status),
+        INDEX idx_seguimiento (seguimiento),
+        INDEX idx_email (email),
+        INDEX idx_freg (freg)
     )");
+    // Idempotent: add new columns if old schema exists
+    $existing = [];
+    try { foreach ($pdo->query("SHOW COLUMNS FROM preaprobaciones") as $c) $existing[$c['Field']] = true; } catch (Throwable $e) {}
+    $newCols = [
+        'nombre' => 'VARCHAR(200) NULL', 'apellido_paterno' => 'VARCHAR(100) NULL',
+        'apellido_materno' => 'VARCHAR(100) NULL', 'email' => 'VARCHAR(200) NULL',
+        'telefono' => 'VARCHAR(30) NULL', 'fecha_nacimiento' => 'VARCHAR(20) NULL',
+        'cp' => 'VARCHAR(10) NULL', 'ciudad' => 'VARCHAR(100) NULL', 'estado' => 'VARCHAR(50) NULL',
+        'precio_contado' => 'DECIMAL(12,2) NULL', 'synth_score' => 'INT NULL',
+        'truora_ok' => 'TINYINT(1) NULL', 'seguimiento' => "VARCHAR(40) DEFAULT 'nuevo'",
+        'notas_admin' => 'TEXT NULL',
+    ];
+    foreach ($newCols as $col => $def) {
+        if (!isset($existing[$col])) {
+            try { $pdo->exec("ALTER TABLE preaprobaciones ADD COLUMN $col $def"); } catch (Throwable $e) {}
+        }
+    }
+
     $stmt = $pdo->prepare("
         INSERT INTO preaprobaciones
-            (modelo, ingreso_mensual, pago_semanal, pago_mensual, pago_mensual_buro,
-             pti_total, score, dpd90_flag, dpd_max, circulo_source,
-             enganche_pct, plazo_meses, status, enganche_requerido, plazo_max)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (nombre, apellido_paterno, apellido_materno, email, telefono,
+             fecha_nacimiento, cp, ciudad, estado,
+             modelo, precio_contado, ingreso_mensual, pago_semanal, pago_mensual,
+             pago_mensual_buro, pti_total, score, synth_score, dpd90_flag, dpd_max,
+             circulo_source, enganche_pct, plazo_meses, status,
+             enganche_requerido, plazo_max, truora_ok)
+        VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?, ?,?,?)
     ");
     $stmt->execute([
-        $log['modelo'], $log['ingreso_mensual_est'], $log['pago_semanal_voltika'],
-        $log['pago_mensual_voltika'], $log['pago_mensual_buro'],
-        $log['pti_total'], $log['score'],
+        $nombre, $apellidoPaterno, $apellidoMaterno, $email, $telefono,
+        $fechaNacimiento, $cp, $ciudadCust, $estadoCust,
+        $log['modelo'], $precio_contado, $log['ingreso_mensual_est'], $log['pago_semanal_voltika'], $log['pago_mensual_voltika'],
+        $log['pago_mensual_buro'], $log['pti_total'], $log['score'], ($result['synth_score'] ?? null),
         $dpd90_flag ? 1 : 0, $dpd_max,
-        $log['circulo_source'], $log['enganche_pct'], $log['plazo_meses'],
-        $log['status'], $log['enganche_requerido'], $log['plazo_max'],
+        $log['circulo_source'], $log['enganche_pct'], $log['plazo_meses'], $log['status'],
+        $log['enganche_requerido'], $log['plazo_max'], $truoraOk ? 1 : 0,
     ]);
 } catch (PDOException $e) {
     error_log('Voltika preaprobaciones DB error: ' . $e->getMessage());

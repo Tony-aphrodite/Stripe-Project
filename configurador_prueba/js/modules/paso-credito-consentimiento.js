@@ -439,10 +439,16 @@ var PasoCreditoConsentimiento = {
                 pago_mensual_buro:    buroRes.pago_mensual_buro || 0,
                 dpd90_flag:           buroRes.dpd90_flag || false,
                 dpd_max:              buroRes.dpd_max || 0,
-                // Extra signals for self-scoring fallback
+                // Customer info (for admin lead tracking)
+                nombre:               state.nombre || '',
+                apellido_paterno:     state.apellidoPaterno || '',
+                apellido_materno:     state.apellidoMaterno || '',
+                telefono:             state.telefono || '',
                 fecha_nacimiento:     state.fechaNacimiento || '',
                 email:                state.email || '',
                 cp:                   state.cpDomicilio || '',
+                ciudad:               state.ciudad || '',
+                estado:               state.estadoDomicilio || state.estado || '',
                 truora_ok:            !!(state._truoraResult && (state._truoraResult.status === 'approved'))
             }),
             success: function(resultado) {
