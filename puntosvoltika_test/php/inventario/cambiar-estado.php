@@ -9,6 +9,12 @@
  *   en_ensamble        → lista_para_entrega  (assembly done, requires fecha_entrega_estimada)
  *   recibida           → lista_para_entrega  (skip assembly, still requires date)
  *
+ * NOTE: either path to `lista_para_entrega` now REQUIRES a completed
+ * checklist_entrega (5-phase inspection). Customer feedback 2026-04-23
+ * reported a punto was marking motos ready-to-deliver without inspection.
+ * Without this gate the customer never gets the OTP and the legal act
+ * (phase 5) is skipped — this is a safety + compliance bug.
+ *
  * On lista_para_entrega: fires `lista_para_recoger` notification including the pickup date.
  */
 require_once __DIR__ . '/../bootstrap.php';
@@ -82,6 +88,37 @@ if ($nuevoEstado === 'lista_para_entrega') {
     $ts = strtotime($fechaEntrega);
     if (!$ts || $ts < strtotime('today')) {
         puntoJsonOut(['error' => 'La fecha debe ser hoy o posterior'], 400);
+    }
+
+    // ── Checklist de entrega gate ──────────────────────────────────────────
+    // The 5-phase entrega checklist (identity / pago / unidad / OTP / acta)
+    // must be completed before the moto is ready-to-pickup. Without this the
+    // point could skip inspection + legal act, which is what the customer
+    // flagged. Tolerate both v2 (newer) and legacy tables so upgrades don't
+    // block operations.
+    $clComplete = false;
+    foreach (['checklist_entrega_v2', 'checklist_entrega'] as $tbl) {
+        try {
+            $q = $pdo->prepare("SELECT completado FROM {$tbl}
+                                WHERE moto_id = ?
+                                ORDER BY id DESC LIMIT 1");
+            $q->execute([$motoId]);
+            $row = $q->fetch(PDO::FETCH_ASSOC);
+            if ($row !== false) {
+                if ((int)($row['completado'] ?? 0) === 1) { $clComplete = true; }
+                break; // found a row (complete or not) — don't check legacy fallback
+            }
+        } catch (Throwable $e) {
+            // Table may not exist in this deployment — try the next one
+            continue;
+        }
+    }
+    if (!$clComplete) {
+        puntoJsonOut([
+            'error' => 'No puedes marcar "lista para entrega" sin completar el checklist de entrega. '
+                     . 'Abre el módulo de Checklist, completa las 5 fases (identidad, pago, unidad, OTP y acta de entrega) y vuelve a intentarlo.',
+            'code'  => 'checklist_entrega_pendiente',
+        ], 409);
     }
 }
 

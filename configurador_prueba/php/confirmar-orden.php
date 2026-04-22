@@ -388,6 +388,30 @@ try {
         } catch (PDOException $e) {
             error_log('Voltika referidos counter error: ' . $e->getMessage());
         }
+
+        // Auto-calc influencer commission: look up the fixed MXN amount the
+        // admin configured per model in `referido_comisiones` and write it
+        // to comisiones_log so the Referidos dashboard stops showing $0.00.
+        // Silent miss if the admin hasn't configured this model — no fake
+        // defaults, payouts are always explicit.
+        try {
+            $slug = strtolower(preg_replace('/[^a-z0-9\-]+/i', '-', (string)$modelo));
+            $slug = trim(preg_replace('/-+/', '-', $slug), '-');
+            if ($slug !== '') {
+                $stmt = $pdo->prepare("SELECT comision_monto FROM referido_comisiones WHERE referido_id = ? AND modelo_slug = ? LIMIT 1");
+                $stmt->execute([$referidoId, $slug]);
+                $comMonto = (float)($stmt->fetchColumn() ?: 0);
+                if ($comMonto > 0) {
+                    $pdo->prepare("
+                        INSERT INTO comisiones_log
+                            (punto_id, referido_id, pedido_num, modelo, monto_venta, comision_pct, comision_monto, tipo)
+                        VALUES (NULL, ?, ?, ?, ?, NULL, ?, 'venta')
+                    ")->execute([$referidoId, $pedidoNum, $modelo, $total, $comMonto]);
+                }
+            }
+        } catch (PDOException $e) {
+            error_log('Voltika referido comision auto-calc error: ' . $e->getMessage());
+        }
     }
 
     // CASE 3 (dashboards_diagrams.pdf): the order was placed with a punto's

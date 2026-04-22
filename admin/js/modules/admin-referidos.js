@@ -51,6 +51,13 @@ window.AD_referidos = (function(){
     html += '</tbody></table></div></div></div>';
 
     // ── Influencers table ──
+    // Cache the full referido records keyed by id so the Editar button can
+    // pre-fill EVERY field (codigo + per-model comisiones) without extra
+    // network calls. HTML data-* attributes only store scalars cleanly, so
+    // we look up the whole object from this in-memory map.
+    window._ADREFMAP = {};
+    referidos.forEach(function(ref){ window._ADREFMAP[ref.id] = ref; });
+
     html += '<div id="adRefInfluencers" style="display:none;">';
     html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
       '<th>Nombre</th><th>Código</th><th>Email</th><th>Teléfono</th>'+
@@ -66,7 +73,7 @@ window.AD_referidos = (function(){
         '<td style="text-align:right;color:#ff9800;font-weight:700;">$'+numFmt(ref.comision_calculada)+'</td>'+
         '<td>'+
           '<button class="ad-btn sm ghost adRefDetalle" data-tipo="referido" data-id="'+ref.id+'">Detalle</button> '+
-          '<button class="ad-btn sm ghost adRefEdit" data-id="'+ref.id+'" data-nombre="'+esc(ref.nombre)+'" data-email="'+esc(ref.email||'')+'" data-tel="'+esc(ref.telefono||'')+'">Editar</button> '+
+          '<button class="ad-btn sm ghost adRefEdit" data-id="'+ref.id+'">Editar</button> '+
           '<button class="ad-btn sm ghost adRefDel" data-id="'+ref.id+'" style="color:#e53935;">Eliminar</button>'+
         '</td></tr>';
     });
@@ -88,9 +95,15 @@ window.AD_referidos = (function(){
     // New referido
     $('#adNewRef').on('click', function(){ showRefForm({}); });
 
-    // Edit referido
+    // Edit referido — look up the full row (including codigo + per-model
+    // comisiones) from the cache set by paint(). Previously this passed only
+    // nombre/email/tel via data-* attrs, so the edit form had empty codigo
+    // and empty comisiones every time — which is what users meant by
+    // "can't edit the influencer data".
     $('.adRefEdit').on('click', function(){
-      showRefForm({id:$(this).data('id'), nombre:$(this).data('nombre'), email:$(this).data('email'), telefono:$(this).data('tel')});
+      var id = $(this).data('id');
+      var ref = (window._ADREFMAP || {})[id] || { id: id };
+      showRefForm(ref);
     });
 
     // Delete referido
@@ -109,18 +122,64 @@ window.AD_referidos = (function(){
     });
   }
 
+  // Catalog of models for per-model commission inputs. Sourced from
+  // configurador_prueba/js/data/productos.js when available (loaded by the
+  // page), falls back to a static list so the modal never breaks.
+  function _modelosCatalogo(){
+    if (window.VOLTIKA_PRODUCTOS && Array.isArray(window.VOLTIKA_PRODUCTOS.modelos)) {
+      return window.VOLTIKA_PRODUCTOS.modelos.map(function(m){
+        return { slug: m.id, nombre: m.nombre };
+      });
+    }
+    return [
+      { slug:'m05',        nombre:'M05' },
+      { slug:'m03',        nombre:'M03' },
+      { slug:'ukko-s',     nombre:'Ukko S+' },
+      { slug:'mc10',       nombre:'MC10 Streetx' },
+      { slug:'pesgo-plus', nombre:'Pesgo Plus' },
+      { slug:'mino',       nombre:'Mino-B' }
+    ];
+  }
+
   function showRefForm(ref){
     var isNew = !ref.id;
+    // Existing commissions — keyed by modelo_slug — arrive on edit from
+    // referidos/listar.php. Missing keys render as empty inputs (= $0).
+    var existingComms = (ref.comisiones && typeof ref.comisiones === 'object') ? ref.comisiones : {};
+
     var html = '<div class="ad-h2">'+(isNew?'Nuevo':'Editar')+' Referido</div>';
     html += '<input class="ad-input" id="rfNombre" placeholder="Nombre" value="'+esc(ref.nombre||'')+'" style="margin-bottom:8px">';
     html += '<input class="ad-input" id="rfEmail" placeholder="Email" value="'+esc(ref.email||'')+'" style="margin-bottom:8px">';
     html += '<input class="ad-input" id="rfTel" placeholder="Teléfono" value="'+esc(ref.telefono||'')+'" style="margin-bottom:8px">';
     // Optional manual código: admin can enter a custom one, or leave blank to auto-generate
     html += '<label style="font-size:12px;color:var(--ad-dim);display:block;margin-bottom:2px;">Código <small>(opcional — vacío = auto)</small></label>';
-    html += '<div style="display:flex;gap:6px;margin-bottom:10px;">'+
+    html += '<div style="display:flex;gap:6px;margin-bottom:12px;">'+
       '<input class="ad-input" id="rfCodigo" placeholder="Ej: VOLT2026" value="'+esc(ref.codigo||'')+'" style="flex:1;text-transform:uppercase;">'+
       '<button class="ad-btn sm ghost" id="rfCodigoGen" type="button" style="white-space:nowrap;">Generar</button>'+
     '</div>';
+
+    // Commission per model — fixed MXN amount, paid to the referido per sale.
+    // Customer feedback 2026-04-23: needs per-model $ so payouts are
+    // computed automatically instead of guessed per deal.
+    html += '<div style="background:var(--ad-surface-2);border-radius:8px;padding:10px 12px;margin-bottom:12px;">'+
+            '<div style="font-size:13px;font-weight:700;color:var(--ad-navy);margin-bottom:4px;">Comisiones por modelo (MXN fijo)</div>'+
+            '<div style="font-size:11.5px;color:var(--ad-dim);margin-bottom:10px;">Monto que gana este referido cada vez que se vende un modelo con su código. Deja en $0 si no aplica.</div>';
+    var mods = _modelosCatalogo();
+    mods.forEach(function(m){
+      var current = existingComms[m.slug];
+      var val = (current !== undefined && current !== null && current !== '') ? Number(current) : '';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'+
+              '<div style="flex:1;font-size:12.5px;color:var(--ad-navy);font-weight:600;">'+esc(m.nombre)+'</div>'+
+              '<div style="position:relative;flex:0 0 140px;">'+
+                '<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--ad-dim);">$</span>'+
+                '<input type="number" min="0" step="1" class="ad-input rfComision" data-slug="'+esc(m.slug)+'" '+
+                  'placeholder="0" value="'+(val === '' ? '' : val)+'" '+
+                  'style="padding-left:22px;text-align:right;font-family:ui-monospace,Menlo,Consolas,monospace;">'+
+              '</div></div>';
+    });
+    html += '</div>';
+
+    html += '<div id="rfMsg" style="font-size:12px;margin-bottom:8px;"></div>';
     html += '<button class="ad-btn primary" id="rfSave" style="width:100%;padding:10px;">Guardar</button>';
     ADApp.modal(html);
 
@@ -133,18 +192,36 @@ window.AD_referidos = (function(){
 
     $('#rfSave').on('click', function(){
       var codigo = ($('#rfCodigo').val() || '').toUpperCase().trim();
+      // Collect non-zero / non-empty commissions into a slug→amount map.
+      // Zero is stored explicitly as 0 so backend can delete existing rows.
+      var comisiones = {};
+      $('.rfComision').each(function(){
+        var slug = $(this).data('slug');
+        var raw  = ($(this).val() || '').trim();
+        if (raw === '') return;
+        var n = parseFloat(raw);
+        if (isNaN(n) || n < 0) return;
+        comisiones[slug] = n;
+      });
       var payload = {
         accion: isNew ? 'agregar' : 'actualizar',
         id: ref.id||undefined,
         nombre: $('#rfNombre').val(),
         email: $('#rfEmail').val(),
         telefono: $('#rfTel').val(),
-        codigo: codigo || null
+        codigo: codigo || null,
+        comisiones: comisiones
       };
       $(this).prop('disabled',true).html('<span class="ad-spin"></span>');
       ADApp.api('referidos/guardar.php', payload).done(function(r2){
         if(r2.ok){ ADApp.closeModal(); render(); }
-        else{ alert(r2.error||'Error'); $('#rfSave').prop('disabled',false).html('Guardar'); }
+        else{
+          $('#rfMsg').css('color','#b91c1c').text(r2.error||'Error');
+          $('#rfSave').prop('disabled',false).html('Guardar');
+        }
+      }).fail(function(x){
+        $('#rfMsg').css('color','#b91c1c').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+        $('#rfSave').prop('disabled',false).html('Guardar');
       });
     });
   }

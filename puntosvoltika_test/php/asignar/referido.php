@@ -8,7 +8,7 @@
  * Per dashboards_diagrams.pdf this is CASE 4 (showroom sale). The moto is already
  * physically at the punto (inventario_venta); the point simply hands it to the client
  * and we record the sale. For CASE 3 (general sale via online configurador), see
- * configurador_prueba_test/php/confirmar-orden.php.
+ * configurador_prueba/php/confirmar-orden.php.
  */
 require_once __DIR__ . '/../bootstrap.php';
 $ctx = puntoRequireAuth();
@@ -61,6 +61,20 @@ $pStmt->execute([$ctx['punto_id']]);
 $punto = $pStmt->fetch(PDO::FETCH_ASSOC);
 $codigoRef = $canal === 'electronica' ? $punto['codigo_electronico'] : $punto['codigo_venta'];
 
+// Price MUST come from the canonical modelos catalog — point staff can't
+// set arbitrary prices per customer brief 2026-04-23. If the modelo isn't
+// in the catalog yet, fall back to inventario_motos.precio_venta (pre-
+// seeded by CEDIS when the bike was received); last resort is $0.
+$precio = 0.0;
+try {
+    $priceStmt = $pdo->prepare("SELECT precio_contado FROM modelos WHERE nombre = ? AND activo = 1 LIMIT 1");
+    $priceStmt->execute([$moto['modelo'] ?? '']);
+    $precio = (float)($priceStmt->fetchColumn() ?: 0);
+} catch (Throwable $e) { /* modelos table may not exist yet */ }
+if ($precio <= 0) {
+    $precio = (float)($moto['precio_venta'] ?? 0);
+}
+
 // CASE 4 — mark as consignacion (showroom stock) and flag for delivery validation
 $pdo->prepare("UPDATE inventario_motos SET cliente_nombre=?, cliente_email=?, cliente_telefono=?,
     precio_venta=?, tipo_asignacion='consignacion', dealer_id=?, estado='por_validar_entrega' WHERE id=?")
@@ -68,7 +82,7 @@ $pdo->prepare("UPDATE inventario_motos SET cliente_nombre=?, cliente_email=?, cl
         $d['cliente_nombre'] ?? '',
         $d['cliente_email'] ?? '',
         $d['cliente_telefono'] ?? '',
-        (float)($d['precio'] ?? 0),
+        $precio,
         $ctx['user_id'],
         $motoId
     ]);
@@ -80,7 +94,7 @@ $pdo->prepare("INSERT INTO ventas_log (moto_id, tipo, dealer_id, cliente_nombre,
         $motoId, 'venta_showroom', $ctx['user_id'],
         $d['cliente_nombre'] ?? '', $d['cliente_email'] ?? '', $d['cliente_telefono'] ?? '',
         $moto['modelo'], $moto['color'], $moto['vin'],
-        (float)($d['precio'] ?? 0),
+        $precio,
         "CASE 4 · Canal: $canal · Código: $codigoRef"
     ]);
 
@@ -90,7 +104,7 @@ puntoLog('venta_showroom', ['moto_id' => $motoId, 'canal' => $canal, 'caso' => 4
 // available for pickup at the point. The bike is physically in the showroom,
 // so there's no shipping step — the client just needs the point info.
 if (!empty($d['cliente_telefono']) || !empty($d['cliente_email'])) {
-    require_once __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php';
+    require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
     try {
         voltikaNotify('punto_asignado', [
             'nombre'    => $d['cliente_nombre'] ?? '',

@@ -88,6 +88,10 @@ $asset = function(string $rel): string {
     <div id="adModalBody"></div>
   </div>
 </div>
+<!-- Shared catalog so admin modals (referidos commissions, etc.) can read
+     model slugs + nombres from the same single source of truth the store
+     and clientes portal use. Avoids hardcoded fallbacks drifting out of sync. -->
+<script src="<?= $asset('../configurador_prueba/js/data/productos.js') ?>"></script>
 <script src="<?= $asset('js/voltika-image-compress.js') ?>"></script>
 <script src="<?= $asset('js/admin-app.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-login.js') ?>"></script>

@@ -10,6 +10,25 @@ $pdo = getDB();
 $d = adminJsonIn();
 $accion = trim($d['accion'] ?? '');
 
+// Shared helper: upsert comisiones map for a referido. Keys are productos.js
+// slugs (m05, pesgo-plus, ...), values are MXN amounts. Empty/zero keys are
+// deleted so they don't leak into payout calculations.
+$saveComisiones = static function (PDO $pdo, int $refId, $comisiones): void {
+    if (!is_array($comisiones)) return;
+    $upd = $pdo->prepare(
+        "INSERT INTO referido_comisiones (referido_id, modelo_slug, comision_monto) VALUES (?,?,?)
+         ON DUPLICATE KEY UPDATE comision_monto = VALUES(comision_monto)"
+    );
+    $del = $pdo->prepare("DELETE FROM referido_comisiones WHERE referido_id = ? AND modelo_slug = ?");
+    foreach ($comisiones as $slug => $monto) {
+        $slug = strtolower(trim((string)$slug));
+        if ($slug === '' || !preg_match('/^[a-z0-9][a-z0-9\-]{0,49}$/', $slug)) continue;
+        $n = is_numeric($monto) ? (float)$monto : 0;
+        if ($n <= 0) { $del->execute([$refId, $slug]); continue; }
+        $upd->execute([$refId, $slug, $n]);
+    }
+};
+
 if ($accion === 'agregar') {
     $nombre = trim($d['nombre'] ?? '');
     $email  = trim($d['email'] ?? '');
@@ -34,9 +53,16 @@ if ($accion === 'agregar') {
 
     $pdo->prepare("INSERT INTO referidos (nombre, email, telefono, codigo_referido) VALUES (?,?,?,?)")
         ->execute([$nombre, $email, $tel, $codigo]);
+    $newId = (int)$pdo->lastInsertId();
 
-    adminLog('referido_crear', ['nombre' => $nombre, 'codigo' => $codigo]);
-    adminJsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId(), 'codigo' => $codigo]);
+    $saveComisiones($pdo, $newId, $d['comisiones'] ?? []);
+
+    adminLog('referido_crear', [
+        'nombre' => $nombre,
+        'codigo' => $codigo,
+        'comisiones' => $d['comisiones'] ?? [],
+    ]);
+    adminJsonOut(['ok' => true, 'id' => $newId, 'codigo' => $codigo]);
 }
 
 if ($accion === 'actualizar') {
@@ -64,7 +90,12 @@ if ($accion === 'actualizar') {
             ->execute([$nombre, $email, $tel, $id]);
     }
 
-    adminLog('referido_actualizar', ['id' => $id]);
+    $saveComisiones($pdo, $id, $d['comisiones'] ?? []);
+
+    adminLog('referido_actualizar', [
+        'id' => $id,
+        'comisiones' => $d['comisiones'] ?? [],
+    ]);
     adminJsonOut(['ok' => true]);
 }
 
