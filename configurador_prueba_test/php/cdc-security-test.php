@@ -31,17 +31,35 @@ echo '</style></head><body>';
 
 echo '<h1>🔐 Prueba de Seguridad — Círculo de Crédito</h1>';
 
-// ── Step 1: Load our private key ─────────────────────────────────────────────
+// ── Step 1: Load our private key + cert ──────────────────────────────────────
+// Resolution order matches consultar-buro.php: session → DB → disk.
+// Disk on Plesk is often non-writable, so DB is the canonical source after
+// the active=1 row in cdc_certificates is the source of truth.
 echo '<div class="step"><div class="step-title">Paso 1: Cargar llave privada</div>';
 
-$keyPem = $_SESSION['cdc_key_pem'] ?? null;
+$keySource  = 'none';
+$dbRowCount = 0;
+$keyPem  = $_SESSION['cdc_key_pem']  ?? null;
+$certPem = $_SESSION['cdc_cert_pem'] ?? null;
+if ($keyPem) $keySource = 'session';
 
-// Try from disk if not in session
+try {
+    $dbRowCount = (int) getDB()->query("SELECT COUNT(*) FROM cdc_certificates WHERE active = 1")->fetchColumn();
+} catch (Throwable $e) {}
+
+if (!$keyPem || !$certPem) {
+    try {
+        $row = getDB()->query("SELECT private_key, certificate FROM cdc_certificates WHERE active = 1 ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            if (!$keyPem)  { $keyPem  = $row['private_key']; $keySource = 'db'; }
+            if (!$certPem) { $certPem = $row['certificate']; }
+        }
+    } catch (Throwable $e) {}
+}
+
 if (!$keyPem) {
     $keyFile = __DIR__ . '/certs/cdc_private.key';
-    if (file_exists($keyFile)) {
-        $keyPem = file_get_contents($keyFile);
-    }
+    if (file_exists($keyFile)) { $keyPem = file_get_contents($keyFile); $keySource = 'disk'; }
 }
 
 if (!$keyPem) {
@@ -59,8 +77,12 @@ if (!$privateKey) {
 
 $keyDetails = openssl_pkey_get_details($privateKey);
 $keyType = $keyDetails['type'] === OPENSSL_KEYTYPE_EC ? 'ECDSA' : 'RSA';
+$certFingerprint = $certPem ? (@openssl_x509_fingerprint($certPem, 'sha256') ?: '') : '';
 echo '<span class="ok">✅ Llave privada cargada (' . $keyType . ')</span>';
-echo '</div>';
+echo '<div style="font-size:12px;color:#666;margin-top:4px;">';
+echo 'Fuente: <code>' . $keySource . '</code> &nbsp;|&nbsp; DB active=1 rows: <code>' . $dbRowCount . '</code><br>';
+echo 'Cert fingerprint SHA-256: <code>' . htmlspecialchars($certFingerprint) . '</code>';
+echo '</div></div>';
 
 // ── Step 2: Sign request body ────────────────────────────────────────────────
 // Same convention as consultar-buro.php: sign the exact JSON body bytes with
@@ -89,7 +111,8 @@ echo '<div class="step"><div class="step-title">Paso 3: Enviar a Círculo de Cr�
 $apiUrl = 'https://services.circulodecredito.com.mx/v1/securitytest';
 $apiKey = defined('CDC_API_KEY') ? CDC_API_KEY : '';
 
-$certPem = $_SESSION['cdc_cert_pem'] ?? null;
+// cert was already loaded in Paso 1 (session → DB → disk). Only fall back to
+// disk now if somehow still empty.
 if (!$certPem) {
     $certFile = __DIR__ . '/certs/cdc_certificate.pem';
     if (file_exists($certFile)) $certPem = file_get_contents($certFile);
