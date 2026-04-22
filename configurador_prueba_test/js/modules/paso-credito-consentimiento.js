@@ -407,34 +407,67 @@ var PasoCreditoConsentimiento = {
     },
 
     _routeByBuroResult: function(buroRes) {
+        var self   = this;
         var state  = this.app.state;
         var modelo = this.app.getModelo(state.modeloSeleccionado);
 
-        if (modelo && typeof PreaprobacionV3 !== 'undefined') {
-            var credito = VkCalculadora.calcular(
-                modelo.precioContado,
-                state.enganchePorcentaje || 0.25,
-                state.plazoMeses || 12
-            );
+        if (!modelo) { this.app.irAPaso('credito-loading'); return; }
 
-            var resultado = PreaprobacionV3.evaluar({
+        var credito = VkCalculadora.calcular(
+            modelo.precioContado,
+            state.enganchePorcentaje || 0.25,
+            state.plazoMeses || 12
+        );
+
+        // Always call server-side preaprobacion-v3.php — it has the enhanced
+        // self-scoring logic that uses age, income, repeat-customer history
+        // (Stripe DB lookup) and Truora identity check when CDC has no data.
+        // Server-side is also where the decision is logged for audit.
+        jQuery.ajax({
+            url: 'php/preaprobacion-v3.php',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
                 ingreso_mensual_est:  state._ingresoMensual || 10000,
                 pago_semanal_voltika: credito.pagoSemanal,
+                enganche_pct:         state.enganchePorcentaje || 0.25,
+                plazo_meses:          state.plazoMeses || 12,
+                precio_contado:       modelo.precioContado,
+                modelo:               modelo.nombre || state.modeloSeleccionado,
+                // CDC data (real or null)
                 score:                buroRes.score || null,
                 pago_mensual_buro:    buroRes.pago_mensual_buro || 0,
                 dpd90_flag:           buroRes.dpd90_flag || false,
-                dpd_max:              buroRes.dpd_max || 0
-            });
-
-            state._resultadoFinal = resultado;
-
-            if (resultado.status === 'NO_VIABLE') {
-                this.app.irAPaso('credito-enganche');
-                return;
+                dpd_max:              buroRes.dpd_max || 0,
+                // Extra signals for self-scoring fallback
+                fecha_nacimiento:     state.fechaNacimiento || '',
+                email:                state.email || '',
+                cp:                   state.cpDomicilio || '',
+                truora_ok:            !!(state._truoraResult && (state._truoraResult.status === 'approved'))
+            }),
+            success: function(resultado) {
+                state._resultadoFinal = resultado;
+                if (resultado.status === 'NO_VIABLE') {
+                    self.app.irAPaso('credito-enganche');
+                    return;
+                }
+                self.app.irAPaso('credito-loading');
+            },
+            error: function() {
+                // Last-resort client-side eval if server endpoint is down
+                if (typeof PreaprobacionV3 !== 'undefined') {
+                    state._resultadoFinal = PreaprobacionV3.evaluar({
+                        ingreso_mensual_est:  state._ingresoMensual || 10000,
+                        pago_semanal_voltika: credito.pagoSemanal,
+                        score:                buroRes.score || null,
+                        pago_mensual_buro:    buroRes.pago_mensual_buro || 0,
+                        dpd90_flag:           buroRes.dpd90_flag || false,
+                        dpd_max:              buroRes.dpd_max || 0
+                    });
+                }
+                self.app.irAPaso('credito-loading');
             }
-        }
-
-        this.app.irAPaso('credito-loading');
+        });
     },
 
     _resetCTA: function() {

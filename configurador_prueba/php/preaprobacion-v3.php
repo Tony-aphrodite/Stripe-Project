@@ -40,6 +40,12 @@ $plazo_meses          = intval($json['plazo_meses']            ?? 12);
 $precio_contado       = floatval($json['precio_contado']       ?? 0);
 $modelo               = $json['modelo'] ?? '';
 
+// Extra signals for self-scoring when CDC is unavailable
+$fechaNacimiento      = $json['fecha_nacimiento'] ?? '';
+$email                = trim(strtolower($json['email'] ?? ''));
+$cp                   = $json['cp'] ?? '';
+$truoraOk             = !empty($json['truora_ok']);   // true if Truora identity passed
+
 // ── Datos de Círculo de Crédito ─────────────────────────────────────────────
 // Prioridad 1: datos enviados directamente en el request (de consultar-buro.php)
 // Prioridad 2: datos guardados en sesión (si ya se consultó previamente)
@@ -101,16 +107,65 @@ $eng_min     = $V3['downPaymentMin'];
 $result = [];
 
 if ($score === null) {
-    // Sin datos de Círculo → evaluación estimada solo por PTI
-    if ($pti_total > $V3['KO']['ptiExtreme']) {
-        $result = ['status' => 'NO_VIABLE',            'pti_total' => round($pti_total, 4), 'reasons' => ['PTI_EXTREMO_SIN_CIRCULO']];
-    } elseif ($pti_total <= 0.75) {
-        $result = ['status' => 'PREAPROBADO_ESTIMADO', 'pti_total' => round($pti_total, 4),
-                   'enganche_requerido_min' => $eng_min, 'plazo_max_meses' => 36];
-    } else {
-        $result = ['status' => 'CONDICIONAL_ESTIMADO', 'pti_total' => round($pti_total, 4),
-                   'enganche_requerido_min' => min(max(calcularEngancheMin($pti_total, $V3), $eng_min), 0.60),
-                   'plazo_max_meses' => 24];
+    // ── Sin CDC → SELF-SCORING (multi-signal) ─────────────────────────────
+    // Compute a synthetic score based on signals we DO have:
+    //   age, declared income, Stripe payment history, Truora identity check
+    // Then feed the synthetic score into the same V3 logic so the result
+    // looks identical to a real CDC evaluation (PREAPROBADO / CONDICIONAL /
+    // NO_VIABLE) — frontend doesn't need to change.
+
+    // KO 1: age outside lendable range
+    $edad = vkCalcEdad($fechaNacimiento);
+    if ($edad !== null && ($edad < 18 || $edad > 70)) {
+        $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
+                   'reasons' => ['EDAD_FUERA_DE_RANGO'], 'edad' => $edad];
+    }
+    // KO 2: extreme PTI (can't afford)
+    elseif ($pti_total > $V3['KO']['ptiExtreme']) {
+        $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
+                   'reasons' => ['PTI_EXTREMO']];
+    }
+    // KO 3: Truora identity check failed (if we have it)
+    elseif (isset($json['truora_ok']) && !$truoraOk) {
+        $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
+                   'reasons' => ['IDENTIDAD_NO_VERIFICADA']];
+    }
+    else {
+        // Build synthetic score (300-850 range simulating CDC)
+        $synthScore = vkSyntheticScore([
+            'edad'           => $edad,
+            'ingreso'        => $ingreso_mensual_est,
+            'pti'            => $pti_total,
+            'enganche_pct'   => $enganche_pct,
+            'truora_ok'      => $truoraOk,
+            'es_repeticion'  => vkIsRepeatCustomer($email),
+        ]);
+
+        // Run V3 with the synthetic score (same code path as real CDC)
+        if ($synthScore < $V3['KO']['scoreMin']) {
+            $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
+                       'enganche_min' => $eng_min, 'reasons' => ['SCORE_SINTETICO_BAJO'],
+                       'synth_score' => $synthScore];
+        }
+        elseif ($synthScore <= $V3['CONDITIONAL']['lowScorePTIGuardrail']['scoreMax']
+              && $pti_total > $V3['CONDITIONAL']['lowScorePTIGuardrail']['ptiMax']) {
+            $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
+                       'enganche_min' => $eng_min, 'reasons' => ['GUARDRAIL_SCORE_PTI'],
+                       'synth_score' => $synthScore];
+        }
+        elseif ($synthScore >= $V3['PRE']['scoreMin'] && $pti_total <= $V3['PRE']['ptiMax']) {
+            $result = ['status' => 'PREAPROBADO', 'pti_total' => round($pti_total, 4),
+                       'enganche_min' => $eng_min, 'enganche_requerido_min' => $eng_min,
+                       'plazo_max_meses' => calcularPlazoMax($synthScore, $pti_total, $V3),
+                       'synth_score' => $synthScore];
+        }
+        else {
+            $eng_req = min(max(calcularEngancheMin($pti_total, $V3), $eng_min), 0.60);
+            $result  = ['status' => 'CONDICIONAL', 'pti_total' => round($pti_total, 4),
+                        'enganche_min' => $eng_min, 'enganche_requerido_min' => $eng_req,
+                        'plazo_max_meses' => calcularPlazoMax($synthScore, $pti_total, $V3),
+                        'synth_score' => $synthScore];
+        }
     }
 } else {
     // Con datos completos de Círculo
@@ -228,4 +283,88 @@ function calcularPlazoMax(?int $score, float $pti, array $cfg): int {
         if ($score >= $row['minScore'] && $pti <= $row['maxPTI']) return $row['term'];
     }
     return 18;
+}
+
+/**
+ * Calculate age from a YYYY-MM-DD birthdate. Returns null if invalid.
+ */
+function vkCalcEdad(string $fechaNac): ?int {
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $fechaNac, $m)) return null;
+    try {
+        $birth = new DateTimeImmutable($fechaNac);
+        $now   = new DateTimeImmutable('today');
+        return (int)$now->diff($birth)->y;
+    } catch (Throwable $e) { return null; }
+}
+
+/**
+ * Check if email belongs to a customer with prior successful Stripe payments.
+ * Returns true only if at least 1 completed transaction exists.
+ */
+function vkIsRepeatCustomer(string $email): bool {
+    if ($email === '') return false;
+    try {
+        $pdo = getDB();
+        // transacciones table may have different schema variants — try common ones
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM transacciones
+            WHERE LOWER(email) = ?
+              AND (estado = 'completed' OR estado = 'paid' OR estado = 'pagado')");
+        $stmt->execute([$email]);
+        return (int)$stmt->fetchColumn() > 0;
+    } catch (Throwable $e) {
+        // Table may not exist or column may be named differently — silently
+        // return false (no boost) instead of throwing.
+        return false;
+    }
+}
+
+/**
+ * Build a synthetic credit score (range 300-850 simulating CDC FICO range)
+ * from the signals available without a credit bureau call.
+ *
+ * Baseline 500. Adjustments are conservative — designed to mirror real
+ * FICO distribution where most thin-file applicants land 500-650.
+ */
+function vkSyntheticScore(array $signals): int {
+    $score = 500;
+
+    // Age bonus — established adults (25-55) lowest historical default rate
+    $edad = $signals['edad'] ?? null;
+    if ($edad !== null) {
+        if ($edad >= 25 && $edad <= 55) $score += 40;
+        elseif ($edad >= 56 && $edad <= 65) $score += 20;
+        elseif ($edad >= 18 && $edad <= 24) $score += 0;  // young = neutral, more risk
+    }
+
+    // Income trust — extremes are suspicious or risky
+    $ingreso = $signals['ingreso'] ?? 0;
+    if ($ingreso >= 10000 && $ingreso <= 80000) $score += 30;       // sweet spot
+    elseif ($ingreso > 80000 && $ingreso <= 200000) $score += 20;   // high but plausible
+    elseif ($ingreso > 200000) $score -= 20;                         // suspicious / unverifiable
+    elseif ($ingreso < 5000) $score -= 30;                           // too low for our products
+
+    // PTI (Pago-To-Income) — most predictive single signal
+    $pti = $signals['pti'] ?? 1;
+    if ($pti <= 0.20)      $score += 80;
+    elseif ($pti <= 0.30)  $score += 50;
+    elseif ($pti <= 0.50)  $score += 20;
+    elseif ($pti <= 0.75)  $score += 0;
+    elseif ($pti <= 0.90)  $score -= 20;
+    else                   $score -= 40;
+
+    // Enganche — skin in the game
+    $eng = $signals['enganche_pct'] ?? 0.30;
+    if ($eng >= 0.50)       $score += 60;
+    elseif ($eng >= 0.40)   $score += 40;
+    elseif ($eng >= 0.30)   $score += 20;
+    elseif ($eng < 0.20)    $score -= 30;
+
+    // Identity verified — basic anti-fraud
+    if (!empty($signals['truora_ok'])) $score += 20;
+
+    // Repeat customer — strongest positive signal we have
+    if (!empty($signals['es_repeticion'])) $score += 80;
+
+    // Clamp to FICO range
+    return max(300, min(850, $score));
 }

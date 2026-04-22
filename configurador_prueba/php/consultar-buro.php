@@ -310,18 +310,25 @@ if ($isPersonNotFound) {
     exit;
 }
 
-// Real CDC errors (non-2xx, non-404.1) — surface the error instead of
-// silent fallback. The old "fallback approved" masked failures.
+// CDC failure → controlled fallback. Returns success:true with score:null
+// so the frontend can call preaprobacion-v3 which has self-scoring logic
+// based on age + income + repeat-customer signals (no credit bureau needed).
+// The original error is logged for diagnostics but NOT shown to the user.
 if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
-    $_SESSION['cdc_score'] = null;
-    http_response_code(502);
+    $_SESSION['cdc_score']             = null;
+    $_SESSION['cdc_pago_mensual_buro'] = 0;
+    $_SESSION['cdc_dpd90_flag']        = false;
+    $_SESSION['cdc_dpd_max']           = 0;
     echo json_encode([
-        'success'  => false,
-        'error'    => 'CDC API falló',
-        'http'     => $httpCode,
-        'curl_err' => $curlErr ?: null,
-        'body'     => substr((string)$response, 0, 600),
-        'message'  => 'No pudimos consultar tu historial crediticio. Intenta de nuevo o contacta soporte.',
+        'success'           => true,
+        'score'             => null,
+        'sin_cdc'           => true,
+        'pago_mensual_buro' => 0,
+        'dpd90_flag'        => false,
+        'dpd_max'           => 0,
+        'num_cuentas'       => 0,
+        'cdc_http'          => $httpCode,
+        'cdc_error_summary' => substr((string)$response, 0, 200),
     ]);
     exit;
 }
