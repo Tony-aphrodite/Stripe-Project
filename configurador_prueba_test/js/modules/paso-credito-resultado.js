@@ -107,8 +107,12 @@ var PasoCreditoResultado = {
         // Divider
         html += '<div style="border-top:2px solid var(--vk-border);margin:16px 0;"></div>';
 
-        // Final pre-approval result
-        var status = resultado.status || 'CONDICIONAL_ESTIMADO';
+        // Final pre-approval result. Fail-closed: if resultado is somehow
+        // missing status (edge case where an early return bypassed scoring),
+        // render NO_VIABLE instead of silently approving. The previous
+        // default 'CONDICIONAL_ESTIMADO' is what let fake-identity flows
+        // land on an approval-looking screen.
+        var status = resultado.status || 'NO_VIABLE';
 
         if (status === 'PREAPROBADO' || status === 'PREAPROBADO_ESTIMADO') {
             html += this._renderAprobado(resultado);

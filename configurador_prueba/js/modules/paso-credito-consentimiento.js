@@ -457,8 +457,16 @@ var PasoCreditoConsentimiento = {
             }),
             success: function(resultado) {
                 state._resultadoFinal = resultado;
-                if (resultado.status === 'NO_VIABLE') {
-                    self.app.irAPaso('credito-enganche');
+                // HARD GATE: any non-approval status must NEVER continue to
+                // credito-loading → credito-aprobado (that path renders
+                // "¡Felicidades!" without re-checking status and was letting
+                // fake-identity NO_VIABLE decisions through). Route straight
+                // to credito-resultado, which renders the actual decision.
+                if (resultado.status !== 'PREAPROBADO' &&
+                    resultado.status !== 'PREAPROBADO_ESTIMADO' &&
+                    resultado.status !== 'CONDICIONAL' &&
+                    resultado.status !== 'CONDICIONAL_ESTIMADO') {
+                    self.app.irAPaso('credito-resultado');
                     return;
                 }
                 self.app.irAPaso('credito-loading');

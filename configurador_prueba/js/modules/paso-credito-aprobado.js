@@ -8,6 +8,19 @@ var PasoCreditoAprobado = {
 
     init: function(app) {
         this.app = app;
+        // FINAL GATE: refuse to render the approval UI if the decision was
+        // anything other than a true approval. This is the last line of
+        // defense — even if an upstream step routes here incorrectly, we
+        // redirect to the real decision screen instead of cheerfully
+        // telling a rejected applicant they were approved.
+        var resultado = (app.state && app.state._resultadoFinal) || {};
+        var s = resultado.status || '';
+        var approved = (s === 'PREAPROBADO' || s === 'PREAPROBADO_ESTIMADO' ||
+                        s === 'CONDICIONAL' || s === 'CONDICIONAL_ESTIMADO');
+        if (!approved) {
+            app.irAPaso('credito-resultado');
+            return;
+        }
         this.render();
         this.bindEvents();
     },
