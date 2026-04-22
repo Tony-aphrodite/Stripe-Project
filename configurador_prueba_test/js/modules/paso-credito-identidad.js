@@ -417,15 +417,28 @@ var PasoCreditoIdentidad = {
             formData.append('domicilio_diferente', '1');
         }
 
-        var partes    = (state.nombre || '').trim().split(/\s+/);
-        var nombre    = partes.length > 0 ? partes[0] : '';
-        var apellidos = partes.length > 1 ? partes.slice(1).join(' ') : '';
+        // Use the dedicated fields collected in paso-credito-nombre.js
+        // (apellidoPaterno + apellidoMaterno). Falling back to splitting
+        // state.nombre on whitespace fails when nombre is a single word
+        // (no apellido) → 400 from verificar-identidad.php.
+        var nombre = (state.nombre || '').trim();
+        var apellidos = ((state.apellidoPaterno || '') + ' ' + (state.apellidoMaterno || '')).trim();
+        if (!apellidos && nombre.indexOf(' ') > 0) {
+            // Last-resort: state.nombre might already include surname
+            var parts = nombre.split(/\s+/);
+            nombre = parts[0];
+            apellidos = parts.slice(1).join(' ');
+        }
 
         formData.append('nombre', nombre);
         formData.append('apellidos', apellidos);
         formData.append('fecha_nacimiento', state.fechaNacimiento || '');
         formData.append('telefono', state.telefono || '');
         formData.append('email', state.email || '');
+        // Truora new schema requires gender + state_id
+        formData.append('gender', state.sexo || state.gender || 'M');
+        formData.append('state_id', state.estadoDomicilio || state.estado || 'CDMX');
+        if (state.curp) formData.append('curp', state.curp);
 
         // Helper: show an error below the Continuar button and re-enable it.
         // If the backend returned HTTP/body detail, render them so we can
