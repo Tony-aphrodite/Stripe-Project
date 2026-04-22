@@ -372,10 +372,20 @@ var PasoCreditoEnganche = {
 
         var centro = self.app.state.centroEntrega || {};
 
+        // Build the full name (nombre + apellidoPaterno + apellidoMaterno) so
+        // the admin panel shows the complete identity, matching the contado
+        // flow (paso4a-checkout.js _fullName). Previously only customerData.nombre
+        // was sent → admin saw first name only. Reported by customers 2026-04-22.
+        var st = self.app.state || {};
+        var fullName = [st.nombre || customerData.nombre, st.apellidoPaterno, st.apellidoMaterno]
+            .filter(function(p){ return p && String(p).trim(); })
+            .join(' ').trim();
+        if (!fullName) fullName = customerData.nombre;
+
         var payload = {
             paymentIntentId: paymentIntentId,
             pagoTipo:  'enganche',
-            nombre:    customerData.nombre,
+            nombre:    fullName,
             email:     customerData.email,
             telefono:  customerData.telefono,
             modelo:    customerData.modelo,
