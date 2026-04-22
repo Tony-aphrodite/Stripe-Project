@@ -17,13 +17,21 @@ if ($secret !== 'voltika_cdc_cert_2026') {
 
 session_start();
 
+require_once __DIR__ . '/config.php';
+
+// CN should match the CDC API username (RMD004694MGE). Many CDC/Apigee
+// deployments map the uploaded cert to an API key via CN = username.
+// Override via ?cn=... for testing.
+$cdcUser = defined('CDC_USER') ? CDC_USER : 'RMD004694MGE';
+$cn = $_GET['cn'] ?? $cdcUser;
+
 $dn = [
     'countryName'            => 'MX',
     'stateOrProvinceName'    => 'Ciudad de Mexico',
     'localityName'           => 'CDMX',
     'organizationName'       => 'Voltika MX',
     'organizationalUnitName' => 'Tecnologia',
-    'commonName'             => 'voltika.mx',
+    'commonName'             => $cn,
     'emailAddress'           => 'ivan.clavel@voltika.mx',
 ];
 
