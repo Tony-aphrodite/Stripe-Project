@@ -67,8 +67,9 @@ window.AD_preaprobaciones = (function(){
     });
     html += '</select>';
     html += '<select id="apFSeg" style="padding:8px;border:1px solid #ddd;border-radius:4px;">';
-    ['','nuevo','contactado','vendido','descartado'].forEach(function(s){
-      html += '<option value="'+s+'"'+(filters.seguimiento===s?' selected':'')+'>'+(s||'Todo seguimiento')+'</option>';
+    ['','nuevo','contactado','vendido','descartado','archivado'].forEach(function(s){
+      var label = s ? (s.charAt(0).toUpperCase()+s.slice(1)) : 'Activos (no archivados)';
+      html += '<option value="'+s+'"'+(filters.seguimiento===s?' selected':'')+'>'+label+'</option>';
     });
     html += '</select>';
     html += '<select id="apFSource" style="padding:8px;border:1px solid #ddd;border-radius:4px;">';
@@ -79,8 +80,17 @@ window.AD_preaprobaciones = (function(){
     html += '<button id="apFApply" class="ad-btn">Filtrar</button>';
     html += '</div>';
 
+    // Bulk action bar (visible when selections exist)
+    html += '<div id="apBulkBar" style="display:none;background:#1f2937;color:#fff;padding:10px 16px;border-radius:6px;margin-bottom:8px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">';
+    html += '<span><span id="apBulkCount">0</span> seleccionadas</span>';
+    html += '<div style="display:flex;gap:8px">';
+    html += '<button class="apBulkArchive" style="padding:6px 14px;background:#f59e0b;color:#fff;border:none;border-radius:4px;font-weight:600;cursor:pointer">📁 Archivar</button>';
+    html += '<button class="apBulkDelete" style="padding:6px 14px;background:#dc2626;color:#fff;border:none;border-radius:4px;font-weight:600;cursor:pointer">🗑 Eliminar permanente</button>';
+    html += '</div></div>';
+
     // Tabla
     html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr>';
+    html += '<th style="width:30px"><input type="checkbox" id="apCheckAll"></th>';
     html += '<th>Fecha</th><th>Cliente</th><th>Email / Teléfono</th><th>Modelo</th><th>Status</th><th>Score</th><th>Source</th><th>Eng req</th><th>Plazo</th><th>Seguimiento</th><th></th>';
     html += '</tr></thead><tbody>';
 
@@ -93,6 +103,7 @@ window.AD_preaprobaciones = (function(){
       var fechaCorta = (row.freg || '').substring(0, 16);
 
       html += '<tr>';
+      html += '<td><input type="checkbox" class="apRowCheck" data-id="'+row.id+'"></td>';
       html += '<td><small>'+esc(fechaCorta)+'</small></td>';
       html += '<td><strong>'+esc(fullName)+'</strong>'+(row.fecha_nacimiento?'<br><small>'+esc(row.fecha_nacimiento)+'</small>':'')+'</td>';
       html += '<td><small>'+esc(row.email||'—')+(row.telefono?'<br>'+esc(row.telefono):'')+'</small></td>';
@@ -127,6 +138,42 @@ window.AD_preaprobaciones = (function(){
     });
     $('.apPage').on('click', function(){ filters.page = $(this).data('p'); load(); });
     $('.apEdit').on('click', function(){ showDetail($(this).data('id'), r.rows); });
+
+    // Bulk-select wiring
+    function refreshBulkBar() {
+      var n = $('.apRowCheck:checked').length;
+      $('#apBulkCount').text(n);
+      $('#apBulkBar').css('display', n > 0 ? 'flex' : 'none');
+    }
+    $('#apCheckAll').on('change', function(){
+      $('.apRowCheck').prop('checked', this.checked);
+      refreshBulkBar();
+    });
+    $('.apRowCheck').on('change', refreshBulkBar);
+
+    $('.apBulkArchive').on('click', function(){
+      var ids = $('.apRowCheck:checked').map(function(){ return parseInt($(this).data('id'),10); }).get();
+      if (!ids.length) return;
+      if (!confirm('¿Archivar ' + ids.length + ' solicitud(es)? Se ocultan del listado pero quedan en BD.')) return;
+      ADApp.api('preaprobaciones/eliminar.php', {
+        method:'POST', contentType:'application/json',
+        data: JSON.stringify({ ids: ids, modo: 'archivar' })
+      }).done(function(){ load(); });
+    });
+
+    $('.apBulkDelete').on('click', function(){
+      var ids = $('.apRowCheck:checked').map(function(){ return parseInt($(this).data('id'),10); }).get();
+      if (!ids.length) return;
+      var msg = '⚠️ ELIMINACIÓN PERMANENTE\n\n' + ids.length + ' solicitud(es) serán BORRADAS de la base de datos.\n\nEsta acción NO se puede deshacer (solo queda audit log).\n\nEscriba "ELIMINAR" para confirmar:';
+      var typed = prompt(msg);
+      if (typed !== 'ELIMINAR') return;
+      ADApp.api('preaprobaciones/eliminar.php', {
+        method:'POST', contentType:'application/json',
+        data: JSON.stringify({ ids: ids, modo: 'eliminar' })
+      }).done(function(){ load(); }).fail(function(xhr){
+        alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido'));
+      });
+    });
   }
 
   function showDetail(id, rows){
@@ -212,10 +259,15 @@ window.AD_preaprobaciones = (function(){
     html += '</div>';
 
     // ── Action bar ───────────────────────────────────────────────────────
-    html += '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;padding:0 8px">';
+    html += '<div style="display:flex;gap:10px;justify-content:space-between;margin-top:16px;padding:0 8px;flex-wrap:wrap">';
+    html += '<div style="display:flex;gap:8px">';
+    html += '<button id="apEditArchive" style="padding:8px 14px;background:#fef3c7;color:#78350f;border:1px solid #f59e0b;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px">📁 Archivar</button>';
+    html += '<button id="apEditDelete" style="padding:8px 14px;background:#fee2e2;color:#991b1b;border:1px solid #dc2626;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px">🗑 Eliminar</button>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:10px">';
     html += '<button id="apEditClose" style="padding:10px 22px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:6px;font-weight:600;cursor:pointer">Cerrar</button>';
     html += '<button id="apEditSave" style="padding:10px 22px;background:'+color.bg+';color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer">💾 Guardar cambios</button>';
-    html += '</div>';
+    html += '</div></div>';
 
     ADApp.modal(html);
 
@@ -238,6 +290,26 @@ window.AD_preaprobaciones = (function(){
       }).done(function(){ ADApp.closeModal(); load(); });
     });
     $('#apEditClose').on('click', function(){ ADApp.closeModal(); });
+
+    $('#apEditArchive').on('click', function(){
+      if (!confirm('¿Archivar esta solicitud? (Se oculta del listado pero queda en BD)')) return;
+      ADApp.api('preaprobaciones/eliminar.php', {
+        method:'POST', contentType:'application/json',
+        data: JSON.stringify({ id: row.id, modo: 'archivar' })
+      }).done(function(){ ADApp.closeModal(); load(); });
+    });
+
+    $('#apEditDelete').on('click', function(){
+      var msg = '⚠️ ELIMINACIÓN PERMANENTE\n\nSolicitud de "' + fullName + '" será BORRADA de la base de datos.\n\nNo se puede deshacer (solo audit log).\n\nEscriba "ELIMINAR" para confirmar:';
+      var typed = prompt(msg);
+      if (typed !== 'ELIMINAR') return;
+      ADApp.api('preaprobaciones/eliminar.php', {
+        method:'POST', contentType:'application/json',
+        data: JSON.stringify({ id: row.id, modo: 'eliminar' })
+      }).done(function(){ ADApp.closeModal(); load(); }).fail(function(xhr){
+        alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'Solo admin puede eliminar permanentemente'));
+      });
+    });
   }
 
   function summaryCard(label, value) {

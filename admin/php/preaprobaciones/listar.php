@@ -72,8 +72,10 @@ $page        = max(1, (int)($_GET['page'] ?? 1));
 $limit       = min(200, max(20, (int)($_GET['limit'] ?? 50)));
 $offset      = ($page - 1) * $limit;
 
+// By default exclude archived rows. Pass ?seguimiento=archivado to view them.
 $where  = ['1=1'];
 $params = [];
+if ($seguimiento === '') { $where[] = "(seguimiento IS NULL OR seguimiento != 'archivado')"; }
 if ($status      !== '') { $where[] = 'status = ?';         $params[] = $status; }
 if ($seguimiento !== '') { $where[] = 'seguimiento = ?';    $params[] = $seguimiento; }
 if ($source      !== '') { $where[] = 'circulo_source = ?'; $params[] = $source; }
