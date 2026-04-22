@@ -157,7 +157,16 @@ echo 'h1{color:#10b981;} textarea{width:100%;font-family:monospace;font-size:11p
 echo '.btn{display:inline-block;padding:12px 24px;background:#039fe1;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;margin:5px 0;}';
 echo '.btn:hover{background:#027db0;} .warn{color:#C62828;font-weight:700;}</style></head><body>';
 
-echo '<h1>✅ Certificado ECDSA secp384r1 generado</h1>';
+// Detect actual key type from the cert's public key (not assumed)
+$detectedType = 'desconocido';
+try {
+    $pub = openssl_pkey_get_public($certPem);
+    if ($pub) {
+        $det = openssl_pkey_get_details($pub);
+        $detectedType = ($det['type'] === OPENSSL_KEYTYPE_EC) ? 'ECDSA secp384r1' : (($det['type'] === OPENSSL_KEYTYPE_RSA) ? 'RSA ' . ($det['bits'] ?? '?') : 'tipo #' . $det['type']);
+    }
+} catch (Throwable $e) {}
+echo '<h1>✅ Certificado ' . $detectedType . ' generado</h1>';
 
 $ds = $GLOBALS['cdc_disk_status'] ?? null;
 if ($ds) {
@@ -186,7 +195,7 @@ $fp = '';
 try { $fp = openssl_x509_fingerprint($certPem, 'sha256') ?: ''; } catch (Throwable $e) {}
 echo '<table border="1" cellpadding="8" style="border-collapse:collapse;margin-bottom:20px;">';
 echo '<tr><th>Campo</th><th>Valor</th></tr>';
-echo '<tr><td>Tipo de llave</td><td><strong>ECDSA secp384r1</strong> (requerido por CDC)</td></tr>';
+echo '<tr><td>Tipo de llave</td><td><strong>' . $detectedType . '</strong></td></tr>';
 echo '<tr><td><strong>Fingerprint SHA-256</strong></td><td><code style="font-size:11px">' . htmlspecialchars($fp) . '</code><br><small style="color:#666">Verifica que este mismo fingerprint aparezca en el portal de CDC después de subir el cert.</small></td></tr>';
 echo '<tr><td>Organización</td><td>' . ($certData['subject']['O'] ?? '') . '</td></tr>';
 echo '<tr><td>Common Name</td><td>' . ($certData['subject']['CN'] ?? '') . '</td></tr>';
