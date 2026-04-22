@@ -131,11 +131,11 @@ if ($score === null) {
         $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
                    'reasons' => ['PTI_EXTREMO']];
     }
-    // KO 3: Truora identity check failed (if we have it)
-    elseif (isset($json['truora_ok']) && !$truoraOk) {
-        $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
-                   'reasons' => ['IDENTIDAD_NO_VERIFICADA']];
-    }
+    // Note: Truora identity is NOT a hard KO. If Truora fails (which is
+    // common while their integration is being stabilized), we don't auto-
+    // reject — instead, the synthetic score below subtracts points for
+    // missing identity verification. Admin can manually verify identity
+    // before final approval via the "seguimiento" workflow.
     else {
         // Build synthetic score (300-850 range simulating CDC)
         $synthScore = vkSyntheticScore([
@@ -405,8 +405,10 @@ function vkSyntheticScore(array $signals): int {
     elseif ($eng >= 0.30)   $score += 20;
     elseif ($eng < 0.20)    $score -= 30;
 
-    // Identity verified — basic anti-fraud
-    if (!empty($signals['truora_ok'])) $score += 20;
+    // Identity verification (Truora) — bonus if passed, small penalty if not
+    // (admin will verify manually before final approval if Truora is down)
+    if (!empty($signals['truora_ok'])) $score += 30;
+    else                                $score -= 20;
 
     // Repeat customer — strongest positive signal we have
     if (!empty($signals['es_repeticion'])) $score += 80;
