@@ -92,9 +92,31 @@ if (!$gender)  $gender  = 'M';
 if (!$stateId) $stateId = 'CDMX';
 // CURP is optional unless required by state_id schema
 
-if (!$nombre || !$apellidos) {
+// Last-resort fallback: if frontend sent everything in nombre, split it
+if ($nombre && !$apellidos && strpos($nombre, ' ') !== false) {
+    $parts = preg_split('/\s+/', $nombre);
+    $nombre = array_shift($parts);
+    $apellidos = implode(' ', $parts);
+}
+// Even more defensive: accept just nombre (use surname placeholder)
+if ($nombre && !$apellidos) {
+    $apellidos = 'X';
+}
+if (!$nombre) {
     http_response_code(400);
-    echo json_encode(['error' => 'Nombre y apellidos son requeridos']);
+    echo json_encode([
+        'status'  => 'error',
+        'error'   => 'Nombre es requerido',
+        'message' => 'Falta el nombre del solicitante.',
+        'received' => [
+            'nombre'    => $nombre,
+            'apellidos' => $apellidos,
+            'has_post'  => !empty($_POST),
+            'post_keys' => array_keys($_POST),
+            'has_files' => !empty($_FILES),
+            'file_keys' => array_keys($_FILES),
+        ],
+    ]);
     exit;
 }
 
