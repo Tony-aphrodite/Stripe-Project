@@ -245,12 +245,10 @@ curl_close($ch);
 if ($tmpCert) @unlink($tmpCert);
 if ($tmpKey)  @unlink($tmpKey);
 
-// ── Logging ─────────────────────────────────────────────────────────────────
-$logFile = __DIR__ . '/logs/circulo-credito.log';
-if (!is_dir(dirname($logFile))) {
-    mkdir(dirname($logFile), 0755, true);
-}
-file_put_contents($logFile, json_encode([
+// ── Logging (file + DB) ─────────────────────────────────────────────────────
+// DB log is the reliable source — file logs need a writable logs/ dir which
+// Plesk hostings often deny.
+$logEntry = [
     'timestamp' => date('c'),
     'nombre'    => $primerNombre . ' ' . $apellidoPaterno,
     'rfc_used'  => $rfc,
@@ -258,11 +256,29 @@ file_put_contents($logFile, json_encode([
     'cp'        => $cp,
     'has_sig'   => $signatureHex !== '',
     'sig_len'   => strlen($signatureHex),
-    'body_sent' => substr($jsonBody, 0, 800),
+    'body_sent' => substr($jsonBody, 0, 2000),
     'httpCode'  => $httpCode,
     'curlErr'   => $curlErr,
-    'response'  => substr((string)$response, 0, 800),
-]) . "\n", FILE_APPEND | LOCK_EX);
+    'response'  => substr((string)$response, 0, 2000),
+];
+try {
+    $pdoLog = getDB();
+    $pdoLog->exec("CREATE TABLE IF NOT EXISTS cdc_query_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        endpoint VARCHAR(255),
+        http_code INT,
+        has_sig TINYINT(1),
+        body_sent MEDIUMTEXT,
+        response MEDIUMTEXT,
+        curl_err VARCHAR(500),
+        freg DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdoLog->prepare("INSERT INTO cdc_query_log (endpoint, http_code, has_sig, body_sent, response, curl_err) VALUES (?,?,?,?,?,?)")
+        ->execute([CDC_BASE_URL, $httpCode, $signatureHex !== '' ? 1 : 0, substr($jsonBody,0,2000), substr((string)$response,0,2000), substr((string)$curlErr,0,500)]);
+} catch (Throwable $e) {}
+$logFile = __DIR__ . '/logs/circulo-credito.log';
+if (!is_dir(dirname($logFile))) @mkdir(dirname($logFile), 0755, true);
+@file_put_contents($logFile, json_encode($logEntry) . "\n", FILE_APPEND | LOCK_EX);
 
 // ── Evaluar respuesta ───────────────────────────────────────────────────────
 // NO SILENT FALLBACK: if CDC fails, surface the real error so we can see
