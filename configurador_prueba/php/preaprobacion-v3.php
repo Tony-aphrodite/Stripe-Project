@@ -134,70 +134,32 @@ if ($person_found === false) {
         'mensaje'    => 'La persona no aparece en el Buró de Crédito. No es posible otorgar crédito a identidades que no se pueden verificar.',
     ];
 } elseif ($score === null) {
-    // ── Sin CDC → SELF-SCORING (multi-signal) ─────────────────────────────
-    // Compute a synthetic score based on signals we DO have:
-    //   age, declared income, Stripe payment history, Truora identity check
-    // Then feed the synthetic score into the same V3 logic so the result
-    // looks identical to a real CDC evaluation (PREAPROBADO / CONDICIONAL /
-    // NO_VIABLE) — frontend doesn't need to change.
-
-    // KO 1: age outside lendable range
-    $edad = vkCalcEdad($fechaNacimiento);
-    if ($edad !== null && ($edad < 18 || $edad > 70)) {
-        $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
-                   'reasons' => ['EDAD_FUERA_DE_RANGO'], 'edad' => $edad];
+    // OPTION B (customer decision 2026-04-23): without a REAL Círculo de
+    // Crédito score we cannot verify ANYTHING about the applicant —
+    // self-reported age and income are unverifiable. Fake data reaching
+    // this branch was the root of "entered false information and they were
+    // accepted". Therefore, no credit-bureau score → no credit. NO_VIABLE.
+    //
+    // This covers three distinct upstream scenarios with the same response:
+    //   person_found=true  + score=null  → thin file (real person, no history)
+    //   person_found=null  + score=null  → CDC unreachable / timeout
+    //   Any other null-score condition
+    // Real thin-file applicants are a legitimate group but they would need
+    // to be onboarded through a different flow (admin-assisted), not the
+    // self-service automatic approval.
+    $mensaje = 'No podemos otorgar crédito en este momento. No se obtuvo un reporte completo del Buró de Crédito para confirmar tu historial.';
+    if ($person_found === true) {
+        $mensaje .= ' Si es tu primera solicitud de crédito, contacta a un asesor: ventas@voltika.com.mx';
+    } elseif ($person_found === null) {
+        $mensaje .= ' Intenta de nuevo en unos minutos o contacta a soporte si el problema persiste.';
     }
-    // KO 2: extreme PTI (can't afford)
-    elseif ($pti_total > $V3['KO']['ptiExtreme']) {
-        $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
-                   'reasons' => ['PTI_EXTREMO']];
-    }
-    // Note: Truora identity is NOT a hard KO. If Truora fails (which is
-    // common while their integration is being stabilized), we don't auto-
-    // reject — instead, the synthetic score below subtracts points for
-    // missing identity verification. Admin can manually verify identity
-    // before final approval via the "seguimiento" workflow.
-    else {
-        // Build synthetic score (300-850 range simulating CDC)
-        $synthScore = vkSyntheticScore([
-            'edad'           => $edad,
-            'ingreso'        => $ingreso_mensual_est,
-            'pti'            => $pti_total,
-            'enganche_pct'   => $enganche_pct,
-            'truora_ok'      => $truoraOk,
-            'es_repeticion'  => vkIsRepeatCustomer($email),
-        ]);
-
-        // Run V3 with the synthetic score (same code path as real CDC)
-        if ($synthScore < $V3['KO']['scoreMin']) {
-            $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
-                       'enganche_min' => $eng_min, 'reasons' => ['SCORE_SINTETICO_BAJO'],
-                       'synth_score' => $synthScore];
-        }
-        elseif ($synthScore <= $V3['CONDITIONAL']['lowScorePTIGuardrail']['scoreMax']
-              && $pti_total > $V3['CONDITIONAL']['lowScorePTIGuardrail']['ptiMax']) {
-            $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4),
-                       'enganche_min' => $eng_min, 'reasons' => ['GUARDRAIL_SCORE_PTI'],
-                       'synth_score' => $synthScore];
-        }
-        else {
-            // SIN CDC: self-score can NEVER produce PREAPROBADO. Customer
-            // report 2026-04-23: fake data was reaching "¡Felicidades!"
-            // because a thin-file / CDC-unreachable path let self-score
-            // return PREAPROBADO_ESTIMADO on plausible self-reported
-            // age/income. With no real credit-bureau signal we cannot
-            // confirm ANY claim the applicant made, so the ceiling is
-            // CONDICIONAL_ESTIMADO — which routes to the yellow result
-            // screen (not the green "approved" screen) and requires
-            // either identity re-verification or admin review.
-            $eng_req = min(max(calcularEngancheMin($pti_total, $V3), $eng_min), 0.60);
-            $result  = ['status' => 'CONDICIONAL_ESTIMADO', 'pti_total' => round($pti_total, 4),
-                        'enganche_min' => $eng_min, 'enganche_requerido_min' => $eng_req,
-                        'plazo_max_meses' => calcularPlazoMax($synthScore, $pti_total, $V3),
-                        'synth_score' => $synthScore,
-                        'reasons' => ['SIN_DATOS_BURO_CREDITICIO']];
-        }
-    }
+    $result = [
+        'status'       => 'NO_VIABLE',
+        'pti_total'    => round($pti_total, 4),
+        'reasons'      => ['SIN_SCORE_CDC_NO_AUTO_APROBACION'],
+        'mensaje'      => $mensaje,
+        'person_found' => $person_found,
+    ];
 } else {
     // Con datos completos de Círculo
     // 1. KO reales

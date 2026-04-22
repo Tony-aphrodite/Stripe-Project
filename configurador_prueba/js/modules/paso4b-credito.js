@@ -124,27 +124,18 @@ var PreaprobacionV3 = {
         };
     },
 
-    // Sin Círculo: evaluación estimada solo por PTI.
-    // IMPORTANT: without a real credit-bureau score we have NO way to confirm
-    // the applicant's identity, so self-scoring can NEVER produce PREAPROBADO.
-    // The ceiling is CONDICIONAL_ESTIMADO, which routes to the yellow result
-    // screen (not the green "¡Felicidades!" approval). This is what blocks
-    // fake-data applicants from reaching the approval screen when CDC
-    // returned a thin-file response instead of the explicit 404.1.
+    // Sin Círculo: option B (customer decision 2026-04-23). Without a REAL
+    // credit-bureau score we cannot verify any claim the applicant made, so
+    // we reject outright instead of self-scoring. This mirrors the server
+    // behavior in preaprobacion-v3.php and prevents fake identities from
+    // reaching the conditional-approval screen when CDC returns thin-file
+    // or is unreachable.
     _evaluarSinCirculo: function(pti) {
-        var cfg    = this.config;
-        var engMin = cfg.downPaymentMin;
-        if (pti > cfg.KO.ptiExtreme) {
-            return { status: 'NO_VIABLE', pti: pti, reasons: ['PTI_EXTREMO_SIN_CIRCULO'] };
-        }
-        // PREAPROBADO_ESTIMADO removed — all non-KO self-score results now
-        // collapse to CONDICIONAL_ESTIMADO.
         return {
-            status: 'CONDICIONAL_ESTIMADO',
-            pti: pti,
-            enganche_requerido_min: Math.min(Math.max(this._engancheMin(pti), engMin), 0.60),
-            plazo_max_meses: 24,
-            reasons: ['SIN_DATOS_BURO_CREDITICIO']
+            status:  'NO_VIABLE',
+            pti:     pti,
+            reasons: ['SIN_SCORE_CDC_NO_AUTO_APROBACION'],
+            mensaje: 'No podemos otorgar crédito en este momento. No se obtuvo un reporte completo del Buró de Crédito para confirmar tu historial.'
         };
     },
 

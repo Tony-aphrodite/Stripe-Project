@@ -215,12 +215,26 @@ var PasoCreditoResultado = {
     },
 
     _renderNoViable: function(resultado) {
+        // Tailor the subtitle to the actual rejection reason so the customer
+        // understands what happened instead of seeing a generic message.
+        var reasons = resultado.reasons || [];
+        var subtitle = 'Lo sentimos, no cumples los requisitos en este momento';
+        if (reasons.indexOf('IDENTIDAD_NO_ENCONTRADA_EN_CDC') !== -1) {
+            subtitle = 'La persona no aparece en el Buró de Crédito — no es posible otorgar crédito a identidades que no se pueden verificar.';
+        } else if (reasons.indexOf('SIN_SCORE_CDC_NO_AUTO_APROBACION') !== -1) {
+            subtitle = resultado.mensaje || 'No se obtuvo un reporte completo del Buró de Crédito para confirmar tu historial.';
+        } else if (reasons.indexOf('KO_SEVERE_DPD_90PLUS') !== -1) {
+            subtitle = 'Tu historial muestra pagos atrasados graves. No podemos otorgar crédito en este momento.';
+        } else if (reasons.indexOf('KO_PTI_EXTREME') !== -1 || reasons.indexOf('PTI_EXTREMO_SIN_CIRCULO') !== -1) {
+            subtitle = 'El pago semanal supera tu capacidad declarada de ingreso. Considera aumentar el enganche o reducir el plazo.';
+        }
+
         var html = '';
         html += '<div style="background:#FFEBEE;border:1px solid #EF9A9A;border-radius:10px;padding:20px;text-align:center;margin-bottom:16px;">';
         html += '<div style="font-size:40px;margin-bottom:8px;">&#10060;</div>';
         html += '<div style="font-size:20px;font-weight:800;color:#C62828;">No es posible el crédito</div>';
         html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:4px;">' +
-            'Lo sentimos, no cumples los requisitos en este momento</div>';
+            subtitle + '</div>';
         html += '</div>';
 
         html += '<p style="font-size:13px;color:var(--vk-text-secondary);text-align:center;margin-bottom:16px;">' +
