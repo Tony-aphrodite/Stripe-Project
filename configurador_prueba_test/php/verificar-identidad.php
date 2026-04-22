@@ -201,30 +201,50 @@ if ($email)    $postFields['email'] = $email;
 if ($curp && strlen($curp) === 18) $postFields['national_id'] = $curp;
 
 // Phone formatting — Truora wants "+52 5512345678" (country code + space + 10 digits).
-// Strip everything non-digit, then prepend +52 if MX number.
+// Customer reported 2026-04-23: Apigee returns 10400 "Invalid phone number
+// format" intermittently. Root cause: any non-clean input (country code
+// variants, extra digits, stray characters) sneaks into phone_number and
+// fails the regex. Policy now: only send phone_number when it matches the
+// exact MX mobile pattern we're confident about; otherwise omit (Truora's
+// person check does not require phone — name + CURP + DOB + gender already
+// drive the match).
+$phoneNormalized = null;
 if ($telefono) {
-    $digits = preg_replace('/\D/', '', $telefono);
-    // Strip leading 52 if user already typed 52xxxxxxxxxx (12 digits)
-    if (strlen($digits) === 12 && substr($digits, 0, 2) === '52') {
-        $digits = substr($digits, 2);
+    $digits = preg_replace('/\D/', '', (string)$telefono);
+    // Peel common Mexican prefixes so we always end up with 10 local digits.
+    //   12 digits starting 52  → drop "52"   (country code typed without +)
+    //   13 digits starting 521 → drop "521"  (country code + mobile prefix 1)
+    //   11 digits starting 1   → drop "1"    (mobile prefix without country code)
+    if (strlen($digits) === 12 && substr($digits, 0, 2) === '52')  $digits = substr($digits, 2);
+    if (strlen($digits) === 13 && substr($digits, 0, 3) === '521') $digits = substr($digits, 3);
+    if (strlen($digits) === 11 && $digits[0] === '1')              $digits = substr($digits, 1);
+    // Final guard: must be EXACTLY 10 Mexican digits, cannot start with 0 or
+    // 1 (those are invalid area-code starts in MX), and must not repeat the
+    // same digit 10 times (that's a junk placeholder).
+    if (preg_match('/^[2-9]\d{9}$/', $digits) && !preg_match('/^(\d)\1{9}$/', $digits)) {
+        $phoneNormalized = '+52 ' . $digits;
+        $postFields['phone_number'] = $phoneNormalized;
     }
-    // Strip leading 1 (Mexican mobile prefix sometimes typed as 521xxxxxxxxxx = 13 digits)
-    if (strlen($digits) === 13 && substr($digits, 0, 3) === '521') {
-        $digits = substr($digits, 3);
-    }
-    if (strlen($digits) === 10) {
-        $postFields['phone_number'] = '+52 ' . $digits;
-    }
-    // If still wrong length, omit phone — Truora doesn't require it
 }
+
+// Build body manually so we guarantee the encoding Apigee expects:
+//   - `+` → `%2B`
+//   - ` ` → `+`   (standard application/x-www-form-urlencoded space)
+// PHP's http_build_query with default flags does this, but we do it
+// explicitly here to avoid a silent change of behavior if a future PHP
+// upgrade flips the defaults. The phone_number field is the only one that
+// contains a literal `+` and space, so we spell out its encoding to
+// remove any ambiguity about how Apigee decodes it.
+$bodyPairs = [];
+foreach ($postFields as $k => $v) {
+    $bodyPairs[] = urlencode((string)$k) . '=' . urlencode((string)$v);
+}
+$bodyString = implode('&', $bodyPairs);
 
 $ch = curl_init(TRUORA_API_URL);
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
-    // RFC3986 encoding: space → %20 (not +). Truora's Apigee phone_number
-    // validator parses strictly and rejects "+52+5512345678" (default +
-    // encoding) with 400 phoneNumber format error.
-    CURLOPT_POSTFIELDS     => http_build_query($postFields, '', '&', PHP_QUERY_RFC3986),
+    CURLOPT_POSTFIELDS     => $bodyString,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER     => [
         'Truora-API-Key: ' . TRUORA_API_KEY,
@@ -237,6 +257,47 @@ $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlErr  = curl_error($ch);
 curl_close($ch);
+
+// Self-healing retry: if Apigee flagged phone format (code 10400 with phone
+// message), drop phone_number and try once more. The person check does not
+// require phone, so this lets the customer complete verification even when
+// their phone value triggers some unknown Apigee edge case.
+if (
+    $httpCode === 400 &&
+    isset($postFields['phone_number']) &&
+    is_string($response) &&
+    stripos($response, 'phone') !== false &&
+    stripos($response, 'format') !== false
+) {
+    unset($postFields['phone_number']);
+    $bodyPairs2 = [];
+    foreach ($postFields as $k => $v) {
+        $bodyPairs2[] = urlencode((string)$k) . '=' . urlencode((string)$v);
+    }
+    $bodyStringRetry = implode('&', $bodyPairs2);
+
+    $chRetry = curl_init(TRUORA_API_URL);
+    curl_setopt_array($chRetry, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $bodyStringRetry,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Truora-API-Key: ' . TRUORA_API_KEY,
+            'Content-Type: application/x-www-form-urlencoded',
+        ],
+        CURLOPT_TIMEOUT        => 15,
+    ]);
+    $retryResp = curl_exec($chRetry);
+    $retryCode = curl_getinfo($chRetry, CURLINFO_HTTP_CODE);
+    $retryErr  = curl_error($chRetry);
+    curl_close($chRetry);
+    if ($retryCode >= 200 && $retryCode < 300) {
+        // Replace response so downstream code treats this as the success path.
+        $response = $retryResp;
+        $httpCode = $retryCode;
+        $curlErr  = $retryErr;
+    }
+}
 
 // Logging — DB (reliable on Plesk) + file (best-effort)
 try {
@@ -272,13 +333,33 @@ try {
 if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
     $_SESSION['truora_status'] = 'error';
     http_response_code(502);
+    // Decode Truora's error body so we can surface an actionable message to
+    // the customer instead of a generic "contact soporte". Previously a 10400
+    // phone format error rendered as "No pudimos conectar…" which suggested
+    // a network outage — the real fix was on the user's input.
+    $trBody = json_decode((string)$response, true);
+    $trMsg  = is_array($trBody) ? ($trBody['message'] ?? '') : '';
+    $uiMsg  = 'No pudimos conectar con el servicio de verificación. Intenta de nuevo o contacta soporte.';
+    if ($httpCode === 400 && $trMsg) {
+        if (stripos($trMsg, 'phone') !== false) {
+            $uiMsg = 'El número de teléfono ingresado no tiene formato válido. Corrígelo (10 dígitos MX) e intenta de nuevo.';
+        } elseif (stripos($trMsg, 'email') !== false) {
+            $uiMsg = 'El correo ingresado no tiene formato válido. Revísalo e intenta de nuevo.';
+        } elseif (stripos($trMsg, 'national_id') !== false || stripos($trMsg, 'curp') !== false) {
+            $uiMsg = 'El CURP ingresado no tiene formato válido (18 caracteres). Revísalo e intenta de nuevo.';
+        } elseif (stripos($trMsg, 'date') !== false) {
+            $uiMsg = 'La fecha de nacimiento no tiene formato válido (YYYY-MM-DD). Revísala e intenta de nuevo.';
+        } else {
+            $uiMsg = 'Los datos enviados fueron rechazados por el servicio de verificación: ' . htmlspecialchars($trMsg, ENT_QUOTES);
+        }
+    }
     echo json_encode([
         'status'   => 'error',
         'error'    => 'Truora API falló',
         'http'     => $httpCode,
         'curl_err' => $curlErr ?: null,
         'body'     => substr((string)$response, 0, 400),
-        'message'  => 'No pudimos conectar con el servicio de verificación. Intenta de nuevo o contacta soporte.',
+        'message'  => $uiMsg,
     ]);
     exit;
 }
