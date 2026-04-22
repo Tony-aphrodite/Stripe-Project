@@ -34,8 +34,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
-define('CDC_BASE_URL', 'https://services.circulodecredito.com.mx/sandbox/v2/rcc/ficoscore');
-define('CDC_FOLIO',    '0000080008');  // Folio otorgante de prueba
+// CDC endpoint — /v2/rccficoscore (Reporte de Crédito Consolidado + FICO
+// Score V2). This is the product the Voltika app has activated, confirmed
+// by the customer's subscription screenshot and the v2 swagger at:
+//   /sites/default/files/swagger/1730437066/reporte-de-credito-consolidado-fico-score-v2-1-swagger.2.1.2.yaml
+// Body schema (FLAT, no wrapper):
+//   primerNombre + apellidoPaterno + apellidoMaterno + fechaNacimiento +
+//   RFC (uppercase) + nacionalidad + domicilio{direccion, coloniaPoblacion,
+//   delegacionMunicipio, ciudad, estado (enum), CP}
+// Override via the CDC_BASE_URL env var if the customer changes product.
+define('CDC_BASE_URL', getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rccficoscore');
+// Folio otorgante — 10-digit id assigned by CDC (0000004694 for Voltika).
+define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '0000080008');
+// CDC production auth model (confirmed via the official PHP client source):
+//   - username and password go as CUSTOM headers, NOT HTTP Basic Auth
+//   - x-api-key carries the Consumer Key from the CDC developer portal
+//   - x-signature carries the SHA256 hash of the request body, HEX encoded
+if (!defined('CDC_USER')) define('CDC_USER', getenv('CDC_USER') ?: '');
+if (!defined('CDC_PASS')) define('CDC_PASS', getenv('CDC_PASS') ?: '');
 
 session_start();
 
@@ -80,40 +96,123 @@ if (!$primerNombre || !$apellidoPaterno) {
     exit;
 }
 
+// ── Normalize everything to ASCII-only uppercase ──────────────────────────
+// CDC v2 is strict about the signed body — accents (ñ, á, é) or mixed case
+// can cause 503 "signature mismatch" or 400 validation. Collapse everything
+// to ASCII uppercase before signing.
+$primerNombre    = cdcAscii($primerNombre);
+$apellidoPaterno = cdcAscii($apellidoPaterno);
+$apellidoMaterno = cdcAscii($apellidoMaterno);
+$direccion       = cdcAscii($direccion);
+$colonia         = cdcAscii($colonia);
+$municipio       = cdcAscii($municipio);
+$ciudad          = cdcAscii($ciudad);
+
+// ── RFC: auto-compute if not provided ─────────────────────────────────────
+// The credit-check step runs BEFORE the facturación step where the user
+// enters their RFC. Compute the 10-char SAT RFC from their name+DOB so
+// CDC has a valid-looking RFC. (Homoclave is added only if absent.)
+if (!$rfc || strlen($rfc) < 10) {
+    $rfc = cdcComputeRFC($primerNombre, $apellidoPaterno, $apellidoMaterno, $fechaNacimiento);
+}
+// Pad to 13 chars with a placeholder homoclave if still short — CDC v2
+// sometimes rejects 10-char form. XXX is the conventional placeholder.
+if (strlen($rfc) === 10) $rfc .= 'XXX';
+
+// ── estado: normalize to CDC CatalogoEstados v2 enum ──────────────────────
+$estadoNorm = cdcEstadoEnum($estado);
+
 // ── Construir request body ──────────────────────────────────────────────────
+// Body schema for /v2/rccficoscore (swagger v2.1.2):
+//   - FLAT (no folio/persona wrapper)
+//   - primerNombre singular + RFC UPPERCASE + nacionalidad required
+//   - domicilio uses coloniaPoblacion / delegacionMunicipio / CP
 $requestBody = [
-    'folioOtorgante' => CDC_FOLIO,
-    'persona' => [
-        'primerNombre'    => $primerNombre,
-        'segundoNombre'   => '',
-        'apellidoPaterno' => $apellidoPaterno,
-        'apellidoMaterno' => $apellidoMaterno,
-        'fechaNacimiento' => $fechaNacimiento,
-        'RFC'             => $rfc,
-        'CURP'            => $curp,
-        'nacionalidad'    => 'MX',
-        'domicilio' => [
-            'direccion'           => $direccion ?: 'NO DISPONIBLE',
-            'coloniaPoblacion'    => $colonia ?: 'CENTRO',
-            'delegacionMunicipio' => $municipio ?: $ciudad ?: 'NO DISPONIBLE',
-            'ciudad'              => $ciudad ?: 'NO DISPONIBLE',
-            'estado'              => $estado ?: 'MX',
-            'CP'                  => $cp,
-        ],
+    'primerNombre'    => $primerNombre,
+    'apellidoPaterno' => $apellidoPaterno,
+    'apellidoMaterno' => $apellidoMaterno ?: 'X',
+    'fechaNacimiento' => $fechaNacimiento,
+    'RFC'             => $rfc,
+    'nacionalidad'    => 'MX',
+    'domicilio' => [
+        'direccion'           => $direccion ?: 'NO DISPONIBLE',
+        'coloniaPoblacion'    => $colonia ?: 'CENTRO',
+        'delegacionMunicipio' => $municipio ?: $ciudad ?: 'NO DISPONIBLE',
+        'ciudad'              => $ciudad ?: 'NO DISPONIBLE',
+        'estado'              => $estadoNorm,
+        'CP'                  => $cp ?: '00000',
     ],
 ];
+if ($curp) $requestBody['CURP'] = $curp;
 
 $jsonBody = json_encode($requestBody, JSON_UNESCAPED_UNICODE);
 
+// ── Load our private key (required for x-signature) ────────────────────────
+// Resolution order: session → DB (cdc_certificates) → disk. Customers' own
+// sessions never have the key, so the DB row is the canonical source. Disk
+// is legacy/backup.
+$keyPem  = $_SESSION['cdc_key_pem']  ?? null;
+$certPem = $_SESSION['cdc_cert_pem'] ?? null;
+
+if (!$keyPem || !$certPem) {
+    try {
+        $pdoTmp = getDB();
+        $row = $pdoTmp->query("SELECT private_key, certificate FROM cdc_certificates WHERE active = 1 ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $keyPem  = $keyPem  ?: $row['private_key'];
+            $certPem = $certPem ?: $row['certificate'];
+        }
+    } catch (Throwable $e) { /* table may not exist yet — fall through to disk */ }
+}
+
+$keyFile  = __DIR__ . '/certs/cdc_private.key';
+$certFile = __DIR__ . '/certs/cdc_certificate.pem';
+if (!$keyPem  && file_exists($keyFile))  $keyPem  = @file_get_contents($keyFile);
+if (!$certPem && file_exists($certFile)) $certPem = @file_get_contents($certFile);
+
+// Hard-fail if key is missing — sending an empty x-signature is guaranteed
+// to return 403/503 from CDC and previously looked like a transient error.
+if (!$keyPem) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error'   => 'CDC private key no está en la base de datos ni en disco',
+        'hint'    => 'Abre generar-certificado-cdc.php?key=voltika_cdc_cert_2026&regen=1 para regenerar y guardar en DB.',
+    ]);
+    exit;
+}
+
+// ── Sign the body ──────────────────────────────────────────────────────────
+$signatureHex = '';
+$priv = openssl_pkey_get_private($keyPem);
+if (!$priv) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error'   => 'No se pudo parsear la llave privada',
+        'openssl' => openssl_error_string(),
+    ]);
+    exit;
+}
+$sig = '';
+if (openssl_sign($jsonBody, $sig, $priv, OPENSSL_ALGO_SHA256)) {
+    $signatureHex = bin2hex($sig);
+}
+
 // ── Llamada a la API ────────────────────────────────────────────────────────
+// Auth per CDC production spec: x-api-key + username/password as custom
+// headers (NOT HTTP Basic Auth) + x-signature hex.
 $headers = [
     'Content-Type: application/json',
     'Accept: application/json',
     'x-api-key: ' . CDC_API_KEY,
 ];
+if (CDC_USER)      $headers[] = 'username: ' . CDC_USER;
+if (CDC_PASS)      $headers[] = 'password: ' . CDC_PASS;
+if ($signatureHex) $headers[] = 'x-signature: ' . $signatureHex;
 
 $ch = curl_init();
-curl_setopt_array($ch, [
+$curlOpts = [
     CURLOPT_URL            => CDC_BASE_URL,
     CURLOPT_POST           => true,
     CURLOPT_POSTFIELDS     => $jsonBody,
@@ -122,42 +221,80 @@ curl_setopt_array($ch, [
     CURLOPT_TIMEOUT        => 30,
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_SSL_VERIFYHOST => 2,
-]);
+];
+
+// Mutual TLS — many CDC v2 products require the client certificate at the
+// TLS layer in addition to the x-signature header. Attaching both is
+// harmless (Apigee ignores mTLS when not enforced). Without this, some
+// CDC products return 503 with an empty body.
+$tmpCert = null; $tmpKey = null;
+if ($certPem && $keyPem) {
+    $tmpCert = tempnam(sys_get_temp_dir(), 'cdc_cert_');
+    $tmpKey  = tempnam(sys_get_temp_dir(), 'cdc_key_');
+    file_put_contents($tmpCert, $certPem);
+    file_put_contents($tmpKey,  $keyPem);
+    $curlOpts[CURLOPT_SSLCERT] = $tmpCert;
+    $curlOpts[CURLOPT_SSLKEY]  = $tmpKey;
+}
+curl_setopt_array($ch, $curlOpts);
 
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlErr  = curl_error($ch);
 curl_close($ch);
+if ($tmpCert) @unlink($tmpCert);
+if ($tmpKey)  @unlink($tmpKey);
 
-// ── Logging ─────────────────────────────────────────────────────────────────
-$logFile = __DIR__ . '/logs/circulo-credito.log';
-if (!is_dir(dirname($logFile))) {
-    mkdir(dirname($logFile), 0755, true);
-}
-file_put_contents($logFile, json_encode([
+// ── Logging (file + DB) ─────────────────────────────────────────────────────
+// DB log is the reliable source — file logs need a writable logs/ dir which
+// Plesk hostings often deny.
+$logEntry = [
     'timestamp' => date('c'),
     'nombre'    => $primerNombre . ' ' . $apellidoPaterno,
+    'rfc_used'  => $rfc,
+    'estado'    => $estadoNorm,
+    'cp'        => $cp,
+    'has_sig'   => $signatureHex !== '',
+    'sig_len'   => strlen($signatureHex),
+    'body_sent' => substr($jsonBody, 0, 2000),
     'httpCode'  => $httpCode,
     'curlErr'   => $curlErr,
-    'response'  => substr($response, 0, 500),
-]) . "\n", FILE_APPEND | LOCK_EX);
+    'response'  => substr((string)$response, 0, 2000),
+];
+try {
+    $pdoLog = getDB();
+    $pdoLog->exec("CREATE TABLE IF NOT EXISTS cdc_query_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        endpoint VARCHAR(255),
+        http_code INT,
+        has_sig TINYINT(1),
+        body_sent MEDIUMTEXT,
+        response MEDIUMTEXT,
+        curl_err VARCHAR(500),
+        freg DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdoLog->prepare("INSERT INTO cdc_query_log (endpoint, http_code, has_sig, body_sent, response, curl_err) VALUES (?,?,?,?,?,?)")
+        ->execute([CDC_BASE_URL, $httpCode, $signatureHex !== '' ? 1 : 0, substr($jsonBody,0,2000), substr((string)$response,0,2000), substr((string)$curlErr,0,500)]);
+} catch (Throwable $e) {}
+$logFile = __DIR__ . '/logs/circulo-credito.log';
+if (!is_dir(dirname($logFile))) @mkdir(dirname($logFile), 0755, true);
+@file_put_contents($logFile, json_encode($logEntry) . "\n", FILE_APPEND | LOCK_EX);
 
 // ── Evaluar respuesta ───────────────────────────────────────────────────────
+// NO SILENT FALLBACK: if CDC fails, surface the real error so we can see
+// why. The old "fallback approved" masked 100% failures — customer saw
+// "evaluación estimada" and thought it worked, but no query was ever
+// registered in CDC.
 if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
-    // API error → fallback: sin datos de Círculo
-    $_SESSION['cdc_score']             = null;
-    $_SESSION['cdc_pago_mensual_buro'] = 0;
-    $_SESSION['cdc_dpd90_flag']        = null;
-    $_SESSION['cdc_dpd_max']           = null;
-
+    $_SESSION['cdc_score'] = null;
+    http_response_code(502);
     echo json_encode([
-        'success'           => false,
-        'fallback'          => true,
-        'score'             => null,
-        'pago_mensual_buro' => 0,
-        'dpd90_flag'        => null,
-        'dpd_max'           => null,
-        'message'           => 'Sin datos de Círculo — evaluación estimada',
+        'success'  => false,
+        'error'    => 'CDC API falló',
+        'http'     => $httpCode,
+        'curl_err' => $curlErr ?: null,
+        'body'     => substr((string)$response, 0, 600),
+        'message'  => 'No pudimos consultar tu historial crediticio. Intenta de nuevo o contacta soporte.',
     ]);
     exit;
 }
@@ -165,11 +302,12 @@ if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
 $data = json_decode($response, true);
 if (!$data) {
     $_SESSION['cdc_score'] = null;
+    http_response_code(502);
     echo json_encode([
-        'success'  => false,
-        'fallback' => true,
-        'score'    => null,
-        'message'  => 'No se pudo interpretar la respuesta de Círculo de Crédito',
+        'success' => false,
+        'error'   => 'Respuesta de CDC no es JSON válido',
+        'body'    => substr((string)$response, 0, 600),
+        'message' => 'Respuesta inesperada del buró. Contacta soporte.',
     ]);
     exit;
 }
@@ -271,6 +409,114 @@ function ensureConsultasBuroColumns(PDO $pdo): void {
     } catch (PDOException $e) {
         error_log('ensureConsultasBuroColumns: ' . $e->getMessage());
     }
+}
+
+/**
+ * Strip accents + non-ASCII, uppercase. CDC v2 rejects bodies containing
+ * ñ/á/é etc. (signature mismatch or 400 validation).
+ */
+function cdcAscii(string $s): string {
+    if ($s === '') return '';
+    $s = strtoupper($s);
+    $map = [
+        'Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N',
+        'á'=>'A','é'=>'E','í'=>'I','ó'=>'O','ú'=>'U','ü'=>'U','ñ'=>'N',
+        'À'=>'A','È'=>'E','Ì'=>'I','Ò'=>'O','Ù'=>'U',
+        'Â'=>'A','Ê'=>'E','Î'=>'I','Ô'=>'O','Û'=>'U',
+    ];
+    $s = strtr($s, $map);
+    // Drop any remaining non-ASCII
+    $s = preg_replace('/[^\x20-\x7E]/', '', $s);
+    return trim($s);
+}
+
+/**
+ * Compute a 10-character SAT-format RFC (persona física) from name + DOB.
+ * Omits homoclave (adds "XXX" placeholder upstream). Good enough for CDC
+ * bureau queries which only need the 10-char identifying prefix to match.
+ *
+ * Letters:
+ *   1. First letter of apellido paterno
+ *   2. First vowel AFTER letter 1 of apellido paterno
+ *   3. First letter of apellido materno (or "X" if none)
+ *   4. First letter of primer nombre
+ * Digits:
+ *   YYMMDD of fecha nacimiento (YYYY-MM-DD)
+ */
+function cdcComputeRFC(string $nombre, string $paterno, string $materno, string $fechaNac): string {
+    $nombre  = cdcAscii($nombre);
+    $paterno = cdcAscii($paterno);
+    $materno = cdcAscii($materno);
+
+    if ($paterno === '' || $nombre === '') return 'XAXX010101000';
+
+    // Letter 1 & 2 — from apellido paterno
+    $l1 = substr($paterno, 0, 1);
+    $l2 = 'X';
+    for ($i = 1; $i < strlen($paterno); $i++) {
+        $c = $paterno[$i];
+        if (in_array($c, ['A','E','I','O','U'], true)) { $l2 = $c; break; }
+    }
+
+    // Letter 3 — first letter of apellido materno (X if absent)
+    $l3 = $materno !== '' ? substr($materno, 0, 1) : 'X';
+
+    // Letter 4 — first letter of nombre (skip common preamble like JOSE/MARIA)
+    $nombreParts = preg_split('/\s+/', $nombre);
+    $firstName = $nombreParts[0];
+    if (in_array($firstName, ['JOSE', 'MARIA', 'MA', 'J'], true) && isset($nombreParts[1])) {
+        $firstName = $nombreParts[1];
+    }
+    $l4 = substr($firstName, 0, 1);
+
+    // Digits YYMMDD
+    $digits = '';
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $fechaNac, $m)) {
+        $digits = substr($m[1], 2, 2) . $m[2] . $m[3];
+    } else {
+        $digits = '000000';
+    }
+
+    return $l1 . $l2 . $l3 . $l4 . $digits;
+}
+
+/**
+ * Normalize free-text "estado" into CDC's CatalogoEstados v2 enum.
+ * Accepts common variations ("Ciudad de México" / "CDMX" / "DF" / "cdmx").
+ */
+function cdcEstadoEnum(string $raw): string {
+    $k = cdcAscii($raw);
+    $k = preg_replace('/\s+/', '', $k);
+    // Direct codes
+    $codes = ['CDMX','AGS','BC','BCS','CAMP','CHIS','CHIH','COAH','COL','DGO',
+              'GTO','GRO','HGO','JAL','MEX','MICH','MOR','NAY','NL','OAX','PUE',
+              'QRO','QROO','SLP','SIN','SON','TAB','TAMS','TLAX','VER','YUC','ZAC'];
+    if (in_array($k, $codes, true)) return $k;
+    // Aliases by full name
+    $aliases = [
+        'CIUDADDEMEXICO' => 'CDMX', 'DISTRITOFEDERAL' => 'CDMX', 'DF' => 'CDMX',
+        'AGUASCALIENTES' => 'AGS',
+        'BAJACALIFORNIA' => 'BC', 'BAJACALIFORNIASUR' => 'BCS',
+        'CAMPECHE' => 'CAMP',
+        'CHIAPAS' => 'CHIS', 'CHIHUAHUA' => 'CHIH',
+        'COAHUILA' => 'COAH', 'COLIMA' => 'COL',
+        'DURANGO' => 'DGO',
+        'GUANAJUATO' => 'GTO', 'GUERRERO' => 'GRO',
+        'HIDALGO' => 'HGO',
+        'JALISCO' => 'JAL',
+        'ESTADODEMEXICO' => 'MEX', 'MEXICO' => 'MEX',
+        'MICHOACAN' => 'MICH', 'MORELOS' => 'MOR',
+        'NAYARIT' => 'NAY', 'NUEVOLEON' => 'NL',
+        'OAXACA' => 'OAX',
+        'PUEBLA' => 'PUE',
+        'QUERETARO' => 'QRO', 'QUINTANAROO' => 'QROO',
+        'SANLUISPOTOSI' => 'SLP', 'SINALOA' => 'SIN', 'SONORA' => 'SON',
+        'TABASCO' => 'TAB', 'TAMAULIPAS' => 'TAMS', 'TLAXCALA' => 'TLAX',
+        'VERACRUZ' => 'VER',
+        'YUCATAN' => 'YUC',
+        'ZACATECAS' => 'ZAC',
+    ];
+    return $aliases[$k] ?? 'CDMX';
 }
 
 function extractPreaprobacionData(array $response): array {

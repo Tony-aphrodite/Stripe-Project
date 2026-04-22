@@ -31,7 +31,10 @@ $sql = "SELECT m.*, pv.nombre AS punto_voltika_nombre,
 $sql .= " ORDER BY m.fmod DESC";
 
 $page  = max(1, (int)($_GET['page'] ?? 1));
-$limit = min(100, max(10, (int)($_GET['limit'] ?? 50)));
+// Cap at 2000 — covers full inventory for the grouped-by-model CEDIS view
+// that renders every bike of each model in a single table (no per-model
+// pagination). Default stays at 50 for any caller that doesn't pass limit.
+$limit = min(2000, max(10, (int)($_GET['limit'] ?? 50)));
 $offset = ($page - 1) * $limit;
 
 // Count

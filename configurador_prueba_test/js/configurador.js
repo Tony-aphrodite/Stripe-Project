@@ -289,6 +289,88 @@
             try {
                 history.replaceState({ paso: 1 }, '', '');
             } catch(e) {}
+
+            // ── State persistence (prevents lost work on iOS Safari reload
+            //    after camera use, tab kill, or accidental navigation) ────
+            // We persist only the safe, serializable parts of state. File
+            // blobs are NOT persisted (too large + security). The user still
+            // needs to re-pick photos after a reload — but we at least bring
+            // them back to the same paso with their form data intact.
+            self._installStatePersistence();
+        },
+
+        _PERSIST_KEY: 'vk_configurador_state_v1',
+        _PERSIST_TTL_MS: 2 * 60 * 60 * 1000, // 2 hours
+
+        _installStatePersistence: function() {
+            var self = this;
+
+            // Restore on load (if recent enough).
+            try {
+                var raw = sessionStorage.getItem(self._PERSIST_KEY);
+                if (raw) {
+                    var parsed = JSON.parse(raw);
+                    if (parsed && parsed.ts && (Date.now() - parsed.ts) < self._PERSIST_TTL_MS) {
+                        // Merge saved fields into current state (excluding File/Blob refs).
+                        Object.keys(parsed.state || {}).forEach(function(k) {
+                            if (k[0] === '_') return; // skip internal caches
+                            self.state[k] = parsed.state[k];
+                        });
+                        var resumePaso = parsed.state && parsed.state.pasoActual;
+                        if (resumePaso && resumePaso !== 1) {
+                            // Resume after a tick so other modules are ready.
+                            setTimeout(function() { try { self.irAPaso(resumePaso); } catch (e) {} }, 50);
+                        }
+                    } else {
+                        sessionStorage.removeItem(self._PERSIST_KEY);
+                    }
+                }
+            } catch (e) {}
+
+            // Save on any change. Hook irAPaso so every navigation persists.
+            var origIrAPaso = self.irAPaso.bind(self);
+            self.irAPaso = function(paso) {
+                origIrAPaso(paso);
+                self._saveState();
+                // Clear state after reaching 'exito' (flow complete).
+                if (paso === 'exito') {
+                    try { sessionStorage.removeItem(self._PERSIST_KEY); } catch (e) {}
+                }
+            };
+
+            // Re-render on bfcache restore (Safari returning from camera /
+            // back-forward cache): if the page appears from bfcache, our
+            // state is intact but the DOM may need re-activation.
+            window.addEventListener('pageshow', function(e) {
+                if (e.persisted) {
+                    // Force the active paso to re-initialize — ensures click
+                    // handlers on upload inputs are re-bound after bfcache.
+                    try {
+                        if (self.state.pasoActual) self.inicializarPaso(self.state.pasoActual);
+                    } catch (err) {}
+                }
+            });
+        },
+
+        _saveState: function() {
+            var self = this;
+            try {
+                // Copy only scalar / plain fields — skip File/Blob/Function
+                // references (not serializable + privacy).
+                var safe = {};
+                Object.keys(self.state).forEach(function(k) {
+                    var v = self.state[k];
+                    if (v === null || v === undefined) return;
+                    var t = typeof v;
+                    if (t === 'string' || t === 'number' || t === 'boolean') {
+                        safe[k] = v;
+                    }
+                });
+                sessionStorage.setItem(self._PERSIST_KEY, JSON.stringify({
+                    ts: Date.now(),
+                    state: safe
+                }));
+            } catch (e) {}
         }
     };
 

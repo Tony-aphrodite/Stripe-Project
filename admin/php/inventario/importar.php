@@ -86,19 +86,57 @@ $colMap = [
     'num_factura'           => findCol($headerRow, ['nodefactura', 'nofactura', 'factura', 'numfactura']),
     'hecho_en'              => findCol($headerRow, ['hechoen', 'madein', 'origen', 'pais', 'país']),
     'notas'                 => findCol($headerRow, ['notas', 'notes', 'observaciones', 'nota']),
+    'vendida'               => findCol($headerRow, ['vendida', 'vendidas', 'vendido']),
 ];
+
+// Normalize customer-provided color strings to match the frontend color IDs
+// in productos.js. Without this the SQL availability join (case-sensitive
+// after lowercasing) never matches "negra" vs "negro", "blue" vs "azul", etc.
+function normalizeInvColor(string $raw): string {
+    $c = strtolower(trim($raw));
+    $map = [
+        'negra'   => 'negro',
+        'blue'    => 'azul',
+        'white'   => 'blanco',
+        'black'   => 'negro',
+        'gray'    => 'gris',
+        'grey'    => 'gris',
+        'silver'  => 'plata',
+        'green'   => 'verde',
+        'orange'  => 'naranja',
+        'yellow'  => 'amarillo',
+        'red'     => 'rojo',
+    ];
+    return $map[$c] ?? $c;
+}
+
+// Detect units that shouldn't be exposed to public buyers based on notes /
+// position text (spare-parts, under repair, office-only, missing axle, etc).
+function isNonSellableMarker(string ...$fields): bool {
+    $blob = strtolower(implode(' ', $fields));
+    return (bool)preg_match('/(repuestos|reparacion|reparación|sin eje|oficina)/u', $blob);
+}
 
 if ($colMap['vin'] === null) {
     adminJsonOut(['error' => 'No se encontró la columna VIN / No de serie en el encabezado. Columnas detectadas: ' . implode(', ', $rows[0])], 400);
 }
 
 // ── Modelo name normalization ───────────────────────────────────────────
+// Must return the exact name the frontend productos.js uses for each model,
+// otherwise the configurador inventory lookup (which compares case-insensitive
+// but not spelling-variant) fails silently.
 function normalizeModelo(string $raw): string {
     $raw = trim($raw);
-    // "Voltika Tromox M05" / "Volrika Tromox MC10" → extract last token as model
-    if (preg_match('/\b(M\d+|MC\d+|Ukko\s*S\+?)\s*$/i', $raw, $m)) {
-        return strtoupper(trim($m[1]));
-    }
+    $low = strtolower($raw);
+    if ($low === '') return $raw;
+
+    if (strpos($low, 'pesgo plus') !== false) return 'Pesgo Plus';
+    if (strpos($low, 'mino')       !== false) return 'Mino-B';
+    if (strpos($low, 'ukko')       !== false) return 'Ukko S+';
+    if (strpos($low, 'mc10')       !== false) return 'MC10 Streetx';
+
+    if (preg_match('/\bM(\d+)\b/i', $raw, $m)) return 'M' . $m[1];
+
     return $raw;
 }
 
@@ -131,8 +169,8 @@ $stmtIns = $pdo->prepare("INSERT INTO inventario_motos
     (vin, vin_display, modelo, color, estado, anio_modelo, hecho_en, notas,
      num_motor, potencia, posicion_inventario, fecha_ingreso_pais, aduana,
      num_pedimento, num_factura, cedis_origen, fecha_entrada_almacen,
-     fecha_salida_almacen, punto_nombre, pedido_num, log_estados)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+     fecha_salida_almacen, punto_nombre, pedido_num, log_estados, bloqueado_venta)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
 $created = 0;
 $duplicados = 0;
@@ -158,7 +196,7 @@ for ($i = 1; $i < count($rows); $i++) {
     }
 
     $modelo    = normalizeModelo(getVal($row, $colMap['modelo']));
-    $color     = strtolower(trim(getVal($row, $colMap['color'])));
+    $color     = normalizeInvColor(getVal($row, $colMap['color']));
     $anio      = getVal($row, $colMap['anio']) ?: date('Y');
     $hecho     = getVal($row, $colMap['hecho_en']) ?: 'China';
     $notas     = getVal($row, $colMap['notas']);
@@ -190,23 +228,26 @@ for ($i = 1; $i < count($rows); $i++) {
         'notas'   => 'Importado desde archivo: ' . $file['name'],
     ]], JSON_UNESCAPED_UNICODE);
 
+    // Flag as non-sellable if markers are present in notes/position, OR if
+    // the "VENDIDA" column has any non-empty value (already sold unit).
+    $vendidaVal = getVal($row, $colMap['vendida']);
+    $bloqueado  = (isNonSellableMarker($posicion, $notas, $vendidaVal) || $vendidaVal !== '') ? 1 : 0;
+
     try {
         $stmtIns->execute([
             $vin, $vinDisp, $modelo, $color, $estado, $anio, $hecho, $notas,
             $numMotor ?: null, $potencia ?: null, $posicion ?: null,
             $fechaIng, $aduana ?: null, $pedimento ?: null, $factura ?: null,
             $cedis ?: null, $fEntAlm, $fSalAlm, $punto ?: null,
-            $pedido ?: null, $log,
+            $pedido ?: null, $log, $bloqueado,
         ]);
 
-        // Auto-create completed checklist_origen so moto shows as available
-        $motoId = (int)$pdo->lastInsertId();
-        try {
-            $pdo->prepare("INSERT INTO checklist_origen (moto_id, dealer_id, vin, modelo, color, completado, bloqueado, hash_registro)
-                VALUES (?, ?, ?, ?, ?, 1, 1, ?)")
-                ->execute([$motoId, $uid, $vin, $modelo, $color, hash('sha256', "import-$motoId-" . date('c'))]);
-        } catch (Throwable $ignore) {}
-
+        // NOTE: We deliberately do NOT auto-complete the checklist_origen
+        // anymore. The CEDIS operator must physically inspect each moto and
+        // mark the checklist as complete from the panel — auto-completion
+        // misrepresented inventory state and made the dashboard show
+        // "130/130 completado" right after import even though no inspection
+        // had happened. Bikes will appear as "Pendiente" until inspected.
         $created++;
     } catch (Throwable $e) {
         $errores++;

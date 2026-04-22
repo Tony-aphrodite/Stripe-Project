@@ -277,8 +277,15 @@ window.AD_puntos = (function(){
 
     html += '</div>'; // end scroll container
     html += '<button class="ad-btn primary" id="pfSave" style="width:100%;margin-top:12px;padding:10px;">Guardar</button>';
+    if(!isNew){
+      html += '<button class="ad-btn" id="pfDelete" style="width:100%;margin-top:8px;padding:10px;background:#fde8e8;color:#c41e3a;border:1px solid #f5b7b7;">Eliminar punto</button>';
+    }
 
     ADApp.modal(html);
+
+    if(!isNew){
+      $('#pfDelete').on('click', function(){ confirmDeletePunto(p); });
+    }
 
     // ── Servicios toggle buttons ──
     $(document).off('click.pfServ').on('click.pfServ', '.pfServBtn', function(){
@@ -402,20 +409,19 @@ window.AD_puntos = (function(){
         var ch = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
         ch += '<thead><tr style="border-bottom:1px solid #ddd;">'+
           '<th style="text-align:left;padding:4px;">Modelo</th>'+
-          '<th style="text-align:center;padding:4px;">$ Comisión venta</th>'+
-          '<th style="text-align:center;padding:4px;">$ Comisión entrega</th></tr></thead><tbody>';
+          '<th style="text-align:center;padding:4px;">$ Comisión venta</th></tr></thead><tbody>';
 
+        // Per-model delivery commission column removed — only the general
+        // "Comisión de entrega (MXN)" field above is read by the payment
+        // code. Keeping a per-model column here confused admins because the
+        // values looked functional but were never used.
         modelos.forEach(function(m){
           var c = comMap[m.id]||{};
-          // Prefer fixed MXN amount (customer template uses $1,500 / $2,000 / $4,000 etc.)
-          // Fallback to legacy pct column for pre-import data.
           var ventaVal   = parseFloat(c.comision_venta_monto);
           if (!ventaVal || isNaN(ventaVal)) ventaVal = parseFloat(c.comision_venta_pct) || 0;
-          var entregaVal = parseFloat(c.comision_entrega_pct) || 0;
           ch += '<tr data-mid="'+m.id+'" style="border-bottom:1px solid #f0f0f0;">'+
             '<td style="padding:4px;font-weight:600;">'+esc(m.nombre)+'</td>'+
             '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComVenta" step="50" min="0" value="'+ventaVal+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
-            '<td style="padding:4px;text-align:center;"><div style="display:flex;align-items:center;justify-content:center;gap:2px;"><span style="color:#888;">$</span><input type="number" class="ad-input pfComEntrega" step="50" min="0" value="'+entregaVal+'" style="width:80px;text-align:center;padding:4px;"></div></td>'+
           '</tr>';
         });
         ch += '</tbody></table>';
@@ -470,7 +476,8 @@ window.AD_puntos = (function(){
         codigo_electronico: ($('#pfCodElec').val()  || '').toUpperCase().trim() || null
       };
 
-      // Collect commission data
+      // Collect commission data (per-model sale commission only — delivery
+      // commission is the single top-level "Comisión de entrega" field).
       var comisiones = [];
       $('#pfComisionesWrap tr[data-mid]').each(function(){
         var mid = $(this).data('mid');
@@ -482,7 +489,9 @@ window.AD_puntos = (function(){
           // fallback in the read path.
           comision_venta_monto: ventaAmt,
           comision_venta_pct: 0,
-          comision_entrega_pct: parseFloat($(this).find('.pfComEntrega').val()) || 0,
+          // Always 0 — the real delivery commission lives in puntos_voltika
+          // .comision_entrega (single field). DB column kept for legacy schema.
+          comision_entrega_pct: 0,
         });
       });
 
@@ -578,6 +587,69 @@ window.AD_puntos = (function(){
     var out = '';
     for(var i=0;i<10;i++) out += chars.charAt(Math.floor(Math.random()*chars.length));
     return out;
+  }
+
+  // ── Delete punto (audit → soft/hard) ────────────────────────────────────
+  function confirmDeletePunto(p){
+    ADApp.api('puntos/eliminar.php', { punto_id: p.id, modo: 'auditar' }).done(function(r){
+      if(!r.ok){ alert(r.error||'Error'); return; }
+      var c = r.counts || {};
+      var puedeHard = !!r.puede_hard;
+      var html = '<div class="ad-h2" style="color:#c41e3a;">Eliminar punto</div>';
+      html += '<div style="background:#fff3cd;border:1px solid #ffe69c;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#664d03;">'+
+        '<strong>⚠ Acción destructiva.</strong> Revisá los datos asociados antes de continuar.</div>';
+      html += '<div style="font-size:13px;margin-bottom:10px;">Punto: <strong>'+esc(p.nombre||'')+'</strong> (ID '+p.id+')</div>';
+      html += '<table style="width:100%;font-size:13px;margin-bottom:12px;border-collapse:collapse;">'+
+        '<tbody>'+
+        '<tr><td style="padding:4px;">Usuarios asignados</td><td style="padding:4px;text-align:right;font-weight:600;">'+(c.usuarios||0)+'</td></tr>'+
+        '<tr><td style="padding:4px;">Inventario activo</td><td style="padding:4px;text-align:right;font-weight:600;color:'+((c.inventario||0)>0?'#c41e3a':'#1e7e34')+';">'+(c.inventario||0)+'</td></tr>'+
+        '<tr><td style="padding:4px;">Envíos</td><td style="padding:4px;text-align:right;font-weight:600;color:'+((c.envios||0)>0?'#c41e3a':'#1e7e34')+';">'+(c.envios||0)+'</td></tr>'+
+        '<tr><td style="padding:4px;">Comisiones configuradas</td><td style="padding:4px;text-align:right;font-weight:600;">'+(c.comisiones||0)+'</td></tr>'+
+        '</tbody></table>';
+
+      html += '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">';
+      html += '<button class="ad-btn" id="pdSoft" style="background:#f0f4f8;color:#1a3a5c;padding:10px;border:1px solid #d0dae5;">'+
+        '<strong>Desactivar</strong> (recomendado) — conserva historial'+
+      '</button>';
+      if(puedeHard){
+        html += '<button class="ad-btn" id="pdHard" style="background:#c41e3a;color:#fff;padding:10px;">'+
+          '<strong>Eliminar permanentemente</strong> — borra registros de la base'+
+        '</button>';
+      } else {
+        html += '<div style="background:#f5f7fa;padding:10px;border-radius:8px;font-size:12px;color:#666;">'+
+          'La eliminación permanente está bloqueada porque el punto tiene inventario o envíos. Solo podés desactivarlo.'+
+        '</div>';
+      }
+      html += '<button class="ad-btn ghost" onclick="ADApp.closeModal()" style="padding:8px;">Cancelar</button>';
+      html += '</div>';
+
+      ADApp.modal(html);
+
+      $('#pdSoft').on('click', function(){
+        if(!confirm('¿Desactivar el punto "'+(p.nombre||'')+'"?\n\nEl punto quedará inactivo y sus usuarios no podrán ingresar. El historial se conserva.')) return;
+        runDelete(p.id, 'soft');
+      });
+      $('#pdHard').on('click', function(){
+        var conf = prompt('ESTO NO SE PUEDE DESHACER. Para confirmar, escribí el nombre del punto:\n\n'+(p.nombre||''));
+        if(conf !== (p.nombre||'')){
+          if(conf !== null) alert('El nombre no coincide. Cancelado.');
+          return;
+        }
+        runDelete(p.id, 'hard');
+      });
+    }).fail(function(x){
+      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+    });
+  }
+
+  function runDelete(puntoId, modo){
+    ADApp.api('puntos/eliminar.php', { punto_id: puntoId, modo: modo }).done(function(r){
+      if(!r.ok){ alert(r.error||'Error'); return; }
+      ADApp.closeModal();
+      render();
+    }).fail(function(x){
+      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+    });
   }
 
   // ── Import from Excel ───────────────────────────────────────────────────
