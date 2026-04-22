@@ -290,6 +290,16 @@
                 history.replaceState({ paso: 1 }, '', '');
             } catch(e) {}
 
+            // Emergency reset: append ?reset=1 to the URL to wipe persisted
+            // state and return to paso 1. Useful when the applicant gets
+            // stuck on an old cached step after a deploy.
+            try {
+                if (/[?&]reset=1(\b|$)/.test(location.search)) {
+                    sessionStorage.removeItem('vk_configurador_state_v1');
+                    history.replaceState({}, '', location.pathname);
+                }
+            } catch (e) {}
+
             // ── State persistence (prevents lost work on iOS Safari reload
             //    after camera use, tab kill, or accidental navigation) ────
             // We persist only the safe, serializable parts of state. File
@@ -305,6 +315,18 @@
         _installStatePersistence: function() {
             var self = this;
 
+            // Unsafe-to-resume steps: these depend on in-memory-only objects
+            // that sessionStorage can't persist (e.g. _resultadoFinal,
+            // _buroResult). Without those, resuming here would show stale UI
+            // or skip credit-evaluation gates. If the persisted pasoActual is
+            // any of these, rewind to credito-consentimiento so the applicant
+            // re-runs the evaluation on this session.
+            var RESUME_BLACKLIST = {
+                'credito-loading':   'credito-consentimiento',
+                'credito-aprobado':  'credito-consentimiento',
+                'credito-resultado': 'credito-consentimiento',
+            };
+
             // Restore on load (if recent enough).
             try {
                 var raw = sessionStorage.getItem(self._PERSIST_KEY);
@@ -317,6 +339,9 @@
                             self.state[k] = parsed.state[k];
                         });
                         var resumePaso = parsed.state && parsed.state.pasoActual;
+                        if (resumePaso && RESUME_BLACKLIST[resumePaso]) {
+                            resumePaso = RESUME_BLACKLIST[resumePaso];
+                        }
                         if (resumePaso && resumePaso !== 1) {
                             // Resume after a tick so other modules are ready.
                             setTimeout(function() { try { self.irAPaso(resumePaso); } catch (e) {} }, 50);

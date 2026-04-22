@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Anti-cache: the credit evaluation flow was blocked by stale JS + state
+         after Ctrl+Shift+R. Ensure the configurador HTML + scripts are always
+         re-fetched so verification-logic fixes propagate immediately. -->
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Configura tu Voltika - Elige tu moto electrica</title>
     <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
 
@@ -742,7 +748,7 @@
     <script src="js/modules/paso-credito-facturacion.js?v=20260411"></script>
     <script src="js/modules/paso-facturacion.js?v=20260322"></script>
     <script src="js/modules/paso-exito.js?v=20260329"></script>
-    <script src="js/configurador.js?v=20260324b"></script>
+    <script src="js/configurador.js?v=20260423b"></script>
 
     <!-- Model tabs fixed nav — body level to avoid CSS transform stacking context -->
     <div id="vk-modelo-nav-fixed" class="vk-modelo-nav-fixed" style="display:none;">
