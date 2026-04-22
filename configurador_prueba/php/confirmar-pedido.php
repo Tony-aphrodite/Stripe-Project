@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/inventory-utils.php';
+require_once __DIR__ . '/lib/catalog-normalize.php';
 
 // ── Request ───────────────────────────────────────────────────────────────────
 $json = json_decode(file_get_contents('php://input'), true);
@@ -30,8 +31,9 @@ if (!$json) {
 $nombre     = trim($json['nombre']     ?? '');
 $email      = trim($json['email']      ?? '');
 $telefono   = trim($json['telefono']   ?? '');
-$modelo     = trim($json['modelo']     ?? '');
-$color      = trim($json['color']      ?? '');
+// Normalize to short catalog codes — see lib/catalog-normalize.php.
+$modelo     = voltikaNormalizeModelo($json['modelo'] ?? '');
+$color      = voltikaNormalizeColor($json['color']  ?? '');
 $metodoPago = trim($json['metodoPago'] ?? '');
 $ciudad     = trim($json['ciudad']     ?? '');
 $estado     = trim($json['estado']     ?? '');

@@ -27,13 +27,27 @@ if ($puntoId > 0) {
     $where[] = "(m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0)";
 }
 
+// Filters tolerate legacy values ("Voltika Tromox Pesgo" / "Gris moderno"):
+// we normalize the incoming query and also normalize m.modelo / m.color on
+// the SQL side so either format matches. This is what lets a legacy order
+// (e.g. Eduardo Gonzalez Lopez, VK-1776828725) find the stock row even
+// though its stored modelo/color is not the short code.
 if (!empty($_GET['modelo'])) {
-    $where[]  = "m.modelo = ?";
-    $params[] = $_GET['modelo'];
+    $wantedModelo = voltikaNormalizeModelo($_GET['modelo']);
+    $where[] = "("
+             . "m.modelo = ? "
+             . "OR LOWER(TRIM(m.modelo)) = LOWER(?) "
+             . "OR LOWER(REPLACE(TRIM(m.modelo), 'Voltika Tromox ', '')) = LOWER(?)"
+             . ")";
+    $params[] = $wantedModelo;
+    $params[] = $wantedModelo;
+    $params[] = $wantedModelo;
 }
 if (!empty($_GET['color'])) {
-    $where[]  = "m.color = ?";
-    $params[] = $_GET['color'];
+    $wantedColor = voltikaNormalizeColor($_GET['color']);
+    $where[]  = "(LOWER(m.color) = ? OR LOWER(SUBSTRING_INDEX(TRIM(m.color), ' ', 1)) = ?)";
+    $params[] = $wantedColor;
+    $params[] = $wantedColor;
 }
 
 // co_force: completado=1 but key inspection items still at 0 (bulk-force-completed

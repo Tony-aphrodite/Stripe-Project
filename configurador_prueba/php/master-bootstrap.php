@@ -9,6 +9,7 @@
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/catalog-normalize.php';
 
 function voltikaEnsureSchema(): void {
     static $done = false;

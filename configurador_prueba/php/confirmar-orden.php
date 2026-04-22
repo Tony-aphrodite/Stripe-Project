@@ -35,8 +35,12 @@ if ($pagoTipo === 'unico') $pagoTipo = 'contado';
 $nombre          = $json['nombre']          ?? '';
 $email           = $json['email']           ?? '';
 $telefono        = $json['telefono']        ?? '';
-$modelo          = $json['modelo']          ?? '';
-$color           = $json['color']           ?? '';
+// Normalize modelo/color at the entrance: the legacy Ship.js configurador
+// posts "Voltika Tromox Pesgo" / "Gris moderno" while the new one posts
+// "Pesgo Plus" / "gris". Inventario_motos only stores the short codes, so
+// without this step any legacy-origin order cannot be matched to stock.
+$modelo          = voltikaNormalizeModelo($json['modelo'] ?? '');
+$color           = voltikaNormalizeColor($json['color']  ?? '');
 $ciudad          = $json['ciudad']          ?? '';
 $estado          = $json['estado']          ?? '';
 $cp              = $json['cp']              ?? '';

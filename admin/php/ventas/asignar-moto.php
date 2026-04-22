@@ -118,14 +118,17 @@ if (!empty($moto['pedido_num']) || !empty($moto['cliente_email'])) {
 // Per dashboards_diagrams.pdf CASE 1/3 step: "the model and color needs to be
 // the same in the order". Block mismatched assignments so CEDIS cannot ship the
 // wrong bike to a customer.
-$norm = static function ($v) {
-    $v = strtolower(trim((string)$v));
-    return preg_replace('/\s+/', ' ', $v);
-};
-$orderModelo = $norm($order['modelo'] ?? '');
-$orderColor  = $norm($order['color']  ?? '');
-$motoModelo  = $norm($moto['modelo']  ?? '');
-$motoColor   = $norm($moto['color']   ?? '');
+//
+// Legacy-origin orders store "Voltika Tromox Pesgo" / "Gris moderno" while
+// inventory uses short codes. Go through voltikaNormalizeModelo/Color so both
+// sides collapse to the same canonical value — otherwise a perfectly valid
+// assignment would be rejected as "modelo no coincide".
+$normM = static function ($v) { return strtolower(trim(voltikaNormalizeModelo($v))); };
+$normC = static function ($v) { return strtolower(trim(voltikaNormalizeColor($v))); };
+$orderModelo = $normM($order['modelo'] ?? '');
+$orderColor  = $normC($order['color']  ?? '');
+$motoModelo  = $normM($moto['modelo']  ?? '');
+$motoColor   = $normC($moto['color']   ?? '');
 
 if ($orderModelo && $motoModelo && $orderModelo !== $motoModelo) {
     adminJsonOut([

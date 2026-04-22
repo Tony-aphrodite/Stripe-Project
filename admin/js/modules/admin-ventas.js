@@ -9,6 +9,8 @@ window.AD_ventas = (function(){
         '<div class="ad-h1">Ventas / Ordenes</div>'+
         '<div style="display:flex;align-items:center;gap:10px;">'+
           '<span id="vtLastUpdate" style="font-size:11px;color:var(--ad-dim);"></span>'+
+          '<button class="ad-btn" id="vtNormalizar" style="background:#fff4e5;color:#b26200;border-color:#f0c378;padding:6px 12px;font-size:13px;" title="Normalizar modelo/color de ventas legacy (&quot;Voltika Tromox Pesgo&quot; → &quot;Pesgo Plus&quot;, &quot;Gris moderno&quot; → &quot;gris&quot;) para que encuentren motos disponibles">'+
+            '🔧 Normalizar catálogo</button>'+
           '<button class="ad-btn" id="vtRefresh" style="background:#f0f4f8;color:var(--ad-navy);padding:6px 14px;font-size:13px;">'+
             '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;margin-right:4px;"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>'+
             'Actualizar</button>'+
@@ -22,6 +24,99 @@ window.AD_ventas = (function(){
     $('#vtRefresh').on('click', function(){
       $('#vtTable').html('<div style="text-align:center;padding:40px;"><span class="ad-spin"></span> Actualizando...</div>');
       loadData();
+    });
+    $('#vtNormalizar').on('click', showNormalizarCatalogo);
+  }
+
+  // Modal: preview + commit de normalización de modelo/color en transacciones.
+  // Convierte ventas legacy ("Voltika Tromox Pesgo" / "Gris moderno") al
+  // código corto que usa inventario_motos para que puedan asignarse.
+  function showNormalizarCatalogo(){
+    ADApp.modal(
+      '<div class="ad-h2">🔧 Normalizar catálogo</div>'+
+      '<div style="font-size:13px;color:var(--ad-dim);margin-bottom:12px;line-height:1.5;">'+
+        'Busca pedidos con valores legacy en <code>modelo</code>/<code>color</code> '+
+        '(ej. <code>Voltika Tromox Pesgo</code>, <code>Gris moderno</code>) y los '+
+        'reemplaza por el código corto del catálogo nuevo (<code>Pesgo Plus</code>, <code>gris</code>). '+
+        'Después, el pedido podrá encontrar motos disponibles en el inventario.'+
+      '</div>'+
+      '<div id="vtNormContent" style="min-height:80px;">'+
+        '<div style="text-align:center;padding:30px;"><span class="ad-spin"></span> Analizando pedidos...</div>'+
+      '</div>'
+    );
+    ADApp.api('ventas/normalizar-catalogo.php').done(function(r){
+      if (!r.ok) { $('#vtNormContent').html('<div class="ad-banner warn">'+(r.error||'Error')+'</div>'); return; }
+      if (!r.changes || !r.changes.length){
+        $('#vtNormContent').html(
+          '<div style="background:#E8F5E9;padding:14px;border-radius:8px;color:#2E7D32;font-size:14px;">'+
+            '✅ No se detectaron pedidos con valores legacy. Todo está en formato canónico.'+
+          '</div>'+
+          '<div style="display:flex;justify-content:flex-end;margin-top:12px;">'+
+            '<button class="ad-btn ghost" id="vtNormClose">Cerrar</button>'+
+          '</div>'
+        );
+        $('#vtNormClose').on('click', function(){ ADApp.closeModal(); });
+        return;
+      }
+      var html = '<div style="background:#FFF3E0;padding:10px 14px;border-radius:8px;color:#E65100;font-size:13px;margin-bottom:10px;">'+
+        'Se encontraron <strong>'+r.changes.length+'</strong> pedidos para normalizar. Revisa y confirma.'+
+        '</div>';
+      html += '<div style="max-height:380px;overflow-y:auto;border:1px solid var(--ad-border);border-radius:8px;">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12.5px;">'+
+              '<thead style="background:#f0f4f8;position:sticky;top:0;">'+
+                '<tr>'+
+                  '<th style="text-align:left;padding:8px;">Pedido</th>'+
+                  '<th style="text-align:left;padding:8px;">Cliente</th>'+
+                  '<th style="text-align:left;padding:8px;">Modelo</th>'+
+                  '<th style="text-align:left;padding:8px;">Color</th>'+
+                '</tr>'+
+              '</thead><tbody>';
+      r.changes.forEach(function(c){
+        html += '<tr style="border-top:1px solid var(--ad-border);">'+
+          '<td style="padding:8px;"><code style="font-size:11px;">'+esc(c.pedido||'')+'</code></td>'+
+          '<td style="padding:8px;">'+esc(c.nombre||'')+'</td>'+
+          '<td style="padding:8px;">'+
+            (c.changed_m
+              ? '<span style="color:#b91c1c;text-decoration:line-through;">'+esc(c.modelo_old||'')+'</span> → <strong style="color:#1e7e34;">'+esc(c.modelo_new||'')+'</strong>'
+              : '<span style="color:var(--ad-dim);">'+esc(c.modelo_new||'')+'</span>')+
+          '</td>'+
+          '<td style="padding:8px;">'+
+            (c.changed_c
+              ? '<span style="color:#b91c1c;text-decoration:line-through;">'+esc(c.color_old||'')+'</span> → <strong style="color:#1e7e34;">'+esc(c.color_new||'')+'</strong>'
+              : '<span style="color:var(--ad-dim);">'+esc(c.color_new||'')+'</span>')+
+          '</td>'+
+        '</tr>';
+      });
+      html += '</tbody></table></div>';
+      html += '<div style="display:flex;gap:8px;margin-top:12px;">'+
+              '<button class="ad-btn ghost" id="vtNormCancel" style="flex:1;">Cancelar</button>'+
+              '<button class="ad-btn primary" id="vtNormApply" style="flex:1;background:#FB8C00;border-color:#FB8C00;">Aplicar normalización ('+r.changes.length+')</button>'+
+            '</div>';
+      html += '<div id="vtNormMsg" style="font-size:12px;margin-top:8px;"></div>';
+      $('#vtNormContent').html(html);
+
+      $('#vtNormCancel').on('click', function(){ ADApp.closeModal(); });
+      $('#vtNormApply').on('click', function(){
+        if (!confirm('Se actualizarán '+r.changes.length+' registros de transacciones. ¿Continuar?')) return;
+        var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Aplicando...');
+        ADApp.api('ventas/normalizar-catalogo.php', {
+          method: 'POST', contentType: 'application/json',
+          data: JSON.stringify({ confirm: true })
+        }).done(function(rr){
+          if (rr.ok){
+            $('#vtNormMsg').css('color','#1e7e34').text(rr.message || 'Aplicado');
+            setTimeout(function(){ ADApp.closeModal(); loadData(); }, 800);
+          } else {
+            $btn.prop('disabled', false).text('Aplicar normalización');
+            $('#vtNormMsg').css('color','#b91c1c').text(rr.error || 'Error');
+          }
+        }).fail(function(x){
+          $btn.prop('disabled', false).text('Aplicar normalización');
+          $('#vtNormMsg').css('color','#b91c1c').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+        });
+      });
+    }).fail(function(x){
+      $('#vtNormContent').html('<div class="ad-banner warn">'+((x.responseJSON && x.responseJSON.error) || 'Error de conexión')+'</div>');
     });
   }
 
