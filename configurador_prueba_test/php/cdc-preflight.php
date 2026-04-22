@@ -522,6 +522,73 @@ $bodyFlat2 = json_encode([
 render(call('Probe 15: REPEAT Probe 9 flat (verificación)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodyFlat2, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
 usleep(400000);
 
+// Probe 16: persona + domicilio as SIBLING objects at root (depth 2)
+$bodySibling = json_encode([
+    'persona' => [
+        'primerNombre'    => 'JUAN',
+        'apellidoPaterno' => 'PEREZ',
+        'apellidoMaterno' => 'LOPEZ',
+        'fechaNacimiento' => '1985-03-15',
+        'RFC'             => 'PELJ850315AAA',
+        'nacionalidad'    => 'MX',
+    ],
+    'domicilio' => [
+        'direccion'           => 'AV REFORMA 100',
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+render(call('Probe 16: persona + domicilio SIBLINGS (depth 2)', 'https://services.circulodecredito.com.mx/v2/rccficoscore', $bodySibling, 'hex', ['type'=>'headers','mtls'=>true], $priv, $certPem, $keyPem));
+usleep(400000);
+
+// Probe 17: sign flat body but SEND nested body (canonicalization hypothesis)
+$nestedBody = json_encode([
+    'primerNombre'    => 'JUAN',
+    'apellidoPaterno' => 'PEREZ',
+    'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15',
+    'RFC'             => 'PELJ850315AAA',
+    'nacionalidad'    => 'MX',
+    'domicilio' => [
+        'direccion'           => 'AV REFORMA 100',
+        'coloniaPoblacion'    => 'JUAREZ',
+        'delegacionMunicipio' => 'CUAUHTEMOC',
+        'ciudad'              => 'CIUDAD DE MEXICO',
+        'estado'              => 'CDMX',
+        'CP'                  => '03100',
+    ],
+]);
+$flatForSig = json_encode([
+    'primerNombre' => 'JUAN', 'apellidoPaterno' => 'PEREZ', 'apellidoMaterno' => 'LOPEZ',
+    'fechaNacimiento' => '1985-03-15', 'RFC' => 'PELJ850315AAA', 'nacionalidad' => 'MX',
+    'direccion' => 'AV REFORMA 100', 'coloniaPoblacion' => 'JUAREZ', 'delegacionMunicipio' => 'CUAUHTEMOC',
+    'ciudad' => 'CIUDAD DE MEXICO', 'estado' => 'CDMX', 'CP' => '03100',
+]);
+// Sign flat but send nested — custom call
+{
+    $sig17 = '';
+    openssl_sign($flatForSig, $sig17, $priv, OPENSSL_ALGO_SHA256);
+    $sigEnc17 = bin2hex($sig17);
+    $tmpC17 = tempnam(sys_get_temp_dir(), 'c'); $tmpK17 = tempnam(sys_get_temp_dir(), 'k');
+    file_put_contents($tmpC17, $certPem); file_put_contents($tmpK17, $keyPem);
+    $ch17 = curl_init('https://services.circulodecredito.com.mx/v2/rccficoscore');
+    curl_setopt_array($ch17, [
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $nestedBody,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json','Accept: application/json','x-api-key: '.CDC_API_KEY,'username: '.CDC_USER,'password: '.CDC_PASS,'x-signature: '.$sigEnc17],
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_TIMEOUT => 15,
+        CURLOPT_SSLCERT => $tmpC17, CURLOPT_SSLKEY => $tmpK17,
+    ]);
+    $resp17 = curl_exec($ch17);
+    $code17 = curl_getinfo($ch17, CURLINFO_HTTP_CODE);
+    $hdrSize17 = curl_getinfo($ch17, CURLINFO_HEADER_SIZE);
+    curl_close($ch17); @unlink($tmpC17); @unlink($tmpK17);
+    render(['label'=>'Probe 17: SIGN flat SEND nested (canon hypothesis)', 'url'=>'https://services.circulodecredito.com.mx/v2/rccficoscore', 'http'=>$code17, 'curl_err'=>null, 'resp_headers'=>'', 'resp_body'=>substr((string)$resp17, $hdrSize17), 'sig_enc'=>'hex', 'auth'=>['type'=>'sign-flat-send-nested','mtls'=>true]]);
+}
+usleep(400000);
+
 // ── Test 3: alt endpoints ───────────────────────────────────────────────────
 echo '<h2>Test 3: endpoints alternos</h2>';
 foreach ([
