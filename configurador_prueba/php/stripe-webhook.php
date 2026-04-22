@@ -94,106 +94,199 @@ exit;
  * For OXXO/SPEI payments, look up order and send confirmation email.
  */
 function handlePaymentSucceeded($paymentIntent) {
-    $piId = $paymentIntent->id ?? '';
+    $piId    = $paymentIntent->id ?? '';
     $pmTypes = $paymentIntent->payment_method_types ?? [];
     $amount  = ($paymentIntent->amount ?? 0) / 100; // centavos -> MXN
+    $email   = $paymentIntent->receipt_email ?? '';
+    $meta    = (array)($paymentIntent->metadata ?? []);
+    if (!$email) $email = $meta['email'] ?? '';
 
-    webhookLog("payment_intent.succeeded: $piId | method_types: " . implode(',', $pmTypes) . " | amount: $amount MXN");
-
-    // Only process OXXO and SPEI (customer_balance) — card payments are confirmed client-side
     $isOxxo = in_array('oxxo', $pmTypes);
     $isSpei = in_array('customer_balance', $pmTypes);
+    $isCard = !$isOxxo && !$isSpei;
+    $methodLabel = $isOxxo ? 'OXXO' : ($isSpei ? 'SPEI' : 'CARD');
 
-    if (!$isOxxo && !$isSpei) {
-        webhookLog("Skipping card payment $piId — already confirmed client-side");
-        return;
-    }
+    webhookLog("payment_intent.succeeded: $piId | $methodLabel | amount: $amount MXN | email: $email");
 
-    $methodLabel = $isOxxo ? 'OXXO' : 'SPEI';
-    webhookLog("Processing $methodLabel payment confirmation for PI: $piId");
-
-    // ── Look up order in transacciones ───────────────────────────────────────
     try {
         $pdo = getDB();
 
-        // Ensure pago_estado column exists (may be missing on older schemas)
+        // Ensure auxiliary columns exist (pago_estado + notif_sent_at) so both
+        // writers (confirmar-orden.php and this webhook) can coordinate.
         try {
             $cols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
-            if (!in_array('pago_estado', $cols, true)) {
-                $pdo->exec("ALTER TABLE transacciones ADD COLUMN pago_estado VARCHAR(20) NULL");
-            }
+            if (!in_array('pago_estado',   $cols, true)) $pdo->exec("ALTER TABLE transacciones ADD COLUMN pago_estado VARCHAR(20) NULL");
+            if (!in_array('notif_sent_at', $cols, true)) $pdo->exec("ALTER TABLE transacciones ADD COLUMN notif_sent_at DATETIME NULL");
         } catch (PDOException $ignore) {}
 
+        // ── Tier 1: exact match by stripe_pi ────────────────────────────────
         $stmt = $pdo->prepare("
-            SELECT nombre, email, telefono, modelo, color, ciudad, estado, cp,
-                   tpago, precio, total, pedido, stripe_pi, punto_nombre, punto_id
+            SELECT id, nombre, email, telefono, modelo, color, ciudad, estado, cp,
+                   tpago, precio, total, pedido, stripe_pi, punto_nombre, punto_id,
+                   pago_estado, notif_sent_at, fecha_estimada_entrega
             FROM transacciones
             WHERE stripe_pi = ?
             LIMIT 1
         ");
         $stmt->execute([$piId]);
         $order = $stmt->fetch(PDO::FETCH_ASSOC);
+        $matchMode = $order ? 'stripe_pi' : null;
 
-        if ($order) {
-            webhookLog("Found order in transacciones: pedido #{$order['pedido']} for {$order['email']}");
-
-            // Mark payment as completed now that SPEI/OXXO funds arrived
-            try {
-                $upd = $pdo->prepare("UPDATE transacciones SET pago_estado = 'pagada' WHERE stripe_pi = ? AND (pago_estado IS NULL OR pago_estado IN ('pendiente',''))");
-                $upd->execute([$piId]);
-                if ($upd->rowCount() > 0) {
-                    webhookLog("Updated pago_estado to 'pagada' for PI $piId");
-                }
-                // Also update inventario_motos if a bike is already assigned
-                $updMoto = $pdo->prepare("UPDATE inventario_motos SET pago_estado = 'pagada' WHERE stripe_pi = ? AND (pago_estado IS NULL OR pago_estado IN ('pendiente',''))");
-                $updMoto->execute([$piId]);
-            } catch (PDOException $e) {
-                webhookLog("pago_estado update error: " . $e->getMessage());
-            }
-
-            // Bike assignment is now manual via Admin → Ventas panel
-            webhookLog("Pedido VK-{$order['pedido']} awaiting manual bike assignment in admin panel");
-
-            // ── Unified 4-way notification (email + WhatsApp + SMS) ─────────
-            // Single voltikaNotify() call per case covers all channels via the
-            // rich compra_confirmada_* template. Supersedes the separate
-            // sendConfirmationEmail + sendPurchaseWhatsApp split.
-            sendPurchaseNotifications($order);
-
-            return;
-        }
-
-        // ── Fallback: check pedidos table ────────────────────────────────────
-        webhookLog("Not found in transacciones, checking pedidos table...");
-
-        // pedidos table uses pedido_num column, not stripe_pi
-        // Try matching by Stripe metadata or receipt_email
-        $metadata = $paymentIntent->metadata ?? null;
-        $receiptEmail = $paymentIntent->receipt_email ?? '';
-
-        if ($receiptEmail) {
+        // ── Tier 2: recovery — row created without stripe_pi (client POST lost) ─
+        // Card payments have a known failure mode: stripe SDK returns succeeded
+        // on the client but the AJAX to confirmar-orden.php drops (network,
+        // browser close). The row may or may not exist. Match the most recent
+        // pending row with the same email and amount (±$1) from the last 2
+        // days.
+        if (!$order && $email) {
             $stmt = $pdo->prepare("
-                SELECT pedido_num AS pedido, nombre, email, telefono, modelo, color,
-                       ciudad, estado, cp, metodo AS tpago, total, total AS precio
-                FROM pedidos
+                SELECT id, nombre, email, telefono, modelo, color, ciudad, estado, cp,
+                       tpago, precio, total, pedido, stripe_pi, punto_nombre, punto_id,
+                       pago_estado, notif_sent_at, fecha_estimada_entrega
+                FROM transacciones
                 WHERE email = ?
+                  AND (stripe_pi IS NULL OR stripe_pi = '')
+                  AND ABS(total - ?) < 1
+                  AND freg > DATE_SUB(NOW(), INTERVAL 2 DAY)
                 ORDER BY freg DESC
                 LIMIT 1
             ");
-            $stmt->execute([$receiptEmail]);
+            $stmt->execute([$email, $amount]);
             $order = $stmt->fetch(PDO::FETCH_ASSOC);
-
             if ($order) {
-                webhookLog("Found order in pedidos: pedido #{$order['pedido']} for {$order['email']}");
-                sendPurchaseNotifications($order);
-                return;
+                $matchMode = 'email+amount';
+                try {
+                    $pdo->prepare("UPDATE transacciones SET stripe_pi = ? WHERE id = ?")
+                        ->execute([$piId, $order['id']]);
+                    $order['stripe_pi'] = $piId;
+                    webhookLog("Recovered PI $piId → pedido #{$order['pedido']} (orphan row matched by $email + $amount)");
+                } catch (PDOException $e) {
+                    webhookLog("stripe_pi recovery update error: " . $e->getMessage());
+                }
             }
         }
 
-        webhookLog("WARNING: No order found for PI $piId in transacciones or pedidos");
+        // ── Tier 3: no row exists — create from PI metadata ─────────────────
+        // Last resort safety net: confirmar-orden.php never ran. Build a row
+        // from PaymentIntent metadata so admin can still see the order and
+        // the customer receives their confirmation.
+        if (!$order) {
+            $order = createOrderFromMetadata($pdo, $paymentIntent);
+            if ($order) {
+                $matchMode = 'created_from_metadata';
+                webhookLog("Created recovery row for PI $piId → pedido #{$order['pedido']} (no existing row matched)");
+            }
+        }
+
+        if (!$order) {
+            webhookLog("WARNING: No order could be matched or created for PI $piId (email: $email amount: $amount)");
+            return;
+        }
+
+        // ── Mark payment as paid in transacciones + inventario_motos ────────
+        // For credit flows (enganche/parcial) keep 'parcial' semantics — only
+        // the enganche amount was captured.
+        $tpago = strtolower(trim($order['tpago'] ?? ''));
+        $targetEstado = in_array($tpago, ['credito', 'enganche', 'parcial'], true) ? 'parcial' : 'pagada';
+
+        try {
+            $upd = $pdo->prepare("UPDATE transacciones SET pago_estado = ? WHERE stripe_pi = ? AND (pago_estado IS NULL OR pago_estado IN ('pendiente',''))");
+            $upd->execute([$targetEstado, $piId]);
+            if ($upd->rowCount() > 0) {
+                webhookLog("Updated pago_estado → '$targetEstado' via webhook (match: $matchMode)");
+                // Refresh local copy so notification path sees updated state
+                $order['pago_estado'] = $targetEstado;
+            }
+            // Mirror to inventario_motos if the bike is already linked
+            $updMoto = $pdo->prepare("UPDATE inventario_motos SET pago_estado = ? WHERE stripe_pi = ? AND (pago_estado IS NULL OR pago_estado IN ('pendiente',''))");
+            $updMoto->execute([$targetEstado, $piId]);
+        } catch (PDOException $e) {
+            webhookLog("pago_estado update error: " . $e->getMessage());
+        }
+
+        // ── Send notification only if confirmar-orden.php didn't already ───
+        // notif_sent_at prevents the duplicate-email bug when both code paths
+        // run successfully (client AJAX + webhook arriving in parallel).
+        if (empty($order['notif_sent_at'])) {
+            sendPurchaseNotifications($order);
+            try {
+                $pdo->prepare("UPDATE transacciones SET notif_sent_at = NOW() WHERE id = ? AND notif_sent_at IS NULL")
+                    ->execute([$order['id']]);
+            } catch (PDOException $e) {
+                webhookLog("notif_sent_at flag error: " . $e->getMessage());
+            }
+        } else {
+            webhookLog("Notification already sent by confirmar-orden.php at {$order['notif_sent_at']} — skip (webhook idempotent)");
+        }
 
     } catch (PDOException $e) {
         webhookLog("DB ERROR: " . $e->getMessage());
+    }
+}
+
+/**
+ * Last-resort recovery: create a transacciones row straight from the Stripe
+ * PaymentIntent. Used when confirmar-orden.php was never called for this PI
+ * (e.g., customer closed browser right after Stripe SDK returned success).
+ *
+ * Returns the newly-created row (or null on failure). Caller must still
+ * handle notification + inventario_motos linking.
+ */
+function createOrderFromMetadata(PDO $pdo, $paymentIntent) {
+    $piId   = $paymentIntent->id ?? '';
+    $amount = ($paymentIntent->amount ?? 0) / 100;
+    $meta   = (array)($paymentIntent->metadata ?? []);
+    $email  = $paymentIntent->receipt_email ?? ($meta['email'] ?? '');
+
+    if (empty($email) && empty($meta['nombre'])) {
+        webhookLog("createOrderFromMetadata: insufficient metadata to rebuild order (no email/nombre) — skip");
+        return null;
+    }
+
+    $tpago = $meta['tpago'] ?? $meta['method'] ?? 'contado';
+    $targetEstado = in_array(strtolower($tpago), ['credito', 'enganche', 'parcial'], true) ? 'parcial' : 'pagada';
+    $pedidoNum = (int)(microtime(true) * 1000) % 100000000; // short numeric pedido
+    $env = defined('APP_ENV') ? APP_ENV : 'test';
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT IGNORE INTO transacciones
+                (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago,
+                 precio, total, freg, pedido, stripe_pi,
+                 punto_id, punto_nombre, pago_estado, environment)
+            VALUES
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            trim(($meta['nombre'] ?? '') . ' ' . ($meta['apellidos'] ?? '')),
+            $email,
+            $meta['telefono']  ?? '',
+            $meta['modelo']    ?? '',
+            $meta['color']     ?? '',
+            $meta['ciudad']    ?? '',
+            $meta['estado']    ?? '',
+            $meta['cp']        ?? '',
+            $tpago,
+            $amount,
+            $amount,
+            $pedidoNum,
+            $piId,
+            $meta['punto_id']     ?? '',
+            $meta['punto_nombre'] ?? '',
+            $targetEstado,
+            $env,
+        ]);
+
+        // Fetch back (INSERT IGNORE may silently skip if race with confirmar-orden.php)
+        $row = $pdo->prepare("SELECT id, nombre, email, telefono, modelo, color, ciudad, estado, cp,
+                                     tpago, precio, total, pedido, stripe_pi, punto_nombre, punto_id,
+                                     pago_estado, notif_sent_at, fecha_estimada_entrega
+                              FROM transacciones WHERE stripe_pi = ? LIMIT 1");
+        $row->execute([$piId]);
+        return $row->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (PDOException $e) {
+        webhookLog("createOrderFromMetadata INSERT error: " . $e->getMessage());
+        return null;
     }
 }
 

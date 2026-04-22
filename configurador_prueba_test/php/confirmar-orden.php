@@ -894,6 +894,23 @@ $tplKey = 'compra_confirmada_'
 voltikaNotify($tplKey, $notifyData);
 $emailSent = !empty($email);
 
+// Flag the row so stripe-webhook.php (which may arrive later for the same
+// PaymentIntent) knows notifications were already dispatched here, avoiding
+// duplicate emails/WhatsApps. The column is lazy-created on webhook side.
+if (!empty($paymentIntentId)) {
+    try {
+        $pdo = getDB();
+        $cols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('notif_sent_at', $cols, true)) {
+            $pdo->exec("ALTER TABLE transacciones ADD COLUMN notif_sent_at DATETIME NULL");
+        }
+        $pdo->prepare("UPDATE transacciones SET notif_sent_at = NOW() WHERE stripe_pi = ? AND notif_sent_at IS NULL")
+            ->execute([$paymentIntentId]);
+    } catch (Throwable $e) {
+        error_log('confirmar-orden notif_sent_at update: ' . $e->getMessage());
+    }
+}
+
 // MSG 1B/1C/1D — delayed 5 minutes based on purchase type
 if ($esCredito) {
     voltikaNotifyDelayed('portal_plazos', $notifyData, 300);

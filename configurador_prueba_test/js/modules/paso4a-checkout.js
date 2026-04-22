@@ -21,6 +21,13 @@ var Paso4A = {
         // Set _pagoTipo based on what user chose in PASO 1
         this._pagoTipo = (app.state.metodoPago === 'msi') ? 'msi' : 'unico';
 
+        // Retry any confirm-order POST that died mid-flight on a previous
+        // session (network drop, browser close, tab crash). Server-side
+        // webhook recovery is the ultimate safety net, but retrying from the
+        // client makes the admin panel reflect reality within seconds rather
+        // than minutes.
+        this._retryPendingConfirm();
+
         // Check real-time inventory before rendering
         var self = this;
         var modelo = app.getModelo(app.state.modeloSeleccionado);
@@ -528,15 +535,20 @@ var Paso4A = {
         var msiPago = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog2) / 9) : Math.round(totalMSI / 9);
         var amountCents = (self._pagoTipo === 'msi' ? msiPago : total) * 100;
 
+        var centro = state.centroEntrega || {};
         var customerData = {
-            nombre:   $('#vk-nombre').val().trim(),
-            email:    $('#vk-email').val().trim(),
-            telefono: $('#vk-telefono').val().trim(),
-            modelo:   modelo.nombre,
-            color:    state.colorSeleccionado || modelo.colorDefault,
-            ciudad:   state.ciudad  || '',
-            estado:   state.estado  || '',
-            cp:       state.codigoPostal || ''
+            nombre:       $('#vk-nombre').val().trim(),
+            apellidos:    ((state.apellidoPaterno || '') + ' ' + (state.apellidoMaterno || '')).trim(),
+            email:        $('#vk-email').val().trim(),
+            telefono:     $('#vk-telefono').val().trim(),
+            modelo:       modelo.nombre,
+            color:        state.colorSeleccionado || modelo.colorDefault,
+            ciudad:       state.ciudad  || '',
+            estado:       state.estado  || '',
+            cp:           state.codigoPostal || '',
+            tpago:        self._pagoTipo || 'contado',
+            punto_id:     centro.id || '',
+            punto_nombre: centro.nombre || ''
         };
 
         $.ajax({
@@ -604,37 +616,90 @@ var Paso4A = {
         var centro = self.app.state.centroEntrega || {};
         var refData = self.app.state.referidoData || null;
 
-        $.ajax({
-            url: self.ORDER_CONFIRM_URL,
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                paymentIntentId: paymentIntentId,
-                pagoTipo:  self._pagoTipo,
-                nombre:    self._fullName(self.app.state) || customerData.nombre,
-                email:     customerData.email,
-                telefono:  customerData.telefono,
-                modelo:    customerData.modelo,
-                color:     customerData.color,
-                ciudad:    customerData.ciudad,
-                estado:    customerData.estado,
-                cp:        customerData.cp,
-                total:     total,
-                msiPago:   msiPago,
-                msiMeses:  modelo.msiMeses,
-                asesoriaPlacas: self.app.state.asesoriaPlacos || false,
-                seguroQualitas: self.app.state.seguro || false,
-                punto_id:      centro.id || '',
-                punto_nombre:  centro.nombre || '',
-                punto_tipo:    centro.tipo || '',
-                codigo_referido: self.app.state.codigoReferido || '',
-                referido_id:     refData ? refData.id : null,
-                referido_tipo:   refData ? refData.tipo : ''
-            }),
-            complete: function() {
-                self._setLoading(false);
-                self._showPostPaymentOTP();
+        var payload = {
+            paymentIntentId: paymentIntentId,
+            pagoTipo:  self._pagoTipo,
+            nombre:    self._fullName(self.app.state) || customerData.nombre,
+            email:     customerData.email,
+            telefono:  customerData.telefono,
+            modelo:    customerData.modelo,
+            color:     customerData.color,
+            ciudad:    customerData.ciudad,
+            estado:    customerData.estado,
+            cp:        customerData.cp,
+            total:     total,
+            msiPago:   msiPago,
+            msiMeses:  modelo.msiMeses,
+            asesoriaPlacas: self.app.state.asesoriaPlacos || false,
+            seguroQualitas: self.app.state.seguro || false,
+            punto_id:      centro.id || '',
+            punto_nombre:  centro.nombre || '',
+            punto_tipo:    centro.tipo || '',
+            codigo_referido: self.app.state.codigoReferido || '',
+            referido_id:     refData ? refData.id : null,
+            referido_tipo:   refData ? refData.tipo : ''
+        };
+
+        // Persist BEFORE the AJAX so a synchronous crash still leaves a
+        // record. Page-load retry (_retryPendingConfirm) plus server-side
+        // webhook together guarantee the order is eventually recorded even
+        // if every retry fails.
+        try {
+            localStorage.setItem('vk_pending_confirm', JSON.stringify({
+                url: self.ORDER_CONFIRM_URL, payload: payload, ts: Date.now()
+            }));
+        } catch (e) {}
+
+        self._sendConfirmWithRetry(self.ORDER_CONFIRM_URL, payload, 1).always(function() {
+            self._setLoading(false);
+            self._showPostPaymentOTP();
+        });
+    },
+
+    /**
+     * Post the confirmation payload with retries (3 attempts, exp backoff).
+     * Clears localStorage on success; leaves it for next-page-load retry on
+     * final failure. Returns the jqXHR of the FIRST attempt so .always() in
+     * the caller keeps UX identical to the pre-retry version.
+     */
+    _sendConfirmWithRetry: function(url, payload, attempt) {
+        var self = this;
+        var xhr = $.ajax({
+            url: url, method: 'POST', contentType: 'application/json',
+            data: JSON.stringify(payload), timeout: 20000
+        });
+        xhr.done(function() {
+            try { localStorage.removeItem('vk_pending_confirm'); } catch (e) {}
+        }).fail(function(x, status) {
+            if (attempt < 3 && status !== 'abort') {
+                setTimeout(function(){
+                    self._sendConfirmWithRetry(url, payload, attempt + 1);
+                }, 1500 * attempt);
             }
+            // After 3 failures the webhook will recover server-side (see
+            // stripe-webhook.php handlePaymentSucceeded Tier 2/3).
+        });
+        return xhr;
+    },
+
+    /**
+     * On module init, retry any confirm-order POST that never completed.
+     * Survives: browser close after Stripe success, tab crash, network drop.
+     * Expires after 24 h to avoid infinite retry on truly dead orders.
+     */
+    _retryPendingConfirm: function() {
+        var pending;
+        try { pending = JSON.parse(localStorage.getItem('vk_pending_confirm') || 'null'); } catch (e) { pending = null; }
+        if (!pending || !pending.url || !pending.payload) return;
+        if (Date.now() - (pending.ts || 0) > 24 * 3600 * 1000) {
+            try { localStorage.removeItem('vk_pending_confirm'); } catch (e) {}
+            return;
+        }
+        $.ajax({
+            url: pending.url, method: 'POST', contentType: 'application/json',
+            data: JSON.stringify(pending.payload), timeout: 15000
+        }).done(function() {
+            try { localStorage.removeItem('vk_pending_confirm'); } catch (e) {}
         });
     },
 

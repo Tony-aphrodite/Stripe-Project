@@ -629,6 +629,19 @@ window.AD_ventas = (function(){
     html += fRow('Payment Intent', piVal);
     html += fRow('Estado de pago', '<span class="ad-badge '+pagoColor+'">'+pagoLabel+'</span>');
     html += '</div>';
+    // Recovery CTA when stripe_pi is missing. Eduardo Gonzalez Lopez's order
+    // (VK-1776828725) paid successfully but the webhook never stored the PI —
+    // this lets the operator auto-match it against Stripe by email + monto.
+    if (!r.stripe_pi){
+      html += '<div style="background:#FFF3E0;border:1px solid #FFE0B2;border-radius:8px;padding:10px 12px;margin-bottom:10px;">'+
+              '<div style="font-size:12.5px;color:#E65100;margin-bottom:8px;">'+
+                'Esta orden no tiene <code>stripe_pi</code>. Si el cliente pagó, busca el cargo en Stripe para vincularlo.'+
+              '</div>'+
+              '<button class="ad-btn sm primary vtBuscarStripe" data-tid="'+r.id+'" '+
+                'style="background:#FB8C00;border-color:#FB8C00;font-weight:700;">🔍 Buscar pago en Stripe</button>'+
+              '<div id="vtBuscarStripeOut_'+r.id+'" style="margin-top:8px;font-size:12px;"></div>'+
+              '</div>';
+    }
 
     // ── Section: Punto de entrega ──
     secIx = 0;
@@ -736,6 +749,91 @@ window.AD_ventas = (function(){
     // Wire [Asignar/Cambiar punto] button
     $('.adAsignarPuntoBtn').off('click').on('click', function(){
       openAsignarPuntoOrden(r);
+    });
+
+    // Wire "Buscar pago en Stripe" (orders without stripe_pi)
+    $('.vtBuscarStripe').off('click').on('click', function(){
+      var tid = $(this).data('tid');
+      buscarStripePi(tid);
+    });
+  }
+
+  // Auto-match Stripe PaymentIntent for a transacción that lost its stripe_pi.
+  // Shows candidates by email+amount+date and lets the admin link one.
+  function buscarStripePi(tid){
+    var $out = $('#vtBuscarStripeOut_' + tid);
+    $out.html('<span class="ad-spin"></span> Buscando en Stripe...');
+    $.get('php/ventas/buscar-stripe-pi.php?transaccion_id=' + encodeURIComponent(tid))
+      .done(function(rr){
+        if (!rr.ok) { $out.html('<span style="color:#b91c1c;">'+(rr.error||'Error')+'</span>'); return; }
+        if (rr.already_linked) {
+          $out.html('<span style="color:#1e7e34;">Ya estaba vinculado: <code>'+rr.stripe_pi+'</code></span>');
+          return;
+        }
+        var sum = rr.summary || {exact:0,amount:0,email:0};
+        var total = (sum.exact||0)+(sum.amount||0)+(sum.email||0);
+        if (total === 0) {
+          $out.html(
+            '<div style="color:var(--ad-dim);margin-bottom:6px;">No se encontraron PaymentIntents para '+
+              '<strong>'+(rr.order && rr.order.email || '—')+'</strong> por <strong>$'+(rr.order && rr.order.total || 0).toLocaleString()+'</strong>.</div>'+
+            '<div style="display:flex;gap:6px;">'+
+              '<input type="text" id="vtManualPi_'+tid+'" placeholder="pi_xxx..." class="ad-input" style="flex:1;font-family:monospace;font-size:11px;">'+
+              '<button class="ad-btn sm primary" id="vtManualLink_'+tid+'">Vincular</button>'+
+            '</div>'
+          );
+          $('#vtManualLink_'+tid).on('click', function(){
+            var pi = ($('#vtManualPi_'+tid).val()||'').trim();
+            if (pi) vincularStripePi(tid, pi);
+          });
+          return;
+        }
+
+        var h = '<div style="background:#fff;border:1px solid var(--ad-border);border-radius:6px;padding:8px;max-height:260px;overflow-y:auto;">';
+        function tier(title, bg, items){
+          if (!items || !items.length) return '';
+          var t = '<div style="font-size:11px;color:var(--ad-dim);font-weight:600;margin:6px 0 3px;">'+title+'</div>';
+          items.forEach(function(it){
+            t += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:'+bg+';border-radius:5px;margin-bottom:3px;gap:6px;">'+
+                 '<div style="flex:1;min-width:0;font-size:11.5px;">'+
+                   '<div><code style="font-size:10.5px;">'+(it.id||'')+'</code> · '+(it.status||'')+'</div>'+
+                   '<div style="color:var(--ad-dim);margin-top:2px;">'+ADApp.money(it.amount||0)+' · '+(it.email||'—')+' · '+(it.created||'')+'</div>'+
+                 '</div>'+
+                 '<button class="ad-btn sm primary vtLinkPi" data-tid="'+tid+'" data-pi="'+it.id+'">Vincular</button>'+
+                 '</div>';
+          });
+          return t;
+        }
+        h += tier('Coincidencia exacta (email + monto)', '#E8F5E9', rr.matches.exact);
+        h += tier('Solo monto',  '#FFF8E1', rr.matches.amount);
+        h += tier('Solo email',  '#FFF3E0', rr.matches.email);
+        h += '</div>';
+        $out.html(h);
+        $('.vtLinkPi').off('click').on('click', function(){
+          vincularStripePi($(this).data('tid'), $(this).data('pi'));
+        });
+      })
+      .fail(function(x){
+        $out.html('<span style="color:#b91c1c;">'+((x.responseJSON && x.responseJSON.error) || 'Error de conexión')+'</span>');
+      });
+  }
+
+  function vincularStripePi(tid, pi){
+    if (!confirm('¿Vincular '+pi+' a este pedido? Se recalculará el estado de pago.')) return;
+    $.ajax({
+      url: 'php/ventas/buscar-stripe-pi.php',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ transaccion_id: parseInt(tid,10), stripe_pi: pi })
+    }).done(function(rr){
+      if (rr.ok){
+        alert('Vinculado. Estado: '+rr.pago_estado);
+        ADApp.closeModal();
+        render();
+      } else {
+        alert(rr.error || 'Error');
+      }
+    }).fail(function(x){
+      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
     });
   }
 
