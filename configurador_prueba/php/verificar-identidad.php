@@ -221,7 +221,10 @@ if ($telefono) {
 $ch = curl_init(TRUORA_API_URL);
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => http_build_query($postFields),
+    // RFC3986 encoding: space → %20 (not +). Truora's Apigee phone_number
+    // validator parses strictly and rejects "+52+5512345678" (default +
+    // encoding) with 400 phoneNumber format error.
+    CURLOPT_POSTFIELDS     => http_build_query($postFields, '', '&', PHP_QUERY_RFC3986),
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER     => [
         'Truora-API-Key: ' . TRUORA_API_KEY,
