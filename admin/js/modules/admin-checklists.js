@@ -111,6 +111,7 @@ window.AD_checklists = (function(){
 
   // ── Main list render ─────────────────────────────────────────────────────
   var currentFilter = '';
+  var currentPage   = 1;
   var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
 
   function render(){
@@ -119,7 +120,7 @@ window.AD_checklists = (function(){
   }
 
   function load(){
-    ADApp.api('checklists/listar.php?filtro='+currentFilter).done(paint);
+    ADApp.api('checklists/listar.php?filtro='+encodeURIComponent(currentFilter)+'&page='+currentPage).done(paint);
   }
 
   function paint(r){
@@ -188,9 +189,17 @@ window.AD_checklists = (function(){
 
     ADApp.render(html);
 
-    $('#clApply').on('click',function(){ currentFilter=$('#clFiltro').val(); load(); });
+    $('#clApply').on('click',function(){ currentFilter=$('#clFiltro').val(); currentPage=1; load(); });
     $('.clOpen').on('click',function(){ showMotoChecklists($(this).data('id')); });
-    $('.clPage').on('click',function(){ /* TODO pagination */ load(); });
+    $('.clPage').on('click',function(){
+      var p = parseInt($(this).data('p'), 10);
+      if (!p || p === currentPage) return;
+      currentPage = p;
+      load();
+      // Scroll to top so the user doesn't stay stuck at the pagination bar
+      // after the table re-renders with the new page's rows.
+      $('html, body').animate({ scrollTop: 0 }, 200);
+    });
 
     // ── Bulk origen complete: row checkboxes + select-all + button ──────
     function refreshBulkBtn(){
