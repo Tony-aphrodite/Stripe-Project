@@ -339,20 +339,31 @@ $isPersonNotFound = $httpCode === 404
     && isset($parsedResp['errores'][0]['codigo'])
     && $parsedResp['errores'][0]['codigo'] === '404.1';
 
+// IMPORTANT: preserve the CDC "person found" semantics downstream. Previously
+// 404.1 (no existe en CDC) and a transient CDC outage both collapsed to
+// `score: null`, which the preaprobacion self-scoring fallback treated as
+// "thin file" → could APPROVE a completely fake identity. Customer report
+// 2026-04-23: "I entered false information and yet they accepted it".
+// `cdc_person_found` now carries tri-state info:
+//   true  → CDC returned the person (score may be null for thin file)
+//   false → CDC explicitly said 404.1 "no existe"  → MUST reject
+//   null  → CDC unreachable / timeout / transport error → self-score OK
 if ($isPersonNotFound) {
     $_SESSION['cdc_score']             = null;
     $_SESSION['cdc_pago_mensual_buro'] = 0;
     $_SESSION['cdc_dpd90_flag']        = false;
     $_SESSION['cdc_dpd_max']           = 0;
+    $_SESSION['cdc_person_found']      = false; // <── new, prevents fake-identity approval
     echo json_encode([
         'success'           => true,
-        'sin_historial'     => true,
+        'sin_historial'     => false,          // legitimate thin-file path uses this; we removed it here
+        'person_found'      => false,          // explicit signal to the frontend
         'score'             => null,
         'pago_mensual_buro' => 0,
         'dpd90_flag'        => false,
         'dpd_max'           => 0,
         'num_cuentas'       => 0,
-        'message'           => 'Sin historial crediticio registrado (primer crédito).',
+        'message'           => 'La persona no aparece en el Buró de Crédito. No es posible otorgar crédito a nombres que no existen en el Registro.',
     ]);
     exit;
 }
@@ -366,10 +377,12 @@ if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
     $_SESSION['cdc_pago_mensual_buro'] = 0;
     $_SESSION['cdc_dpd90_flag']        = false;
     $_SESSION['cdc_dpd_max']           = 0;
+    $_SESSION['cdc_person_found']      = null; // unreachable — identity not confirmed, not denied
     echo json_encode([
         'success'           => true,
         'score'             => null,
         'sin_cdc'           => true,
+        'person_found'      => null,
         'pago_mensual_buro' => 0,
         'dpd90_flag'        => false,
         'dpd_max'           => 0,
@@ -402,6 +415,10 @@ $_SESSION['cdc_pago_mensual_buro'] = $result['pago_mensual_buro'];
 $_SESSION['cdc_dpd90_flag']        = $result['dpd90_flag'];
 $_SESSION['cdc_dpd_max']           = $result['dpd_max'];
 $_SESSION['cdc_folio_consulta']    = $result['folioConsulta'];
+// CDC returned actual data: identity exists. Even if score is null (thin file),
+// the persona was located → preaprobacion can safely use self-score knowing
+// that no fake identity is getting through.
+$_SESSION['cdc_person_found']      = true;
 
 // ── Guardar en BD ─────────────────────────────────────────────────────────────
 try {

@@ -62,6 +62,15 @@ $pago_mensual_buro = $json['pago_mensual_buro'] ?? $_SESSION['cdc_pago_mensual_b
 $dpd90_flag        = $json['dpd90_flag']        ?? $_SESSION['cdc_dpd90_flag']        ?? null;
 $dpd_max           = $json['dpd_max']           ?? $_SESSION['cdc_dpd_max']           ?? null;
 
+// Tri-state CDC identity flag — see consultar-buro.php:
+//   true  → CDC found the persona (even if score is null for thin file)
+//   false → CDC returned 404.1 "no existe" — block approval, identity invalid
+//   null  → CDC unreachable / not consulted — fall back to self-score
+// Accept either the POST body (when frontend forwards it) or session.
+$person_found = array_key_exists('person_found', $json)
+    ? ($json['person_found'] === null ? null : (bool)$json['person_found'])
+    : ($_SESSION['cdc_person_found'] ?? null);
+
 // Asegurar tipos correctos
 if ($score !== null) $score = intval($score);
 $pago_mensual_buro = floatval($pago_mensual_buro);
@@ -112,7 +121,19 @@ $eng_min     = $V3['downPaymentMin'];
 // ── Evaluación V3 ─────────────────────────────────────────────────────────────
 $result = [];
 
-if ($score === null) {
+// HARD KO — CDC explicitly confirmed the identity does NOT exist (404.1).
+// Without this gate, a fake persona could pass through the self-scoring
+// fallback because "score=null" is indistinguishable from "thin file" or
+// "CDC outage". Customer report 2026-04-23: "entered false information and
+// they were accepted". Must reject BEFORE any scoring logic runs.
+if ($person_found === false) {
+    $result = [
+        'status'     => 'NO_VIABLE',
+        'pti_total'  => round($pti_total, 4),
+        'reasons'    => ['IDENTIDAD_NO_ENCONTRADA_EN_CDC'],
+        'mensaje'    => 'La persona no aparece en el Buró de Crédito. No es posible otorgar crédito a identidades que no se pueden verificar.',
+    ];
+} elseif ($score === null) {
     // ── Sin CDC → SELF-SCORING (multi-signal) ─────────────────────────────
     // Compute a synthetic score based on signals we DO have:
     //   age, declared income, Stripe payment history, Truora identity check
