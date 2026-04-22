@@ -155,10 +155,9 @@ window.AD_preaprobaciones = (function(){
       var ids = $('.apRowCheck:checked').map(function(){ return parseInt($(this).data('id'),10); }).get();
       if (!ids.length) return;
       if (!confirm('¿Archivar ' + ids.length + ' solicitud(es)? Se ocultan del listado pero quedan en BD.')) return;
-      ADApp.api('preaprobaciones/eliminar.php', {
-        method:'POST', contentType:'application/json',
-        data: JSON.stringify({ ids: ids, modo: 'archivar' })
-      }).done(function(){ load(); });
+      ADApp.api('preaprobaciones/eliminar.php', { ids: ids, modo: 'archivar' })
+        .done(function(){ load(); })
+        .fail(function(xhr){ alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido')); });
     });
 
     $('.apBulkDelete').on('click', function(){
@@ -171,12 +170,9 @@ window.AD_preaprobaciones = (function(){
         alert('Texto incorrecto. Debes escribir exactamente: ELIMINAR');
         return;
       }
-      ADApp.api('preaprobaciones/eliminar.php', {
-        method:'POST', contentType:'application/json',
-        data: JSON.stringify({ ids: ids, modo: 'eliminar' })
-      }).done(function(){ load(); }).fail(function(xhr){
-        alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido'));
-      });
+      ADApp.api('preaprobaciones/eliminar.php', { ids: ids, modo: 'eliminar' })
+        .done(function(){ load(); })
+        .fail(function(xhr){ alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido')); });
     });
   }
 
@@ -287,20 +283,17 @@ window.AD_preaprobaciones = (function(){
 
     $('#apEditSave').on('click', function(){
       var seg = $('input[name="apSegRadio"]:checked').val() || 'nuevo';
-      ADApp.api('preaprobaciones/actualizar.php', {
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ id: row.id, seguimiento: seg, notas_admin: $('#apEditNotas').val() })
-      }).done(function(){ ADApp.closeModal(); load(); });
+      ADApp.api('preaprobaciones/actualizar.php', { id: row.id, seguimiento: seg, notas_admin: $('#apEditNotas').val() })
+        .done(function(){ ADApp.closeModal(); load(); })
+        .fail(function(xhr){ alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido')); });
     });
     $('#apEditClose').on('click', function(){ ADApp.closeModal(); });
 
     $('#apEditArchive').on('click', function(){
       if (!confirm('¿Archivar esta solicitud? (Se oculta del listado pero queda en BD)')) return;
-      ADApp.api('preaprobaciones/eliminar.php', {
-        method:'POST', contentType:'application/json',
-        data: JSON.stringify({ id: row.id, modo: 'archivar' })
-      }).done(function(){ ADApp.closeModal(); load(); });
+      ADApp.api('preaprobaciones/eliminar.php', { id: row.id, modo: 'archivar' })
+        .done(function(){ ADApp.closeModal(); load(); })
+        .fail(function(xhr){ alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido')); });
     });
 
     $('#apEditDelete').on('click', function(){
@@ -311,12 +304,9 @@ window.AD_preaprobaciones = (function(){
         alert('Texto incorrecto. Debes escribir exactamente: ELIMINAR');
         return;
       }
-      ADApp.api('preaprobaciones/eliminar.php', {
-        method:'POST', contentType:'application/json',
-        data: JSON.stringify({ id: row.id, modo: 'eliminar' })
-      }).done(function(){ ADApp.closeModal(); load(); }).fail(function(xhr){
-        alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'Solo admin puede eliminar permanentemente'));
-      });
+      ADApp.api('preaprobaciones/eliminar.php', { id: row.id, modo: 'eliminar' })
+        .done(function(){ ADApp.closeModal(); load(); })
+        .fail(function(xhr){ alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'Solo admin puede eliminar permanentemente')); });
     });
   }
 
