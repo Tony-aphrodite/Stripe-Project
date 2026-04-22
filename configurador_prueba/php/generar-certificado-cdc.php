@@ -58,11 +58,13 @@ if (!empty($_SESSION['cdc_cert_pem']) && !empty($_SESSION['cdc_key_pem'])) {
     $certPem = $_SESSION['cdc_cert_pem'];
     $keyPem  = $_SESSION['cdc_key_pem'];
 } else {
-    // ECDSA secp384r1 as required by Círculo de Crédito
-    $privateKey = openssl_pkey_new([
-        'curve_name'       => 'secp384r1',
-        'private_key_type' => OPENSSL_KEYTYPE_EC,
-    ]);
+    // Key type — default ECDSA secp384r1, but allow RSA via ?type=rsa.
+    // Empirically some CDC products verify RSA-SHA256 signatures even when
+    // their docs say ECDSA, so RSA is a useful fallback to try.
+    $keyType = ($_GET['type'] ?? 'ecdsa') === 'rsa' ? 'rsa' : 'ecdsa';
+    $privateKey = $keyType === 'rsa'
+        ? openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA])
+        : openssl_pkey_new(['curve_name' => 'secp384r1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);
 
     if (!$privateKey) {
         header('Content-Type: text/html; charset=UTF-8');
@@ -212,6 +214,9 @@ echo '<li>Pase a producción: <a href="https://developer.circulodecredito.com.mx
 echo '</ol>';
 
 echo '<hr>';
-echo '<p><a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&regen=1" style="color:#C62828;font-size:12px;">🔄 Regenerar certificados (descarta los actuales)</a></p>';
+echo '<p style="margin:10px 0;">';
+echo '<a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&regen=1&type=ecdsa" style="display:inline-block;padding:8px 14px;background:#f3f4f6;color:#374151;text-decoration:none;border-radius:6px;font-size:12px;margin-right:8px;">🔄 Regenerar como ECDSA secp384r1</a>';
+echo '<a href="generar-certificado-cdc.php?key=voltika_cdc_cert_2026&regen=1&type=rsa" style="display:inline-block;padding:8px 14px;background:#fef3c7;color:#78350f;text-decoration:none;border-radius:6px;font-size:12px;">🔄 Regenerar como RSA 2048 (si ECDSA no funciona)</a>';
+echo '</p>';
 echo '<p class="warn">⚠️ Eliminar este script después de completar el proceso.</p>';
 echo '</body></html>';

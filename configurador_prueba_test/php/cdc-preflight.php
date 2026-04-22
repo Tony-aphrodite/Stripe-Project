@@ -137,25 +137,85 @@ function secTest($label, $signSubject, $algo, $encoding, $priv, $certPem, $keyPe
     ];
 }
 
+// Detect key type so we know whether to test IEEE P1363 conversion
+$keyDetails = openssl_pkey_get_details($priv);
+$isECDSA = ($keyDetails['type'] === OPENSSL_KEYTYPE_EC);
+$curveSize = 48; // P-384 → 48 bytes per coordinate
+
+// Convert ECDSA DER signature to IEEE P1363 (raw r||s) format.
+// Many APIs expect this form; OpenSSL always emits DER.
+function derToP1363(string $der, int $curveSize): string {
+    // DER: 0x30 <totalLen> 0x02 <rLen> <r> 0x02 <sLen> <s>
+    if (strlen($der) < 8 || ord($der[0]) !== 0x30) return $der;
+    $offset = 2; if (ord($der[1]) & 0x80) $offset = 2 + (ord($der[1]) & 0x7F);
+    if (ord($der[$offset]) !== 0x02) return $der;
+    $rLen = ord($der[$offset + 1]);
+    $r = substr($der, $offset + 2, $rLen);
+    $offset = $offset + 2 + $rLen;
+    if (ord($der[$offset]) !== 0x02) return $der;
+    $sLen = ord($der[$offset + 1]);
+    $s = substr($der, $offset + 2, $sLen);
+    // Strip leading 0x00 sign byte if present
+    $r = ltrim($r, "\x00");
+    $s = ltrim($s, "\x00");
+    // Pad to curve size
+    $r = str_pad($r, $curveSize, "\x00", STR_PAD_LEFT);
+    $s = str_pad($s, $curveSize, "\x00", STR_PAD_LEFT);
+    return $r . $s;
+}
+
 $subject = 'Esto es un mensaje de prueba';
 $winnerLabel = null;
+
+// Build variants — DER (default openssl output) + P1363 (raw r||s) for ECDSA
+function secTestFmt($label, $signSubject, $algo, $format, $encoding, $priv, $certPem, $keyPem, $isECDSA, $curveSize) {
+    $sig = '';
+    openssl_sign($signSubject, $sig, $priv, $algo);
+    if ($format === 'p1363' && $isECDSA) $sig = derToP1363($sig, $curveSize);
+    $sigEnc = $encoding === 'hex' ? bin2hex($sig) : base64_encode($sig);
+    $body = json_encode(['Peticion' => 'Esto es un mensaje de prueba']);
+    $tmpC = tempnam(sys_get_temp_dir(), 'c'); $tmpK = tempnam(sys_get_temp_dir(), 'k');
+    file_put_contents($tmpC, $certPem); file_put_contents($tmpK, $keyPem);
+    $ch = curl_init('https://services.circulodecredito.com.mx/v1/securitytest');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json','Accept: application/json','x-api-key: '.CDC_API_KEY,'x-signature: '.$sigEnc],
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_TIMEOUT => 15,
+        CURLOPT_SSLCERT => $tmpC, CURLOPT_SSLKEY => $tmpK,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $hdrSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    @unlink($tmpC); @unlink($tmpK);
+    return ['label' => $label, 'url' => 'https://services.circulodecredito.com.mx/v1/securitytest',
+        'http' => $code, 'curl_err' => $err, 'resp_headers' => '', 'resp_body' => substr((string)$resp, $hdrSize),
+        'sig_enc' => $encoding, 'auth' => ['type'=>'headers','mtls'=>true]];
+}
+
 $variants = [
-    ['SHA256+base64 (sign=string)', $subject,                                       OPENSSL_ALGO_SHA256, 'base64'],
-    ['SHA384+base64 (sign=string)', $subject,                                       OPENSSL_ALGO_SHA384, 'base64'],
-    ['SHA256+hex    (sign=string)', $subject,                                       OPENSSL_ALGO_SHA256, 'hex'],
-    ['SHA384+hex    (sign=string)', $subject,                                       OPENSSL_ALGO_SHA384, 'hex'],
-    ['SHA256+base64 (sign=JSON)',   json_encode(['Peticion'=>$subject]),            OPENSSL_ALGO_SHA256, 'base64'],
-    ['SHA384+base64 (sign=JSON)',   json_encode(['Peticion'=>$subject]),            OPENSSL_ALGO_SHA384, 'base64'],
+    // DER format (OpenSSL default)
+    ['DER SHA256+base64 sign=string', $subject, OPENSSL_ALGO_SHA256, 'der', 'base64'],
+    ['DER SHA384+base64 sign=string', $subject, OPENSSL_ALGO_SHA384, 'der', 'base64'],
+    ['DER SHA256+hex    sign=string', $subject, OPENSSL_ALGO_SHA256, 'der', 'hex'],
+    ['DER SHA384+hex    sign=string', $subject, OPENSSL_ALGO_SHA384, 'der', 'hex'],
 ];
+if ($isECDSA) {
+    $variants = array_merge($variants, [
+        // IEEE P1363 raw r||s — common ECDSA alternative
+        ['P1363 SHA256+base64 sign=string', $subject, OPENSSL_ALGO_SHA256, 'p1363', 'base64'],
+        ['P1363 SHA384+base64 sign=string', $subject, OPENSSL_ALGO_SHA384, 'p1363', 'base64'],
+        ['P1363 SHA256+hex    sign=string', $subject, OPENSSL_ALGO_SHA256, 'p1363', 'hex'],
+        ['P1363 SHA384+hex    sign=string', $subject, OPENSSL_ALGO_SHA384, 'p1363', 'hex'],
+    ]);
+}
 foreach ($variants as $v) {
-    $r = secTest($v[0], $v[1], $v[2], $v[3], $priv, $certPem, $keyPem);
+    $r = secTestFmt($v[0], $v[1], $v[2], $v[3], $v[4], $priv, $certPem, $keyPem, $isECDSA, $curveSize);
     render($r);
-    // HTTP 429 = rate limit (spike arrest) — means signature WAS validated,
-    // just throttled. Treat as pass.
     $isPass = ($r['http'] >= 200 && $r['http'] < 300) || $r['http'] == 429;
     if ($isPass && !$winnerLabel) $winnerLabel = $v[0];
-    // Respect rate limit — 300ms between attempts
-    usleep(300000);
+    usleep(350000);
 }
 
 if ($winnerLabel) {
