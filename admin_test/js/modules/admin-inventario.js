@@ -1,5 +1,8 @@
 window.AD_inventario = (function(){
-  var filters = {};
+  // limit=500 so grouped-by-model view shows every bike of each model in a
+  // single table. Previously the default limit of 50 split M05's 40+ bikes
+  // across pages and readers had to click "next" to see the rest.
+  var filters = { limit: 500 };
   var _view = 'global';   // 'global' | 'por_punto' | 'detalle_punto'
   var _selectedPuntoId = null;
   var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
