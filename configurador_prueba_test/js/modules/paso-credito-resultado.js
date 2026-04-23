@@ -395,18 +395,30 @@ var PasoCreditoResultado = {
 
             self.app.state.creditoAprobado = true;
 
-            // CONDICIONAL: enforce required minimum enganche and maximum plazo
+            // CONDICIONAL: enforce required minimum enganche and maximum plazo.
+            // Stash the user's originally selected values so the pago screen
+            // can show "adjusted: 30% → 40%" and the customer understands WHY
+            // the on-screen amount differs from what they picked earlier.
             if (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO') {
+                self.app.state.engancheAjustado = false;
+                self.app.state.plazoAjustado    = false;
+
                 if (resultado.enganche_requerido_min) {
                     var minEnganche = resultado.enganche_requerido_min;
-                    if (!self.app.state.enganchePorcentaje || self.app.state.enganchePorcentaje < minEnganche) {
+                    var prevPct = self.app.state.enganchePorcentaje || 0.30;
+                    if (prevPct < minEnganche) {
+                        self.app.state.enganchePorcentajeOriginal = prevPct;
                         self.app.state.enganchePorcentaje = minEnganche;
+                        self.app.state.engancheAjustado = true;
                     }
                 }
                 if (resultado.plazo_max_meses) {
                     var maxPlazo = resultado.plazo_max_meses;
-                    if (!self.app.state.plazoMeses || self.app.state.plazoMeses > maxPlazo) {
+                    var prevPlazo = self.app.state.plazoMeses || 36;
+                    if (prevPlazo > maxPlazo) {
+                        self.app.state.plazoMesesOriginal = prevPlazo;
                         self.app.state.plazoMeses = maxPlazo;
+                        self.app.state.plazoAjustado = true;
                     }
                 }
             }
