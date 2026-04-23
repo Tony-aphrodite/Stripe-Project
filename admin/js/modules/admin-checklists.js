@@ -845,10 +845,13 @@ window.AD_checklists = (function(){
     }
 
     function isFaseComplete(faseKey){
+      // Checklist items use `class="clCheck" data-key="..."` (see checkItem()
+      // on line 1423). Selector must match that — using [name=] returned 0
+      // elements so every fase looked incomplete even with all items checked.
       var fields = getFaseFields(faseKey);
       if (!fields.length) return false;
       for (var i = 0; i < fields.length; i++) {
-        if (!$('input[name="'+fields[i]+'"]').is(':checked')) return false;
+        if (!$('.clCheck[data-key="'+fields[i]+'"]').is(':checked')) return false;
       }
       return true;
     }
@@ -891,7 +894,9 @@ window.AD_checklists = (function(){
 
       if (!isFaseComplete(currentFaseKey)) {
         var ph = ENSAMBLE_PHASES[faseIdx];
-        var missing = getFaseFields(currentFaseKey).filter(function(k){ return !$('input[name="'+k+'"]').is(':checked'); }).length;
+        var missing = getFaseFields(currentFaseKey).filter(function(k){
+          return !$('.clCheck[data-key="'+k+'"]').is(':checked');
+        }).length;
         alert('Faltan ' + missing + ' item(s) por marcar en ' + (ph ? ph.title : 'esta fase') + ' antes de continuar.');
         return;
       }
