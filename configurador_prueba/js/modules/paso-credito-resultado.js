@@ -215,36 +215,172 @@ var PasoCreditoResultado = {
     },
 
     _renderNoViable: function(resultado) {
-        // Tailor the subtitle to the actual rejection reason so the customer
-        // understands what happened instead of seeing a generic message.
+        // Redesigned 2026-04-23 per customer design brief:
+        //   - Encouraging copy ("pero tu moto sí") instead of generic rejection
+        //   - Motorcycle card with change-model escape hatch
+        //   - Primary CTA returns to the slider so user can retry with
+        //     different enganche / plazo
+        //   - 4 direct payment alternatives as cards (not buried in a submenu)
+        //   - Trust badges footer for payment-security reassurance
+        //   - (WhatsApp advisor box intentionally omitted per customer request)
+
+        var state  = this.app.state || {};
+        var modelo = this.app.getModelo(state.modeloSeleccionado) || {};
+        var base   = window.VK_BASE_PATH || '';
+
+        var colorId      = state.colorSeleccionado || modelo.colorDefault || '';
+        var colorObj     = null;
+        if (modelo.colores) {
+            for (var ci = 0; ci < modelo.colores.length; ci++) {
+                if (modelo.colores[ci].id === colorId) { colorObj = modelo.colores[ci]; break; }
+            }
+        }
+        var colorNombre = colorObj ? colorObj.nombre : (colorId || '');
+
+        // Resolve moto image — try color-specific side, then fallback to model.png
+        var slug = (modelo.id || '').toLowerCase();
+        var colorFileMap = { negro:'black', gris:'grey', plata:'silver', verde:'green', azul:'blue', rojo:'red', blanco:'white', naranja:'orange' };
+        var colorFile = colorFileMap[(colorId || '').toLowerCase()];
+        var imgPath = base + 'img/' + slug + '/' + (colorFile ? colorFile + '_side.png' : 'model.png');
+
+        var precio    = modelo.precioContado || 0;
+        var precioMSI = Math.round(precio / 9);
+
+        function fmt(n){
+            return '$' + Number(n||0).toLocaleString('es-MX', {minimumFractionDigits:0, maximumFractionDigits:0});
+        }
+        function esc(s){
+            return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        // Subtitle explaining WHY — keeps the copy honest without being harsh.
         var reasons = resultado.reasons || [];
-        var subtitle = 'Lo sentimos, no cumples los requisitos en este momento';
-        if (reasons.indexOf('IDENTIDAD_NO_ENCONTRADA_EN_CDC') !== -1) {
-            subtitle = 'La persona no aparece en el Buró de Crédito — no es posible otorgar crédito a identidades que no se pueden verificar.';
-        } else if (reasons.indexOf('SIN_SCORE_CDC_NO_AUTO_APROBACION') !== -1) {
-            subtitle = resultado.mensaje || 'No se obtuvo un reporte completo del Buró de Crédito para confirmar tu historial.';
-        } else if (reasons.indexOf('KO_SEVERE_DPD_90PLUS') !== -1) {
-            subtitle = 'Tu historial muestra pagos atrasados graves. No podemos otorgar crédito en este momento.';
+        var subtitle = 'Revisamos tu historial y hoy no aprobamos el plan que elegiste.';
+        if (reasons.indexOf('KO_SEVERE_DPD_90PLUS') !== -1) {
+            subtitle = 'Tu historial muestra pagos atrasados graves y hoy no podemos aprobar crédito.';
         } else if (reasons.indexOf('KO_PTI_EXTREME') !== -1 || reasons.indexOf('PTI_EXTREMO_SIN_CIRCULO') !== -1) {
-            subtitle = 'El pago semanal supera tu capacidad declarada de ingreso. Considera aumentar el enganche o reducir el plazo.';
+            subtitle = 'El pago semanal supera tu capacidad declarada. Ajustar enganche o plazo puede cambiar el resultado.';
+        } else if (reasons.indexOf('IDENTIDAD_NO_ENCONTRADA_EN_CDC') !== -1) {
+            subtitle = 'No pudimos confirmar tu identidad en el Buró de Crédito. Puedes pagar directamente sin crédito.';
         }
 
         var html = '';
-        html += '<div style="background:#FFEBEE;border:1px solid #EF9A9A;border-radius:10px;padding:20px;text-align:center;margin-bottom:16px;">';
-        html += '<div style="font-size:40px;margin-bottom:8px;">&#10060;</div>';
-        html += '<div style="font-size:20px;font-weight:800;color:#C62828;">No es posible el crédito</div>';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);margin-top:4px;">' +
-            subtitle + '</div>';
+
+        // ── Headline ──────────────────────────────────────────────────────
+        html += '<div style="text-align:center;margin-bottom:18px;">';
+        html += '<h2 style="font-size:26px;font-weight:800;color:#111;line-height:1.25;margin:0 0 10px;">'+
+                'Esta vez el crédito no salió,<br>'+
+                'pero <span style="color:#039fe1;">tu moto sí.</span></h2>';
+        html += '<p style="font-size:14px;color:#5b6b7a;line-height:1.5;margin:0 0 6px;max-width:380px;margin-left:auto;margin-right:auto;">' +
+                subtitle + '</p>';
+        html += '<p style="font-size:13px;color:#5b6b7a;margin:6px 0 0;">Esto pasa y no te define. Elige cómo llevarte tu Voltika hoy:</p>';
         html += '</div>';
 
-        html += '<p style="font-size:13px;color:var(--vk-text-secondary);text-align:center;margin-bottom:16px;">' +
-            'Sin embargo, puedes adquirir tu Voltika pagando con tarjeta:</p>';
+        // ── Motorcycle card ───────────────────────────────────────────────
+        html += '<div class="vk-nv-moto-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);">';
+        html += '<div style="display:flex;align-items:center;gap:12px;">';
+        html += '<div style="width:96px;height:72px;flex-shrink:0;background:linear-gradient(180deg,#ffffff 0%,#f3f6fb 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;">';
+        html += '<img src="'+esc(imgPath)+'" alt="'+esc(modelo.nombre||'')+'" '+
+                'onerror="this.onerror=null;this.src=\''+esc(base+'img/'+slug+'/model.png')+'\';" '+
+                'style="max-width:92%;max-height:92%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(12,35,64,.14));">';
+        html += '</div>';
+        html += '<div style="flex:1;min-width:0;">';
+        html += '<div style="font-size:15px;font-weight:800;color:#111;line-height:1.2;">VOLTIKA ' + esc(modelo.nombre||'') + (colorNombre ? ' · <span style="font-weight:600;color:#5b6b7a;">'+esc(colorNombre)+'</span>':'') + '</div>';
+        html += '<div style="font-size:12px;color:#5b6b7a;margin-top:3px;">Precio público:</div>';
+        html += '<div style="font-size:22px;font-weight:900;color:#111;line-height:1.1;">' + fmt(precio) + '</div>';
+        html += '</div>';
+        html += '<button type="button" class="vk-nv-cambiar" id="vk-nv-cambiar" '+
+                'style="flex-shrink:0;display:inline-flex;align-items:center;gap:5px;background:#fff;color:#039fe1;border:1.5px solid #039fe1;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;">'+
+                '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'+
+                'Cambiar</button>';
+        html += '</div></div>';
 
-        html += '<button class="vk-btn vk-btn--primary" id="vk-resultado-contado" style="width:100%;margin-bottom:10px;">' +
-            '&#128179; Pagar con tarjeta (Stripe)</button>';
+        // ── Primary CTA: retry with different plan ────────────────────────
+        html += '<button type="button" class="vk-nv-retry" id="vk-nv-retry" '+
+                'style="width:100%;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#039fe1 0%,#0280b5 100%);color:#fff;border:0;border-radius:14px;padding:16px 18px;margin-bottom:18px;cursor:pointer;text-align:left;box-shadow:0 4px 10px rgba(3,159,225,.25);">'+
+            '<span style="width:38px;height:38px;background:rgba(255,255,255,.18);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">'+
+                '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="14" cy="8" r="2" fill="currentColor" stroke="currentColor"/><circle cx="8" cy="16" r="2" fill="currentColor" stroke="currentColor"/></svg>'+
+            '</span>'+
+            '<span style="flex:1;">'+
+                '<span style="display:block;font-size:15px;font-weight:800;line-height:1.1;">Ajusta tu plan y reintenta</span>'+
+                '<span style="display:block;font-size:12px;font-weight:500;opacity:.9;margin-top:3px;">Sube enganche o baja plazo. La mayoría aprueba al segundo intento.</span>'+
+            '</span>'+
+            '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>'+
+            '</button>';
 
-        html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);">' +
-            'También puedes hablar con un asesor: <strong>ventas@voltika.com.mx</strong></p>';
+        // ── Divider ──────────────────────────────────────────────────────
+        html += '<div style="display:flex;align-items:center;gap:10px;margin:14px 0 14px;">'+
+                '<div style="flex:1;height:1px;background:#e5e7eb;"></div>'+
+                '<span style="font-size:12.5px;color:#5b6b7a;font-weight:600;">o paga directo</span>'+
+                '<div style="flex:1;height:1px;background:#e5e7eb;"></div>'+
+                '</div>';
+
+        // ── 4 payment method cards (2x2 grid) ─────────────────────────────
+        function payCard(id, iconHtml, iconBg, title, subtitle){
+            return '<button type="button" class="vk-nv-pay" id="'+id+'" style="'+
+                'display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s;">'+
+                '<span style="width:40px;height:40px;flex-shrink:0;border-radius:50%;background:'+iconBg+';display:inline-flex;align-items:center;justify-content:center;color:#fff;">'+iconHtml+'</span>'+
+                '<span style="flex:1;min-width:0;">'+
+                    '<span style="display:block;font-size:13.5px;font-weight:700;color:#111;line-height:1.15;">'+title+'</span>'+
+                    '<span style="display:block;font-size:11.5px;color:#5b6b7a;margin-top:2px;line-height:1.3;">'+subtitle+'</span>'+
+                '</span>'+
+                '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>'+
+                '</button>';
+        }
+
+        var iconCard = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>';
+        var iconBank = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 22 9 2 9 12 3"/><line x1="5" y1="12" x2="5" y2="18"/><line x1="10" y1="12" x2="10" y2="18"/><line x1="14" y1="12" x2="14" y2="18"/><line x1="19" y1="12" x2="19" y2="18"/><line x1="2" y1="21" x2="22" y2="21"/></svg>';
+        var iconCash = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/></svg>';
+
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">';
+        html += payCard(
+            'vk-nv-msi',
+            iconCard,
+            'linear-gradient(135deg,#3b82f6,#1d4ed8)',
+            '9 MSI con tarjeta',
+            '9 pagos de '+fmt(precioMSI)+'<br>sin intereses'
+        );
+        html += payCard(
+            'vk-nv-tarjeta',
+            iconCard,
+            'linear-gradient(135deg,#10b981,#047857)',
+            'Tarjeta en 1 solo pago',
+            fmt(precio)+' · se aparta<br>al instante'
+        );
+        html += payCard(
+            'vk-nv-spei',
+            iconBank,
+            'linear-gradient(135deg,#6366f1,#4338ca)',
+            'Transferencia SPEI',
+            fmt(precio)+' · confirmación<br>en 15 min'
+        );
+        html += payCard(
+            'vk-nv-oxxo',
+            iconCash,
+            'linear-gradient(135deg,#f97316,#c2410c)',
+            'Efectivo en OXXO',
+            fmt(precio)+' · paga<br>en 48 horas'
+        );
+        html += '</div>';
+
+        // ── Trust badges footer ───────────────────────────────────────────
+        html += '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'+
+                '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#039fe1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>'+
+                '<span style="font-size:12.5px;font-weight:700;color:#111;">Pagos seguros con</span>'+
+                '</div>';
+        html += '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px;">'+
+                '<span style="font-size:16px;font-weight:700;color:#635bff;letter-spacing:-.5px;">stripe</span>'+
+                '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#111;"><span style="width:16px;height:16px;background:#c62828;border-radius:50%;display:inline-block;"></span>SAT</span>'+
+                '<span style="font-size:12px;font-weight:700;color:#0284c7;letter-spacing:.5px;">REPUVE</span>'+
+                '<span style="font-size:13px;font-weight:800;color:#0d9488;letter-spacing:-.3px;">◆ CINCEL</span>'+
+                '</div>';
+        html += '<div style="border-top:1px solid #f3f4f6;padding-top:10px;display:flex;align-items:center;justify-content:center;gap:10px;">'+
+                '<span style="font-size:12px;color:#5b6b7a;">Convenio con</span>'+
+                '<img src="'+base+'img/qualitas-logo.png" alt="Qualitas Seguros" style="height:22px;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline\'">'+
+                '<span style="display:none;font-size:13px;font-weight:800;color:#0d47a1;">QUÁLITAS SEGUROS</span>'+
+                '</div>';
+        html += '</div>';
 
         return html;
     },
@@ -288,6 +424,64 @@ var PasoCreditoResultado = {
         jQuery(document).on('click', '#vk-resultado-msi', function() {
             self.app.state.metodoPago = 'msi';
             self.app.irAPaso(3);
+        });
+
+        // ── New "No viable" screen handlers ───────────────────────────────
+        // Moto "Cambiar" button: back to model selector. Clear credit state
+        // so the next attempt starts clean.
+        jQuery(document).off('click', '#vk-nv-cambiar');
+        jQuery(document).on('click', '#vk-nv-cambiar', function() {
+            self.app.state.creditoAprobado = false;
+            self.app.state._resultadoFinal = null;
+            self.app.irAPaso(1);
+        });
+
+        // Primary CTA: adjust enganche/plazo and retry evaluation. Returns
+        // to the slider screen where enganche % + plazo can be tweaked.
+        jQuery(document).off('click', '#vk-nv-retry');
+        jQuery(document).on('click', '#vk-nv-retry', function() {
+            self.app.state._resultadoFinal = null;
+            self.app.state.creditoAprobado = false;
+            self.app.state.metodoPago = 'credito';
+            self.app.irAPaso('credito-enganche');
+        });
+
+        // 4 direct payment shortcuts. Each sets metodoPago + a preferred
+        // sub-method hint so paso4a-checkout auto-opens the right section.
+        jQuery(document).off('click', '#vk-nv-msi');
+        jQuery(document).on('click', '#vk-nv-msi', function() {
+            self.app.state.metodoPago = 'msi';
+            self.app.state._preferredSubMethod = 'tarjeta';
+            self.app.irAPaso(3);
+        });
+
+        jQuery(document).off('click', '#vk-nv-tarjeta');
+        jQuery(document).on('click', '#vk-nv-tarjeta', function() {
+            self.app.state.metodoPago = 'contado';
+            self.app.state._preferredSubMethod = 'tarjeta';
+            self.app.irAPaso(3);
+        });
+
+        jQuery(document).off('click', '#vk-nv-spei');
+        jQuery(document).on('click', '#vk-nv-spei', function() {
+            self.app.state.metodoPago = 'contado';
+            self.app.state._preferredSubMethod = 'spei';
+            self.app.irAPaso(3);
+        });
+
+        jQuery(document).off('click', '#vk-nv-oxxo');
+        jQuery(document).on('click', '#vk-nv-oxxo', function() {
+            self.app.state.metodoPago = 'contado';
+            self.app.state._preferredSubMethod = 'oxxo';
+            self.app.irAPaso(3);
+        });
+
+        // Hover feedback for payment cards
+        jQuery(document).off('mouseenter', '.vk-nv-pay').on('mouseenter', '.vk-nv-pay', function(){
+            jQuery(this).css({'border-color':'#039fe1','box-shadow':'0 2px 8px rgba(3,159,225,.15)'});
+        });
+        jQuery(document).off('mouseleave', '.vk-nv-pay').on('mouseleave', '.vk-nv-pay', function(){
+            jQuery(this).css({'border-color':'#e5e7eb','box-shadow':''});
         });
     }
 };

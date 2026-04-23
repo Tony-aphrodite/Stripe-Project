@@ -43,13 +43,28 @@ var Paso4A = {
             .always(function() {
                 self.render();
                 self.bindEvents();
-                setTimeout(function() { self._mountStripe(); }, 300);
+                setTimeout(function() { self._mountStripe(); self._applyPreferredSubMethod(); }, 300);
             });
         } else {
             this.render();
             this.bindEvents();
-            setTimeout(function() { self._mountStripe(); }, 300);
+            setTimeout(function() { self._mountStripe(); self._applyPreferredSubMethod(); }, 300);
         }
+    },
+
+    // When the "No viable" screen sends the user here with a specific payment
+    // preference (SPEI / OXXO / tarjeta), auto-click the matching sub-button
+    // so the correct section is already open. The hint is single-shot — we
+    // clear it after applying so revisits don't re-trigger.
+    _applyPreferredSubMethod: function() {
+        var sub = this.app.state && this.app.state._preferredSubMethod;
+        if (!sub) return;
+        try {
+            if (sub === 'spei')    { $('#vk-contado-spei').trigger('click'); }
+            else if (sub === 'oxxo'){ $('#vk-contado-oxxo').trigger('click'); }
+            // 'tarjeta' is already the default view — no click needed.
+        } catch (e) {}
+        this.app.state._preferredSubMethod = null;
     },
 
     render: function() {
