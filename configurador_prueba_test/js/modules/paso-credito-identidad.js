@@ -67,6 +67,23 @@ var PasoCreditoIdentidad = {
         html += '</label>';
         html += '</div>';
 
+        // 5b-bis. CURP input — required for Truora Mexico identity lookup.
+        // Gender is derived from CURP position 11 (H=hombre, M=mujer).
+        var prefillCurp = (this.app && this.app.state && this.app.state.curp) ? this.app.state.curp : '';
+        html += '<div style="margin:16px 0;">';
+        html += '<label for="vk-curp-input" style="display:block;font-size:14px;font-weight:700;color:#1f2937;margin-bottom:6px;">';
+        html += 'CURP <span style="color:#C62828;">*</span>';
+        html += '</label>';
+        html += '<input type="text" id="vk-curp-input" maxlength="18" autocomplete="off" ' +
+            'value="' + String(prefillCurp).replace(/"/g, '&quot;') + '" ' +
+            'style="width:100%;padding:12px;border:1px solid var(--vk-border);border-radius:8px;' +
+            'font-size:15px;font-family:monospace;text-transform:uppercase;letter-spacing:1px;box-sizing:border-box;" ' +
+            'placeholder="AAAA000000HAAAAA00">';
+        html += '<div style="font-size:12px;color:#6b7280;margin-top:6px;">';
+        html += '18 caracteres — lo encuentras al reverso de tu INE';
+        html += '</div>';
+        html += '</div>';
+
         // 5c. Comprobante de domicilio (hidden by default)
         html += '<div id="vk-comprobante-wrapper" style="display:none;">';
         html += this._renderUploadStep(4, 'comprobante', 'Comprobante de domicilio', 'Sube una foto de tu comprobante de domicilio reciente (luz, agua, tel\u00e9fono, m\u00e1ximo 3 meses de antig\u00fcedad)', 'none');
@@ -441,15 +458,31 @@ var PasoCreditoIdentidad = {
             apellidos = parts.slice(1).join(' ');
         }
 
+        // CURP — required; gender derived from CURP position 11.
+        var curpRaw = (jQuery('#vk-curp-input').val() || '').toUpperCase().replace(/\s+/g, '');
+        var curpOk = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(curpRaw);
+        if (!curpOk) {
+            jQuery('#vk-identidad-continuar').prop('disabled', false);
+            jQuery('#vk-identidad-label').show();
+            jQuery('#vk-identidad-spinner').hide();
+            jQuery('#vk-identidad-error')
+                .html('<strong>Ingresa un CURP válido.</strong><div style="margin-top:6px;font-size:12px;color:#666;">Son 18 caracteres. Lo encuentras al reverso de tu INE o en tu constancia oficial.</div>')
+                .show();
+            jQuery('#vk-curp-input').focus();
+            return;
+        }
+        state.curp = curpRaw;
+        var genderFromCurp = curpRaw.charAt(10);
+        var truoraGender = genderFromCurp === 'M' ? 'F' : 'M';
+
         formData.append('nombre', nombre);
         formData.append('apellidos', apellidos);
         formData.append('fecha_nacimiento', state.fechaNacimiento || '');
         formData.append('telefono', state.telefono || '');
         formData.append('email', state.email || '');
-        // Truora new schema requires gender + state_id
-        formData.append('gender', state.sexo || state.gender || 'M');
-        formData.append('state_id', state.estadoDomicilio || state.estado || 'CDMX');
-        if (state.curp) formData.append('curp', state.curp);
+        formData.append('gender', truoraGender);
+        formData.append('state_id', state.estadoDomicilio || state.estado || '');
+        formData.append('curp', curpRaw);
 
         // Helper: show an error below the Continuar button and re-enable it.
         // If the backend returned HTTP/body detail, render them so we can

@@ -86,11 +86,27 @@ if (!empty($_POST)) {
     }
 }
 
-// Defaults — Truora requires both. Real values come from CDC step's address
-// or auto-derived. Sensible defaults so identity check still runs.
-if (!$gender)  $gender  = 'M';
-if (!$stateId) $stateId = 'CDMX';
-// CURP is optional unless required by state_id schema
+// CURP is REQUIRED — without it Truora's Mexico person check returns
+// `not_found` for every real user because name+DOB+state matching against
+// RENAPO is too weak on its own.
+if (!$curp || !preg_match('/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/', $curp)) {
+    http_response_code(400);
+    echo json_encode([
+        'status'  => 'error',
+        'error'   => 'CURP inválido',
+        'message' => 'Ingresa tu CURP completo (18 caracteres). Lo encuentras al reverso de tu INE.',
+    ]);
+    exit;
+}
+
+// Derive gender from CURP position 11 if not supplied by frontend.
+if (!$gender) {
+    $genderFromCurp = strtoupper($curp[10]);
+    $gender = ($genderFromCurp === 'M') ? 'F' : 'M';
+}
+
+// Normalize state_id to Truora's enum codes (CDMX, JAL, NL, MEX, ...).
+$stateId = truoraEstadoEnum($stateId);
 
 // Last-resort fallback: if frontend sent everything in nombre, split it
 if ($nombre && !$apellidos && strpos($nombre, ' ') !== false) {
@@ -823,6 +839,50 @@ function truoraDocumentValidation(string $ineFrontePath, string $ineReversoPath,
         'status'   => $docStatus,
         'data'     => $finalData,
     ];
+}
+
+/**
+ * Normalize free-text estado to Truora's Mexico state enum (2-4 char codes).
+ * See production copy of this function for full rationale.
+ */
+function truoraEstadoEnum(string $raw): string {
+    $k = strtoupper(trim($raw));
+    $k = strtr($k, [
+        'Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N',
+    ]);
+    $k = preg_replace('/[^A-Z0-9]/', '', $k);
+    if ($k === '') return 'CDMX';
+
+    $validCodes = ['CDMX','AGS','BC','BCS','CAMP','CHIS','CHIH','COAH','COL',
+        'DGO','GTO','GRO','HGO','JAL','MEX','MICH','MOR','NAY','NL','OAX',
+        'PUE','QRO','QROO','SLP','SIN','SON','TAB','TAMS','TLAX','VER','YUC','ZAC'];
+    if (in_array($k, $validCodes, true)) return $k;
+
+    $aliases = [
+        'CIUDADDEMEXICO'  => 'CDMX', 'DISTRITOFEDERAL' => 'CDMX', 'DF' => 'CDMX',
+        'AGUASCALIENTES'  => 'AGS',
+        'BAJACALIFORNIA'  => 'BC',  'BAJACALIFORNIASUR' => 'BCS', 'BCN' => 'BC',
+        'CAMPECHE'        => 'CAMP',
+        'CHIAPAS'         => 'CHIS', 'CHIHUAHUA' => 'CHIH',
+        'COAHUILA'        => 'COAH', 'COLIMA'    => 'COL',
+        'DURANGO'         => 'DGO',
+        'GUANAJUATO'      => 'GTO',  'GUERRERO'  => 'GRO',
+        'HIDALGO'         => 'HGO',
+        'JALISCO'         => 'JAL',
+        'ESTADODEMEXICO'  => 'MEX',  'ESTADOMEXICO' => 'MEX', 'EDOMEX' => 'MEX',
+        'MEXICO'          => 'MEX',
+        'MICHOACAN'       => 'MICH', 'MORELOS'   => 'MOR',
+        'NAYARIT'         => 'NAY',  'NUEVOLEON' => 'NL',
+        'OAXACA'          => 'OAX',
+        'PUEBLA'          => 'PUE',
+        'QUERETARO'       => 'QRO',  'QUINTANAROO' => 'QROO',
+        'SANLUISPOTOSI'   => 'SLP',  'SINALOA'   => 'SIN', 'SONORA' => 'SON',
+        'TABASCO'         => 'TAB',  'TAMAULIPAS'=> 'TAMS','TLAXCALA' => 'TLAX',
+        'VERACRUZ'        => 'VER',
+        'YUCATAN'         => 'YUC',
+        'ZACATECAS'       => 'ZAC',
+    ];
+    return $aliases[$k] ?? 'CDMX';
 }
 
 /**
