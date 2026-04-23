@@ -238,8 +238,26 @@ function createOrderFromMetadata(PDO $pdo, $paymentIntent) {
     $meta   = (array)($paymentIntent->metadata ?? []);
     $email  = $paymentIntent->receipt_email ?? ($meta['email'] ?? '');
 
-    if (empty($email) && empty($meta['nombre'])) {
-        webhookLog("createOrderFromMetadata: insufficient metadata to rebuild order (no email/nombre) — skip");
+    // Stricter guard: customer report 2026-04-23 showed VK-2604-0011/0012/0013
+    // appearing in admin with blank Cliente/Modelo/Color — a webhook-built
+    // recovery row with sparse metadata. Require nombre AND modelo to rebuild;
+    // anything less is a useless phantom that forces manual admin cleanup.
+    $metaNombre = trim((string)($meta['nombre'] ?? ''));
+    $metaModelo = trim((string)($meta['modelo'] ?? ''));
+    if ($metaNombre === '' || $metaModelo === '') {
+        webhookLog("createOrderFromMetadata: insufficient metadata to rebuild order (nombre='{$metaNombre}' modelo='{$metaModelo}') — skip, logging for repair");
+        try {
+            @$pdo->exec("CREATE TABLE IF NOT EXISTS stripe_webhook_phantom (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                stripe_pi VARCHAR(100),
+                email VARCHAR(200),
+                amount DECIMAL(12,2),
+                metadata TEXT,
+                freg DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            $pdo->prepare("INSERT INTO stripe_webhook_phantom (stripe_pi, email, amount, metadata) VALUES (?,?,?,?)")
+                ->execute([$piId, $email, $amount, substr(json_encode($meta), 0, 4000)]);
+        } catch (Throwable $e) { webhookLog("phantom log error: " . $e->getMessage()); }
         return null;
     }
 

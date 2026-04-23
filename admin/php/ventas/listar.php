@@ -45,6 +45,7 @@ $cotizSelect = $hasCotiz
 
 // Ensure payment-reminder tracking columns exist (2026-04-19 follow-up feature).
 // Safe idempotent ALTER — lets the SELECT below reference them unconditionally.
+$hasSeguimiento = false;
 try {
     $cols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
     if (!in_array('last_reminder_at', $cols, true)) {
@@ -57,9 +58,17 @@ try {
         $pdo->exec("ALTER TABLE transacciones ADD COLUMN pedido_corto VARCHAR(20) NULL");
         try { $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX idx_pedido_corto (pedido_corto)"); } catch (Throwable $e) {}
     }
+    // `seguimiento` is used by the phantom-repair tool to archive rows.
+    // If it doesn't exist yet, skip the archived-filter in the SELECT
+    // below (otherwise the query errors out and the entire orders list
+    // disappears — incident 2026-04-23).
+    $hasSeguimiento = in_array('seguimiento', $cols, true);
 } catch (Throwable $e) { error_log('listar ensure reminder cols: ' . $e->getMessage()); }
 
 // ── Orders from transacciones ───────────────────────────────────────────
+$seguimientoFilter = $hasSeguimiento
+    ? "WHERE (t.seguimiento IS NULL OR t.seguimiento <> 'archivado')"
+    : "";
 try {
     $stmt = $pdo->query("
         SELECT t.id, t.pedido, t.pedido_corto, t.nombre, t.email, t.telefono,
@@ -104,10 +113,18 @@ try {
                    ORDER BY p2.id ASC
                    LIMIT 1
                )
+        $seguimientoFilter
         ORDER BY t.freg DESC
         LIMIT 100
     ");
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        // Flag rows with missing client identification so the admin UI can
+        // call them out as phantoms. Previously these showed as blank cells
+        // that admins mistakenly ignored or tried to assign motos to.
+        $nombreEmpty = trim((string)($r['nombre'] ?? '')) === '';
+        $modeloEmpty = trim((string)($r['modelo'] ?? '')) === '';
+        $datosIncompletos = $nombreEmpty || $modeloEmpty;
+
         $rows[] = [
             'id'          => (int)$r['id'],
             'pedido'      => $r['pedido'],
@@ -117,6 +134,7 @@ try {
             'telefono'    => $r['telefono'],
             'modelo'      => $r['modelo'],
             'color'       => $r['color'],
+            'datos_incompletos' => $datosIncompletos,
             'tipo'        => $r['tpago'],
             'monto'       => (float)$r['total'],
             'stripe_pi'   => $r['stripe_pi'],
@@ -521,6 +539,7 @@ $sinAsignar = $total - $asignadas;
 $orfanos    = count(array_filter($rows, fn($r) => ($r['source'] ?? '') !== ''));
 $conPago    = count(array_filter($rows, fn($r) => ($r['pago_estado'] ?? '') === 'pagada'));
 $sinPago    = count(array_filter($rows, fn($r) => in_array($r['pago_estado'] ?? '', ['pendiente', 'parcial', 'error', 'orfano'], true)));
+$phantom    = count(array_filter($rows, fn($r) => !empty($r['datos_incompletos'])));
 
 adminJsonOut([
     'ok'    => true,
@@ -531,5 +550,6 @@ adminJsonOut([
     'orfanos'     => $orfanos,
     'con_pago'    => $conPago,
     'sin_pago'    => $sinPago,
+    'phantom'     => $phantom,
     'generated_at'=> date('c'),
 ]);
