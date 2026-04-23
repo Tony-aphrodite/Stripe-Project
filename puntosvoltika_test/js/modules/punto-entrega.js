@@ -96,19 +96,48 @@ window.PV_entrega = (function(){
       }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Código incorrecto'); });
     });
   }
-  // Step 3: Face verification + photos
+  // Step 3: Face verification + photos.
+  // Customer brief 2026-04-24: explain to the operator that the current photo
+  // will be compared against the Truora selfie taken when the client applied
+  // for credit — same person must appear. Button stays disabled until both
+  // files are picked so the operator can't skip the comparison.
   function step3(){
     PVApp.modal(
       steps(2)+
       '<div class="ad-h2">3. Foto del cliente e INE</div>'+
-      '<div style="color:var(--ad-dim);font-size:12px;margin-bottom:10px">Toma foto del rostro del cliente y de su identificación.</div>'+
-      '<label class="ad-label">Foto rostro cliente</label>'+
-      '<input type="file" id="pvFCliente" accept="image/*" capture="user" class="ad-input" style="margin-bottom:10px">'+
-      '<label class="ad-label">Foto INE</label>'+
-      '<input type="file" id="pvFIne" accept="image/*" class="ad-input" style="margin-bottom:10px">'+
-      '<button id="pvS3" class="ad-btn primary" style="width:100%">Verificar rostro</button>'
+      '<div style="color:var(--ad-dim);font-size:12.5px;margin-bottom:14px;line-height:1.45;">'+
+        'Toma una <strong>foto del rostro del cliente</strong> y una <strong>foto de su INE</strong>.<br>'+
+        'La foto del rostro se compara automáticamente con la selfie que tomó al solicitar su crédito — '+
+        '<strong>debe ser la misma persona</strong> que compró la moto.'+
+      '</div>'+
+      '<label class="ad-label" for="pvFCliente" style="display:block;font-weight:700;margin-bottom:4px;">📸 Foto rostro del cliente <span style="color:#dc2626">*</span></label>'+
+      '<div style="font-size:11.5px;color:var(--ad-dim);margin-bottom:4px;">Rostro de frente, bien iluminado, sin lentes oscuros ni cubrebocas.</div>'+
+      '<input type="file" id="pvFCliente" accept="image/*" capture="user" class="ad-input" style="margin-bottom:14px">'+
+      '<label class="ad-label" for="pvFIne" style="display:block;font-weight:700;margin-bottom:4px;">🪪 Foto de la INE <span style="color:#dc2626">*</span></label>'+
+      '<div style="font-size:11.5px;color:var(--ad-dim);margin-bottom:4px;">Frente de la identificación, con la foto visible y legible.</div>'+
+      '<input type="file" id="pvFIne" accept="image/*" class="ad-input" style="margin-bottom:14px">'+
+      '<div id="pvS3Hint" style="font-size:12px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 10px;border-radius:4px;margin-bottom:10px;display:none;">'+
+        '⚠ Faltan fotos por seleccionar. Ambas son obligatorias antes de continuar.'+
+      '</div>'+
+      '<button id="pvS3" class="ad-btn primary" style="width:100%" disabled>Verificar rostro</button>'
     );
+
+    function refreshStep3Btn(){
+      var hasCli = $('#pvFCliente').prop('files').length > 0;
+      var hasIne = $('#pvFIne').prop('files').length > 0;
+      var ready  = hasCli && hasIne;
+      $('#pvS3').prop('disabled', !ready);
+      $('#pvS3Hint').toggle(!ready);
+    }
+    $('#pvFCliente, #pvFIne').on('change', refreshStep3Btn);
+    refreshStep3Btn();
+
     $('#pvS3').on('click', function(){
+      // Double-check in case the user disabled validation via devtools
+      if ($('#pvFCliente').prop('files').length === 0 || $('#pvFIne').prop('files').length === 0) {
+        $('#pvS3Hint').show();
+        return;
+      }
       var $b=$(this).prop('disabled',true).html('<span class="ad-spin"></span>');
       readFiles(['pvFCliente','pvFIne'], function(files){
         PVApp.api('entrega/verificar-rostro.php',{
@@ -169,22 +198,72 @@ window.PV_entrega = (function(){
     $('#pvFaceManualOk').on('click', step4);
     $('#pvFaceManualCancel').on('click', function(){ PVApp.closeModal(); render(); });
   }
-  // Step 4: Moto checklist + photos
+  // Step 4: Moto checklist + photos.
+  // Customer brief 2026-04-24: each photo slot needs a descriptive title
+  // (frente / lateral / trasera). Button is blocked until all 4 checkboxes
+  // are ticked AND all 3 photos are selected — no more half-filled submissions.
   function step4(){
     PVApp.modal(
       steps(3)+
       '<div class="ad-h2">4. Checklist de la moto</div>'+
-      '<label class="pv-check"><input type="checkbox" id="pvM1"> VIN coincide con lo esperado</label>'+
-      '<label class="pv-check"><input type="checkbox" id="pvM2"> Estado físico OK</label>'+
-      '<label class="pv-check"><input type="checkbox" id="pvM3"> Sin daños</label>'+
-      '<label class="pv-check"><input type="checkbox" id="pvM4"> Unidad completa</label>'+
-      '<label class="ad-label">Fotos de la moto</label>'+
-      '<input type="file" id="pvFoto1" accept="image/*" class="ad-input" style="margin-bottom:6px" placeholder="Frente">'+
-      '<input type="file" id="pvFoto2" accept="image/*" class="ad-input" style="margin-bottom:6px" placeholder="Lateral">'+
-      '<input type="file" id="pvFoto3" accept="image/*" class="ad-input" style="margin-bottom:10px" placeholder="Trasera">'+
-      '<button id="pvS4" class="ad-btn primary" style="width:100%">Guardar checklist</button>'
+      '<div style="color:var(--ad-dim);font-size:12.5px;margin-bottom:12px;line-height:1.45;">'+
+        'Verifica el estado de la moto y captura las <strong>3 fotos obligatorias</strong>. Todo debe estar completo antes de continuar.'+
+      '</div>'+
+
+      '<div style="margin-bottom:14px;">'+
+        '<label class="pv-check"><input type="checkbox" id="pvM1"> VIN coincide con lo esperado</label>'+
+        '<label class="pv-check"><input type="checkbox" id="pvM2"> Estado físico OK</label>'+
+        '<label class="pv-check"><input type="checkbox" id="pvM3"> Sin daños</label>'+
+        '<label class="pv-check"><input type="checkbox" id="pvM4"> Unidad completa</label>'+
+      '</div>'+
+
+      '<div style="font-weight:700;font-size:13px;color:var(--ad-navy,#1a3a5c);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid var(--ad-primary,#039fe1);padding-bottom:4px;">Fotos de la moto</div>'+
+
+      // 3 photo slots with visible descriptive labels (not placeholders —
+      // <input type=file> placeholders are invisible in all browsers).
+      '<label class="ad-label" for="pvFoto1" style="display:block;font-weight:700;margin-bottom:3px;">📷 Foto 1: Moto de frente <span style="color:#dc2626">*</span></label>'+
+      '<input type="file" id="pvFoto1" accept="image/*" capture="environment" class="ad-input" style="margin-bottom:12px">'+
+
+      '<label class="ad-label" for="pvFoto2" style="display:block;font-weight:700;margin-bottom:3px;">📷 Foto 2: Lateral (costado) <span style="color:#dc2626">*</span></label>'+
+      '<input type="file" id="pvFoto2" accept="image/*" capture="environment" class="ad-input" style="margin-bottom:12px">'+
+
+      '<label class="ad-label" for="pvFoto3" style="display:block;font-weight:700;margin-bottom:3px;">📷 Foto 3: Trasera <span style="color:#dc2626">*</span></label>'+
+      '<input type="file" id="pvFoto3" accept="image/*" capture="environment" class="ad-input" style="margin-bottom:14px">'+
+
+      '<div id="pvS4Hint" style="font-size:12px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 10px;border-radius:4px;margin-bottom:10px;display:none;">'+
+        '⚠ Faltan elementos por completar.'+
+      '</div>'+
+      '<button id="pvS4" class="ad-btn primary" style="width:100%" disabled>Guardar checklist</button>'
     );
+
+    function refreshStep4Btn(){
+      var chkCount = $('#pvM1,#pvM2,#pvM3,#pvM4').filter(':checked').length;
+      var photoCount = ['pvFoto1','pvFoto2','pvFoto3']
+        .filter(function(id){ return $('#'+id).prop('files').length > 0; }).length;
+      var missing = [];
+      if (chkCount < 4)   missing.push((4-chkCount)+' verificación(es)');
+      if (photoCount < 3) missing.push((3-photoCount)+' foto(s)');
+      var ready = missing.length === 0;
+      $('#pvS4').prop('disabled', !ready);
+      if (ready) {
+        $('#pvS4Hint').hide();
+      } else {
+        $('#pvS4Hint').text('⚠ Faltan: ' + missing.join(' + ') + ' antes de guardar el checklist.').show();
+      }
+    }
+    $('#pvM1,#pvM2,#pvM3,#pvM4').on('change', refreshStep4Btn);
+    $('#pvFoto1,#pvFoto2,#pvFoto3').on('change', refreshStep4Btn);
+    refreshStep4Btn();
+
     $('#pvS4').on('click', function(){
+      // Defensive re-check in case validation was bypassed
+      var chkCount = $('#pvM1,#pvM2,#pvM3,#pvM4').filter(':checked').length;
+      var photoCount = ['pvFoto1','pvFoto2','pvFoto3']
+        .filter(function(id){ return $('#'+id).prop('files').length > 0; }).length;
+      if (chkCount < 4 || photoCount < 3) {
+        refreshStep4Btn();
+        return;
+      }
       var $b=$(this).prop('disabled',true).html('<span class="ad-spin"></span>');
       readFiles(['pvFoto1','pvFoto2','pvFoto3'], function(files){
         PVApp.api('entrega/checklist.php',{
