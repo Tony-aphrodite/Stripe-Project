@@ -8,10 +8,30 @@ if (strlen($tel) < 10) {
     portalJsonOut(['error' => 'Teléfono inválido'], 400);
 }
 
+// Whitelisted test numbers bypass the clientes lookup — they auto-upsert a
+// synthetic account so QA/staging can exercise the full portal flow without
+// seeding a real customer. testCode is always surfaced below for these.
+$TEST_NUMBERS = ['5500000000', '0000000000', '5511112222', '5555555555'];
+
 $cliente = portalFindClienteByPhone($tel);
 if (!$cliente) {
-    portalLog('login_request', ['telefono' => $tel, 'success' => 0, 'detalle' => 'no_encontrado']);
-    portalJsonOut(['error' => 'No encontramos una cuenta con ese número'], 404);
+    if (in_array($tel, $TEST_NUMBERS, true)) {
+        try {
+            $pdo = getDB();
+            $pdo->prepare("INSERT IGNORE INTO clientes (telefono, nombre, email)
+                           VALUES (?, ?, ?)")
+                ->execute([$tel, 'Cliente de Prueba', 'test-' . $tel . '@voltika.mx']);
+            $fetch = $pdo->prepare("SELECT * FROM clientes WHERE telefono = ? ORDER BY id DESC LIMIT 1");
+            $fetch->execute([$tel]);
+            $cliente = $fetch->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            error_log('portal test cliente upsert: ' . $e->getMessage());
+        }
+    }
+    if (!$cliente) {
+        portalLog('login_request', ['telefono' => $tel, 'success' => 0, 'detalle' => 'no_encontrado']);
+        portalJsonOut(['error' => 'No encontramos una cuenta con ese número'], 404);
+    }
 }
 
 $codigo = portalGenOTP();
@@ -50,7 +70,7 @@ portalLog('login_request', [
 
 $out = ['ok' => true, 'status' => 'sent'];
 // Always expose testCode for known test numbers, or when SMS fails
-$isTestNumber = in_array($tel, ['5500000000', '0000000000', '5511112222']);
+$isTestNumber = in_array($tel, $TEST_NUMBERS, true);
 if (!$r['ok'] || $isTestNumber) {
     $out['testCode'] = $codigo;
 }
