@@ -450,14 +450,17 @@ var PasoCreditoResultado = {
             self.app.irAPaso(1);
         });
 
-        // Primary CTA: adjust enganche/plazo and retry evaluation. Returns
-        // to the slider screen where enganche % + plazo can be tweaked.
+        // Primary CTA: adjust enganche/plazo and retry evaluation.
+        // Returns to paso 4 (Paso4B for credito) which hosts the enganche +
+        // plazo sliders, NOT 'credito-enganche' which is the Stripe payment
+        // screen (customer report 2026-04-23: clicking "Ajusta tu plan" sent
+        // the user straight to pay, skipping the adjustment they wanted).
         jQuery(document).off('click', '#vk-nv-retry');
         jQuery(document).on('click', '#vk-nv-retry', function() {
             self.app.state._resultadoFinal = null;
             self.app.state.creditoAprobado = false;
             self.app.state.metodoPago = 'credito';
-            self.app.irAPaso('credito-enganche');
+            self.app.irAPaso(4);
         });
 
         // 4 direct payment shortcuts. Each sets metodoPago + a preferred
