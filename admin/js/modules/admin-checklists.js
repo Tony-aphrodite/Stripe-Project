@@ -139,9 +139,15 @@ window.AD_checklists = (function(){
     });
     html += '</div>';
 
-    // Filters + bulk action toolbar
+    // Filters + bulk action toolbar. Customer reported 2026-04-23 that the
+    // dropdown + separate "Filtrar" button often felt broken — clicking the
+    // button did nothing if the dropdown value looked already selected, or
+    // the handler was stuck because paint() re-bound it without off(). Now
+    // the filter applies instantly on change (no Filtrar button needed), and
+    // a visible "Limpiar" escape hatch resets to "Todos".
     html += '<div class="ad-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">'+
-      '<select class="ad-select" id="clFiltro" style="width:240px;">'+
+      '<label style="font-size:12px;color:var(--ad-dim);font-weight:600;">Filtrar:</label>'+
+      '<select class="ad-select" id="clFiltro" style="width:260px;">'+
         '<option value="">Todos</option>'+
         '<option value="sin_origen"'+(currentFilter==='sin_origen'?' selected':'')+'>Sin checklist origen</option>'+
         '<option value="origen_forzado"'+(currentFilter==='origen_forzado'?' selected':'')+'>⚠ Origen forzado (pendiente inspección)</option>'+
@@ -150,7 +156,8 @@ window.AD_checklists = (function(){
         '<option value="con_ensamble"'+(currentFilter==='con_ensamble'?' selected':'')+'>Con ensamble completo</option>'+
         '<option value="completos"'+(currentFilter==='completos'?' selected':'')+'>3 checklists completos</option>'+
       '</select>'+
-      '<button class="ad-btn sm ghost" id="clApply">Filtrar</button>'+
+      (currentFilter ? '<button class="ad-btn sm ghost" id="clClear" title="Limpiar filtro">✕ Limpiar</button>' : '')+
+      '<span id="clCount" style="font-size:12px;color:var(--ad-dim);">'+Number(r.total||0)+' motos</span>'+
       '<div style="flex:1;"></div>'+
       '<button class="ad-btn sm primary" id="clBulkOrigen" disabled '+
         'title="Selecciona motos abajo para activar" '+
@@ -196,7 +203,23 @@ window.AD_checklists = (function(){
 
     ADApp.render(html);
 
-    $('#clApply').on('click',function(){ currentFilter=$('#clFiltro').val(); currentPage=1; load(); });
+    // Instant filter — apply on dropdown change. off/on pair prevents
+    // duplicate handlers from stacking across paint() re-renders, which was
+    // the root cause of the "Filtrar button does nothing" report.
+    $('#clFiltro').off('change.clFiltro').on('change.clFiltro', function(){
+      var newVal = this.value || '';
+      if (newVal === currentFilter) return;
+      currentFilter = newVal;
+      currentPage   = 1;
+      // Loading feedback — avoids the "nothing happened" perception.
+      $('#clCount').text('Filtrando…');
+      load();
+    });
+    $('#clClear').off('click').on('click', function(){
+      currentFilter = '';
+      currentPage   = 1;
+      load();
+    });
     $('.clOpen').on('click',function(){ showMotoChecklists($(this).data('id')); });
     $('.clPage').on('click',function(){
       var p = parseInt($(this).data('p'), 10);
