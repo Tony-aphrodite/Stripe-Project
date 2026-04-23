@@ -303,12 +303,6 @@ window.PV_entrega = (function(){
       if(_step5Poll){ clearInterval(_step5Poll); _step5Poll = null; }
     }
 
-    var modalRoot = document.querySelector('.pv-modal, .ad-modal') || document.body;
-    var modalObserver = new MutationObserver(function(){
-      if(!document.getElementById('pvS5')) { stopPolling(); modalObserver.disconnect(); }
-    });
-    modalObserver.observe(modalRoot, { childList:true, subtree:true });
-
     function enableFinalize(signerName, signedAt){
       $('#pvS5Status').html(
         '<span style="color:#10b981;font-weight:700">&#10003; ACTA firmada'+
@@ -319,6 +313,10 @@ window.PV_entrega = (function(){
     }
 
     function checkStatus(){
+      if (!$('#pvS5').length || !$('#pvModal').is(':visible')) {
+        stopPolling();
+        return;
+      }
       PVApp.api('entrega/estado-acta.php?moto_id='+encodeURIComponent(ctx.moto_id))
         .done(function(r){
           if(!r) return;

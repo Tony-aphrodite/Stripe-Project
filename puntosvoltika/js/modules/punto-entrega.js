@@ -306,14 +306,6 @@ window.PV_entrega = (function(){
       if(_step5Poll){ clearInterval(_step5Poll); _step5Poll = null; }
     }
 
-    // Stop polling if the modal is dismissed. PVApp.closeModal emits no event,
-    // so we watch the modal element for removal from the DOM instead.
-    var modalRoot = document.querySelector('.pv-modal, .ad-modal') || document.body;
-    var modalObserver = new MutationObserver(function(){
-      if(!document.getElementById('pvS5')) { stopPolling(); modalObserver.disconnect(); }
-    });
-    modalObserver.observe(modalRoot, { childList:true, subtree:true });
-
     function enableFinalize(signerName, signedAt){
       $('#pvS5Status').html(
         '<span style="color:#10b981;font-weight:700">&#10003; ACTA firmada'+
@@ -324,6 +316,14 @@ window.PV_entrega = (function(){
     }
 
     function checkStatus(){
+      // Stop polling if the modal got closed (X, backdrop, or moved to another
+      // step). PVApp.modal uses a shared #pvModal element that is only
+      // hidden — not removed — so we detect closure by checking visibility
+      // and by confirming our button is still the one in the body.
+      if (!$('#pvS5').length || !$('#pvModal').is(':visible')) {
+        stopPolling();
+        return;
+      }
       // No second arg → PVApp.api issues a GET (see punto-app.js).
       PVApp.api('entrega/estado-acta.php?moto_id='+encodeURIComponent(ctx.moto_id))
         .done(function(r){
@@ -332,12 +332,10 @@ window.PV_entrega = (function(){
             stopPolling();
             enableFinalize(r.firma_nombre, r.acta_fecha);
           } else if(r.acta_firmada && !r.otp_verified){
-            // Edge case — shouldn't happen since OTP was verified in step 2,
-            // but if the session was interrupted we surface a clear message.
             $('#pvS5StatusText').text('Firma recibida, pero el OTP no está verificado. Reintenta el paso 2.');
           }
         })
-        .fail(function(){ /* transient error — keep polling */ });
+        .fail(function(){ /* transient — keep polling */ });
     }
     // First check immediately so a customer who signed before step 5 opened
     // doesn't wait the poll interval.

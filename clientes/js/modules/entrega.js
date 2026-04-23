@@ -191,34 +191,89 @@ window.VK_entrega = (function(){
     $('#vkIncidencia').on('click', function(){ confirmarRecepcion(true); });
   }
 
+  // Renders the full ACTA DE ENTREGA text — shared by both the inline form
+  // and the read-on-demand modal. Kept as a single source of truth so the
+  // two views cannot drift.
+  function buildActaBodyHtml(nombre){
+    var hoy = new Date().toLocaleDateString('es-MX');
+    return ''+
+      '<p>En '+(data.punto.ciudad||'México')+', a fecha '+hoy+', quien suscribe <strong>'+(nombre||'el cliente')+'</strong>, declara haber recibido de conformidad el siguiente vehículo:</p>'+
+      '<p><strong>Modelo:</strong> '+(data.modelo||'')+'<br>'+
+        '<strong>Color:</strong> '+(data.color||'')+'<br>'+
+        '<strong>VIN:</strong> '+(data.vin||data.vin_display||'')+'</p>'+
+      '<p>El vehículo fue entregado en perfectas condiciones físicas y mecánicas, con todos sus componentes y accesorios completos, según el checklist verificado por el personal de Voltika.</p>'+
+      '<p>El suscrito reconoce que a partir de este momento asume la responsabilidad total del uso, custodia y cuidado del vehículo, así como el cumplimiento puntual de los pagos semanales del plan de crédito contratado.</p>'+
+      '<p>Asimismo, declara haber recibido la información sobre garantía, uso correcto y medidas de seguridad del vehículo eléctrico.</p>';
+  }
+
+  // Renders the full ACTA in a modal triggered by the "ACTA DE ENTREGA" link
+  // inside the acceptance checkbox. Customer feedback 2026-04-23: the inline
+  // document made the sign form feel overwhelming on mobile; a read-on-tap
+  // modal matches the standard terms-and-conditions pattern.
+  function showActaModal(nombre){
+    if ($('#vkActaBackdrop').length) return; // already open
+    var modal =
+      '<div class="vk-modal-backdrop" id="vkActaBackdrop"></div>'+
+      '<div class="vk-modal" id="vkActaModal" style="max-width:560px;">'+
+        '<button class="vk-modal-close" id="vkActaModalClose" aria-label="Cerrar">&times;</button>'+
+        '<div class="vk-h2">ACTA DE ENTREGA DE VEHÍCULO</div>'+
+        '<div style="font-size:13px;line-height:1.6;max-height:60vh;overflow:auto;padding:8px 2px;">'+
+          buildActaBodyHtml(nombre)+
+        '</div>'+
+        '<div style="display:flex;gap:8px;margin-top:14px;">'+
+          '<button id="vkActaModalCerrar" class="vk-btn primary" style="flex:1;">Entendido</button>'+
+        '</div>'+
+      '</div>';
+    $('body').append(modal);
+    function close(){ $('#vkActaBackdrop,#vkActaModal').remove(); }
+    $('#vkActaBackdrop,#vkActaModalClose,#vkActaModalCerrar').on('click', close);
+  }
+
   function openActa(){
     var c = VKApp.state.cliente || {};
     var nombre = [(c.nombre||''), (c.apellido_paterno||''), (c.apellido_materno||'')].join(' ').trim();
-    var hoy = new Date().toLocaleDateString('es-MX');
+
+    // Short summary card — so the customer always sees WHAT they're signing
+    // for even before opening the full ACTA. Important for fraud prevention:
+    // shows Modelo / Color / VIN prominently.
+    var motoInfo =
+      '<div class="vk-card" style="border-left:4px solid #039fe1;">'+
+        '<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Vehículo a recibir</div>'+
+        '<div style="font-weight:700;font-size:15px;">'+(data.modelo||'—')+' · '+(data.color||'—')+'</div>'+
+        '<div style="font-size:12px;color:#4b5563;font-family:monospace;margin-top:2px;">VIN: '+(data.vin||data.vin_display||'—')+'</div>'+
+      '</div>';
+
     var actaHtml =
-      '<div class="vk-h2">ACTA DE ENTREGA DE VEHÍCULO</div>'+
-      '<div class="vk-card" style="max-height:280px;overflow:auto;font-size:13px;line-height:1.5">'+
-        '<p>En '+(data.punto.ciudad||'México')+', a fecha '+hoy+', quien suscribe <strong>'+(nombre||'el cliente')+'</strong>, declara haber recibido de conformidad el siguiente vehículo:</p>'+
-        '<p><strong>Modelo:</strong> '+(data.modelo||'')+'<br>'+
-        '<strong>Color:</strong> '+(data.color||'')+'<br>'+
-        '<strong>VIN:</strong> '+(data.vin||data.vin_display||'')+'</p>'+
-        '<p>El vehículo fue entregado en perfectas condiciones físicas y mecánicas, con todos sus componentes y accesorios completos, según el checklist verificado por el personal de Voltika.</p>'+
-        '<p>El suscrito reconoce que a partir de este momento asume la responsabilidad total del uso, custodia y cuidado del vehículo, así como el cumplimiento puntual de los pagos semanales del plan de crédito contratado.</p>'+
-        '<p>Asimismo, declara haber recibido la información sobre garantía, uso correcto y medidas de seguridad del vehículo eléctrico.</p>'+
-      '</div>'+
-      '<label class="vk-label" style="margin-top:10px">Escribe tu nombre completo para firmar</label>'+
-      '<input id="vkFirmaNombre" class="vk-input" placeholder="Nombre y apellidos" value="'+nombre+'">'+
-      '<label class="vk-check" style="margin-top:8px"><input type="checkbox" id="vkFirmaAcepto"> He leído y acepto el ACTA DE ENTREGA</label>'+
-      '<button id="vkFirmarBtn" class="vk-btn primary" style="width:100%;margin-top:10px" disabled>Firmar ACTA</button>'+
+      '<div class="vk-h1">Firma del ACTA DE ENTREGA</div>'+
+      '<div class="vk-muted" style="margin-bottom:12px;">Lee y firma el acta para completar la entrega.</div>'+
+      motoInfo+
+      '<label class="vk-label" style="margin-top:16px">Escribe tu nombre completo para firmar</label>'+
+      '<input id="vkFirmaNombre" class="vk-input" placeholder="Nombre y apellidos" value="'+String(nombre).replace(/"/g,'&quot;')+'">'+
+      '<label class="vk-check" style="margin-top:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">'+
+        '<input type="checkbox" id="vkFirmaAcepto"> '+
+        '<span>He leído y acepto el <a href="#" id="vkVerActaLink" style="color:#039fe1;text-decoration:underline;font-weight:700;">ACTA DE ENTREGA</a></span>'+
+      '</label>'+
+      '<button id="vkFirmarBtn" class="vk-btn primary" style="width:100%;margin-top:14px" disabled>Firmar ACTA</button>'+
       '<button id="vkCancelarActa" class="vk-btn ghost" style="width:100%;margin-top:6px">Cancelar</button>';
 
     VKApp.render(actaHtml);
-    $('#vkFirmaAcepto').on('change', function(){
-      $('#vkFirmarBtn').prop('disabled', !this.checked || !$('#vkFirmaNombre').val().trim());
+
+    function updateBtn(){
+      var nameOk  = !!$('#vkFirmaNombre').val().trim();
+      var checkOk = $('#vkFirmaAcepto').is(':checked');
+      $('#vkFirmarBtn').prop('disabled', !(nameOk && checkOk));
+    }
+    $('#vkFirmaAcepto').on('change', updateBtn);
+    $('#vkFirmaNombre').on('input', updateBtn);
+
+    // Clicking the "ACTA DE ENTREGA" text in the checkbox opens the modal
+    // without flipping the checkbox (preventDefault + stopPropagation).
+    $('#vkVerActaLink').on('click', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      showActaModal($('#vkFirmaNombre').val().trim());
     });
-    $('#vkFirmaNombre').on('input', function(){
-      $('#vkFirmarBtn').prop('disabled', !$('#vkFirmaAcepto').is(':checked') || !$(this).val().trim());
-    });
+
     $('#vkCancelarActa').on('click', render);
     $('#vkFirmarBtn').on('click', function(){
       var $b = $(this).prop('disabled', true).text('Firmando...');

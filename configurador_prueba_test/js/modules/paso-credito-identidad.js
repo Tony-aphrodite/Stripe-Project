@@ -59,15 +59,7 @@ var PasoCreditoIdentidad = {
         html += this._renderUploadStep(2, 'ine-reverso', 'INE \u2013 Reverso',          'Toma una foto clara del <strong>reverso</strong> de tu INE', 'ine-back');
         html += this._renderUploadStep(3, 'selfie',      'Selfie de verificaci\u00f3n', 'Toma una foto de tu rostro mirando a la c\u00e1mara',         'selfie');
 
-        // 5b. Checkbox: domicilio diferente
-        html += '<div style="margin:16px 0;padding:14px;background:#f8f9fa;border-radius:8px;border:1px solid var(--vk-border);">';
-        html += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;">';
-        html += '<input type="checkbox" id="vk-domicilio-diferente" style="width:20px;height:20px;accent-color:#039fe1;flex-shrink:0;">';
-        html += '\u00bfTu domicilio actual es diferente al de tu INE?';
-        html += '</label>';
-        html += '</div>';
-
-        // 5b-bis. CURP input — required for Truora Mexico identity lookup.
+        // 5a-bis. CURP input — required for Truora Mexico identity lookup.
         // Gender is derived from CURP position 11 (H=hombre, M=mujer).
         var prefillCurp = (this.app && this.app.state && this.app.state.curp) ? this.app.state.curp : '';
         html += '<div style="margin:16px 0;">';
@@ -82,6 +74,14 @@ var PasoCreditoIdentidad = {
         html += '<div style="font-size:12px;color:#6b7280;margin-top:6px;">';
         html += '18 caracteres — lo encuentras al reverso de tu INE';
         html += '</div>';
+        html += '</div>';
+
+        // 5b. Checkbox: domicilio diferente
+        html += '<div style="margin:16px 0;padding:14px;background:#f8f9fa;border-radius:8px;border:1px solid var(--vk-border);">';
+        html += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;">';
+        html += '<input type="checkbox" id="vk-domicilio-diferente" style="width:20px;height:20px;accent-color:#039fe1;flex-shrink:0;">';
+        html += '\u00bfTu domicilio actual es diferente al de tu INE?';
+        html += '</label>';
         html += '</div>';
 
         // 5c. Comprobante de domicilio (hidden by default)
