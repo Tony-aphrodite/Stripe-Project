@@ -278,7 +278,12 @@ window.PV_entrega = (function(){
       });
     });
   }
-  // Step 5: Wait for ACTA + finalize
+  // Step 5: Wait for ACTA + finalize.
+  // Polls entrega/estado-acta.php every 4 s so the Finalizar entrega button
+  // auto-enables when the customer signs on their portal. Before this fix
+  // dealers clicked Finalizar while the customer's ACTA-signing was still
+  // failing (Moto no encontrada bug) and saw a confusing 400 error.
+  var _step5Poll = null;
   function step5(){
     PVApp.modal(
       steps(4)+
@@ -286,12 +291,64 @@ window.PV_entrega = (function(){
       '<div class="ad-card" style="color:var(--ad-warn)">'+
         'Pide al cliente que ingrese al portal <strong>voltika.mx/clientes</strong> desde su celular, revise el acta y la firme.'+
       '</div>'+
-      '<button id="pvS5" class="ad-btn primary" style="width:100%">Finalizar entrega</button>'
+      '<div id="pvS5Status" class="ad-card" style="font-size:13px;">'+
+        '<span class="ad-spin" style="vertical-align:middle"></span> '+
+        '<span id="pvS5StatusText">Esperando la firma del cliente...</span>'+
+      '</div>'+
+      '<button id="pvS5" class="ad-btn primary" disabled '+
+        'style="width:100%;opacity:.5;cursor:not-allowed;">Finalizar entrega</button>'
     );
+
+    function stopPolling(){
+      if(_step5Poll){ clearInterval(_step5Poll); _step5Poll = null; }
+    }
+
+    var modalRoot = document.querySelector('.pv-modal, .ad-modal') || document.body;
+    var modalObserver = new MutationObserver(function(){
+      if(!document.getElementById('pvS5')) { stopPolling(); modalObserver.disconnect(); }
+    });
+    modalObserver.observe(modalRoot, { childList:true, subtree:true });
+
+    function enableFinalize(signerName, signedAt){
+      $('#pvS5Status').html(
+        '<span style="color:#10b981;font-weight:700">&#10003; ACTA firmada'+
+        (signerName ? ' por ' + $('<div/>').text(signerName).html() : '') + '</span>' +
+        (signedAt ? '<div style="font-size:11px;color:#6b7280;margin-top:2px">'+ signedAt +'</div>' : '')
+      );
+      $('#pvS5').prop('disabled', false).css({opacity:'1', cursor:'pointer'});
+    }
+
+    function checkStatus(){
+      PVApp.api('entrega/estado-acta.php?moto_id='+encodeURIComponent(ctx.moto_id))
+        .done(function(r){
+          if(!r) return;
+          if(r.ready){
+            stopPolling();
+            enableFinalize(r.firma_nombre, r.acta_fecha);
+          } else if(r.acta_firmada && !r.otp_verified){
+            $('#pvS5StatusText').text('Firma recibida, pero el OTP no está verificado. Reintenta el paso 2.');
+          }
+        })
+        .fail(function(){ /* transient — keep polling */ });
+    }
+    checkStatus();
+    _step5Poll = setInterval(checkStatus, 4000);
+
     $('#pvS5').on('click', function(){
-      PVApp.api('entrega/finalizar.php',{moto_id:ctx.moto_id}).done(function(r){
-        if(r.ok){ PVApp.closeModal(); PVApp.toast(r.mensaje); render(); }
-      }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
+      var $b = $(this).prop('disabled', true).text('Finalizando...');
+      PVApp.api('entrega/finalizar.php', {moto_id:ctx.moto_id}).done(function(r){
+        if(r.ok){
+          stopPolling();
+          PVApp.closeModal();
+          PVApp.toast(r.mensaje);
+          render();
+        } else {
+          $b.prop('disabled', false).text('Finalizar entrega');
+        }
+      }).fail(function(x){
+        $b.prop('disabled', false).text('Finalizar entrega');
+        alert((x.responseJSON && x.responseJSON.error) || 'Error al finalizar');
+      });
     });
   }
 
