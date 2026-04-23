@@ -53,31 +53,52 @@ try {
             }
         }
     } elseif ($reqTipo === 'credito' && $reqId > 0) {
-        // Scoped credit: find moto via subscription's contact (no direct FK)
-        $sStmt = $pdo->prepare("SELECT telefono, email FROM subscripciones_credito WHERE id = ? LIMIT 1");
+        // Scoped credit: find the moto that belongs to THIS specific
+        // subscription. Since there's no FK column, we pick the moto whose
+        // freg is closest to the subscription's freg, preferring motos that
+        // already have a punto assigned (those are the "real" moto for the
+        // delivery flow — assigned ones beat unassigned test rows when a
+        // customer tested multiple credit attempts).
+        $sStmt = $pdo->prepare("SELECT telefono, email, freg FROM subscripciones_credito WHERE id = ? LIMIT 1");
         $sStmt->execute([$reqId]);
         $sRow = $sStmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $sTel = preg_replace('/\D/', '', (string)($sRow['telefono'] ?? ''));
         if (strlen($sTel) > 10) $sTel = substr($sTel, -10);
         $sEm = $sRow['email'] ?? null;
+        $subFreg = $sRow['freg'] ?? null;
         $wh = []; $pv = [];
         if ($sTel) { $wh[] = "RIGHT(REPLACE(REPLACE(im.cliente_telefono,'+',''),' ',''),10) = ?"; $pv[] = $sTel; }
         if ($sEm)  { $wh[] = "im.cliente_email = ?"; $pv[] = $sEm; }
         if ($wh){
+            // ORDER clause explained:
+            //   1. punto_voltika_id IS NOT NULL — assigned motos first
+            //   2. TIMESTAMPDIFF to the subscription freg — closest first
+            //   3. fallback by id DESC when freg is missing
+            $orderBy = 'ORDER BY (im.punto_voltika_id IS NOT NULL) DESC';
+            if ($subFreg) {
+                $orderBy .= ', ABS(TIMESTAMPDIFF(SECOND, im.freg, ?)) ASC';
+                $pv[] = $subFreg;
+            }
+            $orderBy .= ', im.id DESC';
             $q = $pdo->prepare("$motoSelect WHERE (" . implode(' OR ', $wh) . ")
                 AND im.estado IN ('recibida','lista_para_entrega','por_validar_entrega','en_ensamble','por_ensamblar','retenida','entregada')
-                ORDER BY im.id DESC LIMIT 1");
+                $orderBy LIMIT 1");
             $q->execute($pv);
             $moto = $q->fetch(PDO::FETCH_ASSOC) ?: null;
         }
     }
 
-    // Default lookup by cliente_id when no scope given or scope didn't match
+    // Default lookup by cliente_id when no scope given or scope didn't match.
+    // Prefer motos that already have a punto assigned — otherwise the portal
+    // surfaces an orphan test moto and hides the real one that was just
+    // assigned to Santa Fe / any other punto (customer report 2026-04-23:
+    // "Punto Voltika: —" despite the moto being properly assigned).
     if (!$moto) {
         $stmt = $pdo->prepare("$motoSelect
             WHERE im.cliente_id = ?
               AND im.estado IN ('recibida','lista_para_entrega','por_validar_entrega','en_ensamble','por_ensamblar','retenida','entregada')
-            ORDER BY im.id DESC LIMIT 1");
+            ORDER BY (im.punto_voltika_id IS NOT NULL) DESC, im.id DESC
+            LIMIT 1");
         $stmt->execute([$cid]);
         $moto = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }

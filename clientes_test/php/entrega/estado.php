@@ -53,31 +53,43 @@ try {
             }
         }
     } elseif ($reqTipo === 'credito' && $reqId > 0) {
-        // Scoped credit: find moto via subscription's contact (no direct FK)
-        $sStmt = $pdo->prepare("SELECT telefono, email FROM subscripciones_credito WHERE id = ? LIMIT 1");
+        // Scoped credit: match the moto that belongs to THIS subscription by
+        // timestamp proximity, preferring already-assigned motos so we don't
+        // surface an orphan test row when a real one exists.
+        $sStmt = $pdo->prepare("SELECT telefono, email, freg FROM subscripciones_credito WHERE id = ? LIMIT 1");
         $sStmt->execute([$reqId]);
         $sRow = $sStmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $sTel = preg_replace('/\D/', '', (string)($sRow['telefono'] ?? ''));
         if (strlen($sTel) > 10) $sTel = substr($sTel, -10);
         $sEm = $sRow['email'] ?? null;
+        $subFreg = $sRow['freg'] ?? null;
         $wh = []; $pv = [];
         if ($sTel) { $wh[] = "RIGHT(REPLACE(REPLACE(im.cliente_telefono,'+',''),' ',''),10) = ?"; $pv[] = $sTel; }
         if ($sEm)  { $wh[] = "im.cliente_email = ?"; $pv[] = $sEm; }
         if ($wh){
+            $orderBy = 'ORDER BY (im.punto_voltika_id IS NOT NULL) DESC';
+            if ($subFreg) {
+                $orderBy .= ', ABS(TIMESTAMPDIFF(SECOND, im.freg, ?)) ASC';
+                $pv[] = $subFreg;
+            }
+            $orderBy .= ', im.id DESC';
             $q = $pdo->prepare("$motoSelect WHERE (" . implode(' OR ', $wh) . ")
                 AND im.estado IN ('recibida','lista_para_entrega','por_validar_entrega','en_ensamble','por_ensamblar','retenida','entregada')
-                ORDER BY im.id DESC LIMIT 1");
+                $orderBy LIMIT 1");
             $q->execute($pv);
             $moto = $q->fetch(PDO::FETCH_ASSOC) ?: null;
         }
     }
 
-    // Default lookup by cliente_id when no scope given or scope didn't match
+    // Default lookup by cliente_id — prefer motos with punto_voltika_id set
+    // so the portal doesn't show an orphan moto with Punto "—" when the
+    // real one was already assigned.
     if (!$moto) {
         $stmt = $pdo->prepare("$motoSelect
             WHERE im.cliente_id = ?
               AND im.estado IN ('recibida','lista_para_entrega','por_validar_entrega','en_ensamble','por_ensamblar','retenida','entregada')
-            ORDER BY im.id DESC LIMIT 1");
+            ORDER BY (im.punto_voltika_id IS NOT NULL) DESC, im.id DESC
+            LIMIT 1");
         $stmt->execute([$cid]);
         $moto = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }

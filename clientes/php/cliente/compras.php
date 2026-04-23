@@ -39,6 +39,36 @@ $email = $cliente['email'] ?? null;
 $compras = [];
 
 // ── 1) Credit subscriptions ────────────────────────────────────────────────
+// FIX 2026-04-23: previously each subscription ran a LIMIT-1 moto lookup
+// against the SAME telefono/email → every subscription ended up linked to
+// the same (latest) moto, so a customer with 3 credit subs saw the same VIN
+// 3 times on "Mis compras". Now we fetch ALL motos for the customer ONCE,
+// then pair each subscription to the moto whose `freg` is closest to the
+// subscription's own `freg` (within 24h). Each moto is consumed at most
+// once — extra subscriptions correctly show `moto: null` ("Sin moto
+// asignada todavía").
+$allCustomerMotos = [];
+try {
+    $mAllSql = "SELECT id, vin, vin_display, estado, modelo, color, freg,
+                       cliente_telefono, cliente_email, punto_voltika_id
+                FROM inventario_motos
+                WHERE cliente_id = ?";
+    $mAllParams = [$cid];
+    if ($tel10) {
+        $mAllSql .= " OR RIGHT(REPLACE(REPLACE(cliente_telefono,'+',''),' ',''),10) = ?";
+        $mAllParams[] = $tel10;
+    }
+    if ($email) {
+        $mAllSql .= " OR cliente_email = ?";
+        $mAllParams[] = $email;
+    }
+    $mAllSql .= " ORDER BY freg DESC";
+    $mAll = $pdo->prepare($mAllSql);
+    $mAll->execute($mAllParams);
+    $allCustomerMotos = $mAll->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) { error_log('compras all motos: ' . $e->getMessage()); }
+$usedMotoIds = [];
+
 try {
     $sql = "SELECT id, modelo, color, monto_semanal, plazo_meses, plazo_semanas,
                 fecha_inicio, fecha_entrega, freg, estado,
@@ -53,16 +83,29 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
-        // Delivery status from inventario_motos (best match by telefono/email/subscripcion id)
+        // Match this subscription to its own moto by timestamp proximity.
+        // Each moto is used at most once — prevents the old bug where every
+        // subscription got the same VIN.
         $moto = null;
-        try {
-            $mStmt = $pdo->prepare("SELECT vin, vin_display, estado, modelo, color
-                FROM inventario_motos
-                WHERE (cliente_telefono = ? OR cliente_email = ?)
-                ORDER BY id DESC LIMIT 1");
-            $mStmt->execute([$s['sub_telefono'] ?: $cliente['telefono'] ?? '', $s['sub_email'] ?: $email]);
-            $moto = $mStmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        } catch (Throwable $e) {}
+        $bestDiff = null;
+        $subTs = strtotime((string)($s['freg'] ?? '')) ?: 0;
+        foreach ($allCustomerMotos as $m) {
+            if (in_array((int)$m['id'], $usedMotoIds, true)) continue;
+            $motoTs = strtotime((string)($m['freg'] ?? '')) ?: 0;
+            $diff = $subTs && $motoTs ? abs($subTs - $motoTs) : PHP_INT_MAX;
+            if ($bestDiff === null || $diff < $bestDiff) {
+                $moto = $m;
+                $bestDiff = $diff;
+            }
+        }
+        // Accept the pairing only if the moto was created within 24h of the
+        // subscription — otherwise assume it belongs to a different
+        // purchase or hasn't been created yet.
+        if ($moto !== null && $bestDiff !== null && $bestDiff <= 86400) {
+            $usedMotoIds[] = (int)$moto['id'];
+        } else {
+            $moto = null;
+        }
 
         // Payment summary
         $pagoSum = ['pagados' => 0, 'total' => 0, 'atrasados' => 0];
