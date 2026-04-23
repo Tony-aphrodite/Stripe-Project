@@ -95,9 +95,48 @@ window.VK_entrega = (function(){
       html += shipHtml;
     }
 
-    // Pickup date banner — set when the point marks moto lista_para_entrega
+    // Pickup-ready banner — fires when the assembly checklist is completed on
+    // the point side (guardar-ensamble.php sets fecha_entrega_estimada and
+    // estado='lista_para_entrega'). Customer brief 2026-04-24: prominent
+    // green card + contact point + payment-scam warning.
     if (data.fecha_recoleccion && st !== 'entregada') {
-      html += '<div class="vk-banner ok">Tu moto está lista. <strong>Recógela el '+fechaLarga(data.fecha_recoleccion)+'</strong> en el punto.</div>';
+      var puntoLinea = (data.punto && data.punto.nombre) ? data.punto.nombre : 'el punto asignado';
+      var puntoDir   = (data.punto && data.punto.direccion) ? data.punto.direccion : '';
+      var puntoTel   = (data.punto && data.punto.telefono) ? data.punto.telefono : '';
+      html += '<div style="background:linear-gradient(135deg,#dcfce7 0%,#bbf7d0 100%);'+
+              'border:2px solid #22c55e;border-radius:14px;padding:18px 20px;margin:12px 0;'+
+              'box-shadow:0 4px 12px rgba(34,197,94,.15);">'+
+              '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;">'+
+                '<div style="flex-shrink:0;width:40px;height:40px;border-radius:50%;background:#22c55e;'+
+                      'display:flex;align-items:center;justify-content:center;color:#fff;">'+
+                  '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" '+
+                       'stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'+
+                       '<polyline points="20 6 9 17 4 12"/></svg>'+
+                '</div>'+
+                '<div style="flex:1;">'+
+                  '<div style="font-size:17px;font-weight:800;color:#14532d;line-height:1.3;">'+
+                    '¡Tu moto está lista para entrega!</div>'+
+                  '<div style="font-size:14px;color:#166534;margin-top:4px;line-height:1.45;">'+
+                    'Ya puedes recogerla en <strong>'+escapeHtml(puntoLinea)+'</strong>.</div>'+
+                '</div>'+
+              '</div>'+
+              (puntoDir
+                ? '<div style="background:rgba(255,255,255,.6);border-radius:8px;padding:10px 12px;'+
+                   'margin-top:10px;font-size:13px;color:#14532d;line-height:1.55;">'+
+                   '<div style="font-weight:700;margin-bottom:4px;">📍 Dirección del punto</div>'+
+                   escapeHtml(puntoDir)+
+                   (puntoTel ? '<div style="margin-top:6px;">☎ <strong>'+escapeHtml(puntoTel)+'</strong></div>' : '')+
+                   '</div>'
+                : '')+
+              '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;'+
+                    'padding:11px 13px;margin-top:12px;font-size:12.5px;color:#78350f;line-height:1.55;">'+
+                '<strong>⚠ Importante · Tu entrega no requiere ningún pago extra.</strong><br>'+
+                'Si te piden dinero por cualquier concepto, <strong>no pagues</strong> y '+
+                'repórtalo a Voltika al <a href="mailto:ventas@voltika.mx" '+
+                   'style="color:#78350f;font-weight:700;text-decoration:underline;">'+
+                   'ventas@voltika.mx</a>.'+
+              '</div>'+
+              '</div>';
     }
 
     // State-specific actions

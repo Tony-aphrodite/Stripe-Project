@@ -894,6 +894,16 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
           . '</div>'
           . '<p style="font-size:12.5px;color:#7a0e1f;background:#fef2f2;border-left:3px solid #dc2626;padding:8px 12px;border-radius:4px;margin:10px 0 0;"><strong>Sin estos tres elementos</strong> no es posible entregarte la moto ni circular legalmente al salir.</p>'
           . '</td></tr>'
+          // Payment scam warning — customer brief 2026-04-24: entrega gratis
+          // mensajes tipo "hay que pagar algo extra" son fraude. Prominente
+          // en naranja/rojo para que ningún cliente pague demás.
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="background:#fffbeb;border:2px solid #f59e0b;border-radius:10px;padding:14px 16px;">'
+          . '<div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:6px;">⚠ Tu entrega no requiere ningún pago extra.</div>'
+          . '<div style="font-size:13px;color:#78350f;line-height:1.6;">Si te piden dinero por cualquier concepto (gasolina, trámite, propina, "apartado"), <strong>no pagues</strong> y repórtalo inmediatamente a Voltika:<br>'
+          . '📧 <a href="mailto:ventas@voltika.mx" style="color:#78350f;font-weight:700;text-decoration:underline;">ventas@voltika.mx</a></div>'
+          . '</div>'
+          . '</td></tr>'
           // Proceso entrega
           . '<tr><td style="padding:14px 28px;">'
           . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">🔄 Así es la entrega — muy sencillo</div>'
@@ -928,8 +938,14 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
         $rows
     );
 
-    $body = "✅ ¡{nombre}, tu moto está lista\ny te espera! 🎉\n\n"
+    $body = "✅ ¡{nombre}, tu moto está lista\npara entrega, ya puedes recogerla! 🎉\n\n"
           . "Tu {modelo} · {color}\nPedido: {pedido_corto}\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "📍 Tu punto de entrega:\n🏪 {punto}\n📬 {direccion_punto}\n🗺️ {link_maps}\n🕐 Lunes a Sábado 9:00 - 18:00 hrs\n📅 Recógela antes del {fecha_limite}\n\n"
+          . "Sin cita — llega cuando puedas.\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "⚠️ IMPORTANTE\n\n"
+          . "Tu entrega NO requiere ningún\npago extra. Si te piden dinero por\ncualquier concepto, NO pagues y\nrepórtalo a Voltika:\n📧 ventas@voltika.mx\n\n"
           . "━━━━━━━━━━━━━━━━━━━━\n\n"
           . "⚠️ ACCIÓN REQUERIDA HOY\n\n"
           . "Tu permiso temporal para circular\nya fue emitido por la autoridad\nde transporte — tienes 30 días\ndesde hoy para tramitar tus placas.\n\n"
@@ -939,14 +955,11 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
           . "3️⃣ Enmícalo\n"
           . "4️⃣ Llévalo el día que recojas tu moto\n   — va en la parte trasera de la moto\n\n"
           . "━━━━━━━━━━━━━━━━━━━━\n\n"
-          . "📍 Tu punto de entrega:\n🏪 {punto}\n📬 {direccion_punto}\n🗺️ {link_maps}\n🕐 Lunes a Sábado 9:00 - 18:00 hrs\n📅 Recógela antes del {fecha_limite}\n\n"
-          . "Sin cita — llega cuando puedas.\n\n"
-          . "━━━━━━━━━━━━━━━━━━━━\n\n"
           . "⚠️ Lleva el día de la entrega:\n🖨️ Permiso impreso y enmicado\n🪪 INE vigente\n📱 Tu celular con este número\n\n"
           . "¿No puedes ir antes del {fecha_limite}?\n📧 ventas@voltika.mx\n\n"
           . "¡Bienvenido a la familia VOLTIKA!";
 
-    $sms = 'VOLTIKA: {nombre}, tu {modelo} está lista en {punto}. Descarga permiso en voltika.mx/clientes/ (24h). Recoge antes del {fecha_limite}. Lleva INE.';
+    $sms = 'VOLTIKA: {nombre}, tu {modelo} está lista para entrega en {punto}. La entrega es gratis — no pagues nada extra. Descarga permiso en voltika.mx/clientes/ (24h). Lleva INE.';
 
     return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
 }

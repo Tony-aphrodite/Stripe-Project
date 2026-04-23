@@ -812,10 +812,14 @@ window.AD_checklists = (function(){
       '<textarea class="ad-input" id="clEnsNotas" style="min-height:60px;"'+(isLocked?' disabled':'')+'>'+esc(data.notas||'')+'</textarea>'+
     '</div>';
 
+    // Wizard-style primary button: on Fase 1/2 it says "Continuar", on Fase 3
+    // it says "Completar". The primary button's behavior depends on the
+    // currently active fase. We also keep "Guardar borrador" as a secondary
+    // escape hatch so the operator can pause mid-work.
     if(!isLocked){
       html += '<div style="display:flex;gap:8px;margin-top:16px;">';
       html += '<button class="ad-btn ghost" id="clEnsSave" style="flex:1;padding:10px;">Guardar borrador</button>';
-      html += '<button class="ad-btn primary" id="clEnsComplete" style="flex:1;padding:10px;">Completar checklist</button>';
+      html += '<button class="ad-btn primary" id="clEnsNext" style="flex:1;padding:10px;"></button>';
       html += '</div>';
     }
     html += '<button class="ad-btn ghost" id="clEnsBack" style="width:100%;margin-top:8px;">Volver</button>';
@@ -825,13 +829,50 @@ window.AD_checklists = (function(){
     // Bind photo events
     bindPhotoEvents();
 
-    // Tab switching
+    // Wizard state — tracks which fase is currently visible + updates the
+    // primary button label/behavior accordingly. Separate from the
+    // checklist_ensamble.fase_actual server value (which reflects server-side
+    // progress) so the user can also jump tabs manually and come back.
+    var faseKeys = ENSAMBLE_PHASES.map(function(p){ return p.key; });
+    var currentFaseKey = activeFase;
+
+    function getFaseFields(faseKey){
+      var ph = ENSAMBLE_PHASES.filter(function(p){ return p.key === faseKey; })[0];
+      if (!ph) return [];
+      var fields = [];
+      ph.sections.forEach(function(s){ s.fields.forEach(function(f){ fields.push(f.key); }); });
+      return fields;
+    }
+
+    function isFaseComplete(faseKey){
+      var fields = getFaseFields(faseKey);
+      if (!fields.length) return false;
+      for (var i = 0; i < fields.length; i++) {
+        if (!$('input[name="'+fields[i]+'"]').is(':checked')) return false;
+      }
+      return true;
+    }
+
+    function updateWizardButton(){
+      var isLastFase = (currentFaseKey === faseKeys[faseKeys.length - 1]);
+      var $btn = $('#clEnsNext');
+      if (isLastFase) {
+        $btn.text('✓ Completar Checklist').css({background:'#22c55e',borderColor:'#22c55e'});
+      } else {
+        $btn.text('Continuar Checklist →').css({background:'',borderColor:''});
+      }
+    }
+
+    // Tab switching — also updates the wizard's current fase so the primary
+    // button stays in sync when the user jumps tabs manually.
     $('.clEnsTab').on('click',function(){
       var f = $(this).data('fase');
+      currentFaseKey = f;
       $('.clEnsTab').removeClass('primary').addClass('ghost');
       $(this).removeClass('ghost').addClass('primary');
       $('.clEnsPane').hide();
       $('.clEnsPane[data-fase="'+f+'"]').show();
+      updateWizardButton();
     });
 
     // Progress update
@@ -841,46 +882,86 @@ window.AD_checklists = (function(){
     });
 
     $('#clEnsSave').on('click', function(){ saveEnsamble(motoId, false); });
-    $('#clEnsComplete').on('click', function(){
-      var checked = countChecked();
-      if(checked < TOTAL_ENSAMBLE){
-        alert('Faltan '+(TOTAL_ENSAMBLE-checked)+' items por marcar antes de completar el checklist.');
+
+    // Wizard primary button. On fase 1/2 it advances to the next fase after
+    // verifying current fase is complete. On fase 3 it finalizes + locks.
+    $('#clEnsNext').on('click', function(){
+      var faseIdx  = faseKeys.indexOf(currentFaseKey);
+      var isLast   = (faseIdx === faseKeys.length - 1);
+
+      if (!isFaseComplete(currentFaseKey)) {
+        var ph = ENSAMBLE_PHASES[faseIdx];
+        var missing = getFaseFields(currentFaseKey).filter(function(k){ return !$('input[name="'+k+'"]').is(':checked'); }).length;
+        alert('Faltan ' + missing + ' item(s) por marcar en ' + (ph ? ph.title : 'esta fase') + ' antes de continuar.');
         return;
       }
-      if(!confirm('Completar y bloquear este checklist?')) return;
-      saveEnsamble(motoId, true);
+
+      if (isLast) {
+        // Final fase → verify ALL items across all fases, then complete
+        var checked = countChecked();
+        if (checked < TOTAL_ENSAMBLE) {
+          alert('Faltan ' + (TOTAL_ENSAMBLE - checked) + ' items por marcar antes de completar el checklist.');
+          return;
+        }
+        if (!confirm('Completar y bloquear este checklist?\n\nSe enviará automáticamente una notificación al cliente: "Tu moto está lista para entrega".')) return;
+        saveEnsamble(motoId, true);
+        return;
+      }
+
+      // Not last fase → save progress + auto-advance to next fase
+      saveEnsamble(motoId, false, function(){
+        var nextKey = faseKeys[faseIdx + 1];
+        currentFaseKey = nextKey;
+        $('.clEnsTab').removeClass('primary').addClass('ghost');
+        $('.clEnsTab[data-fase="' + nextKey + '"]').removeClass('ghost').addClass('primary');
+        $('.clEnsPane').hide();
+        $('.clEnsPane[data-fase="' + nextKey + '"]').show();
+        updateWizardButton();
+        // Scroll to top of modal so user sees the new fase heading
+        try { $('#adModalBody').scrollTop(0); } catch(e){}
+      });
     });
+
     $('#clEnsBack').on('click', function(){ ADApp.closeModal(); showMotoChecklists(motoId); });
+
+    // Initialize wizard button label based on the active fase
+    updateWizardButton();
   }
 
-  function saveEnsamble(motoId, completar){
+  function saveEnsamble(motoId, completar, onAfterSave){
     var payload = { moto_id: motoId };
     $('.clCheck').each(function(){ payload[$(this).data('key')] = $(this).is(':checked') ? 1 : 0; });
     payload.notas = $('#clEnsNotas').val();
     if(completar) payload.completar = 1;
 
-    var $btn = completar ? $('#clEnsComplete') : $('#clEnsSave');
+    // Primary "Continuar/Completar" button is #clEnsNext, draft is #clEnsSave.
+    var $btn = completar ? $('#clEnsNext') : $('#clEnsSave');
+    var originalHtml = $btn.html();
     $btn.prop('disabled',true).html('<span class="ad-spin"></span>');
 
     ADApp.api('checklists/guardar-ensamble.php', payload).done(function(r){
       if(r.ok){
         if(completar){
           ADApp.closeModal();
-          alert('Checklist de ensamble completado exitosamente');
+          alert('✓ Checklist de ensamble completado.\n\nSe envió la notificación al cliente: "Tu moto está lista para entrega".');
           showMotoChecklists(motoId);
+        } else if (typeof onAfterSave === 'function') {
+          // Wizard advance: progress saved, move to next fase silently
+          $btn.prop('disabled', false).html(originalHtml);
+          onAfterSave(r);
         } else {
           alert('Borrador guardado (Fase: '+r.fase_actual+')');
-          $btn.prop('disabled',false).html('Guardar borrador');
+          $btn.prop('disabled', false).html(originalHtml);
         }
       } else {
         alert(r.error||'Error al guardar');
-        $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
+        $btn.prop('disabled', false).html(originalHtml);
       }
     }).fail(function(xhr){
       var msg = 'Error de conexión';
       if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
       alert(msg);
-      $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
+      $btn.prop('disabled', false).html(originalHtml);
     });
   }
 

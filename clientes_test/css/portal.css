@@ -121,10 +121,35 @@ button{font-family:inherit}
 .vk-otp input:focus{outline:none;border-color:var(--vk-primary);box-shadow:0 0 0 3px rgba(3,159,225,.15)}
 
 /* ── Row (key-value list) ──────────────────────────────────────────────── */
-.vk-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--vk-border)}
+/* Key/value rows (used across Mi entrega, Envío, etc.).
+   Customer feedback 2026-04-24: long address values wrapped across the
+   label column because the flex container was center-aligned and the value
+   had no width cap or text-align. Fix: align to the top, cap the value
+   width, right-align wrapped lines, and stop the label from being squeezed. */
+.vk-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  padding:10px 0;
+  border-bottom:1px solid var(--vk-border);
+}
 .vk-row:last-child{border-bottom:0}
-.vk-row .k{color:var(--vk-text-dim);font-size:13px}
-.vk-row .v{font-weight:600;font-size:14px;color:var(--vk-text)}
+.vk-row .k{
+  color:var(--vk-text-dim);
+  font-size:13px;
+  flex-shrink:0;
+  line-height:1.5;
+}
+.vk-row .v{
+  font-weight:600;
+  font-size:14px;
+  color:var(--vk-text);
+  text-align:right;
+  max-width:65%;
+  word-break:break-word;
+  line-height:1.5;
+}
 
 /* ── Progress bar ──────────────────────────────────────────────────────── */
 .vk-progress{height:10px;background:var(--vk-surface-2);border-radius:999px;overflow:hidden;margin:8px 0}
