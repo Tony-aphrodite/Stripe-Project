@@ -10,9 +10,11 @@ window.AD_ventas = (function(){
         '<div style="display:flex;align-items:center;gap:10px;">'+
           '<span id="vtLastUpdate" style="font-size:11px;color:var(--ad-dim);"></span>'+
           '<button class="ad-btn" id="vtRepararPhantom" style="background:#ffebee;color:#c62828;border-color:#ef9a9a;padding:6px 12px;font-size:13px;" title="Reparar/archivar órdenes con datos incompletos (nombre o modelo vacíos)">'+
-            '🛠 Reparar phantom</button>'+
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'+
+            'Reparar phantom</button>'+
           '<button class="ad-btn" id="vtNormalizar" style="background:#fff4e5;color:#b26200;border-color:#f0c378;padding:6px 12px;font-size:13px;" title="Normalizar modelo/color de ventas legacy (&quot;Voltika Tromox Pesgo&quot; → &quot;Pesgo Plus&quot;, &quot;Gris moderno&quot; → &quot;gris&quot;) para que encuentren motos disponibles">'+
-            '🔧 Normalizar catálogo</button>'+
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'+
+            'Normalizar catálogo</button>'+
           '<button class="ad-btn" id="vtRefresh" style="background:#f0f4f8;color:var(--ad-navy);padding:6px 14px;font-size:13px;">'+
             '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;margin-right:4px;"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>'+
             'Actualizar</button>'+
@@ -36,7 +38,9 @@ window.AD_ventas = (function(){
   // to backfill (apply proposal), archive (hide), or delete (last resort).
   function showRepararPhantom(){
     ADApp.modal(
-      '<div class="ad-h2">🛠 Reparar órdenes phantom</div>'+
+      '<div class="ad-h2" style="display:flex;align-items:center;gap:8px;">'+
+        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'+
+        'Reparar órdenes phantom</div>'+
       '<div style="font-size:13px;color:var(--ad-dim);margin-bottom:12px;line-height:1.5;">'+
         'Órdenes con <strong>nombre</strong> o <strong>modelo</strong> vacíos. Propuesta de relleno viene de Stripe PI metadata y <code>subscripciones_credito</code>.'+
       '</div>'+
@@ -173,7 +177,9 @@ window.AD_ventas = (function(){
   // código corto que usa inventario_motos para que puedan asignarse.
   function showNormalizarCatalogo(){
     ADApp.modal(
-      '<div class="ad-h2">🔧 Normalizar catálogo</div>'+
+      '<div class="ad-h2" style="display:flex;align-items:center;gap:8px;">'+
+        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'+
+        'Normalizar catálogo</div>'+
       '<div style="font-size:13px;color:var(--ad-dim);margin-bottom:12px;line-height:1.5;">'+
         'Busca pedidos con valores legacy en <code>modelo</code>/<code>color</code> '+
         '(ej. <code>Voltika Tromox Pesgo</code>, <code>Gris moderno</code>) y los '+
