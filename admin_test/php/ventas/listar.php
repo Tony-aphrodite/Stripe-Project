@@ -45,6 +45,7 @@ $cotizSelect = $hasCotiz
 
 // Ensure payment-reminder tracking columns exist (2026-04-19 follow-up feature).
 // Safe idempotent ALTER — lets the SELECT below reference them unconditionally.
+$hasSeguimiento = false;
 try {
     $cols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
     if (!in_array('last_reminder_at', $cols, true)) {
@@ -57,9 +58,17 @@ try {
         $pdo->exec("ALTER TABLE transacciones ADD COLUMN pedido_corto VARCHAR(20) NULL");
         try { $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX idx_pedido_corto (pedido_corto)"); } catch (Throwable $e) {}
     }
+    // `seguimiento` is used by the phantom-repair tool to archive rows.
+    // If it doesn't exist yet, skip the archived-filter in the SELECT
+    // below (otherwise the query errors out and the entire orders list
+    // disappears — incident 2026-04-23).
+    $hasSeguimiento = in_array('seguimiento', $cols, true);
 } catch (Throwable $e) { error_log('listar ensure reminder cols: ' . $e->getMessage()); }
 
 // ── Orders from transacciones ───────────────────────────────────────────
+$seguimientoFilter = $hasSeguimiento
+    ? "WHERE (t.seguimiento IS NULL OR t.seguimiento <> 'archivado')"
+    : "";
 try {
     $stmt = $pdo->query("
         SELECT t.id, t.pedido, t.pedido_corto, t.nombre, t.email, t.telefono,
@@ -104,7 +113,7 @@ try {
                    ORDER BY p2.id ASC
                    LIMIT 1
                )
-        WHERE (t.seguimiento IS NULL OR t.seguimiento <> 'archivado')
+        $seguimientoFilter
         ORDER BY t.freg DESC
         LIMIT 100
     ");
