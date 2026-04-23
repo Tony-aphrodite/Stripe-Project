@@ -385,13 +385,17 @@ window.AD_ventas = (function(){
         var reqModelo = (r.modelo||'').replace(/\s+/g,' ').trim();
         var reqColor  = (r.color||'').trim();
         var reqLabel  = esc(reqModelo + (reqColor ? ' '+reqColor : '')) || 'modelo solicitado';
+        // Compact stock message. Long model/color names wrapped to 4 lines in
+        // the MOTO ASIGNADA column — keep cell height predictable by showing
+        // just the count + keyword and stashing the full modelo/color in the
+        // tooltip for hover access.
         if(stock === 0){
-          stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;" title="Se requiere exactamente: '+reqLabel+'">Sin '+reqLabel+' en stock</div>';
+          stockInfo = '<div style="font-size:11px;color:#b91c1c;margin-top:2px;white-space:nowrap;" title="'+reqLabel+': 0 en stock">Sin stock</div>';
           if(transit > 0){
-            stockInfo += '<div style="font-size:11px;color:#d97706;margin-top:1px;">'+transit+' en tránsito (por llegar)</div>';
+            stockInfo += '<div style="font-size:11px;color:#d97706;margin-top:1px;white-space:nowrap;" title="'+transit+' '+reqLabel+' en camino">'+transit+' en tránsito</div>';
           }
         } else {
-          stockInfo = '<div style="font-size:11px;color:#059669;margin-top:2px;">'+stock+' '+reqLabel+' disponible'+(stock>1?'s':'')+'</div>';
+          stockInfo = '<div style="font-size:11px;color:#059669;margin-top:2px;white-space:nowrap;" title="'+reqLabel+': '+stock+' disponible'+(stock>1?'s':'')+'">'+stock+' disponible'+(stock>1?'s':'')+'</div>';
         }
       }
 

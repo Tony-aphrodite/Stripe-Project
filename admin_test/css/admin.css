@@ -225,7 +225,7 @@ html,body{
 .ad-table{width:100%;border-collapse:collapse;background:var(--ad-surface)}
 .ad-table th{
   background:var(--ad-surface-2);
-  padding:14px 16px;text-align:left;
+  padding:14px 16px;text-align:center;
   font-size:11px;text-transform:uppercase;
   color:var(--ad-dim);letter-spacing:.7px;font-weight:700;
   border-bottom:2px solid var(--ad-border);
@@ -251,6 +251,7 @@ html,body{
   display:inline-flex;align-items:center;gap:4px;
   padding:5px 14px;border-radius:999px;
   font-size:11px;font-weight:700;letter-spacing:.3px;
+  white-space:nowrap;
 }
 .ad-badge.green{background:rgba(34,197,94,.12);color:#15803d}
 .ad-badge.red{background:rgba(239,68,68,.1);color:#b91c1c}
