@@ -242,7 +242,8 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
                    . '<p style="font-size:13.5px;color:#444;line-height:1.6;margin:0 0 10px;">No se genera ningún cargo antes de la entrega.</p>'
                    . '<p style="font-size:13px;color:#555;margin:10px 0 4px;">Puedes pagar con:</p>'
                    . '<div style="font-size:13px;color:#333;line-height:1.8;">🏪 Efectivo en cualquier OXXO<br>🏦 Transferencia SPEI<br>💳 Tarjeta en tu portal</div>'
-                   . '<p style="font-size:13px;color:#555;margin:10px 0 0;">Consulta tus fechas de pago y realiza pagos desde tu portal:<br><a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/clientes/</a></p>'
+                   . '<p style="font-size:13px;color:#555;margin:10px 0 0;">Consulta tus fechas de pago y realiza pagos desde tu portal:</p>'
+                   . vkPortalBtn('💳 Ver mis pagos')
                    . '</td></tr>';
     }
 
@@ -285,7 +286,7 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
                . '<tr><td style="padding:14px 28px;">'
                . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📱 Tu portal de cliente</div>'
                . '<p style="font-size:13.5px;color:#333;margin:0 0 8px;line-height:1.6;">Todo lo de tu compra en un solo lugar. Entra con tu número de celular:</p>'
-               . '<p style="margin:0 0 12px;"><a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/clientes/</a></p>'
+               . vkPortalBtn('👤 Seguir en mi cuenta')
                . '<p style="font-size:13px;color:#555;margin:8px 0 4px;">Desde tu portal puedes:</p>'
                . $portalHtml
                . '</td></tr>'
@@ -295,19 +296,22 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
                . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📄 Permiso temporal para circular</div>'
                . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu permiso estará disponible en tu portal el día que recojas tu moto.</p>'
                . '<p style="font-size:12.5px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:4px;margin:8px 0;line-height:1.6;"><strong>⚠️ Entra en vigencia ese día</strong> y tienes <strong>30 días para tramitar tus placas definitivas</strong>.</p>'
-               . '<p style="font-size:13px;color:#555;margin:8px 0 0;">Descárgalo e imprímelo ese mismo día: <a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/clientes/</a></p>'
+               . '<p style="font-size:13px;color:#555;margin:8px 0 0;">Descárgalo e imprímelo ese mismo día:</p>'
+               . vkPortalBtn('📄 Descargar mi permiso')
                . '</td></tr>'
                // Factura
                . '<tr><td style="padding:14px 28px;">'
                . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🧾 Tu factura</div>'
-               . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0;">' . $facturaText . '<br><a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/clientes/</a></p>'
+               . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0;">' . $facturaText . '</p>'
+               . vkPortalBtn('🧾 Ver mi factura')
                . $facturaRfc
                . '</td></tr>'
                // Seguro y placas
                . '<tr><td style="padding:14px 28px;">'
                . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🛡️ Seguro y 🪪 placas</div>'
                . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Si solicitaste asesoría de seguro o gestor de placas recibirás un correo por separado con toda la información.</p>'
-               . '<p style="font-size:13px;color:#555;margin:0;">También podrás consultarla en tu portal en cualquier momento: <a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/clientes/</a></p>'
+               . '<p style="font-size:13px;color:#555;margin:0;">También podrás consultarla en tu portal en cualquier momento:</p>'
+               . vkPortalBtn('🛡️ Ver seguro y placas')
                . '</td></tr>'
                // Support
                . '<tr><td style="padding:14px 28px 4px;">'
@@ -595,6 +599,18 @@ function voltikaLogisticsEmailShell(string $hero, string $heroSub, string $inner
     return voltikaEmailShell($hero, $heroSub, $innerRows);
 }
 
+// Email-safe CTA button linking to the customer portal. Table-wrapped so
+// Outlook and Gmail render padding correctly across clients.
+function vkPortalBtn(string $label): string {
+    return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0;">'
+         . '<tr><td style="background:#039fe1;border-radius:10px;box-shadow:0 2px 6px rgba(3,159,225,0.28);">'
+         . '<a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" '
+         . 'style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;'
+         . 'font-weight:700;font-size:14px;letter-spacing:.3px;font-family:Arial,Helvetica,sans-serif;">'
+         . $label
+         . '</a></td></tr></table>';
+}
+
 // ── Reusable section rows (customer brief 2026-04-20: match compra_confirmada
 //    visual richness across every notification email).
 function vkPortalRow(): string {
@@ -605,8 +621,8 @@ function vkPortalRow(): string {
          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📱 Tu portal de cliente</div>'
          . '<div style="background:#E8F4FD;border:1px solid #B3D4FC;border-radius:10px;padding:16px 18px;">'
          .   '<p style="font-size:13.5px;color:#1a3a5c;margin:0 0 10px;line-height:1.6;">Todo lo de tu compra en un solo lugar. Entra con tu número de celular:</p>'
-         .   '<table cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 14px;"><tr><td>'
-         .     '<a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#039fe1;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.3px;">Entrar a mi portal →</a>'
+         .   '<table cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 14px;"><tr><td style="background:#039fe1;border-radius:10px;box-shadow:0 2px 6px rgba(3,159,225,0.28);">'
+         .     '<a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.3px;font-family:Arial,Helvetica,sans-serif;">👤 Seguir en mi cuenta</a>'
          .   '</td></tr></table>'
          .   '<p style="font-size:11.5px;color:#555;margin:0 0 12px;font-family:ui-monospace,Menlo,Consolas,monospace;">'
          .     '<a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="color:#039fe1;text-decoration:underline;">voltika.mx/clientes/</a>'
@@ -626,14 +642,16 @@ function vkPermisoRow(): string {
          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">📄 Permiso temporal para circular</div>'
          . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu permiso estará disponible en tu portal el día que recojas tu moto.</p>'
          . '<p style="font-size:12.5px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:4px;margin:8px 0;line-height:1.6;"><strong>⚠️ Entra en vigencia ese día</strong> y tienes <strong>30 días para tramitar tus placas definitivas</strong>.</p>'
-         . '<p style="font-size:13px;color:#555;margin:8px 0 0;">Descárgalo e imprímelo ese mismo día: <a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/clientes/</a></p>'
+         . '<p style="font-size:13px;color:#555;margin:8px 0 0;">Descárgalo e imprímelo ese mismo día:</p>'
+         . vkPortalBtn('📄 Descargar mi permiso')
          . '</td></tr>';
 }
 
 function vkFacturaRow(): string {
     return '<tr><td style="padding:14px 28px;">'
          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🧾 Tu factura</div>'
-         . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0;">Tu factura estará disponible al momento de la entrega en:<br><a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/clientes/</a></p>'
+         . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0;">Tu factura estará disponible al momento de la entrega en tu portal:</p>'
+         . vkPortalBtn('🧾 Ver mi factura')
          . '<p style="font-size:13px;color:#555;margin:10px 0 0;">¿Necesitas registrar tu RFC? Escríbenos antes de la entrega:<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a></p>'
          . '</td></tr>';
 }
@@ -642,7 +660,8 @@ function vkSeguroPlacasRow(): string {
     return '<tr><td style="padding:14px 28px;">'
          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">🛡️ Seguro y 🪪 placas</div>'
          . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Si solicitaste asesoría de seguro o gestor de placas recibirás un correo por separado con toda la información.</p>'
-         . '<p style="font-size:13px;color:#555;margin:0;">También podrás consultarla en tu portal en cualquier momento: <a href="https://voltika.mx/clientes/" target="_blank" rel="noopener noreferrer" style="color:#039fe1;font-weight:700;">👉 voltika.mx/clientes/</a></p>'
+         . '<p style="font-size:13px;color:#555;margin:0;">También podrás consultarla en tu portal en cualquier momento:</p>'
+         . vkPortalBtn('🛡️ Ver seguro y placas')
          . '</td></tr>';
 }
 
