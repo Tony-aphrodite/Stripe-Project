@@ -349,6 +349,65 @@ function portalFindClienteByPhone(string $tel): ?array {
     return ['id' => $cid, 'telefono' => $tel, 'email' => $sub['email'] ?? null, 'nombre' => $nombre];
 }
 
+/**
+ * Verify a cliente owns a moto via ANY valid ownership path:
+ *   - inventario_motos.cliente_id matches
+ *   - cliente_telefono matches clientes.telefono (last 10 digits, prefix-agnostic)
+ *   - cliente_email    matches clientes.email (case-insensitive)
+ *
+ * When a match is found via phone/email while cliente_id is NULL/wrong, the
+ * helper backfills cliente_id so subsequent lookups hit the fast path. This
+ * prevents "Moto no encontrada" 404s that appeared whenever Stripe webhooks
+ * or manual assignments left cliente_id empty on credito/contado purchases.
+ *
+ * Every portal endpoint that mutates a moto on behalf of an authenticated
+ * cliente must use this instead of a bare `cliente_id = ?` WHERE clause.
+ *
+ * Returns the full moto row or null if the cliente does not own it.
+ */
+function portalFindOwnedMoto(int $clienteId, int $motoId): ?array {
+    if ($clienteId <= 0 || $motoId <= 0) return null;
+    $pdo = getDB();
+
+    $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? AND cliente_id = ? LIMIT 1");
+    $stmt->execute([$motoId, $clienteId]);
+    $moto = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($moto) return $moto;
+
+    $cStmt = $pdo->prepare("SELECT email, telefono FROM clientes WHERE id = ? LIMIT 1");
+    $cStmt->execute([$clienteId]);
+    $cliente = $cStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if (!$cliente) return null;
+
+    $tel10 = preg_replace('/\D/', '', (string)($cliente['telefono'] ?? ''));
+    if (strlen($tel10) > 10) $tel10 = substr($tel10, -10);
+    $email = trim((string)($cliente['email'] ?? ''));
+
+    $mStmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? LIMIT 1");
+    $mStmt->execute([$motoId]);
+    $moto = $mStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if (!$moto) return null;
+
+    $motoTel10 = preg_replace('/\D/', '', (string)($moto['cliente_telefono'] ?? ''));
+    if (strlen($motoTel10) > 10) $motoTel10 = substr($motoTel10, -10);
+    $motoEmail = trim((string)($moto['cliente_email'] ?? ''));
+
+    $matches = false;
+    if ($tel10 !== '' && strlen($tel10) === 10 && $tel10 === $motoTel10) $matches = true;
+    if (!$matches && $email !== '' && $motoEmail !== '' && strcasecmp($email, $motoEmail) === 0) $matches = true;
+
+    if (!$matches) return null;
+
+    try {
+        $pdo->prepare("UPDATE inventario_motos SET cliente_id = ?
+            WHERE id = ? AND (cliente_id IS NULL OR cliente_id = 0 OR cliente_id <> ?)")
+            ->execute([$clienteId, $motoId, $clienteId]);
+        $moto['cliente_id'] = $clienteId;
+    } catch (Throwable $e) { error_log('portalFindOwnedMoto backfill: ' . $e->getMessage()); }
+
+    return $moto;
+}
+
 function portalFindClienteByEmail(string $email): ?array {
     $pdo = getDB();
     $stmt = $pdo->prepare("SELECT * FROM clientes WHERE email = ? ORDER BY id DESC LIMIT 1");

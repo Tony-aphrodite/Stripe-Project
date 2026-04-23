@@ -19,10 +19,11 @@ if (!$motoId || strlen($firma) < 3) {
 $pdo = getDB();
 
 try {
-    // Verify ownership
-    $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? AND cliente_id = ?");
-    $stmt->execute([$motoId, $cid]);
-    $moto = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Ownership check accepts cliente_id OR matching cliente_telefono/email,
+    // auto-backfilling cliente_id when found via the soft paths. Necessary
+    // for credito/contado orders whose cliente_id was left null by earlier
+    // webhooks or manual imports.
+    $moto = portalFindOwnedMoto($cid, $motoId);
     if (!$moto) portalJsonOut(['error' => 'Moto no encontrada'], 404);
     if (!empty($moto['cliente_acta_firmada'])) {
         portalJsonOut(['ok' => true, 'already' => true, 'mensaje' => 'ACTA ya firmada']);
