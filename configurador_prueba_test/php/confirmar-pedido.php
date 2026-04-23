@@ -19,6 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/inventory-utils.php';
 require_once __DIR__ . '/lib/catalog-normalize.php';
+// Shared email chrome helpers — voltikaEmailHeader / voltikaEmailFooter /
+// voltikaEmailShell. Loaded so this script's confirmation email uses the
+// same design (logo image + tagline) as every other notification.
+require_once __DIR__ . '/voltika-notify.php';
 
 // ── Request ───────────────────────────────────────────────────────────────────
 $json = json_decode(file_get_contents('php://input'), true);
@@ -109,85 +113,33 @@ $headline = $esCancelacion
 
 $totalFmt = $total > 0 ? '$' . number_format($total, 0, '.', ',') . ' MXN' : '—';
 
-$cuerpo = '<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;">
-    <tr><td align="center" style="padding:24px;">
-      <table width="620" cellpadding="0" cellspacing="0"
-             style="background:#fff;border-radius:8px;overflow:hidden;max-width:620px;width:100%;">
-        <tr>
-          <td style="background:#22C55E;padding:24px 28px;color:#fff;">
-            <h1 style="margin:0;font-size:22px;font-weight:800;">&#9745; voltika</h1>
-            <p style="margin:8px 0 0;font-size:16px;">' . htmlspecialchars($headline) . '</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:28px;">
-            <p style="margin:0 0 16px;font-size:15px;color:#111;">
-              Hola <strong>' . htmlspecialchars($nombre) . '</strong>,
-            </p>
-            <p style="margin:0 0 20px;font-size:14px;color:#555;">
-              ' . ($esCancelacion
-                ? 'Hemos registrado tu solicitud. Un asesor te contactará en las próximas 24-48 horas por WhatsApp para coordinar tu enganche y entrega.'
-                : 'Gracias por tu compra. Tu pedido ha sido confirmado exitosamente.')
-              . '
-            </p>
+// Build the body rows (will be wrapped by voltikaEmailShell with the
+// standard logo header + footer).
+$rows  = [
+    ['Número de pedido', '<strong>' . htmlspecialchars($pedidoNum) . '</strong>'],
+    ['Modelo',           htmlspecialchars($modelo) . ' &mdash; ' . htmlspecialchars($color)],
+    ['Forma de pago',    htmlspecialchars($pagoDesc)],
+    ['Ciudad de entrega',htmlspecialchars($ciudad) . ', ' . htmlspecialchars($estado)],
+];
+if ($total > 0) $rows[] = ['Total', '<strong style="color:#039fe1;">' . $totalFmt . '</strong>'];
+$rows[] = ['Asesoría placas', $asesoria ? '&#10004; Sí' : 'No'];
+$rows[] = ['Seguro Qualitas', $seguro   ? '&#10004; Sí' : 'No'];
 
-            <table width="100%" cellpadding="8" cellspacing="0"
-                   style="border:1px solid #E5E7EB;border-radius:8px;font-size:14px;">
-              <tr style="background:#F9FAFB;">
-                <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">
-                  Número de pedido</td>
-                <td style="font-weight:700;padding:10px 12px;border-bottom:1px solid #E5E7EB;">
-                  ' . htmlspecialchars($pedidoNum) . '</td>
-              </tr>
-              <tr>
-                <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">
-                  Modelo</td>
-                <td style="padding:10px 12px;border-bottom:1px solid #E5E7EB;">
-                  ' . htmlspecialchars($modelo) . ' &mdash; ' . htmlspecialchars($color) . '</td>
-              </tr>
-              <tr style="background:#F9FAFB;">
-                <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">
-                  Forma de pago</td>
-                <td style="padding:10px 12px;border-bottom:1px solid #E5E7EB;">
-                  ' . htmlspecialchars($pagoDesc) . '</td>
-              </tr>
-              <tr>
-                <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">
-                  Ciudad de entrega</td>
-                <td style="padding:10px 12px;border-bottom:1px solid #E5E7EB;">
-                  ' . htmlspecialchars($ciudad) . ', ' . htmlspecialchars($estado) . '</td>
-              </tr>
-              ' . ($total > 0 ? '
-              <tr style="background:#F9FAFB;">
-                <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">Total</td>
-                <td style="padding:10px 12px;font-weight:700;color:#22C55E;border-bottom:1px solid #E5E7EB;">' . $totalFmt . '</td>
-              </tr>' : '') . '
-              <tr>
-                <td style="color:#6B7280;padding:10px 12px;border-bottom:1px solid #E5E7EB;">Asesoría placas</td>
-                <td style="padding:10px 12px;border-bottom:1px solid #E5E7EB;">' . ($asesoria ? '&#10004; Sí' : 'No') . '</td>
-              </tr>
-              <tr style="background:#F9FAFB;">
-                <td style="color:#6B7280;padding:10px 12px;">Seguro Qualitas</td>
-                <td style="padding:10px 12px;">' . ($seguro ? '&#10004; Sí' : 'No') . '</td>
-              </tr>
-            </table>
+$intro = $esCancelacion
+    ? 'Hemos registrado tu solicitud. Un asesor te contactará en las próximas 24-48 horas por WhatsApp para coordinar tu enganche y entrega.'
+    : 'Gracias por tu compra. Tu pedido ha sido confirmado exitosamente.';
 
-            <p style="margin:24px 0 0;font-size:13px;color:#9CA3AF;">
-              ¿Dudas? Escribe a
-              <a href="mailto:ventas@voltika.com.mx" style="color:#22C55E;">ventas@voltika.com.mx</a>
-              con tu número de pedido <strong>' . htmlspecialchars($pedidoNum) . '</strong>.
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>';
+$innerRows = '<tr><td style="padding:24px 28px 6px;">'
+           . '<h2 style="margin:0 0 10px;font-size:20px;color:#1a3a5c;">Hola, ' . htmlspecialchars($nombre) . ' 👋</h2>'
+           . '<p style="margin:0 0 18px;font-size:14px;color:#555;line-height:1.6;">' . $intro . '</p>'
+           . voltikaEmailSectionLabel('Detalle de tu pedido')
+           . voltikaEmailDataTable($rows, $total > 0)
+           . '<p style="margin:16px 0 0;font-size:13px;color:#9CA3AF;">'
+           .   '¿Dudas? Escribe a <a href="mailto:ventas@voltika.com.mx" style="color:#039fe1;font-weight:700;text-decoration:none;">ventas@voltika.com.mx</a> con tu número de pedido <strong>' . htmlspecialchars($pedidoNum) . '</strong>.'
+           . '</p>'
+           . '</td></tr>';
+
+$cuerpo = voltikaEmailShell(htmlspecialchars($headline), 'Pedido #' . htmlspecialchars($pedidoNum), $innerRows);
 
 // Credit flow emails are handled by confirmar-orden.php — skip here to avoid duplicates
 if ($metodoPago === 'credito') {
