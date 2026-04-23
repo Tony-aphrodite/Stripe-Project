@@ -41,6 +41,41 @@ $telefono        = $json['telefono']        ?? '';
 // without this step any legacy-origin order cannot be matched to stock.
 $modelo          = voltikaNormalizeModelo($json['modelo'] ?? '');
 $color           = voltikaNormalizeColor($json['color']  ?? '');
+
+// ── Guard against phantom orders (customer report 2026-04-23) ────────────
+// Orders VK-2604-0011/0012/0013 appeared in admin with blank
+// Cliente/Modelo/Color because a payment-intent with empty metadata still
+// reached this endpoint and was inserted as an empty row. Require at
+// least nombre AND modelo — without both the row is meaningless downstream
+// (admin can't identify customer, inventory can't match the bike). This
+// fails closed so the frontend has to send real data or nothing.
+$nombreTrim = trim((string)$nombre);
+if ($nombreTrim === '' || $modelo === '') {
+    http_response_code(400);
+    echo json_encode([
+        'status' => 'error',
+        'error'  => 'datos_incompletos',
+        'message'=> 'Faltan datos obligatorios (nombre y modelo).',
+        'received' => [
+            'nombre' => $nombreTrim !== '',
+            'modelo' => $modelo     !== '',
+            'color'  => $json['color'] ?? null,
+        ],
+    ]);
+    // Log to truora_query_log-equivalent for debugging
+    try {
+        $pdoLog = getDB();
+        @$pdoLog->exec("CREATE TABLE IF NOT EXISTS confirmar_orden_rechazos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            reason VARCHAR(100),
+            payload TEXT,
+            freg DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $pdoLog->prepare("INSERT INTO confirmar_orden_rechazos (reason, payload) VALUES (?, ?)")
+               ->execute(['datos_incompletos', substr(json_encode($json), 0, 4000)]);
+    } catch (Throwable $e) { error_log('confirmar-orden log rechazo: ' . $e->getMessage()); }
+    exit;
+}
 $ciudad          = $json['ciudad']          ?? '';
 $estado          = $json['estado']          ?? '';
 $cp              = $json['cp']              ?? '';

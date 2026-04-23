@@ -104,10 +104,18 @@ try {
                    ORDER BY p2.id ASC
                    LIMIT 1
                )
+        WHERE (t.seguimiento IS NULL OR t.seguimiento <> 'archivado')
         ORDER BY t.freg DESC
         LIMIT 100
     ");
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        // Flag rows with missing client identification so the admin UI can
+        // call them out as phantoms. Previously these showed as blank cells
+        // that admins mistakenly ignored or tried to assign motos to.
+        $nombreEmpty = trim((string)($r['nombre'] ?? '')) === '';
+        $modeloEmpty = trim((string)($r['modelo'] ?? '')) === '';
+        $datosIncompletos = $nombreEmpty || $modeloEmpty;
+
         $rows[] = [
             'id'          => (int)$r['id'],
             'pedido'      => $r['pedido'],
@@ -117,6 +125,7 @@ try {
             'telefono'    => $r['telefono'],
             'modelo'      => $r['modelo'],
             'color'       => $r['color'],
+            'datos_incompletos' => $datosIncompletos,
             'tipo'        => $r['tpago'],
             'monto'       => (float)$r['total'],
             'stripe_pi'   => $r['stripe_pi'],
@@ -521,6 +530,7 @@ $sinAsignar = $total - $asignadas;
 $orfanos    = count(array_filter($rows, fn($r) => ($r['source'] ?? '') !== ''));
 $conPago    = count(array_filter($rows, fn($r) => ($r['pago_estado'] ?? '') === 'pagada'));
 $sinPago    = count(array_filter($rows, fn($r) => in_array($r['pago_estado'] ?? '', ['pendiente', 'parcial', 'error', 'orfano'], true)));
+$phantom    = count(array_filter($rows, fn($r) => !empty($r['datos_incompletos'])));
 
 adminJsonOut([
     'ok'    => true,
@@ -531,5 +541,6 @@ adminJsonOut([
     'orfanos'     => $orfanos,
     'con_pago'    => $conPago,
     'sin_pago'    => $sinPago,
+    'phantom'     => $phantom,
     'generated_at'=> date('c'),
 ]);

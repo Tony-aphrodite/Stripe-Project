@@ -9,6 +9,8 @@ window.AD_ventas = (function(){
         '<div class="ad-h1">Ventas / Ordenes</div>'+
         '<div style="display:flex;align-items:center;gap:10px;">'+
           '<span id="vtLastUpdate" style="font-size:11px;color:var(--ad-dim);"></span>'+
+          '<button class="ad-btn" id="vtRepararPhantom" style="background:#ffebee;color:#c62828;border-color:#ef9a9a;padding:6px 12px;font-size:13px;" title="Reparar/archivar órdenes con datos incompletos (nombre o modelo vacíos)">'+
+            '🛠 Reparar phantom</button>'+
           '<button class="ad-btn" id="vtNormalizar" style="background:#fff4e5;color:#b26200;border-color:#f0c378;padding:6px 12px;font-size:13px;" title="Normalizar modelo/color de ventas legacy (&quot;Voltika Tromox Pesgo&quot; → &quot;Pesgo Plus&quot;, &quot;Gris moderno&quot; → &quot;gris&quot;) para que encuentren motos disponibles">'+
             '🔧 Normalizar catálogo</button>'+
           '<button class="ad-btn" id="vtRefresh" style="background:#f0f4f8;color:var(--ad-navy);padding:6px 14px;font-size:13px;">'+
@@ -26,6 +28,144 @@ window.AD_ventas = (function(){
       loadData();
     });
     $('#vtNormalizar').on('click', showNormalizarCatalogo);
+    $('#vtRepararPhantom').on('click', showRepararPhantom);
+  }
+
+  // Modal: preview phantoms (empty nombre/modelo rows) with proposed
+  // backfill from Stripe metadata + subscripciones_credito. Admin chooses
+  // to backfill (apply proposal), archive (hide), or delete (last resort).
+  function showRepararPhantom(){
+    ADApp.modal(
+      '<div class="ad-h2">🛠 Reparar órdenes phantom</div>'+
+      '<div style="font-size:13px;color:var(--ad-dim);margin-bottom:12px;line-height:1.5;">'+
+        'Órdenes con <strong>nombre</strong> o <strong>modelo</strong> vacíos. Propuesta de relleno viene de Stripe PI metadata y <code>subscripciones_credito</code>.'+
+      '</div>'+
+      '<div id="vtPhantomContent" style="min-height:80px;">'+
+        '<div style="text-align:center;padding:30px;"><span class="ad-spin"></span> Analizando pedidos...</div>'+
+      '</div>'
+    );
+    $.get('php/ventas/reparar-phantom.php').done(function(r){
+      if (!r.ok) { $('#vtPhantomContent').html('<div class="ad-banner warn">'+(r.error||'Error')+'</div>'); return; }
+      var ph = r.phantoms || [];
+      if (!ph.length) {
+        $('#vtPhantomContent').html(
+          '<div style="background:#E8F5E9;padding:14px;border-radius:8px;color:#2E7D32;font-size:14px;">'+
+            '✅ No hay órdenes phantom. Todas las transacciones tienen nombre + modelo.'+
+          '</div>'+
+          '<div style="display:flex;justify-content:flex-end;margin-top:12px;">'+
+            '<button class="ad-btn ghost" id="vtPhantomClose">Cerrar</button>'+
+          '</div>'
+        );
+        $('#vtPhantomClose').on('click', function(){ ADApp.closeModal(); });
+        return;
+      }
+
+      var html = '<div style="background:#FFEBEE;padding:10px 14px;border-radius:8px;color:#C62828;font-size:13px;margin-bottom:10px;">'+
+        'Se encontraron <strong>'+ph.length+'</strong> órdenes phantom. Selecciona y aplica una acción.'+
+        '</div>';
+      html += '<div style="max-height:380px;overflow-y:auto;border:1px solid var(--ad-border);border-radius:8px;">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
+              '<thead style="background:#f0f4f8;position:sticky;top:0;">'+
+                '<tr>'+
+                  '<th style="width:30px;padding:8px;"><input type="checkbox" id="vtPhSelAll"></th>'+
+                  '<th style="text-align:left;padding:8px;">Pedido</th>'+
+                  '<th style="text-align:left;padding:8px;">Nombre propuesto</th>'+
+                  '<th style="text-align:left;padding:8px;">Modelo/Color propuesto</th>'+
+                  '<th style="text-align:left;padding:8px;">Monto / Tipo</th>'+
+                  '<th style="text-align:left;padding:8px;">Fuentes</th>'+
+                '</tr>'+
+              '</thead><tbody>';
+      ph.forEach(function(c){
+        var src = [];
+        if (c.sources && c.sources.stripe) src.push('Stripe');
+        if (c.sources && c.sources.subs) src.push('Subs.');
+        var srcTxt = src.length ? src.join('+') : '<span style="color:#c62828;">ninguna</span>';
+        html += '<tr style="border-top:1px solid var(--ad-border);'+(c.can_backfill?'':'background:#FFEBEE;')+'">'+
+          '<td style="padding:8px;"><input type="checkbox" class="vtPhSel" data-id="'+c.id+'"></td>'+
+          '<td style="padding:8px;"><code style="font-size:11px;">'+esc(c.pedido_corto||'')+'</code></td>'+
+          '<td style="padding:8px;">'+
+            (c.proposal.nombre ? '<strong style="color:#1e7e34;">'+esc(c.proposal.nombre)+'</strong>' : '<span style="color:#c62828;">— sin dato —</span>')+
+            (c.proposal.telefono ? '<br><small class="ad-dim">'+esc(c.proposal.telefono)+'</small>' : '')+
+          '</td>'+
+          '<td style="padding:8px;">'+
+            (c.proposal.modelo ? '<strong style="color:#1e7e34;">'+esc(c.proposal.modelo)+'</strong>' : '<span style="color:#c62828;">— sin dato —</span>')+
+            (c.proposal.color ? ' · '+esc(c.proposal.color) : '')+
+          '</td>'+
+          '<td style="padding:8px;">$'+numFmtLocal(c.current.monto||0)+'<br><small class="ad-dim">'+esc(c.current.tpago||'')+'</small></td>'+
+          '<td style="padding:8px;font-size:11px;">'+srcTxt+'</td>'+
+        '</tr>';
+      });
+      html += '</tbody></table></div>';
+      html += '<div id="vtPhantomMsg" style="font-size:12px;margin-top:8px;"></div>';
+      html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">'+
+              '<button class="ad-btn ghost" id="vtPhCancel" style="flex:1;min-width:90px;">Cancelar</button>'+
+              '<button class="ad-btn" id="vtPhArchive" style="flex:1;min-width:120px;background:#FFF3E0;color:#E65100;border-color:#FFE0B2;">Archivar</button>'+
+              '<button class="ad-btn primary" id="vtPhBackfill" style="flex:1;min-width:120px;">Rellenar datos</button>'+
+            '</div>';
+
+      $('#vtPhantomContent').html(html);
+
+      $('#vtPhSelAll').on('change', function(){
+        $('.vtPhSel').prop('checked', this.checked);
+      });
+      $('#vtPhCancel').on('click', function(){ ADApp.closeModal(); });
+
+      function selectedIds(){
+        return $('.vtPhSel:checked').map(function(){ return parseInt($(this).data('id'),10); }).get();
+      }
+
+      $('#vtPhBackfill').on('click', function(){
+        var ids = selectedIds();
+        if (!ids.length) { $('#vtPhantomMsg').css('color','#b91c1c').text('Selecciona al menos una orden'); return; }
+        if (!confirm('Rellenar '+ids.length+' orden(es) con los datos propuestos?')) return;
+        $(this).prop('disabled', true).html('<span class="ad-spin"></span> Aplicando...');
+        ADApp.api('ventas/reparar-phantom.php', {
+          method: 'POST', contentType: 'application/json',
+          data: JSON.stringify({ action: 'backfill', ids: ids })
+        }).done(function(rr){
+          if (rr.ok){
+            $('#vtPhantomMsg').css('color','#1e7e34').text(rr.message || 'Aplicado');
+            setTimeout(function(){ ADApp.closeModal(); loadData(); }, 900);
+          } else {
+            $('#vtPhantomMsg').css('color','#b91c1c').text(rr.error || 'Error');
+            $('#vtPhBackfill').prop('disabled', false).text('Rellenar datos');
+          }
+        }).fail(function(x){
+          $('#vtPhantomMsg').css('color','#b91c1c').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+          $('#vtPhBackfill').prop('disabled', false).text('Rellenar datos');
+        });
+      });
+
+      $('#vtPhArchive').on('click', function(){
+        var ids = selectedIds();
+        if (!ids.length) { $('#vtPhantomMsg').css('color','#b91c1c').text('Selecciona al menos una orden'); return; }
+        var motivo = prompt('Motivo del archivo (opcional):', 'Orden phantom sin datos recuperables');
+        if (motivo === null) return;
+        $(this).prop('disabled', true).html('<span class="ad-spin"></span>');
+        ADApp.api('ventas/reparar-phantom.php', {
+          method: 'POST', contentType: 'application/json',
+          data: JSON.stringify({ action: 'archive', ids: ids, motivo: motivo })
+        }).done(function(rr){
+          if (rr.ok){
+            $('#vtPhantomMsg').css('color','#1e7e34').text('Archivadas: '+rr.archived);
+            setTimeout(function(){ ADApp.closeModal(); loadData(); }, 700);
+          } else {
+            $('#vtPhantomMsg').css('color','#b91c1c').text(rr.error || 'Error');
+            $('#vtPhArchive').prop('disabled', false).text('Archivar');
+          }
+        }).fail(function(x){
+          $('#vtPhantomMsg').css('color','#b91c1c').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+          $('#vtPhArchive').prop('disabled', false).text('Archivar');
+        });
+      });
+    }).fail(function(x){
+      $('#vtPhantomContent').html('<div class="ad-banner warn">'+((x.responseJSON && x.responseJSON.error) || 'Error de conexión')+'</div>');
+    });
+  }
+
+  function numFmtLocal(n){
+    var x = Number(n)||0;
+    return x.toLocaleString('es-MX', {minimumFractionDigits:0, maximumFractionDigits:0});
   }
 
   // Modal: preview + commit de normalización de modelo/color en transacciones.
@@ -144,6 +284,7 @@ window.AD_ventas = (function(){
       // KPIs
       var pendingPunto = (r.rows||[]).filter(function(o){ return o.punto_id==='centro-cercano'; }).length;
       var orfanos = r.orfanos || (r.rows||[]).filter(function(o){ return o.source; }).length;
+      var phantom = r.phantom || (r.rows||[]).filter(function(o){ return o.datos_incompletos; }).length;
       $('#vtKpis').html(
         kpi('Total ordenes', r.total, 'blue')+
         kpi('Moto asignada', r.asignadas, 'green')+
@@ -151,7 +292,8 @@ window.AD_ventas = (function(){
         kpi('Ventas con Pago', r.con_pago||0, 'green')+
         kpi('Ventas sin Pago', r.sin_pago||0, (r.sin_pago||0) > 0 ? 'red' : 'green')+
         kpi('Punto pendiente', pendingPunto, pendingPunto > 0 ? 'yellow' : 'green')+
-        kpi('Huérfanos/errores', orfanos, orfanos > 0 ? 'red' : 'green')
+        kpi('Huérfanos/errores', orfanos, orfanos > 0 ? 'red' : 'green')+
+        kpi('Datos incompletos', phantom, phantom > 0 ? 'red' : 'green')
       );
       var rows = r.rows || [];
       _lastRows = rows;
@@ -207,11 +349,23 @@ window.AD_ventas = (function(){
       if(r.asesoria_placas) extrasHtml += '<span title="Solicitó asesoría para placas" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#FFF3E0;color:#E65100;border:1px solid #FFE0B2;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">PLACAS</span>';
       if(r.seguro_qualitas) extrasHtml += '<span title="Solicitó seguro (Quálitas)" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">SEGURO</span>';
 
-      html += '<tr data-row-id="'+r.id+'">'+
+      // Phantom order badge — rows where nombre/modelo are empty. Customer
+      // report 2026-04-23 flagged blank cells in Cliente/Modelo columns
+      // (VK-2604-0011/0012/0013). Visible warning + tooltip so admin can
+      // quickly spot them and invoke the Reparar phantom tool.
+      if (r.datos_incompletos) {
+        extrasHtml += '<span title="Orden con datos incompletos — falta nombre o modelo. Usa &quot;Reparar phantom&quot; en la barra superior." '+
+                      'style="display:inline-block;margin-left:4px;padding:2px 8px;background:#FFEBEE;color:#C62828;border:1px solid #EF9A9A;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">⚠ DATOS INCOMPLETOS</span>';
+      }
+
+      // Highlight the whole row so phantoms stand out from clean orders.
+      var rowStyle = r.datos_incompletos ? ' style="background:#FFF5F5;"' : '';
+
+      html += '<tr data-row-id="'+r.id+'"'+rowStyle+'>'+
         '<td><strong>'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'</strong>'+extrasHtml+alertaHtml+'</td>'+
-        '<td>'+(r.nombre||'-')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
-        '<td>'+(r.modelo||'-')+'</td>'+
-        '<td>'+(r.color||'-')+'</td>'+
+        '<td>'+(r.nombre ? esc(r.nombre) : '<span style="color:#C62828;font-style:italic;">— sin nombre —</span>')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
+        '<td>'+(r.modelo ? esc(r.modelo) : '<span style="color:#C62828;font-style:italic;">— sin modelo —</span>')+'</td>'+
+        '<td>'+(r.color || '<span class="ad-dim">—</span>')+'</td>'+
         '<td><span class="ad-badge '+tipoBadge+'">'+tipoDisplay+'</span></td>'+
         '<td>'+ADApp.money(r.monto)+'</td>'+
         '<td>'+pagoEstadoBadge(r.pago_estado, r.tipo)+'</td>'+
