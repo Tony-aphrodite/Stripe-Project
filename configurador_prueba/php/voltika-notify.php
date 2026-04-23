@@ -41,6 +41,123 @@ function voltikaNotifyEnsureTable(): void {
     } catch (Throwable $e) { error_log('voltikaNotifyEnsureTable: ' . $e->getMessage()); }
 }
 
+// ═════════════════════════════════════════════════════════════════════════
+// SHARED EMAIL CHROME HELPERS (customer brief 2026-04-23)
+// ─────────────────────────────────────────────────────────────────────────
+// Customer reported that notification emails looked cheap because the
+// header was text-only ("voltika ⚡") instead of a real logo. The reference
+// design they approved (from confirmar-orden.php) uses the horizontal white
+// logo on a cyan gradient with a tagline. These helpers are the single
+// source of truth — every template now calls them instead of duplicating
+// inline HTML, so future design tweaks propagate everywhere.
+// ═════════════════════════════════════════════════════════════════════════
+
+if (!function_exists('voltikaEmailHeader')) {
+    /**
+     * Gradient header with the real Voltika logo image + tagline + optional
+     * hero title / sub. Used by every email template (compra, portal,
+     * logistics shell, etc.).
+     *
+     *   $hero      — big headline text (e.g. "🎉 ¡Tu VOLTIKA está confirmada!")
+     *                Pass '' to skip the hero line entirely.
+     *   $heroSub   — small subtitle under the hero (e.g. "Pedido VK-XXXX")
+     */
+    function voltikaEmailHeader(string $hero = '', string $heroSub = ''): string {
+        $heroHtml = '';
+        if ($hero !== '') {
+            $heroHtml .= '<div style="font-size:17px;font-weight:700;color:#fff;margin-top:14px;line-height:1.3;">' . $hero . '</div>';
+        }
+        if ($heroSub !== '') {
+            $heroHtml .= '<div style="font-size:13px;color:rgba(255,255,255,0.85);margin-top:4px;">' . $heroSub . '</div>';
+        }
+        return '<tr><td style="background:linear-gradient(135deg,#1a3a5c 0%,#0d6aa0 50%,#039fe1 100%);padding:30px 28px;text-align:center;">'
+             .   '<img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg"'
+             .     ' alt="Voltika" style="height:44px;width:auto;display:block;margin:0 auto;">'
+             .   '<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.8);letter-spacing:.2px;">Movilidad eléctrica inteligente</p>'
+             .   $heroHtml
+             . '</td></tr>';
+    }
+}
+
+if (!function_exists('voltikaEmailFooter')) {
+    /**
+     * Navy footer with the white logo + legal line. Closes every email
+     * consistently so the branding is matched to the header.
+     */
+    function voltikaEmailFooter(): string {
+        return '<tr><td style="background:#1a3a5c;padding:22px 28px;text-align:center;">'
+             .   '<img src="https://www.voltika.mx/configurador_prueba/img/voltika_logo_h_white.svg"'
+             .     ' alt="Voltika" style="height:22px;width:auto;display:block;margin:0 auto 6px;opacity:.95;">'
+             .   '<div style="font-size:11px;color:rgba(255,255,255,0.65);margin-top:4px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
+             . '</td></tr>';
+    }
+}
+
+if (!function_exists('voltikaEmailSectionLabel')) {
+    /**
+     * Cyan section label with a blue underline — matches the "TU VOLTIKA"
+     * style the customer approved.
+     */
+    function voltikaEmailSectionLabel(string $title): string {
+        return '<div style="margin:0 0 10px;padding:14px 0 6px;font-size:15px;font-weight:800;color:#1a3a5c;border-bottom:2px solid #039fe1;letter-spacing:.5px;text-transform:uppercase;">' . $title . '</div>';
+    }
+}
+
+if (!function_exists('voltikaEmailDataTable')) {
+    /**
+     * Zebra-striped key/value data table — mirrors the "Cliente / Orden /
+     * Modelo / Color" block from the reference design. Pass an array of
+     * [label, value] pairs. Values may contain inline HTML.
+     *
+     *   $highlightLast — when true, the last row uses a cyan background +
+     *                    bold value (e.g. for the grand total).
+     */
+    function voltikaEmailDataTable(array $rows, bool $highlightLast = false): string {
+        $tdl  = 'style="padding:11px 16px;border-bottom:1px solid #E5E7EB;font-size:14px;color:#6B7280;"';
+        $td   = 'style="padding:11px 16px;border-bottom:1px solid #E5E7EB;font-size:14px;color:#111;"';
+        $html = '<table width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">';
+        $last = count($rows) - 1;
+        foreach ($rows as $i => $pair) {
+            $label = $pair[0] ?? '';
+            $value = $pair[1] ?? '';
+            $rowStyle = '';
+            $valStyle = $td;
+            if ($highlightLast && $i === $last) {
+                $rowStyle = ' style="background:#E8F4FD;"';
+                $valStyle = 'style="padding:13px 16px;font-size:16px;color:#1a3a5c;font-weight:800;"';
+                $tdlHL    = 'style="padding:13px 16px;font-size:14px;color:#1a3a5c;font-weight:700;"';
+                $html .= '<tr' . $rowStyle . '><td ' . $tdlHL . '>' . $label . '</td><td ' . $valStyle . '>' . $value . '</td></tr>';
+            } else {
+                if ($i % 2 === 1) $rowStyle = ' style="background:#F9FAFB;"';
+                $html .= '<tr' . $rowStyle . '><td ' . $tdl . '>' . $label . '</td><td ' . $valStyle . '>' . $value . '</td></tr>';
+            }
+        }
+        $html .= '</table>';
+        return $html;
+    }
+}
+
+if (!function_exists('voltikaEmailShell')) {
+    /**
+     * Complete outer shell: <html>…body…table…HEADER…{innerRows}…FOOTER.
+     * Any template can build its body as a string of <tr>…</tr> rows and
+     * pass it here for a consistent wrapper.
+     */
+    function voltikaEmailShell(string $hero, string $heroSub, string $innerRows): string {
+        return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Voltika</title></head>'
+             . '<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;color:#1a3a5c;">'
+             . '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;"><tr><td align="center" style="padding:24px 12px;">'
+             . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 4px 18px rgba(26,58,92,0.10);">'
+             . voltikaEmailHeader($hero, $heroSub)
+             . $innerRows
+             . '<tr><td style="padding:16px 28px 10px;">'
+             .   '<p style="font-size:13px;color:#555;margin:0;">¿Tienes alguna duda?<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;text-decoration:none;">ventas@voltika.mx</a><br>🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
+             . '</td></tr>'
+             . voltikaEmailFooter()
+             . '</table></td></tr></table></body></html>';
+    }
+}
+
 /**
  * Build a purchase-confirmation template (subject/body/email_html) for one of
  * the 4 post-purchase cases.
@@ -137,17 +254,16 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
     }
     $facturaRfc = $isCredit ? '' : '<p style="font-size:13px;color:#555;margin:10px 0 0;">¿Necesitas registrar tu RFC? Escríbenos antes de la entrega:<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a></p>';
 
-    // ── Full email HTML ──────────────────────────────────────────────────
+    // ── Full email HTML (uses the shared voltikaEmailHeader helper) ──────
     $emailHtml = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Voltika — Pedido confirmado</title></head>'
                . '<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;color:#1a3a5c;">'
                . '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;"><tr><td align="center" style="padding:24px 12px;">'
-               . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
-               // Header
-               . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:26px;text-align:center;color:#fff;">'
-               . '<div style="font-size:24px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
-               . '<div style="font-size:17px;font-weight:700;margin-top:12px;">🎉 ¡Tu VOLTIKA está confirmada' . ($isCredit ? ' a plazos' : '') . '!</div>'
-               . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Pedido {pedido_corto}</div>'
-               . '</td></tr>'
+               . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 4px 18px rgba(26,58,92,0.10);">'
+               // Unified header (logo image + tagline + hero)
+               . voltikaEmailHeader(
+                    '🎉 ¡Tu VOLTIKA está confirmada' . ($isCredit ? ' a plazos' : '') . '!',
+                    'Pedido {pedido_corto}'
+                 )
                // Welcome
                . '<tr><td style="padding:22px 28px 6px;">'
                . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 🎉</div>'
@@ -197,11 +313,8 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
                . '<tr><td style="padding:14px 28px 4px;">'
                . '<p style="font-size:13px;color:#555;margin:0;">¿Tienes alguna duda?<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a><br>🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
                . '</td></tr>'
-               // Footer
-               . '<tr><td style="background:#1a3a5c;padding:18px 28px;text-align:center;color:#fff;">'
-               . '<div style="font-size:14px;font-weight:700;">voltika <span style="color:#22d37a;">⚡</span></div>'
-               . '<div style="font-size:11px;opacity:.7;margin-top:4px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
-               . '</td></tr>'
+               // Unified footer (logo image + legal line)
+               . voltikaEmailFooter()
                . '</table></td></tr></table></body></html>';
 
     // ── WhatsApp body (compact) ──────────────────────────────────────────
@@ -315,16 +428,12 @@ function voltikaBuildPortalTemplate(bool $isCredit): array {
                        . '</td></tr>';
     }
 
-    // Full email HTML
+    // Full email HTML (uses the shared voltikaEmailHeader helper)
     $emailHtml = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Acceso al portal Voltika</title></head>'
                . '<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;color:#1a3a5c;">'
                . '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;"><tr><td align="center" style="padding:24px 12px;">'
-               . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
-               . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:26px;text-align:center;color:#fff;">'
-               . '<div style="font-size:24px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
-               . '<div style="font-size:17px;font-weight:700;margin-top:12px;">🔐 Tu portal ya está activo</div>'
-               . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Pedido {pedido_corto}</div>'
-               . '</td></tr>'
+               . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 4px 18px rgba(26,58,92,0.10);">'
+               . voltikaEmailHeader('🔐 Tu portal ya está activo', 'Pedido {pedido_corto}')
                . '<tr><td style="padding:22px 28px 6px;">'
                . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
                . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Tu portal de cliente VOLTIKA ya está activo y listo para usar.</p>'
@@ -348,10 +457,7 @@ function voltikaBuildPortalTemplate(bool $isCredit): array {
                . '<tr><td style="padding:14px 28px 4px;">'
                . '<p style="font-size:13px;color:#555;margin:0;">¿Tienes alguna duda?<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a><br>🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
                . '</td></tr>'
-               . '<tr><td style="background:#1a3a5c;padding:18px 28px;text-align:center;color:#fff;">'
-               . '<div style="font-size:14px;font-weight:700;">voltika <span style="color:#22d37a;">⚡</span></div>'
-               . '<div style="font-size:11px;opacity:.7;margin-top:4px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
-               . '</td></tr>'
+               . voltikaEmailFooter()
                . '</table></td></tr></table></body></html>';
 
     // WhatsApp body
@@ -482,27 +588,11 @@ function voltikaFormatFechaHuman(?string $iso): string {
     } catch (Throwable $e) { return (string)$iso; }
 }
 
-// Shared chrome (header + footer) used by every logistics email. Reduces
-// duplication and keeps visual consistency across all 4 stages.
+// Shared chrome (header + footer) used by every logistics email. Now a thin
+// wrapper around voltikaEmailShell() — keeps the old function name for
+// backwards compatibility with call sites that haven't been renamed yet.
 function voltikaLogisticsEmailShell(string $hero, string $heroSub, string $innerRows): string {
-    return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Voltika</title></head>'
-         . '<body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;color:#1a3a5c;">'
-         . '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;"><tr><td align="center" style="padding:24px 12px;">'
-         . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
-         . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:26px;text-align:center;color:#fff;">'
-         . '<div style="font-size:24px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
-         . '<div style="font-size:17px;font-weight:700;margin-top:12px;">' . $hero . '</div>'
-         . '<div style="font-size:13px;opacity:.85;margin-top:4px;">' . $heroSub . '</div>'
-         . '</td></tr>'
-         . $innerRows
-         . '<tr><td style="padding:14px 28px 4px;">'
-         . '<p style="font-size:13px;color:#555;margin:0;">¿Tienes alguna duda?<br>📧 <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a><br>🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
-         . '</td></tr>'
-         . '<tr><td style="background:#1a3a5c;padding:18px 28px;text-align:center;color:#fff;">'
-         . '<div style="font-size:14px;font-weight:700;">voltika <span style="color:#22d37a;">⚡</span></div>'
-         . '<div style="font-size:11px;opacity:.7;margin-top:4px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
-         . '</td></tr>'
-         . '</table></td></tr></table></body></html>';
+    return voltikaEmailShell($hero, $heroSub, $innerRows);
 }
 
 // ── Reusable section rows (customer brief 2026-04-20: match compra_confirmada
@@ -804,6 +894,16 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
           . '</div>'
           . '<p style="font-size:12.5px;color:#7a0e1f;background:#fef2f2;border-left:3px solid #dc2626;padding:8px 12px;border-radius:4px;margin:10px 0 0;"><strong>Sin estos tres elementos</strong> no es posible entregarte la moto ni circular legalmente al salir.</p>'
           . '</td></tr>'
+          // Payment scam warning — customer brief 2026-04-24: entrega gratis
+          // mensajes tipo "hay que pagar algo extra" son fraude. Prominente
+          // en naranja/rojo para que ningún cliente pague demás.
+          . '<tr><td style="padding:14px 28px;">'
+          . '<div style="background:#fffbeb;border:2px solid #f59e0b;border-radius:10px;padding:14px 16px;">'
+          . '<div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:6px;">⚠ Tu entrega no requiere ningún pago extra.</div>'
+          . '<div style="font-size:13px;color:#78350f;line-height:1.6;">Si te piden dinero por cualquier concepto (gasolina, trámite, propina, "apartado"), <strong>no pagues</strong> y repórtalo inmediatamente a Voltika:<br>'
+          . '📧 <a href="mailto:ventas@voltika.mx" style="color:#78350f;font-weight:700;text-decoration:underline;">ventas@voltika.mx</a></div>'
+          . '</div>'
+          . '</td></tr>'
           // Proceso entrega
           . '<tr><td style="padding:14px 28px;">'
           . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">🔄 Así es la entrega — muy sencillo</div>'
@@ -838,8 +938,14 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
         $rows
     );
 
-    $body = "✅ ¡{nombre}, tu moto está lista\ny te espera! 🎉\n\n"
+    $body = "✅ ¡{nombre}, tu moto está lista\npara entrega, ya puedes recogerla! 🎉\n\n"
           . "Tu {modelo} · {color}\nPedido: {pedido_corto}\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "📍 Tu punto de entrega:\n🏪 {punto}\n📬 {direccion_punto}\n🗺️ {link_maps}\n🕐 Lunes a Sábado 9:00 - 18:00 hrs\n📅 Recógela antes del {fecha_limite}\n\n"
+          . "Sin cita — llega cuando puedas.\n\n"
+          . "━━━━━━━━━━━━━━━━━━━━\n\n"
+          . "⚠️ IMPORTANTE\n\n"
+          . "Tu entrega NO requiere ningún\npago extra. Si te piden dinero por\ncualquier concepto, NO pagues y\nrepórtalo a Voltika:\n📧 ventas@voltika.mx\n\n"
           . "━━━━━━━━━━━━━━━━━━━━\n\n"
           . "⚠️ ACCIÓN REQUERIDA HOY\n\n"
           . "Tu permiso temporal para circular\nya fue emitido por la autoridad\nde transporte — tienes 30 días\ndesde hoy para tramitar tus placas.\n\n"
@@ -849,14 +955,11 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
           . "3️⃣ Enmícalo\n"
           . "4️⃣ Llévalo el día que recojas tu moto\n   — va en la parte trasera de la moto\n\n"
           . "━━━━━━━━━━━━━━━━━━━━\n\n"
-          . "📍 Tu punto de entrega:\n🏪 {punto}\n📬 {direccion_punto}\n🗺️ {link_maps}\n🕐 Lunes a Sábado 9:00 - 18:00 hrs\n📅 Recógela antes del {fecha_limite}\n\n"
-          . "Sin cita — llega cuando puedas.\n\n"
-          . "━━━━━━━━━━━━━━━━━━━━\n\n"
           . "⚠️ Lleva el día de la entrega:\n🖨️ Permiso impreso y enmicado\n🪪 INE vigente\n📱 Tu celular con este número\n\n"
           . "¿No puedes ir antes del {fecha_limite}?\n📧 ventas@voltika.mx\n\n"
           . "¡Bienvenido a la familia VOLTIKA!";
 
-    $sms = 'VOLTIKA: {nombre}, tu {modelo} está lista en {punto}. Descarga permiso en voltika.mx/clientes/ (24h). Recoge antes del {fecha_limite}. Lleva INE.';
+    $sms = 'VOLTIKA: {nombre}, tu {modelo} está lista para entrega en {punto}. La entrega es gratis — no pagues nada extra. Descarga permiso en voltika.mx/clientes/ (24h). Lleva INE.';
 
     return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
 }
@@ -1309,13 +1412,8 @@ function voltikaNotifyTemplates(): array {
                          . '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;">'
                          . '<tr><td align="center" style="padding:24px 12px;">'
                          . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
-                         // Header
-                         . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:28px;text-align:center;color:#fff;">'
-                         . '<div style="font-size:26px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
-                         . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Red de Puntos Oficiales</div>'
-                         . '<div style="font-size:17px;font-weight:700;margin-top:14px;">Bienvenido al equipo</div>'
-                         . '<div style="font-size:14px;opacity:.9;margin-top:2px;">{punto}</div>'
-                         . '</td></tr>'
+                         // Header (uses shared voltikaEmailHeader helper)
+                         . voltikaEmailHeader('Bienvenido al equipo · {punto}', 'Red de Puntos Oficiales')
                          // Welcome
                          . '<tr><td style="padding:26px 28px 10px;">'
                          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
@@ -1364,12 +1462,8 @@ function voltikaNotifyTemplates(): array {
                          . '🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
                          . '<p style="font-size:12.5px;color:#555;line-height:1.6;margin:10px 0 0;">👤 Comunícate con el ejecutivo VOLTIKA que te contactó para afiliarte — él es tu contacto principal para dudas y capacitación por videollamada.</p>'
                          . '</td></tr>'
-                         // Footer
-                         . '<tr><td style="background:#1a3a5c;padding:20px 28px;text-align:center;color:#fff;">'
-                         . '<div style="font-size:14px;font-weight:700;">voltika <span style="color:#22d37a;">⚡</span></div>'
-                         . '<div style="font-size:11px;opacity:.7;margin-top:4px;">Movilidad eléctrica · Red Nacional · México</div>'
-                         . '<div style="font-size:11px;opacity:.7;margin-top:2px;">voltika.mx · puntos@voltika.mx</div>'
-                         . '</td></tr>'
+                         // Footer (shared helper)
+                         . voltikaEmailFooter()
                          . '</table>'
                          . '</td></tr></table></body></html>',
         ],
@@ -1395,11 +1489,7 @@ function voltikaNotifyTemplates(): array {
                          . '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;">'
                          . '<tr><td align="center" style="padding:24px 12px;">'
                          . '<table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
-                         . '<tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:28px;text-align:center;color:#fff;">'
-                         . '<div style="font-size:26px;font-weight:800;letter-spacing:1px;">voltika <span style="color:#22d37a;">⚡</span></div>'
-                         . '<div style="font-size:13px;opacity:.85;margin-top:4px;">Centro de Distribución</div>'
-                         . '<div style="font-size:17px;font-weight:700;margin-top:14px;">Acceso activo</div>'
-                         . '</td></tr>'
+                         . voltikaEmailHeader('Acceso activo', 'Centro de Distribución')
                          . '<tr><td style="padding:26px 28px 10px;">'
                          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
                          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Tu cuenta como <strong>{rol}</strong> del Centro de Distribución de VOLTIKA ya está activa. Desde el panel administras toda la operación del inventario.</p>'
@@ -1432,11 +1522,7 @@ function voltikaNotifyTemplates(): array {
                          . '📧 Email: <a href="mailto:ventas@voltika.mx" style="color:#039fe1;font-weight:700;">ventas@voltika.mx</a><br>'
                          . '🕐 Lunes a Viernes 9:00 - 18:00 hrs</p>'
                          . '</td></tr>'
-                         . '<tr><td style="background:#1a3a5c;padding:20px 28px;text-align:center;color:#fff;">'
-                         . '<div style="font-size:14px;font-weight:700;">voltika <span style="color:#22d37a;">⚡</span></div>'
-                         . '<div style="font-size:11px;opacity:.7;margin-top:4px;">Movilidad eléctrica · Red Nacional · México</div>'
-                         . '<div style="font-size:11px;opacity:.7;margin-top:2px;">voltika.mx · ventas@voltika.mx</div>'
-                         . '</td></tr>'
+                         . voltikaEmailFooter()
                          . '</table>'
                          . '</td></tr></table></body></html>',
         ],

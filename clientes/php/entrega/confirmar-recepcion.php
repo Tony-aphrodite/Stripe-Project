@@ -18,9 +18,9 @@ if (!$motoId) portalJsonOut(['error' => 'moto_id requerido'], 400);
 $pdo = getDB();
 
 try {
-    $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? AND cliente_id = ?");
-    $stmt->execute([$motoId, $cid]);
-    $moto = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Ownership accepts cliente_id OR cliente_telefono/email match; see
+    // portalFindOwnedMoto() in bootstrap.php for rationale.
+    $moto = portalFindOwnedMoto($cid, $motoId);
     if (!$moto) portalJsonOut(['error' => 'Moto no encontrada'], 404);
 
     // Ensure columns

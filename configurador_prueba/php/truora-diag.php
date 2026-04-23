@@ -83,20 +83,82 @@ if ($action === 'ping') {
 }
 
 // ── Default: dashboard ────────────────────────────────────────────────────
-// Latest API calls
+// Optional filters — narrow down to one customer's attempts when "Truora
+// not working" is reported by a specific person.
+$filterName  = trim((string)($_GET['nombre']   ?? ''));
+$filterPhone = trim((string)($_GET['telefono'] ?? ''));
+$filterPhoneDigits = preg_replace('/\D/', '', $filterPhone);
+if (strlen($filterPhoneDigits) > 10) $filterPhoneDigits = substr($filterPhoneDigits, -10);
+
+$where = []; $params = [];
+if ($filterName !== '') {
+    $where[] = "(nombre LIKE ? OR apellidos LIKE ?)";
+    $params[] = '%' . $filterName . '%';
+    $params[] = '%' . $filterName . '%';
+}
+if ($filterPhoneDigits !== '') {
+    $where[] = "body_sent LIKE ?";
+    $params[] = '%' . $filterPhoneDigits . '%';
+}
+$whereSql = $where ? (' WHERE ' . implode(' AND ', $where)) : '';
+
 $recent = [];
 try {
-    $recent = $pdo->query("SELECT id, action, nombre, http_code, LEFT(response, 500) AS resp, LEFT(curl_err, 200) AS err, freg
-                           FROM truora_query_log ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+    $sql = "SELECT id, action, nombre, apellidos, email, http_code,
+                   body_sent, response, curl_err, freg
+            FROM truora_query_log" . $whereSql . " ORDER BY id DESC LIMIT 20";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $recent = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {}
 
 $verifs = [];
 try {
-    $verifs = $pdo->query("SELECT id, nombre, apellidos, truora_check_id, truora_score, identity_status,
-                                  approved, face_check_id, face_score, face_match,
-                                  doc_check_id, doc_status, webhook_received_at, freg
-                           FROM verificaciones_identidad ORDER BY id DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+    $vWhere = []; $vParams = [];
+    if ($filterName !== '') {
+        $vWhere[] = "(nombre LIKE ? OR apellidos LIKE ?)";
+        $vParams[] = '%' . $filterName . '%';
+        $vParams[] = '%' . $filterName . '%';
+    }
+    if ($filterPhoneDigits !== '') {
+        $vWhere[] = "telefono LIKE ?";
+        $vParams[] = '%' . $filterPhoneDigits . '%';
+    }
+    $vSql = "SELECT id, nombre, apellidos, telefono, fecha_nacimiento, truora_check_id, truora_score, identity_status,
+                    approved, face_check_id, face_score, face_match,
+                    doc_check_id, doc_status, webhook_received_at, freg
+             FROM verificaciones_identidad"
+            . ($vWhere ? ' WHERE ' . implode(' AND ', $vWhere) : '')
+            . " ORDER BY id DESC LIMIT 20";
+    $stmt = $pdo->prepare($vSql);
+    $stmt->execute($vParams);
+    $verifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {}
+
+function trDecodeResp(?string $resp): string {
+    if ($resp === null || $resp === '') return '(vacío)';
+    $decoded = json_decode($resp, true);
+    if (is_array($decoded)) {
+        return json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+    return $resp;
+}
+
+function trDecodeBody(?string $body): string {
+    if ($body === null || $body === '') return '(vacío)';
+    // body_sent is application/x-www-form-urlencoded — split & decode for readability
+    $pairs = explode('&', $body);
+    $out = [];
+    foreach ($pairs as $p) {
+        if ($p === '') continue;
+        $eq = strpos($p, '=');
+        if ($eq === false) { $out[] = urldecode($p); continue; }
+        $k = urldecode(substr($p, 0, $eq));
+        $v = urldecode(substr($p, $eq + 1));
+        $out[] = str_pad($k, 18) . ' = ' . $v;
+    }
+    return implode("\n", $out);
+}
 
 ?>
 <!DOCTYPE html>
@@ -130,45 +192,69 @@ pre{background:#f3f4f6;padding:8px;border-radius:4px;font-size:11px;max-height:1
 <div style="margin-top:10px;"><a class="btn" href="?action=ping<?= $expectedKey !== '' ? '&key=' . urlencode($providedKey) : '' ?>">Ejecutar Ping Test</a></div>
 </div>
 
-<h3>Últimas 20 llamadas a Truora (truora_query_log)</h3>
+<div class="box">
+<h3 style="margin:0 0 8px;">Filtrar registros</h3>
+<form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <?php if ($expectedKey !== ''): ?>
+        <input type="hidden" name="key" value="<?= htmlspecialchars($providedKey) ?>">
+    <?php endif; ?>
+    <input type="text" name="nombre"   placeholder="Nombre o apellido" value="<?= htmlspecialchars($filterName) ?>"  style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;flex:1;min-width:160px;">
+    <input type="text" name="telefono" placeholder="Teléfono"          value="<?= htmlspecialchars($filterPhone) ?>" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;flex:1;min-width:160px;">
+    <button type="submit" class="btn" style="border:none;cursor:pointer;">Filtrar</button>
+    <?php if ($filterName !== '' || $filterPhone !== ''): ?>
+        <a href="?<?= $expectedKey !== '' ? 'key=' . urlencode($providedKey) : '' ?>" style="color:#6b7280;text-decoration:underline;font-size:12px;">limpiar</a>
+    <?php endif; ?>
+</form>
+<div style="margin-top:6px;color:#6b7280;font-size:12px;">Ejemplo — cliente del screenshot: <code>?telefono=525514516605</code>. Filtra tanto truora_query_log como verificaciones_identidad.</div>
+</div>
+
+<h3>Últimas llamadas a Truora (<?= count($recent) ?>)<?= ($filterName !== '' || $filterPhone !== '') ? ' — filtrado' : '' ?></h3>
 <?php if (!$recent): ?>
-<div class="box warn">Sin registros. truora_query_log vacía o tabla no existe.</div>
+<div class="box warn">Sin registros que coincidan. <?= ($filterName !== '' || $filterPhone !== '') ? 'Prueba limpiar el filtro o verifica el teléfono.' : 'truora_query_log vacía o tabla no existe.' ?></div>
 <?php else: ?>
-<table>
-<tr><th>Fecha</th><th>Acción</th><th>Nombre</th><th>HTTP</th><th>Response (500 chars)</th><th>cURL error</th></tr>
 <?php foreach ($recent as $r): ?>
-<tr>
-<td><?= htmlspecialchars($r['freg']) ?></td>
-<td><?= htmlspecialchars($r['action']) ?></td>
-<td><?= htmlspecialchars($r['nombre'] ?? '') ?></td>
-<td class="<?= ($r['http_code']>=200 && $r['http_code']<300) ? 'ok' : 'err' ?>"><?= $r['http_code'] ?></td>
-<td><pre><?= htmlspecialchars($r['resp']) ?></pre></td>
-<td class="err"><?= htmlspecialchars($r['err']) ?></td>
-</tr>
+<div class="box">
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+        <span><strong><?= htmlspecialchars($r['freg']) ?></strong> · <?= htmlspecialchars($r['action']) ?> · <?= htmlspecialchars(($r['nombre'] ?? '') . ' ' . ($r['apellidos'] ?? '')) ?></span>
+        <span>HTTP: <strong class="<?= ($r['http_code']>=200 && $r['http_code']<300) ? 'ok' : 'err' ?>"><?= $r['http_code'] ?></strong></span>
+    </div>
+    <?php if (!empty($r['curl_err'])): ?>
+        <div class="err" style="font-size:12px;margin-bottom:6px;">curl: <?= htmlspecialchars($r['curl_err']) ?></div>
+    <?php endif; ?>
+    <details <?= ($filterName !== '' || $filterPhone !== '') ? 'open' : '' ?>>
+        <summary style="cursor:pointer;font-size:12px;color:#374151;">📤 Body enviado a Truora</summary>
+        <pre style="max-height:none;"><?= htmlspecialchars(trDecodeBody($r['body_sent'] ?? '')) ?></pre>
+    </details>
+    <details <?= ($filterName !== '' || $filterPhone !== '') ? 'open' : '' ?>>
+        <summary style="cursor:pointer;font-size:12px;color:#374151;">📥 Respuesta de Truora</summary>
+        <pre style="max-height:none;"><?= htmlspecialchars(trDecodeResp($r['response'] ?? '')) ?></pre>
+    </details>
+</div>
 <?php endforeach; ?>
-</table>
 <?php endif; ?>
 
-<h3>Últimas 10 verificaciones de identidad</h3>
+<h3>Verificaciones de identidad (<?= count($verifs) ?>)<?= ($filterName !== '' || $filterPhone !== '') ? ' — filtrado' : '' ?></h3>
 <?php if (!$verifs): ?>
-<div class="box warn">Sin verificaciones aún. Cuando un usuario pase por el paso de identidad aparecerán aquí.</div>
+<div class="box warn">Sin verificaciones que coincidan.</div>
 <?php else: ?>
 <table>
 <tr>
-<th>ID</th><th>Cliente</th><th>Truora check_id</th><th>Score</th><th>Status</th>
-<th>Approved</th><th>Face ID / match</th><th>Doc ID / status</th><th>Webhook</th><th>Fecha</th>
+<th>ID</th><th>Cliente</th><th>Teléfono</th><th>Fecha Nac.</th><th>check_id</th><th>Score</th><th>Status</th>
+<th>Approved</th><th>Face match</th><th>Doc status</th><th>Webhook</th><th>Fecha</th>
 </tr>
 <?php foreach ($verifs as $v): ?>
 <tr>
 <td><?= $v['id'] ?></td>
 <td><?= htmlspecialchars(($v['nombre'] ?? '') . ' ' . ($v['apellidos'] ?? '')) ?></td>
+<td><?= htmlspecialchars($v['telefono'] ?? '') ?></td>
+<td><?= htmlspecialchars($v['fecha_nacimiento'] ?? '') ?></td>
 <td style="font-size:10px;"><code><?= htmlspecialchars($v['truora_check_id'] ?? '') ?></code></td>
 <td><?= $v['truora_score'] !== null ? $v['truora_score'] : '—' ?></td>
 <td><?= htmlspecialchars($v['identity_status'] ?? '') ?></td>
 <td class="<?= $v['approved'] ? 'ok' : 'err' ?>"><?= $v['approved'] ? '✓' : '✗' ?></td>
-<td style="font-size:10px;"><code><?= htmlspecialchars($v['face_check_id'] ?? '') ?></code><br><?= $v['face_score'] !== null ? 'score ' . $v['face_score'] : '' ?> <?= $v['face_match'] === null ? '' : ($v['face_match'] ? '<span class="ok">match</span>' : '<span class="err">mismatch</span>') ?></td>
-<td style="font-size:10px;"><code><?= htmlspecialchars($v['doc_check_id'] ?? '') ?></code><br><?= htmlspecialchars($v['doc_status'] ?? '') ?></td>
-<td><?= $v['webhook_received_at'] ? '<span class="ok">' . htmlspecialchars($v['webhook_received_at']) . '</span>' : '<span class="warn">no recibido</span>' ?></td>
+<td style="font-size:10px;"><?= $v['face_score'] !== null ? 'score ' . $v['face_score'] : '—' ?> <?= $v['face_match'] === null ? '' : ($v['face_match'] ? '<span class="ok">match</span>' : '<span class="err">mismatch</span>') ?></td>
+<td style="font-size:10px;"><?= htmlspecialchars($v['doc_status'] ?? '—') ?></td>
+<td><?= $v['webhook_received_at'] ? '<span class="ok">sí</span>' : '<span class="warn">no</span>' ?></td>
 <td><?= htmlspecialchars($v['freg']) ?></td>
 </tr>
 <?php endforeach; ?>

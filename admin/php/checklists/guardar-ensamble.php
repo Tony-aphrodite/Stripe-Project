@@ -118,7 +118,16 @@ adminLog('checklist_ensamble_' . ($vals['completado'] ? 'completado' : 'guardado
 // template (permiso temporal, INE/OTP instructions, fecha_limite).
 if ($vals['completado']) {
     try {
-        $pdo->prepare("UPDATE inventario_motos SET estado='lista_para_entrega', fecha_estado=NOW() WHERE id=?")
+        // Also set fecha_entrega_estimada = today so the customer portal's
+        // "Mi entrega" screen immediately shows the pickup-ready banner
+        // (entrega.js triggers on data.fecha_recoleccion being populated).
+        // Customer feedback 2026-04-24: ensamble completion → portal must
+        // update immediately with green pickup banner + payment warning.
+        $pdo->prepare("UPDATE inventario_motos
+                          SET estado='lista_para_entrega',
+                              fecha_estado=NOW(),
+                              fecha_entrega_estimada=COALESCE(fecha_entrega_estimada, CURDATE())
+                        WHERE id=?")
            ->execute([$motoId]);
     } catch (Throwable $e) { error_log('moto lista estado: ' . $e->getMessage()); }
 

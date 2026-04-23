@@ -4,11 +4,13 @@
  *
  * Body: { entrega_id, moto_id, foto_cliente (base64), foto_ine (base64) }
  *
- * Behaviour per dashboards_diagrams.pdf:
- *   - CREDITO purchases: compare the pickup face against the selfie captured during
- *     the credit application (stored in `verificaciones_identidad.selfie_path`).
- *     The person who picks up the bike MUST be the same as the credit applicant.
- *   - MSI / CONTADO: just take the pickup photo + INE and store them — no face match.
+ * Behaviour (customer brief 2026-04-24 — face match for ALL purchase types):
+ *   - Face match is attempted for EVERY purchase type (CREDITO, MSI, CONTADO)
+ *     whenever a Truora selfie exists in `verificaciones_identidad`.
+ *   - If no stored selfie is found, fall back to manual visual review.
+ *   - CREDITO purchases still hard-block on mismatch — the credit titular
+ *     must receive the moto. MSI / CONTADO show a warning but the operator
+ *     can override visually.
  */
 require_once __DIR__ . '/../bootstrap.php';
 $ctx = puntoRequireAuth();
@@ -79,31 +81,12 @@ if (empty($localPaths['cliente'])) {
     puntoJsonOut(['error' => 'Foto del cliente requerida'], 400);
 }
 
-// ── MSI / CONTADO: just persist the photos. No face match required. ─────────
-if (!$esCredito) {
-    $faceScore = null;
-    $pdo->prepare("INSERT INTO checklist_entrega_v2
-            (moto_id, dealer_id, face_match_score, face_match_result, fase1_completada, fase1_fecha)
-        VALUES (?,?,?,?,?,NOW())
-        ON DUPLICATE KEY UPDATE
-            face_match_score=VALUES(face_match_score),
-            face_match_result=VALUES(face_match_result),
-            fase1_completada=1, fase1_fecha=NOW()")
-        ->execute([$motoId, $ctx['user_id'], null, 'not_applicable', 1]);
-
-    puntoLog('entrega_rostro_verificado', ['moto_id' => $motoId, 'caso' => 'msi_contado']);
-    puntoJsonOut([
-        'ok'          => true,
-        'es_credito'  => false,
-        'comparison'  => false,
-        'face_score'  => null,
-        'match'       => null,
-        'message'     => 'Foto guardada. CREDITO no aplica — no se requiere comparación de rostro.',
-        'fotos'       => $savedPaths,
-    ]);
-}
-
-// ── CREDITO: locate the selfie captured during the credit application ───────
+// ── Face match applies to ALL purchase types (customer brief 2026-04-24).
+//    We look up the Truora selfie regardless of credito/MSI/contado so the
+//    operator always gets a comparison against whoever applied. If no
+//    selfie exists (e.g. legacy contado order without identity upload),
+//    we fall back to manual visual review.
+// ── Locate the selfie captured during the identity verification ─────────────
 $originalSelfie = null;
 try {
     $params = [];

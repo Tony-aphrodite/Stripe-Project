@@ -349,6 +349,125 @@ function portalFindClienteByPhone(string $tel): ?array {
     return ['id' => $cid, 'telefono' => $tel, 'email' => $sub['email'] ?? null, 'nombre' => $nombre];
 }
 
+/**
+ * Collect every phone/email variant linked to a cliente, covering both the
+ * portal-registered contacts and any purchase-time contacts stored in
+ * subscripciones_credito. Customers often sign up on the portal with a
+ * different phone/email than the one on the purchase.
+ *
+ * Returns: ['tels' => [<last-10-digits>, ...], 'emails' => [<lowercased>, ...]]
+ */
+function portalCollectContactAliases(int $clienteId): array {
+    $pdo = getDB();
+    $tels = []; $emails = [];
+
+    $push = function(?string $tel, ?string $em) use (&$tels, &$emails) {
+        $t = preg_replace('/\D/', '', (string)$tel);
+        if ($t && strlen($t) > 10) $t = substr($t, -10);
+        if ($t && strlen($t) === 10) $tels[$t] = true;
+        $e = strtolower(trim((string)$em));
+        if ($e !== '' && strpos($e, '@') !== false) $emails[$e] = true;
+    };
+
+    try {
+        $s = $pdo->prepare("SELECT telefono, email FROM clientes WHERE id = ? LIMIT 1");
+        $s->execute([$clienteId]);
+        if ($r = $s->fetch(PDO::FETCH_ASSOC)) $push($r['telefono'] ?? null, $r['email'] ?? null);
+    } catch (Throwable $e) {}
+
+    try {
+        $s = $pdo->prepare("SELECT telefono, email FROM subscripciones_credito WHERE cliente_id = ?");
+        $s->execute([$clienteId]);
+        foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $r) $push($r['telefono'] ?? null, $r['email'] ?? null);
+    } catch (Throwable $e) {}
+
+    if ($tels || $emails) {
+        try {
+            $where = []; $params = [];
+            foreach (array_keys($tels) as $t) {
+                $where[] = "RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''), 10) = ?";
+                $params[] = $t;
+            }
+            foreach (array_keys($emails) as $em) {
+                $where[] = "LOWER(email) = ?";
+                $params[] = $em;
+            }
+            if ($where) {
+                $s = $pdo->prepare("SELECT telefono, email FROM subscripciones_credito WHERE " . implode(' OR ', $where));
+                $s->execute($params);
+                foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $r) $push($r['telefono'] ?? null, $r['email'] ?? null);
+            }
+        } catch (Throwable $e) {}
+    }
+
+    return ['tels' => array_keys($tels), 'emails' => array_keys($emails)];
+}
+
+/**
+ * Verify a cliente owns a moto via ANY valid ownership path:
+ *   - inventario_motos.cliente_id matches
+ *   - cliente_telefono matches any phone alias for this cliente
+ *   - cliente_email    matches any email alias for this cliente
+ *
+ * Phone comparison is prefix-agnostic (last 10 digits); email is
+ * case-insensitive. When a soft-path match is found we backfill cliente_id
+ * on the moto AND on related subscripciones_credito rows.
+ *
+ * Returns the full moto row or null if the cliente does not own it.
+ */
+function portalFindOwnedMoto(int $clienteId, int $motoId): ?array {
+    if ($clienteId <= 0 || $motoId <= 0) return null;
+    $pdo = getDB();
+
+    $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? AND cliente_id = ? LIMIT 1");
+    $stmt->execute([$motoId, $clienteId]);
+    $moto = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($moto) return $moto;
+
+    $mStmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? LIMIT 1");
+    $mStmt->execute([$motoId]);
+    $moto = $mStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if (!$moto) return null;
+
+    $aliases = portalCollectContactAliases($clienteId);
+    if (!$aliases['tels'] && !$aliases['emails']) return null;
+
+    $motoTel10 = preg_replace('/\D/', '', (string)($moto['cliente_telefono'] ?? ''));
+    if (strlen($motoTel10) > 10) $motoTel10 = substr($motoTel10, -10);
+    $motoEmail = strtolower(trim((string)($moto['cliente_email'] ?? '')));
+
+    $matches = false;
+    if ($motoTel10 !== '' && in_array($motoTel10, $aliases['tels'], true)) $matches = true;
+    if (!$matches && $motoEmail !== '' && in_array($motoEmail, $aliases['emails'], true)) $matches = true;
+    if (!$matches) return null;
+
+    try {
+        $pdo->prepare("UPDATE inventario_motos SET cliente_id = ?
+            WHERE id = ? AND (cliente_id IS NULL OR cliente_id = 0 OR cliente_id <> ?)")
+            ->execute([$clienteId, $motoId, $clienteId]);
+        $moto['cliente_id'] = $clienteId;
+    } catch (Throwable $e) { error_log('portalFindOwnedMoto backfill moto: ' . $e->getMessage()); }
+
+    try {
+        $where = []; $params = [$clienteId];
+        foreach ($aliases['tels'] as $t) {
+            $where[] = "RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''), 10) = ?";
+            $params[] = $t;
+        }
+        foreach ($aliases['emails'] as $em) {
+            $where[] = "LOWER(email) = ?";
+            $params[] = $em;
+        }
+        if ($where) {
+            $pdo->prepare("UPDATE subscripciones_credito SET cliente_id = ?
+                WHERE (cliente_id IS NULL OR cliente_id = 0) AND (" . implode(' OR ', $where) . ")")
+                ->execute($params);
+        }
+    } catch (Throwable $e) { error_log('portalFindOwnedMoto backfill sub: ' . $e->getMessage()); }
+
+    return $moto;
+}
+
 function portalFindClienteByEmail(string $email): ?array {
     $pdo = getDB();
     $stmt = $pdo->prepare("SELECT * FROM clientes WHERE email = ? ORDER BY id DESC LIMIT 1");

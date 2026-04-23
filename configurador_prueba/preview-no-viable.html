@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preview — Pantalla de crédito no aprobado</title>
+<style>
+  /* Base theme variables — mirrors configurador.css color tokens used in the
+     renderNoViable output so the preview looks identical to the live flow. */
+  :root{
+    --vk-text-primary:#111;
+    --vk-text-secondary:#5b6b7a;
+    --vk-text-muted:#9ca3af;
+    --vk-border:#e5e7eb;
+    --vk-primary:#039fe1;
+    --vk-primary-dark:#0280b5;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--vk-text-primary);
+    background:#f4f5f7;
+    min-height:100vh;
+    padding:24px 16px;
+  }
+
+  /* Viewport simulator */
+  .preview-shell{
+    max-width:440px;
+    margin:0 auto;
+    background:#fff;
+    border-radius:20px;
+    box-shadow:0 10px 40px rgba(0,0,0,.08);
+    overflow:hidden;
+    border:1px solid var(--vk-border);
+  }
+  .preview-header{
+    background:linear-gradient(180deg,#ffffff 0%,#f7fafd 100%);
+    padding:14px 18px;
+    border-bottom:1px solid var(--vk-border);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .preview-logo{
+    display:flex;align-items:center;gap:8px;font-weight:900;font-size:18px;color:#111;
+  }
+  .preview-logo svg{color:#039fe1;}
+  .preview-url{
+    font-size:11px;color:#9ca3af;font-family:ui-monospace,Menlo,Consolas,monospace;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+
+  /* Step indicator (1 2 3) */
+  .preview-steps{
+    display:flex;align-items:center;justify-content:center;gap:12px;
+    padding:16px 16px 4px;
+  }
+  .preview-step{
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    font-size:11px;color:#9ca3af;font-weight:600;
+  }
+  .preview-step-num{
+    width:28px;height:28px;border-radius:50%;
+    background:#e5e7eb;color:#9ca3af;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:13px;
+  }
+  .preview-step.done .preview-step-num{background:#039fe1;color:#fff;}
+  .preview-step.done{color:#039fe1;}
+  .preview-step.active .preview-step-num{background:#039fe1;color:#fff;}
+  .preview-step.active{color:#111;}
+  .preview-step-line{
+    flex:0 0 40px;height:2px;background:#e5e7eb;margin-bottom:14px;
+  }
+  .preview-step-line.done{background:#039fe1;}
+
+  .preview-body{
+    padding:16px 18px 24px;
+  }
+
+  /* Button styles referenced inline by the renderNoViable output */
+  .vk-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    font-family:inherit;font-size:14px;font-weight:700;
+    padding:10px 18px;border-radius:10px;border:0;cursor:pointer;
+    transition:opacity .15s, transform .05s, box-shadow .15s;
+  }
+  .vk-btn:active{transform:translateY(1px);}
+  .vk-btn--primary{background:#039fe1;color:#fff;}
+  .vk-btn--primary:hover{background:#0280b5;}
+  .vk-btn--secondary{background:#fff;color:#039fe1;border:1.5px solid #039fe1;}
+  .vk-btn--secondary:hover{background:#e8f4fd;}
+
+  .vk-paso__titulo{font-size:22px;font-weight:800;margin:0 0 8px;}
+  .vk-paso__subtitulo{font-size:14px;color:var(--vk-text-secondary);margin:0 0 16px;}
+
+  /* Notes panel at the bottom */
+  .notes{
+    max-width:440px;margin:24px auto 0;padding:14px 18px;
+    background:#fffbea;border:1px solid #fde68a;border-radius:10px;
+    font-size:13px;color:#78350f;line-height:1.6;
+  }
+  .notes h4{margin:0 0 6px;font-size:13px;font-weight:800;}
+  .notes ul{margin:0;padding-left:18px;}
+</style>
+</head>
+<body>
+
+<div class="preview-shell">
+  <!-- Mock browser header (matches the screenshot context) -->
+  <div class="preview-header">
+    <div class="preview-logo">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2 3 7v5c0 5 4 9 9 10 5-1 9-5 9-10V7z"/></svg>
+      voltika
+    </div>
+    <div class="preview-url">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      voltika.mx/configurador
+    </div>
+  </div>
+
+  <!-- Step indicator -->
+  <div class="preview-steps">
+    <div class="preview-step done">
+      <div class="preview-step-num">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <span>1. Selección</span>
+    </div>
+    <div class="preview-step-line done"></div>
+    <div class="preview-step active">
+      <div class="preview-step-num">2</div>
+      <span>2. Datos y evaluación</span>
+    </div>
+    <div class="preview-step-line"></div>
+    <div class="preview-step">
+      <div class="preview-step-num">3</div>
+      <span>3. Resultado</span>
+    </div>
+  </div>
+
+  <!-- This is the EXACT output of _renderNoViable() with M05 / Negro / $48,260
+       as the mock data. Keep this in sync with paso-credito-resultado.js. -->
+  <div class="preview-body">
+
+    <!-- Headline -->
+    <div style="text-align:center;margin-bottom:18px;">
+      <h2 style="font-size:26px;font-weight:800;color:#111;line-height:1.25;margin:0 0 10px;">
+        Esta vez el crédito no salió,<br>
+        pero <span style="color:#039fe1;">tu moto sí.</span>
+      </h2>
+      <p style="font-size:14px;color:#5b6b7a;line-height:1.5;margin:0 0 6px;max-width:380px;margin-left:auto;margin-right:auto;">
+        Revisamos tu historial y hoy no aprobamos el plan que elegiste.
+      </p>
+      <p style="font-size:13px;color:#5b6b7a;margin:6px 0 0;">
+        Esto pasa y no te define. Elige cómo llevarte tu Voltika hoy:
+      </p>
+    </div>
+
+    <!-- Motorcycle card -->
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:96px;height:72px;flex-shrink:0;background:linear-gradient(180deg,#ffffff 0%,#f3f6fb 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+          <!-- Inline SVG placeholder since the real img/m05/black_side.png isn't
+               referenced by this standalone preview. Swap for <img> if you
+               want to preview with the real motorcycle photo. -->
+          <img src="img/m05/black_side.png"
+               onerror="this.onerror=null;this.src='img/m05/model.png';this.onerror=function(){this.style.display='none';this.parentElement.innerHTML='<span style=\'font-size:11px;color:#9ca3af;\'>[M05]</span>'};"
+               alt="Voltika M05"
+               style="max-width:92%;max-height:92%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(12,35,64,.14));">
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:800;color:#111;line-height:1.2;">
+            VOLTIKA M05 · <span style="font-weight:600;color:#5b6b7a;">Negro Profundo</span>
+          </div>
+          <div style="font-size:12px;color:#5b6b7a;margin-top:3px;">Precio público:</div>
+          <div style="font-size:22px;font-weight:900;color:#111;line-height:1.1;">$48,260</div>
+        </div>
+        <button type="button" id="btn-cambiar"
+                style="flex-shrink:0;display:inline-flex;align-items:center;gap:5px;background:#fff;color:#039fe1;border:1.5px solid #039fe1;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Cambiar
+        </button>
+      </div>
+    </div>
+
+    <!-- Primary CTA: retry with different plan -->
+    <button type="button" id="btn-retry"
+            style="width:100%;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#039fe1 0%,#0280b5 100%);color:#fff;border:0;border-radius:14px;padding:16px 18px;margin-bottom:18px;cursor:pointer;text-align:left;box-shadow:0 4px 10px rgba(3,159,225,.25);">
+      <span style="width:38px;height:38px;background:rgba(255,255,255,.18);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" y1="8" x2="20" y2="8"/>
+          <line x1="4" y1="16" x2="20" y2="16"/>
+          <circle cx="14" cy="8" r="2" fill="currentColor" stroke="currentColor"/>
+          <circle cx="8" cy="16" r="2" fill="currentColor" stroke="currentColor"/>
+        </svg>
+      </span>
+      <span style="flex:1;">
+        <span style="display:block;font-size:15px;font-weight:800;line-height:1.1;">Ajusta tu plan y reintenta</span>
+        <span style="display:block;font-size:12px;font-weight:500;opacity:.9;margin-top:3px;">Sube enganche o baja plazo. La mayoría aprueba al segundo intento.</span>
+      </span>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+
+    <!-- Divider -->
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0 14px;">
+      <div style="flex:1;height:1px;background:#e5e7eb;"></div>
+      <span style="font-size:12.5px;color:#5b6b7a;font-weight:600;">o paga directo</span>
+      <div style="flex:1;height:1px;background:#e5e7eb;"></div>
+    </div>
+
+    <!-- 4 payment method cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+
+      <!-- 9 MSI con tarjeta -->
+      <button type="button" class="vk-nv-pay" id="btn-msi"
+              style="display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s;">
+        <span style="width:40px;height:40px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:inline-flex;align-items:center;justify-content:center;color:#fff;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2"/>
+            <line x1="2" y1="10" x2="22" y2="10"/>
+          </svg>
+        </span>
+        <span style="flex:1;min-width:0;">
+          <span style="display:block;font-size:13.5px;font-weight:700;color:#111;line-height:1.15;">9 MSI con tarjeta</span>
+          <span style="display:block;font-size:11.5px;color:#5b6b7a;margin-top:2px;line-height:1.3;">9 pagos de $5,362<br>sin intereses</span>
+        </span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+
+      <!-- Tarjeta en 1 solo pago -->
+      <button type="button" class="vk-nv-pay" id="btn-tarjeta"
+              style="display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s;">
+        <span style="width:40px;height:40px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,#10b981,#047857);display:inline-flex;align-items:center;justify-content:center;color:#fff;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2"/>
+            <line x1="2" y1="10" x2="22" y2="10"/>
+          </svg>
+        </span>
+        <span style="flex:1;min-width:0;">
+          <span style="display:block;font-size:13.5px;font-weight:700;color:#111;line-height:1.15;">Tarjeta en 1 solo pago</span>
+          <span style="display:block;font-size:11.5px;color:#5b6b7a;margin-top:2px;line-height:1.3;">$48,260 · se aparta<br>al instante</span>
+        </span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+
+      <!-- Transferencia SPEI -->
+      <button type="button" class="vk-nv-pay" id="btn-spei"
+              style="display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s;">
+        <span style="width:40px;height:40px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,#6366f1,#4338ca);display:inline-flex;align-items:center;justify-content:center;color:#fff;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 3 22 9 2 9 12 3"/>
+            <line x1="5" y1="12" x2="5" y2="18"/>
+            <line x1="10" y1="12" x2="10" y2="18"/>
+            <line x1="14" y1="12" x2="14" y2="18"/>
+            <line x1="19" y1="12" x2="19" y2="18"/>
+            <line x1="2" y1="21" x2="22" y2="21"/>
+          </svg>
+        </span>
+        <span style="flex:1;min-width:0;">
+          <span style="display:block;font-size:13.5px;font-weight:700;color:#111;line-height:1.15;">Transferencia SPEI</span>
+          <span style="display:block;font-size:11.5px;color:#5b6b7a;margin-top:2px;line-height:1.3;">$48,260 · confirmación<br>en 15 min</span>
+        </span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+
+      <!-- Efectivo en OXXO -->
+      <button type="button" class="vk-nv-pay" id="btn-oxxo"
+              style="display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s;">
+        <span style="width:40px;height:40px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,#f97316,#c2410c);display:inline-flex;align-items:center;justify-content:center;color:#fff;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="6" width="20" height="12" rx="2"/>
+            <circle cx="12" cy="12" r="3"/>
+            <line x1="6" y1="12" x2="6.01" y2="12"/>
+            <line x1="18" y1="12" x2="18.01" y2="12"/>
+          </svg>
+        </span>
+        <span style="flex:1;min-width:0;">
+          <span style="display:block;font-size:13.5px;font-weight:700;color:#111;line-height:1.15;">Efectivo en OXXO</span>
+          <span style="display:block;font-size:11.5px;color:#5b6b7a;margin-top:2px;line-height:1.3;">$48,260 · paga<br>en 48 horas</span>
+        </span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Trust badges footer -->
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#039fe1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+        <span style="font-size:12.5px;font-weight:700;color:#111;">Pagos seguros con</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px;">
+        <span style="font-size:16px;font-weight:700;color:#635bff;letter-spacing:-.5px;">stripe</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#111;"><span style="width:16px;height:16px;background:#c62828;border-radius:50%;display:inline-block;"></span>SAT</span>
+        <span style="font-size:12px;font-weight:700;color:#0284c7;letter-spacing:.5px;">REPUVE</span>
+        <span style="font-size:13px;font-weight:800;color:#0d9488;letter-spacing:-.3px;">◆ CINCEL</span>
+      </div>
+      <div style="border-top:1px solid #f3f4f6;padding-top:10px;display:flex;align-items:center;justify-content:center;gap:10px;">
+        <span style="font-size:12px;color:#5b6b7a;">Convenio con</span>
+        <img src="img/qualitas-logo.png" alt="Qualitas Seguros"
+             style="height:22px;"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+        <span style="display:none;font-size:13px;font-weight:800;color:#0d47a1;">QUÁLITAS SEGUROS</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Preview notes — visible only in this standalone file, not in the live flow -->
+<div class="notes">
+  <h4>📝 Nota de preview</h4>
+  <ul>
+    <li>Esta pantalla es una <strong>copia estática</strong> del resultado de <code>_renderNoViable()</code> — sirve para revisar el diseño sin correr el flujo completo.</li>
+    <li>Los botones tienen solo efecto visual (hover), los clicks muestran un <em>alert</em> describiendo a qué paso navegan en la app real.</li>
+    <li>La imagen de la moto intenta cargar <code>img/m05/black_side.png</code>; si no está, cae a <code>model.png</code>; si tampoco, muestra "[M05]".</li>
+    <li>El logo de Qualitas intenta cargar <code>img/qualitas-logo.png</code>; si no está, muestra el texto "QUÁLITAS SEGUROS" como fallback.</li>
+    <li>El bloque de WhatsApp del mockup fue <strong>removido intencionalmente</strong> (según tu instrucción).</li>
+  </ul>
+</div>
+
+<script>
+  // Hover effect for payment cards + alert-style click demos so you can see
+  // which destination each button drives without running the full flow.
+  document.querySelectorAll('.vk-nv-pay').forEach(function(btn){
+    btn.addEventListener('mouseenter', function(){
+      this.style.borderColor = '#039fe1';
+      this.style.boxShadow   = '0 2px 8px rgba(3,159,225,.15)';
+    });
+    btn.addEventListener('mouseleave', function(){
+      this.style.borderColor = '#e5e7eb';
+      this.style.boxShadow   = '';
+    });
+  });
+
+  var clickTargets = {
+    'btn-cambiar':  '→ paso 1 (selector de modelo)',
+    'btn-retry':    '→ credito-enganche (slider de enganche y plazo)',
+    'btn-msi':      '→ paso4a-checkout · metodoPago=msi',
+    'btn-tarjeta':  '→ paso4a-checkout · metodoPago=contado · tarjeta',
+    'btn-spei':     '→ paso4a-checkout · metodoPago=contado · SPEI auto-open',
+    'btn-oxxo':     '→ paso4a-checkout · metodoPago=contado · OXXO auto-open'
+  };
+  Object.keys(clickTargets).forEach(function(id){
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', function(){
+      alert('[PREVIEW] En la app real este botón navega:\n\n' + clickTargets[id]);
+    });
+  });
+</script>
+
+</body>
+</html>

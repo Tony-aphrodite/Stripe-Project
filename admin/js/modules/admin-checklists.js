@@ -139,9 +139,15 @@ window.AD_checklists = (function(){
     });
     html += '</div>';
 
-    // Filters + bulk action toolbar
+    // Filters + bulk action toolbar. Customer reported 2026-04-23 that the
+    // dropdown + separate "Filtrar" button often felt broken — clicking the
+    // button did nothing if the dropdown value looked already selected, or
+    // the handler was stuck because paint() re-bound it without off(). Now
+    // the filter applies instantly on change (no Filtrar button needed), and
+    // a visible "Limpiar" escape hatch resets to "Todos".
     html += '<div class="ad-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">'+
-      '<select class="ad-select" id="clFiltro" style="width:240px;">'+
+      '<label style="font-size:12px;color:var(--ad-dim);font-weight:600;">Filtrar:</label>'+
+      '<select class="ad-select" id="clFiltro" style="width:260px;">'+
         '<option value="">Todos</option>'+
         '<option value="sin_origen"'+(currentFilter==='sin_origen'?' selected':'')+'>Sin checklist origen</option>'+
         '<option value="origen_forzado"'+(currentFilter==='origen_forzado'?' selected':'')+'>⚠ Origen forzado (pendiente inspección)</option>'+
@@ -150,7 +156,8 @@ window.AD_checklists = (function(){
         '<option value="con_ensamble"'+(currentFilter==='con_ensamble'?' selected':'')+'>Con ensamble completo</option>'+
         '<option value="completos"'+(currentFilter==='completos'?' selected':'')+'>3 checklists completos</option>'+
       '</select>'+
-      '<button class="ad-btn sm ghost" id="clApply">Filtrar</button>'+
+      (currentFilter ? '<button class="ad-btn sm ghost" id="clClear" title="Limpiar filtro">✕ Limpiar</button>' : '')+
+      '<span id="clCount" style="font-size:12px;color:var(--ad-dim);">'+Number(r.total||0)+' motos</span>'+
       '<div style="flex:1;"></div>'+
       '<button class="ad-btn sm primary" id="clBulkOrigen" disabled '+
         'title="Selecciona motos abajo para activar" '+
@@ -196,7 +203,23 @@ window.AD_checklists = (function(){
 
     ADApp.render(html);
 
-    $('#clApply').on('click',function(){ currentFilter=$('#clFiltro').val(); currentPage=1; load(); });
+    // Instant filter — apply on dropdown change. off/on pair prevents
+    // duplicate handlers from stacking across paint() re-renders, which was
+    // the root cause of the "Filtrar button does nothing" report.
+    $('#clFiltro').off('change.clFiltro').on('change.clFiltro', function(){
+      var newVal = this.value || '';
+      if (newVal === currentFilter) return;
+      currentFilter = newVal;
+      currentPage   = 1;
+      // Loading feedback — avoids the "nothing happened" perception.
+      $('#clCount').text('Filtrando…');
+      load();
+    });
+    $('#clClear').off('click').on('click', function(){
+      currentFilter = '';
+      currentPage   = 1;
+      load();
+    });
     $('.clOpen').on('click',function(){ showMotoChecklists($(this).data('id')); });
     $('.clPage').on('click',function(){
       var p = parseInt($(this).data('p'), 10);
@@ -789,10 +812,14 @@ window.AD_checklists = (function(){
       '<textarea class="ad-input" id="clEnsNotas" style="min-height:60px;"'+(isLocked?' disabled':'')+'>'+esc(data.notas||'')+'</textarea>'+
     '</div>';
 
+    // Wizard-style primary button: on Fase 1/2 it says "Continuar", on Fase 3
+    // it says "Completar". The primary button's behavior depends on the
+    // currently active fase. We also keep "Guardar borrador" as a secondary
+    // escape hatch so the operator can pause mid-work.
     if(!isLocked){
       html += '<div style="display:flex;gap:8px;margin-top:16px;">';
       html += '<button class="ad-btn ghost" id="clEnsSave" style="flex:1;padding:10px;">Guardar borrador</button>';
-      html += '<button class="ad-btn primary" id="clEnsComplete" style="flex:1;padding:10px;">Completar checklist</button>';
+      html += '<button class="ad-btn primary" id="clEnsNext" style="flex:1;padding:10px;"></button>';
       html += '</div>';
     }
     html += '<button class="ad-btn ghost" id="clEnsBack" style="width:100%;margin-top:8px;">Volver</button>';
@@ -802,13 +829,53 @@ window.AD_checklists = (function(){
     // Bind photo events
     bindPhotoEvents();
 
-    // Tab switching
+    // Wizard state — tracks which fase is currently visible + updates the
+    // primary button label/behavior accordingly. Separate from the
+    // checklist_ensamble.fase_actual server value (which reflects server-side
+    // progress) so the user can also jump tabs manually and come back.
+    var faseKeys = ENSAMBLE_PHASES.map(function(p){ return p.key; });
+    var currentFaseKey = activeFase;
+
+    function getFaseFields(faseKey){
+      var ph = ENSAMBLE_PHASES.filter(function(p){ return p.key === faseKey; })[0];
+      if (!ph) return [];
+      var fields = [];
+      ph.sections.forEach(function(s){ s.fields.forEach(function(f){ fields.push(f.key); }); });
+      return fields;
+    }
+
+    function isFaseComplete(faseKey){
+      // Checklist items use `class="clCheck" data-key="..."` (see checkItem()
+      // on line 1423). Selector must match that — using [name=] returned 0
+      // elements so every fase looked incomplete even with all items checked.
+      var fields = getFaseFields(faseKey);
+      if (!fields.length) return false;
+      for (var i = 0; i < fields.length; i++) {
+        if (!$('.clCheck[data-key="'+fields[i]+'"]').is(':checked')) return false;
+      }
+      return true;
+    }
+
+    function updateWizardButton(){
+      var isLastFase = (currentFaseKey === faseKeys[faseKeys.length - 1]);
+      var $btn = $('#clEnsNext');
+      if (isLastFase) {
+        $btn.text('✓ Completar Checklist').css({background:'#22c55e',borderColor:'#22c55e'});
+      } else {
+        $btn.text('Continuar Checklist →').css({background:'',borderColor:''});
+      }
+    }
+
+    // Tab switching — also updates the wizard's current fase so the primary
+    // button stays in sync when the user jumps tabs manually.
     $('.clEnsTab').on('click',function(){
       var f = $(this).data('fase');
+      currentFaseKey = f;
       $('.clEnsTab').removeClass('primary').addClass('ghost');
       $(this).removeClass('ghost').addClass('primary');
       $('.clEnsPane').hide();
       $('.clEnsPane[data-fase="'+f+'"]').show();
+      updateWizardButton();
     });
 
     // Progress update
@@ -818,46 +885,88 @@ window.AD_checklists = (function(){
     });
 
     $('#clEnsSave').on('click', function(){ saveEnsamble(motoId, false); });
-    $('#clEnsComplete').on('click', function(){
-      var checked = countChecked();
-      if(checked < TOTAL_ENSAMBLE){
-        alert('Faltan '+(TOTAL_ENSAMBLE-checked)+' items por marcar antes de completar el checklist.');
+
+    // Wizard primary button. On fase 1/2 it advances to the next fase after
+    // verifying current fase is complete. On fase 3 it finalizes + locks.
+    $('#clEnsNext').on('click', function(){
+      var faseIdx  = faseKeys.indexOf(currentFaseKey);
+      var isLast   = (faseIdx === faseKeys.length - 1);
+
+      if (!isFaseComplete(currentFaseKey)) {
+        var ph = ENSAMBLE_PHASES[faseIdx];
+        var missing = getFaseFields(currentFaseKey).filter(function(k){
+          return !$('.clCheck[data-key="'+k+'"]').is(':checked');
+        }).length;
+        alert('Faltan ' + missing + ' item(s) por marcar en ' + (ph ? ph.title : 'esta fase') + ' antes de continuar.');
         return;
       }
-      if(!confirm('Completar y bloquear este checklist?')) return;
-      saveEnsamble(motoId, true);
+
+      if (isLast) {
+        // Final fase → verify ALL items across all fases, then complete
+        var checked = countChecked();
+        if (checked < TOTAL_ENSAMBLE) {
+          alert('Faltan ' + (TOTAL_ENSAMBLE - checked) + ' items por marcar antes de completar el checklist.');
+          return;
+        }
+        if (!confirm('Completar y bloquear este checklist?\n\nSe enviará automáticamente una notificación al cliente: "Tu moto está lista para entrega".')) return;
+        saveEnsamble(motoId, true);
+        return;
+      }
+
+      // Not last fase → save progress + auto-advance to next fase
+      saveEnsamble(motoId, false, function(){
+        var nextKey = faseKeys[faseIdx + 1];
+        currentFaseKey = nextKey;
+        $('.clEnsTab').removeClass('primary').addClass('ghost');
+        $('.clEnsTab[data-fase="' + nextKey + '"]').removeClass('ghost').addClass('primary');
+        $('.clEnsPane').hide();
+        $('.clEnsPane[data-fase="' + nextKey + '"]').show();
+        updateWizardButton();
+        // Scroll to top of modal so user sees the new fase heading
+        try { $('#adModalBody').scrollTop(0); } catch(e){}
+      });
     });
+
     $('#clEnsBack').on('click', function(){ ADApp.closeModal(); showMotoChecklists(motoId); });
+
+    // Initialize wizard button label based on the active fase
+    updateWizardButton();
   }
 
-  function saveEnsamble(motoId, completar){
+  function saveEnsamble(motoId, completar, onAfterSave){
     var payload = { moto_id: motoId };
     $('.clCheck').each(function(){ payload[$(this).data('key')] = $(this).is(':checked') ? 1 : 0; });
     payload.notas = $('#clEnsNotas').val();
     if(completar) payload.completar = 1;
 
-    var $btn = completar ? $('#clEnsComplete') : $('#clEnsSave');
+    // Primary "Continuar/Completar" button is #clEnsNext, draft is #clEnsSave.
+    var $btn = completar ? $('#clEnsNext') : $('#clEnsSave');
+    var originalHtml = $btn.html();
     $btn.prop('disabled',true).html('<span class="ad-spin"></span>');
 
     ADApp.api('checklists/guardar-ensamble.php', payload).done(function(r){
       if(r.ok){
         if(completar){
           ADApp.closeModal();
-          alert('Checklist de ensamble completado exitosamente');
+          alert('✓ Checklist de ensamble completado.\n\nSe envió la notificación al cliente: "Tu moto está lista para entrega".');
           showMotoChecklists(motoId);
+        } else if (typeof onAfterSave === 'function') {
+          // Wizard advance: progress saved, move to next fase silently
+          $btn.prop('disabled', false).html(originalHtml);
+          onAfterSave(r);
         } else {
           alert('Borrador guardado (Fase: '+r.fase_actual+')');
-          $btn.prop('disabled',false).html('Guardar borrador');
+          $btn.prop('disabled', false).html(originalHtml);
         }
       } else {
         alert(r.error||'Error al guardar');
-        $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
+        $btn.prop('disabled', false).html(originalHtml);
       }
     }).fail(function(xhr){
       var msg = 'Error de conexión';
       if(xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
       alert(msg);
-      $btn.prop('disabled',false).html(completar?'Completar checklist':'Guardar borrador');
+      $btn.prop('disabled', false).html(originalHtml);
     });
   }
 
