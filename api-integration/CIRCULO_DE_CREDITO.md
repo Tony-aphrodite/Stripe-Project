@@ -1,83 +1,83 @@
-# Círculo de Crédito API 사용 방법 (Voltika 프로젝트 검증본)
+# Círculo de Crédito API Usage Guide (Voltika Project — Verified)
 
-> 본 문서는 다음 출처에서 **실제 확인된 내용만** 포함합니다:
-> - 공식 문서 로컬 HTML (`api-integration/Integration guide _ apihub.html`, `Prueba de seguridad _ apihub.html`, `Voltika aplicación _ apihub.html`)
-> - **프로젝트 내 동작하는 PHP 구현 코드** (`configurador_prueba/php/consultar-buro.php`, `cdc-security-test.php`, `generar-certificado-cdc.php`, `config.php`)
-
----
-
-## 1. 개요
-
-Círculo de Crédito(CDC)는 멕시코 신용정보기관. 개발자 포털은 **apihub** 플랫폼(`https://developer.circulodecredito.com.mx`, Apigee Edge 기반). 모든 프로덕션 API는 **전자서명 + Mutual TLS** 필수.
+> This document contains **only content that has been actually verified** from the following sources:
+> - Official documentation local HTML (`api-integration/Integration guide _ apihub.html`, `Prueba de seguridad _ apihub.html`, `Voltika aplicación _ apihub.html`)
+> - **Working in-project PHP implementation code** (`configurador_prueba/php/consultar-buro.php`, `cdc-security-test.php`, `generar-certificado-cdc.php`, `config.php`)
 
 ---
 
-## 2. Voltika 앱 실제 설정
+## 1. Overview
 
-### 앱 기본 정보 (Voltika aplicación line 2~735)
-| 항목 | 값 |
-|------|-----|
-| 앱 URL | `https://developer.circulodecredito.com.mx/user/4463/apps/voltika` |
-| 사용자 ID | 4463 |
-| Consumer Key (`x-api-key`) | config.php line 84 에 하드코딩됨 (`CDC_API_KEY`) |
-| 발급 | ~7주 전 |
-| 만료 | Nunca (영구) |
+Círculo de Crédito (CDC) is a Mexican credit-information bureau. The developer portal is the **apihub** platform (`https://developer.circulodecredito.com.mx`, based on Apigee Edge). All production APIs require **digital signature + Mutual TLS**.
+
+---
+
+## 2. Voltika App Actual Configuration
+
+### Basic app info (Voltika aplicación line 2~735)
+| Item | Value |
+|------|-------|
+| App URL | `https://developer.circulodecredito.com.mx/user/4463/apps/voltika` |
+| User ID | 4463 |
+| Consumer Key (`x-api-key`) | Hard-coded in config.php line 84 (`CDC_API_KEY`) |
+| Issued | ~7 weeks ago |
+| Expires | Nunca (never) |
 
 ### CDC Folio (consultar-buro.php line 50)
 ```
 0000080008 (Voltika)
 ```
-- `CDC_FOLIO` 상수. 대시보드의 Folio Otorgante 10자리 ID.
+- `CDC_FOLIO` constant. 10-digit Folio Otorgante ID from the dashboard.
 
-### Common Name (CN) 인증서용 (generar-certificado-cdc.php line 25)
+### For Common Name (CN) of the certificate (generar-certificado-cdc.php line 25)
 ```
 RMD004694MGE  (= CDC_USER)
 ```
-- 인증서 CN을 CDC username과 일치시켜야 Apigee가 cert→API key 매핑 가능.
+- The certificate CN must match the CDC username, so Apigee can map cert → API key.
 
-### 활성화된 API 제품 (Voltika aplicación line 378~730)
-40+개 Sandbox 제품 + 일부 프로덕션 — 주요 항목:
+### Activated API products (Voltika aplicación line 378~730)
+40+ Sandbox products + some production — main items:
 
-**신용조회**: Reporte de Crédito MX Sandbox, Reporte de Crédito Consolidado MX Sandbox, Reporte de Crédito Consolidado con FICO Score v2 MX Sandbox, Reporte de Crédito Consolidado PM v2, FICO Score v2 MX Sandbox
-**AML/신원**: PLD Personas Físicas/Morales MX Sandbox, Identity Data Sandbox, SAT-SANDBOX
-**은행/핀테크**: Bank Account Verification Sandbox, Loan Amount Estimator MX Sandbox, Fintech Score Sandbox, VantAge v2 Sandbox
-**보안**: SecurityTest
-
----
-
-## 3. 인증 모델 (consultar-buro.php line 51~54, 206~213 에서 확인)
-
-프로덕션 호출 시 HTTP 헤더:
-
-| 헤더 | 값 | 출처 |
-|------|-----|-----|
-| `Content-Type` | `application/json` | 고정 |
-| `Accept` | `application/json` | 고정 |
-| `x-api-key` | Consumer Key | 포털 "Keys" 섹션 |
-| `x-signature` | ECDSA-SHA256 서명 (HEX 인코딩) | 각 요청마다 계산 |
-| `username` | CDC 발급 (HTTP Basic 아님, **커스텀 헤더**) | 별도 전달 |
-| `password` | CDC 발급 (HTTP Basic 아님, **커스텀 헤더**) | 별도 전달 |
-
-**추가로 Mutual TLS 필요** (consultar-buro.php line 231~239): 클라이언트 인증서(.pem) + 개인키(.key)를 cURL에 `CURLOPT_SSLCERT`, `CURLOPT_SSLKEY`로 첨부. 없으면 일부 CDC v2 제품이 503 응답.
+**Credit queries**: Reporte de Crédito MX Sandbox, Reporte de Crédito Consolidado MX Sandbox, Reporte de Crédito Consolidado con FICO Score v2 MX Sandbox, Reporte de Crédito Consolidado PM v2, FICO Score v2 MX Sandbox
+**AML / identity**: PLD Personas Físicas/Morales MX Sandbox, Identity Data Sandbox, SAT-SANDBOX
+**Banking / fintech**: Bank Account Verification Sandbox, Loan Amount Estimator MX Sandbox, Fintech Score Sandbox, VantAge v2 Sandbox
+**Security**: SecurityTest
 
 ---
 
-## 4. 서명 알고리즘 (consultar-buro.php line 187~201 에서 확인)
+## 3. Authentication Model (verified in consultar-buro.php line 51~54, 206~213)
+
+HTTP headers on a production call:
+
+| Header | Value | Source |
+|--------|-------|--------|
+| `Content-Type` | `application/json` | Fixed |
+| `Accept` | `application/json` | Fixed |
+| `x-api-key` | Consumer Key | Portal "Keys" section |
+| `x-signature` | ECDSA-SHA256 signature (HEX encoded) | Computed per request |
+| `username` | Issued by CDC (NOT HTTP Basic — **custom header**) | Delivered separately |
+| `password` | Issued by CDC (NOT HTTP Basic — **custom header**) | Delivered separately |
+
+**Plus Mutual TLS is required** (consultar-buro.php line 231~239): attach the client certificate (.pem) + private key (.key) to cURL via `CURLOPT_SSLCERT`, `CURLOPT_SSLKEY`. Some CDC v2 products return 503 if this is missing.
+
+---
+
+## 4. Signature Algorithm (verified in consultar-buro.php line 187~201)
 
 ```php
 $priv = openssl_pkey_get_private($keyPem);
 $sig  = '';
 openssl_sign($jsonBody, $sig, $priv, OPENSSL_ALGO_SHA256);
-$signatureHex = bin2hex($sig);   // ← x-signature 헤더에 넣는 값
+$signatureHex = bin2hex($sig);   // ← value placed in the x-signature header
 ```
 
-- **곡선**: `secp384r1` (ECDSA)
-- **해시**: SHA-256
-- **인코딩**: **HEX** (base64 아님)
-- **서명 대상**: `json_encode($requestBody, JSON_UNESCAPED_UNICODE)` 의 원문 바이트
+- **Curve**: `secp384r1` (ECDSA)
+- **Hash**: SHA-256
+- **Encoding**: **HEX** (not base64)
+- **Signed payload**: the raw bytes of `json_encode($requestBody, JSON_UNESCAPED_UNICODE)`
 
-### ⚠️ 중요: ASCII-only 정규화 (consultar-buro.php line 101~112)
-CDC v2는 JSON 바디에 **ñ, á, é 등 비ASCII 포함 시 503 signature mismatch 또는 400 validation** 발생. 모든 텍스트 필드는 대문자 + 악센트 제거 후 서명해야 함:
+### ⚠️ Important: ASCII-only normalization (consultar-buro.php line 101~112)
+For CDC v2, including non-ASCII characters (**ñ, á, é**, etc.) in the JSON body causes **503 signature mismatch or 400 validation**. All text fields must be uppercased + accent-stripped before signing:
 
 ```php
 function cdcAscii(string $s): string {
@@ -90,16 +90,16 @@ function cdcAscii(string $s): string {
 
 ---
 
-## 5. 인증서 생성 (generar-certificado-cdc.php 에서 확인)
+## 5. Certificate Generation (verified in generar-certificado-cdc.php)
 
-### OpenSSL 기반 (Integration guide line 650)
+### OpenSSL-based (Integration guide line 650)
 ```bash
 openssl ecparam -name secp384r1 -genkey -out pri_key.pem
 openssl req -new -x509 -days 365 -key pri_key.pem -out certificate.pem \
   -subj "/C=MX/ST=CDMX/L=CDMX/O=Voltika MX/OU=Tecnologia/CN=RMD004694MGE/emailAddress=ivan.clavel@voltika.mx"
 ```
 
-### PHP 기반 (generar-certificado-cdc.php line 72~116)
+### PHP-based (generar-certificado-cdc.php line 72~116)
 ```php
 // 1. Generate ECDSA key
 $privateKey = openssl_pkey_new([
@@ -123,24 +123,24 @@ $cert = openssl_csr_sign($csr, null, $privateKey, 365, $configArgs);
 openssl_x509_export($cert, $certPem);
 ```
 
-### 인증서 DN (generar-certificado-cdc.php line 28~36)
+### Certificate DN (generar-certificado-cdc.php line 28~36)
 ```
 C  = MX
 ST = Ciudad de Mexico
 L  = CDMX
 O  = Voltika MX
 OU = Tecnologia
-CN = RMD004694MGE                 ← CDC_USER 와 일치해야 함
+CN = RMD004694MGE                 ← must match CDC_USER
 E  = ivan.clavel@voltika.mx
 ```
 
-### ⚠️ 주의: CA 플래그
-`basicConstraints = critical, CA:FALSE` 필수. 기본 PHP `openssl.cnf`는 `v3_ca` 사용 → Apigee 서명 검증 정책이 reject.
+### ⚠️ Note: CA flag
+`basicConstraints = critical, CA:FALSE` is required. The default PHP `openssl.cnf` uses `v3_ca` → Apigee's signature-verification policy rejects it.
 
-### 인증서 저장 위치 (consultar-buro.php line 155~172)
-우선순위대로 조회:
+### Certificate storage locations (consultar-buro.php line 155~172)
+Lookup order:
 1. `$_SESSION['cdc_key_pem']` / `$_SESSION['cdc_cert_pem']`
-2. DB 테이블 `cdc_certificates`:
+2. DB table `cdc_certificates`:
    ```sql
    CREATE TABLE cdc_certificates (
      id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -151,13 +151,13 @@ E  = ivan.clavel@voltika.mx
      freg         DATETIME DEFAULT CURRENT_TIMESTAMP
    )
    ```
-3. 디스크: `configurador_prueba/php/certs/cdc_private.key`, `cdc_certificate.pem`
+3. Disk: `configurador_prueba/php/certs/cdc_private.key`, `cdc_certificate.pem`
 
 ---
 
-## 6. 엔드포인트별 상세
+## 6. Endpoint Details
 
-### 6.1. SecurityTest (통신 테스트용)
+### 6.1. SecurityTest (for connectivity testing)
 
 **Endpoint** (cdc-security-test.php line 90):
 ```
@@ -169,22 +169,22 @@ POST https://services.circulodecredito.com.mx/v1/securitytest
 {"Peticion": "Esto es un mensaje de prueba"}
 ```
 
-**서명 인코딩**: **Base64** (다른 프로덕션은 HEX이나 SecurityTest는 base64) — cdc-security-test.php line 80:
+**Signature encoding**: **Base64** (other production endpoints are HEX, but SecurityTest is base64) — cdc-security-test.php line 80:
 ```php
 $signatureB64 = base64_encode($signature);
 $headers[] = 'x-signature: ' . $signatureB64;
 ```
 
-**응답**: JSON, 서명 필드명은 `x-signature` 또는 `signature`, 메시지 필드명은 `Peticion` / `mensaje` / `message` (cdc-security-test.php line 176).
+**Response**: JSON. The signature field name is `x-signature` or `signature`; the message field name is `Peticion` / `mensaje` / `message` (cdc-security-test.php line 176).
 
-### 6.2. Reporte de Crédito Consolidado con FICO Score v2 (프로덕션 신용조회)
+### 6.2. Reporte de Crédito Consolidado con FICO Score v2 (production credit query)
 
 **Endpoint** (consultar-buro.php line 48):
 ```
 POST https://services.circulodecredito.com.mx/v2/rccficoscore
 ```
 
-**Body 스키마** (consultar-buro.php line 131~148) — FLAT 구조:
+**Body schema** (consultar-buro.php line 131~148) — FLAT structure:
 ```json
 {
   "primerNombre":    "JUAN",
@@ -205,21 +205,21 @@ POST https://services.circulodecredito.com.mx/v2/rccficoscore
 }
 ```
 
-**주의사항**:
-- 모든 필드 대문자 + ASCII only.
-- `nacionalidad`: **"MX" 필수**.
-- `domicilio`는 **객체로 중첩**. Sandbox의 `persona` wrapper 구조와 다름.
-- RFC 10자리만 있을 시 `XXX` 추가해 13자리로 패딩 (line 122).
+**Notes**:
+- All fields uppercase + ASCII only.
+- `nacionalidad`: **must be "MX"**.
+- `domicilio` is a **nested object**. Different from the Sandbox `persona` wrapper structure.
+- If only a 10-character RFC is available, pad to 13 characters by appending `XXX` (line 122).
 
-**Estado 정규화 enum** (consultar-buro.php line 525~527):
+**Estado normalization enum** (consultar-buro.php line 525~527):
 ```
 CDMX, AGS, BC, BCS, CAMP, CHIS, CHIH, COAH, COL, DGO, GTO, GRO, HGO,
 JAL, MEX, MICH, MOR, NAY, NL, OAX, PUE, QRO, QROO, SLP, SIN, SON,
 TAB, TAMS, TLAX, VER, YUC, ZAC
 ```
-(`DF`, `Ciudad de Mexico` → `CDMX` 로 변환)
+(`DF`, `Ciudad de Mexico` → mapped to `CDMX`)
 
-### 응답 스키마 (consultar-buro.php line 556~623 의 parser 기준)
+### Response schema (based on the parser at consultar-buro.php line 556~623)
 
 ```json
 {
@@ -229,43 +229,43 @@ TAB, TAMS, TLAX, VER, YUC, ZAC
   ],
   "cuentas": [
     {
-      "fechaCierreCuenta": "",              // 비어있으면 open account
-      "montoPagar":        1500.00,          // 월 납입금
-      "peorAtraso":        30,               // 최악 연체일
-      "historicoPagos":    "1111121111...",  // 24개월 문자열
+      "fechaCierreCuenta": "",              // empty => account still open
+      "montoPagar":        1500.00,          // monthly payment
+      "peorAtraso":        30,               // worst days past due
+      "historicoPagos":    "1111121111...",  // 24-month string
                                              //   1=al corriente, 2=30DPD, 3=60DPD,
                                              //   4=90DPD, 5=120DPD, U/R/Y=severe
       "DPD": { "dpd90": 0 }
     }
   ],
-  "errores": [  // 실패 시
+  "errores": [  // on failure
     { "codigo": "404.1", "mensaje": "No se encontró a la persona" }
   ]
 }
 ```
 
-**특수 케이스** (consultar-buro.php line 291~311):
-- HTTP 404 + `errores[0].codigo = "404.1"` → **정상 응답** (신용 이력 없음, 첫 신청자). score=null로 처리.
+**Special case** (consultar-buro.php line 291~311):
+- HTTP 404 + `errores[0].codigo = "404.1"` → **normal response** (no credit history, first-time applicant). Treated as score=null.
 
 ---
 
-## 7. 통합 9단계 (Integration guide line 250~943)
+## 7. Integration in 9 Steps (Integration guide line 250~943)
 
-| # | 단계 | 소요 | 비고 |
-|---|------|------|-----|
-| 1 | 개발자 계정 생성 | 5분 | `developer.circulodecredito.com.mx` |
-| 2 | 앱 등록 ("Add Application") | 5분 | Sandbox API 먼저 선택 |
-| 3 | Sandbox 테스트 | 1일+ | Simulation 버튼 + Swagger/Postman |
-| 4 | SecurityTest API 활성화 | 1일 | Postman 컬렉션 다운로드 |
-| 5 | 키쌍 생성 (OpenSSL) | 15분 | ECDSA secp384r1 |
-| 6 | 인증서 업로드 | 10분 | `.pem` 업로드 → CDC 인증서 다운로드 |
-| 7 | 프로덕션 액세스 신청 | 20분 | `/pase_a_produccion` |
-| 8 | 승인 대기 | 최대 3일 | 이메일 통지 |
-| 9 | 클라이언트 라이브러리 사용 | 1일+ | 공식 GitHub: `APIHub-CdC/security-test-client-php` |
+| # | Step | Time | Notes |
+|---|------|------|-------|
+| 1 | Create developer account | 5 min | `developer.circulodecredito.com.mx` |
+| 2 | Register app ("Add Application") | 5 min | Choose Sandbox APIs first |
+| 3 | Sandbox testing | 1 day+ | Simulation button + Swagger/Postman |
+| 4 | Enable SecurityTest API | 1 day | Download Postman collection |
+| 5 | Generate keypair (OpenSSL) | 15 min | ECDSA secp384r1 |
+| 6 | Upload certificate | 10 min | Upload `.pem` → download CDC certificate |
+| 7 | Request production access | 20 min | `/pase_a_produccion` |
+| 8 | Wait for approval | up to 3 days | Email notification |
+| 9 | Use client library | 1 day+ | Official GitHub: `APIHub-CdC/security-test-client-php` |
 
 ---
 
-## 8. DB 로그 스키마 (consultar-buro.php line 267~276, 362~376)
+## 8. DB Log Schema (consultar-buro.php line 267~276, 362~376)
 
 ```sql
 CREATE TABLE cdc_query_log (
@@ -314,36 +314,36 @@ CREATE TABLE consultas_buro (
 
 ---
 
-## 9. RFC 자동 계산 (consultar-buro.php line 480~515)
+## 9. RFC Auto-Computation (consultar-buro.php line 480~515)
 
-NIP-CIEC 전에 사용자 입력 RFC가 없을 때 10자리 자동 생성:
+When the user hasn't provided an RFC before NIP-CIEC, a 10-character RFC is auto-generated:
 
 ```
-문자 1: 아빠 성의 첫 글자
-문자 2: 아빠 성에서 첫 글자 이후 첫 모음 (없으면 X)
-문자 3: 엄마 성의 첫 글자 (없으면 X)
-문자 4: 이름의 첫 글자 (JOSE/MARIA/MA/J 시작이면 두 번째 단어 사용)
-숫자 6자: YYMMDD
+Char 1:  First letter of the father's surname
+Char 2:  First vowel of the father's surname after the first letter (X if none)
+Char 3:  First letter of the mother's surname (X if none)
+Char 4:  First letter of the given name (if it starts with JOSE/MARIA/MA/J, use the second word)
+Digits 6: YYMMDD
 ```
-→ 13자리 맞추려 `XXX` 패딩.
+→ Padded with `XXX` to reach 13 characters.
 
 ---
 
-## 10. 공식 클라이언트 레포
+## 10. Official Client Repositories
 
 - **PHP**: `https://github.com/APIHub-CdC/security-test-client-php`
-  - 주요 파일:
-    - `lib/Interceptor/KeyHandler.php` — PKCS12 키 관리
-    - `lib/Interceptor/MiddlewareEvents.php` — Guzzle middleware로 서명 자동 추가/검증
-    - `lib/Interceptor/key_pair_gen.sh` — 키쌍 생성 스크립트
-    - `lib/Configuration.php` (line 19) — API host 설정
-    - `lib/Api/PruebaDeSeguridadApi.php` — SecurityTest 호출 클래스
+  - Key files:
+    - `lib/Interceptor/KeyHandler.php` — PKCS12 key management
+    - `lib/Interceptor/MiddlewareEvents.php` — Guzzle middleware that auto-signs/verifies
+    - `lib/Interceptor/key_pair_gen.sh` — keypair generation script
+    - `lib/Configuration.php` (line 19) — API host configuration
+    - `lib/Api/PruebaDeSeguridadApi.php` — SecurityTest call class
 - **Java**: `https://github.com/APIHub-CdC/security-test-client-java`
 
 ---
 
-## 11. 지원
+## 11. Support
 
-- 이메일: `api@circulodecredito.com.mx` (Integration guide line 943)
-- 포털: `https://developer.circulodecredito.com.mx`
-- 추가 문서: `https://developer.circulodecredito.com.mx/prueba_de_seguridad`
+- Email: `api@circulodecredito.com.mx` (Integration guide line 943)
+- Portal: `https://developer.circulodecredito.com.mx`
+- Additional docs: `https://developer.circulodecredito.com.mx/prueba_de_seguridad`
