@@ -25,9 +25,38 @@ $voltikaBase   = defined('VOLTIKA_BASE_URL') ? VOLTIKA_BASE_URL : '';
 
 $action = $_GET['action'] ?? '';
 $pingResult = null;
+$pingAll = null;
 
 if ($action === 'ping' && $apiKey && $flowId) {
-    // Try to generate a throwaway API key to prove the flow is valid.
+    $pingResult = truoraDiagPing($apiKey, $flowId, $voltikaBase, $identityUrl);
+}
+
+// Multi-URL sweep — Truora 403 "Missing Authentication Token" is AWS API
+// Gateway's default 403 for paths that don't match any route. When that
+// happens we probe a short list of plausible base URLs / path variants so
+// operators can see which one responds and pick the correct endpoint
+// without guessing. Each attempt reuses the same API key + body.
+if ($action === 'ping_all' && $apiKey && $flowId) {
+    $candidates = [
+        'https://api.identity.truora.com/v1/api-keys',
+        'https://api.account.truora.com/v1/api-keys',
+        'https://api.validations.truora.com/v1/api-keys',
+        'https://api.checks.truora.com/v1/api-keys',
+        'https://api.identity.truora.com/api-keys',
+        'https://api.identity.truora.com/v1/identity/api-keys',
+        'https://api.identity.truora.com/v1/web-integration/api-keys',
+    ];
+    $pingAll = [];
+    foreach ($candidates as $url) {
+        $pingAll[] = truoraDiagPingUrl($url, $apiKey, $flowId, $voltikaBase);
+    }
+}
+
+function truoraDiagPing(string $apiKey, string $flowId, string $voltikaBase, string $identityUrl): array {
+    return truoraDiagPingUrl(rtrim($identityUrl, '/') . '/v1/api-keys', $apiKey, $flowId, $voltikaBase);
+}
+
+function truoraDiagPingUrl(string $url, string $apiKey, string $flowId, string $voltikaBase): array {
     $body = http_build_query([
         'key_type'     => 'web',
         'grant'        => 'digital-identity',
@@ -37,7 +66,7 @@ if ($action === 'ping' && $apiKey && $flowId) {
         'redirect_url' => rtrim($voltikaBase, '/') . '/configurador_prueba/',
     ]);
     $t0 = microtime(true);
-    $ch = curl_init(rtrim($identityUrl, '/') . '/v1/api-keys');
+    $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $body,
@@ -46,13 +75,14 @@ if ($action === 'ping' && $apiKey && $flowId) {
             'Truora-API-Key: ' . $apiKey,
             'Content-Type: application/x-www-form-urlencoded',
         ],
-        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_TIMEOUT        => 15,
     ]);
-    $resp = curl_exec($ch);
+    $resp     = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlErr  = curl_error($ch);
     curl_close($ch);
-    $pingResult = [
+    return [
+        'url'     => $url,
         'http'    => $httpCode,
         'elapsed' => round((microtime(true) - $t0) * 1000),
         'body'    => (string)$resp,
@@ -147,7 +177,8 @@ th { color:#94a3b8; }
 <?php if (!$apiKey || !$flowId): ?>
 <div class="warn">⚠ No se puede hacer ping: falta TRUORA_API_KEY o TRUORA_FLOW_ID.</div>
 <?php else: ?>
-<a class="btn" href="?key=<?= urlencode($secret) ?>&amp;action=ping">Ejecutar ping</a>
+<a class="btn" href="?key=<?= urlencode($secret) ?>&amp;action=ping">Ejecutar ping (URL principal)</a>
+<a class="btn" style="background:#7f1d1d;margin-left:8px;" href="?key=<?= urlencode($secret) ?>&amp;action=ping_all">Probar TODAS las URLs (diagnóstico 403)</a>
 <?php if ($pingResult): ?>
 <div style="margin-top:14px;">
     <div>HTTP: <strong class="<?= $pingResult['http']>=200 && $pingResult['http']<300 ? 'ok':'bad' ?>"><?= $pingResult['http'] ?></strong>
@@ -167,6 +198,40 @@ th { color:#94a3b8; }
     <?php elseif ($pingResult['http'] === 404): ?>
         <div class="bad">❌ 404 — flow_id no encontrado. Verificar IPFxxxxx en el dashboard.</div>
     <?php endif; ?>
+</div>
+<?php endif; ?>
+
+<?php if ($pingAll): ?>
+<div style="margin-top:18px;">
+    <div style="font-size:14px;color:#fbbf24;margin-bottom:8px;font-weight:700;">🔎 Resultado sweep de URLs — busca la que NO devuelve 403</div>
+    <table>
+        <thead><tr><th>URL</th><th>HTTP</th><th>Tiempo</th><th>Respuesta (primeros 200 chars)</th></tr></thead>
+        <tbody>
+        <?php foreach ($pingAll as $r): ?>
+            <?php
+            $h = (int)$r['http'];
+            $cls = 'bad';
+            if ($h >= 200 && $h < 300) $cls = 'ok';
+            elseif ($h === 401) $cls = 'warn';   // path OK, auth wrong
+            elseif ($h === 400) $cls = 'warn';   // path OK, body wrong
+            ?>
+            <tr>
+                <td style="font-family:Consolas,monospace;font-size:11px;"><?= htmlspecialchars($r['url']) ?></td>
+                <td class="<?= $cls ?>"><?= $h ?></td>
+                <td><?= $r['elapsed'] ?> ms</td>
+                <td style="font-size:11px;max-width:500px;"><?= htmlspecialchars(substr((string)$r['body'], 0, 200)) ?><?= $r['curlErr'] ? '<br><span class="bad">curl: ' . htmlspecialchars($r['curlErr']) . '</span>' : '' ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    <div style="margin-top:10px;font-size:12px;color:#94a3b8;line-height:1.5;">
+        💡 <strong>Interpretación</strong>:<br>
+        • <span class="ok">200</span> → URL correcta, integración OK<br>
+        • <span class="warn">401</span> → URL correcta, API key sin permiso (hay que pedir grant digital-identity a Truora)<br>
+        • <span class="warn">400</span> → URL correcta, cuerpo o parámetros mal (editar código)<br>
+        • <span class="bad">403 "Missing Authentication Token"</span> → URL NO existe en ese dominio (probar otro)<br>
+        • <span class="bad">404</span> → dominio correcto pero path mal
+    </div>
 </div>
 <?php endif; ?>
 <?php endif; ?>

@@ -1,0 +1,162 @@
+
+
+Product 
+Enterprise 
+Resources and Support 
+API Network 
+
+Search 
+
+( 
+Ctrl+K ) 
+
+Contact Sales 
+Sign In 
+Sign Up for Free 
+
+Collections 
+
+Segment Collection 
+
+Truora Collection 
+
+Background Checks 🗂️ 
+
+Digital Identity 📇 
+
+Electronic Signature ✍️ 
+
+WhatsApp📱 
+
+CDP 📂 
+
+GET 
+
+Get Chat 
+
+Environments 
+
+Specs 
+
+Flows 
+
+Truora Collection 
+
+Environment 
+No environment 
+
+Publish docs 
+
+Run 
+
+Share 
+
+Overview 
+
+Authorization 
+
+Scripts 
+
+Variables 
+
+252 
+
+247 
+
+Truora Collection 
+
+02:53 PM, March 02, 2026 
+
+Truora API Team: 
+
+developers@truora.com 
+
+﻿ 
+
+You’ve found Truora's Collection! Dedicated to showing you all the ways that you can use Truora’s products from the API. 
+
+Truora’s API is organized around REST. Our API has predictable resource-oriented URLs, accepts form-encoded request bodies, returns JSON-encoded responses, and uses standard HTTP response codes, authentication, and verbs. 
+
+The following steps allow you to configure the collection appropriately for your use: 
+
+Prerequisites 
+
+Truora Account > 
+
+API Key 
+
+﻿ 
+
+Let's start 
+
+Step 1: 
+
+Export the collection from 
+
+Truora's public workspace 
+
+within Postman: 
+
+Online 
+
+Browser Agent 
+
+Getting Started 
+What is Postman? 
+Customer Stories 
+Download Postman 
+
+API Platform 
+Collaborate in Workspaces 
+Organize with Collections 
+Explore the API Client 
+Build Postman Flows 
+Work smarter with Postbot 
+Browse API Tools 
+
+Enterprise Solutions 
+Enterprise Essentials 
+API Test Automation 
+Internal API Management 
+
+Learning 
+Learning Center Docs 
+Postman Academy 
+White Papers 
+Breaking Changes Show 
+Templates 
+Tutorials 
+Webinars 
+State of the API Report 
+Guide to API-First 
+
+Community and Events 
+POST/CON 
+Blog 
+Community 
+Student Program 
+Events 
+Postman Swag 
+
+Support 
+Support Center 
+Reseller Support 
+Postman Status 
+Release Notes 
+Contact Us 
+
+Overview 
+
+Authorization 
+
+Scripts 
+
+Variables 
+
+Fern 
+NEW 
+
+Postman 
+
+Truora Collection 
+
