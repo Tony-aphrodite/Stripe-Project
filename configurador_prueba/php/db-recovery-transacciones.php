@@ -151,23 +151,71 @@ try {
     echo "<p><code>" . implode(', ', array_map('htmlspecialchars', $schemaColumns)) . "</code></p>";
     echo "</div>";
 
-    // ── Show preview of current records ─────────────────────────────────────
+    // ── Show ALL current records (no LIMIT) ─────────────────────────────────
     echo "<div class='box'>";
-    echo "<h2>🟢 Registros actuales (se preservarán)</h2>";
+    echo "<h2>🟢 Registros actuales (todos — se preservarán)</h2>";
     $current = $pdo->query(
-        "SELECT id, pedido, nombre, freg FROM `transacciones` ORDER BY id DESC LIMIT 10"
+        "SELECT id, pedido, nombre, freg, total FROM `transacciones` ORDER BY id ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
     if ($current) {
-        echo "<table><tr><th>ID</th><th>Pedido</th><th>Nombre</th><th>Fecha</th></tr>";
+        echo "<table><tr><th>ID</th><th>Pedido</th><th>Nombre</th><th>Fecha</th><th>Total</th></tr>";
         foreach ($current as $r) {
             echo "<tr><td>" . htmlspecialchars($r['id']) . "</td>";
             echo "<td>" . htmlspecialchars($r['pedido']) . "</td>";
             echo "<td>" . htmlspecialchars($r['nombre']) . "</td>";
-            echo "<td>" . htmlspecialchars($r['freg']) . "</td></tr>";
+            echo "<td>" . htmlspecialchars($r['freg']) . "</td>";
+            echo "<td>$" . htmlspecialchars($r['total']) . "</td></tr>";
         }
         echo "</table>";
     } else {
         echo "<p>⚠ No hay registros actuales.</p>";
+    }
+    echo "</div>";
+
+    // ── CRITICAL: Check for duplicate pedidos between backup and current ───
+    $backupPedidos = [
+        '1756526853','1756527543','1756528241','1756529044',
+        '1757993102','1757993584','1757994138',
+        '1761168733','1762799790','1762989795','1764810641',
+        '1770428461','1772420984','1772489560','1774575788',
+        '1775401820','1775408079','1775413940','1775414052',
+        '1775485653','1775496686','1775497188','1775502429'
+    ];
+    $currentPedidos = array_column($current, 'pedido');
+    $duplicates = array_intersect($backupPedidos, $currentPedidos);
+    $willInsert = array_diff($backupPedidos, $currentPedidos);
+
+    echo "<div class='box' style='background:" . (count($duplicates) > 0 ? '#fee2e2' : '#dcfce7') . ";border-left:4px solid " . (count($duplicates) > 0 ? '#dc2626' : '#16a34a') . ";'>";
+    echo "<h2>🔍 Análisis de duplicados</h2>";
+    echo "<p><strong>Pedidos en el backup:</strong> " . count($backupPedidos) . "</p>";
+    echo "<p><strong>Pedidos en el DB actual:</strong> " . count($currentPedidos) . "</p>";
+    echo "<p><strong>Duplicados detectados:</strong> <span style='font-size:24px;font-weight:800;color:" . (count($duplicates) > 0 ? '#dc2626' : '#16a34a') . ";'>" . count($duplicates) . "</span></p>";
+    echo "<p><strong>Se insertarán realmente:</strong> " . count($willInsert) . " registros nuevos</p>";
+
+    if (count($duplicates) > 0) {
+        echo "<h3 style='color:#dc2626;margin-top:16px;'>⚠ ATENCIÓN — Pedidos duplicados detectados:</h3>";
+        echo "<table><tr><th>Pedido duplicado</th><th>En DB actual</th><th>En backup</th></tr>";
+        foreach ($duplicates as $dup) {
+            $currentMatch = null;
+            foreach ($current as $c) {
+                if ($c['pedido'] === $dup) { $currentMatch = $c; break; }
+            }
+            echo "<tr>";
+            echo "<td><code>$dup</code></td>";
+            echo "<td>ID " . htmlspecialchars($currentMatch['id']) . " · " . htmlspecialchars($currentMatch['nombre']) . " · " . htmlspecialchars($currentMatch['freg']) . "</td>";
+            echo "<td>Presente en backup_2026-04-06.sql</td>";
+            echo "</tr>";
+        }
+        echo "</table>";
+        echo "<p style='margin-top:12px;'><strong>⚠ Si aplicas sin modificar, se crearán duplicados (el mismo pedido aparecerá 2 veces).</strong></p>";
+        echo "<p>Opciones:</p>";
+        echo "<ol>";
+        echo "<li><strong>No ejecutar APPLY</strong> — los datos ya están parcialmente en la DB</li>";
+        echo "<li>Agregar UNIQUE KEY a <code>pedido</code> antes del APPLY: <code>ALTER TABLE transacciones ADD UNIQUE KEY uk_pedido (pedido);</code></li>";
+        echo "<li>Solicitar un SQL personalizado que excluya los " . count($duplicates) . " duplicados</li>";
+        echo "</ol>";
+    } else {
+        echo "<p style='color:#16a34a;font-weight:700;margin-top:12px;'>✅ Sin duplicados — seguro proceder con APPLY.</p>";
     }
     echo "</div>";
 
