@@ -395,21 +395,31 @@ var PasoCreditoResultado = {
 
             self.app.state.creditoAprobado = true;
 
-            // CONDICIONAL: enforce required minimum enganche and maximum plazo.
-            // We stash the original user-selected values so the confirmation
-            // screen can show "your terms were adjusted: 30% → 40%" and the
-            // customer understands WHY the enganche on-screen is higher than
-            // what they picked earlier. Without this context the page looked
-            // like a silent change (customer feedback 2026-04-23).
+            // CONDICIONAL: store the required minimum enganche and maximum
+            // plazo as RESTRICTIONS — don't silently overwrite the user's
+            // choices. Customer brief 2026-04-24:
+            //   "we need the user sent to the part of enganche and plazo
+            //    with restrictions with more enganche and lower plazo"
+            // So the user hits the pago pre-auth screen, then goes to the
+            // Paso4B slider where those restrictions gate the allowed
+            // values. The slider is seeded to the minimum-compliant
+            // values but the user can go higher (more enganche) or
+            // shorter (lower plazo) if they want.
             if (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO') {
+                self.app.state.modoCondicional = true;
                 self.app.state.engancheAjustado = false;
                 self.app.state.plazoAjustado    = false;
 
                 if (resultado.enganche_requerido_min) {
                     var minEnganche = resultado.enganche_requerido_min;
                     var prevPct = self.app.state.enganchePorcentaje || 0.30;
+                    // Keep what the user originally selected for display.
+                    self.app.state.enganchePorcentajeOriginal = prevPct;
+                    // Expose the min as an explicit constraint the slider reads.
+                    self.app.state.enganchePctMin = minEnganche;
+                    // Seed the current value to the minimum compliant value
+                    // so the pago screen shows a valid number right away.
                     if (prevPct < minEnganche) {
-                        self.app.state.enganchePorcentajeOriginal = prevPct;
                         self.app.state.enganchePorcentaje = minEnganche;
                         self.app.state.engancheAjustado = true;
                     }
@@ -417,12 +427,15 @@ var PasoCreditoResultado = {
                 if (resultado.plazo_max_meses) {
                     var maxPlazo = resultado.plazo_max_meses;
                     var prevPlazo = self.app.state.plazoMeses || 36;
+                    self.app.state.plazoMesesOriginal = prevPlazo;
+                    self.app.state.plazoMesesMax = maxPlazo;
                     if (prevPlazo > maxPlazo) {
-                        self.app.state.plazoMesesOriginal = prevPlazo;
                         self.app.state.plazoMeses = maxPlazo;
                         self.app.state.plazoAjustado = true;
                     }
                 }
+            } else {
+                self.app.state.modoCondicional = false;
             }
 
             self.app.irAPaso('credito-pago'); // Confirmation screen before Stripe payment

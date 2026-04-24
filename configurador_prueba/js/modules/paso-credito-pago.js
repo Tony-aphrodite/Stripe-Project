@@ -109,17 +109,27 @@ var PasoCreditoPago = {
         // Error
         html += '<div id="vk-cpago-error" style="display:none;color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
-        // CTA button — goes to Truora identity FIRST (INE + CURP + Selfie),
-        // then to Stripe enganche payment. Doing identity BEFORE payment saves
-        // Truora API cost on customers who drop off at terms, and preserves
-        // the legal chain (consent → identity → payment) for LFPDPPP.
+        // CTA button — routes based on credit evaluation result.
+        //
+        // CONDICIONAL (score bajo): customer brief 2026-04-24 —
+        //   "we need the user sent to the part of enganche and plazo
+        //    with restrictions". So we skip Truora and send to the
+        //    Paso4B slider locked to the required min-enganche / max-plazo.
+        //
+        // PREAPROBADO: keep the legacy Method A flow (identity → enganche)
+        //   because high-score customers get normal terms and full
+        //   identity verification remains valuable.
+        var isCondicional = !!state.modoCondicional;
         html += '<button id="vk-cpago-continuar" style="display:block;width:100%;padding:16px;background:#1b5e3b;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">';
-        html += 'CONFIRMAR Y CONTINUAR &rsaquo;';
+        html += isCondicional ? 'AJUSTAR MI PLAN &rsaquo;' : 'CONFIRMAR Y CONTINUAR &rsaquo;';
         html += '</button>';
 
         // Hint explaining the next step so no surprise
         html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:8px;">' +
-                'A continuación verificaremos tu identidad (INE + CURP) antes del pago.</p>';
+                (isCondicional
+                    ? 'A continuación podrás ajustar tu enganche y plazo dentro de los límites aprobados.'
+                    : 'A continuación verificaremos tu identidad (INE + CURP) antes del pago.') +
+                '</p>';
 
         // Card logos footer
         html += '<div class="vk-cpago-footer">';
@@ -147,17 +157,22 @@ var PasoCreditoPago = {
                 .css('opacity', both ? '1' : '0.5');
         });
 
-        // Proceed to Truora identity verification (NOT directly to Stripe).
-        // Rationale (business + legal):
-        //   - Truora charges per lookup → only pay for customers who accepted
-        //     the terms, saving ~30% of Truora costs on drop-offs.
-        //   - LFPDPPP (MX privacy law) requires clear purpose before
-        //     collecting biometric/government data → consent → then identity.
-        //   - Legal chain: offered → accepted → verified → paid makes the
-        //     contract easier to enforce / audit.
+        // Route based on approval flavor.
+        //   CONDICIONAL → Paso4B slider in "restricted" mode. Skip Truora
+        //       entirely per customer brief 2026-04-24 (low-score
+        //       applicants self-gate via higher enganche + shorter plazo;
+        //       additional identity friction is counterproductive and
+        //       burns Truora quota).
+        //   PREAPROBADO → credito-identidad (Truora). High-score customers
+        //       qualify for full terms and deserve the strongest
+        //       anti-fraud layer (identity + biometric + RENAPO).
         jQuery(document).off('click', '#vk-cpago-continuar');
         jQuery(document).on('click', '#vk-cpago-continuar', function() {
-            self.app.irAPaso('credito-identidad');
+            if (self.app.state && self.app.state.modoCondicional) {
+                self.app.irAPaso(4);  // Paso4B — restricted slider
+            } else {
+                self.app.irAPaso('credito-identidad');
+            }
         });
     }
 };
