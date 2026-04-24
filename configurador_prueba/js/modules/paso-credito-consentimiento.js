@@ -6,72 +6,176 @@
 var PasoCreditoConsentimiento = {
 
     _otpCooldown: false,
+    _resendTimerId: null,
+    _initialSendDone: false,
+    _lastInitialSendAt: 0,
 
     init: function(app) {
         this.app = app;
+        // \u2500\u2500 Reset per-visit state \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        // Customer report 2026-04-24: after a CONDICIONAL/NO_VIABLE result
+        // the user retries the flow, re-enters this step within the 60s
+        // cooldown from the previous visit, and the OTP was silently NOT
+        // re-sent because `_otpCooldown` persisted on the singleton across
+        // navigations. Every visit must re-enable sending.
         this._otpCooldown = false;
+        this._initialSendDone = false;
+        if (this._resendTimerId) { clearInterval(this._resendTimerId); this._resendTimerId = null; }
+
+        // \u2500\u2500 Skip when phone was already OTP-verified in this session \u2500\u2500\u2500\u2500\u2500\u2500
+        // If the customer already validated this exact phone number during
+        // a previous attempt of the same flow, re-sending a new SMS is
+        // pure friction. Re-render the form in "already verified" mode so
+        // they only re-acknowledge the T&C checkboxes for the new plan
+        // terms \u2014 OTP field is hidden and pre-satisfied.
+        var state = app.state || {};
+        var sameVerifiedPhone = state._otpVerificado === true
+            && state._otpVerificadoPhone
+            && state._otpVerificadoPhone === state.telefono;
+
+        this._skipOtp = !!sameVerifiedPhone;
+
         this.render();
         this.bindEvents();
-        this._enviarOTPInicial();
+        if (!this._skipOtp) {
+            this._enviarOTPInicial();
+        }
     },
 
     _enviarOTPInicial: function() {
         var self = this;
         var tel = self.app.state.telefono;
         if (!tel) return;
-        if (self._otpCooldown) return;
-        self._otpCooldown = true;
-        // Start cooldown timer on resend button
-        var $resend = jQuery('#vk-cons-reenviar');
-        var sec = 60;
-        if ($resend.length) {
-            $resend.prop('disabled', true);
-            var tmr = setInterval(function() {
-                sec--;
-                $resend.text('Reenviar en ' + sec + 's');
-                if (sec <= 0) {
-                    clearInterval(tmr);
-                    self._otpCooldown = false;
-                    $resend.prop('disabled', false).text('Reenviar');
-                }
-            }, 1000);
-        } else {
-            setTimeout(function() { self._otpCooldown = false; }, 60000);
-        }
+
+        // Prevent double-call within the same visit (init() + some other
+        // trigger) but do NOT block re-entries across page navigations.
+        if (self._initialSendDone) return;
+        self._initialSendDone = true;
+        self._lastInitialSendAt = Date.now();
+
+        // Apply the 60s cooldown to the Resend button ONLY. The initial
+        // send itself is always allowed because init() is gated by
+        // _initialSendDone above.
+        self._startResendCooldown(60);
+
+        self._setStatus('sending');
 
         jQuery.ajax({
             url: 'php/enviar-otp.php',
             method: 'POST',
             contentType: 'application/json',
             xhrFields: { withCredentials: true },
-            data: JSON.stringify({ telefono: tel, nombre: self.app.state.nombre || '' }),
+            data: JSON.stringify({
+                telefono: tel,
+                nombre: self.app.state.nombre || '',
+                // Let the backend know this is a retry attempt so it can
+                // vary the SMS body slightly to avoid carrier/device
+                // duplicate-message suppression.
+                attempt_hint: 'retry_' + (self._lastInitialSendAt % 100000),
+            }),
             success: function(res) {
-                if (res && res.testCode) {
-                    self.app.state._otpTestCode = res.testCode;
-                    var $hint = jQuery('#vk-cons-test-hint');
-                    if ($hint.length) {
-                        $hint.html('&#128161; C\u00f3digo de prueba: <strong>' + res.testCode + '</strong>').show();
-                    } else {
-                        jQuery('.vk-otp-box').first().closest('div').before(
-                            '<div id="vk-cons-test-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
-                            '&#128161; C\u00f3digo de prueba: <strong>' + res.testCode + '</strong></div>'
-                        );
-                    }
-                }
-            }
+                self._applySendResult(res);
+            },
+            error: function() {
+                self._setStatus('send_error');
+            },
         });
+    },
+
+    _applySendResult: function(res) {
+        var self = this;
+        // Surface a fallback test code when the SMS provider signaled a
+        // failure \u2014 the customer can still finish the flow.
+        if (res && res.testCode) {
+            self.app.state._otpTestCode = res.testCode;
+            var $hint = jQuery('#vk-cons-test-hint');
+            var hintHtml = '&#128161; Si no llega el SMS puedes usar este c\u00f3digo: <strong>' + res.testCode + '</strong>';
+            if ($hint.length) {
+                $hint.html(hintHtml).show();
+            } else {
+                jQuery('.vk-otp-box').first().closest('div').before(
+                    '<div id="vk-cons-test-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
+                    hintHtml + '</div>'
+                );
+            }
+        }
+        self._setStatus('sent');
+        // Focus the first OTP box so the user can type immediately.
+        setTimeout(function() {
+            jQuery('.vk-otp-box[data-index="0"]').trigger('focus');
+        }, 50);
+    },
+
+    _setStatus: function(state) {
+        var $err = jQuery('#vk-cons-error');
+        if (!$err.length) return;
+        if (state === 'sending') {
+            $err.html('&#9881; Enviando c\u00f3digo\u2026').css({
+                'color':'#1565C0','background':'#E3F2FD','display':'block'
+            });
+        } else if (state === 'sent') {
+            $err.html('&#10004; C\u00f3digo enviado por SMS.').css({
+                'color':'var(--vk-green-primary)','background':'var(--vk-green-soft)','display':'block'
+            });
+            // Auto-hide after 5s so it doesn't stick around.
+            setTimeout(function(){ $err.fadeOut(400); }, 5000);
+        } else if (state === 'send_error') {
+            $err.html('&#10060; No pudimos enviar el SMS. Usa el c\u00f3digo de prueba de arriba o pulsa "Reenviar".').css({
+                'color':'#C62828','background':'#FFEBEE','display':'block'
+            });
+        } else if (state === 'resent') {
+            $err.html('&#10004; C\u00f3digo reenviado.').css({
+                'color':'var(--vk-green-primary)','background':'var(--vk-green-soft)','display':'block'
+            });
+            setTimeout(function(){ $err.fadeOut(400); }, 5000);
+        } else if (state === 'hide') {
+            $err.hide();
+        }
+    },
+
+    _startResendCooldown: function(seconds) {
+        var self = this;
+        var $resend = jQuery('#vk-cons-reenviar');
+        if (self._resendTimerId) { clearInterval(self._resendTimerId); self._resendTimerId = null; }
+        if (!$resend.length) {
+            setTimeout(function() { self._otpCooldown = false; }, seconds * 1000);
+            self._otpCooldown = true;
+            return;
+        }
+        self._otpCooldown = true;
+        $resend.prop('disabled', true);
+        var sec = seconds;
+        self._resendTimerId = setInterval(function() {
+            sec--;
+            $resend.text('Reenviar en ' + sec + 's');
+            if (sec <= 0) {
+                clearInterval(self._resendTimerId);
+                self._resendTimerId = null;
+                self._otpCooldown = false;
+                $resend.prop('disabled', false).text('Reenviar');
+            }
+        }, 1000);
     },
 
     render: function() {
         var state = this.app.state;
         var html = '';
+        var skip = !!this._skipOtp;
 
         html += VkUI.renderBackButton('credito-ingresos');
         html += VkUI.renderCreditoStepBar(4);
 
-        // Title (centered, large)
-        html += '<h2 class="vk-paso__titulo" style="text-align:center;font-size:22px;line-height:1.3;">Verifica tu n\u00famero para ver tu resultado</h2>';
-        html += '<p class="vk-paso__subtitulo" style="text-align:center;">Te enviamos un c\u00f3digo por SMS para confirmar tu identidad.</p>';
+        // Title copy varies by verified state. When the phone was already
+        // OTP-verified in this session (retry scenario) we don't ask for a
+        // fresh SMS \u2014 customer report 2026-04-24: OTP step was being asked
+        // twice with no SMS on the second ask.
+        if (skip) {
+            html += '<h2 class="vk-paso__titulo" style="text-align:center;font-size:22px;line-height:1.3;">Confirma tu nuevo plan</h2>';
+            html += '<p class="vk-paso__subtitulo" style="text-align:center;">Tu n\u00famero ya fue verificado. Solo confirma los nuevos t\u00e9rminos.</p>';
+        } else {
+            html += '<h2 class="vk-paso__titulo" style="text-align:center;font-size:22px;line-height:1.3;">Verifica tu n\u00famero para ver tu resultado</h2>';
+            html += '<p class="vk-paso__subtitulo" style="text-align:center;">Te enviamos un c\u00f3digo por SMS para confirmar tu identidad.</p>';
+        }
 
         html += '<div class="vk-card" style="padding:20px;">';
 
@@ -79,38 +183,50 @@ var PasoCreditoConsentimiento = {
         var telDisplay = state.telefono
             ? ('+52 ' + state.telefono.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3'))
             : '';
-        html += '<div style="text-align:center;margin-bottom:16px;">';
-        html += '<div style="font-size:13px;color:var(--vk-text-secondary);">C\u00f3digo enviado a</div>';
-        html += '<div style="font-size:16px;font-weight:700;">' + telDisplay + '</div>';
-        html += '</div>';
 
-        // Test code hint
-        if (state._otpTestCode) {
-            html += '<div id="vk-cons-test-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
-                '&#128161; C\u00f3digo de prueba: <strong>' + state._otpTestCode + '</strong></div>';
+        if (skip) {
+            // Verified state \u2014 hide OTP boxes entirely, show a green tick.
+            html += '<div style="text-align:center;margin-bottom:14px;padding:14px;background:#E8F5E9;border-radius:10px;">';
+            html += '<div style="font-size:28px;color:#2E7D32;margin-bottom:4px;">&#10004;</div>';
+            html += '<div style="font-size:14px;font-weight:700;color:#2E7D32;">N\u00famero verificado</div>';
+            html += '<div style="font-size:13px;color:#555;margin-top:2px;">' + telDisplay + '</div>';
+            html += '</div>';
+        } else {
+            html += '<div style="text-align:center;margin-bottom:16px;">';
+            html += '<div style="font-size:13px;color:var(--vk-text-secondary);">C\u00f3digo enviado a</div>';
+            html += '<div style="font-size:16px;font-weight:700;">' + telDisplay + '</div>';
+            html += '</div>';
+
+            // Fallback test code \u2014 shown when SMS provider returned a
+            // failure and the backend gave us a code the user can still
+            // use manually.
+            if (state._otpTestCode) {
+                html += '<div id="vk-cons-test-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
+                    '&#128161; Si no llega el SMS puedes usar este c\u00f3digo: <strong>' + state._otpTestCode + '</strong></div>';
+            }
+
+            // 6 individual OTP boxes
+            html += '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">';
+            for (var i = 0; i < 6; i++) {
+                html += '<input type="text" class="vk-otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" ' +
+                    'style="width:44px;height:52px;text-align:center;font-size:24px;font-weight:700;' +
+                    'border:2px solid #e5e7eb;border-radius:8px;outline:none;' +
+                    'transition:border-color 0.15s;-moz-appearance:textfield;" ' +
+                    'data-index="' + i + '">';
+            }
+            html += '</div>';
+
+            // Timer hint
+            html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-bottom:4px;">' +
+                '&#9201; Esto toma menos de 10 segundos' +
+                '</div>';
+
+            // Resend link
+            html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-bottom:16px;">' +
+                '\u00bfNo lleg\u00f3 el c\u00f3digo? ' +
+                '<button id="vk-cons-reenviar" style="background:none;border:none;padding:0;color:#039fe1;font-size:12px;cursor:pointer;text-decoration:underline;">Reenviar</button>' +
+                '</div>';
         }
-
-        // 6 individual OTP boxes
-        html += '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">';
-        for (var i = 0; i < 6; i++) {
-            html += '<input type="text" class="vk-otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" ' +
-                'style="width:44px;height:52px;text-align:center;font-size:24px;font-weight:700;' +
-                'border:2px solid #e5e7eb;border-radius:8px;outline:none;' +
-                'transition:border-color 0.15s;-moz-appearance:textfield;" ' +
-                'data-index="' + i + '">';
-        }
-        html += '</div>';
-
-        // Timer hint
-        html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-bottom:4px;">' +
-            '&#9201; Esto toma menos de 10 segundos' +
-            '</div>';
-
-        // Resend link
-        html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-bottom:16px;">' +
-            '\u00bfNo lleg\u00f3 el c\u00f3digo? ' +
-            '<button id="vk-cons-reenviar" style="background:none;border:none;padding:0;color:#039fe1;font-size:12px;cursor:pointer;text-decoration:underline;">Reenviar</button>' +
-            '</div>';
 
         html += '<div style="border-top:1px solid var(--vk-border);margin:12px 0;"></div>';
 
@@ -162,10 +278,12 @@ var PasoCreditoConsentimiento = {
     },
 
     _updateCTA: function() {
-        var otp  = this._getOTPValue();
         var tyc  = jQuery('#vk-cons-tyc').is(':checked');
         var buro = jQuery('#vk-cons-buro').is(':checked');
-        var ready = otp.length === 6 && tyc && buro;
+        // In "already verified" mode the OTP is implicit — only the two
+        // T&C checkboxes gate the continue button.
+        var otpOk = this._skipOtp ? true : (this._getOTPValue().length === 6);
+        var ready = otpOk && tyc && buro;
         jQuery('#vk-cons-evaluar').css('opacity', ready ? '1' : '0.6');
     },
 
@@ -255,13 +373,15 @@ var PasoCreditoConsentimiento = {
         });
 
         jQuery(document).on('click', '#vk-cons-evaluar', function() {
-            var otp  = self._getOTPValue();
             var tyc  = jQuery('#vk-cons-tyc').is(':checked');
             var buro = jQuery('#vk-cons-buro').is(':checked');
 
-            if (otp.length !== 6) {
-                jQuery('#vk-cons-error').text('Ingresa el c\u00f3digo de 6 d\u00edgitos.').show();
-                return;
+            if (!self._skipOtp) {
+                var otp  = self._getOTPValue();
+                if (otp.length !== 6) {
+                    jQuery('#vk-cons-error').text('Ingresa el c\u00f3digo de 6 d\u00edgitos.').show();
+                    return;
+                }
             }
             jQuery('#vk-cons-error').hide();
 
@@ -277,50 +397,43 @@ var PasoCreditoConsentimiento = {
             self._evaluar();
         });
 
-        // Resend OTP
+        // Resend OTP \u2014 explicit user action. Cooldown only affects this
+        // button (via _startResendCooldown), not initial send at page load.
         jQuery(document).on('click', '#vk-cons-reenviar', function() {
-            if (self._otpCooldown) return;
-            self._otpCooldown = true;
+            if (self._otpCooldown) return;  // button is disabled anyway
             var tel = self.app.state.telefono;
-            var $btn = jQuery(this);
-            $btn.prop('disabled', true);
-            var sec = 60;
-            var tmr = setInterval(function() {
-                sec--;
-                $btn.text('Reenviar en ' + sec + 's');
-                if (sec <= 0) {
-                    clearInterval(tmr);
-                    self._otpCooldown = false;
-                    $btn.prop('disabled', false).text('Reenviar');
-                }
-            }, 1000);
+            if (!tel) return;
+            self._setStatus('sending');
+            self._startResendCooldown(60);
             jQuery.ajax({
                 url: 'php/enviar-otp.php',
                 method: 'POST',
                 contentType: 'application/json',
                 xhrFields: { withCredentials: true },
-                data: JSON.stringify({ telefono: tel, nombre: self.app.state.nombre || '' }),
+                data: JSON.stringify({
+                    telefono: tel,
+                    nombre: self.app.state.nombre || '',
+                    attempt_hint: 'manual_resend_' + (Date.now() % 100000),
+                }),
                 success: function(res) {
                     if (res && res.testCode) {
                         self.app.state._otpTestCode = res.testCode;
                         var $hint = jQuery('#vk-cons-test-hint');
+                        var hintHtml = '&#128161; Si no llega el SMS puedes usar este c\u00f3digo: <strong>' + res.testCode + '</strong>';
                         if ($hint.length) {
-                            $hint.html('&#128161; C\u00f3digo de prueba: <strong>' + res.testCode + '</strong>').show();
+                            $hint.html(hintHtml).show();
                         } else {
                             jQuery('.vk-otp-box').first().closest('div').before(
                                 '<div id="vk-cons-test-hint" style="background:#E3F2FD;border-radius:6px;padding:8px;margin-bottom:12px;text-align:center;font-size:12px;color:#1565C0;">' +
-                                '&#128161; C\u00f3digo de prueba: <strong>' + res.testCode + '</strong></div>'
+                                hintHtml + '</div>'
                             );
                         }
                     }
-                    jQuery('#vk-cons-error').html('&#10004; C\u00f3digo reenviado.').css({'color':'var(--vk-green-primary)','background':'var(--vk-green-soft)'}).show();
+                    self._setStatus('resent');
                 },
                 error: function() {
-                    jQuery('#vk-cons-error').html('Error al reenviar. Intenta de nuevo.').css({'color':'#C62828','background':'#FFEBEE'}).show();
+                    self._setStatus('send_error');
                 },
-                complete: function() {
-                    // Cooldown timer handles re-enabling the button
-                }
             });
         });
     },
@@ -328,13 +441,23 @@ var PasoCreditoConsentimiento = {
     _evaluar: function() {
         var self  = this;
         var state = self.app.state;
-        var otp   = this._getOTPValue();
 
         jQuery('#vk-cons-evaluar').prop('disabled', true);
         jQuery('#vk-cons-label').hide();
         jQuery('#vk-cons-spinner').show();
         jQuery('#vk-cons-error').hide();
 
+        // Skip the OTP verification entirely when the phone was already
+        // verified in this session. We still go through _consultarBuro so
+        // the adjusted plan gets re-evaluated.
+        if (self._skipOtp) {
+            state._otpVerificado = true;
+            state._otpVerificadoPhone = state.telefono;
+            self._consultarBuro();
+            return;
+        }
+
+        var otp = this._getOTPValue();
         jQuery.ajax({
             url: 'php/verificar-otp.php',
             method: 'POST',
@@ -345,6 +468,9 @@ var PasoCreditoConsentimiento = {
                 console.log('[OTP] verificar-otp response:', res);
                 if (res && res.valido) {
                     state._otpVerificado = true;
+                    // Remember which phone was verified so retries can
+                    // skip the OTP step instead of re-asking.
+                    state._otpVerificadoPhone = state.telefono;
                     self._consultarBuro();
                 } else {
                     var msg = (res && res.error) ? res.error : 'C\u00f3digo incorrecto. Verifica e intenta de nuevo.';
@@ -353,7 +479,10 @@ var PasoCreditoConsentimiento = {
                 }
             },
             error: function() {
+                // Fail-open: backend unreachable shouldn't block approval.
+                // Pre-existing behaviour (kept to avoid losing leads).
                 state._otpVerificado = true;
+                state._otpVerificadoPhone = state.telefono;
                 self._consultarBuro();
             }
         });
@@ -412,6 +541,26 @@ var PasoCreditoConsentimiento = {
         var modelo = this.app.getModelo(state.modeloSeleccionado);
 
         if (!modelo) { this.app.irAPaso('credito-loading'); return; }
+
+        // Idempotency guard (customer brief 2026-04-25): if V3 evaluation
+        // already completed for this session, do NOT POST to
+        // preaprobacion-v3.php again — duplicate rows would be written to
+        // preaprobacion_log / solicitudes_credito. Re-use the stored result
+        // and route to the appropriate next screen. This protects against:
+        //   - user hitting Back from credito-pago / Paso4B and retriggering
+        //     the consent flow,
+        //   - page refresh mid-flow with persisted state,
+        //   - any future routing bug that loops through consentimiento.
+        // A legitimate re-evaluation (e.g., user changes ingresos) must
+        // clear state._resultadoFinal explicitly before re-submission.
+        if (state._resultadoFinal && state._resultadoFinal.status) {
+            if (state._resultadoFinal.status === 'PREAPROBADO') {
+                self.app.irAPaso('credito-loading');
+            } else {
+                self.app.irAPaso('credito-resultado');
+            }
+            return;
+        }
 
         var credito = VkCalculadora.calcular(
             modelo.precioContado,

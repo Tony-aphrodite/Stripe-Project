@@ -63,13 +63,17 @@ window.VK_entrega = (function(){
     });
     html += '</div>';
 
-    // Moto info
+    // Moto info — use a readable pill when punto isn't assigned yet so the
+    // customer doesn't see a raw "—" (looks broken).
+    var puntoNombreHtml = (data.punto && data.punto.nombre)
+      ? escapeHtml(data.punto.nombre)
+      : '<span style="display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;">Asignando punto…</span>';
     html += '<div class="vk-card">'+
       '<div class="vk-h2">'+(data.modelo||'Moto')+' · '+(data.color||'')+'</div>'+
       '<div class="vk-muted">VIN: '+(data.vin_display||'—')+'</div>'+
-      '<div class="vk-row"><span class="k">Punto Voltika</span><span class="v">'+(data.punto.nombre||'—')+'</span></div>'+
-      (data.punto.direccion?'<div class="vk-row"><span class="k">Dirección</span><span class="v">'+data.punto.direccion+'</span></div>':'')+
-      (data.punto.telefono ?'<div class="vk-row"><span class="k">Teléfono</span><span class="v">'+data.punto.telefono+'</span></div>':'')+
+      '<div class="vk-row"><span class="k">Punto Voltika</span><span class="v">'+puntoNombreHtml+'</span></div>'+
+      (data.punto && data.punto.direccion?'<div class="vk-row"><span class="k">Dirección</span><span class="v">'+escapeHtml(data.punto.direccion)+'</span></div>':'')+
+      (data.punto && data.punto.telefono ?'<div class="vk-row"><span class="k">Teléfono</span><span class="v">'+escapeHtml(data.punto.telefono)+'</span></div>':'')+
     '</div>';
 
     // Shipment tracking card — Skydrop ETA. Shown whenever we have envio data

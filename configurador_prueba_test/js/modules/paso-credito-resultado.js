@@ -395,20 +395,47 @@ var PasoCreditoResultado = {
 
             self.app.state.creditoAprobado = true;
 
-            // CONDICIONAL: enforce required minimum enganche and maximum plazo
+            // CONDICIONAL: store the required minimum enganche and maximum
+            // plazo as RESTRICTIONS — don't silently overwrite the user's
+            // choices. Customer brief 2026-04-24:
+            //   "we need the user sent to the part of enganche and plazo
+            //    with restrictions with more enganche and lower plazo"
+            // So the user hits the pago pre-auth screen, then goes to the
+            // Paso4B slider where those restrictions gate the allowed
+            // values. The slider is seeded to the minimum-compliant
+            // values but the user can go higher (more enganche) or
+            // shorter (lower plazo) if they want.
             if (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO') {
+                self.app.state.modoCondicional = true;
+                self.app.state.engancheAjustado = false;
+                self.app.state.plazoAjustado    = false;
+
                 if (resultado.enganche_requerido_min) {
                     var minEnganche = resultado.enganche_requerido_min;
-                    if (!self.app.state.enganchePorcentaje || self.app.state.enganchePorcentaje < minEnganche) {
+                    var prevPct = self.app.state.enganchePorcentaje || 0.30;
+                    // Keep what the user originally selected for display.
+                    self.app.state.enganchePorcentajeOriginal = prevPct;
+                    // Expose the min as an explicit constraint the slider reads.
+                    self.app.state.enganchePctMin = minEnganche;
+                    // Seed the current value to the minimum compliant value
+                    // so the pago screen shows a valid number right away.
+                    if (prevPct < minEnganche) {
                         self.app.state.enganchePorcentaje = minEnganche;
+                        self.app.state.engancheAjustado = true;
                     }
                 }
                 if (resultado.plazo_max_meses) {
                     var maxPlazo = resultado.plazo_max_meses;
-                    if (!self.app.state.plazoMeses || self.app.state.plazoMeses > maxPlazo) {
+                    var prevPlazo = self.app.state.plazoMeses || 36;
+                    self.app.state.plazoMesesOriginal = prevPlazo;
+                    self.app.state.plazoMesesMax = maxPlazo;
+                    if (prevPlazo > maxPlazo) {
                         self.app.state.plazoMeses = maxPlazo;
+                        self.app.state.plazoAjustado = true;
                     }
                 }
+            } else {
+                self.app.state.modoCondicional = false;
             }
 
             self.app.irAPaso('credito-pago'); // Confirmation screen before Stripe payment
@@ -436,14 +463,17 @@ var PasoCreditoResultado = {
             self.app.irAPaso(1);
         });
 
-        // Primary CTA: adjust enganche/plazo and retry evaluation. Returns
-        // to the slider screen where enganche % + plazo can be tweaked.
+        // Primary CTA: adjust enganche/plazo and retry evaluation.
+        // Returns to paso 4 (Paso4B for credito) which hosts the enganche +
+        // plazo sliders, NOT 'credito-enganche' which is the Stripe payment
+        // screen (customer report 2026-04-23: clicking "Ajusta tu plan" sent
+        // the user straight to pay, skipping the adjustment they wanted).
         jQuery(document).off('click', '#vk-nv-retry');
         jQuery(document).on('click', '#vk-nv-retry', function() {
             self.app.state._resultadoFinal = null;
             self.app.state.creditoAprobado = false;
             self.app.state.metodoPago = 'credito';
-            self.app.irAPaso('credito-enganche');
+            self.app.irAPaso(4);
         });
 
         // 4 direct payment shortcuts. Each sets metodoPago + a preferred

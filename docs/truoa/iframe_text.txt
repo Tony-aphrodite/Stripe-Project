@@ -1,0 +1,99 @@
+
+Clear 
+
+Search Home 
+Documentation Docs Background Checks Digital Identity - Web/Mobile Digital Identity - Validators API Customer Engagement 
+
+API Reference API 
+Guides 
+Status 
+
+GUIDES 
+
+What is an iFrame? 
+
+iFrame integration 
+PostMessage (Advanced) 
+
+Get Results 
+
+Security considerations 
+
+iFrame integration Guide 
+Product: Digital Identity Verification 
+This guide will help you to integrate your Web Flow in your website. 
+
+What is an iFrame? 
+According to MDN docs : The <iframe> HTML element represents a nested browsing context, embedding another HTML page into the current one. 
+
+iFrame integration 
+NOTE: Before proceeding, make sure you have set up an account and created your Truora API Key . 
+The following steps will help you consume our Digital Identity services through Iframe , which will allow you to integrate a web flow in your website: 
+Create Web Flow : follow the guide to Create a Web Flow using our flow builder. 
+NOTE: Within the flow builder, you can customize your web flow to change its look and feel, as well as brand it according to your preferences. 
+Once the flow has been created and tested, go to My Flows in the platform to identify the flow id , which will be required in the next steps. 
+
+html 
+
+Click to copy 
+
+< iframe 
+
+src = "https://identity.truora.com/?token=api_key" 
+
+allow = "camera" 
+
+width = ".. px" 
+
+height = ".. px" > 
+
+</ iframe > 
+
+Replace: 
+src with the Process Link created in the previous step. 
+width and height with the desired values in pixels. 
+Iframe Size Recommendation 
+To ensure an optimal user experience, set the iframe to a minimum size of 450px (width) by 700px (height). Smaller dimensions may cause display issues in the verification flow. 
+NOTE: 
+Adding the allow=“camera” attribute allows the user to use the camera to take a picture of the document. 
+Before you embed the iFrame in your site, you must have your application registered in Truora, this means let our team know the URL where you are going to embed the iFrame . If you don’t have your application registered yet, please contact your integration manager and give them this information or contact us through WhatsApp 
+
+PostMessage (Advanced) 
+Disclaimer: This configuration requires an understanding of JavaScript listeners, so we recommend you have a developer or tech-savvy person do or help during this process 
+When integrating through iFrame , you may receive one of the following three messages when the web identity process has finished: 
+truora.process.succeeded → Indicates a final status of success after the process steps have finished. 
+truora.process.failed → Indicates a final status of failure after the process steps have finished. 
+truora.steps.completed → Indicates that there is still no final status of success or failure after the process steps have finished. This could occur because there are asynchronous steps in the process, such as document or face validation. 
+When is this message sent? 
+The message is sent when the user clicks on “ Finish validation ” or when a redirection is triggered (if the button is not clicked within 3 seconds after the completion message appears): 
+
+javascript 
+
+Click to copy 
+
+window . addEventListener ( "message" , ( event ) => { 
+
+// Handle the received message, which can be accessed via event.data 
+
+// For more information, refer to: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage 
+
+}); 
+
+Note: For precise control over the received messages, we recommend including the Get Validations Result step when you are Creating your Web Flow . This ensures that you receive only the succeeded or failed messages, allowing for better handling and management of the validation process: 
+
+Get Results 
+The process results can be obtained in two ways: 
+Polling: You can get the process (or flow) results with a query to Truora’s API or from the dashboard . For more information, please see the Guide to Get Results . 
+
+Webhooks: You can get automatic notifications about Results from a user, for which you must subscribe Webhooks . This alternative allows you to receive hooks of actions/rules you created. For more information please visit Webhooks guide . 
+
+Security considerations 
+The iFrame integration is a secure way to integrate in your website. However, you must take into account the following security considerations: 
+Review your Content Security Policy (CSP). 
+Employ defensive code in the UI to ensure that the current frame is the most top level window. 
+Properly set authentication cookies with SameSite=Strict (or Lax) and Secure flags. 
+We strongly recommend you to review the following resources to learn more about security considerations when using iFrames: 
+Clickjacking “UI redress attack” 
+Cross Frame Scripting (XFS) attacks 
+OWASP CheatSheet HTML5 Security 
+

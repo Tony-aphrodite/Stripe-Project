@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Voltika — Configuración Stripe Radar + 3D Secure</title>
+<style>
+* { box-sizing: border-box; }
+body {
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #f3f4f6; margin: 0; padding: 24px;
+    color: #1f2937; line-height: 1.6;
+}
+.container { max-width: 860px; margin: 0 auto; }
+h1 { color: #635bff; font-size: 26px; margin: 0 0 4px; }
+.sub { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
+h2 { color: #1a3a5c; font-size: 19px; margin: 28px 0 10px; padding-bottom: 6px;
+    border-bottom: 2px solid #635bff; }
+h3 { color: #1a3a5c; font-size: 15px; margin: 18px 0 6px; }
+.card { background: #fff; border-radius: 10px; padding: 18px 22px;
+    margin: 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.phase {
+    display: inline-block; background: #635bff; color: #fff;
+    padding: 4px 12px; border-radius: 999px; font-size: 12px;
+    font-weight: 700; margin-bottom: 10px; letter-spacing: .3px;
+}
+.phase.done { background: #10b981; }
+.phase.todo { background: #f59e0b; }
+code {
+    background: #f3f4f6; padding: 2px 7px; border-radius: 4px;
+    font-family: Consolas, monospace; font-size: 13px; color: #1a3a5c;
+}
+pre {
+    background: #1a3a5c; color: #e2e8f0; padding: 12px; border-radius: 6px;
+    overflow-x: auto; font-size: 12px; line-height: 1.5;
+}
+ol li, ul li { margin-bottom: 6px; }
+.step {
+    background: #EEF2FF; border-left: 4px solid #635bff;
+    padding: 14px 16px; margin: 14px 0; border-radius: 6px;
+}
+.step-num {
+    display: inline-block; background: #635bff; color: #fff;
+    width: 26px; height: 26px; border-radius: 50%;
+    text-align: center; line-height: 26px; font-weight: 700;
+    margin-right: 8px; font-size: 13px;
+}
+.rule {
+    background: #FFF4E5; border-left: 4px solid #f59e0b;
+    padding: 12px 16px; margin: 10px 0; border-radius: 6px; font-size: 14px;
+}
+.rule strong { color: #92400e; }
+.ok { color: #10b981; font-weight: 700; }
+.warn { color: #f59e0b; font-weight: 700; }
+.bad { color: #ef4444; font-weight: 700; }
+table {
+    width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0;
+}
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+th { background: #f9fafb; color: #6b7280; }
+.cta {
+    display: inline-block; background: #635bff; color: #fff;
+    padding: 12px 24px; border-radius: 8px; text-decoration: none;
+    font-weight: 700; margin: 8px 0;
+}
+.cta:hover { background: #524cdb; }
+.badge-cost {
+    background: #fef3c7; color: #92400e; padding: 3px 10px;
+    border-radius: 12px; font-size: 12px; font-weight: 700;
+}
+hr { border: 0; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🛡️ Voltika — Configuración de Stripe Radar + 3D Secure</h1>
+<div class="sub">Guía paso a paso para activar la protección antifraude completa en Stripe</div>
+
+<!-- Phase 1: Done -->
+<h2>Fase 1 — 3D Secure (ya implementado en código)</h2>
+<div class="card">
+<span class="phase done">COMPLETADO</span>
+<p>Ya desplegamos los siguientes cambios en el servidor:</p>
+<ul>
+    <li><code>create-payment-intent.php</code> — todas las tarjetas ahora solicitan 3DS</li>
+    <li><code>create-setup-intent.php</code> — el registro de tarjeta para autopago también pasa por 3DS</li>
+    <li>Valor aplicado: <code>request_three_d_secure: 'any'</code></li>
+</ul>
+<p><strong>Efecto inmediato</strong>: Cuando un cliente paga con tarjeta en Voltika, el banco le pedirá verificación (SMS, app bancaria o biometría) antes de cobrar. Responsabilidad de chargeback se transfiere al banco emisor.</p>
+</div>
+
+<!-- Phase 2: Radar -->
+<h2>Fase 2 — Activar Stripe Radar for Fraud Teams</h2>
+<div class="card">
+<span class="phase todo">PENDIENTE — 10 min</span>
+<p>Radar <strong>básico</strong> (scoring automático) ya está activo en todas las cuentas Stripe. Para activar reglas personalizadas y revisión manual, necesitas hacer upgrade a <strong>Radar for Fraud Teams</strong>.</p>
+
+<table>
+    <tr><th>Plan</th><th>Precio</th><th>Lo que incluye</th></tr>
+    <tr>
+        <td>Radar (básico)</td>
+        <td>Incluido</td>
+        <td>Scoring ML automático, bloqueo de alto riesgo</td>
+    </tr>
+    <tr style="background:#EEF2FF;">
+        <td><strong>Radar for Fraud Teams</strong> ⭐</td>
+        <td><span class="badge-cost">$0.05 USD por cobro</span></td>
+        <td>Todo lo anterior + reglas personalizadas, cola de revisión manual, 3DS selectivo, allowlist/blocklist</td>
+    </tr>
+</table>
+
+<h3>Estimado de costo para Voltika</h3>
+<table>
+    <tr><th>Volumen mensual</th><th>Costo Radar Fraud Teams</th><th>Equivalente MXN</th></tr>
+    <tr><td>50 cobros</td><td>$2.50 USD</td><td>~$50 MXN</td></tr>
+    <tr><td>200 cobros</td><td>$10 USD</td><td>~$200 MXN</td></tr>
+    <tr><td>1,000 cobros</td><td>$50 USD</td><td>~$1,000 MXN</td></tr>
+</table>
+<p style="font-size:13px;color:#6b7280;"><strong>ROI</strong>: Evitar 1 fraude de una moto ($48,000 MXN) paga ~20 años de Radar Fraud Teams.</p>
+</div>
+
+<!-- Step-by-step -->
+<h2>📋 Pasos en el Dashboard de Stripe</h2>
+
+<div class="step">
+    <span class="step-num">1</span><strong>Entra a Stripe Dashboard</strong>
+    <p>Ve a <a href="https://dashboard.stripe.com/settings/radar" target="_blank">dashboard.stripe.com/settings/radar</a></p>
+</div>
+
+<div class="step">
+    <span class="step-num">2</span><strong>Hacer upgrade a Radar for Fraud Teams</strong>
+    <ol>
+        <li>En la sección "Radar", busca el botón <strong>"Upgrade to Radar for Fraud Teams"</strong> o <strong>"Actualizar a Radar para Equipos de Fraude"</strong></li>
+        <li>Confirma el cambio de plan ($0.05 USD por cobro)</li>
+        <li>Listo — ya tienes acceso a reglas personalizadas</li>
+    </ol>
+</div>
+
+<div class="step">
+    <span class="step-num">3</span><strong>Verificar que Radar está bloqueando</strong>
+    <ol>
+        <li>Dashboard → Radar → Reviews</li>
+        <li>Deberías ver "Rules" habilitado</li>
+        <li>Verifica que hay reglas por defecto (bloqueo > risk 75, review entre 65-75)</li>
+    </ol>
+</div>
+
+<h2>🎯 Reglas recomendadas a crear</h2>
+
+<p>Dashboard → Radar → Rules → <strong>Add rule</strong>:</p>
+
+<div class="rule">
+<strong>Regla 1 — Montos altos siempre con 3DS challenge</strong>
+<pre>:amount_in_mxn: &gt; 30000
+→ Request 3D Secure (challenge)</pre>
+<small>Para cualquier cobro &gt; $30,000 MXN, forzar 3DS challenge (no frictionless). Protege compras de motocicletas completas.</small>
+</div>
+
+<div class="rule">
+<strong>Regla 2 — País IP ≠ país de tarjeta</strong>
+<pre>:ip_country: != :card_country:
+→ Review</pre>
+<small>Cuando la IP del cliente no coincide con el país de emisión de la tarjeta, mandar a cola de revisión manual. Típico patrón de fraude.</small>
+</div>
+
+<div class="rule">
+<strong>Regla 3 — Email sospechoso</strong>
+<pre>:email_domain: in_list: ('guerrillamail.com', 'tempmail.com', '10minutemail.com', 'mailinator.com')
+→ Block</pre>
+<small>Bloquear emails desechables que atacantes usan para probar tarjetas robadas.</small>
+</div>
+
+<div class="rule">
+<strong>Regla 4 — Velocity (misma tarjeta, múltiples intentos)</strong>
+<pre>:card_count_for_ip_address_hour: &gt; 3
+→ Block</pre>
+<small>Si la misma IP intenta más de 3 tarjetas diferentes en una hora, es casi seguro que está probando tarjetas robadas.</small>
+</div>
+
+<div class="rule">
+<strong>Regla 5 — Tarjetas previamente rechazadas</strong>
+<pre>:card_count_failed_for_ip_address_hour: &gt; 2
+→ Block</pre>
+<small>Bloquear IPs que generaron más de 2 cobros fallidos en la última hora.</small>
+</div>
+
+<h2>🧪 Cómo probar que funciona</h2>
+
+<div class="card">
+<h3>Tarjetas de prueba de Stripe (modo test)</h3>
+<table>
+    <tr><th>Tarjeta</th><th>Comportamiento</th></tr>
+    <tr><td><code>4000 0027 6000 3184</code></td><td>3DS challenge requerido — pasa</td></tr>
+    <tr><td><code>4000 0025 0000 3155</code></td><td>3DS challenge — autenticación exitosa</td></tr>
+    <tr><td><code>4000 0000 0000 0093</code></td><td>Radar la marca como alto riesgo — debe bloquearse</td></tr>
+    <tr><td><code>4000 0000 0000 9235</code></td><td>Stripe escalate, va a review manual</td></tr>
+</table>
+<p style="margin-top:10px;font-size:13px;">Usa CVV <code>123</code> y cualquier fecha futura.</p>
+</div>
+
+<h2>📊 Monitoreo post-activación</h2>
+
+<div class="card">
+<p>Una vez activo, revisar semanalmente:</p>
+<ul>
+    <li><strong>Dashboard → Radar → Reviews</strong>: ver cobros pendientes de revisión manual</li>
+    <li><strong>Dashboard → Radar → Rules</strong>: ver qué reglas dispararon y cuántas veces</li>
+    <li><strong>Dashboard → Radar → Risk insights</strong>: patrones emergentes de fraude</li>
+    <li><strong>Dashboard → Payments → Disputes</strong>: chargebacks (debería bajar drásticamente con 3DS)</li>
+</ul>
+</div>
+
+<h2>🎬 Resumen ejecutivo</h2>
+<div class="card" style="background:#F0FDF4;border-left:4px solid #10b981;">
+<p style="font-weight:700;color:#065f46;margin:0 0 8px;">✅ Lo que ya está hecho (código):</p>
+<ul>
+    <li>3D Secure forzado en <strong>todas</strong> las transacciones de tarjeta</li>
+    <li>3DS también en el registro de tarjeta para autopago semanal</li>
+</ul>
+<p style="font-weight:700;color:#065f46;margin:12px 0 8px;">📋 Lo que falta (Voltika CEO — 10 min en Dashboard):</p>
+<ol>
+    <li>Upgrade a Radar for Fraud Teams ($0.05/cobro)</li>
+    <li>Crear las 5 reglas recomendadas arriba</li>
+    <li>Hacer un pago de prueba con tarjeta <code>4000 0027 6000 3184</code> para verificar</li>
+</ol>
+</div>
+
+<div style="text-align:center;margin-top:32px;">
+<a class="cta" href="https://dashboard.stripe.com/settings/radar" target="_blank">
+    Ir a Stripe Radar Dashboard →
+</a>
+</div>
+
+<hr>
+<p style="font-size:11px;color:#9ca3af;text-align:center;">
+Voltika Stripe Radar Setup Guide · Generado 2026-04-24
+</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,2046 @@
+                       CONTRATO MARCO DE SERVICIOS
+
+1. Partes              Términos y Condiciones Específicos
+2. Objeto
+                               Truora
+
+                               Razón Social: Truora Fraud Prevention, S,A. de C.V. 
+                               RFC: TFP191219TG0
+                               Domicilio: Av. Ejército Nacional 351, Granada, Miguel Hidalgo,
+                               11520.
+                               Ciudad de México
+                               Representante legal: Maria Celia Hernández Caballero 
+                               INE Representante legal: 1582645850
+
+                               Cliente
+
+                               Razón Social: Mtech Gears, S.A. de C.V.
+                               RFC: MGE230316KA2
+                               Domicilio: Jaime Balmes 71, 101 Despacho C, Polanco I Sección,
+                               C.P. 11510, CDMX, México
+                               Representante legal: Raul Marin de la Cruz
+                               INE Representante legal: 1827020750
+
+                               El presente Contrato tiene por objeto regular la prestación de
+                               los servicios por parte de Truora en favor del Cliente, los
+                               cuales en su conjunto se denominarán los "Servicios" y
+                               consisten,en lo siguiente:
+
+                                  TruChecks: Verificación del documento de identificación
+                                      de personas naturales y jurídicas (según aplique) en
+                                      bases de datos públicas o privadas.
+
+                                  Digital Identity: Validación de identidad de los usuarios
+                                      finales del Cliente.
+
+                                  Customer Engagement: Flujo de conversaciones
+                                      automatizadas vía WhatsApp (chatbots) por medio de
+                                      plantillas, específicamente de plantilla de Utility //
+                                      plantilla de marketing.
+
+                                  ZapSign: Firma electrónica de documentos y/o mensaje
+                                      de datos y almacenamiento de estos.
+
+                               La descripción detallada, alcance técnico, condiciones
+                               particulares, limitaciones, entregables y características de la
+                               prestación de los Servicios, se detallará en el Anexo "A" del
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  1
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+                                              presente Contrato, el cual forma parte integral del mismo y
+                                              será obligatorio para ambas Partes como si se insertará a la
+                                              letra en este apartado.
+
+                                              En caso de discrepancia o contradicción entre lo estipulado en
+                                              el cuerpo del Contrato y lo previsto en el Anexo"A",
+                                              prevalecerá lo estipulado en el presente instrumento.
+
+3. Precio                                     El Cliente deberá pagar a Truora un monto mensual fijo de
+                                              $800 USD para un consumo inferior a 2.000 transacciones al
+                                              mes. Si durante dos meses consecutivos el consumo mensual
+                                              del Cliente es superior a 2.000 transacciones al mes, a partir
+                                              del tercer mes el monto mensual fijo se ajustará
+                                              automáticamente a $1.500 USD, adicional al monto que
+                                              corresponda por concepto del precio variable aplicable
+                                              conforme a lo previsto en la Tabla 1 del presente Contrato.
+
+                                              Cada operación individual en la que se presten los Servicios
+                                              será considerada como (1) "Transacción".
+
+                                              El volumen y tipo de Transacciones se integrarán con base en
+                                              el número acumulado de operaciones realizadas durante el
+                                              mes correspondiente, y su precio unitario se determinará de
+                                              acuerdo con la siguiente tabla:
+
+                                                           Tabla 1 : Precio Variable
+
+                                              Producto                         Precio X     Precio X
+                                                                            Transacción  Transacción
+
+                                                                                  < 2k         > 2k
+
+                                              Validación de antecedentes    $ 0.90            $ 0.87
+
+                                              Validación de credencial      $ 0.37       $ 0.35
+                                              oficial                       $ 0.50       $ 0.47
+                                              INE/IFE/FM2/FM3
+                                              OCR, INE, RENAPO, Modelos IA
+                                              docs. apócrifos
+
+                                              Verificación Biométrica -
+                                              Prueba de vida y modelos de
+                                              fraude
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                2
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+                                              Validación OTP email y           $ 0.36    $ 0.32
+                                              celular / con confiabilidad
+                                              Firma Electrónica -Nom. 151      $ 0.23    $ 0.20
+                                              Formularios                      $ 0.30    $ 0.27
+                                              WhatsApp - Agente Utility       $0.025     $0.010
+                                                                                $0.15     $0.14
+                                              WhatsApp - Agente MKTn           $0.28     $0.25
+                                              Comprobante de domicilio        Incluido  Incluido
+                                              TruFace - Base de datos
+                                              propia de rostros fraudulentos
+
+                                              Para la liquidación mensual de las tasas se aplicará la
+                                              siguiente fórmula:
+
+                                              Precio = Volumen de Transacciones x Precio por
+                                              Transacción
+
+                                              El precio por Transacción varía mensualmente en función del
+                                              volumen alcanzado de consumo.
+
+                                              La siguiente tabla corresponde al valor fijo mensual de
+                                              acompañamiento, que el Cliente deberá pagar a Truora:
+
+                                              Tabla 2: Fijo Mensual
+
+                                               Acompañamiento de un customer            $0 USD
+                                                   success manager para reuniones
+                                                   de seguimiento de forma mensual.
+
+                                               3 horas de consultoría al mes
+                                               Capacitaciones del equipo hasta 2
+
+                                                   veces al mes
+                                               Estructuración de proyectos y
+
+                                                   procesos
+                                               Co-creación de los flujos
+                                               Creación configuración y mejora de
+
+                                                   agentes
+                                               Revisión de KPIs y Métricas
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                       3
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+4. Forma de pago y                            3.1. Las Partes acuerdan que todos los precios están
+                                              expresados en dólares estadounidenses y no incluyen los
+    facturación                               impuestos aplicables.
+
+5. Vigencia                                   3.2 Independientemente del volumen de consumo y una vez
+                                              en producción, el Cliente, se obliga a cubrir una facturación
+6. Responsables del                           mínima mensual equivalente a $800 USD para un consumo
+                                              inferior a 2.000 transacciones al mes. Luego de dos meses
+    proyecto                                  consecutivos de consumo superior a 2.000 transacciones al
+                                              mes, a partir del tercer mes el monto mensual fijo se ajustará a
+                                              $1.500 USD, en caso de que el uso mensual exceda dicho
+                                              monto mínimo, se aplicará la fórmula de tarifas por
+                                              Transacciones Adicionales conforme a las tablas.
+
+                                              3.3. Customer Engagement: Las Transacciones de este
+                                              producto serán facturadas de acuerdo con las conversaciones
+                                              entregadas.
+
+                                              Plan de integración:
+                                              El Cliente se obliga a pagar el costo del plan de integración de
+                                              manera anticipada al momento de firma de este Contrato.
+
+                                              Servicios:
+                                              El Cliente se obliga a cubrir a Truora los montos
+                                              correspondientes al consumo mensual de los Servicios
+                                              efectivamente prestados, conforme a lo establecido en los
+                                              apartados anteriores y de acuerdo con la facturación que
+                                              emita el Truora conforme a lo establecido en la Cláusula 3 de
+                                              los Términos y Condiciones Generales.
+
+                                              El Contrato iniciará el 11 de diciembre de 2025.
+
+                                              El Contrato tendrá una vigencia de (6) meses contados a partir
+                                              de su firma con renovación automática salvo manifestación en
+                                              contrario de cualquiera de las partes. A partir de la segunda
+                                              renovación, la vigencia del contrato será de 12 meses por cada
+                                              período sucesivo.
+                                              Truora
+                                              María Fernanda Mendieta Gamba
+                                              Sales Account Executive
+                                              mfmendieta@truora.com
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  4
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+7. Anexos                                     Cliente
+                                              1.- David Cassab Massri
+                                              Cargo: Gerente de Operaciones / dcb@mtechmexico.mx
+                                              2.- Oscar Limon
+                                              Cargo: Desarrollo IT / oscar@riactor.com
+
+                                              El Contrato se interpretará como un documento integral junto
+                                              con los siguientes Anexos:
+
+                                                Anexo A: Descripción de Trabajo
+                                                Anexo B: Términos y Condiciones Generales
+                                                Anexo C: Acuerdo de Niveles de Servicio
+                                                Anexo D: Acuerdo de Tratamiento de Datos Personales
+                                                Anexo E: Acuerdo de Confidencialidad
+
+Truora y el Cliente, cada una identificada individualmente como una Parte y de forma
+conjunta las "Partes", suscriben el presente contrato Marco de Prestación de Servicios, el cual
+se regirá por los Términos y Condiciones específicos anteriormente descritos, los Términos y
+Condiciones generales (Anexo B) y sus anexos respectivos (en adelante el "Contrato").
+
+Las Partes lo firman por medio de la herramienta de firma electrónica ZapSign en la fecha
+indicada en el reporte de firmas.
+
+Truora Fraud Prevention S.A. de C.V.          Mtech Gears, S.A. de C.V.
+
+           Firmado digitalmente en ZapSign por             Firmado digitalmente en ZapSign por
+
+           Maria Celia Hernandez Caballero                 Raul Marin de la Cruz
+
+           Fecha: 16/12/2025 11:04:05.992 (UTC-0500)       Fecha: 13/12/2025 16:23:54.290 (UTC-0500)
+
+_____________________________                 _____________________________
+
+Maria Celia Hernandez                         Raul Marin de la Cruz
+INE: 1582645850                               CURP: MACR660510HTCRRL02
+Representante Legal                           Representante Legal
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                         5
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+                                              Anexo A
+                                   Descripción de Trabajo
+
+1. Resumen de los Servicios.
+
+         Truora desarrollará y prestará los siguientes Servicios al Cliente:
+
+           TruChecks: La verificación del documento de identificación de las personas
+                naturales y jurídicas (según aplique) que desean convertirse en usuarios, que
+                estén en un proceso de selección o que estén tengan algún tipo de relación
+                comercial o legal con el Cliente, y la consulta de bases de datos públicas
+                nacionales e internacionales para poder obtener información de estas personas.
+
+           Digital Identity: Validación biométrica de los usuarios que buscan obtener
+                productos o servicios ofrecidos por el Cliente, mediante la captura de videos o
+                fotos faciales del usuario, fotografías que componen su documento de identidad,
+                firma electrónica, validación de correo y celular a través de claves únicas de
+                verificación.
+
+           Customer Engagement: Creación de flujos de comunicación donde el Cliente
+                interactúe con sus usuarios a través mensajes de Whatsapp. Los usuarios del
+                Cliente también pueden enviarle un mensaje a este, a través de Whatsapp al
+                número de teléfono habilitado para la API de Whatsapp o la cuenta de Facebook
+                Business Manager.
+                   Plantilla utility // Plantilla Marketing : Plantillas de mensajes dependiendo
+                        de la funcionalidad. En caso de que el Cliente consuma una plantilla
+                        diferente a la establecida en el presente Contrato, estas serán facturadas de
+                        manera independiente y podrán tener un precio unitario mayor al adquirido.
+
+           ZapSign: Firma electrónica de documentos y/o mensaje de datos por medio de la
+                Plataforma Zapsign.
+
+2. Descripción Detallada de Servicios.
+
+            Habilitación de 10 Usuarios de acceso privados para el uso del Cliente.
+            Para el servicio de Customer Engagement: préstamo de una cuenta de Whatsapp
+
+                Business a nombre de Truora hasta por un máximo de quince (15) días calendario
+                contados a partir de la Fecha de Firma. Sin perjuicio de lo anterior, es obligación
+                del Cliente obtener su propia cuenta de Whatsapp Business para la adecuada
+                prestación de los Servicios.
+
+            En caso de que el Cliente haya adquirido el producto de Digital Identity tendrá
+                como beneficio durante los primeros 6 meses de Contrato, 500 Transacciones del
+                producto de ZapSign y 500 Transacciones del producto Whatsapp gratuitas.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  6
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+3. Servicios de integración
+
+        El Plan seleccionado por el Cliente incluye los siguientes Servicios:
+
+                                              Plan Básico
+
+Guías y documentación                         Recursos detallados para utilizar y comprender los
+                                              productos de Truora.
+
+Reunión de Kick Off                           Sesión inicial para alinear expectativas y definir plan de
+                                              trabajo.
+Capacitación de Plataforma                      Alinear expectativas: Asegurarse de que el Cliente y
+Office Hours
+Sesión de Cierre                                     Wise Partners tengan una comprensión clara del
+                                                     alcance, objetivos y cronograma del proyecto.
+                                                Presentar el plan de integración: Explicar las etapas del
+                                                     proceso, roles y responsabilidades, y los entregables
+                                                     esperados.
+
+                                              Presentación interactiva del uso de la Plataforma de Truora,
+                                              que incluye la navegación por el front-end y la gestión de
+                                              consultas, resultados y permisos, así como una
+                                              introducción al uso de la API en caso de requerirse
+                                              integración.
+
+                                              Resolver dudas iniciales: Abordar preguntas relacionadas
+                                              con la integración, uso de la plataforma, acceso a la API y
+                                              otros aspectos técnicos u operativos-
+
+                                              Hasta (4) sesiones por 60 días.
+                                              Sesiones programadas de 20 minutos para resolver dudas
+                                              directamente con el equipo de Wise.
+
+                                              Finalización del proceso de implementación y lanzamiento
+                                              oficial
+
+Canal de comunicación                         Comunicación a través del canal oficial de soporte de
+                                              Truora.
+
+Acompañamiento                                Acompañamiento personalizado durante (1) un mes tras la
+Post Integración                              finalización de la integración
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                      7
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+4. Precio y forma de Pago de integración
+
+     4.1. Precio. Valor fijo inicial de $USD 1.000 correspondiente al plan Básico de
+
+             integración.
+             El Precio no incluye impuestos, ni aquellos desarrollos específicos que no se
+             encuentren establecidos en la Descripción de Trabajo en el cuadro anterior.
+
+    4.2. Forma de pago. El Cliente pagará a Truora el valor total del precio del plan de
+
+             integración seleccionado al momento de suscribir el presente Contrato.
+
+5. Etapas de los Servicios
+
+    1. Integración. La Etapa de Integración iniciará una vez el Cliente haya realizado el pago
+          correspondiente a Wise.
+                     En la Etapa de Integración se desarrollarán las siguientes actividades:
+                Kick Off de la etapa entre los equipos de producto de Wise Partners, Truora y
+                     del Cliente en el que se hará entrega de:
+                         i. API Key para integración al web service de Truora.
+                        ii. Usuarios Plataforma en línea para el Cliente.
+                Demo de la Plataforma y productos y servicios contratados.
+                Asesoría en la construcción de flujos.
+                Sesiones de consultoría y seguimiento de dudas.
+
+    2. Prueba. Se iniciará una vez el Cliente termine su proceso de integración con la
+          Plataforma, y consiste en probar los Servicios de Truora en un ambiente controlado y
+          con el apoyo del equipo de Truora.
+                En la Etapa de Testing se entregarán 100 Transacciones de Prueba gratuitas
+                     para que el Cliente pueda testear en un ambiente controlado los Servicios
+                     adquiridos.
+                     Una vez finalizada la Etapa de Prueba se dará lugar a la sesión de cierre de la
+          integración (la "Cesión de Cierre").
+
+    3. Estabilización. iniciará justo después de la sesión de Cierre y se confirme que ya el
+          Cliente ya se encuentra listo para salir a producción.
+
+                     Parágrafo Primero: El equipo de Truora de integraciones opera como un
+          acompañamiento para la correcta integración de los servicios. Sin embargo, el
+          Cliente se obliga a disponer de un equipo de desarrollo propio.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  8
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+6. Calendario del Proyecto
+                 Etapa de integración: Iniciará una vez el Cliente haya firmado el Contrato
+
+                         con Truora y el respectivo contrato.
+            Duración: 6 semanas
+
+                 Etapa de Pruebas iniciará una vez el Cliente termine su proceso de
+
+                         integración con la Plataforma.
+            Duración: 2 semanas
+
+                 Etapa de Estabilización. iniciará cuando se dé la sesión de cierre de la
+
+                         integración y se confirme que ya se encuentra listo para salir a Producción.
+            Duración: 2 semanas
+
+                     Parágrafo Primero: El tiempo máximo entre el inicio de la Etapa de Integración
+          y la salida a Producción será de dos (2) meses.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  9
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+                                             Anexo B
+                             Términos y Condiciones Generales
+
+Estos Términos y Condiciones Generales regirán la prestación de los Servicios de Truora en
+favor del Cliente (según se los define en los Términos y Condiciones Específicos).
+Estos Términos y Condiciones Generales y los Términos y Condiciones Específicos, y sus
+respectivos Anexos, se entenderán complementarios y formarán el acuerdo íntegro entre las
+Partes.
+
+                                      Consideraciones
+
+  Que Truora es una empresa dedicada al desarrollo de sistemas informáticos que por medio
+  de su plataforma digital (la "Plataforma") ayuda a las empresas conectar con personas por
+  múltiples canales digitales, aportando al entendimiento de los segmentos de clientes
+  objetivo, por medio de verificación, procesamiento, análisis y automatización de datos
+  personales, permitiendo a las empresas optimizar sus procesos digitales y puntos de
+  interacción con clientes finales.
+
+  Que Truora cuenta con la infraestructura tecnológica y la capacidad administrativa
+  necesaria para cumplir con sus obligaciones conforme al presente Anexo y al Contrato.
+
+  Que el Cliente es una empresa que tiene interés en contratar los servicios de Truora.
+
+  Que es voluntad de ambas Partes celebrar el presente instrumento a fin de acordar los
+  Términos y Condiciones Generales para la celebración del mismo de acuerdo con las
+  cláusulas aquí pactadas, así como con la legislación vigente aplicable.
+
+                                           CLÁUSULAS
+
+ 1. Objeto.
+
+    1.1. Truora se obliga con el Cliente a prestar los Servicios descritos en los Términos y
+
+            Condiciones Específicos y Generales, conforme a las condiciones pactadas en el
+            Contrato y sus Anexos.
+
+    1.2. Cambios en los Servicios. Cualquier modificación, ampliación o contratación
+            adicional de Servicios deberá formalizarse mediante un nuevo instrumento de
+            Términos y Condiciones Específicos, previamente aceptado por ambas Partes por
+            escrito. Ningún cambio será válido si no consta en documento formalmente suscrito
+            por los representantes legales o apoderados autorizados
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  10
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+2. Precio y forma de pago.
+
+  2.1. Precio. Como contraprestación por los Servicios proveídos por Truora, el Cliente
+          pagará los montos establecidos en la cláusula correspondiente de los Términos y
+          Condiciones Específicas.
+
+                     Parágrafo 2. Los Precios definidos en los Términos y Condiciones Específicas no
+          incluyen los impuestos aplicables que deba asumir cada Parte de acuerdo con la
+          legislación vigente.
+
+  2.2. Forma de Pago. Truora expedirá la factura por los servicios con la descripción
+          detallada de los mismos y desglosando los cargos, dicha factura deberá ser
+          aprobada y cumplir debidamente con todos los requisitos establecidos por las leyes
+          fiscales e incluir los impuestos a que haya lugar, en el entendido de que cada una de
+          las partes pagará los impuestos que le correspondan y cumplirá con las obligaciones
+          fiscales que le impongan las leyes vigentes y aplicables.
+
+                     El Cliente deberá realizar los pagos de las facturas enviadas por Truora dentro
+          de los quince (15) días naturales siguientes al envío de las mismas. El Cliente contará
+          con 5 días hábiles para la revisión de las facturas de que se trate, contados a partir
+          de su recepción, y, una vez transcurrido ese período, la misma se considerará
+          aceptada.
+
+                     El pago deberá realizarse por medio de transferencia electrónica o
+          consignación en el banco al número de cuenta indicado a continuación:
+
+Institución Bancaria:                         BANCO BBVA
+
+No.Cuenta:                                    0115205662
+
+Clabe                                         012180001152056628
+Nombre beneficiario:
+RFC:                                          TRUORA FRAUD PREVENTION SA
+                                              DE CV
+
+                                              TFP191219TG0
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                 11
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+  2.3. Mora en el Pago. En caso en el que el Cliente no realice el pago en la fecha indicada,
+          en la factura correspondiente, comenzarán a generarse intereses moratorios sobre el
+          monto adeudado, a una tasa del doce por ciento (12%) anual, prorrateada conforme
+          al número de días naturales de atraso.
+
+  2.4. Cancelación por no Pago. Si pasados treinta (30) días del envío de la factura, el
+          Cliente no realiza el pago de esta, se suspenderá la ejecución del Contrato. Si en el
+          mes dos (2), el Cliente aún no ha realizado el pago correspondiente, Truora eliminará
+          la cuenta de Cliente en la Plataforma y dejará de prestar los Servicios.
+
+  2.5. Tipo de moneda. Sin perjuicio de que los precios de los Servicios se encuentren
+          establecidos en dólares americanos, el pago deberá realizarse en pesos mexicanos.
+          Por lo tanto, el valor de la factura será liquidada a la tasa de cambio representativa
+          del mercado en la fecha de la emisión de la respectiva factura.
+
+  2.6. Incrementos Anuales. El precio de los Servicios podrá ajustarse anualmente hasta en
+          un 5% respecto del precio vigente al cierre del año anterior. Cualquier incremento
+          deberá notificarse por escrito al Cliente con al menos 30 días naturales de
+          anticipación.
+
+  2.7. Incrementos de Meta. En caso de que los Servicios contratados correspondan a los
+          flujos de conversación por medio de WhatsApp, el Cliente reconoce y acepta que los
+          precios acordados con Truora dependen de los valores establecidos por Meta. En
+          este sentido, Truora podrá ajustar los precios para este Servicio de acuerdo con los
+          incrementos establecidos por Meta. El incremento en la tarifa de meta deberá ser
+          informado al Cliente con una antelación mínima de treinta (30) días calendario, y se
+          reflejarán de forma directa, sin cargos adicionales.
+
+3. Obligaciones de las Partes.
+
+  3.1. Obligaciones del Cliente. Sin perjuicio a las obligaciones específicas detalladas en el
+          Contrato, Cliente se obliga a:
+
+          (a) Pagar el precio de la integración, el mínimo mensual, las Transacciones
+                  Adicionales y de cualquier suma adeudada, en cumplimiento con los plazos y la
+                  forma de pago prevista en el Contrato y en este Anexo.
+
+          (b) Entregar la información que Truora requiera para llevar a cabo el objeto del
+                  Contrato y de este Anexo.
+
+          (c) Contar con autorización previa, expresa e informada por parte de los Titulares de
+                  los Datos Personales para el Tratamiento de la información por parte de Truora.
+
+          (d) Desarrollar todas las acciones necesarias en la Etapa de Inicio, integración y
+                  Pruebas de manera eficiente y diligente y así iniciar la Etapa de Producción.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  12
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+          (e) Estar en cumplimiento con la legislación vigente y aplicable en materia de
+                  Protección de Datos Personales.
+
+          Parágrafo 1. En caso de que los Servicios contratados correspondan a los flujos de
+          conversación por medio de WhatsApp, el Cliente se obliga al cumplimiento de los
+          Términos y Condiciones de Meta y reconoce que estos términos hacen parte del
+          presente Contrato. Por tanto, el incumplimiento de cualquier disposición de dichos
+          Términos y Condiciones de Meta, se entenderá como un incumplimiento al Contrato y
+          al presente Anexo.
+
+          Términos y Condiciones de Meta:
+                 https://www.whatsapp.com/legal/business-solution-terms
+                 https://www.whatsapp.com/legal/business-terms/
+
+  3.2. Obligaciones de Truora. Sin perjuicio a las obligaciones específicas detalladas en el
+          Contrato, Truora se obliga a:
+
+          (a) Cumplir con la prestación de los Servicios contratados de conformidad con los
+                  lineamientos establecidos en los Términos y Condiciones Específicos y
+                  Generales, así como en los Anexos.
+
+          (b) Obtener la información de los Servicios en fuentes lícitas y legítimas las cuales
+                  no vulneran ningún derecho o normativa aplicable a favor de los Titulares de la
+                  información.
+
+          (c) Dar respuesta a cualquier necesidad que pueda tener el Cliente en la ejecución
+                  de los Servicios conforme al Acuerdo de Nivel de Servicio o "Service Level
+                  Agreement" (en adelante el "SLA") establecido en el Anexo "C".
+
+          (d) Conservar la información bajo las condiciones de seguridad necesarias para
+                  impedir su adulteración, pérdida, consulta, uso o acceso no autorizado o
+                  fraudulento.
+
+4. Relación entre las Partes.
+
+  4.1. Autonomía. Los Servicios objeto del Contrato constituyen una de las principales
+          actividades de Truora como proveedor independiente, las cuales son desarrolladas
+          bajo su propio riesgo y con sus propios medios. Por tanto, en desarrollo de los
+          Servicios, Truora tendrá plena libertad y autonomía técnica, administrativa y
+          financiera en la ejecución y cumplimiento de las mismas y en ningún momento se
+          constituye contrato de trabajo o relación de subordinación alguna entre Truora,
+          incluyendo las personas que éste a su vez contrate o subcontrate bajo cualquier
+          modalidad legal, y, las personas que el Cliente vincule para la ejecución de los
+          Servicios aquí contratados.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  13
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+  4.2. Subcontrataciones. Truora podrá subcontratar a quien estime conveniente para la
+          prestación de los Servicios en cumplimiento con los acuerdos establecidos. En todo
+          caso, Truora garantiza que el subcontratista contará con las capacidades suficientes
+          para dar pleno cumplimiento a todas y cada una de las disposiciones establecidas
+          en el presente Contrato y los Términos y Condiciones aplicables.
+
+5. Propiedad Intelectual.
+
+  5.1. Por medio de este Contrato Truora permite el acceso a ciertas herramientas de su
+          Propiedad Intelectual al Cliente, para que este, durante la vigencia de la relación
+          comercial y únicamente para llevar a cabo las finalidades del presente Contrato,
+          pueda hacer uso de estos. Sin perjuicio de lo anterior, el Cliente no está autorizado en
+          ningún caso para realizar la reproducción, cesión, venta, alquiler o préstamo,
+          comprometiéndose el Cliente a no ceder su uso parcial o total de ninguna forma, así
+          como a no divulgarlo, publicarlo, ni ponerlo de ninguna otra manera a disposición de
+          otras personas.
+
+  5.2. Titularidad. Truora conservará todos los derechos y títulos de propiedad sobre la
+          Propiedad Intelectual sobre cualquier obra, código, algoritmo, contenido, desarrollo o
+          metodología que haya sido creada, concebida, generada y llevada a la práctica por
+          Truora con ocasión a los Servicios y al Contrato.
+
+  5.3. Derechos preexistentes. Cada una de las Partes conservará sus derechos de
+          propiedad industrial e intelectual sobre sus contenidos, marcas, signos distintivos,
+          nombres comerciales, logotipos, patentes, diseños, obras y demás activos, tanto
+          creadas, concebidas y llevadas a la práctica antes del inicio Contrato o desarrollado
+          por cualquiera de las Partes durante la vigencia del Contrato.
+
+  5.4. Truora únicamente podrá utilizar el nombre, logotipo o cualquier otro signo distintivo
+          del Cliente con fines comerciales, publicitarios o de referencia, previa autorización
+          expresa y por escrito del Cliente para cada caso específico. Dicha autorización
+          deberá ser otorgada antes de cualquier uso y no se entenderá concedida de manera
+          general o permanente. El Cliente, a su entera discreción, podrá emitir un testimonio o
+          declaración sobre el caso de uso de los Servicios de Truora, cuando este último así lo
+          solicite.El Cliente declara y garantiza que posee todos los derechos necesarios sobre
+          su nombre, logotipo y demás signos distintivos para otorgar las autorizaciones
+          previstas en la presente cláusula, y que dichas autorizaciones no infringen derechos
+          de terceros.
+
+6. Vigencia y Terminación.
+
+  6.1. Vigencia. El Contrato tendrá una vigencia de seis (6) meses contados a partir de su
+          firma y se renovará de manera automática , por un período igual. Una vez cumplido el
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  14
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+primer año de contrato, es decir en la segunda renovación del Contrato, la vigencia
+será de doce (12) meses salvo que alguna de las Partes manifieste su intención de no
+renovarlo, mediante aviso escrito entregado a la otra Parte con al menos noventa
+(90) días naturales de anticipación al vencimiento del periodo en curso.
+
+6.2. Terminación. Cualquiera de las Partes podrá dar por terminado el Contrato antes del
+        vencimiento del plazo pactado, sin responsabilidad, en los siguientes casos:
+
+        (a) Por mutuo acuerdo entre las Partes en cualquier momento de la ejecución del
+               Contrato.
+
+        (b) Por orden o resolución de autoridad competente.
+        (c) Por disolución o declaración de liquidación obligatoria de cualquiera de las
+
+               Partes.
+        (d) Por incumplimiento por parte del Cliente de alguna de las prohibiciones
+
+               normativas en materia de lavado de activos, financiación del terrorismo y
+               corrupción.
+        (e) Por decisión de alguna de las Partes de no prórroga por escrito con un periodo
+               mínimo de noventa (90) días calendario anteriores a la fecha de terminación.
+        (f) Por incumplimiento grave de las obligaciones contractuales o del SLA, siempre
+               que no se subsane dentro del plazo de cinco (5) días naturales siguientes a la
+               notificación por escrito realizada por la Parte afectada.
+
+Queda exceptuado de lo anterior, el incumplimiento por no pago por parte del Cliente
+conforme a lo establecido en la cláusula 2.6 del presente Anexo.
+
+          El Cliente reconoce que la terminación del Contrato por cualquiera de las
+causas mencionadas anteriormente finaliza también todo Anexo y todos y cada uno
+de los Servicios que Truora esté prestando al Cliente, incluyendo pero sin limitarse al
+préstamo de la línea de teléfono digital para Whatsapp Business en los casos que
+aplique, el acceso a la Plataforma, el envío de flujos, entre otros. En caso de que el
+Cliente ya hubiese pagado el precio de la Bolsa Truora, la terminación del Contrato
+no dará lugar a reembolsos ni devoluciones parciales ni totales.
+
+7. Indemnización y limitación de responsabilidad.
+
+  7.1. Indemnidad. Truora se obliga a mantener indemne al Cliente y liberarlo de todo tipo
+          de responsabilidad que surja por o con ocasión del incumplimiento de las
+          obligaciones de Truora bajo el presente Contrato (la "Obligación de Indemnidad").
+          En desarrollo de la Obligación de Indemnidad, Truora se obliga a (i) amparar y, por
+          tanto, salir en defensa del Cliente por cualquier acción, demanda o reclamación que
+          sea iniciada por cualquier tercero que se relacione directamente con el presente
+          Contrato; (ii) no oponerse a cualquier llamamiento en garantía que el Cliente efectúe
+          para satisfacer la Obligación de Indemnidad a cargo de Truora; y (iii) reparar
+          integralmente los daños que sufra el Cliente por causa del incumplimiento de Truora
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  15
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+        (incluyendo pero sin limitarse a los honorarios de abogados y asesores que el Cliente
+        elija a su entera discreción contratar para la defensa de sus intereses). Si llegase a
+        exigirse una obligación pecuniaria a cargo del Cliente por una acción u omisión
+        imputable derivada de un incumplimiento de Truora, Truora se obliga a reembolsar
+        el dinero en cuestión al Cliente. Adicionalmente, Truora se compromete con el
+        Cliente a facilitar todos los elementos probatorios e información que el Cliente
+        requiera para su defensa. La Obligación de Indemnidad operará exclusivamente
+        cuando se demuestre que el incumplimiento de Truora de las obligaciones del
+        Contrato fue directamente causado por culpa o negligencia de Truora. La Obligación
+        de Indemnidad permanecerá vigente de manera indefinida aún en caso de
+        finalización del presente Contrato siempre que se relacione con la ejecución del
+        mismo.
+
+                   De igual manera, el Cliente se obliga a mantener indemne a Truora y liberarla
+        de todo tipo de responsabilidad que surja por o con ocasión del incumplimiento de
+        las obligaciones del Cliente bajo el presente Contrato y sus Anexos, la (la "Obligación
+        de Indemnidad hacia Truora"). En desarrollo de la Obligación de Indemnidad hacia
+        Truora y sin que con ello se restrinja generalidad de lo allí previsto, el Cliente se obliga
+        a (i) amparar y, por tanto, salir en defensa de Truora, por cualquier acción, demanda
+        o reclamación que sea iniciada por cualquier tercero que se relacione directamente
+        con el presente Contrato; (ii) no oponerse a cualquier llamamiento en garantía que
+        Truora efectúe para satisfacer la Obligación de Indemnidad a cargo del Cliente; y
+        (iii) reparar integralmente los daños que sufra Truora por causa del Cliente
+        (incluyendo pero sin limitarse a los honorarios de abogados y asesores que Truora
+        elija a su entera discreción contratar para la defensa de sus intereses). Si llegase a
+        exigirse una obligación pecuniaria a cargo de Truora por una acción u omisión
+        imputable al Cliente, el Cliente se obliga a reembolsar el dinero en cuestión a Truora.
+        Adicionalmente, el Cliente se compromete con Truora a facilitar todos los elementos
+        probatorios e información que Truora requiera para su defensa. La Obligación de
+        Indemnidad permanecerá vigente de manera indefinida aún en caso de finalización
+        del presente Contrato siempre que se relacione con la ejecución del mismo.
+
+7.2. Limitación de responsabilidad. Ninguna de las Partes será responsable ante la otra
+        Parte por daños indirectos, voluntarios, punitivos, incidentales, especiales o derivados,
+        por pérdida de ganancias del negocio, o daños por pérdida de negocio de la
+        compañía, o la pérdida o inexactitud de datos de cualquier tipo, salvo que dichos
+        daños deriven de dolo, negligencia grave o violación a normas en materia de
+        tratamiento de datos personales.
+
+7.3. El Cliente libera a Truora de toda responsabilidad respecto al modo en que el Cliente
+        proporcione información de Datos Personales, su respectivo procesamiento, así como
+        de la manera en la que recabe la Autorización de los mismos.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  16
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+7.4. Limitación de la información brindada. El Cliente reconoce que los Servicios de
+        Truora, son meramente de carácter informativo, por lo que en ningún caso estos se
+        deben interpretar como una clasificación absoluta de los titulares de los datos
+        personales. En este sentido, el Cliente reconoce que es su exclusiva responsabilidad
+        las decisiones que el Cliente decida tomar respecto a sus propios productos y/o
+        servicios ofrecidos a los titulares y libera de toda responsabilidad a Truora por estas
+        decisiones y sus implicaciones.
+
+7.5. En caso de hacer uso del Servicio de Manual Review, el Cliente reconoce que este
+        servicio es una herramienta de conversión operativa, y por lo tanto comprende que
+        su propósito no es prevenir el fraude. El Cliente libera a Truora, sus empleados y
+        afiliadas de cualquier resultado ocasionado por el uso de Manual Review.
+
+7.6. El Cliente reconoce que Truora no cuenta con el control sobre la disponibilidad de las
+        plataformas públicas o privadas consultadas por Truora para la prestación de los
+        Servicios, por consiguiente, dichas plataformas de consulta son completamente
+        independientes a Truora. Por lo tanto, en caso en que dichas plataformas no estén
+        disponibles, Truora no será responsable de la atención a dichas fallas ni de los daños
+        y perjuicios que esto pudiere ocasionar al Cliente.
+
+7.7. Uso indebido de los Servicios/Plataforma. Las Partes convienen en que el uso de los
+        Servicios se realizará de manera profesional, ética y transparente, siempre en estricto
+        apego a las buenas costumbres y de conformidad con los Términos y Condiciones. El
+        Cliente deberá reportar a Truora cuando se configure alguno de los supuestos por
+        uso indebido de la Plataforma de Truora en los casos en los que la afectación se
+        haya realizado por una persona que tenga una relación laboral o contractual con el
+        Cliente.
+
+        Configura un uso indebido de la Plataforma:
+        (a) Cualquier uso que el Cliente le dé a la Plataforma, con información o datos de
+
+               terceros sin que medie la respectiva autorización del Titular para que sus datos
+               sean tratados por el Cliente.
+        (b) Cuando el uso de la Plataforma tenga como finalidad causarle un daño moral a
+               un tercero utilizando información del Titular.
+        (c) Cuando el uso de la Plataforma tenga como objetivo causarle un daño
+               patrimonial al Titular.
+        (d) Cuando el uso de la Plataforma tenga como objetivo usurpar la identidad del
+               Titular.
+        (e) Cuando el Cliente permita que terceros accedan a la Plataforma sin la previa
+               autorización por parte de Truora.
+        (f) La reventa de los Servicios por parte de Cliente.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  17
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+8. Prevencion de lavado de activos, no financiación al terrorismo y
+        Anticorrupción.
+
+          Cualquiera de las Partes podrá dar por terminado de manera unilateral la relación
+          comercial existente, sin que haya lugar al pago de indemnización alguna cuando
+          cualquiera de los suscriptores, sus representantes legales, sus administradores, sus
+          asociados directos e indirectos con una participación mayor al 5% en el capital social,
+          sus directivos o terceros actuando en representación o sus subordinadas, durante la
+          vigencia de la relación contractual sean: (i) condenado(s) por parte de las
+          autoridades competentes por la presunta comisión de delitos relacionados con el
+          lavado de activos, sus delitos fuente incluidos aquellos relacionados con corrupción, o
+          la financiación del terrorismo; (ii) sancionado(s) administrativamente por violaciones
+          a cualquier norma anticorrupción; (iii) incluido(s) en listas administradas por
+          cualquier autoridad nacional o extranjera para el control de lavado de activos y/o
+          financiación del terrorismo y/o corrupción en cualquiera de sus modalidades; (iv)
+          vinculado(s) a cualquier tipo de investigación, proceso judicial, administrativo,
+          disciplinario o fiscal, adelantado por las autoridades competentes del orden nacional
+          o extranjero, por la presunta comisión de delitos o conductas sancionables
+          relacionados con el lavado de activos, sus delitos fuente y/o financiación del
+          terrorismo o la violación de cualquier norma anticorrupción.
+
+9. Origen de Fondos.
+
+  9.1. Las Partes declaran bajo la gravedad de juramento: (i) Que tanto los recursos
+          utilizados para dar cumplimiento al contrato y al presente Anexo, como sus ingresos,
+          activos y patrimonio no provienen de ninguna actividad ilícita; (ii) Que no pertenecen
+          a un grupo terrorista ni armado al margen de la ley, como tampoco a un grupo de
+          narcotraficantes, y que en general no tiene vínculos con ninguno de los grupos
+          enumerados; (iii) Que ellos, sus socios, accionistas, administradores o personal
+          directo o indirecto no han sido sentenciados por cualquier o delito ni se encuentran
+          incluidos dentro de la listados nacionales y/o internacionales de prevención de
+          lavado de activos y/o financiación del terrorismo y/o financiación de armas de
+          destrucción masiva o sus delitos fuentes; (iv) Que los datos aquí consignados son
+          ciertos y que se autorizan a las Partes para su verificación ante cualquier persona
+          natural y/o jurídica, privada o pública, nacional y/o extranjera, sin limitación alguna,
+          desde la firma del Contrato y mientras subsista la relación jurídica; (v) Que en caso
+          de que las declaraciones no correspondan a la verdad, se autoriza a la Parte
+          afectada por tal incumplimiento a la terminación inmediata del Contrato, sin lugar a
+          indemnización alguna a favor de la Parte incumplida; (vi) Que serán responsables
+          por los daños y perjuicios que el reporte en listas naciones y/o extranjeras de riesgo o
+          sentencias ocasionen a la otra Parte sin perjuicio de la responsabilidad penal que le
+          asista.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  18
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+  9.2. Las Partes se comprometen a no realizar actos que se consideren o tengan como
+          efecto actos de corrupción, entendiéndose por tales y sin limitación a estos, el
+          soborno, uso ilegítimo de información privilegiada, tráfico de influencias, fraudes,
+          estafas, malversación de fondos, entre otros. El incumplimiento de esta obligación
+          dará lugar a la terminación inmediata del Contrato, sin lugar a indemnización alguna
+          a favor de la Parte incumplida.
+
+10. Disposiciones Generales.
+
+  10.1. Comunicación entre las Partes. Todas las comunicaciones, notificaciones,
+          demandas y solicitudes hechas de conformidad con el Contrato deberán ser por
+          escrito. Tales comunicaciones, notificaciones, demandas y solicitudes se entenderán
+          debidamente hechas o entregadas (i) de forma inmediata, si se envían por correo
+          electrónico; (ii) en el día hábil inmediatamente siguiente a la entrega si se notifica
+          personalmente o se envían por correo registrado o certificado con acuse de recibo,
+          enviadas al domicilio de Truora o del Cliente según sea el caso. Las comunicaciones
+          deberán realizarse a través de los Responsables del Proyecto mediante las
+          direcciones establecidas en los Términos y Condiciones Específicos y con copia a:
+          contact@truora.com
+
+  10.2. Integralidad. Las Partes aceptan y reconocen que el acuerdo contenido en el
+          Contrato y sus Anexos constituye el acuerdo único y completo entre ellas respecto
+          del objeto del mismo, por lo que dejan sin efectos a cualquier otro convenio, acuerdo,
+          contrato, compromiso o contrato verbal o escrito que hubieran celebrado las mismas
+          con anterioridad respecto del objeto y las obligaciones derivadas del mismo.
+
+          Las Partes se comprometen a mantener actualizados sus datos de contacto durante
+          la vigencia del Contrato.
+
+  10.3. Cesión. Las Partes no podrán ceder total o parcialmente los derechos y obligaciones
+          derivados del Contrato, salvo en caso de que exista previo acuerdo por escrito
+          firmado por ambas Partes.
+
+          La Parte que pretenda realizar dicha cesión, lo comunicará por escrito a la otra Parte,
+          la cual deberá contestar dicha comunicación en un plazo máximo de diez (10) días
+          hábiles contados a partir de la fecha de recepción de la notificación correspondiente
+          y, en caso contrario, no se tendrá autorizada dicha cesión. Lo señalado en la presente
+          cláusula no será aplicable en caso de cesiones o transmisiones a los accionistas,
+          subsidiarias y/o afiliadas del Cliente o del Proveedor, ya que, en este supuesto,
+          bastará un simple aviso dado por escrito notificándose la cesión a la Parte que
+          corresponda.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  19
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+          Las condiciones y obligaciones pactadas en la cesión correspondiente deberán ser
+          respetando las pactadas en este instrumento, sus Anexos y convenios modificatorios,
+          en cuyo defecto dicha cesión será nula.
+
+  10.4. Modificación. En el evento de que las Partes deseen modificar el Contrato de
+          cualquier forma, dicha modificación tendrá que llevarse a cabo a través de la
+          suscripción por los representantes legales o apoderados de las Partes, del Contrato
+          modificatorio respectivo. Las modificaciones no podrán realizarse unilateralmente.
+
+  10.5. Caso Fortuito o Fuerza Mayor. Las Partes quedan exoneradas de responsabilidad por
+          el incumplimiento de cualquiera de sus obligaciones o por la demora en la
+          satisfacción de cualquiera de las prestaciones a su cargo derivadas del Contrato,
+          cuando el incumplimiento sea resultado o consecuencia de la ocurrencia de un
+          evento de fuerza mayor o caso fortuito. La Parte afectada deberá notificar por escrito
+          dicha situación a la contraparte en un plazo máximo de cinco (5) días naturales,
+          describiendo el evento, su duración estimada y las medidas adoptadas.
+
+  10.6. Ley Aplicable. Para la interpretación, cumplimiento y solución de cualquier
+          controversia derivada del Contrato y del presente Anexo, Las Partes se someten
+          expresamente a las leyes aplicables, así como a los tribunales competentes de la
+          Ciudad de México, renunciando expresamente a cualquier otro fuero que por razón de
+          sus domicilios presentes o futuros o por cualquier otra causa que pudiera
+          corresponder.
+
+Las Partes suscriben el presente Anexo"B" a través de la plataforma de firma electrónica
+con validez jurídica. Para todos los efectos legales, las Partes lo firman el día indicado al pie
+de las firmas (la "Fecha de Firma").
+
+Truora Fraud Prevention S.A. de C.V.          Mtech Gears, S.A. de C.V
+
+Firmado digitalmente en ZapSign por                                     Firmado digitalmente en ZapSign por
+
+Maria Celia Hernandez Caballero                                         Raul Marin de la Cruz
+
+Fecha: 16/12/2025 11:04:05.992 (UTC-0500)                               Fecha: 13/12/2025 16:23:54.290 (UTC-0500)
+
+_____________________________                 _____________________________
+
+Maria Celia Hernandez                         Raul Marin de la Cruz
+INE: 1582645850                               CURP: MACR660510HTCRRL02
+Representante Legal                           Representante Legal
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                      20
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+                                              ANEXO C
+
+                                       Acuerdo de Nivel de Servicio
+                                      SLA - Service Level Agreement
+
+   El presente Acuerdo de Nivel de Servicios (el "SLA") detalla los niveles de servicio aplicables
+   al Contrato y se sujetará a los términos y condiciones del Contrato celebrado entre el Cliente
+   y Truora, y tendrá como fecha efectiva el día de firma del Contrato.
+
+1. API y monitoreo en tiempo real: 99.95% Uptime
+
+        La disponibilidad de la API de Truora para un mes calendario dado es 99.95%. Truora
+        cuenta con un sistema de monitoreo constante de la Plataforma y tiene una rotación
+        permanente de ingenieros especializados dando soporte a esta. La persona en turno esta
+        "on call" 24/7 monitoreando la salud del sistema en general. En caso de que la persona
+        que esté "On Call" detecte una alarma de incidentes, se dará trámite al siguiente
+        proceso:
+
+        Los ANS se aplican sólo a los tickets de categoría tipo Incidentes y en los horarios según
+        niveles de prioridad.
+
+2. Niveles de Soporte:
+
+         Nivel 1: Atención al Cliente
+                    Asigna un nivel de prioridad a los tickets.
+                    Resuelve problemas sin intervención técnica.
+
+         Nivel 2: Soporte Técnico Especializado (Technical Support)
+                    Proporciona asistencia técnica avanzada.
+                    Prioriza tickets según la evaluación del Nivel 1.
+
+         Nivel 3: Ingeniería de Producto
+                    Resuelve problemas complejos que requieren cambios en el producto.
+                    Implementa soluciones que requieren despliegues.
+
+3. Horario de Soporte:
+
+         El horario de funcionamiento de los servicios es de 7 x 24 x 365 en todos los ambientes
+              producción, pruebas, desarrollo y formación.
+
+         Con esquemas "On Call" de disponibilidad para atención en horario no hábil.
+                    Horario hábil: De lunes a viernes, de 8:00 a 18:00 (hora de Colombia)
+                    Horario no hábil: De lunes a viernes, de 18:00 a 8:00 (hora de Colombia)
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  21
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+        Fines de semana: Rotación On Call (Equipo especializado disponible para
+            atender y solucionar requerimientos de nivel Crítico y Alto)
+
+4. Proceso de Gestión de Incidentes:
+
+     4.1. Criterios de Evaluación:
+         Impacto:
+                    Total: Interrupción completa del servicio
+                    Significativo: Afecta a un producto, servicio o país entero
+                    Parcial: Afecta una parte significativa del sistema o de usuarios.
+                    Menor: Afecta a pocos usuarios o funcionalidades no críticas
+         Urgencia:
+                    Inmediata: problemas que necesitan ser resueltos en menos de una hora para
+                         evitar consecuencias graves o interrupciones críticas
+                    Rápida: problemas que deben ser resueltos en pocas horas para evitar
+                         interrupciones mayores
+                    Pronta: problemas que pueden esperar hasta el final del día laboral o hasta un
+                         máximo de 24 horas sin causar problemas significativos
+                    Flexible: problemas que pueden esperar varios días o más sin causar
+                         problemas serios.
+
+4.2. Matriz de Prioridad:                              Rápida   Pronta  Flexible
+      Impacto \ Urgencia Inmediata                     Crítica  Alta    Media
+                                                       Alta     Alta    Media
+Total                                         Crítica  Alta     Media   Baja
+                                                       Media    Baja    Baja
+Significativo                                 Crítica
+
+Parcial                                       Alta
+
+Menor                                         Media
+
+4.3. Niveles de Prioridad:
+     Crítica: Problemas críticos que requieren atención inmediata. Afectan a todos o a la
+         mayoría de los usuarios.
+                Horario de atención: Hora hábil, hora no hábil y On Call
+     Alta: Problemas significativos que requieren resolución rápida. Afectan a un grupo
+         grande de usuarios o a una funcionalidad esencial.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                         22
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+                Horario de atención: Hora hábil, hora no hábil y On Call
+     Media: Problemas moderados que afectan a algunos usuarios o funcionalidades no
+
+         críticas.
+                Horario de atención: Hora hábil
+
+     Baja: Problemas que afectan a pocos usuarios o funcionalidades secundarias.
+                Horario de atención: Hora hábil.
+
+4.4. Tiempos
+     Tiempo de Primera Respuesta: Tiempo máximo dentro del cual el equipo de soporte
+         debe responder inicialmente a una solicitud de ticket desde su creación.
+     Tiempo de Asistencia: Tiempo para el diagnóstico, la identificación del problema y la
+         asignación del nivel de prioridad.
+     Tiempo de Solución: Tiempo desde el inicio de un ticket hasta su solución.
+
+Prioridad \ Tiempo Primera Respuesta                       Asistencia  Solución
+                                                             (horas)   (horas)
+de Respuesta                                  (min)
+                                                                           24
+Crítica                                       5            2                72
+                                                                           120
+Alta                                          5            4              240
+
+Media                                         5            24
+
+Baja                                          5            72
+
+a) Incidente de Severidad Alta: Se escala inmediatamente al equipo de ingeniería y al
+     CTO para ser solucionado lo más pronto posible. Serán considerados como
+     "Incidentes de Severidad Alta" aquellos problemas significativos que requieren
+     resolución rápida.
+
+b) Incidente de Severidad Media: La persona "on call" pone en funcionamiento las
+     soluciones alternativas para evitar mayores inconvenientes mientras se da solución
+     al incidente principal. Serán considerados como "Incidentes de Severidad Media"
+     aquellos problemas moderados que afectan a algunos usuarios o funcionalidades no
+     críticas.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                        23
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+        c) Incidente de Severidad Baja: Si los servicios degradados no son vitales para el reporte,
+              se deshabilitan y se responde con reportes parciales hasta que estos servicios se
+              hayan restablecido. Serán considerados como "Incidentes de Severidad Baja"
+              aquellos problemas que afectan a pocos usuarios o funcionalidades secundarias.
+
+              El volumen de impacto, en términos porcentuales, se define según el caso específico,
+              considerando una cantidad significativa de usuarios cuya afectación sea notable o
+              relevante para el negocio del Cliente. Esto puede incluir grupos que operan en
+              diversas ciudades o regiones, o aquellos pertenecientes a distintos segmentos, como
+              Clientes premium o grandes empresas, según lo que aplique en cada situación y se
+              definirá a ritmo de gestión entre las Partes involucradas.
+
+5. Tiempos de respuesta.
+
+      5.1. Truora tiene establecidos procedimientos y cuenta con la capacidad operativa para
+              solucionar una falla en los tiempos de recuperación que se establecen en la presente
+              cláusula.
+
+     5.2. El servicio de soporte técnico por parte de Truora se prestara por medio del canal de
+              comunicación directo, Intercom. A traves de este canal, el Cliente podra reportar
+              cualquier tipo de inquietud y fallas que se presenten en la Plataforma.
+
+     5.3. Horario: El horario de respuesta inicial con soporte humano de este canal será en
+              horas hábiles de Colombia 8:00 a 18:00, de lunes a sábado. Sin perjuicio de estos
+              horarios, en caso de presentarse un incidente mayor, Truora podrá dar respuesta
+              inicial por fuera del horario de atención.
+
+     5.4. En el momento en que se reporta una falla técnica, dentro de los siguientes cinco (5)
+              minutos al reporte, el equipo de CX emitirá una respuesta inicial. Posteriormente, se
+              dará trámite al resto del equipo de Truora para entrar a analizar la situación
+              reportada y hacer un diagnostico tanto del problema identificado como del tiempo
+              estimado para solucionarlo.
+
+   Parágrafo 1. En el evento de que Truora incumpla con cualquiera de las obligaciones
+   establecidas en las secciones 1. API, Monitoreo en Tiempo Real, Uptime y 2. Tiempos de
+   Respuesta del presente SLA durante un periodo de cinco (5) días hábiles seguidos, el Cliente
+   tendrá derecho a i) terminar el contrato de manera inmediata y; ii) una pena establecida en
+   la tabla del numeral 10 de los presentes SLA's, sin perjuicio de la facultad de exigir el
+   cumplimiento de la obligación principal ni de reclamar la reparación integral por los daños y
+   perjuicios causados.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  24
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+6. Exclusiones de los Niveles de Servicios.
+
+        El acuerdo de niveles de servicio descritos en el presente SLA no aplicarán en la
+        ocurrencia de los siguientes eventos:
+
+          (a) Eventos de fuerza mayor o caso fortuito.
+          (b) Cierre, inestabilidades y/o hackeos al sitio web del gobierno o de terceros
+
+                     fundamentales para la prestación de los Servicios.
+          (c) Inestabilidades de las listas consultadas
+          (d) Evento de incumplimiento como resultado de cualquier acción o falta de acción
+
+                     del Cliente o de un tercero (que no sea un tercero dentro de nuestro control
+                     directo), sin la cual el servicio se hubiese prestado con plena normalidad.
+          (e) Evento de incumplimiento por causa del equipo, software u otra tecnología del
+                     Cliente o de un tercero (que no sea un tercero dentro de nuestro control directo),
+                     siempre y cuando haya sido advertido por Truora la incompatibilidad de dicho
+                     componente con el equipo o software de Truora.
+          (f) Cualquier evento que resulte de cualquier mantenimiento previamente
+                     anunciado, siempre que se encuentre dentro de los parámetros establecidos
+                     para los mantenimientos.
+          (g) Cualquier evento que sea provocado como consecuencia de pruebas
+                     específicas por Parte del Cliente y que consecuentemente no pongan en riesgo
+                     la operatividad del negocio de este.
+
+7. Limitación de bases de datos.
+
+        Truora no obtendrá información de bases de datos que se encuentren fuera de los
+        siguientes países:
+
+        Alemania; Australia; Austria; Bélgica; Bulgaria; Chipre; Chile; Colombia; Costa Rica;
+        Croacia; Dinamarca; Eslovaquia; Eslovenia; Estonia; España; Estados Unidos de América;
+        Finlandia; Francia; Grecia; Hungría; Irlanda; Islandia; Italia; Japón; Letonia; Lituania;
+        Luxemburgo; Malta; México; Noruega; Países Bajos; Perú; Polonia; Portugal; Reino Unido;
+        República Checa; República de Corea; Rumania; Serbia; Suecia; y los países que han sido
+        declarados con el nivel adecuado de protección por la Comisión Europea.
+
+8. Controles de los Servicios
+
+        Para efectos de la validación del documento de identidad de los usuarios del Cliente,
+        Truora se compromete a realizar la verificación de este con el sistema tecnológico de
+        Truora bajo los siguientes controles:
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  25
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+México: INE
+
+                    INE                       INE                      INE
+
+Identidad Nacional
+
+Versión del         E                         F                        G
+documento
+Consistencia de     MRZ                       MRZ                      MRZ
+datos
+Bases de Gobierno   - INE                     - INE                    - INE
+                    - Renapo                  - Renapo                 - Renapo
+
+Campos              INE:                      INE:                     INE:
+comparados con          * CIC
+Gobierno                * Clave de elector         * CIC                    * CIC
+                        * Año de registro
+Modelos de fraude*      * Año de emisión           * Clave de elector       * Clave de elector
+                        * Vigencia
+                                                   * Año de registro        * Año de registro
+                       Renapo:
+                        * Nombre                   * Año de emisión         * Año de emisión
+                        * Género
+                        * Fecha de                 * Vigencia               * Vigencia
+
+                    nacimiento                   Renapo:                  Renapo:
+
+                    - Foto de Foto (PoP)           * Nombre                 * Nombre
+                    - Fotocopia B/N
+                    - Elementos de                 * Género                 * Género
+                    seguridad (sellos)
+                    - Decodificación de QR         * Fecha de nacimiento * Fecha de nacimiento
+                    - Fotocopia a color
+                                              - Foto de Foto (PoP)     - Foto de Foto (PoP)
+                                              - Fotocopia B/N          - Fotocopia B/N
+                                                                       - Elementos de seguridad
+                                                                       (sellos)
+                                                                       - Decodificación de QR
+                                                                       - Fotocopia a color
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                        26
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+Campos extraídos    Nombres                      Nombres                  Nombres
+                    Apellidos                    Apellidos                Apellidos
+                    Número de                    Número de                Número de
+
+                         documento                    documento                documento
+                    Fecha de registro            Fecha de registro        Fecha de registro
+                    Domicilio                    Domicilio                Domicilio
+                    Clave electoral              Clave electoral          Clave electoral
+                    Género                       Género                   Género
+                    Fecha de                     Fecha de                 Fecha de
+
+                         nacimiento                   nacimiento               nacimiento
+                    Estado                       Estado                   Sección
+                    Municipio                    Municipio                Fecha de
+                    Localidad                    Localidad
+                    Sección                      Sección                       expedición
+                    Fecha de                     Fecha de                 Fecha de expiración
+                                                                          MRZ
+                         expedición                   expedición
+                    Fecha de                     Fecha de                 OCR
+
+                         expiración                   expiración          CIC
+                    MRZ                          MRZ
+                    OCR                                                   Identificador del
+                    CIC                          OCR
+                    Identificador del                                          ciudadano
+                                                 CIC
+                         ciudadano
+                                                 Identificador del
+
+                                                      ciudadano
+
+México IFE                                      IFE                      Pasaporte
+
+                                           IFE  C                        Pasaporte mx
+       Identidad Nacional                       CURP                     Fecha de nacimiento
+       Versión del documento D                                           Fecha de expiración
+       Consistencia de datos MRZ                - INE                    MRZ
+                                                - Renapo                 No se hace validación de
+Bases de Gobierno  - INE                                                 Gobierno
+                   - Renapo
+                                                                                                                27
+              TRUORA | Confidencial
+              Contrato Truora Fraud Prevention S.A de C.V 2025 - México
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+Campos comparados INE:                                            INE:                      No se hace validación de
+
+con Gobierno                                  * CIC               * CIC                     Gobierno
+                                              * Clave de elector  * Clave de elector
+
+                                              * Año de registro   * Año de registro
+
+                                              * Año de emisión    * Año de emisión
+
+                                              * Vigencia          * Vigencia
+
+                       Renapo:                                    Renapo:
+
+                                              * Nombre            * Nombre
+
+                                              * Género            * Género
+
+                                              * Fecha de          * Fecha de nacimiento
+
+                       nacimiento
+
+Modelos de fraude*     - Foto de Foto (PoP) - Foto de Foto (PoP)                            Foto de Foto (PoP)
+
+                       - Fotocopia B/N                            - Fotocopia B/N
+
+                       - Decodificación de QR - Fotocopia a color
+
+                       - Fotocopia a color
+
+Campos extraídos                               Nombres                   Nombres             Nombres
+                                               Apellidos                 Apellidos           Apellidos
+                                               Número de                 Número de           Número de
+
+                                                    documento                 documento           documento
+                                               Fecha de                  Fecha de registro   Fecha de
+                                                                         Domicilio
+                                                    registro             Clave electoral          expiración
+                                               Domicilio                 Fecha de            Género
+                                               Clave electoral                               Fecha de
+                                               Género                         expedición
+                                               Fecha de                  Fecha de                 nacimiento
+                                                                                             MRZ
+                                                    nacimiento                expiración     Fecha de
+                                               Estado                    Género
+                                               Municipio                 Fecha de                 expedición
+                                               Localidad
+                                               Sección                        nacimiento
+                                               Fecha de                  Estado
+                                                                         Municipio
+                                                    expedición           Localidad
+                                               Fecha de                  Sección
+                                                                         Número de
+                                                    expiración
+                                                                              expedición
+                                                                         OCR
+
+                                               MRZ
+
+                                               OCR
+
+                                               CIC
+
+                                               Identificador
+
+                                              del ciudadano
+
+México: FM2 - FM3
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                                       28
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+ Identidad Extranjeros                         Residencia Permanente      Residencia Temporal
+Versión del documento                         FM2                        FM3
+Consistencia de datos                         - MRZ                      - MRZ
+Bases de Gobierno
+                                              - Renapo                   -Renapo
+Campos comparados con base de
+Gobierno                                      - Nombre                   - Nombre
+                                              - Género                   - Género
+Modelos de fraude*                            - Fecha de nacimiento      - Fecha de nacimiento
+Campos extraídos
+                                              - Foto de Foto             - Foto de Foto
+                                              - Fotocopia a color        - Fotocopia a color
+
+                                                    Nombres                    Nombres
+                                                    Apellidos                  Apellidos
+                                                    Número de documento        Número de
+                                                    Fecha de expedición
+                                                    Fecha de expiración              documento
+                                                    Género                     Fecha de
+                                                    Fecha de nacimiento
+                                                    Nacionalidad                     expedición
+                                                    MRZ                        Fecha de expiración
+                                                    CIC                        Género
+                                                                               Fecha de
+
+                                                                                     nacimiento
+                                                                               Nacionalidad
+                                                                               MRZ
+                                                                               CIC
+
+ 9. Efectividad de modelos
+
+       Efectividad fraude: Las herramientas de Truora tendrán una efectividad de detección y
+       prevención del fraude de identidad del 98.5% sobre la totalidad de procesos activados
+       durante un mes.
+
+       Parágrafo 1. Las métricas aquí establecidas operarán, siempre y cuando estos controles se
+       encuentren activos por el Cliente, en caso contrario los valores de las métricas podrán
+       variar.
+
+10. Niveles de detección y penalidades:
+
+    Las condiciones de los Servicios, así como la manera de medirlos, su impacto y
+    responsabilidad de las Partes se medirán conforme a la siguiente tabla:
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                      29
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+Indicador        Descripción Umbral               Porcentaje       Penalización
+                                                  aceptado
+
+FAR: False       (Consolidado de cantidad de      Menor o igual a  Se penalizará con el 10% de
+Acceptance Rate  reportes de suplantación         < 1,5%           descuento de la facturación
+                 sustentadas con respuesta de                      del mes facturado hasta
+(Tasa de falsa   servicio "EXITOSO") / Suma de                     que se deje de superar el
+aceptación)      cantidad de Transacciones                         umbral FAR.
+                 realizadas acumulado en el
+                 mes actual y mes anterior.
+
+TSR: True        (Consolidado de cantidad de      Mayor o igual a  Se penalizará con el 10% de
+Success Rate     reporte de correctos             99%              descuento de la facturación
+                 "EXITOSOS") / suma de                             del mes facturado.
+(Tasa de         cantidad de transacciones
+aprobación       realizadas acumulado en el
+correcta)        mes actual y mes anterior
+
+Disponibilidad   Minutos reportados como          Mayor o igual a Se penalizará de acuerdo a
+De la            plataforma no disponible en
+Plataforma       tiempo de servicio / total de    99,50%           la siguiente fórmula:
+                 minutos del periodo
+Disponibilidad   facturado.                                        Penalidad = 0,01%tiempo de
+de evidencia                                                       caída en segundos X (el
+digital                                                            valor mensual del servicio)
+
+                 El tiempo de indisponibilidad                     La penalidad será aplicada
+                 para la penalización debe ser                     como créditos en los
+                 atribuible a fallas asociadas a                   Servicios.
+                 la tecnología o procesos del
+                 proveedor
+
+                 Evidencia de las                 100%             En caso de evidenciarse la
+                 Transacciones de validación
+                 de identidad realizadas en                        pérdida de evidencia o
+                 Plataforma.
+                                                                   evidencia errónea en
+
+                                                                   Plataforma, se penalizará
+
+                                                                   con el 10% de descuento de
+
+                                                                   la factura más 1% por cada
+
+                                                                   evidencia              pérdida
+
+                                                                   acumulada, hasta un
+
+                                                                   máximo del 25% de
+
+                                                                   descuento de la facturación
+
+                                                                   del mes de la evidencia.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                    30
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+Atención a     Número de incidentes           90%          En caso de que la pérdida
+incidentes de  atendidos en el tiempo                      de la evidencia de una
+soporte        adecuado /número total de                   Transacción de validación
+               incidentes reportados                       de identidad implique una
+                                                           compensación por daños y
+               El tiempo se define en                      perjuicios se penalizará con
+               las matrices de priorización                el 100% de los perjuicios
+               descritas anteriormente*                    demandados por EL Cliente
+                                                           a raíz del incidente.
+Solución a     Número de incidentes           95%
+incidentes de  solucionados en el tiempo                   Se penalizará con el 2% de
+soporte        adecuado /número total de                   descuento en la facturación
+               incidentes reportados                       del mes facturado.
+
+                                                           Se penalizará con el 5% de
+                                                           descuento en la facturación
+                                                           del mes facturado.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  31
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+                                            Anexo D
+                   Acuerdo de Tratamiento de Datos Personales
+
+Truora o "el Encargado" y el Cliente, o "el Responsable" suscriben el presente Acuerdo de
+Transmisión de Datos Personales (el "Acuerdo") el cual se regirá por las siguientes:
+
+                                              CLÁUSULAS
+
+1. Definiciones. Para efectos del presente          (b) Detección y prevención de
+                                                     fraude;
+    Acuerdo, los términos definidos tendrán         (c) Establecer un canal de
+    el significado establecido en los                comunicación directo entre el Titular y el
+    Términos y Condiciones Generales y               Responsable;
+    Específicos del Contrato, así como en la        (d) Habilitar la firma electrónica de
+    Ley Federal de Protección de Datos               documentos.
+    Personales en Posesión de los                   (e) Validación de datos del Titular
+    Particulares y su Reglamento, entre otras.       como la línea telefónica, el correo
+                                                     electrónico entre otros.
+2. Objeto. El objeto del presente acuerdo           (f) Almacenamiento de datos
+                                                     biométricos y/o biográficos con la
+    es regular las condiciones mediante las          finalidad de garantizar la veracidad de
+    cuales el Cliente en su calidad de               la información de la identidad de los
+    responsable, realiza la transmisión de           titulares.
+    Datos Personales en favor de Truora.            (g) Informar al Responsable y a otros
+    Esta transmisión ocurre de acuerdo con           Clientes del Encargado en caso de
+    las instrucciones del Cliente en calidad         suplantación de identidad de un Titular.
+    de Responsable y exclusivamente para            (h) Desarrollar investigaciones sobre
+    la prestación de los Servicios pactados          optimización de uso de los datos.
+    en los Términos y Condiciones generales         (i) Para cualquier otra finalidad
+    y específicos y en cumplimiento a las            relacionada con ocasión del
+    finalidades aquí indicadas.                      cumplimiento de la relación contractual
+                                                     entre el Responsable y el Encargado.
+3.Finalidad y alcance. Los Datos
+                                                 4.Actividades a cargo del Encargado.
+    Personales del Responsable, serán
+    sometidos al Tratamiento por parte del           El Encargado podrá realizar las
+    Encargado única y exclusivamente para            siguientes actividades por cuenta del
+    el cumplimiento de los Servicios                 Responsable:
+    descritos en los Términos y Condiciones           (a) Búsqueda de antecedentes
+    Específicos y Generales. Las finalidades          judiciales en diferentes bases de datos
+    consistirán en:                                   públicas y privadas;
+   (a) Validación de identidad del                    (b) Captura y procesamiento de
+    Titular, es decir que el Titular sean quien
+    realmente dice ser;                                  imágenes o videos del titular;
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  32
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+(c) Envío de mensajes por medio de                       (e) Garantizar a los Titulares, el pleno y
+                                                             efectivo ejercicio de sus derechos
+bots automatizados;                                          asociados a la protección de Datos
+                                                             Personales.
+(d) Solicitar la autorización de
+                                                         (f)Realizar oportunamente la actualización,
+tratamiento de Datos Personales en                           rectificación o supresión de los Datos
+                                                             elevados por los Titulares, en
+nombre del Responsable cuando éste                           cumplimiento de la ley aplicable.
+
+así lo solicite.                                         (g) Actualizar la información reportada
+                                                             por el Cliente dentro de los cinco (5)
+(e) Cualquier          otra                   actividad      días hábiles contados a partir de su
+                                                             recibo.
+relacionada con ocasión del
+                                                         (h) Realizar el tratamiento de los Datos
+cumplimiento de la relación                                  Personales de conformidad con la
+                                                             política de Tratamiento del Cliente y
+contractual entre el Responsable y el                        conforme a las finalidades establecidas
+                                                             por el mismo.
+Encargado.
+                                                         5.2. Obligaciones del Responsable. En
+5.Obligaciones de las Partes.  Las                           virtud del presente Acuerdo, el Cliente,
+                                                             en calidad de Responsable, se obliga a
+    Partes se obligan al estricto                            lo siguiente:
+    cumplimiento de las disposiciones
+    legales vigentes en materia de                       (a) Recolectar, almacenar, usar circular
+    protección de datos personales.                          o suprimir los Datos Personales en
+    Adicionalmente, las Partes se obligan a                  cumplimiento con la legislación vigente
+    dar cumplimiento a las obligaciones                      y aplicable.
+    establecidas a continuación en virtud de
+    su rol:                                              (b) Solicitar la Autorización por parte de
+5.1. Obligaciones de Truora. En virtud                       cada uno de los Titulares de los Datos
+    del presente Acuerdo, Truora, en calidad                 Personales en donde se autorice la
+    de Encargado, se obliga con el Cliente a                 transmisión de los Datos Personales.
+    lo siguiente:
+(a) Conservar la información bajo las                    (c) Incluir en las finalidades
+    condiciones de seguridad necesarias                      comunicadas a los Titulares las
+    para impedir su adulteración, pérdida,                   finalidades establecidas en el presente
+    consulta, uso o acceso no autorizado o                   Acuerdo, según aplique.
+    fraudulento.
+(b) Dar tratamiento, en nombre del                       (d) Transmitir los Datos Personales a
+    Responsable, a los Datos Personales de                   Truora, para que ésta, en calidad de
+    acuerdo con el presente Acuerdo,                         Encargado, trate los mismos
+    conforme a los principios que los tutelan                conformidad con la ley aplicable y con lo
+    y en cumplimiento con lo dispuesto en la                 dispuesto en el presente Acuerdo.
+    Política de Privacidad del Responsable.
+(c) Salvaguardar la seguridad de las                     (e) Contar con autorización previa,
+    bases de datos en los que se contengan                   expresa e informada por parte de los
+    Datos Personales.                                        titulares de los para el Tratamiento de la
+(d) Guardar estricta confidencialidad                        información.
+    respecto del Tratamiento de los Datos
+    Personales.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  33
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+(f)Conservar prueba de la Autorización          El Titular o su representante legal podrá
+    otorgada por los Titulares de Datos         solicitar Truora el ejercicio de sus derechos
+    Personales para el Tratamiento de los       ARCO así como solicitar la revocatoria del
+    mismos.                                     consentimiento sobre el Tratamiento de
+                                                los Datos Personales del Titular que son
+(g) Recabar los Datos Personales de             objeto de Tratamientos, por medio de
+    manera lícita, consentida, libre y sin      presentación de una Consulta siguiendo el
+    vicios en los términos de lo establecido    procedimiento descrito en la presente
+    en la ley vigente aplicable.                sección.
+
+6.Procedimiento para ejercer sus                6.1. El Titular deberá realizar la consulta
+   derechos ARCO y oposición a las              mediante solicitud escrita dirigida a
+   finalidades no necesarias                    cualquiera de los siguientes canales:
+
+Truora dispone de las herramientas y                   Dirección física: Av. Ejército
+medios de comunicación para que los                         Nacional No. 351, P3, Col. Granada,
+Titulares o sus representantes legales                      Alcaldía. Miguel Hidalgo, C.P. 11520,
+puedan ejercer sus derechos de Acceso,                      Ciudad de México 
+Rectificación, Cancelación u Oposición
+siendo procedentes los últimos dos casos,              Correo: privacy@truora.com
+solo cuando la regulación vigente lo                   Persona encargada: Director de
+permita (en lo sucesivo "Derechos ARCO") ,
+así como para que los mismos puedan                         cumplimiento de Privacidad
+oponerse al tratamiento de sus Datos
+Personales para las finalidades no              6.2. Las Consultas serán atendidas en un
+necesarias, revocar la Autorización al          término máximo de veinte (20) días
+Tratamiento limitación del uso o                hábiles contados a partir de la fecha de
+divulgación de sus Datos personales.            recibo de la misma. Cuando no fuere
+                                                posible atender la consulta dentro de
+Truora ha creado un área exclusivamente         dicho término, se informará al interesado,
+designada para el manejo de los Datos           expresando los motivos de la demora y
+Personales llamada Privacy Truora como          señalando la fecha en que se atenderá su
+responsable de la protección de sus datos,      consulta, la cual en ningún caso podrá
+en el evento de alguna duda o inquietud         superar los cinco (5) días hábiles
+sobre el presente Aviso de Privacidad o el      siguientes al vencimiento del primer
+Tratamiento y uso de la Información             término.
+Personal favor dirigir sus consultas,
+peticiones quejas o reclamos a:                 6.3. Toda consulta deberá contener la
+                                                información correspondiente a la
+Correo Electrónico: privacy@Truora.com          identificación oficial vigente del Titular, es
+Dirección: Av. Ejército Nacional No. 351, P3,   decir: nombre completo, número de
+Col. Granada, Alcaldía Miguel Hidalgo, C.P.     identificación (así como la copia de dicho
+11520,                                          documento), correo electrónico y firma. En
+Ciudad de México                                caso de que la Consulta haya sido
+                                                solicitada por el Representante Legal del
+                                                Titular, se deberá acompañar a la misma
+                                                el documento mediante el cual se acredite
+                                                la personalidad del Representante Legal,
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  34
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+así como la identificación oficial del                                6.5. En caso de que se desee limitar el uso
+mismo.                                                                o divulgación de sus Datos Personales, se
+                                                                      podrá realizar a través de los siguientes
+6.4. Las respuestas a la Consulta elevada                             medios:
+por el Titular se realizarán por el mismo
+medio que hubiese sido seleccionado por                                       Carta formal a la dirección: Av.
+el Titular para realizar la Consulta.                                             Ejército Nacional No. 351, P3, Col.
+                                                                                  Granada, Alcaldía. Miguel Hidalgo,
+                                                                                  C.P. 11520, Ciudad de México
+
+Las Partes suscriben el presente Acuerdo a través de Plataformas de firma electrónica con
+validez jurídica. Para todos los efectos legales, las Partes lo firman en la fecha indicada en el
+informe de firmas (la "Fecha de Firma").
+
+Truora Fraud Prevention S.A. de C.V.                                  Mtech Gears, S.A. de C.V
+
+Firmado digitalmente en ZapSign por                                   Firmado digitalmente en ZapSign por
+
+Maria Celia Hernandez Caballero                                       Raul Marin de la Cruz
+
+                           Fecha: 16/12/2025 11:04:05.992 (UTC-0500)  _______________F_e_c_ha_: _13_/1_2_/2_0_25_1_6_:2_3:54.290 (UTC-0500)
+
+_____________________________
+
+Maria Celia Hernandez                                                 Raul Marin de la Cruz
+INE: 1582645850                                                       CURP: MACR660510HTCRRL02
+Representante Legal                                                   Representante Legal
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                                                                    35
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+                                     Anexo E
+                       Acuerdo de Confidencialidad
+
+Truora y el Cliente suscriben el presente Acuerdo de Confidencialidad el cual se regirá por lo
+
+aquí establecido. Para efectos del presente Acuerdo, cada Parte puede ser Parte Receptora
+
+o Parte Reveladora de la información Confidencial.
+
+1. Objeto. El objeto del presente Acuerdo                   otras informaciones de sus negocios;
+
+es definir los términos y alcances del                      (d) Información producto del estudio
+
+deber de confidencialidad e integridad                      del mercado, de la competencia, de las
+
+entre las Partes, en relación con la                        oportunidades de negocio o de otros
+
+información, los recursos y activos de                      datos y observaciones relevantes con el
+
+información que se entreguen                                core del negocio de la Parte
+
+mutuamente las Partes en virtud de la                       Reveladora;
+
+relación comercial que sostienen.                           (e) Registros de bases de datos,
+
+                                                            especificaciones técnicas, procesos y
+
+2. Definiciones                                             procedimientos, análisis y estudios
+
+"Parte Reveladora": Corresponde a la                        realizados, así como actas suscritas en
+
+Parte que revela la información                             reuniones e informes compartidos o
+
+confidencial.                                               generados en el marco de la Potencial
+
+"Parte Receptora": Corresponde a la                         Transacción;
+
+Parte que recibe la información                             (f) Grabaciones de reuniones;
+
+confidencial.                                               (g) La relativa a información técnica,
+
+"Información Confidencial": Se entiende                     de producción, financiera, contable,
+
+de forma enunciativa más no limitativa,                     comercial, propuestas de negocio,
+
+toda información originada, o del                           estructura organizacional, datos
+
+conocimiento de las Partes que sea:                         personales, estrategias de negocios,
+
+                                                            estructura de la compañía, reportes,
+
+(a) Relativa a Clientes y las                               planes, proyecciones de mercado,
+
+transacciones llevadas a cabo con                           datos e información industrial, fórmulas,
+
+ellos;                                                      mecanismos, modelos, métodos,
+
+(b) Relativa a productos y tecnología,                      técnicas, procesos de análisis,
+
+las     propiedades,                          composición,  documentos de trabajo, compilaciones,
+
+estructura, uso o procesamiento de los                      comparaciones,    proyectos           o
+
+mismos, o de los sistemas de los                            investigaciones;
+
+mismos;                                                     (h) La relativa a la tecnología,
+
+(c) Programas de cómputo de su                              invenciones,      patentes,    diseños
+
+propiedad o licenciados, nombres y                          industriales, modelos de utilidad,
+
+experiencia de los trabajadores y                           marcas o diseños; escritos, dibujos,
+
+consultores, información técnica de                         gráficas, cuadros, fotografías o
+
+negocios, planes de desarrollo de                           grabaciones; estadísticas; material o
+
+Clientes y productos, estudios,                             planes de marketing; prototipos;
+
+estrategias e información similar, y                        esquemas de negocios; muestras;
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                         36
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+estructuras,           composiciones                   o       tipo de Información Confidencial que se
+                                                               le suministre o a la cual llegare a tener
+componentes bases de datos,                                    acceso o conocimiento.
+                                                             (c) Ejercer los controles relacionados
+hardware, programas informáticos de                            con el manejo, propiedad, intercambio,
+                                                               almacenamiento y destrucción sobre la
+cualquier tipo, códigos fuente o códigos                       Información Confidencial con el mismo
+                                                               grado de diligencia con el cual
+objeto;                                                        administra su propia información.
+                                                             (d) Utilizar y llevar a cabo las medidas
+(i) Las relativas a políticas o                                necesarias de seguridad para
+                                                               conservar la confidencialidad de la
+procedimientos internos, así como                              Información Confidencial. Entre otras
+                                                               medidas, deberá restringir el acceso a
+cualquier tipo de "know-how" y otros                           la información mediante contraseñas,
+                                                               encriptación, llaves y otras medidas
+documentos             preparados                      y       que impidan que la información pueda
+                                                               ser vista, copiada o modificada sin la
+considerados confidenciales por las                            autorización de la Parte Reveladora.
+                                                             (e) Limitar la revelación de la
+Partes o cualesquiera de sus                                   Información Confidencial únicamente a
+                                                               las personas que sean estrictamente
+subsidiarias o filiales.                                       necesarias en virtud de la Potencial
+                                                               Transacción y hayan sido previamente
+Parágrafo 1. Se considerará Información                        autorizadas para conocerla. Asimismo,
+  Confidencial independientemente del                          será responsable de que las personas
+  medio por el cual esta se haya enviado                       autorizadas a su vez se obliguen a
+  o transferido, incluyendo cualquier                          proteger dicha información en los
+  información que se haya enviado en                           términos del presente Acuerdo,
+  forma escrita, gráfica, electrónica y/o                      incluyendo la obligación de firmar
+  verbal, incluída los mensajes de datos                       acuerdos de confidencialidad, bajo los
+  de acuerdo con la definición otorgada                        términos y condiciones de este
+  por la legislación aplicable.                                Acuerdo.
+                                                             (f) Abstenerse de realizar copias o
+3. Obligaciones y uso de la Información                        reproducciones de la Información
+     Confidencial.                                             Confidencial.
+                                                             (g) Cumplir con el requerimiento de la
+La Parte Receptora, así como de sus
+
+representantes,                               funcionarios,
+
+empleados, técnicos, consultores, o
+
+cualquier persona que está destine a la
+
+ejecución de la relación con la Parte
+
+Reveladora el titular, se obliga a:
+
+(a) Utilizar la Información Confidencial
+
+únicamente para las finalidades
+
+descritas en el presente Acuerdo.
+
+(b) Guardar            la                     reserva  y
+
+confidencialidad, respecto de cualquier
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México    37
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+     Parte Reveladora de solicitud de               Parte Receptora y se le haya permitido
+     devolución o de destrucción y                  una defensa efectiva en relación con su
+     eliminación de la Información                  interés de mantenerla en reserva. Si una
+     Confidencial en un tiempo no mayor a           Parte es requerida para revelar
+     diez (10) días hábiles contados a partir       cualquier Información Confidencial de
+     de la solicitud.                               propiedad de la otra Parte, deberá
+                                                    notificar de inmediato de dicha solicitud
+4. Exclusiones.                                     o requerimiento, esto, sin perjuicio del
+Este Acuerdo no impone obligación a cargo           cumplimiento de la orden impartida en
+de la Parte Receptora de la información             la oportunidad conferida para el efecto.
+confidencial que:
+                                               5. Vigencia del Acuerdo.
+  (a) Haya sido de dominio público o de        La  Este Acuerdo tendrá una vigencia de
+     conocimiento general al momento de        doce (12) meses contados a partir de la
+     recibirla, o que haya pasado a ser de     firma del Contrato, a menos que sea
+     dominio público sin que obre              terminado anticipadamente en los
+     negligencia, culpa o dolo por Parte de    términos contenidos en dicho documento.
+     la Parte Receptora;
+                                               La Las obligaciones de cada Parte
+  (b) La información que es o se vuelve        Receptora perdurarán por dos (2) años
+     de acceso y/o conocimiento público de     contados desde la última divulgación de
+     manera diferente a la de ser revelada     Información Confidencial de la Parte
+     directa o indirectamente por la Parte     Divulgadora a la Parte Receptora.
+     Receptora de la información;
+                                               6. Terminación Anticipada.
+  (c) La información que haya estado           6.1.C ualquier Parte podrá terminar de
+     en posesión de cualquiera de las Partes
+     antes de haber recibido la misma por           manera anticipada el Acuerdo en los
+     medio de la otra Parte siempre y               siguientes casos:
+     cuando la haya recibido sin obligación      (a) Por mutuo acuerdo entre las
+     de mantenerla como Confidencial y/o            Partes.
+     rotulada como tal;                          (b) Por la extinción de la personalidad
+                                                    jurídica de cualquiera de las Partes.
+  (d) Deba ser revelada por mandato              (c) En cualquier momento y sin
+     legal o de cualquier regulación                necesidad de justificación, cuando
+     emanada legítimamente del Estado;              cualquiera de las Partes remita
+
+  (e) Deba ser revelada por decisión
+     judicial o de la respectiva autoridad
+     competente, siempre y cuando, según
+     como se establece en esta sección, se
+     haya notificado de este hecho a la
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  38
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+  comunicación escrita en tal sentido a la    6.2.Los deberes de sigilo y confidencialidad
+  otra Parte.                                      estipulados en este Acuerdo
+(d) En el evento que alguna de las                 mantendrán sus efectos, con
+  Partes incumpla las normas vigentes en           indiferencia de la terminación
+  materia de libre competencia, conflicto          anticipada o no de la relación entre las
+  de intereses, ética de los negocios,             Partes y con posterioridad a dicha
+  medio ambiente, integridad o cualquier           terminación, mientras la Información
+  otra disposición relacionada y aplicable         Confidencial que haya sido objeto de
+  a este Acuerdo.                                  intercambio mantenga su condición de
+(e) Cuando ocurran circunstancias de               confidencial.
+  fuerza mayor, caso fortuito, o hechos de
+  terceros que hagan imposible continuar
+  con la ejecución del Acuerdo.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  39
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+7. Propiedad de la Información.                             8. Daños y Perjuicios.
+
+7.1.L as Partes reconocen que toda la                       8.1.E n caso de incumplimiento de las
+
+Información                                   Confidencial  obligaciones de confidencialidad a
+
+proporcionada por alguna de las Partes                      cargo de la Parte Receptora , la Parte
+
+pertenece exclusivamente a dicha                            afectada tendrá el derecho de rescindir
+
+Parte Reveladora, quien la ha obtenido
+
+de forma lícita y que ejerce un control                     el  presente            Acuerdo,  sin
+
+legal sobre dicha Información                               responsabilidad alguna y sin necesidad
+
+Confidencial. Por lo tanto, en caso de                      de declaración judicial, mismo que
+
+que la Información Confidencial tenga                       podrá ejercer mediante notificación por
+
+aplicación industrial o comercial, y a                      escrito enviada a la Parte incumplida,
+
+través de ella se obtenga o mantenga                        indicando la fecha de terminación del
+
+una ventaja competitiva o económica                         Acuerdo.
+
+frente a terceros, se considera secreto
+
+industrial protegido en términos de las
+
+leyes de protección a la propiedad
+
+industrial aplicable, por lo que queda
+
+prohibida su divulgación a terceros por
+
+cualquier medio y de cualquier forma,
+
+así como su uso con el propósito de
+
+causarle perjuicio a la Parte Reveladora
+
+u obtener un beneficio económico no
+
+autorizado para sí o para un tercero.
+
+7.2.L as Partes aceptan que bajo ninguna
+
+circunstancia          la                     Información
+
+Confidencial objeto de este convenio le
+
+pertenecerá a cualquier otro que no sea
+
+a la Parte Reveladora, según
+
+corresponda.
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                     40
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+8.2.B ajo este supuesto la Parte afectada        9.2.Así mismo, la Parte Receptora declara
+     podrá exigir a la Parte incumplida el            conocer y aceptar que ni la Parte
+     pago de los daños y perjuicios que se            Reveladora (o sus subsidiarias o
+     originen a consecuencia de su                    filiales) ni ninguno de los
+     incumplimiento, además de los gastos             representantes, accionistas y/o
+     y costas judiciales en los que incurra la        empleados de la Parte Reveladora y/o
+     Parte afectada derivados del                     sus filiales y/o subsidiarias tendrán
+     incumplimiento de la Parte incumplida,           responsabilidad alguna frente a la
+     con independencia de cualquier otra              Parte Receptora, sus accionistas o
+     acción legal que sea aplicable.                  empleados por cualquier omisión y/o
+                                                      imprecisión contenida en la
+9. Ausencia de Garantías.                             Información Confidencia.
+9.1.La Parte Receptora reconoce y acepta
+
+     que ni la Parte Reveladora (o sus
+     subsidiarias o filiales) ni ninguno de los
+     representantes, accionistas y/o
+     empleados de la Parte Reveladora y/o
+     sus Afiliadas y/o Subsidiarias hacen
+     ninguna representación o garantía,
+     expresa o implícita, en cuanto a la
+     exactitud, suficiencia o integridad de la
+     Información Confidencial.
+
+10. Domicilio, Ley Aplicable y Solución de Conflictos.
+ Para la interpretación, cumplimiento y solución de cualquier controversia derivada del
+ presente Acuerdo, las Partes se someten expresamente a las leyes aplicables, así como a los
+ tribunales competentes de la Ciudad de México, renunciando expresamente a cualquier otro
+ fuero que por razón de sus domicilios presentes o futuros o por cualquier otra causa que
+ pudiera corresponder.
+
+ Las Partes suscriben el presente Acuerdo a través de Plataformas de firma electrónica con
+ validez jurídica. Para todos los efectos legales, las Partes lo firman en la fecha indicada en el
+ informe de firmas (la "Fecha de Firma").
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México  41
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+Truora Fraud Prevention S.A. de C.V.                                Mtech Gears, S.A. de C.V
+
+                      Firmado digitalmente en ZapSign por                                             Firmado digitalmente en ZapSign por
+                      Maria Celia Hernandez Caballero                                                 Raul Marin de la Cruz
+                         Fecha: 16/12/2025 11:04:05.992 (UTC-0500)                                         Fecha: 13/12/2025 16:23:54.290 (UTC-0500)
+
+_____________________________                                       _____________________________
+
+Maria Celia Hernandez                                               Raul Marin de la Cruz
+INE: 1582645850                                                     CURP: MACR660510HTCRRL02
+Representante Legal                                                 Representante Legal
+
+TRUORA | Confidencial
+
+Contrato Truora Fraud Prevention S.A de C.V 2025 - México                                                                                             42
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+Informe de Firmas
+
+Fechas y horas en UTC-0500 ( America/Bogota)
+Ultima actualización en Diciembre 16 2025, 11:04:06
+
+Estado: Firmado
+Documento: 12.12.2025. MTECH - PAYG Contrato Marco + Integracion (2) (002).Docx.Pdf
+Número: c4c4836d-a670-4871-9d1e-cf202311dcda
+Fecha de creación: Diciembre 11, 2025, 11:28:46
+Hash del documento original (SHA256): 376b039fcde8e499505816c9b9e44f2377661b035fdff624564534fba13273f5
+
+Firmas                                                                                                  2 de 2 Firmas
+
+                                                                  Firma
+
+Firmado  via ZapSign by Truora
+
+MARIA CELIA HERNANDEZ CABALLERO                                                                                                                         Maria Celia Hernandez Caballero
+
+Fecha y hora de firma: 12/16/2025 11:04:05                        Ubicación aproximada: 19.437241, -99.185069
+Token: a51b9a1b-aa57-4773-8682-71e3389424a1                       IP: 189.239.157.109
+                                                                  Dispositivo: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+Puntos de autenticación:                                          (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0
+
+Correo electrónico: celia@truora.com                                                                                                                                          Firma
+Nivel de seguridad: Validado por código único enviado por e-mail
+
+Firmado  via ZapSign by Truora
+
+RAUL MARIN DE LA CRUZ                                                                                                                                                         Raul Marin de la Cruz
+
+Fecha y hora de firma: 12/13/2025 16:23:54                        Ubicación aproximada: 19.312279, -98.898126
+Token: 74819fe6-50aa-4189-bf30-3e163bbdb84c                       IP: 186.96.22.67
+                                                                  Dispositivo: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML,
+Puntos de autenticación:                                          like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36
+
+Correo electrónico: raul.marin@mtechmexico.mx
+
+      CONSTANCIA DE CONSERVACIÓN (NOM 151)
+
+       Este documento, con Constancia de Conservación de un PSC acreditado, goza de presunción legal de
+       integridad. Los datos de la firma aseguran autenticidad e integridad. Confirma la integridad del
+       documento aquí.
+       Constancia emitida por: PSC WORLD, S.A. DE C.V
+       Fecha de la constancia: Diciembre 16, 2025, 11:04:06 UTC-0500
+
+       Este registro es exclusivo y se considera parte del documento número c4c4836d-a670-4871-9d1e-cf202311dcda, de acuerdo con las
+       Condiciones de uso de ZapSign , disponibles en zapsign.mx
+
+ZapSign c4c4836d-a670-4871-9d1e-cf202311dcda
+

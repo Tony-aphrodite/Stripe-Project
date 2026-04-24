@@ -212,10 +212,8 @@ if (CDC_USER)      $headers[] = 'username: ' . CDC_USER;
 if (CDC_PASS)      $headers[] = 'password: ' . CDC_PASS;
 if ($signatureHex) $headers[] = 'x-signature: ' . $signatureHex;
 
-$ch = curl_init();
 // Capture response headers so we can verify CDC's x-signature against the
-// response body (required per apihub docs — responses are signed with CDC's
-// private key; we verify with the public cert downloaded from the portal).
+// response body.
 $responseHeaders = [];
 $curlOpts = [
     CURLOPT_URL            => CDC_BASE_URL,
@@ -239,9 +237,7 @@ $curlOpts = [
 ];
 
 // Mutual TLS — many CDC v2 products require the client certificate at the
-// TLS layer in addition to the x-signature header. Attaching both is
-// harmless (Apigee ignores mTLS when not enforced). Without this, some
-// CDC products return 503 with an empty body.
+// TLS layer in addition to the x-signature header.
 $tmpCert = null; $tmpKey = null;
 if ($certPem && $keyPem) {
     $tmpCert = tempnam(sys_get_temp_dir(), 'cdc_cert_');
@@ -251,12 +247,39 @@ if ($certPem && $keyPem) {
     $curlOpts[CURLOPT_SSLCERT] = $tmpCert;
     $curlOpts[CURLOPT_SSLKEY]  = $tmpKey;
 }
-curl_setopt_array($ch, $curlOpts);
 
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlErr  = curl_error($ch);
-curl_close($ch);
+// Auto-retry on transient CDC failures (HTTP 0/502/503/504 or curl error).
+// Customer report 2026-04-23: a 758-score applicant was rejected once because
+// of a one-off HTTP 0 timeout; retry the same request seconds later and it
+// succeeds. Without this loop, transient blips become lost sales.
+$retryableHttp    = [0, 502, 503, 504];
+$cdcAttemptsLog   = [];
+$maxAttempts      = 2;
+$retryDelaySec    = 2;
+
+$response = ''; $httpCode = 0; $curlErr = '';
+for ($try = 1; $try <= $maxAttempts; $try++) {
+    $responseHeaders = [];
+    $ch = curl_init();
+    curl_setopt_array($ch, $curlOpts);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    $cdcAttemptsLog[] = [
+        'try'      => $try,
+        'httpCode' => $httpCode,
+        'curlErr'  => $curlErr,
+        'respLen'  => strlen((string)$response),
+    ];
+
+    $transient = ($curlErr !== '') || in_array((int)$httpCode, $retryableHttp, true);
+    if (!$transient) break;
+    if ($try >= $maxAttempts) break;
+    sleep($retryDelaySec);
+}
+
 if ($tmpCert) @unlink($tmpCert);
 if ($tmpKey)  @unlink($tmpKey);
 
@@ -308,6 +331,8 @@ $logEntry = [
     'curlErr'      => $curlErr,
     'response'     => substr((string)$response, 0, 2000),
     'resp_sig_ok'  => $responseSigStatus,
+    'attempts'     => $cdcAttemptsLog,
+    'retried'      => count($cdcAttemptsLog) > 1,
 ];
 try {
     $pdoLog = getDB();

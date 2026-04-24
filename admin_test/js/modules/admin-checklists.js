@@ -558,9 +558,14 @@ window.AD_checklists = (function(){
       var motivo = prompt('¿Por qué reabres este checklist?\n(Ej: "Inspección física pendiente desde llegada de inventario")', 'Inspección física manual en CEDIS');
       if (motivo === null) return; // user cancelled
       var $btn = $(this).prop('disabled', true).text('Procesando...');
+      // ADApp.api(path, data) — pass the data object directly; the helper
+      // takes care of JSON.stringify + content-type. Wrapping it inside
+      // {method, data: JSON.stringify(...)} double-encodes and the backend
+      // sees moto_id inside a nested "data" string, returning 400 "moto_id
+      // requerido" (customer report 2026-04-23).
       ADApp.api('checklists/reabrir-origen.php', {
-        method: 'POST', contentType: 'application/json',
-        data: JSON.stringify({ moto_id: motoId, motivo: motivo })
+        moto_id: motoId,
+        motivo: motivo
       }).done(function(r){
         if (r.ok) {
           ADApp.closeModal();

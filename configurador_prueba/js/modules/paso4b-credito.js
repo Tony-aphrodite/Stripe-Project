@@ -163,8 +163,37 @@ var Paso4B = {
 
     init: function(app) {
         this.app = app;
-        this._enganchePct = 0.25;
-        this._plazoMeses  = 36;
+        var s = app.state || {};
+
+        // Dual-mode init:
+        //   - INITIAL configurator visit → default to 25% / 36 months.
+        //   - CONDICIONAL post-evaluation (customer brief 2026-04-24) →
+        //     seed with the min-compliant values set by
+        //     paso-credito-resultado.js so the slider starts in a valid
+        //     position. Restrictions (min enganche, max plazo) are read
+        //     from state.enganchePctMin / state.plazoMesesMax during
+        //     render() and bindEvents().
+        if (s.modoCondicional) {
+            // Seed from current state, then clamp to algorithm-authorized
+            // bounds. Without clamping, a user who set 25%/36 months during
+            // the initial (unrestricted) Paso4B visit would land here with
+            // values that violate the CONDICIONAL algorithm output (e.g.
+            // enganchePctMin=0.40, plazoMesesMax=24) and the UI buttons for
+            // the old plazo would be absent, leaving no selected plazo.
+            var engSeed = (typeof s.enganchePorcentaje === 'number')
+                ? s.enganchePorcentaje
+                : (s.enganchePctMin || 0.40);
+            var plazoSeed = (typeof s.plazoMeses === 'number')
+                ? s.plazoMeses
+                : (s.plazoMesesMax || 24);
+            if (s.enganchePctMin && engSeed < s.enganchePctMin) engSeed = s.enganchePctMin;
+            if (s.plazoMesesMax  && plazoSeed > s.plazoMesesMax) plazoSeed = s.plazoMesesMax;
+            this._enganchePct = engSeed;
+            this._plazoMeses  = plazoSeed;
+        } else {
+            this._enganchePct = 0.25;
+            this._plazoMeses  = 36;
+        }
         this._ingresoVal  = null;
         this._resultadoV3 = null;
         this.render();
@@ -179,15 +208,38 @@ var Paso4B = {
         var credito = this._calcularCredito(modelo);
         var img     = VkUI.getImagenMoto(modelo.id, state.colorSeleccionado || modelo.colorDefault);
 
+        // CONDICIONAL mode limits exposed from paso-credito-resultado.js.
+        var cond      = !!state.modoCondicional;
+        var engPctMin = cond && state.enganchePctMin  ? state.enganchePctMin  : 0.25;
+        var plazoMax  = cond && state.plazoMesesMax   ? state.plazoMesesMax   : 36;
+
         var html = '';
 
-        // Back button — back to color selection (paso 2)
-        html += VkUI.renderBackButton(2);
+        // Back button — credit-adjust mode should not let the user rewind
+        // to the color picker; they've already completed the whole
+        // application. Go back to the pre-authorization screen instead.
+        html += VkUI.renderBackButton(cond ? 'credito-pago' : 2);
 
         // ── Title ───────────────────────────────────────────────────────────
         html += '<div style="text-align:left;margin-bottom:16px;">';
-        html += '<div style="font-size:22px;font-weight:800;">Arma tu plan Voltika</div>';
+        if (cond) {
+            html += '<div style="font-size:22px;font-weight:800;">Ajusta tu plan dentro de las condiciones aprobadas</div>';
+        } else {
+            html += '<div style="font-size:22px;font-weight:800;">Arma tu plan Voltika</div>';
+        }
         html += '</div>';
+
+        // Constraint banner — explains the restrictions in plain language
+        if (cond) {
+            html += '<div style="background:#FFF3E0;border:1.5px solid #FB8C00;border-radius:10px;padding:14px 16px;margin-bottom:16px;">';
+            html += '<div style="font-weight:700;color:#E65100;margin-bottom:6px;font-size:14px;">⚠ Condiciones de tu aprobación</div>';
+            html += '<div style="font-size:13px;color:#5d4037;line-height:1.5;">';
+            html += 'Tu evaluación crediticia requiere al menos <strong>' + Math.round(engPctMin * 100) + '% de enganche</strong>';
+            html += ' y un plazo máximo de <strong>' + plazoMax + ' meses</strong>. ';
+            html += 'Puedes subir más el enganche o bajar el plazo si quieres.';
+            html += '</div>';
+            html += '</div>';
+        }
 
         // ── Model summary (compact) ─────────────────────────────────────────
         html += '<div style="background:#fff;border:1.5px solid var(--vk-border);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">';
@@ -210,17 +262,29 @@ var Paso4B = {
             '</div>';
         html += '<div id="vk-enganche-big" style="font-size:32px;font-weight:800;color:var(--vk-text-primary);margin-bottom:8px;">' +
             VkUI.formatPrecio(modelo.precioContado * this._enganchePct) + '</div>';
-        html += '<input type="range" id="vk-enganche-slider" min="25" max="80" value="' + Math.round(this._enganchePct * 100) + '" step="5" ' +
+        // Slider bounds: in CONDICIONAL mode the lower bound is the
+        // min-required enganche from the credit evaluation (customer
+        // cannot go below it).
+        var sliderMin = cond ? Math.max(25, Math.round(engPctMin * 100)) : 25;
+        var sliderVal = Math.max(sliderMin, Math.round(this._enganchePct * 100));
+        html += '<input type="range" id="vk-enganche-slider" min="' + sliderMin + '" max="80" value="' + sliderVal + '" step="5" ' +
             'style="width:100%;">';
         html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--vk-text-muted);margin-top:4px;">' +
-            '<span>25%</span><span>80%</span></div>';
+            '<span>' + sliderMin + '%</span><span>80%</span></div>';
         html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-top:6px;">M\u00e1s enganche = menor pago semanal</div>';
 
         // ── Plazo buttons ──────────────────────────────────────────────────
+        // CONDICIONAL mode filters out any plazo longer than what the
+        // credit evaluation allowed.
+        var plazoOptions = [12, 18, 24, 36];
+        if (cond) {
+            plazoOptions = plazoOptions.filter(function(p){ return p <= plazoMax; });
+            if (plazoOptions.length === 0) plazoOptions = [12];
+        }
         html += '<div style="margin-top:20px;">';
         html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">Elige tu plazo</div>';
         html += '<div id="vk-plazo-btns" style="display:flex;gap:8px;">';
-        html += this._renderPlazoBtns([12, 18, 24, 36], this._plazoMeses, null, modelo, this._enganchePct);
+        html += this._renderPlazoBtns(plazoOptions, this._plazoMeses, null, modelo, this._enganchePct);
         html += '</div>';
         html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-top:8px;">Mayor plazo = menor pago semanal</div>';
         html += '</div>';
@@ -267,10 +331,18 @@ var Paso4B = {
         html += '</div>';
 
         // ── APARTAR MI VOLTIKA button ───────────────────────────────────────
-        html += '<button class="vk-btn vk-btn--blue" id="vk-confirmar-credito" style="margin-top:12px;font-size:16px;font-weight:800;letter-spacing:0.5px;">APARTAR MI VOLTIKA</button>';
+        // In CONDICIONAL mode the applicant has already completed the full
+        // credit pre-authorization flow. The "APARTAR" wording implies a
+        // reservation step that's already done; the next real action is to
+        // pay the adjusted enganche, so relabel accordingly.
+        var ctaLabel = cond ? 'PAGAR ENGANCHE \u203a' : 'APARTAR MI VOLTIKA';
+        html += '<button class="vk-btn vk-btn--blue" id="vk-confirmar-credito" style="margin-top:12px;font-size:16px;font-weight:800;letter-spacing:0.5px;">' + ctaLabel + '</button>';
 
         html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:8px;">' +
-            'Proceso 100% digital \u00b7 Sin tr\u00e1mites complicados</p>';
+            (cond
+                ? 'A continuaci\u00f3n ir\u00e1s al pago seguro del enganche ajustado.'
+                : 'Proceso 100% digital \u00b7 Sin tr\u00e1mites complicados') +
+            '</p>';
 
         $('#vk-credito-container').html(html);
     },
@@ -329,19 +401,51 @@ var Paso4B = {
                    .off('click', '.vk-plazo-btn')
                    .off('input', '#vk-enganche-slider');
 
-        // "CONFIRMAR COMPRA" — save enganche/plazo and go to color selection
+        // Helper — list of plazo options honoring CONDICIONAL max cap.
+        var getPlazoOptions = function() {
+            var base = [12, 18, 24, 36];
+            var s = self.app.state || {};
+            if (s.modoCondicional && s.plazoMesesMax) {
+                base = base.filter(function(p) { return p <= s.plazoMesesMax; });
+                if (base.length === 0) base = [12];
+            }
+            return base;
+        };
+
+        // CTA — route depends on flow mode:
+        //   CONDICIONAL (customer brief 2026-04-25): credit evaluation
+        //     already ran once. User just adjusted enganche/plazo within
+        //     the algorithm's authorized bounds. Go to Truora
+        //     (credito-identidad), NOT back through credito-resultado or
+        //     any ingreso/evaluation step — re-posting to
+        //     preaprobacion-v3.php would create duplicate rows in
+        //     preaprobacion_log / solicitudes_credito. After Truora
+        //     completes, the flow continues to credito-enganche (Stripe).
+        //   NORMAL (first-time config, no evaluation yet): user hasn't
+        //     picked a color yet — go to the color selector.
         $(document).on('click', '#vk-confirmar-credito', function() {
             var modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
             var credito = self._calcularCredito(modelo);
             self.app.state.enganchePorcentaje = self._enganchePct;
             self.app.state.plazoMeses = self._plazoMeses;
             self.app.state.cuotaSemanal = credito.pagoSemanal;
-            self.app.irAPaso(2); // Go to color selector
+
+            if (self.app.state.modoCondicional) {
+                self.app.irAPaso('credito-identidad');
+            } else {
+                self.app.irAPaso(2);
+            }
         });
 
-        // Slider enganche
+        // Slider enganche — clamp to min required in CONDICIONAL mode.
         $(document).on('input', '#vk-enganche-slider', function() {
-            self._enganchePct = parseInt($(this).val()) / 100;
+            var pct = parseInt($(this).val()) / 100;
+            var s = self.app.state || {};
+            if (s.modoCondicional && s.enganchePctMin && pct < s.enganchePctMin) {
+                pct = s.enganchePctMin;
+                $(this).val(Math.round(pct * 100));
+            }
+            self._enganchePct = pct;
             var modelo  = self.app.getModelo(self.app.state.modeloSeleccionado);
             var credito = self._calcularCredito(modelo);
             var engancheStr = VkUI.formatPrecio(credito.enganche);
@@ -353,7 +457,7 @@ var Paso4B = {
             $('#vk-monto-summary').text(VkUI.formatPrecio(credito.montoFinanciado));
             $('#vk-plazo-summary').html(self._plazoMeses + ' meses &middot; ' + VkUI.formatPrecio(credito.pagoSemanal) + '/semana');
             $('#vk-calc-results').html(self._renderCalcResults(modelo, credito));
-            $('#vk-plazo-btns').html(self._renderPlazoBtns([12, 18, 24, 36], self._plazoMeses, null, modelo, self._enganchePct));
+            $('#vk-plazo-btns').html(self._renderPlazoBtns(getPlazoOptions(), self._plazoMeses, null, modelo, self._enganchePct));
         });
 
         // Botones de plazo
@@ -362,7 +466,7 @@ var Paso4B = {
             var modelo  = self.app.getModelo(self.app.state.modeloSeleccionado);
             var credito = self._calcularCredito(modelo);
 
-            $('#vk-plazo-btns').html(self._renderPlazoBtns([12, 18, 24, 36], self._plazoMeses, null, modelo, self._enganchePct));
+            $('#vk-plazo-btns').html(self._renderPlazoBtns(getPlazoOptions(), self._plazoMeses, null, modelo, self._enganchePct));
             $('#vk-monto-summary').text(VkUI.formatPrecio(credito.montoFinanciado));
             $('#vk-plazo-summary').html(self._plazoMeses + ' meses &middot; ' + VkUI.formatPrecio(credito.pagoSemanal) + '/semana');
             $('#vk-calc-results').html(self._renderCalcResults(modelo, credito));

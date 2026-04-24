@@ -1,0 +1,166 @@
+
+Clear 
+
+Search Home 
+Documentation Docs Background Checks Digital Identity - Web/Mobile Digital Identity - Validators API Customer Engagement 
+
+API Reference API 
+Guides 
+Status 
+
+GUIDES 
+
+1. Create API key for Authentication 
+
+2. Review our API reference 
+
+3. Download Postman collection and test 
+
+4. End user follow up 
+
+5. Implement the business problem flow 
+Document Validation 
+
+Facial Recognition 
+
+Background Check 
+
+Custom Type 
+
+Email or Phone Validation 
+
+Electronic Signature 
+
+6. Configuration of validators via API 
+
+7. Configure webhooks and BRE rules (Optional) 
+
+API Integration Guide 
+In this guide you will find the requirements and the step by step to integrate truora API’s products and services. 
+
+1. Create API key for Authentication 
+The first step is to create an API key . To use any of our API services you need to authenticate with an API key. We provide you with a detailed guide on how to create an API key from our dashboard. The api key is a parameter in the header of each API request with key Truora-API-Key and value your_truora_api_key . 
+
+2. Review our API reference 
+Each product has its API reference where you can consult how to build the requests, the mandatory fields and the process for each validation: 
+Background Checks 
+Digital Identity Verification: Document Validation 
+Facial Recognition 
+TruFace 
+Email Validation 
+Phone validation 
+Electronic Signature 
+
+WhatsApp Customer Engagement 
+
+3. Download Postman collection and test 
+Truora provides a Postman collection online that is fully documented and includes the necessary tools to simplify the testing process. This collection in Postman allows you to auto-generate the code for API requests in different languages such as: PHP , JavaScript , Python , Go , among others. 
+API responses come in json format as shown below: 
+Response 
+json json 
+
+Click to copy 
+
+{ 
+
+"validation_id" : "VLD3d8ceof51d73e2e97885xxxxxxxxxxxx" , 
+
+"ip_address" : "191.xxx.xx.xx" , 
+
+"account_id" : "ACCe8522f66b889d8dd89c44xxxxxxxxxxxx" , 
+
+"typ" : "face-recognition" , 
+
+"validation_status" : "success" , 
+
+"threshold" : 0.65 , 
+
+"creation_date" : "2023-03-13T06:01:47.694885272Z" , 
+
+"details" : { 
+
+"face_recognition_validations" : { 
+
+"similarity_status" : "success" , 
+
+"confidence_score" : 0.9 , 
+
+"liveness_status" : "success" , 
+
+} 
+
+} 
+
+} 
+
+4. End user follow up 
+Do not forget, the Account ID is a user identifier that allows you to track the validations made. It is important to generate a unique identifier for each user who performs any type of validation, in order to avoid the possibility of information being crossed between users and to guarantee adequate monitoring for each one of them. 
+Another functionality provided by assigning an Account ID per user is that it allows you to perform two or more flows with different validation processes at different times, according to your business logic. In this way you can consolidate the results and make a more precise analysis of your conversion. 
+Note: It is recommended to use a library for the management of user identifiers (User ID) according to your programming language or development framework. Avoid using sequences of numbers that can be repeated. 
+
+5. Implement the business problem flow 
+Each flow obeys the particular needs of the client. In this section we present a typical onboarding flow to exemplify the integration process via API. 
+In any case, you will always have our integrations or technical support team to adapt the Truora’s products to the needs of your business. 
+
+Document Validation 
+Validates that the document is real (meaning we can find it in government databases) and that it hasn’t been manipulated by extracting information from a front and back picture. Steps to execute the validation via API: 
+endpoint: https://api.validations.truora.com/v1/validations 
+POST - Create Validation: This will create a new validation for the identity document. The validation_id , account_id , front_url and reverse_url returned by this endpoint can be used in subsequent steps. 
+PUT - Upload Document Picture - Front: Allows uploading the front picture of the document to be validated. To upload the picture, you need to make a PUT request using the URL returned front_url file of the Create validation step. 
+PUT - Upload Document Picture - Reverse: To upload the picture, you need to make a PUT request using the URL returned reverse_url file of the Create validation step. 
+GET - Get validation results: This API endpoint allows you to retrieve the current state and information of a validation. The validation_status starts in pending . When the validation finishes, it can either be success or failure . 
+
+Facial Recognition 
+Verifies the identity of a person by comparing a video of the person with a picture of the person. Both must clearly display his or her face like a portrait. Steps to execute the validation via API: 
+endpoint: https://api.validations.truora.com/v1/validations 
+POST - Create Enrollment: Create an enrollment for face validation in a single account. 
+PUT - Base reference image: Allows uploading the picture of the person where he or she is to be identified (The image formats supported are: jpeg, png and webp. Maximum size is 30 MB). You must use the file_upload_link returned in Create Enrollment step. 
+GET - Get Enrollment: Allows searching for an enrollment in order to check its progress. The status can either be success or failure at the end of the enrollment. In the meantime, it will be pending with reason waiting_file_upload . Here’s a complete reference of the reasons why an enrollment can be declined: Declined Reasons 
+POST - Create Validation: Creates a new validation for the validation account. You need the account_id from the first step and If you had already created an enrollment, it is not necessary to create one again for each validation. 
+PUT - Base face image upload: Allows uploading the picture of the person or the video where he or she is to be identified (The video formats supported are: webm, mp4, avi, and mov. Maximum size is 30 MB, 10 MB for Passive). You must use the file_upload_link returned in Create Validation step. 
+GET - Get validation results: Fetch validation current state. The validation_status can either be success or failure at the end of the validation. In the meantime, it will be pending. You need the validation_id from the Create Validation step. 
+
+Background Check 
+It is a tool to swiftly inspect public records on different categories like criminal records, international sanction lists, vehicle information, among others. Steps to execute the validation via API: 
+endpoint: https://api.checks.truora.com/v1/checks 
+POST - Create Background Check: Creates a background check and queues it to start collecting information. The full details of background checks can be retrieved with their respective check_id using Get Background Check endpoint.
+Keep in mind that, depending on the check type, input document, and country of a search, certain inputs are required. Please see more details in API Reference . 
+GET - Get Background Check: To fetch the results, the check_id obtained in the previous step is used as pathparam. The results of the check that matches the ID provided, complete with a set of scores explained below. 
+GET - Get Background Check PDF: Downloads the PDF in the specified language, Spanish by default. 
+
+Custom Type 
+A Custom Type Check allows you to choose which Datasets are searched and how impactful each one of them are when calculating the Global Score. Steps to create the Custom Type via API: 
+endpoint: https://api.checks.truora.com/v1/config 
+POST - Create Custom Type: Create a Custom Type selecting the weight for each background check dataset and the country where it applies. 
+PUT - Update Custom Type: Allows updating a Custom Type . Person, vehicle, and company types are not modifiable 
+GET - List Custom Types: Lists the Custom Type of the associated account. 
+DELETE - Delete Custom Type: Allows deleting a Custom Type . Person, vehicle, and company types cannot be deleted. 
+
+Email or Phone Validation 
+Verifies the ownership or permissions a person has over an email or phone by comparing the code the person enters and the one that is sent to the email address or phone number provided. Steps to execute the validation via API: 
+endpoint: https://api.validations.truora.com/v1/validations 
+POST - Create Enrollment: Create an Email or Phone enrollment associated with an account. The account allows a user to be identified on the Truora platform and is represented by the account_id. The enrollment_id and account_id of the response on this endpoint will be used in later steps like Get Enrollment or Create Validation . 
+GET - Get Enrollment: This step is optional, but it allows checking the status of your enrollment using the enrollment_id identifier that results from the Create Enrollment step. The status must be success in order to proceed with the next step. 
+POST - Create Validation: Create a new email or phone validation. You need the account_id from the Create Enrollment. The validation_id of the response on this endpoint will be used in later steps. 
+POST - Perform Validation: Performs a validation with the OTP (one-time password) received in the email or phone. You need the validation_id from the Create Validation step. 
+GET - Get validation results: Get current status and results of validation. You must use the validation_id returned in the Create Validation step. 
+
+Electronic Signature 
+Provides a link for performing an electronic signature on a document online and validates whether the person signed the document or not. Steps to generate an electronic signature document 
+endpoint: https://api.validations.truora.com/v1/validations 
+POST - Create Validation: This will create a new validation for the document to be signed. You can have the answer of the link to be signed in: “instructions”->“signer_link” once you have a response of 200. Note: Previous variables such as account_id , face_validation_id and document_validation_id may be required. 
+
+GET - Get Validations: To get Electronic Signature Validation result automatically, you must subscribe webhooks. For more information, please see Webhooks guide . 
+
+6. Configuration of validators via API 
+In the API Reference or in the Postman collection you will find the fields and the values that you can define in the configuration of each validator. Such as waiting times, validation methods, allowed retries, among others. 
+For more information, in addition to the API reference, refer to the Config Validators guide. 
+PUT - Update config: Allows updating a validator config 
+GET - Get config: Fetch configuration current state. Gets all the validators configuration state of the account. 
+DELETE - Delete config: Allows deleting a validator config. Deleting the config sets its value back to the default value. If you omit the type parameter, all the configuration is deleted. 
+
+7. Configure webhooks and BRE rules (Optional) 
+Create automated actions when an event occurs to receive notifications. The following guides show the setup process and the available events: 
+Creating a rule to trigger actions 
+Webhooks: Events and variables 
+

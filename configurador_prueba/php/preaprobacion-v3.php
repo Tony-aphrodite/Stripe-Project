@@ -276,25 +276,51 @@ try {
         }
     }
 
-    $stmt = $pdo->prepare("
-        INSERT INTO preaprobaciones
-            (nombre, apellido_paterno, apellido_materno, email, telefono,
-             fecha_nacimiento, cp, ciudad, estado,
-             modelo, precio_contado, ingreso_mensual, pago_semanal, pago_mensual,
-             pago_mensual_buro, pti_total, score, synth_score, dpd90_flag, dpd_max,
-             circulo_source, enganche_pct, plazo_meses, status,
-             enganche_requerido, plazo_max, truora_ok)
-        VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?, ?,?,?)
-    ");
-    $stmt->execute([
-        $nombre, $apellidoPaterno, $apellidoMaterno, $email, $telefono,
-        $fechaNacimiento, $cp, $ciudadCust, $estadoCust,
-        $log['modelo'], $precio_contado, $log['ingreso_mensual_est'], $log['pago_semanal_voltika'], $log['pago_mensual_voltika'],
-        $log['pago_mensual_buro'], $log['pti_total'], $log['score'], ($result['synth_score'] ?? null),
-        $dpd90_flag ? 1 : 0, $dpd_max,
-        $log['circulo_source'], $log['enganche_pct'], $log['plazo_meses'], $log['status'],
-        $log['enganche_requerido'], $log['plazo_max'], $truoraOk ? 1 : 0,
-    ]);
+    // Server-side dedup (customer brief 2026-04-25): if the same applicant
+    // (email + telefono + modelo + status) was already logged in the last
+    // 5 minutes, treat this as an accidental re-submission and skip the
+    // INSERT. Client-side guard in paso-credito-consentimiento.js is the
+    // primary defense; this is a safety net for any future caller that
+    // bypasses the client guard. The decision result is still returned to
+    // the caller unchanged.
+    $skipInsert = false;
+    if ($email !== '' || $telefono !== '') {
+        try {
+            $check = $pdo->prepare("
+                SELECT id FROM preaprobaciones
+                 WHERE email = ? AND telefono = ? AND modelo = ? AND status = ?
+                   AND freg >= (NOW() - INTERVAL 5 MINUTE)
+                 LIMIT 1
+            ");
+            $check->execute([$email, $telefono, $log['modelo'], $log['status']]);
+            if ($check->fetchColumn()) {
+                $skipInsert = true;
+                error_log('Voltika preaprobacion dedup: skipped duplicate for ' . $email . ' / ' . $telefono);
+            }
+        } catch (Throwable $e) { /* if the dedup query fails, fall through to INSERT */ }
+    }
+
+    if (!$skipInsert) {
+        $stmt = $pdo->prepare("
+            INSERT INTO preaprobaciones
+                (nombre, apellido_paterno, apellido_materno, email, telefono,
+                 fecha_nacimiento, cp, ciudad, estado,
+                 modelo, precio_contado, ingreso_mensual, pago_semanal, pago_mensual,
+                 pago_mensual_buro, pti_total, score, synth_score, dpd90_flag, dpd_max,
+                 circulo_source, enganche_pct, plazo_meses, status,
+                 enganche_requerido, plazo_max, truora_ok)
+            VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?, ?,?,?)
+        ");
+        $stmt->execute([
+            $nombre, $apellidoPaterno, $apellidoMaterno, $email, $telefono,
+            $fechaNacimiento, $cp, $ciudadCust, $estadoCust,
+            $log['modelo'], $precio_contado, $log['ingreso_mensual_est'], $log['pago_semanal_voltika'], $log['pago_mensual_voltika'],
+            $log['pago_mensual_buro'], $log['pti_total'], $log['score'], ($result['synth_score'] ?? null),
+            $dpd90_flag ? 1 : 0, $dpd_max,
+            $log['circulo_source'], $log['enganche_pct'], $log['plazo_meses'], $log['status'],
+            $log['enganche_requerido'], $log['plazo_max'], $truoraOk ? 1 : 0,
+        ]);
+    }
 } catch (PDOException $e) {
     error_log('Voltika preaprobaciones DB error: ' . $e->getMessage());
 }

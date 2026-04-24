@@ -32,6 +32,12 @@ if (!$json) {
 
 $telefono = preg_replace('/\D/', '', $json['telefono'] ?? '');
 $nombre   = trim($json['nombre'] ?? '');
+// Small opaque hint from the frontend so repeat sends to the same number
+// can be slightly varied in the SMS body. Prevents carrier/device
+// duplicate-message suppression that silently drops identical SMS
+// content received back-to-back (customer report 2026-04-24: "pedí
+// reenviar el código pero nunca llegó").
+$attemptHint = trim((string)($json['attempt_hint'] ?? ''));
 
 if (strlen($telefono) < 10) {
     http_response_code(400);
@@ -44,17 +50,21 @@ session_start();
 $existingCode  = $_SESSION['otp_code']    ?? null;
 $existingPhone = $_SESSION['otp_phone']   ?? null;
 $existingExp   = $_SESSION['otp_expires'] ?? 0;
+$sendCount     = (int)($_SESSION['otp_send_count'] ?? 0);
 
 if ($existingCode && $existingPhone === $telefono && time() < $existingExp) {
     // Reuse the same code — prevents double-tap overwrite on mobile
     $codigo = $existingCode;
+    $sendCount++;
 } else {
     // ── Generate new 6-digit code ─────────────────────────────────────────────
     $codigo = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
     $_SESSION['otp_code']    = $codigo;
     $_SESSION['otp_phone']   = $telefono;
     $_SESSION['otp_expires'] = time() + 600; // 10 minutes
+    $sendCount = 1;
 }
+$_SESSION['otp_send_count'] = $sendCount;
 
 // Also save to file as backup
 $dir = __DIR__ . '/otp_temp';
@@ -68,7 +78,17 @@ $written = @file_put_contents($file, json_encode([
 ]), LOCK_EX);
 
 // ── Send SMS via SMSMasivos regular API ──────────────────────────────────────
-$mensaje = "Voltika: Tu codigo de verificacion es {$codigo}. Valido por 10 minutos.";
+// Vary the body on repeat sends so carrier / device de-duplication doesn't
+// silently drop identical consecutive SMS. The code digit group stays
+// identical for the reused OTP window (10 min) but the framing text
+// changes each attempt.
+if ($sendCount <= 1) {
+    $mensaje = "Voltika: Tu codigo de verificacion es {$codigo}. Valido por 10 minutos.";
+} else {
+    // Pad with a visible attempt marker so the SMS is not a bit-for-bit
+    // duplicate of the previous one. Keeps the user-facing code unchanged.
+    $mensaje = "Voltika ({$sendCount}): Tu codigo es {$codigo}. Valido 10 min. Si ya lo recibiste, usalo.";
+}
 
 $ch = curl_init(SMSMASIVOS_SMS_URL);
 curl_setopt($ch, CURLOPT_POST, true);
@@ -95,14 +115,16 @@ if (!is_dir(dirname($logFile))) {
     mkdir(dirname($logFile), 0755, true);
 }
 file_put_contents($logFile, json_encode([
-    'timestamp' => date('c'),
-    'action'    => 'send-sms',
-    'telefono'  => substr($telefono, 0, 3) . '****' . substr($telefono, -3),
-    'httpCode'  => $httpCode,
-    'response'  => $response,
-    'curlErr'   => $curlErr,
-    'sessionId' => session_id(),
-    'fileOk'    => ($written !== false)
+    'timestamp'    => date('c'),
+    'action'       => 'send-sms',
+    'telefono'     => substr($telefono, 0, 3) . '****' . substr($telefono, -3),
+    'send_count'   => $sendCount,
+    'attempt_hint' => $attemptHint,
+    'httpCode'     => $httpCode,
+    'response'     => $response,
+    'curlErr'      => $curlErr,
+    'sessionId'    => session_id(),
+    'fileOk'       => ($written !== false),
 ]) . "\n", FILE_APPEND | LOCK_EX);
 
 // ── Response ─────────────────────────────────────────────────────────────────

@@ -43,7 +43,7 @@ jspm_packages/
 vendor/
 */vendor/
 
-# PHP vendor 예외: configurador Stripe SDK는 포함 (단, README/CHANGELOG 제외 - GitHub secret scan 차단)
+# PHP vendor exception: include the configurador Stripe SDK (but exclude README/CHANGELOG — blocked by GitHub secret scan)
 !configurador/php/vendor/
 !configurador/php/vendor/**
 configurador/php/vendor/stripe/stripe-php/README.md

@@ -38,6 +38,31 @@ $email = $cliente['email'] ?? null;
 
 $compras = [];
 
+// Fetch every moto linked to this customer ONCE so we can pair each
+// subscription to its own moto by date proximity (customer report 2026-04-23:
+// LIMIT-1 inside the loop gave every subscription the same VIN).
+$allCustomerMotos = [];
+try {
+    $mAllSql = "SELECT id, vin, vin_display, estado, modelo, color, freg,
+                       cliente_telefono, cliente_email, punto_voltika_id
+                FROM inventario_motos
+                WHERE cliente_id = ?";
+    $mAllParams = [$cid];
+    if ($tel10) {
+        $mAllSql .= " OR RIGHT(REPLACE(REPLACE(cliente_telefono,'+',''),' ',''),10) = ?";
+        $mAllParams[] = $tel10;
+    }
+    if ($email) {
+        $mAllSql .= " OR cliente_email = ?";
+        $mAllParams[] = $email;
+    }
+    $mAllSql .= " ORDER BY freg DESC";
+    $mAll = $pdo->prepare($mAllSql);
+    $mAll->execute($mAllParams);
+    $allCustomerMotos = $mAll->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) { error_log('compras all motos: ' . $e->getMessage()); }
+$usedMotoIds = [];
+
 // ── 1) Credit subscriptions ────────────────────────────────────────────────
 try {
     $sql = "SELECT id, modelo, color, monto_semanal, plazo_meses, plazo_semanas,
@@ -53,16 +78,24 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
-        // Delivery status from inventario_motos (best match by telefono/email/subscripcion id)
+        // Pair this subscription to the closest-in-time unused moto.
         $moto = null;
-        try {
-            $mStmt = $pdo->prepare("SELECT vin, vin_display, estado, modelo, color
-                FROM inventario_motos
-                WHERE (cliente_telefono = ? OR cliente_email = ?)
-                ORDER BY id DESC LIMIT 1");
-            $mStmt->execute([$s['sub_telefono'] ?: $cliente['telefono'] ?? '', $s['sub_email'] ?: $email]);
-            $moto = $mStmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        } catch (Throwable $e) {}
+        $bestDiff = null;
+        $subTs = strtotime((string)($s['freg'] ?? '')) ?: 0;
+        foreach ($allCustomerMotos as $m) {
+            if (in_array((int)$m['id'], $usedMotoIds, true)) continue;
+            $motoTs = strtotime((string)($m['freg'] ?? '')) ?: 0;
+            $diff = $subTs && $motoTs ? abs($subTs - $motoTs) : PHP_INT_MAX;
+            if ($bestDiff === null || $diff < $bestDiff) {
+                $moto = $m;
+                $bestDiff = $diff;
+            }
+        }
+        if ($moto !== null && $bestDiff !== null && $bestDiff <= 86400) {
+            $usedMotoIds[] = (int)$moto['id'];
+        } else {
+            $moto = null;
+        }
 
         // Payment summary
         $pagoSum = ['pagados' => 0, 'total' => 0, 'atrasados' => 0];
