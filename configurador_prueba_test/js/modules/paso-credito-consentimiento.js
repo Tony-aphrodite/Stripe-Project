@@ -542,6 +542,26 @@ var PasoCreditoConsentimiento = {
 
         if (!modelo) { this.app.irAPaso('credito-loading'); return; }
 
+        // Idempotency guard (customer brief 2026-04-25): if V3 evaluation
+        // already completed for this session, do NOT POST to
+        // preaprobacion-v3.php again — duplicate rows would be written to
+        // preaprobacion_log / solicitudes_credito. Re-use the stored result
+        // and route to the appropriate next screen. This protects against:
+        //   - user hitting Back from credito-pago / Paso4B and retriggering
+        //     the consent flow,
+        //   - page refresh mid-flow with persisted state,
+        //   - any future routing bug that loops through consentimiento.
+        // A legitimate re-evaluation (e.g., user changes ingresos) must
+        // clear state._resultadoFinal explicitly before re-submission.
+        if (state._resultadoFinal && state._resultadoFinal.status) {
+            if (state._resultadoFinal.status === 'PREAPROBADO') {
+                self.app.irAPaso('credito-loading');
+            } else {
+                self.app.irAPaso('credito-resultado');
+            }
+            return;
+        }
+
         var credito = VkCalculadora.calcular(
             modelo.precioContado,
             state.enganchePorcentaje || 0.25,

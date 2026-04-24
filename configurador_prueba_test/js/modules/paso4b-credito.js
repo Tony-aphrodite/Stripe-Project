@@ -174,12 +174,22 @@ var Paso4B = {
         //     from state.enganchePctMin / state.plazoMesesMax during
         //     render() and bindEvents().
         if (s.modoCondicional) {
-            this._enganchePct = (typeof s.enganchePorcentaje === 'number')
+            // Seed from current state, then clamp to algorithm-authorized
+            // bounds. Without clamping, a user who set 25%/36 months during
+            // the initial (unrestricted) Paso4B visit would land here with
+            // values that violate the CONDICIONAL algorithm output (e.g.
+            // enganchePctMin=0.40, plazoMesesMax=24) and the UI buttons for
+            // the old plazo would be absent, leaving no selected plazo.
+            var engSeed = (typeof s.enganchePorcentaje === 'number')
                 ? s.enganchePorcentaje
                 : (s.enganchePctMin || 0.40);
-            this._plazoMeses = (typeof s.plazoMeses === 'number')
+            var plazoSeed = (typeof s.plazoMeses === 'number')
                 ? s.plazoMeses
                 : (s.plazoMesesMax || 24);
+            if (s.enganchePctMin && engSeed < s.enganchePctMin) engSeed = s.enganchePctMin;
+            if (s.plazoMesesMax  && plazoSeed > s.plazoMesesMax) plazoSeed = s.plazoMesesMax;
+            this._enganchePct = engSeed;
+            this._plazoMeses  = plazoSeed;
         } else {
             this._enganchePct = 0.25;
             this._plazoMeses  = 36;
@@ -403,14 +413,16 @@ var Paso4B = {
         };
 
         // CTA — route depends on flow mode:
-        //   CONDICIONAL: the whole credit evaluation already ran. User just
-        //     adjusted enganche/plazo within restrictions. Jump straight to
-        //     Stripe payment (credito-enganche), skipping Truora (customer
-        //     brief 2026-04-24: low-score applicants self-gate via higher
-        //     enganche; extra identity friction is counterproductive and
-        //     burns Truora quota).
-        //   NORMAL (first-time config): user hasn't picked a color yet —
-        //     go to the color selector.
+        //   CONDICIONAL (customer brief 2026-04-25): credit evaluation
+        //     already ran once. User just adjusted enganche/plazo within
+        //     the algorithm's authorized bounds. Go to Truora
+        //     (credito-identidad), NOT back through credito-resultado or
+        //     any ingreso/evaluation step — re-posting to
+        //     preaprobacion-v3.php would create duplicate rows in
+        //     preaprobacion_log / solicitudes_credito. After Truora
+        //     completes, the flow continues to credito-enganche (Stripe).
+        //   NORMAL (first-time config, no evaluation yet): user hasn't
+        //     picked a color yet — go to the color selector.
         $(document).on('click', '#vk-confirmar-credito', function() {
             var modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
             var credito = self._calcularCredito(modelo);
@@ -419,7 +431,7 @@ var Paso4B = {
             self.app.state.cuotaSemanal = credito.pagoSemanal;
 
             if (self.app.state.modoCondicional) {
-                self.app.irAPaso('credito-enganche');
+                self.app.irAPaso('credito-identidad');
             } else {
                 self.app.irAPaso(2);
             }
