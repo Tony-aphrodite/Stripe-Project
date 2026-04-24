@@ -378,13 +378,34 @@ try {
         exit;
     }
 
+    // ── 3D Secure enforcement for card payments ────────────────────────────
+    // Customer brief 2026-04-24: "All card payment transactions has to be
+    // with 3D secure". Value 'any' requests 3DS on cards that support it
+    // (essentially every modern Visa/MC/Amex) while gracefully falling
+    // through on legacy cards that can't do 3DS at all. This shifts
+    // chargeback liability to the issuer and blocks stolen-card fraud —
+    // critical for high-ticket items ($48k MXN motorcycles).
+    //
+    // Off-session (MIT) payments — like the weekly credit auto-charge —
+    // cannot do 3DS because the customer isn't present; Stripe handles
+    // those via the MIT exemption captured during this first on-session
+    // payment, so forcing 3DS HERE is the right place.
+    if ($method === 'card') {
+        if (!isset($intentData['payment_method_options'])) {
+            $intentData['payment_method_options'] = [];
+        }
+        if (!isset($intentData['payment_method_options']['card'])) {
+            $intentData['payment_method_options']['card'] = [];
+        }
+        $intentData['payment_method_options']['card']['request_three_d_secure'] = 'any';
+    }
+
     // Habilitar MSI si aplica (solo para card)
     if ($method === 'card' && $installments && $msiMeses > 0) {
-        $intentData['payment_method_options'] = [
-            'card' => [
-                'installments' => ['enabled' => true]
-            ]
-        ];
+        if (!isset($intentData['payment_method_options']['card'])) {
+            $intentData['payment_method_options']['card'] = [];
+        }
+        $intentData['payment_method_options']['card']['installments'] = ['enabled' => true];
     }
 
     // Para OXXO: dividir si supera $10,000 MXN (1,000,000 centavos)

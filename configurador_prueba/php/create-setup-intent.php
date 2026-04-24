@@ -67,14 +67,22 @@ try {
 
     $customer = \Stripe\Customer::create($customerParams);
 
-    // Create SetupIntent (saves card for future charges, no charge now)
-    // Stripe metadata doubles as recovery source: Plan G's enriquecer-vksc.php
-    // reads these fields back when a subscripciones_credito row has empty
-    // modelo/color/precio (e.g. legacy rows created before this backfill).
+    // Create SetupIntent (saves card for future charges, no charge now).
+    // Customer brief 2026-04-24: "All card payment transactions has to be
+    // with 3D secure". For SetupIntents (card-on-file for weekly autopay),
+    // request_three_d_secure='any' forces 3DS at card registration time.
+    // This is critical: Stripe records the 3DS challenge result as proof
+    // for subsequent off-session MIT charges, shifting chargeback
+    // liability for every future weekly auto-charge too.
     $setupIntent = \Stripe\SetupIntent::create([
         'customer'             => $customer->id,
         'payment_method_types' => ['card'],
         'usage'                => 'off_session',  // For recurring charges
+        'payment_method_options' => [
+            'card' => [
+                'request_three_d_secure' => 'any',
+            ],
+        ],
         'metadata'             => [
             'nombre'         => $nombre,
             'email'          => $email,
