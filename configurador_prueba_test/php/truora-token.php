@@ -37,8 +37,13 @@ require_once __DIR__ . '/config.php';
 // TRUORA_FLOW_ID: the IPFxxxxx flow_id for the Voltika identity flow (Flow
 //                 Builder → My Flows). Without it, the iframe has no
 //                 script to run.
+// NOTE: /v1/api-keys lives on api.account.truora.com — NOT
+//       api.identity.truora.com (even though the docs put "Generate Token"
+//       under the Digital Identity section). Calling the wrong host
+//       returns 403 "Missing Authentication Token" from AWS API Gateway.
 if (!defined('TRUORA_FLOW_ID')) define('TRUORA_FLOW_ID', getenv('TRUORA_FLOW_ID') ?: '');
 if (!defined('TRUORA_IDENTITY_API_URL')) define('TRUORA_IDENTITY_API_URL', 'https://api.identity.truora.com');
+if (!defined('TRUORA_ACCOUNT_API_URL'))  define('TRUORA_ACCOUNT_API_URL',  'https://api.account.truora.com');
 
 if (!TRUORA_API_KEY || !TRUORA_FLOW_ID) {
     http_response_code(500);
@@ -106,7 +111,7 @@ foreach ($fields as $k => $v) {
 }
 $body = implode('&', $bodyPairs);
 
-$ch = curl_init(TRUORA_IDENTITY_API_URL . '/v1/api-keys');
+$ch = curl_init(TRUORA_ACCOUNT_API_URL . '/v1/api-keys');
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_POSTFIELDS     => $body,

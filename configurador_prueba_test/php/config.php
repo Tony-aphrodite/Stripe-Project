@@ -85,6 +85,11 @@ if (!defined('TRUORA_FLOW_ID')) {
 if (!defined('TRUORA_IDENTITY_API_URL')) {
     define('TRUORA_IDENTITY_API_URL', getenv('TRUORA_IDENTITY_API_URL') ?: 'https://api.identity.truora.com');
 }
+// /v1/api-keys lives on api.account.truora.com, not api.identity (docs
+// are misleading — confirmed 2026-04-24 via multi-URL diagnostic).
+if (!defined('TRUORA_ACCOUNT_API_URL')) {
+    define('TRUORA_ACCOUNT_API_URL', getenv('TRUORA_ACCOUNT_API_URL') ?: 'https://api.account.truora.com');
+}
 if (!defined('VOLTIKA_BASE_URL')) {
     define('VOLTIKA_BASE_URL', getenv('VOLTIKA_BASE_URL') ?: 'https://www.voltika.mx');
 }

@@ -84,10 +84,17 @@ if (!defined('TRUORA_WEBHOOK_SECRET')) {
 if (!defined('TRUORA_FLOW_ID')) {
     define('TRUORA_FLOW_ID', getenv('TRUORA_FLOW_ID') ?: '');
 }
-// Digital Identity API base URL — separate from api.checks.truora.com
-// (which is the Background Checks product).
+// Digital Identity API base URL — used for /v1/processes/* (process
+// results, PDFs). NOT used for /v1/api-keys (see TRUORA_ACCOUNT_API_URL).
 if (!defined('TRUORA_IDENTITY_API_URL')) {
     define('TRUORA_IDENTITY_API_URL', getenv('TRUORA_IDENTITY_API_URL') ?: 'https://api.identity.truora.com');
+}
+// Account API base URL — hosts /v1/api-keys (temporary web token
+// generator for iframe). The Truora docs put "Generate Token" under the
+// Digital Identity section, but the actual endpoint is on
+// api.account.truora.com (confirmed 2026-04-24 via multi-URL diagnostic).
+if (!defined('TRUORA_ACCOUNT_API_URL')) {
+    define('TRUORA_ACCOUNT_API_URL', getenv('TRUORA_ACCOUNT_API_URL') ?: 'https://api.account.truora.com');
 }
 // Voltika public base URL (used as the Truora redirect_url). Falls back to
 // production so dev deployments still get a sensible default.

@@ -21,6 +21,7 @@ $apiKey        = defined('TRUORA_API_KEY') ? TRUORA_API_KEY : '';
 $webhookSecret = defined('TRUORA_WEBHOOK_SECRET') ? TRUORA_WEBHOOK_SECRET : '';
 $flowId        = defined('TRUORA_FLOW_ID') ? TRUORA_FLOW_ID : '';
 $identityUrl   = defined('TRUORA_IDENTITY_API_URL') ? TRUORA_IDENTITY_API_URL : '';
+$accountUrl    = defined('TRUORA_ACCOUNT_API_URL')  ? TRUORA_ACCOUNT_API_URL  : 'https://api.account.truora.com';
 $voltikaBase   = defined('VOLTIKA_BASE_URL') ? VOLTIKA_BASE_URL : '';
 
 $action = $_GET['action'] ?? '';
@@ -28,7 +29,8 @@ $pingResult = null;
 $pingAll = null;
 
 if ($action === 'ping' && $apiKey && $flowId) {
-    $pingResult = truoraDiagPing($apiKey, $flowId, $voltikaBase, $identityUrl);
+    // /v1/api-keys lives on api.account.truora.com, not identity.
+    $pingResult = truoraDiagPing($apiKey, $flowId, $voltikaBase, $accountUrl);
 }
 
 // Multi-URL sweep — Truora 403 "Missing Authentication Token" is AWS API
@@ -52,8 +54,9 @@ if ($action === 'ping_all' && $apiKey && $flowId) {
     }
 }
 
-function truoraDiagPing(string $apiKey, string $flowId, string $voltikaBase, string $identityUrl): array {
-    return truoraDiagPingUrl(rtrim($identityUrl, '/') . '/v1/api-keys', $apiKey, $flowId, $voltikaBase);
+function truoraDiagPing(string $apiKey, string $flowId, string $voltikaBase, string $accountUrl): array {
+    // /v1/api-keys is on api.account.truora.com.
+    return truoraDiagPingUrl(rtrim($accountUrl, '/') . '/v1/api-keys', $apiKey, $flowId, $voltikaBase);
 }
 
 function truoraDiagPingUrl(string $url, string $apiKey, string $flowId, string $voltikaBase): array {
@@ -159,7 +162,10 @@ th { color:#94a3b8; }
         : '<span class="warn">vacío — webhooks llegan pero no se verifican firmas</span>' ?></div>
 
     <div>TRUORA_IDENTITY_API_URL</div>
-    <div><?= htmlspecialchars($identityUrl ?: '(default)') ?></div>
+    <div><?= htmlspecialchars($identityUrl ?: '(default)') ?> <em style="color:#94a3b8;">— /v1/processes/* results, PDFs</em></div>
+
+    <div>TRUORA_ACCOUNT_API_URL</div>
+    <div><?= htmlspecialchars($accountUrl ?: '(default)') ?> <em style="color:#94a3b8;">— /v1/api-keys token generator</em></div>
 
     <div>VOLTIKA_BASE_URL</div>
     <div><?= htmlspecialchars($voltikaBase) ?></div>
