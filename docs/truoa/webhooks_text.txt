@@ -1,0 +1,1357 @@
+
+Clear 
+
+Search Home 
+Documentation Docs Background Checks Digital Identity - Web/Mobile Digital Identity - Validators API Customer Engagement 
+
+API Reference API 
+Guides 
+Status 
+
+GUIDES 
+
+Events 
+
+Variables 
+Criminal and Legal variables 
+
+List of events and their variables 
+
+Webhooks: Events and variables 
+Others: Webhooks/Automations 
+
+Events 
+Each product at Truora has associated events that your system might find valuable for monitoring in order to trigger an action. Examples of such events include a Check completion, a Validation failure, WhatsApp conversation delivery, among others . In this guide, you will learn about each one of them. 
+
+Variables 
+Associated with each event is an object ; this object is related to the by-product and will contain varying levels of information depending on the trigger. For instance, the information about a validation at the beginning of the process will differ from the information at the end of the validation process. These objects provide the basis for the different available variables , which can be utilized to create conditions or for use in emails or HTTPS request actions. 
+Disclaimer: Note that the availability of variables may vary for objects such as Checks , depending on the dataset configuration and the feasibility of variable calculation in the check’s country. 
+
+Criminal and Legal variables 
+Criminal and Legal variables require additional context in order to apply conditions for an event, along with special operators to express specific conditions. 
+To utilize these variables , it’s essential to define their participation . They can be categorized as either Defendant , indicating being accused of , or Plaintiff , indicating accusing someone of . 
+For these variables the has no records and has records operators are enabled. These operators allow you to verify the presence or absence of any legal or criminal background, respectively. 
+
+List of events and their variables 
+Check created It happens once the check has been successfully created and is ready to start processing, at which point it enters the queue for further processing. 
+Variable Description Possible values / Examples 
+Check type 
+Check type 
+person, vehicle, company or a custom type (example) 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+National ID 
+National ID 
+A national ID number (example) 
+
+Check ID 
+Check ID 
+CHCK123 (example) 
+
+Check created by 
+Check created by 
+user_test@mail.com (example) 
+
+Check started When the check starts to be processed 
+Variable Description Possible values / Examples 
+Check ID 
+Check ID 
+CHCK123 (example) 
+
+Check created by 
+Check created by 
+user_test@mail.com (example) 
+
+Check type 
+Check type 
+person, vehicle, company or a custom type (example) 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+National ID 
+National ID 
+A national ID number (example) 
+
+Check delayed When a check is delayed and we are retrying the check 
+Variable Description Possible values / Examples 
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+Check status 
+Check status 
+Completed Error Delayed 
+
+Gender 
+Gender 
+Female Male 
+
+Identity status 
+Identity status 
+Found Not found Dead 
+
+Vehicle result 
+Vehicle result 
+Found Not found 
+
+Check ID 
+Check ID 
+CHCK123 (example) 
+
+Check created by 
+Check created by 
+user_test@mail.com (example) 
+
+Company status 
+Company status 
+Found Not found 
+
+Person result 
+Person result 
+Found Not found 
+
+Company result 
+Company result 
+Found Not found 
+
+Check score 
+Check score 
+value from 0.0 to 1.0 (example) 
+
+Check ID score 
+Check ID score 
+value from 0.0 to 1.0 (example) 
+
+Date of birth 
+Date of birth 
+1992-08-02T00:00:00Z (example) 
+
+Vehicle status 
+Vehicle status 
+Found Not found 
+
+Check type 
+Check type 
+person, vehicle, company or a custom type (example) 
+
+National ID 
+National ID 
+A national ID number (example) 
+
+Check finished When we have the final response of the check 
+Variable Description Possible values / Examples 
+Social Security type 
+Social Security type 
+Contributor Beneficiary 
+
+Birthplace 
+Birthplace 
+CALI (example) 
+
+Person watchlist status 
+Person watchlist status 
+Found Not found 
+
+Vehicle status 
+Vehicle status 
+Found Not found 
+
+Vehicle result 
+Vehicle result 
+Found Not found 
+
+Person watchlist 
+Person watchlist 
+Búsqueda en medios GOOGLE RSS Inter-American Development Bank Cia World Leaders Common Position Terrorist EU Consolidated Screening Lists Most Wanted Fugitives by the DEA DSS Most Wanted - Bureau of Diplomatic Security FBI Reported in the EU financial system Google Office of Inspector General - Exclusions Offshore Leaks Database - Intermediares Offshore Leaks Database - Officers Offshore Leaks Database - Offshore entities Interpol list of the most wanted EU list of the most wanted Office of Foreign Assets Control - OFAC OFSI Consolidated List Search (HMT Treasury List) U.S. Security and Exchange Commission (SEC) Most Wanted Secret Service United Nations Security Council Consolidate List Lista de terroristas de USA World Bank Debarred Firms 
+
+Legal representative name 
+Legal representative name 
+PEPITO PEREZ (example) 
+
+Date of birth 
+Date of birth 
+1992-08-02T00:00:00Z (example) 
+
+Gender 
+Gender 
+Female Male 
+
+Nationality 
+Nationality 
+Australia Austria Azerbaijan Albania Algeria American Samoa Anguilla Angola Andorra Antarctica Antigua and Barbuda Netherlands Antilles United Arab Emirates Argentina Armenia Aruba Afghanistan Bahamas Bangladesh Barbados Bahrain Belarus Belize Belgium Benin Bermuda Bulgaria Bolivia Bosnia and Herzegovina Botswana Brazil British Indian Ocean Territory Brunei Darussalam Burkina Faso Burundi Bhutan Vanuatu Holy See (Vatican City State) United Kingdom Hungary Venezuela Virgin Islands British Virgin Islands US Timor-Leste (East Timor) Vietnam Gabon Haiti Guyana Gambia Ghana Guadeloupe Guatemala Guinea Guinea-Bissau Germany Gibraltar Honduras Hong Kong (Special Administrative Region of China) Grenada Greenland Greece Georgia Guam Denmark Democratic Republic of the Congo Djibouti Dominica Dominican Republic Egypt Zambia Western Sahara Zimbabwe Israel India Indonesia Jordan Iraq Iran (Islamic Republic of) Ireland Iceland Spain Italy Yemen Kazakhstan Cayman Islands Cambodia Cameroon Canada Qatar Kenya Cyprus Kiribati China Cocos (Keeling) Islands Colombia Comoros Congo Democratic People`s Republic of Korea Republic of Korea Costa Rica Cote d`Ivoire Cuba Kuwait Kyrgyzstan Lao People`s Democratic Republic Latvia Lesotho Liberia Lebanon Libyan Arab Jamahiriya Lithuania Liechtenstein Luxembourg Mauritius Mauritania Madagascar Mayotte Macau (Special Administrative Region of China) North Macedonia (Republic of North Macedonia) Malawi Malaysia Mali Maldives Malta Northern Mariana Islands Morocco Martinique Marshall Islands Mexico Micronesia (Federated States of) Mozambique Moldova (Republic of) Monaco Mongolia Montserrat Myanmar Namibia Nauru Nepal Niger Nigeria Netherlands Nicaragua Niue New Zealand New Caledonia Norway Oman Bouvet Island Isle Of Man Norfolk Island Pitcairn Christmas Island Saint Helena Wallis and Futuna Islands Heard Island and McDonald Islands Cape Verde Cook Islands Samoa Svalbard and Jan Mayen Islands Turks and Caicos Islands United States Minor Outlying Islands Pakistan Palau Palestinian Territory (Occupied) Panama Papua New Guinea Paraguay Peru Poland Portugal Puerto Rico Reunion Russian Federation Rwanda Romania El Salvador San Marino Sao Tome and Principe Saudi Arabia Swaziland Seychelles Senegal Saint Pierre and Miquelon Saint Vincent and the Grenadines Saint Kitts and Nevis Saint Lucia Singapore Syrian Arab Republic Slovakia Slovenia United States Solomon Islands Somalia Sudan Suriname Sierra Leone Tajikistan Taiwan (Province of China) Thailand Tanzania (United Republic of) Togo Tokelau Tonga Trinidad and Tobago Tuvalu Tunisia Turkmenistan Turkey Uganda Uzbekistan Ukraine Uruguay Faroe Islands Fiji Philippines Finland Falkland Islands (Malvinas) France French Guiana French Polynesia French Southern Territories Croatia Central African Republic Chad Czech Republic Chile Switzerland Sweden Sri Lanka Ecuador Equatorial Guinea Eritrea Estonia Ethiopia South Africa Yugoslavia South Georgia and The South Sandwich Islands Jamaica Montenegro Saint Barthelemy Sint Maarten Dutch Serbia Aland Islands Bonaire, Sint Eustatius And Saba Guernsey Jersey Curacao Saint Martin French South Sudan Japan Kosovo 
+
+Company watchlist status 
+Company watchlist status 
+Found Not found 
+
+Company result 
+Company result 
+Found Not found 
+
+Person result 
+Person result 
+Found Not found 
+
+Credit score 
+Credit score 
+457 (example) 
+
+Phone behavior 
+Phone behavior 
+value from 0.0 to 1.0 (example) 
+
+Social Security status 
+Social Security status 
+Active Inactive 
+
+Company watchlist 
+Company watchlist 
+Búsqueda en medios GOOGLE RSS Inter-American Development Bank Cia World Leaders Common Position Terrorist EU Consolidated Screening Lists Most Wanted Fugitives by the DEA DSS Most Wanted - Bureau of Diplomatic Security FBI Reported in the EU financial system Google Office of Inspector General - Exclusions Offshore Leaks Database - Intermediares Offshore Leaks Database - Officers Offshore Leaks Database - Offshore entities Interpol list of the most wanted EU list of the most wanted Office of Foreign Assets Control - OFAC OFSI Consolidated List Search (HMT Treasury List) U.S. Security and Exchange Commission (SEC) Most Wanted Secret Service United Nations Security Council Consolidate List Lista de terroristas de USA World Bank Debarred Firms 
+
+Phone carrier 
+Phone carrier 
+claro (example) 
+
+Company name 
+Company name 
+MI COMPANY NAME (example) 
+
+Identity status 
+Identity status 
+Found Not found Dead 
+
+Document status 
+Document status 
+Active Inactive Irregular Not found 
+
+Check score 
+Check score 
+value from 0.0 to 1.0 (example) 
+
+Check status 
+Check status 
+Completed Error Delayed 
+
+Phone trust level 
+Phone trust level 
+Very low Low Medium High 
+
+Phone activation date 
+Phone activation date 
+2020-04-01T00:00:00Z (example) 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+National ID 
+National ID 
+A national ID number (example) 
+
+Company address 
+Company address 
+CARRERA XX No.XX-XX, BOGOTÁ, D.C., BOGOTÁ, D. C. (example) 
+
+Is politically exposed 
+Is politically exposed 
+Yes No 
+
+Company status 
+Company status 
+Found Not found 
+
+Check ID score 
+Check ID score 
+value from 0.0 to 1.0 (example) 
+
+Full name 
+Full name 
+PEPITO PEREZ (example) 
+
+Check ID 
+Check ID 
+CHCK123 (example) 
+
+Check created by 
+Check created by 
+user_test@mail.com (example) 
+
+Check type 
+Check type 
+person, vehicle, company or a custom type (example) 
+
+Person criminal records 
+Review usage here 
+Intentional homicide Attempted intentional homicide Non-intentional homicide Assisting or instigating suicide Euthanasia Ilegal feticide Unlawful killing associated with armed conflict Other acts leading to death or intending to cause death Assaults and threats Acts against liberty Slavery and exploitation Trafficking in persons Coercion Negligence Dangerous acts Acts intended to induce fear or emotional distress Defamation or insult Discrimination Acts that trespass against the person Other acts causing harm or intending to cause harm to the person Sexual violence Sexual exploitation Other injurious acts of a sexual nature Robbery Other acts against property involving violence or threat against a person Burglary Theft Intellectual property offences Property damage Other acts against property only Unlawful acts involving controlled drugs or precursors Unlawful acts involving alcohol, tobacco or other controlled substances Other acts involving controlled drugs or other psychoactive substances Fraud Forgery/counterfeiting Corruption Acts involving the proceeds of crime Other acts involving fraud, deception or corruption Acts against public order behavioural standards Acts against public order sexual standards Acts related to freedom of expression or control of expression Acts contrary to public revenue or regulatory provisions Acts related to migration Acts against the justice system Acts related to democratic elections Acts contrary to labour law Other acts against public order, authority and provisions of the State Acts involving weapons, explosives and other destructive materials Acts against health and safety Acts against computer systems Acts against state security Acts related to an organized criminal group Terrorism Non-injurious traffic violations Other acts against public safety and state security Acts that cause environmental pollution or degradation Acts involving the movement or dumping of waste Trade or possession of protected or prohibited species of fauna and flora Acts that result in the depletion or degradation of natural resources Other acts against the natural environment Acts under universal jurisdiction Acts contrary to youth regulations and acts on minors Other criminal acts not elsewhere classified 
+
+Person legal records 
+Review usage here 
+Marriage Filiation Child Support Custody Other legal processes related to Family Possession & Property Easements Other legal processes related to Assets Inheritance by Will or Succession Other legal processes related to Inheritances Ordinary Trial Executive or Civil Executive Trial Purchase resolution Restitution of real estate Other legal processes related to Liabilities Contractual obligations Civil Responsibility Moral Damage Illicit Gain Other legal processes related to Civil Obligations Labor processes Other legal processes related to labor 
+
+Company criminal records 
+Review usage here 
+Intentional homicide Attempted intentional homicide Non-intentional homicide Assisting or instigating suicide Euthanasia Ilegal feticide Unlawful killing associated with armed conflict Other acts leading to death or intending to cause death Assaults and threats Acts against liberty Slavery and exploitation Trafficking in persons Coercion Negligence Dangerous acts Acts intended to induce fear or emotional distress Defamation or insult Discrimination Acts that trespass against the person Other acts causing harm or intending to cause harm to the person Sexual violence Sexual exploitation Other injurious acts of a sexual nature Robbery Other acts against property involving violence or threat against a person Burglary Theft Intellectual property offences Property damage Other acts against property only Unlawful acts involving controlled drugs or precursors Unlawful acts involving alcohol, tobacco or other controlled substances Other acts involving controlled drugs or other psychoactive substances Fraud Forgery/counterfeiting Corruption Acts involving the proceeds of crime Other acts involving fraud, deception or corruption Acts against public order behavioural standards Acts against public order sexual standards Acts related to freedom of expression or control of expression Acts contrary to public revenue or regulatory provisions Acts related to migration Acts against the justice system Acts related to democratic elections Acts contrary to labour law Other acts against public order, authority and provisions of the State Acts involving weapons, explosives and other destructive materials Acts against health and safety Acts against computer systems Acts against state security Acts related to an organized criminal group Terrorism Non-injurious traffic violations Other acts against public safety and state security Acts that cause environmental pollution or degradation Acts involving the movement or dumping of waste Trade or possession of protected or prohibited species of fauna and flora Acts that result in the depletion or degradation of natural resources Other acts against the natural environment Acts under universal jurisdiction Acts contrary to youth regulations and acts on minors Other criminal acts not elsewhere classified 
+
+Company legal records 
+Review usage here 
+Marriage Filiation Child Support Custody Other legal processes related to Family Possession & Property Easements Other legal processes related to Assets Inheritance by Will or Succession Other legal processes related to Inheritances Ordinary Trial Executive or Civil Executive Trial Purchase resolution Restitution of real estate Other legal processes related to Liabilities Contractual obligations Civil Responsibility Moral Damage Illicit Gain Other legal processes related to Civil Obligations Labor processes Other legal processes related to labor 
+
+Check decision variables finished When the variables of a check are ready and can be queried 
+Variable Description Possible values / Examples 
+Date of birth 
+Date of birth 
+1992-08-02T00:00:00Z (example) 
+
+Person watchlist status 
+Person watchlist status 
+Found Not found 
+
+Phone carrier 
+Phone carrier 
+claro (example) 
+
+Phone behavior 
+Phone behavior 
+value from 0.0 to 1.0 (example) 
+
+Legal representative name 
+Legal representative name 
+PEPITO PEREZ (example) 
+
+Identity status 
+Identity status 
+Found Not found Dead 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+Nationality 
+Nationality 
+Australia Austria Azerbaijan Albania Algeria American Samoa Anguilla Angola Andorra Antarctica Antigua and Barbuda Netherlands Antilles United Arab Emirates Argentina Armenia Aruba Afghanistan Bahamas Bangladesh Barbados Bahrain Belarus Belize Belgium Benin Bermuda Bulgaria Bolivia Bosnia and Herzegovina Botswana Brazil British Indian Ocean Territory Brunei Darussalam Burkina Faso Burundi Bhutan Vanuatu Holy See (Vatican City State) United Kingdom Hungary Venezuela Virgin Islands British Virgin Islands US Timor-Leste (East Timor) Vietnam Gabon Haiti Guyana Gambia Ghana Guadeloupe Guatemala Guinea Guinea-Bissau Germany Gibraltar Honduras Hong Kong (Special Administrative Region of China) Grenada Greenland Greece Georgia Guam Denmark Democratic Republic of the Congo Djibouti Dominica Dominican Republic Egypt Zambia Western Sahara Zimbabwe Israel India Indonesia Jordan Iraq Iran (Islamic Republic of) Ireland Iceland Spain Italy Yemen Kazakhstan Cayman Islands Cambodia Cameroon Canada Qatar Kenya Cyprus Kiribati China Cocos (Keeling) Islands Colombia Comoros Congo Democratic People`s Republic of Korea Republic of Korea Costa Rica Cote d`Ivoire Cuba Kuwait Kyrgyzstan Lao People`s Democratic Republic Latvia Lesotho Liberia Lebanon Libyan Arab Jamahiriya Lithuania Liechtenstein Luxembourg Mauritius Mauritania Madagascar Mayotte Macau (Special Administrative Region of China) North Macedonia (Republic of North Macedonia) Malawi Malaysia Mali Maldives Malta Northern Mariana Islands Morocco Martinique Marshall Islands Mexico Micronesia (Federated States of) Mozambique Moldova (Republic of) Monaco Mongolia Montserrat Myanmar Namibia Nauru Nepal Niger Nigeria Netherlands Nicaragua Niue New Zealand New Caledonia Norway Oman Bouvet Island Isle Of Man Norfolk Island Pitcairn Christmas Island Saint Helena Wallis and Futuna Islands Heard Island and McDonald Islands Cape Verde Cook Islands Samoa Svalbard and Jan Mayen Islands Turks and Caicos Islands United States Minor Outlying Islands Pakistan Palau Palestinian Territory (Occupied) Panama Papua New Guinea Paraguay Peru Poland Portugal Puerto Rico Reunion Russian Federation Rwanda Romania El Salvador San Marino Sao Tome and Principe Saudi Arabia Swaziland Seychelles Senegal Saint Pierre and Miquelon Saint Vincent and the Grenadines Saint Kitts and Nevis Saint Lucia Singapore Syrian Arab Republic Slovakia Slovenia United States Solomon Islands Somalia Sudan Suriname Sierra Leone Tajikistan Taiwan (Province of China) Thailand Tanzania (United Republic of) Togo Tokelau Tonga Trinidad and Tobago Tuvalu Tunisia Turkmenistan Turkey Uganda Uzbekistan Ukraine Uruguay Faroe Islands Fiji Philippines Finland Falkland Islands (Malvinas) France French Guiana French Polynesia French Southern Territories Croatia Central African Republic Chad Czech Republic Chile Switzerland Sweden Sri Lanka Ecuador Equatorial Guinea Eritrea Estonia Ethiopia South Africa Yugoslavia South Georgia and The South Sandwich Islands Jamaica Montenegro Saint Barthelemy Sint Maarten Dutch Serbia Aland Islands Bonaire, Sint Eustatius And Saba Guernsey Jersey Curacao Saint Martin French South Sudan Japan Kosovo 
+
+Social Security status 
+Social Security status 
+Active Inactive 
+
+Person watchlist 
+Person watchlist 
+Búsqueda en medios GOOGLE RSS Inter-American Development Bank Cia World Leaders Common Position Terrorist EU Consolidated Screening Lists Most Wanted Fugitives by the DEA DSS Most Wanted - Bureau of Diplomatic Security FBI Reported in the EU financial system Google Office of Inspector General - Exclusions Offshore Leaks Database - Intermediares Offshore Leaks Database - Officers Offshore Leaks Database - Offshore entities Interpol list of the most wanted EU list of the most wanted Office of Foreign Assets Control - OFAC OFSI Consolidated List Search (HMT Treasury List) U.S. Security and Exchange Commission (SEC) Most Wanted Secret Service United Nations Security Council Consolidate List Lista de terroristas de USA World Bank Debarred Firms 
+
+Is politically exposed 
+Is politically exposed 
+Yes No 
+
+Social Security type 
+Social Security type 
+Contributor Beneficiary 
+
+Company watchlist 
+Company watchlist 
+Búsqueda en medios GOOGLE RSS Inter-American Development Bank Cia World Leaders Common Position Terrorist EU Consolidated Screening Lists Most Wanted Fugitives by the DEA DSS Most Wanted - Bureau of Diplomatic Security FBI Reported in the EU financial system Google Office of Inspector General - Exclusions Offshore Leaks Database - Intermediares Offshore Leaks Database - Officers Offshore Leaks Database - Offshore entities Interpol list of the most wanted EU list of the most wanted Office of Foreign Assets Control - OFAC OFSI Consolidated List Search (HMT Treasury List) U.S. Security and Exchange Commission (SEC) Most Wanted Secret Service United Nations Security Council Consolidate List Lista de terroristas de USA World Bank Debarred Firms 
+
+Check ID 
+Check ID 
+CHCK123 (example) 
+
+Birthplace 
+Birthplace 
+CALI (example) 
+
+Company watchlist status 
+Company watchlist status 
+Found Not found 
+
+Company name 
+Company name 
+MI COMPANY NAME (example) 
+
+Full name 
+Full name 
+PEPITO PEREZ (example) 
+
+Company status 
+Company status 
+Found Not found 
+
+Phone activation date 
+Phone activation date 
+2020-04-01T00:00:00Z (example) 
+
+Company address 
+Company address 
+CARRERA XX No.XX-XX, BOGOTÁ, D.C., BOGOTÁ, D. C. (example) 
+
+Document status 
+Document status 
+Active Inactive Irregular Not found 
+
+Gender 
+Gender 
+Female Male 
+
+Phone trust level 
+Phone trust level 
+Very low Low Medium High 
+
+Credit score 
+Credit score 
+457 (example) 
+
+Person criminal records 
+Review usage here 
+Intentional homicide Attempted intentional homicide Non-intentional homicide Assisting or instigating suicide Euthanasia Ilegal feticide Unlawful killing associated with armed conflict Other acts leading to death or intending to cause death Assaults and threats Acts against liberty Slavery and exploitation Trafficking in persons Coercion Negligence Dangerous acts Acts intended to induce fear or emotional distress Defamation or insult Discrimination Acts that trespass against the person Other acts causing harm or intending to cause harm to the person Sexual violence Sexual exploitation Other injurious acts of a sexual nature Robbery Other acts against property involving violence or threat against a person Burglary Theft Intellectual property offences Property damage Other acts against property only Unlawful acts involving controlled drugs or precursors Unlawful acts involving alcohol, tobacco or other controlled substances Other acts involving controlled drugs or other psychoactive substances Fraud Forgery/counterfeiting Corruption Acts involving the proceeds of crime Other acts involving fraud, deception or corruption Acts against public order behavioural standards Acts against public order sexual standards Acts related to freedom of expression or control of expression Acts contrary to public revenue or regulatory provisions Acts related to migration Acts against the justice system Acts related to democratic elections Acts contrary to labour law Other acts against public order, authority and provisions of the State Acts involving weapons, explosives and other destructive materials Acts against health and safety Acts against computer systems Acts against state security Acts related to an organized criminal group Terrorism Non-injurious traffic violations Other acts against public safety and state security Acts that cause environmental pollution or degradation Acts involving the movement or dumping of waste Trade or possession of protected or prohibited species of fauna and flora Acts that result in the depletion or degradation of natural resources Other acts against the natural environment Acts under universal jurisdiction Acts contrary to youth regulations and acts on minors Other criminal acts not elsewhere classified 
+
+Person legal records 
+Review usage here 
+Marriage Filiation Child Support Custody Other legal processes related to Family Possession & Property Easements Other legal processes related to Assets Inheritance by Will or Succession Other legal processes related to Inheritances Ordinary Trial Executive or Civil Executive Trial Purchase resolution Restitution of real estate Other legal processes related to Liabilities Contractual obligations Civil Responsibility Moral Damage Illicit Gain Other legal processes related to Civil Obligations Labor processes Other legal processes related to labor 
+
+Company criminal records 
+Review usage here 
+Intentional homicide Attempted intentional homicide Non-intentional homicide Assisting or instigating suicide Euthanasia Ilegal feticide Unlawful killing associated with armed conflict Other acts leading to death or intending to cause death Assaults and threats Acts against liberty Slavery and exploitation Trafficking in persons Coercion Negligence Dangerous acts Acts intended to induce fear or emotional distress Defamation or insult Discrimination Acts that trespass against the person Other acts causing harm or intending to cause harm to the person Sexual violence Sexual exploitation Other injurious acts of a sexual nature Robbery Other acts against property involving violence or threat against a person Burglary Theft Intellectual property offences Property damage Other acts against property only Unlawful acts involving controlled drugs or precursors Unlawful acts involving alcohol, tobacco or other controlled substances Other acts involving controlled drugs or other psychoactive substances Fraud Forgery/counterfeiting Corruption Acts involving the proceeds of crime Other acts involving fraud, deception or corruption Acts against public order behavioural standards Acts against public order sexual standards Acts related to freedom of expression or control of expression Acts contrary to public revenue or regulatory provisions Acts related to migration Acts against the justice system Acts related to democratic elections Acts contrary to labour law Other acts against public order, authority and provisions of the State Acts involving weapons, explosives and other destructive materials Acts against health and safety Acts against computer systems Acts against state security Acts related to an organized criminal group Terrorism Non-injurious traffic violations Other acts against public safety and state security Acts that cause environmental pollution or degradation Acts involving the movement or dumping of waste Trade or possession of protected or prohibited species of fauna and flora Acts that result in the depletion or degradation of natural resources Other acts against the natural environment Acts under universal jurisdiction Acts contrary to youth regulations and acts on minors Other criminal acts not elsewhere classified 
+
+Company legal records 
+Review usage here 
+Marriage Filiation Child Support Custody Other legal processes related to Family Possession & Property Easements Other legal processes related to Assets Inheritance by Will or Succession Other legal processes related to Inheritances Ordinary Trial Executive or Civil Executive Trial Purchase resolution Restitution of real estate Other legal processes related to Liabilities Contractual obligations Civil Responsibility Moral Damage Illicit Gain Other legal processes related to Civil Obligations Labor processes Other legal processes related to labor 
+
+Continuous check changed When you have the continuous check of a check active and there is a difference between the current check and the previous one. 
+
+User initiated conversation (inbound) When a user sends a message to the bot to start a WhatsApp conversation 
+Variable Description Possible values / Examples 
+User ID 
+User ID 
+any user id of your account: user_test (example) 
+
+Creation date 
+Creation date 
+2020-04-01T00:00:00Z (example) 
+
+Waba phone number 
+Waba phone number 
++573132223333 (example) 
+
+Inbound message 
+Inbound message 
+message from user (example) 
+
+Session ID 
+Session ID 
+WDI1a2b2c3v (example) 
+
+Update Date 
+Update Date 
+2020-04-01T00:00:00Z (example) 
+
+User phone number 
+User phone number 
++573131221324 (example) 
+
+Session status 
+Session status 
+Processing Waiting user response Finished Waiting for outbound response Waiting for follow up response Waiting for integration finish Waiting for integration creation 
+
+Billing hub 
+Billing hub 
+any billing hub name of your account (example) 
+
+Flow ID 
+Flow ID 
+IPFb1b2h3 (example) 
+
+Inbound message sent (Outbound) When a message is sent succesfully to start a Whatsapp conversation 
+Variable Description Possible values / Examples 
+Session status 
+Session status 
+Processing Waiting user response Finished Waiting for outbound response Waiting for follow up response Waiting for integration finish Waiting for integration creation 
+
+Billing hub 
+Billing hub 
+any billing hub name of your account (example) 
+
+Flow ID 
+Flow ID 
+IPF12345 (example) 
+
+Outbound ID 
+Outbound ID 
+OTBd123ed (example) 
+
+Outbound message 
+Outbound message 
+campaign message (example) 
+
+User phone number 
+User phone number 
++573131221324 (example) 
+
+Session ID 
+Session ID 
+WDI1a2b2c3v (example) 
+
+Creation date 
+Creation date 
+2020-04-01T00:00:00Z (example) 
+
+Update Date 
+Update Date 
+2020-04-01T00:00:00Z (example) 
+
+Is notification 
+Is notification 
+Yes No 
+
+Waba phone number 
+Waba phone number 
++573133453786 (example) 
+
+User ID 
+User ID 
+any user id of your account: user_test (example) 
+
+Inbound message accepted (Outbound) When the user accepts the initial message and starts the conversation 
+Variable Description Possible values / Examples 
+User phone number 
+User phone number 
++573131221324 (example) 
+
+Session status 
+Session status 
+Processing Waiting user response Finished Waiting for outbound response Waiting for follow up response Waiting for integration finish Waiting for integration creation 
+
+Outbound ID 
+Outbound ID 
+OTBd123ed (example) 
+
+Is notification 
+Is notification 
+Yes No 
+
+Outbound message 
+Outbound message 
+campaign message (example) 
+
+User ID 
+User ID 
+any user id of your account: user_test (example) 
+
+Session ID 
+Session ID 
+WDI1a2b2c3v (example) 
+
+Billing hub 
+Billing hub 
+any billing hub name of your account (example) 
+
+Flow ID 
+Flow ID 
+IPF12345 (example) 
+
+Waba phone number 
+Waba phone number 
++573133453786 (example) 
+
+Creation date 
+Creation date 
+2020-04-01T00:00:00Z (example) 
+
+Update Date 
+Update Date 
+2020-04-01T00:00:00Z (example) 
+
+Inbound message cancelled (Outbound) When the user does not accept the initial message and the conversation does not continue 
+Variable Description Possible values / Examples 
+Creation date 
+Creation date 
+2020-04-01T00:00:00Z (example) 
+
+Update Date 
+Update Date 
+2020-04-01T00:00:00Z (example) 
+
+User phone number 
+User phone number 
++573131221324 (example) 
+
+Session status 
+Session status 
+Processing Waiting user response Finished Waiting for outbound response Waiting for follow up response Waiting for integration finish Waiting for integration creation 
+
+Billing hub 
+Billing hub 
+any billing hub name of your account (example) 
+
+Flow ID 
+Flow ID 
+IPF12345 (example) 
+
+Outbound ID 
+Outbound ID 
+OTBd123ed (example) 
+
+User ID 
+User ID 
+any user id of your account: user_test (example) 
+
+Waba phone number 
+Waba phone number 
++573133453786 (example) 
+
+Is notification 
+Is notification 
+Yes No 
+
+Outbound message 
+Outbound message 
+campaign message (example) 
+
+Session ID 
+Session ID 
+WDI1a2b2c3v (example) 
+
+Truconnect notification sent When a notification message is sent by WhatsApp 
+
+Truconnect process started When the user initiates a WHATSAPP flow 
+Variable Description Possible values / Examples 
+User ID 
+User ID 
+any user id of your account: user_test (example) 
+
+Session ID 
+Session ID 
+WDI1a2b2c3v (example) 
+
+Creation date 
+Creation date 
+2020-04-01T00:00:00Z (example) 
+
+Update Date 
+Update Date 
+2020-04-01T13:02:00Z (example) 
+
+User phone number 
+User phone number 
++573131221324 (example) 
+
+Session status 
+Session status 
+Processing Waiting user response Finished Waiting for outbound response Waiting for follow up response Waiting for integration finish Waiting for integration creation 
+
+Billing hub 
+Billing hub 
+any billing hub name of your account (example) 
+
+Truconnect process succeeded When the WHATSAPP flow is completed or is successful according to the defined conditions. 
+Variable Description Possible values / Examples 
+User phone number 
+User phone number 
++573131221324 (example) 
+
+Session status 
+Session status 
+Processing Waiting user response Finished Waiting for outbound response Waiting for follow up response Waiting for integration finish Waiting for integration creation 
+
+Billing hub 
+Billing hub 
+any billing hub name of your account (example) 
+
+User ID 
+User ID 
+any user id of your account: user_test (example) 
+
+Session ID 
+Session ID 
+WDI1a2b2c3v (example) 
+
+Creation date 
+Creation date 
+2020-04-01T00:00:00Z (example) 
+
+Update Date 
+Update Date 
+2020-04-01T13:02:00Z (example) 
+
+Truconnect process failed When the WHATSAPP stream is not completed or fails according to the defined conditions 
+Variable Description Possible values / Examples 
+Creation date 
+Creation date 
+2020-04-01T00:00:00Z (example) 
+
+Update Date 
+Update Date 
+2020-04-01T13:02:00Z (example) 
+
+User phone number 
+User phone number 
++573131221324 (example) 
+
+Session status 
+Session status 
+Processing Waiting user response Finished Waiting for outbound response Waiting for follow up response Waiting for integration finish Waiting for integration creation 
+
+Billing hub 
+Billing hub 
+any billing hub name of your account (example) 
+
+User ID 
+User ID 
+any user id of your account: user_test (example) 
+
+Session ID 
+Session ID 
+WDI1a2b2c3v (example) 
+
+Identity flow created When the user creates a new identity flow 
+Variable Description Possible values / Examples 
+Flow ID 
+The Flow ID is the identifier of the flow that is used to create the process. 
+IPF12345 (example) 
+
+Flow status 
+The status of the flow 
+enabled disabled deleted 
+
+Flow type 
+Indicates the type of flow, permanent when is published, draft when is not published, temporary when is a test flow, backup when is a backup flow 
+permanent draft temporary backup 
+
+Username 
+Is the username of the user who created the flow 
+user_test (example) 
+
+Flow version 
+The version of the flow, each time the flow is updated, the version is incremented 
+16 (example) 
+
+Update date 
+The date when the flow was updated 
+2020-04-01T13:02:00Z (example) 
+
+Creation date 
+The date when the flow was created 
+2020-04-01T00:00:00Z (example) 
+
+Identity flow updated When the user updates an identity flow 
+Variable Description Possible values / Examples 
+Flow ID 
+The Flow ID is the identifier of the flow that is used to create the process. 
+IPF12345 (example) 
+
+Flow status 
+The status of the flow 
+enabled disabled deleted 
+
+Flow type 
+Indicates the type of flow, permanent when is published, draft when is not published, temporary when is a test flow, backup when is a backup flow 
+permanent draft temporary backup 
+
+Username 
+Is the username of the user who created the flow 
+user_test (example) 
+
+Flow version 
+The version of the flow, each time the flow is updated, the version is incremented 
+16 (example) 
+
+Update date 
+The date when the flow was updated 
+2020-04-01T13:02:00Z (example) 
+
+Creation date 
+The date when the flow was created 
+2020-04-01T00:00:00Z (example) 
+
+Identity flow deleted When the user deletes an identity flow 
+Variable Description Possible values / Examples 
+Flow ID 
+The Flow ID is the identifier of the flow that is used to create the process. 
+IPF12345 (example) 
+
+Flow status 
+The status of the flow 
+enabled disabled deleted 
+
+Flow type 
+Indicates the type of flow, permanent when is published, draft when is not published, temporary when is a test flow, backup when is a backup flow 
+permanent draft temporary backup 
+
+Username 
+Is the username of the user who created the flow 
+user_test (example) 
+
+Flow version 
+The version of the flow, each time the flow is updated, the version is incremented 
+16 (example) 
+
+Update date 
+The date when the flow was updated 
+2020-04-01T13:02:00Z (example) 
+
+Creation date 
+The date when the flow was created 
+2020-04-01T00:00:00Z (example) 
+
+Identity flow cloned When the user clones an identity flow 
+Variable Description Possible values / Examples 
+Flow ID 
+The Flow ID is the identifier of the flow that is used to create the process. 
+IPF12345 (example) 
+
+Flow status 
+The status of the flow 
+enabled disabled deleted 
+
+Flow type 
+Indicates the type of flow, permanent when is published, draft when is not published, temporary when is a test flow, backup when is a backup flow 
+permanent draft temporary backup 
+
+Username 
+Is the username of the user who created the flow 
+user_test (example) 
+
+Flow version 
+The version of the flow, each time the flow is updated, the version is incremented 
+16 (example) 
+
+Update date 
+The date when the flow was updated 
+2020-04-01T13:02:00Z (example) 
+
+Creation date 
+The date when the flow was created 
+2020-04-01T00:00:00Z (example) 
+
+Identity flow restored When the user restores an identity flow 
+Variable Description Possible values / Examples 
+Flow ID 
+The Flow ID is the identifier of the flow that is used to create the process. 
+IPF12345 (example) 
+
+Flow status 
+The status of the flow 
+enabled disabled deleted 
+
+Flow type 
+Indicates the type of flow, permanent when is published, draft when is not published, temporary when is a test flow, backup when is a backup flow 
+permanent draft temporary backup 
+
+Username 
+Is the username of the user who created the flow 
+user_test (example) 
+
+Flow version 
+The version of the flow, each time the flow is updated, the version is incremented 
+16 (example) 
+
+Update date 
+The date when the flow was updated 
+2020-04-01T13:02:00Z (example) 
+
+Creation date 
+The date when the flow was created 
+2020-04-01T00:00:00Z (example) 
+
+Identity process created When the user initiates a WEB flow 
+Variable Description Possible values / Examples 
+Flow ID 
+Flow ID 
+IPF12345 (example) 
+
+Flow version 
+Flow version 
+16 (example) 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+Identity process ID 
+Identity process ID 
+IDP1a2d2g (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Identity process succeeded When the result of the WEB flow is approved 
+Variable Description Possible values / Examples 
+Flow ID 
+Flow ID 
+IPF12345 (example) 
+
+Flow version 
+Flow version 
+16 (example) 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+Identity process ID 
+Identity process ID 
+IDP1a2d2g (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Identity process failed When the result of the WEB flow is failed 
+Variable Description Possible values / Examples 
+Identity process ID 
+Identity process ID 
+IDP1a2d2g (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Flow ID 
+Flow ID 
+IPF12345 (example) 
+
+Flow version 
+Flow version 
+16 (example) 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+Validation failure status 
+Validation failure status 
+Declined System error Expired Canceled 
+
+Declined reason 
+Declined reason 
+Wrong verification code Bad light condition File format not supported Actions not in expected order No face detected Photo of photo Video too large Liveness verification not passed Passive liveness verification not passed Similarity threshold not passed Faces are too similar Too many incorrect answers Invalid ministry Invalid format for naturally field Missing legal institute perforation Traces of tampering Irregular fonts Missing security elements Portrait photo is fake Incomplete document Irregular alignments Missing accents Inconsistent delegate signature Date of birth does not match with photo Missing origin document Missing CPF Inconsistent parent names Missing registration number Missing coat of arms Document has different versions Invalid image format Age above threshold Invalid inputs to create check Front side document is a photocopy Document has expired Document is a photocopy Document is a photo of photo Document not recognized Reverse side document is a photocopy Face not detected Front document not found Data not match with government database Document unregistered Government database unavailable Identity belongs to dead person Image face validation not passed Image text validation not passed Invalid curp Invalid postal code Invalid issue date Invalid mrz Invalid mrz format Invalid document number Manual review failed Missing date of birth Missing document number Missing expiration date Missing gender Missing inputs to create check Missing issue date Missing issue number Missing mrz Missing names Missing street Missing state name Missing municipality name Missin neighborhood Missin pay limit date Missin postal code Missing nationality Missing national registrar Missing production data Missing text National registrar inconsistency OCR failure Production data inconsistency Production data invalid format Reverse document not found Underage Validations failed Portrait photo illegible Perforations illegible Missing issue state Missing issue agency Missing issue deparment Item not found Item status disabled Audio already used Audio exceeds maximum length Incomplete enrollment Invalid file format No voice detected Phrase does not match Speaker too loud Speaker too quiet Voice does not match Empty file OCR no text detected Max retries reached Face not clear Fraudster match client collection Fraudster match global collection User match client collection Canceled Rejected answer 
+
+Step succeeded When the step of a WEB flow verification is succeeded 
+Variable Description Possible values / Examples 
+Identity process ID 
+Identity process ID 
+IDP1a2d2g (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Flow ID 
+Flow ID 
+IPF12345 (example) 
+
+Flow version 
+Flow version 
+16 (example) 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+Overwritten Failure When a process status is changed from Success to Failure. 
+Variable Description Possible values / Examples 
+Identity process ID 
+Identity process ID 
+IDP1a2d2g (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Flow ID 
+Flow ID 
+IPF12345 (example) 
+
+Flow version 
+Flow version 
+16 (example) 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+Overwritten Success When a process status is changed from Failure to Success. 
+Variable Description Possible values / Examples 
+Identity process ID 
+Identity process ID 
+IDP1a2d2g (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Flow ID 
+Flow ID 
+IPF12345 (example) 
+
+Flow version 
+Flow version 
+16 (example) 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+Phone verification created When phone validation has been created 
+
+Phone verification succeeded When phone validation result is successful 
+
+Phone verification failed When the phone validation result is unsuccessful 
+
+Face recognition created When the face validation has been created 
+Variable Description Possible values / Examples 
+Validation ID 
+Validation ID 
+VLD123456 (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+IP address 
+IP address 
+192.238.183.167 (example) 
+
+Face recognition succeeded When the face validation result is successful 
+Variable Description Possible values / Examples 
+Identity process ID 
+Identity process ID 
+IDP1a2d2g (example) 
+
+Username 
+Username 
+any user name of your account: user_test (example) 
+
+Confidence score 
+Confidence score 
+value from 0.0 to 1.0 (example) 
+
+Validation ID 
+Validation ID 
+VLD123456 (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Threshold 
+Threshold 
+value from 0.0 to 1.0 (example) 
+
+Face recognition failed When the face validation result is failed 
+Variable Description Possible values / Examples 
+Validation ID 
+Validation ID 
+VLD123456 (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Threshold 
+Threshold 
+value from 0.0 to 1.0 (example) 
+
+Identity process ID 
+Identity process ID 
+IDP1a2d2g (example) 
+
+Validation failure status 
+Validation failure status 
+Declined System error Expired Canceled 
+
+Declined reason 
+Declined reason 
+Wrong verification code Bad light condition File format not supported Actions not in expected order No face detected Photo of photo Video too large Liveness verification not passed Passive liveness verification not passed Similarity threshold not passed Faces are too similar Too many incorrect answers Invalid ministry Invalid format for naturally field Missing legal institute perforation Traces of tampering Irregular fonts Missing security elements Portrait photo is fake Incomplete document Irregular alignments Missing accents Inconsistent delegate signature Date of birth does not match with photo Missing origin document Missing CPF Inconsistent parent names Missing registration number Missing coat of arms Document has different versions Invalid image format Age above threshold Invalid inputs to create check Front side document is a photocopy Document has expired Document is a photocopy Document is a photo of photo Document not recognized Reverse side document is a photocopy Face not detected Front document not found Data not match with government database Document unregistered Government database unavailable Identity belongs to dead person Image face validation not passed Image text validation not passed Invalid curp Invalid postal code Invalid issue date Invalid mrz Invalid mrz format Invalid document number Manual review failed Missing date of birth Missing document number Missing expiration date Missing gender Missing inputs to create check Missing issue date Missing issue number Missing mrz Missing names Missing street Missing state name Missing municipality name Missin neighborhood Missin pay limit date Missin postal code Missing nationality Missing national registrar Missing production data Missing text National registrar inconsistency OCR failure Production data inconsistency Production data invalid format Reverse document not found Underage Validations failed Portrait photo illegible Perforations illegible Missing issue state Missing issue agency Missing issue deparment Item not found Item status disabled Audio already used Audio exceeds maximum length Incomplete enrollment Invalid file format No voice detected Phrase does not match Speaker too loud Speaker too quiet Voice does not match Empty file OCR no text detected Max retries reached Face not clear Fraudster match client collection Fraudster match global collection User match client collection Canceled Rejected answer 
+
+Email verification created When email validation has been created 
+
+Email verification succeeded When email validation results in success 
+
+Email verification failed When email validation result is failed 
+
+Document validation succeeded When the result of the document validation is successful. 
+Variable Description Possible values / Examples 
+Height 
+Height 
+1.78 (example) 
+
+Name 
+Name 
+PEPITO (example) 
+
+Validation ID 
+Validation ID 
+VLD123456 (example) 
+
+Gender 
+Gender 
+Female Male 
+
+Issue date 
+Issue date 
+1950-09-13T00:00:00Z (example) 
+
+Document type 
+Document type 
+National ID Foreign ID Passport Driver license General registration CNH PEP PPT Identity card Picture ID Invoice 
+
+Date of birth 
+Date of birth 
+1968-01-15T00:00:00Z (example) 
+
+Document number 
+Document number 
+a document number 123456789 (example) 
+
+RH 
+RH 
+O+ O- A+ A- B+ B- AB+ AB- 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Birthplace 
+Birthplace 
+BOGOTA D.C (CUNDINAMARCA) (example) 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+Expedition place 
+Expedition place 
+CALI (example) 
+
+Last name 
+Last name 
+GIRALDO RIOS (example) 
+
+Check ID 
+Check ID 
+CHCK123 (example) 
+
+Document validation failed When the document validation result is failed 
+Variable Description Possible values / Examples 
+Validation ID 
+Validation ID 
+VLD123456 (example) 
+
+Date of birth 
+Date of birth 
+1968-01-15T00:00:00Z (example) 
+
+Document number 
+Document number 
+a document number 123456789 (example) 
+
+Expedition place 
+Expedition place 
+CALI (example) 
+
+Gender 
+Gender 
+Female Male 
+
+Last name 
+Last name 
+GIRALDO RIOS (example) 
+
+RH 
+RH 
+O+ O- A+ A- B+ B- AB+ AB- 
+
+Validation failure status 
+Validation failure status 
+Declined System error Expired Canceled 
+
+Country 
+Country 
+Colombia Peru Brazil Chile Mexico Ecuador International 
+
+Height 
+Height 
+1.78 (example) 
+
+Issue date 
+Issue date 
+1950-09-13T00:00:00Z (example) 
+
+Declined reason 
+Declined reason 
+Wrong verification code Bad light condition File format not supported Actions not in expected order No face detected Photo of photo Video too large Liveness verification not passed Passive liveness verification not passed Similarity threshold not passed Faces are too similar Too many incorrect answers Invalid ministry Invalid format for naturally field Missing legal institute perforation Traces of tampering Irregular fonts Missing security elements Portrait photo is fake Incomplete document Irregular alignments Missing accents Inconsistent delegate signature Date of birth does not match with photo Missing origin document Missing CPF Inconsistent parent names Missing registration number Missing coat of arms Document has different versions Invalid image format Age above threshold Invalid inputs to create check Front side document is a photocopy Document has expired Document is a photocopy Document is a photo of photo Document not recognized Reverse side document is a photocopy Face not detected Front document not found Data not match with government database Document unregistered Government database unavailable Identity belongs to dead person Image face validation not passed Image text validation not passed Invalid curp Invalid postal code Invalid issue date Invalid mrz Invalid mrz format Invalid document number Manual review failed Missing date of birth Missing document number Missing expiration date Missing gender Missing inputs to create check Missing issue date Missing issue number Missing mrz Missing names Missing street Missing state name Missing municipality name Missin neighborhood Missin pay limit date Missin postal code Missing nationality Missing national registrar Missing production data Missing text National registrar inconsistency OCR failure Production data inconsistency Production data invalid format Reverse document not found Underage Validations failed Portrait photo illegible Perforations illegible Missing issue state Missing issue agency Missing issue deparment Item not found Item status disabled Audio already used Audio exceeds maximum length Incomplete enrollment Invalid file format No voice detected Phrase does not match Speaker too loud Speaker too quiet Voice does not match Empty file OCR no text detected Max retries reached Face not clear Fraudster match client collection Fraudster match global collection User match client collection Canceled Rejected answer 
+
+Birthplace 
+Birthplace 
+BOGOTA D.C (CUNDINAMARCA) (example) 
+
+Document type 
+Document type 
+National ID Foreign ID Passport Driver license General registration CNH PEP PPT Identity card Picture ID Invoice 
+
+Name 
+Name 
+PEPITO (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Check ID 
+Check ID 
+CHCK123 (example) 
+
+Document validation created When the document validation has been created 
+Variable Description Possible values / Examples 
+Validation ID 
+Validation ID 
+VLD123456 (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Electronic signature created When the electronic signature process has been created 
+
+Electronic signature succeeded When the electronic signature was made within the time specified 
+
+Electronic signature failed When the electronic signature was NOT made within the time specified 
+
+Face search enrolled When report a face 
+Variable Description Possible values / Examples 
+Creation date 
+Creation date 
+2020-04-01T00:00:00Z (example) 
+
+Update Date 
+Update Date 
+2020-04-01T00:00:00Z (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Fraud reason 
+Fraud reason 
+Manipulated document Manipulated photo Non payment Criminal company records Fraudster Politically exposed person Criminal list User register Other 
+
+Status 
+Status 
+Pending Success Failure 
+
+Validation type 
+Validation type 
+Identity questions Face recognition Voice recognition Email verification Phone verification Document validation Enterprise data Face search Electronic signature 
+
+Identity process ID 
+Identity process ID 
+IDP1a2d2g (example) 
+
+Enrollment ID 
+Enrollment ID 
+ENR1a2w3e (example) 
+
+Face search created When a face validation has been created to search for matches on a reported basis 
+Variable Description Possible values / Examples 
+Validation ID 
+Validation ID 
+VLD123456 (example) 
+
+IP address 
+IP address 
+192.238.183.167. (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Face search succeeded When there is NO face match against a reported database 
+Variable Description Possible values / Examples 
+Validation ID 
+Validation ID 
+VLD123456 (example) 
+
+IP address 
+IP address 
+192.238.183.167. (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Threshold 
+Threshold 
+value from 0.0 to 1.0 (example) 
+
+Face search failed When there IS a face match against a reported database 
+Variable Description Possible values / Examples 
+IP address 
+IP address 
+192.238.183.167. (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Validation failure status 
+Validation failure status 
+Declined System error Expired Canceled 
+
+Declined reason 
+Declined reason 
+Wrong verification code Bad light condition File format not supported Actions not in expected order No face detected Photo of photo Video too large Liveness verification not passed Passive liveness verification not passed Similarity threshold not passed Faces are too similar Too many incorrect answers Invalid ministry Invalid format for naturally field Missing legal institute perforation Traces of tampering Irregular fonts Missing security elements Portrait photo is fake Incomplete document Irregular alignments Missing accents Inconsistent delegate signature Date of birth does not match with photo Missing origin document Missing CPF Inconsistent parent names Missing registration number Missing coat of arms Document has different versions Invalid image format Age above threshold Invalid inputs to create check Front side document is a photocopy Document has expired Document is a photocopy Document is a photo of photo Document not recognized Reverse side document is a photocopy Face not detected Front document not found Data not match with government database Document unregistered Government database unavailable Identity belongs to dead person Image face validation not passed Image text validation not passed Invalid curp Invalid postal code Invalid issue date Invalid mrz Invalid mrz format Invalid document number Manual review failed Missing date of birth Missing document number Missing expiration date Missing gender Missing inputs to create check Missing issue date Missing issue number Missing mrz Missing names Missing street Missing state name Missing municipality name Missin neighborhood Missin pay limit date Missin postal code Missing nationality Missing national registrar Missing production data Missing text National registrar inconsistency OCR failure Production data inconsistency Production data invalid format Reverse document not found Underage Validations failed Portrait photo illegible Perforations illegible Missing issue state Missing issue agency Missing issue deparment Item not found Item status disabled Audio already used Audio exceeds maximum length Incomplete enrollment Invalid file format No voice detected Phrase does not match Speaker too loud Speaker too quiet Voice does not match Empty file OCR no text detected Max retries reached Face not clear Fraudster match client collection Fraudster match global collection User match client collection Canceled Rejected answer 
+
+Threshold 
+Threshold 
+value from 0.0 to 1.0 (example) 
+
+Validation message 
+Validation message 
+validation message (example) 
+
+Fraudster enrollment ID 
+Fraudster enrollment ID 
+ENR1a2d3g (example) 
+
+Validation ID 
+Validation ID 
+VLD123456 (example) 
+
+Face search enrollment deleted When a reported face is deleted 
+Variable Description Possible values / Examples 
+Creation date 
+Creation date 
+2020-04-01T00:00:00Z (example) 
+
+Update Date 
+Update Date 
+2020-04-01T00:00:00Z (example) 
+
+Account ID 
+Account ID 
+ACC1234 or a custom account ID (example) 
+
+Fraud reason 
+Fraud reason 
+Manipulated document Manipulated photo Non payment Criminal company records Fraudster Politically exposed person Criminal list User register Other 
+
+Status 
+Status 
+Pending Success Failure 
+
+Validation type 
+Validation type 
+Identity questions Face recognition Voice recognition Email verification Phone verification Document validation Enterprise data Face search Electronic signature 
+
+Identity process ID 
+Identity process ID 
+IDP1a2d2g (example) 
+
+Enrollment ID 
+Enrollment ID 
+ENR1a2w3e (example) 
+

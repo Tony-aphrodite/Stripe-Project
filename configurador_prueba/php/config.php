@@ -78,6 +78,22 @@ if (!defined('TRUORA_API_KEY')) {
 if (!defined('TRUORA_WEBHOOK_SECRET')) {
     define('TRUORA_WEBHOOK_SECRET', getenv('TRUORA_WEBHOOK_SECRET') ?: '');
 }
+// Digital Identity Flow ID (IPFxxxxxx...). Created in Truora dashboard →
+// Products → Digital Identity → My Flows. Required for the iframe
+// integration in truora-token.php.
+if (!defined('TRUORA_FLOW_ID')) {
+    define('TRUORA_FLOW_ID', getenv('TRUORA_FLOW_ID') ?: '');
+}
+// Digital Identity API base URL — separate from api.checks.truora.com
+// (which is the Background Checks product).
+if (!defined('TRUORA_IDENTITY_API_URL')) {
+    define('TRUORA_IDENTITY_API_URL', getenv('TRUORA_IDENTITY_API_URL') ?: 'https://api.identity.truora.com');
+}
+// Voltika public base URL (used as the Truora redirect_url). Falls back to
+// production so dev deployments still get a sensible default.
+if (!defined('VOLTIKA_BASE_URL')) {
+    define('VOLTIKA_BASE_URL', getenv('VOLTIKA_BASE_URL') ?: 'https://www.voltika.mx');
+}
 
 // Círculo de Crédito
 if (!defined('CDC_API_KEY')) {
