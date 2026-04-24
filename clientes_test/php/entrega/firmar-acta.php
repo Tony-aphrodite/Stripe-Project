@@ -43,7 +43,7 @@ try {
         if (preg_match('/^data:image\/(png|jpeg|jpg);base64,(.+)$/', $signatureData, $m)) {
             $ext = $m[1] === 'jpeg' ? 'jpg' : $m[1];
             $bin = base64_decode($m[2]);
-            $dir = __DIR__ . '/../../../configurador_prueba_test/php/uploads/firmas';
+            $dir = __DIR__ . '/../../../configurador_prueba/php/uploads/firmas';
             if (!is_dir($dir)) @mkdir($dir, 0775, true);
             $fname = 'acta_' . $motoId . '_' . time() . '.' . $ext;
             @file_put_contents($dir . '/' . $fname, $bin);
@@ -64,7 +64,7 @@ try {
 
     // Notify cliente (confirmation) — punto staff will see it in their UI automatically
     try {
-        require_once __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php';
+        require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
         voltikaNotify('acta_firmada', [
             'cliente_id' => $cid,
             'nombre'     => $firma,

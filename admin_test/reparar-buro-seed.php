@@ -8,8 +8,8 @@
  * folio_consulta starts with "BURO-SEED".
  *
  * Usage:
- *   GET  /admin_test/reparar-buro-seed.php         -> preview rows (dry run)
- *   POST /admin_test/reparar-buro-seed.php?run=1   -> apply DELETE
+ *   GET  /admin/reparar-buro-seed.php         -> preview rows (dry run)
+ *   POST /admin/reparar-buro-seed.php?run=1   -> apply DELETE
  */
 require_once __DIR__ . '/php/bootstrap.php';
 adminRequireAuth(['admin']);

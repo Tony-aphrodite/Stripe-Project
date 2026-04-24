@@ -63,8 +63,11 @@ window.VK_entrega = (function(){
     });
     html += '</div>';
 
-    // Moto info — use a readable pill when punto isn't assigned yet so the
-    // customer doesn't see a raw "—" (looks broken).
+    // Moto info. When the punto hasn't been assigned yet the portal used to
+    // render a raw "—" in the Punto row which looked broken. Now we show a
+    // human-readable pill ("Asignando punto…") so the customer understands
+    // the moto is in an earlier stage of the logistics flow, not that the
+    // portal is broken.
     var puntoNombreHtml = (data.punto && data.punto.nombre)
       ? escapeHtml(data.punto.nombre)
       : '<span style="display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;">Asignando punto…</span>';
@@ -195,6 +198,9 @@ window.VK_entrega = (function(){
     $('#vkIncidencia').on('click', function(){ confirmarRecepcion(true); });
   }
 
+  // Renders the full ACTA DE ENTREGA text — shared by both the inline form
+  // and the read-on-demand modal. Kept as a single source of truth so the
+  // two views cannot drift.
   function buildActaBodyHtml(nombre){
     var hoy = new Date().toLocaleDateString('es-MX');
     return ''+
@@ -207,8 +213,12 @@ window.VK_entrega = (function(){
       '<p>Asimismo, declara haber recibido la información sobre garantía, uso correcto y medidas de seguridad del vehículo eléctrico.</p>';
   }
 
+  // Renders the full ACTA in a modal triggered by the "ACTA DE ENTREGA" link
+  // inside the acceptance checkbox. Customer feedback 2026-04-23: the inline
+  // document made the sign form feel overwhelming on mobile; a read-on-tap
+  // modal matches the standard terms-and-conditions pattern.
   function showActaModal(nombre){
-    if ($('#vkActaBackdrop').length) return;
+    if ($('#vkActaBackdrop').length) return; // already open
     var modal =
       '<div class="vk-modal-backdrop" id="vkActaBackdrop"></div>'+
       '<div class="vk-modal" id="vkActaModal" style="max-width:560px;">'+
@@ -230,6 +240,9 @@ window.VK_entrega = (function(){
     var c = VKApp.state.cliente || {};
     var nombre = [(c.nombre||''), (c.apellido_paterno||''), (c.apellido_materno||'')].join(' ').trim();
 
+    // Short summary card — so the customer always sees WHAT they're signing
+    // for even before opening the full ACTA. Important for fraud prevention:
+    // shows Modelo / Color / VIN prominently.
     var motoInfo =
       '<div class="vk-card" style="border-left:4px solid #039fe1;">'+
         '<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Vehículo a recibir</div>'+
@@ -260,6 +273,8 @@ window.VK_entrega = (function(){
     $('#vkFirmaAcepto').on('change', updateBtn);
     $('#vkFirmaNombre').on('input', updateBtn);
 
+    // Clicking the "ACTA DE ENTREGA" text in the checkbox opens the modal
+    // without flipping the checkbox (preventDefault + stopPropagation).
     $('#vkVerActaLink').on('click', function(e){
       e.preventDefault();
       e.stopPropagation();

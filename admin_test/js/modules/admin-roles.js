@@ -167,7 +167,6 @@ window.AD_roles = (function(){
       ? '<div style="font-size:12.5px;color:#166534;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;padding:8px 10px;margin-top:10px;">✓ Credenciales ya enviadas por SMS / Email al usuario.</div>'
       : '';
 
-    // Pre-formatted message (ES) — what the admin will forward
     var shareMsg =
       'Hola ' + nombre + ', tu acceso ' + rolLabel + ' de VOLTIKA ya está activo:\n\n' +
       '🌐 ' + url + '\n' +
@@ -197,7 +196,6 @@ window.AD_roles = (function(){
 
     ADApp.modal(html);
 
-    // Set WhatsApp share URL (opens user's WhatsApp with the text pre-filled)
     $('#rlCredWA').attr('href', 'https://wa.me/?text=' + encodeURIComponent(shareMsg));
 
     $('#rlCredCopy').on('click', function(){

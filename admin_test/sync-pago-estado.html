@@ -48,7 +48,7 @@
     <button class="btn-dry" onclick="run(true)">1. Previsualizar</button>
     <button class="btn-run" id="btnRun" disabled onclick="go()">2. Ejecutar sincronización</button>
   </div>
-  <p style="color:#666;font-size:.85rem;margin-top:8px;">⚠ Debes estar logueado en <a href="/admin_test/" target="_blank">/admin_test</a> como admin.</p>
+  <p style="color:#666;font-size:.85rem;margin-top:8px;">⚠ Debes estar logueado en <a href="/admin/" target="_blank">/admin_test</a> como admin.</p>
 </div>
 
 <div id="summary"></div>
@@ -66,7 +66,7 @@
 </div>
 
 <script>
-const ENDPOINT = '/admin_test/php/ventas/sync-pago-estado.php';
+const ENDPOINT = '/admin/php/ventas/sync-pago-estado.php';
 
 async function run(dryRun) {
   const sum = document.getElementById('summary');

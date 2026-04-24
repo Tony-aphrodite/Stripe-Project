@@ -45,7 +45,7 @@ try {
     // Notify on incidencia so ops team can react
     if ($incidencia) {
         try {
-            require_once __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php';
+            require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
             voltikaNotify('recepcion_incidencia', [
                 'cliente_id' => $cid,
                 'nombre'     => '',

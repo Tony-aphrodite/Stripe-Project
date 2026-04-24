@@ -352,8 +352,9 @@ function portalFindClienteByPhone(string $tel): ?array {
 /**
  * Collect every phone/email variant linked to a cliente, covering both the
  * portal-registered contacts and any purchase-time contacts stored in
- * subscripciones_credito. Customers often sign up on the portal with a
- * different phone/email than the one on the purchase.
+ * subscripciones_credito / transacciones. Customers often sign up on the
+ * portal with a different phone/email than the one on the purchase, so we
+ * must know all of them to resolve ownership.
  *
  * Returns: ['tels' => [<last-10-digits>, ...], 'emails' => [<lowercased>, ...]]
  */
@@ -375,6 +376,8 @@ function portalCollectContactAliases(int $clienteId): array {
         if ($r = $s->fetch(PDO::FETCH_ASSOC)) $push($r['telefono'] ?? null, $r['email'] ?? null);
     } catch (Throwable $e) {}
 
+    // Subscripciones linked either by cliente_id or (for legacy rows) by any
+    // contact we already know about.
     try {
         $s = $pdo->prepare("SELECT telefono, email FROM subscripciones_credito WHERE cliente_id = ?");
         $s->execute([$clienteId]);
@@ -407,11 +410,17 @@ function portalCollectContactAliases(int $clienteId): array {
  * Verify a cliente owns a moto via ANY valid ownership path:
  *   - inventario_motos.cliente_id matches
  *   - cliente_telefono matches any phone alias for this cliente
+ *     (portal phone, subscription phone, transaction phone...)
  *   - cliente_email    matches any email alias for this cliente
  *
  * Phone comparison is prefix-agnostic (last 10 digits); email is
- * case-insensitive. When a soft-path match is found we backfill cliente_id
- * on the moto AND on related subscripciones_credito rows.
+ * case-insensitive. When a soft-path match is found while cliente_id is
+ * NULL or wrong, we backfill cliente_id on the moto AND on any related
+ * subscripcion_credito row so subsequent lookups hit the fast path and
+ * future notifications (payments, reminders) address the right cliente.
+ *
+ * Every portal endpoint that mutates a moto on behalf of an authenticated
+ * cliente must use this instead of a bare `cliente_id = ?` WHERE clause.
  *
  * Returns the full moto row or null if the cliente does not own it.
  */
@@ -448,6 +457,8 @@ function portalFindOwnedMoto(int $clienteId, int $motoId): ?array {
         $moto['cliente_id'] = $clienteId;
     } catch (Throwable $e) { error_log('portalFindOwnedMoto backfill moto: ' . $e->getMessage()); }
 
+    // Also heal subscripciones_credito so invoicing/reminders address this
+    // cliente going forward. Matches the same phone/email aliases.
     try {
         $where = []; $params = [$clienteId];
         foreach ($aliases['tels'] as $t) {

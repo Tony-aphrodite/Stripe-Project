@@ -30,7 +30,7 @@ if (!$faceOk) {
 }
 
 // Save moto photos
-$uploadsDir = __DIR__ . '/../../../configurador_prueba_test/php/uploads/entregas';
+$uploadsDir = __DIR__ . '/../../../configurador_prueba/php/uploads/entregas';
 if (!is_dir($uploadsDir)) @mkdir($uploadsDir, 0755, true);
 
 $entregaStmt = $pdo->prepare("SELECT id FROM entregas WHERE moto_id=? ORDER BY freg DESC LIMIT 1");
@@ -45,7 +45,7 @@ if (!empty($d['fotos_moto']) && is_array($d['fotos_moto'])) {
             $tipo = $tipos[$i] ?? 'otra';
             $fname = "{$tipo}_{$motoId}_" . time() . "_$i.jpg";
             file_put_contents("$uploadsDir/$fname", $bin);
-            $url = "/configurador_prueba_test/php/uploads/entregas/$fname";
+            $url = "/configurador_prueba/php/uploads/entregas/$fname";
             $pdo->prepare("INSERT INTO fotos_entrega (entrega_id, moto_id, tipo, url) VALUES (?,?,?,?)")
                 ->execute([$entregaId, $motoId, $tipo, $url]);
         }
