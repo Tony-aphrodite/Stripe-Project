@@ -106,6 +106,83 @@ var VkUI = {
     },
 
     /**
+     * Render the unified trust badges footer used at the bottom of every
+     * payment-related screen (NO_VIABLE recovery, paso5 resumen, paso4a
+     * checkout, optional credito-pago/credito-enganche).
+     *
+     * Three-row layout (per customer brief 2026-04-26):
+     *   1. "Pago seguro · encriptación bancaria"  +  VISA/MC/AMEX/stripe
+     *   2. "Voltika respaldada por:"              +  REPUVE / Cincel / Quálitas
+     *   3. WhatsApp +52 55 1341 6370 · ventas@voltika.mx
+     *
+     * Single source of truth — change copy/colors/contacts here, all
+     * screens update at once.
+     */
+    renderTrustFooter: function() {
+        var base = (window.VK_BASE_PATH || '');
+        var pillStyle = 'display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:6px 9px;min-height:30px;min-width:48px;';
+        var dotStyle  = 'display:inline-flex;align-items:center;gap:6px;';
+        var linkStyle = 'display:inline-flex;align-items:center;gap:7px;color:#111;text-decoration:none;';
+
+        var html = '<div class="vk-trust-footer" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-top:14px;">';
+
+        // Row 1 — Pago seguro + payment brand badges
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;">'+
+                '<span style="width:36px;height:36px;background:#E8F5E9;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">'+
+                    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>'+
+                '</span>'+
+                '<div style="line-height:1.2;">'+
+                    '<div style="font-size:14px;font-weight:800;color:#111;">Pago seguro <span style="color:#9ca3af;font-weight:500;">·</span></div>'+
+                    '<div style="font-size:11.5px;color:#5b6b7a;">encriptación bancaria</div>'+
+                '</div>'+
+                '</div>';
+        html += '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">';
+        html += '<span style="' + pillStyle + '"><img src="' + base + 'img/tarjetas/visa.svg" alt="Visa" style="height:14px;width:auto;"></span>';
+        html += '<span style="' + pillStyle + '"><img src="' + base + 'img/tarjetas/mastercard.svg" alt="Mastercard" style="height:18px;width:auto;"></span>';
+        html += '<span style="' + pillStyle + '"><img src="' + base + 'img/tarjetas/amex.svg" alt="American Express" style="height:14px;width:auto;"></span>';
+        html += '<span style="' + pillStyle + '"><span style="font-size:13px;font-weight:700;font-style:italic;color:#635bff;letter-spacing:-.5px;">stripe</span></span>';
+        html += '</div>';
+        html += '</div>'; // end row 1
+
+        // Divider
+        html += '<div style="border-top:1px solid #f3f4f6;margin:14px 0;"></div>';
+
+        // Row 2 — Voltika respaldada por + partner dots
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">';
+        html += '<span style="font-size:12.5px;color:#5b6b7a;">Voltika respaldada por:</span>';
+        html += '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:13px;font-weight:700;color:#111;">'+
+                '<span style="' + dotStyle + '"><span style="width:8px;height:8px;background:#0284c7;border-radius:50%;display:inline-block;"></span>REPUVE</span>'+
+                '<span style="' + dotStyle + '"><span style="width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;"></span>Cincel</span>'+
+                '<span style="' + dotStyle + '"><span style="width:8px;height:8px;background:#8b5cf6;border-radius:50%;display:inline-block;"></span>Quálitas</span>'+
+                '</div>';
+        html += '</div>';
+
+        // Divider
+        html += '<div style="border-top:1px solid #f3f4f6;margin:14px 0;"></div>';
+
+        // Row 3 — Contact info (WhatsApp + email). Tappable on mobile.
+        html += '<div style="display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;font-size:13px;font-weight:600;color:#111;">';
+        html += '<a href="https://wa.me/5215513416370" target="_blank" rel="noopener" style="' + linkStyle + '">'+
+                '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+                    '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>'+
+                '</svg>'+
+                '+52 55 1341 6370'+
+                '</a>';
+        html += '<a href="mailto:ventas@voltika.mx" style="' + linkStyle + '">'+
+                '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+                    '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>'+
+                    '<polyline points="22,6 12,13 2,6"/>'+
+                '</svg>'+
+                'ventas@voltika.mx'+
+                '</a>';
+        html += '</div>';
+
+        html += '</div>'; // end footer card
+        return html;
+    },
+
+    /**
      * Render trust badges footer
      */
     renderTrustBadges: function(metodo) {

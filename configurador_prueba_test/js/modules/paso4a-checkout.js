@@ -262,6 +262,10 @@ var Paso4A = {
 
         html += '</div>'; // end checkout-form (payment buttons + SPEI/OXXO inside)
 
+        // Unified trust footer at the bottom of the checkout screen
+        // (customer brief 2026-04-26 item 1).
+        html += VkUI.renderTrustFooter();
+
         $('#vk-pago-container').html(html);
     },
 
