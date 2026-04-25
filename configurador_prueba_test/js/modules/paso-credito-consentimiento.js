@@ -545,21 +545,28 @@ var PasoCreditoConsentimiento = {
         // Idempotency guard (customer brief 2026-04-25): if V3 evaluation
         // already completed for this session, do NOT POST to
         // preaprobacion-v3.php again — duplicate rows would be written to
-        // preaprobacion_log / solicitudes_credito. Re-use the stored result
-        // and route to the appropriate next screen. This protects against:
-        //   - user hitting Back from credito-pago / Paso4B and retriggering
-        //     the consent flow,
-        //   - page refresh mid-flow with persisted state,
-        //   - any future routing bug that loops through consentimiento.
-        // A legitimate re-evaluation (e.g., user changes ingresos) must
-        // clear state._resultadoFinal explicitly before re-submission.
+        // preaprobacion_log / solicitudes_credito.
+        //
+        // EXCEPTION (customer brief 2026-04-26): if the prior result was
+        // NO_VIABLE, allow re-submission. Otherwise the user gets stuck on
+        // the rejection screen with no way to escape (browser-back through
+        // consent flow looped them back to NO_VIABLE forever). For
+        // NO_VIABLE, any new submission has likely changed data (different
+        // identity, different income range, etc.) and the server-side
+        // 5-minute dedup in preaprobacion-v3.php still catches accidental
+        // exact-duplicate POSTs.
         if (state._resultadoFinal && state._resultadoFinal.status) {
-            if (state._resultadoFinal.status === 'PREAPROBADO') {
+            var prior = state._resultadoFinal.status;
+            if (prior === 'PREAPROBADO') {
                 self.app.irAPaso('credito-loading');
-            } else {
-                self.app.irAPaso('credito-resultado');
+                return;
             }
-            return;
+            if (prior === 'CONDICIONAL' || prior === 'CONDICIONAL_ESTIMADO') {
+                self.app.irAPaso('credito-resultado');
+                return;
+            }
+            // NO_VIABLE / unknown → fall through to re-submission so the
+            // user has a path forward.
         }
 
         var credito = VkCalculadora.calcular(

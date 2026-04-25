@@ -41,9 +41,14 @@
         init: function() {
             var self = this;
 
-            // ── Test mode: ?test_credito=condicional|no_viable|truora_fail ──
+            // ── Test mode: ?test_credito=preaprobado|condicional|no_viable|truora_fail ──
+            //              ?test_credito=score&score=NNN  (custom-score mode)
+            // Voltika QA tooling — lets internal testers verify each branch
+            // (PREAPROBADO / CONDICIONAL / NO_VIABLE / Truora) end-to-end
+            // without needing real CDC test identities.
             var urlParams = new URLSearchParams(window.location.search);
             var testMode  = urlParams.get('test_credito');
+            var testScore = urlParams.get('score');
 
             if (testMode) {
                 // Set minimum required state for the resultado screen
@@ -54,19 +59,37 @@
                 self.state.plazoMeses = 12;
                 self.state._ingresoMensual = 10000;
 
-                if (testMode === 'condicional') {
+                if (testMode === 'preaprobado') {
+                    // High score, low PTI → green approval screen → Truora → Stripe
+                    self.state._buroResult = { score: 720, pagoMensual: 1500, dpd90: false, dpdMax: 0, person_found: true };
+                    self.state._truoraResult = { status: 'approved', fallback: true };
+                } else if (testMode === 'condicional') {
                     // Círculo de Crédito low score → enganche increase screen
-                    self.state._buroResult = { score: 430, pagoMensual: 5000, dpd90: false, dpdMax: 0 };
+                    self.state._buroResult = { score: 430, pagoMensual: 5000, dpd90: false, dpdMax: 0, person_found: true };
                     self.state._truoraResult = { status: 'approved', fallback: true };
                 } else if (testMode === 'no_viable') {
                     // Círculo de Crédito very low score → credit denied screen
-                    self.state._buroResult = { score: 350, pagoMensual: 8000, dpd90: true, dpdMax: 120 };
+                    self.state._buroResult = { score: 350, pagoMensual: 8000, dpd90: true, dpdMax: 120, person_found: true };
                     self.state._truoraResult = { status: 'approved', fallback: true };
                 } else if (testMode === 'truora_fail') {
                     // Truora identity verification failed
-                    self.state._buroResult = { score: 500, pagoMensual: 3000, dpd90: false, dpdMax: 0 };
+                    self.state._buroResult = { score: 500, pagoMensual: 3000, dpd90: false, dpdMax: 0, person_found: true };
                     self.state._truoraResult = { status: 'rejected', fallback: false };
+                } else if (testMode === 'score' && testScore) {
+                    // Custom score (Tony fine-grained QA): ?test_credito=score&score=520
+                    self.state._buroResult = { score: parseInt(testScore, 10), pagoMensual: 2000, dpd90: false, dpdMax: 0, person_found: true };
+                    self.state._truoraResult = { status: 'approved', fallback: true };
                 }
+
+                // Visible banner so testers never confuse this with prod data
+                $('body').prepend(
+                    '<div id="vk-test-banner" style="background:#f97316;color:#fff;padding:8px 14px;' +
+                    'text-align:center;font-size:12px;font-weight:700;position:fixed;top:0;left:0;right:0;' +
+                    'z-index:99999;box-shadow:0 2px 6px rgba(0,0,0,.15);">' +
+                    '⚠ MODO TEST: ' + testMode + (testScore ? ' (score=' + testScore + ')' : '') +
+                    ' &middot; <a href="' + window.location.pathname + '" style="color:#fff;text-decoration:underline;">Salir</a>' +
+                    '</div>'
+                );
 
                 VkUI.renderProgressBar(4, 'credito');
                 setTimeout(function() {
