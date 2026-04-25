@@ -52,18 +52,27 @@ var PasoCreditoResultado = {
         var truora    = state._truoraResult || {};
 
         var html = '';
+        var status = resultado.status || 'NO_VIABLE';
+        var isNoViable = (status !== 'PREAPROBADO' && status !== 'PREAPROBADO_ESTIMADO' &&
+                          status !== 'CONDICIONAL' && status !== 'CONDICIONAL_ESTIMADO');
 
         // If NO_VIABLE (skipped Truora), back goes to consentimiento
-        var backTarget = (resultado.status === 'NO_VIABLE') ? 'credito-consentimiento' : 'credito-identidad';
+        var backTarget = isNoViable ? 'credito-consentimiento' : 'credito-identidad';
         html += VkUI.renderBackButton(backTarget);
 
-        html += '<h2 class="vk-paso__titulo">Resultado de evaluación</h2>';
+        // Customer brief 2026-04-26 item 1: NO_VIABLE skips the page title
+        // and the HISTORIAL CREDITICIO + Identidad blocks entirely. The
+        // recovery screen ("Esta vez tu plan de pagos no salió...") IS the
+        // primary content; redundant headers added noise without value.
+        if (!isNoViable) {
+            html += '<h2 class="vk-paso__titulo">Resultado de evaluación</h2>';
+        }
 
         html += '<div class="vk-card">';
-        html += '<div style="padding:24px 20px;">';
+        html += '<div style="padding:' + (isNoViable ? '20px 20px' : '24px 20px') + ';">';
 
-        // Identity verification result (only show if Truora was performed)
-        if (resultado.status !== 'NO_VIABLE') {
+        if (!isNoViable) {
+            // Identity verification result (only show if Truora was performed)
             html += '<div style="margin-bottom:20px;">';
             html += '<div style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);' +
                 'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Identidad</div>';
@@ -81,44 +90,32 @@ var PasoCreditoResultado = {
             html += '</div>';
             html += '</div>';
             html += '</div>';
-        }
 
-        // Credit bureau result
-        html += '<div style="margin-bottom:20px;">';
-        html += '<div style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);' +
-            'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Historial crediticio</div>';
+            // Credit bureau result (only for approved/conditional flows)
+            html += '<div style="margin-bottom:20px;">';
+            html += '<div style="font-size:13px;font-weight:700;color:var(--vk-text-secondary);' +
+                'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Historial crediticio</div>';
 
-        var score = buro.score || null;
-        var hasScore = score !== null && score !== undefined;
+            var score = buro.score || null;
+            var hasScore = score !== null && score !== undefined;
 
-        if (hasScore) {
-            html += '<div style="text-align:center;padding:14px;background:var(--vk-bg-light);border-radius:8px;margin-bottom:12px;">';
-            html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Score crediticio</div>';
-            html += '<div style="font-size:36px;font-weight:800;color:' + this._scoreColor(score) + ';">' + score + '</div>';
-            html += '<div style="font-size:11px;color:var(--vk-text-muted);">de 850 puntos posibles</div>';
+            if (hasScore) {
+                html += '<div style="text-align:center;padding:14px;background:var(--vk-bg-light);border-radius:8px;margin-bottom:12px;">';
+                html += '<div style="font-size:12px;color:var(--vk-text-secondary);">Score crediticio</div>';
+                html += '<div style="font-size:36px;font-weight:800;color:' + this._scoreColor(score) + ';">' + score + '</div>';
+                html += '<div style="font-size:11px;color:var(--vk-text-muted);">de 850 puntos posibles</div>';
+                html += '</div>';
+            } else {
+                html += '<div style="text-align:center;padding:14px;background:var(--vk-bg-light);border-radius:8px;margin-bottom:12px;">';
+                html += '<div style="font-size:13px;color:var(--vk-text-secondary);">' +
+                    'No pudimos verificar tu historial crediticio en el Buró de Crédito.</div>';
+                html += '</div>';
+            }
             html += '</div>';
-        } else {
-            // Honest copy (Option B, customer brief 2026-04-23): without a
-            // real CDC score the algorithm always returns NO_VIABLE. The old
-            // "Se realizará una evaluación estimada" text promised an
-            // estimated evaluation that no longer happens, leading users to
-            // believe a retry could succeed. Removed.
-            html += '<div style="text-align:center;padding:14px;background:var(--vk-bg-light);border-radius:8px;margin-bottom:12px;">';
-            html += '<div style="font-size:13px;color:var(--vk-text-secondary);">' +
-                'No pudimos verificar tu historial crediticio en el Buró de Crédito.</div>';
-            html += '</div>';
+
+            // Divider
+            html += '<div style="border-top:2px solid var(--vk-border);margin:16px 0;"></div>';
         }
-        html += '</div>';
-
-        // Divider
-        html += '<div style="border-top:2px solid var(--vk-border);margin:16px 0;"></div>';
-
-        // Final pre-approval result. Fail-closed: if resultado is somehow
-        // missing status (edge case where an early return bypassed scoring),
-        // render NO_VIABLE instead of silently approving. The previous
-        // default 'CONDICIONAL_ESTIMADO' is what let fake-identity flows
-        // land on an approval-looking screen.
-        var status = resultado.status || 'NO_VIABLE';
 
         if (status === 'PREAPROBADO' || status === 'PREAPROBADO_ESTIMADO') {
             html += this._renderAprobado(resultado);
@@ -311,13 +308,24 @@ var PasoCreditoResultado = {
         var html = '';
 
         // ── Headline ──────────────────────────────────────────────────────
+        // Customer brief 2026-04-26 items 2 & 3:
+        //   - Title: "el crédito" → "tu plan de pagos" (rest unchanged)
+        //   - Body: replace the two-paragraph explanation with one
+        //     concise actionable sentence. Subtitle is appended only when
+        //     the algorithm gave us a concrete escape hint (Policy C);
+        //     otherwise the standard text covers all cases.
         html += '<div style="text-align:center;margin-bottom:18px;">';
-        html += '<h2 style="font-size:26px;font-weight:800;color:#111;line-height:1.25;margin:0 0 10px;">'+
-                'Esta vez el crédito no salió,<br>'+
+        html += '<h2 style="font-size:26px;font-weight:800;color:#111;line-height:1.25;margin:0 0 12px;">'+
+                'Esta vez tu plan de pagos no salió,<br>'+
                 'pero <span style="color:#039fe1;">tu moto sí.</span></h2>';
-        html += '<p style="font-size:14px;color:#5b6b7a;line-height:1.5;margin:0 0 6px;max-width:380px;margin-left:auto;margin-right:auto;">' +
-                subtitle + '</p>';
-        html += '<p style="font-size:13px;color:#5b6b7a;margin:6px 0 0;">Esto pasa y no te define. Elige cómo llevarte tu Voltika hoy:</p>';
+        html += '<p style="font-size:14px;color:#5b6b7a;line-height:1.5;margin:0 auto;max-width:380px;">' +
+                'No fue posible continuar con el plan de pagos que elegiste, elige aquí otras formas de pago o intenta nuevamente un plan de pagos nuevo aumentando tu enganche y bajando el plazo.' +
+                '</p>';
+        if (hasEscape) {
+            html += '<p style="font-size:13px;font-weight:700;color:#039fe1;margin:10px auto 0;max-width:380px;">' +
+                    'Sugerencia: sube tu enganche al ' + escapePct + '% para que tu solicitud avance automáticamente.' +
+                    '</p>';
+        }
         html += '</div>';
 
         // ── Motorcycle card ───────────────────────────────────────────────
@@ -362,7 +370,7 @@ var PasoCreditoResultado = {
                 '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>'+
                 '</button>';
         } else {
-            html += '<a href="https://wa.me/5214421198928?text=Hola%2C%20me%20interesa%20una%20Voltika%20pero%20mi%20cr%C3%A9dito%20no%20se%20pudo%20evaluar%20autom%C3%A1ticamente.%20Necesito%20ayuda." '+
+            html += '<a href="https://wa.me/5215513416370?text=Hola%2C%20me%20interesa%20una%20Voltika%20pero%20mi%20cr%C3%A9dito%20no%20se%20pudo%20evaluar%20autom%C3%A1ticamente.%20Necesito%20ayuda." '+
                     'target="_blank" rel="noopener" '+
                     'class="vk-nv-asesor" id="vk-nv-asesor" '+
                     'style="width:100%;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#25D366 0%,#128C7E 100%);color:#fff;border:0;border-radius:14px;padding:16px 18px;margin-bottom:18px;cursor:pointer;text-align:left;text-decoration:none;box-shadow:0 4px 10px rgba(37,211,102,.25);">'+
@@ -385,71 +393,130 @@ var PasoCreditoResultado = {
                 '</div>';
 
         // ── 4 payment method cards (2x2 grid) ─────────────────────────────
-        function payCard(id, iconHtml, iconBg, title, subtitle){
+        // Customer brief 2026-04-26 items 4-7: replace generic SVG icons
+        // with real brand logos (Visa/MC/Amex for card cards, SPEI for
+        // bank transfer, OXXO for cash). Logo files live in
+        // /img/tarjetas/{visa,mastercard,amex,spei,oxxo}.svg
+        function payCard(id, logoHtml, title, subtitle){
             return '<button type="button" class="vk-nv-pay" id="'+id+'" style="'+
-                'display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s;">'+
-                '<span style="width:40px;height:40px;flex-shrink:0;border-radius:50%;background:'+iconBg+';display:inline-flex;align-items:center;justify-content:center;color:#fff;">'+iconHtml+'</span>'+
+                'display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s;min-height:78px;">'+
+                '<span style="width:54px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;">'+logoHtml+'</span>'+
                 '<span style="flex:1;min-width:0;">'+
-                    '<span style="display:block;font-size:13.5px;font-weight:700;color:#111;line-height:1.15;">'+title+'</span>'+
-                    '<span style="display:block;font-size:11.5px;color:#5b6b7a;margin-top:2px;line-height:1.3;">'+subtitle+'</span>'+
+                    '<span style="display:block;font-size:13px;font-weight:700;color:#111;line-height:1.2;">'+title+'</span>'+
+                    '<span style="display:block;font-size:11px;color:#5b6b7a;margin-top:3px;line-height:1.35;">'+subtitle+'</span>'+
                 '</span>'+
                 '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>'+
                 '</button>';
         }
 
-        var iconCard = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>';
-        var iconBank = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 22 9 2 9 12 3"/><line x1="5" y1="12" x2="5" y2="18"/><line x1="10" y1="12" x2="10" y2="18"/><line x1="14" y1="12" x2="14" y2="18"/><line x1="19" y1="12" x2="19" y2="18"/><line x1="2" y1="21" x2="22" y2="21"/></svg>';
-        var iconCash = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/></svg>';
+        // Card-brand stack (Visa + Mastercard + Amex) used for both credit
+        // card cards. Stacked vertically so they fit the 54px-wide icon
+        // column without crowding.
+        var logoCards =
+            '<span style="display:flex;flex-direction:column;align-items:center;gap:2px;">'+
+                '<img src="'+base+'img/tarjetas/visa.svg" alt="Visa" style="height:14px;width:auto;">'+
+                '<img src="'+base+'img/tarjetas/mastercard.svg" alt="Mastercard" style="height:14px;width:auto;">'+
+                '<img src="'+base+'img/tarjetas/amex.svg" alt="American Express" style="height:14px;width:auto;">'+
+            '</span>';
+        var logoSpei = '<img src="'+base+'img/tarjetas/spei.svg" alt="SPEI" style="height:30px;width:auto;max-width:54px;">';
+        var logoOxxo = '<img src="'+base+'img/tarjetas/oxxo.svg" alt="OXXO" style="height:32px;width:auto;max-width:54px;">';
 
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">';
+        // 4. 9 MSI con tarjeta — only "9 pagos de $X MXN" subtitle (per spec)
         html += payCard(
             'vk-nv-msi',
-            iconCard,
-            'linear-gradient(135deg,#3b82f6,#1d4ed8)',
+            logoCards,
             '9 MSI con tarjeta',
-            '9 pagos de '+fmt(precioMSI)+'<br>sin intereses'
+            '9 pagos de '+fmt(precioMSI)+' MXN'
         );
+        // 5. Tarjeta en 1 solo pago — only "1 pago de $X MXN" subtitle (per spec)
         html += payCard(
             'vk-nv-tarjeta',
-            iconCard,
-            'linear-gradient(135deg,#10b981,#047857)',
+            logoCards,
             'Tarjeta en 1 solo pago',
-            fmt(precio)+' · se aparta<br>al instante'
+            '1 pago de '+fmt(precio)+' MXN'
         );
+        // 6. SPEI logo + new subtitle (per spec)
         html += payCard(
             'vk-nv-spei',
-            iconBank,
-            'linear-gradient(135deg,#6366f1,#4338ca)',
+            logoSpei,
             'Transferencia SPEI',
-            fmt(precio)+' · confirmación<br>en 15 min'
+            'Transferencia bancaria (se acredita tu compra en 24 horas automáticamente)'
         );
+        // 7. OXXO logo + new subtitle (per spec)
         html += payCard(
             'vk-nv-oxxo',
-            iconCash,
-            'linear-gradient(135deg,#f97316,#c2410c)',
+            logoOxxo,
             'Efectivo en OXXO',
-            fmt(precio)+' · paga<br>en 48 horas'
+            'Paga en efectivo con referencia en OXXO (se acredita tu compra en 24 horas automáticamente)'
         );
         html += '</div>';
 
         // ── Trust badges footer ───────────────────────────────────────────
-        html += '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;">';
-        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'+
-                '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#039fe1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>'+
-                '<span style="font-size:12.5px;font-weight:700;color:#111;">Pagos seguros con</span>'+
+        // ── Trust badges footer (customer brief 2026-04-26 item 8) ──────
+        // Three-row layout matching the approved mock:
+        //   Row 1: Pago seguro · encriptación bancaria  +  VISA/MC/AMEX/stripe badges
+        //   Row 2: Voltika respaldada por:              +  REPUVE / Cincel / Quálitas dots
+        //   Row 3: WhatsApp +52 55 1341 6370 · ventas@voltika.mx
+        html += '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;">';
+
+        // Row 1 — Pago seguro + payment brand badges
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;">'+
+                '<span style="width:36px;height:36px;background:#E8F5E9;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">'+
+                    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>'+
+                '</span>'+
+                '<div style="line-height:1.2;">'+
+                    '<div style="font-size:14px;font-weight:800;color:#111;">Pago seguro <span style="color:#9ca3af;font-weight:500;">·</span></div>'+
+                    '<div style="font-size:11.5px;color:#5b6b7a;">encriptación bancaria</div>'+
+                '</div>'+
                 '</div>';
-        html += '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px;">'+
-                '<span style="font-size:16px;font-weight:700;color:#635bff;letter-spacing:-.5px;">stripe</span>'+
-                '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#111;"><span style="width:16px;height:16px;background:#c62828;border-radius:50%;display:inline-block;"></span>SAT</span>'+
-                '<span style="font-size:12px;font-weight:700;color:#0284c7;letter-spacing:.5px;">REPUVE</span>'+
-                '<span style="font-size:13px;font-weight:800;color:#0d9488;letter-spacing:-.3px;">◆ CINCEL</span>'+
-                '</div>';
-        html += '<div style="border-top:1px solid #f3f4f6;padding-top:10px;display:flex;align-items:center;justify-content:center;gap:10px;">'+
-                '<span style="font-size:12px;color:#5b6b7a;">Convenio con</span>'+
-                '<img src="'+base+'img/qualitas-logo.png" alt="Qualitas Seguros" style="height:22px;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline\'">'+
-                '<span style="display:none;font-size:13px;font-weight:800;color:#0d47a1;">QUÁLITAS SEGUROS</span>'+
+        // Brand badges row — bordered white pills
+        function brandPill(content){
+            return '<span style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:6px 9px;min-height:30px;min-width:48px;">'+content+'</span>';
+        }
+        html += '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">';
+        html += brandPill('<img src="'+base+'img/tarjetas/visa.svg" alt="Visa" style="height:14px;width:auto;">');
+        html += brandPill('<img src="'+base+'img/tarjetas/mastercard.svg" alt="Mastercard" style="height:18px;width:auto;">');
+        html += brandPill('<img src="'+base+'img/tarjetas/amex.svg" alt="American Express" style="height:14px;width:auto;">');
+        html += brandPill('<span style="font-size:13px;font-weight:700;font-style:italic;color:#635bff;letter-spacing:-.5px;">stripe</span>');
+        html += '</div>';
+        html += '</div>'; // end row 1
+
+        // Divider
+        html += '<div style="border-top:1px solid #f3f4f6;margin:14px 0;"></div>';
+
+        // Row 2 — Voltika respaldada por + partner dots
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">';
+        html += '<span style="font-size:12.5px;color:#5b6b7a;">Voltika respaldada por:</span>';
+        html += '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:13px;font-weight:700;color:#111;">'+
+                '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;background:#0284c7;border-radius:50%;display:inline-block;"></span>REPUVE</span>'+
+                '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;"></span>Cincel</span>'+
+                '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;background:#8b5cf6;border-radius:50%;display:inline-block;"></span>Quálitas</span>'+
                 '</div>';
         html += '</div>';
+
+        // Divider
+        html += '<div style="border-top:1px solid #f3f4f6;margin:14px 0;"></div>';
+
+        // Row 3 — Contact info (WhatsApp + email). Tappable on mobile.
+        html += '<div style="display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;font-size:13px;font-weight:600;color:#111;">';
+        html += '<a href="https://wa.me/5215513416370" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;color:#111;text-decoration:none;">'+
+                '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+                    '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>'+
+                '</svg>'+
+                '+52 55 1341 6370'+
+                '</a>';
+        html += '<a href="mailto:ventas@voltika.mx" style="display:inline-flex;align-items:center;gap:7px;color:#111;text-decoration:none;">'+
+                '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+                    '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>'+
+                    '<polyline points="22,6 12,13 2,6"/>'+
+                '</svg>'+
+                'ventas@voltika.mx'+
+                '</a>';
+        html += '</div>';
+
+        html += '</div>'; // end footer card
 
         return html;
     },
