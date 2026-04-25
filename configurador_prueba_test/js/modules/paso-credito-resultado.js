@@ -36,6 +36,7 @@ var PasoCreditoResultado = {
         state._resultadoFinal = PreaprobacionV3.evaluar({
             ingreso_mensual_est:   state._ingresoMensual || 10000,
             pago_semanal_voltika:  credito.pagoSemanal,
+            enganche_pct:          state.enganchePorcentaje || 0.30,
             score:                 buro.score || null,
             pago_mensual_buro:     buro.pagoMensual || 0,
             dpd90_flag:            buro.dpd90 || false,
@@ -270,6 +271,14 @@ var PasoCreditoResultado = {
         var reasons = resultado.reasons || [];
         var subtitle = 'Revisamos tu historial y hoy no aprobamos el plan que elegiste.';
         var retryHelps = true;
+        // Policy C (2026-04-26): When the algorithm returns NO_VIABLE with
+        // a concrete escape value (enganche_min_para_continuar), the retry
+        // button MUST be shown — raising enganche to that value will flip
+        // the result to CONDICIONAL_ESTIMADO on resubmission.
+        var hasEscape = (resultado.enganche_min_para_continuar !== undefined &&
+                         resultado.enganche_min_para_continuar !== null);
+        var escapePct = hasEscape ? Math.round(resultado.enganche_min_para_continuar * 100) : null;
+
         if (reasons.indexOf('KO_SEVERE_DPD_90PLUS') !== -1) {
             subtitle = 'Tu historial muestra pagos atrasados graves y hoy no podemos aprobar crédito.';
             retryHelps = false;
@@ -279,11 +288,23 @@ var PasoCreditoResultado = {
         } else if (reasons.indexOf('IDENTIDAD_NO_ENCONTRADA_EN_CDC') !== -1) {
             subtitle = 'No pudimos confirmar tu identidad en el Buró de Crédito. Puedes pagar directamente sin crédito.';
             retryHelps = false;
+        } else if (reasons.indexOf('SIN_SCORE_RECOMIENDA_AUMENTAR_ENGANCHE') !== -1) {
+            // Policy C: real escape exists. Tell user EXACTLY what to do.
+            subtitle = 'No obtuvimos tu historial crediticio. Sube tu enganche al ' + escapePct + '% para que tu solicitud avance — Voltika compensa la falta de score con un enganche mayor.';
+            retryHelps = true;
         } else if (reasons.indexOf('SIN_SCORE_CDC_NO_AUTO_APROBACION') !== -1) {
-            subtitle = 'No obtuvimos tu historial crediticio. Ajustar el plan no cambiará este resultado — puedes pagar directamente o contactar a un asesor.';
+            // Legacy reason (Option B). Kept for backward compatibility with
+            // any cached/in-flight evaluations from before Policy C deploy.
+            subtitle = 'No obtuvimos tu historial crediticio. Puedes pagar directamente o contactar a un asesor.';
             retryHelps = false;
-        } else if (reasons.indexOf('KO_SCORE_LT_MIN') !== -1 || reasons.indexOf('KO_GUARDRAIL_LOW_SCORE_HIGH_PTI') !== -1) {
-            subtitle = 'Tu score crediticio actual está por debajo del mínimo requerido. Puedes pagar directamente o reintentar más adelante.';
+        } else if (reasons.indexOf('KO_SCORE_LT_MIN') !== -1) {
+            // With Policy C, a low score still has an escape: 60% enganche.
+            subtitle = hasEscape
+                ? ('Tu score crediticio es bajo, pero puedes avanzar subiendo tu enganche al ' + escapePct + '%.')
+                : 'Tu score crediticio actual está por debajo del mínimo requerido. Puedes pagar directamente o reintentar más adelante.';
+            retryHelps = hasEscape;
+        } else if (reasons.indexOf('KO_GUARDRAIL_LOW_SCORE_HIGH_PTI') !== -1) {
+            subtitle = 'La combinación de tu score y carga financiera no permite aprobar el plan elegido. Puedes pagar directamente o contactar a un asesor.';
             retryHelps = false;
         }
 
@@ -323,6 +344,12 @@ var PasoCreditoResultado = {
         //    show a contact-advisor button instead, which routes to the
         //    sales channel that can do a manual review.
         if (retryHelps) {
+            // Hint copy depends on whether the algorithm gave us a concrete
+            // escape target. With Policy C, a target like 50%/60% means
+            // "raise to that exact value and your application is approved".
+            var retrySubtitle = hasEscape
+                ? ('Sube tu enganche al ' + escapePct + '% — al hacerlo, tu solicitud queda aprobada.')
+                : 'Sube enganche o baja plazo para mejorar tu PTI.';
             html += '<button type="button" class="vk-nv-retry" id="vk-nv-retry" '+
                     'style="width:100%;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#039fe1 0%,#0280b5 100%);color:#fff;border:0;border-radius:14px;padding:16px 18px;margin-bottom:18px;cursor:pointer;text-align:left;box-shadow:0 4px 10px rgba(3,159,225,.25);">'+
                 '<span style="width:38px;height:38px;background:rgba(255,255,255,.18);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">'+
@@ -330,7 +357,7 @@ var PasoCreditoResultado = {
                 '</span>'+
                 '<span style="flex:1;">'+
                     '<span style="display:block;font-size:15px;font-weight:800;line-height:1.1;">Ajusta tu plan y reintenta</span>'+
-                    '<span style="display:block;font-size:12px;font-weight:500;opacity:.9;margin-top:3px;">Sube enganche o baja plazo para mejorar tu PTI.</span>'+
+                    '<span style="display:block;font-size:12px;font-weight:500;opacity:.9;margin-top:3px;">' + retrySubtitle + '</span>'+
                 '</span>'+
                 '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>'+
                 '</button>';
@@ -510,8 +537,20 @@ var PasoCreditoResultado = {
         // plazo sliders, NOT 'credito-enganche' which is the Stripe payment
         // screen (customer report 2026-04-23: clicking "Ajusta tu plan" sent
         // the user straight to pay, skipping the adjustment they wanted).
+        //
+        // Policy C (2026-04-26): if the algorithm returned a concrete
+        // escape target (enganche_min_para_continuar), pre-seed Paso4B with
+        // those values so the user lands exactly where they need to be —
+        // they can submit immediately without guessing the threshold.
         jQuery(document).off('click', '#vk-nv-retry');
         jQuery(document).on('click', '#vk-nv-retry', function() {
+            var prior = self.app.state._resultadoFinal || {};
+            if (typeof prior.enganche_min_para_continuar === 'number') {
+                self.app.state.enganchePorcentaje = prior.enganche_min_para_continuar;
+            }
+            if (typeof prior.plazo_max_para_continuar === 'number') {
+                self.app.state.plazoMeses = prior.plazo_max_para_continuar;
+            }
             self.app.state._resultadoFinal = null;
             self.app.state.creditoAprobado = false;
             self.app.state.metodoPago = 'credito';

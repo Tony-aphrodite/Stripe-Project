@@ -632,6 +632,7 @@ var PasoCreditoConsentimiento = {
                     state._resultadoFinal = PreaprobacionV3.evaluar({
                         ingreso_mensual_est:  state._ingresoMensual || 10000,
                         pago_semanal_voltika: credito.pagoSemanal,
+                        enganche_pct:         state.enganchePorcentaje || 0.25,
                         score:                buroRes.score || null,
                         pago_mensual_buro:    buroRes.pago_mensual_buro || 0,
                         dpd90_flag:           buroRes.dpd90_flag || false,

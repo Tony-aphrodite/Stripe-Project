@@ -52,6 +52,11 @@ var PreaprobacionV3 = {
         var buro   = inputs.pago_mensual_buro || 0;
         var dpd90  = inputs.dpd90_flag;
         var dpdMax = inputs.dpd_max;
+        // enganche_pct enables Policy C: high-enganche fallback for
+        // null-score and low-score applicants. Defaults to 0.25 if not
+        // provided so legacy callers still get sensible behavior (no
+        // accidental approval).
+        var engPct = (typeof inputs.enganche_pct === 'number') ? inputs.enganche_pct : 0.25;
         // Tri-state identity flag from consultar-buro.php:
         //   true  → CDC confirmed the persona exists (approval flow continues)
         //   false → CDC returned 404.1 "no existe"  → hard REJECT
@@ -79,16 +84,35 @@ var PreaprobacionV3 = {
             };
         }
 
-        // Sin datos de Círculo → evaluación estimada solo por PTI
+        // Sin datos de Círculo → Policy C: high-enganche fallback
         if (score === null || score === undefined) {
-            return this._evaluarSinCirculo(pti);
+            return this._evaluarSinCirculo(pti, engPct, personFound);
         }
 
         var s = Number(score);
 
-        // 1) KO reales → NO_VIABLE
+        // 1) KO reales → NO_VIABLE (with high-enganche fallback for low score)
         if (s < cfg.KO.scoreMin) {
-            return { status: 'NO_VIABLE', pti: pti, enganche_min: cfg.downPaymentMin, reasons: ['KO_SCORE_LT_MIN'] };
+            // Policy C: low score + high enganche (≥60%) → CONDICIONAL
+            var lowScoreEngThreshold = 0.60;
+            if (engPct >= lowScoreEngThreshold) {
+                return {
+                    status: 'CONDICIONAL',
+                    pti: pti,
+                    enganche_min:           lowScoreEngThreshold,
+                    enganche_requerido_min: lowScoreEngThreshold,
+                    plazo_max_meses:        12,
+                    reasons:                ['SCORE_BAJO_APROBADO_POR_ENGANCHE_ALTO']
+                };
+            }
+            return {
+                status: 'NO_VIABLE',
+                pti: pti,
+                enganche_min:                cfg.downPaymentMin,
+                reasons:                     ['KO_SCORE_LT_MIN'],
+                enganche_min_para_continuar: lowScoreEngThreshold,
+                plazo_max_para_continuar:    12
+            };
         }
         if (cfg.KO.severeDPD && mora) {
             return { status: 'NO_VIABLE', pti: pti, enganche_min: cfg.downPaymentMin, reasons: ['KO_SEVERE_DPD_90PLUS'] };
@@ -124,18 +148,35 @@ var PreaprobacionV3 = {
         };
     },
 
-    // Sin Círculo: option B (customer decision 2026-04-23). Without a REAL
-    // credit-bureau score we cannot verify any claim the applicant made, so
-    // we reject outright instead of self-scoring. This mirrors the server
-    // behavior in preaprobacion-v3.php and prevents fake identities from
-    // reaching the conditional-approval screen when CDC returns thin-file
-    // or is unreachable.
-    _evaluarSinCirculo: function(pti) {
+    // Sin Círculo: Policy C (customer brief 2026-04-26). High enganche
+    // (≥50%) lets the applicant pass with a CONDICIONAL_ESTIMADO status —
+    // Voltika's risk is covered by the upfront amount + asset repossession
+    // rights + mandatory Truora identity verification downstream. Below
+    // the threshold, NO_VIABLE but with a clear path forward (raise to
+    // 50%) instead of a dead end.
+    _evaluarSinCirculo: function(pti, engPct, personFound) {
+        var threshold = 0.50;
+        var plazoMax  = 12;
+        if (typeof engPct === 'number' && engPct >= threshold) {
+            return {
+                status:                 'CONDICIONAL_ESTIMADO',
+                pti:                    pti,
+                enganche_min:           threshold,
+                enganche_requerido_min: threshold,
+                plazo_max_meses:        plazoMax,
+                reasons:                ['SIN_SCORE_APROBADO_POR_ENGANCHE_ALTO'],
+                mensaje:                'Aprobación condicional por enganche elevado. Verificación de identidad obligatoria.',
+                person_found:           personFound
+            };
+        }
         return {
-            status:  'NO_VIABLE',
-            pti:     pti,
-            reasons: ['SIN_SCORE_CDC_NO_AUTO_APROBACION'],
-            mensaje: 'No podemos otorgar crédito en este momento. No se obtuvo un reporte completo del Buró de Crédito para confirmar tu historial.'
+            status:                       'NO_VIABLE',
+            pti:                          pti,
+            reasons:                      ['SIN_SCORE_RECOMIENDA_AUMENTAR_ENGANCHE'],
+            mensaje:                      'No obtuvimos tu historial crediticio. Sube tu enganche al ' + Math.round(threshold * 100) + '% para continuar tu solicitud.',
+            enganche_min_para_continuar:  threshold,
+            plazo_max_para_continuar:     plazoMax,
+            person_found:                 personFound
         };
     },
 
