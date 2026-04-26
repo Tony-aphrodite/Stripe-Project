@@ -484,8 +484,11 @@ var PasoCreditoResultado = {
                 '<img src="'+base+'img/tarjetas/mastercard.svg" alt="Mastercard" style="height:14px;width:auto;">'+
                 '<img src="'+base+'img/tarjetas/amex.svg" alt="American Express" style="height:14px;width:auto;">'+
             '</span>';
-        var logoSpei = '<img src="'+base+'img/tarjetas/spei.svg" alt="SPEI" style="height:30px;width:auto;max-width:54px;">';
-        var logoOxxo = '<img src="'+base+'img/tarjetas/oxxo.svg" alt="OXXO" style="height:32px;width:auto;max-width:54px;">';
+        // Customer brief 2026-04-27: use the real PNG brand logos already
+        // present in /img/, not the synthetic SVGs in /img/tarjetas/ which
+        // looked fake to users.
+        var logoSpei = '<img src="'+base+'img/logo_spei.png" alt="SPEI" style="height:30px;width:auto;max-width:54px;object-fit:contain;">';
+        var logoOxxo = '<img src="'+base+'img/oxxo_logo.png" alt="OXXO" style="height:32px;width:auto;max-width:54px;object-fit:contain;">';
 
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">';
         // 4. 9 MSI con tarjeta — only "9 pagos de $X MXN" subtitle (per spec)
