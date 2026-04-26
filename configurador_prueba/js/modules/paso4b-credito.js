@@ -195,32 +195,53 @@ var Paso4B = {
         this.app = app;
         var s = app.state || {};
 
-        // Dual-mode init:
-        //   - INITIAL configurator visit → default to 25% / 36 months.
-        //   - CONDICIONAL post-evaluation (customer brief 2026-04-24) →
-        //     seed with the min-compliant values set by
-        //     paso-credito-resultado.js so the slider starts in a valid
-        //     position. Restrictions (min enganche, max plazo) are read
-        //     from state.enganchePctMin / state.plazoMesesMax during
-        //     render() and bindEvents().
-        if (s.modoCondicional) {
-            // Seed from current state, then clamp to algorithm-authorized
-            // bounds. Without clamping, a user who set 25%/36 months during
-            // the initial (unrestricted) Paso4B visit would land here with
-            // values that violate the CONDICIONAL algorithm output (e.g.
-            // enganchePctMin=0.40, plazoMesesMax=24) and the UI buttons for
-            // the old plazo would be absent, leaving no selected plazo.
+        // Customer brief 2026-04-27: SELF-DETERMINING restriction mode.
+        // Two independent signals are checked, EITHER triggers restricted
+        // mode. This belt-and-suspenders approach handles every edge case
+        // observed in production:
+        //   (a) _resultadoFinal.status — fresh server result (most flows)
+        //   (b) modoCondicional + enganchePctMin scalars — survives page
+        //       refresh because configurador._saveState only persists
+        //       scalars (objects like _resultadoFinal are dropped on
+        //       sessionStorage reload). Without (b), refreshing the page
+        //       mid-flow would silently downgrade Paso4B to unrestricted.
+        var resultStatus = (s._resultadoFinal && s._resultadoFinal.status) || '';
+        var fromResult   = (resultStatus === 'CONDICIONAL' || resultStatus === 'CONDICIONAL_ESTIMADO');
+        var fromScalars  = (s.modoCondicional === true && typeof s.enganchePctMin === 'number' && s.enganchePctMin > 0);
+        var isCondicional = fromResult || fromScalars;
+
+        if (isCondicional) {
+            var resultado = s._resultadoFinal || {};
+            // Sync derived fields from server result so render() /
+            // bindEvents() reading state.modoCondicional /
+            // state.enganchePctMin / state.plazoMesesMax always see the
+            // correct values — no matter what code path led here.
+            s.modoCondicional = true;
+            if (resultado.enganche_requerido_min) s.enganchePctMin = resultado.enganche_requerido_min;
+            if (resultado.plazo_max_meses)        s.plazoMesesMax  = resultado.plazo_max_meses;
+
+            var engMin = s.enganchePctMin || 0.50;
+            var plazoMax = s.plazoMesesMax || 12;
+
+            // Seed values clamped to bounds. If the user previously set
+            // values that violate the bounds (e.g. 25%/36 from initial
+            // exploration), force them to the compliant minimum.
             var engSeed = (typeof s.enganchePorcentaje === 'number')
-                ? s.enganchePorcentaje
-                : (s.enganchePctMin || 0.40);
+                ? s.enganchePorcentaje : engMin;
             var plazoSeed = (typeof s.plazoMeses === 'number')
-                ? s.plazoMeses
-                : (s.plazoMesesMax || 24);
-            if (s.enganchePctMin && engSeed < s.enganchePctMin) engSeed = s.enganchePctMin;
-            if (s.plazoMesesMax  && plazoSeed > s.plazoMesesMax) plazoSeed = s.plazoMesesMax;
+                ? s.plazoMeses : plazoMax;
+            if (engSeed < engMin)   engSeed = engMin;
+            if (plazoSeed > plazoMax) plazoSeed = plazoMax;
             this._enganchePct = engSeed;
             this._plazoMeses  = plazoSeed;
         } else {
+            // INITIAL exploration mode (no credit evaluation yet, or
+            // PREAPROBADO/Cambiar reset). Defensive: clear any stale
+            // CONDICIONAL flags that might persist from a previous
+            // session in sessionStorage.
+            s.modoCondicional = false;
+            s.enganchePctMin  = null;
+            s.plazoMesesMax   = null;
             this._enganchePct = 0.25;
             this._plazoMeses  = 36;
         }

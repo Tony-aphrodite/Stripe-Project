@@ -603,8 +603,20 @@ var PasoCreditoResultado = {
         // so the next attempt starts clean.
         jQuery(document).off('click', '#vk-nv-cambiar');
         jQuery(document).on('click', '#vk-nv-cambiar', function() {
-            self.app.state.creditoAprobado = false;
-            self.app.state._resultadoFinal = null;
+            // Customer brief 2026-04-27: clear ALL CONDICIONAL state so
+            // the next round (after picking new model) starts truly fresh.
+            // Previously only _resultadoFinal was cleared — modoCondicional
+            // and bounds persisted, leaving the next Paso4B in restricted
+            // mode with stale 50%/12 even though no new evaluation ran.
+            self.app.state.creditoAprobado    = false;
+            self.app.state._resultadoFinal    = null;
+            self.app.state.modoCondicional    = false;
+            self.app.state.enganchePctMin     = null;
+            self.app.state.plazoMesesMax      = null;
+            self.app.state.engancheAjustado   = false;
+            self.app.state.plazoAjustado      = false;
+            self.app.state.enganchePorcentajeOriginal = null;
+            self.app.state.plazoMesesOriginal = null;
             self.app.irAPaso(1);
         });
 

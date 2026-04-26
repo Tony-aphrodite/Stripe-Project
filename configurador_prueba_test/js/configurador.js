@@ -434,6 +434,17 @@
             try {
                 // Copy only scalar / plain fields — skip File/Blob/Function
                 // references (not serializable + privacy).
+                //
+                // EXCEPTION (customer brief 2026-04-27): a small whitelist
+                // of plain-data result objects must persist across page
+                // refresh, otherwise the user's CONDICIONAL state is lost
+                // on F5 and Paso4B silently reverts to unrestricted mode.
+                // These objects contain no PII / Files / Blobs — safe.
+                var OBJECT_WHITELIST = {
+                    '_resultadoFinal': true,
+                    '_buroResult':     true,
+                    '_truoraResult':   true
+                };
                 var safe = {};
                 Object.keys(self.state).forEach(function(k) {
                     var v = self.state[k];
@@ -441,6 +452,14 @@
                     var t = typeof v;
                     if (t === 'string' || t === 'number' || t === 'boolean') {
                         safe[k] = v;
+                    } else if (t === 'object' && OBJECT_WHITELIST[k]) {
+                        try {
+                            // Verify the object is JSON-serializable and
+                            // doesn't contain Files/Blobs/cycles before
+                            // storing.
+                            JSON.stringify(v);
+                            safe[k] = v;
+                        } catch (e) { /* skip if non-serializable */ }
                     }
                 });
                 sessionStorage.setItem(self._PERSIST_KEY, JSON.stringify({
