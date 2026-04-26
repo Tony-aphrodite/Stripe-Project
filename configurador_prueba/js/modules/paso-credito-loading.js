@@ -31,10 +31,12 @@ var PasoCreditoLoading = {
             'style="width:160px;max-width:60%;filter:brightness(0) invert(1);">';
         html += '</div>';
 
-        // Text
+        // Text \u2014 outcome-neutral copy so the same loading screen works
+        // for PREAPROBADO, CONDICIONAL, and NO_VIABLE without giving the
+        // user false hope before the verdict.
         html += '<div class="vk-loading-screen__text">';
         html += '<h2>Un momento...</h2>';
-        html += '<p>Estamos confirmando<br>tu aprobaci\u00f3n Voltika</p>';
+        html += '<p>Estamos analizando<br>tu solicitud Voltika</p>';
         html += '</div>';
 
         html += '<div class="vk-loading-screen__hint">Esto toma solo unos segundos</div>';

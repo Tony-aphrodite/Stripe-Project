@@ -91,9 +91,38 @@
                     '</div>'
                 );
 
+                // Pre-compute _resultadoFinal so credito-loading routes
+                // to the right next screen (PREAPROBADO → credito-aprobado,
+                // others → credito-resultado → credito-pago auto-advance).
+                if (typeof PreaprobacionV3 !== 'undefined') {
+                    var _testModelo = self.getModelo(self.state.modeloSeleccionado);
+                    if (_testModelo) {
+                        var _testCredito = VkCalculadora.calcular(
+                            _testModelo.precioContado,
+                            self.state.enganchePorcentaje,
+                            self.state.plazoMeses
+                        );
+                        var _br = self.state._buroResult || {};
+                        self.state._resultadoFinal = PreaprobacionV3.evaluar({
+                            ingreso_mensual_est:  self.state._ingresoMensual,
+                            pago_semanal_voltika: _testCredito.pagoSemanal,
+                            enganche_pct:         self.state.enganchePorcentaje,
+                            score:                _br.score || null,
+                            pago_mensual_buro:    _br.pagoMensual || 0,
+                            dpd90_flag:           _br.dpd90 || false,
+                            dpd_max:              _br.dpdMax || 0,
+                            person_found:         (_br.person_found === undefined) ? null : _br.person_found
+                        });
+                    }
+                }
+
                 VkUI.renderProgressBar(4, 'credito');
                 setTimeout(function() {
-                    self.irAPaso('credito-resultado');
+                    // Customer brief 2026-04-26: test URLs should also
+                    // play the loading animation so testers see the same
+                    // UX as real users. credito-loading auto-advances
+                    // based on resultado.status.
+                    self.irAPaso('credito-loading');
                 }, 500);
                 self.bindGlobalEvents();
                 return;
