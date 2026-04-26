@@ -128,14 +128,17 @@ var PasoCreditoPago = {
 
         html += '<div id="vk-cpago-error" style="display:none;color:#C62828;font-size:13px;background:#FFEBEE;border-radius:6px;padding:10px;margin-bottom:12px;"></div>';
 
+        // Customer brief 2026-04-26 v3: same confirmation CTA for both
+        // PREAPROBADO and CONDICIONAL — adjustment already happened on
+        // the prior screen (Paso4B for CONDICIONAL, none needed for
+        // PREAPROBADO). isCondicional kept for the MONTO AJUSTADO badge
+        // logic above, but the CTA label/destination no longer differ.
         html += '<button id="vk-cpago-continuar" style="display:block;width:100%;padding:16px;background:#1b5e3b;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">';
-        html += isCondicional ? 'AJUSTAR MI PLAN &rsaquo;' : 'CONFIRMAR Y CONTINUAR &rsaquo;';
+        html += 'CONFIRMAR Y CONTINUAR &rsaquo;';
         html += '</button>';
 
         html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:8px;">' +
-                (isCondicional
-                    ? 'A continuación podrás ajustar tu enganche y plazo dentro de los límites aprobados.'
-                    : 'A continuación verificaremos tu identidad (INE + CURP) antes del pago.') +
+                'A continuación verificaremos tu identidad (INE + CURP) antes del pago.' +
                 '</p>';
 
         return html;
@@ -248,15 +251,13 @@ var PasoCreditoPago = {
                 .css('opacity', both ? '1' : '0.5');
         });
 
-        // CONDICIONAL → Paso4B slider locked at 50%/12.
-        // PREAPROBADO → credito-identidad (Truora) → Stripe enganche.
+        // Customer brief 2026-04-26 v3: both PREAPROBADO and CONDICIONAL
+        // route to credito-identidad (Truora) directly. CONDICIONAL no
+        // longer bounces back to Paso4B — the slider was the FIRST step
+        // (before this screen) so the user has already adjusted.
         jQuery(document).off('click', '#vk-cpago-continuar');
         jQuery(document).on('click', '#vk-cpago-continuar', function() {
-            if (self.app.state && self.app.state.modoCondicional) {
-                self.app.irAPaso(4);  // Paso4B — restricted slider
-            } else {
-                self.app.irAPaso('credito-identidad');
-            }
+            self.app.irAPaso('credito-identidad');
         });
     }
 };

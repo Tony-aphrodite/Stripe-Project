@@ -17,12 +17,22 @@ var PasoCreditoResultado = {
         // report 2026-04-26: "this screen appears after I adjusted").
         // Trade-off: browser back from credito-pago bounces forward
         // again — acceptable since credit application is complete.
+        // Customer brief 2026-04-26 v3: re-ordered the CONDICIONAL flow.
+        // The slider (Paso4B) now appears BEFORE credito-pago so the user
+        // explicitly adjusts within the 50%/12 limits FIRST, then sees
+        // the confirmation screen with the chosen amounts. NO_VIABLE
+        // skips the slider and goes straight to credito-pago (REJECTED
+        // variant with alt-payment cards).
         var status = (app.state._resultadoFinal && app.state._resultadoFinal.status) || '';
-        var bypass = (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO' ||
-                      status === 'NO_VIABLE');
-        if (bypass) {
+        var isCondicional = (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO');
+        var isRejected    = (status === 'NO_VIABLE');
+        if (isCondicional || isRejected) {
             this._aplicarEstadoResultado(status, app.state._resultadoFinal);
-            app.irAPaso('credito-pago');
+            if (isCondicional) {
+                app.irAPaso(4);            // Paso4B slider (50%/12 locked)
+            } else {
+                app.irAPaso('credito-pago'); // REJECTED variant
+            }
             return;
         }
 

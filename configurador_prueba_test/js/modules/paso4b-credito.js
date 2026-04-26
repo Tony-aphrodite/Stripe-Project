@@ -443,14 +443,11 @@ var Paso4B = {
         };
 
         // CTA — route depends on flow mode:
-        //   CONDICIONAL (customer brief 2026-04-25): credit evaluation
-        //     already ran once. User just adjusted enganche/plazo within
-        //     the algorithm's authorized bounds. Go to Truora
-        //     (credito-identidad), NOT back through credito-resultado or
-        //     any ingreso/evaluation step — re-posting to
-        //     preaprobacion-v3.php would create duplicate rows in
-        //     preaprobacion_log / solicitudes_credito. After Truora
-        //     completes, the flow continues to credito-enganche (Stripe).
+        //   CONDICIONAL (customer brief 2026-04-26 v3): user has adjusted
+        //     enganche/plazo within the 50%/12 lock. Route to credito-pago
+        //     for the confirmation screen ("Tu Voltika está lista") which
+        //     shows the chosen amount + acceptance checkboxes BEFORE
+        //     advancing to Truora.
         //   NORMAL (first-time config, no evaluation yet): user hasn't
         //     picked a color yet — go to the color selector.
         $(document).on('click', '#vk-confirmar-credito', function() {
@@ -461,7 +458,7 @@ var Paso4B = {
             self.app.state.cuotaSemanal = credito.pagoSemanal;
 
             if (self.app.state.modoCondicional) {
-                self.app.irAPaso('credito-identidad');
+                self.app.irAPaso('credito-pago');
             } else {
                 self.app.irAPaso(2);
             }
