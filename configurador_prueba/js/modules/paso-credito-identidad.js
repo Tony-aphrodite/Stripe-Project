@@ -72,7 +72,7 @@ var PasoCreditoIdentidad = {
         html += '<div class="vk-identidad-security__icon">&#128274;</div>';
         html += '<div>';
         html += '<div class="vk-identidad-security__title">Verificación certificada</div>';
-        html += '<div class="vk-identidad-security__text">Tu identidad es validada por Truora con tecnología certificada. Tus datos viajan cifrados y sólo se comparan contra bases de datos oficiales del gobierno de México.</div>';
+        html += '<div class="vk-identidad-security__text">Tu identidad es validada por Truora con tecnología certificada.</div>';
         html += '</div>';
         html += '</div>';
 
