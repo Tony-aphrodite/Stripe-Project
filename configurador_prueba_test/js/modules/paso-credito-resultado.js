@@ -17,22 +17,12 @@ var PasoCreditoResultado = {
         // report 2026-04-26: "this screen appears after I adjusted").
         // Trade-off: browser back from credito-pago bounces forward
         // again — acceptable since credit application is complete.
-        // Customer brief 2026-04-26 v4 (image-order): CONDICIONAL renders
-        // the recovery screen HERE (with retry CTA + alt-payment cards).
-        // "Ajusta tu plan y reintenta" routes to Paso4B (slider 50%/12).
-        // NO_VIABLE auto-advances to credito-pago REJECTED variant since
-        // it has no retry path (only alt payment).
+        // Customer brief 2026-04-26 v5: BOTH CONDICIONAL and NO_VIABLE
+        // render the same recovery screen. The only visible difference is
+        // the retry CTA — present for CONDICIONAL (routes to Paso4B
+        // slider), hidden for NO_VIABLE (only alt-payment cards).
         var status = (app.state._resultadoFinal && app.state._resultadoFinal.status) || '';
-
-        // Apply state setup for both CONDICIONAL and NO_VIABLE — Paso4B
-        // and credito-pago downstream both read modoCondicional /
-        // enganchePctMin / plazoMesesMax / etc.
         this._aplicarEstadoResultado(status, app.state._resultadoFinal);
-
-        if (status === 'NO_VIABLE') {
-            app.irAPaso('credito-pago');
-            return;
-        }
 
         this.render();
         this.bindEvents();
@@ -428,14 +418,12 @@ var PasoCreditoResultado = {
                 'Cambiar</button>';
         html += '</div></div>';
 
-        // ── Primary CTA: only show "retry" if plan adjustment can actually
-        //    flip the algorithm decision. For score-driven rejections we
-        //    show a contact-advisor button instead, which routes to the
-        //    sales channel that can do a manual review.
+        // Customer brief 2026-04-26 v5: retry CTA appears ONLY for
+        // CONDICIONAL (and PTI-fixable scenarios). For pure REJECTED
+        // (NO_VIABLE without escape), no retry button and no WhatsApp
+        // button — user goes directly to the alt-payment cards below.
+        // The customer is restricted to contado/MSI/SPEI/OXXO only.
         if (retryHelps) {
-            // Hint copy depends on whether the algorithm gave us a concrete
-            // escape target. With Policy C, a target like 50%/60% means
-            // "raise to that exact value and your application is approved".
             var retrySubtitle = hasEscape
                 ? ('Sube tu enganche al ' + escapePct + '% — al hacerlo, tu solicitud queda aprobada.')
                 : 'Sube enganche o baja plazo para mejorar tu PTI.';
@@ -450,21 +438,8 @@ var PasoCreditoResultado = {
                 '</span>'+
                 '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>'+
                 '</button>';
-        } else {
-            html += '<a href="https://wa.me/5215513416370?text=Hola%2C%20me%20interesa%20una%20Voltika%20pero%20mi%20cr%C3%A9dito%20no%20se%20pudo%20evaluar%20autom%C3%A1ticamente.%20Necesito%20ayuda." '+
-                    'target="_blank" rel="noopener" '+
-                    'class="vk-nv-asesor" id="vk-nv-asesor" '+
-                    'style="width:100%;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#25D366 0%,#128C7E 100%);color:#fff;border:0;border-radius:14px;padding:16px 18px;margin-bottom:18px;cursor:pointer;text-align:left;text-decoration:none;box-shadow:0 4px 10px rgba(37,211,102,.25);">'+
-                '<span style="width:38px;height:38px;background:rgba(255,255,255,.18);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">'+
-                    '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>'+
-                '</span>'+
-                '<span style="flex:1;">'+
-                    '<span style="display:block;font-size:15px;font-weight:800;line-height:1.1;">Contactar a un asesor por WhatsApp</span>'+
-                    '<span style="display:block;font-size:12px;font-weight:500;opacity:.9;margin-top:3px;">Revisión manual personalizada — respuesta en minutos.</span>'+
-                '</span>'+
-                '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>'+
-                '</a>';
         }
+        // No "else" branch — REJECTED users see only the alt-payment cards.
 
         // ── Divider ──────────────────────────────────────────────────────
         html += '<div style="display:flex;align-items:center;gap:10px;margin:14px 0 14px;">'+
@@ -663,33 +638,37 @@ var PasoCreditoResultado = {
         });
 
         // 4 direct payment shortcuts. Each sets metodoPago + a preferred
-        // sub-method hint so paso4a-checkout auto-opens the right section.
+        // sub-method hint and routes to 'resumen' (paso 5) — customer
+        // brief 2026-04-26 v5: skip paso 3 (delivery) since the credit
+        // applicant already chose color & delivery point earlier in the
+        // flow. paso 5 shows "Confirma tu forma de pago segura" with the
+        // chosen method preselected.
         jQuery(document).off('click', '#vk-nv-msi');
         jQuery(document).on('click', '#vk-nv-msi', function() {
             self.app.state.metodoPago = 'msi';
             self.app.state._preferredSubMethod = 'tarjeta';
-            self.app.irAPaso(3);
+            self.app.irAPaso('resumen');
         });
 
         jQuery(document).off('click', '#vk-nv-tarjeta');
         jQuery(document).on('click', '#vk-nv-tarjeta', function() {
             self.app.state.metodoPago = 'contado';
             self.app.state._preferredSubMethod = 'tarjeta';
-            self.app.irAPaso(3);
+            self.app.irAPaso('resumen');
         });
 
         jQuery(document).off('click', '#vk-nv-spei');
         jQuery(document).on('click', '#vk-nv-spei', function() {
             self.app.state.metodoPago = 'contado';
             self.app.state._preferredSubMethod = 'spei';
-            self.app.irAPaso(3);
+            self.app.irAPaso('resumen');
         });
 
         jQuery(document).off('click', '#vk-nv-oxxo');
         jQuery(document).on('click', '#vk-nv-oxxo', function() {
             self.app.state.metodoPago = 'contado';
             self.app.state._preferredSubMethod = 'oxxo';
-            self.app.irAPaso(3);
+            self.app.irAPaso('resumen');
         });
 
         // Hover feedback for payment cards
