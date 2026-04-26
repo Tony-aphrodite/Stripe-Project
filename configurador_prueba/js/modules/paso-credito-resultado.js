@@ -17,27 +17,23 @@ var PasoCreditoResultado = {
         // report 2026-04-26: "this screen appears after I adjusted").
         // Trade-off: browser back from credito-pago bounces forward
         // again — acceptable since credit application is complete.
-        // Customer brief 2026-04-26 v3: re-ordered the CONDICIONAL flow.
-        // The slider (Paso4B) now appears BEFORE credito-pago so the user
-        // explicitly adjusts within the 50%/12 limits FIRST, then sees
-        // the confirmation screen with the chosen amounts. NO_VIABLE
-        // skips the slider and goes straight to credito-pago (REJECTED
-        // variant with alt-payment cards).
+        // Customer brief 2026-04-26 v4 (image-order): CONDICIONAL renders
+        // the recovery screen HERE (with retry CTA + alt-payment cards).
+        // "Ajusta tu plan y reintenta" routes to Paso4B (slider 50%/12).
+        // NO_VIABLE auto-advances to credito-pago REJECTED variant since
+        // it has no retry path (only alt payment).
         var status = (app.state._resultadoFinal && app.state._resultadoFinal.status) || '';
-        var isCondicional = (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO');
-        var isRejected    = (status === 'NO_VIABLE');
-        if (isCondicional || isRejected) {
-            this._aplicarEstadoResultado(status, app.state._resultadoFinal);
-            if (isCondicional) {
-                app.irAPaso(4);            // Paso4B slider (50%/12 locked)
-            } else {
-                app.irAPaso('credito-pago'); // REJECTED variant
-            }
+
+        // Apply state setup for both CONDICIONAL and NO_VIABLE — Paso4B
+        // and credito-pago downstream both read modoCondicional /
+        // enganchePctMin / plazoMesesMax / etc.
+        this._aplicarEstadoResultado(status, app.state._resultadoFinal);
+
+        if (status === 'NO_VIABLE') {
+            app.irAPaso('credito-pago');
             return;
         }
 
-        // Fallback render — only reached for unknown/missing status
-        // (defensive, should never happen in normal flow).
         this.render();
         this.bindEvents();
     },
@@ -120,11 +116,14 @@ var PasoCreditoResultado = {
 
         var html = '';
         var status = resultado.status || 'NO_VIABLE';
-        var isNoViable = (status !== 'PREAPROBADO' && status !== 'PREAPROBADO_ESTIMADO' &&
-                          status !== 'CONDICIONAL' && status !== 'CONDICIONAL_ESTIMADO');
+        // Customer brief 2026-04-26 v4: CONDICIONAL and NO_VIABLE share
+        // the same recovery layout (no page title, no identidad/historial
+        // blocks — recovery card is the primary content). PREAPROBADO
+        // keeps the traditional layout with all the result panels.
+        var isRecovery = (status !== 'PREAPROBADO' && status !== 'PREAPROBADO_ESTIMADO');
+        var isNoViable = isRecovery; // Backward-compat alias used in some inline checks
 
-        // If NO_VIABLE (skipped Truora), back goes to consentimiento
-        var backTarget = isNoViable ? 'credito-consentimiento' : 'credito-identidad';
+        var backTarget = isRecovery ? 'credito-consentimiento' : 'credito-identidad';
         html += VkUI.renderBackButton(backTarget);
 
         // Customer brief 2026-04-26 item 1: NO_VIABLE skips the page title
@@ -186,9 +185,12 @@ var PasoCreditoResultado = {
 
         if (status === 'PREAPROBADO' || status === 'PREAPROBADO_ESTIMADO') {
             html += this._renderAprobado(resultado);
-        } else if (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO') {
-            html += this._renderCondicional(resultado);
         } else {
+            // CONDICIONAL + CONDICIONAL_ESTIMADO + NO_VIABLE all use the
+            // recovery layout (image #1 in customer brief 2026-04-26 v4):
+            // moto card + "Ajusta tu plan y reintenta" CTA + alt-payment
+            // cards. _renderNoViable handles the differences via
+            // state.modoCondicional and the resultado.reasons[] array.
             html += this._renderNoViable(resultado);
         }
 
@@ -343,7 +345,19 @@ var PasoCreditoResultado = {
                          resultado.enganche_min_para_continuar !== null);
         var escapePct = hasEscape ? Math.round(resultado.enganche_min_para_continuar * 100) : null;
 
-        if (reasons.indexOf('KO_SEVERE_DPD_90PLUS') !== -1) {
+        // Customer brief 2026-04-26 v4: this same recovery layout is used
+        // for CONDICIONAL too. CONDICIONAL gets a tailored subtitle
+        // explaining the 50%/12 requirement, retry CTA enabled (routes to
+        // Paso4B locked slider).
+        var status = resultado.status || '';
+        var isCondicional = (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO');
+        if (isCondicional) {
+            var engPct = (this.app.state.enganchePctMin || 0.50) * 100;
+            var plzMax = this.app.state.plazoMesesMax || 12;
+            subtitle = 'Tu solicitud requiere ajustes para aprobar el crédito. Sube tu enganche al ' +
+                       Math.round(engPct) + '% y reduce el plazo a ' + plzMax + ' meses.';
+            retryHelps = true;
+        } else if (reasons.indexOf('KO_SEVERE_DPD_90PLUS') !== -1) {
             subtitle = 'Tu historial muestra pagos atrasados graves y hoy no podemos aprobar crédito.';
             retryHelps = false;
         } else if (reasons.indexOf('KO_PTI_EXTREME') !== -1 || reasons.indexOf('PTI_EXTREMO_SIN_CIRCULO') !== -1) {
@@ -619,6 +633,23 @@ var PasoCreditoResultado = {
         jQuery(document).off('click', '#vk-nv-retry');
         jQuery(document).on('click', '#vk-nv-retry', function() {
             var prior = self.app.state._resultadoFinal || {};
+            var status = prior.status || '';
+            var isCondicional = (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO');
+
+            // Customer brief 2026-04-26 v4: CONDICIONAL retry must
+            // PRESERVE state (modoCondicional, enganchePctMin,
+            // plazoMesesMax) so Paso4B opens with the locked 50%/12
+            // slider. Nullifying _resultadoFinal here would put Paso4B
+            // in unrestricted initial-exploration mode — wrong.
+            if (isCondicional) {
+                self.app.state.metodoPago = 'credito';
+                self.app.irAPaso(4);
+                return;
+            }
+
+            // NO_VIABLE retry path (legacy Policy C escape — kept for
+            // backward compat with any cached evaluations that still set
+            // enganche_min_para_continuar).
             if (typeof prior.enganche_min_para_continuar === 'number') {
                 self.app.state.enganchePorcentaje = prior.enganche_min_para_continuar;
             }
