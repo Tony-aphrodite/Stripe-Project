@@ -72,7 +72,7 @@ var PasoCreditoIdentidad = {
         html += '<div class="vk-identidad-security__icon">&#128274;</div>';
         html += '<div>';
         html += '<div class="vk-identidad-security__title">Verificación certificada</div>';
-        html += '<div class="vk-identidad-security__text">Tu identidad es validada por Truora con tecnología certificada.</div>';
+        html += '<div class="vk-identidad-security__text">Tu identidad es validada por Truora con tecnología certificada y segura.</div>';
         html += '</div>';
         html += '</div>';
 
@@ -181,6 +181,25 @@ var PasoCreditoIdentidad = {
                 '</iframe>';
             jQuery('#vk-truora-container').html(iframeHtml);
             self._iframeReady = true;
+
+            // Customer brief 2026-04-27: blank-iframe detection. Truora
+            // blocks embeds from unwhitelisted domains via X-Frame-Options
+            // / CSP frame-ancestors — the iframe element loads but stays
+            // blank, leaving the user staring at a white box. Set a 15s
+            // timeout: if no Truora postMessage event arrives by then,
+            // assume the embed is blocked and surface a clear next-step
+            // message with contact info.
+            if (self._blankTimeout) clearTimeout(self._blankTimeout);
+            self._blankTimeout = setTimeout(function() {
+                if (self._finished) return;
+                if (self._currentProcessId) return; // iframe is talking to us — fine
+                self._showError(
+                    'La verificación de identidad no se cargó correctamente.',
+                    'Esto suele ocurrir cuando el dominio aún no está autorizado por Truora. ' +
+                    'Si el problema persiste, escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370 ' +
+                    'para completar tu solicitud manualmente.'
+                );
+            }, 15000);
         }).fail(function(xhr) {
             var body = (xhr && xhr.responseJSON) || null;
             self._showError(
@@ -214,6 +233,13 @@ var PasoCreditoIdentidad = {
             }
 
             if (!eventName || eventName.indexOf('truora') !== 0) return;
+
+            // Truora is talking — cancel the blank-iframe timeout so the
+            // user doesn't see a false "no se cargó" error mid-flow.
+            if (self._blankTimeout) {
+                clearTimeout(self._blankTimeout);
+                self._blankTimeout = null;
+            }
 
             if (processId) self._currentProcessId = processId;
             self._handleTruoraEvent(eventName, data);
