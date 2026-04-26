@@ -7,33 +7,27 @@ var PasoCreditoResultado = {
 
     init: function(app) {
         this.app = app;
-
-        // Auto-advance flag — only bypass on the FIRST visit. If user
-        // navigated back from credito-pago and reached resultado again,
-        // render the legacy in-place screens (yellow CONDICIONAL or
-        // _renderNoViable WhatsApp + alt cards) so they have a way out
-        // instead of being bounced into an infinite back-button loop.
-        var alreadyAdvanced = !!app.state._resultadoYaAvanzado;
-
         this._evaluarResultado();
 
-        // Customer brief 2026-04-26 v2: CONDICIONAL and NO_VIABLE both
-        // render on the unified "Tu Voltika está lista" screen
-        // (credito-pago). Auto-advance on first visit. PREAPROBADO keeps
-        // its own path (consentimiento → credito-loading), so this
-        // resultado screen only renders for direct test-mode entry or
-        // back-navigation.
+        // Customer brief 2026-04-26 v3: ALWAYS auto-advance for
+        // CONDICIONAL/NO_VIABLE — including revisits via back-navigation.
+        // The legacy yellow CONDICIONAL screen is now superseded entirely
+        // by the unified "Tu Voltika está lista" credito-pago screen.
+        // Showing the old screen on revisit confused users (customer
+        // report 2026-04-26: "this screen appears after I adjusted").
+        // Trade-off: browser back from credito-pago bounces forward
+        // again — acceptable since credit application is complete.
         var status = (app.state._resultadoFinal && app.state._resultadoFinal.status) || '';
-        var bypass = !alreadyAdvanced &&
-                     (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO' ||
+        var bypass = (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO' ||
                       status === 'NO_VIABLE');
         if (bypass) {
-            app.state._resultadoYaAvanzado = true;
             this._aplicarEstadoResultado(status, app.state._resultadoFinal);
             app.irAPaso('credito-pago');
             return;
         }
 
+        // Fallback render — only reached for unknown/missing status
+        // (defensive, should never happen in normal flow).
         this.render();
         this.bindEvents();
     },
