@@ -66,10 +66,26 @@ var PasoCreditoResultado = {
     },
 
     /**
-     * Re-run V3 pre-approval with real Círculo de Crédito data
+     * Set _resultadoFinal — but only as a FALLBACK when the server
+     * response is missing.
+     *
+     * Customer brief 2026-04-27: previously this function always re-ran
+     * the client V3 algorithm, OVERWRITING the server's authoritative
+     * response. That caused CONDICIONAL → NO_VIABLE flips when state
+     * changed between server response and screen render (e.g. score
+     * lost from sessionStorage, enganche_pct still at user's 25%
+     * default), which left modoCondicional=false and the Paso4B slider
+     * unrestricted (25%~80%/36mo) — the bug the customer reported.
+     *
+     * Fix: trust the server. Only re-evaluate when no server result
+     * exists (direct test-mode entry without pre-computation, etc.).
      */
     _evaluarResultado: function() {
         var state  = this.app.state;
+        if (state._resultadoFinal && state._resultadoFinal.status) {
+            return; // server result already set — trust it
+        }
+
         var modelo = this.app.getModelo(state.modeloSeleccionado);
         if (!modelo) return;
 
@@ -80,12 +96,6 @@ var PasoCreditoResultado = {
             state.plazoMeses || 12
         );
 
-        // Re-evaluate with real bureau data. IMPORTANT: forward the
-        // tri-state person_found signal so this re-run cannot flip a
-        // server-side rejection (404.1 "identidad no encontrada") into an
-        // approval. Without this, a fake identity could be rejected by
-        // preaprobacion-v3.php and then silently re-approved here because
-        // `score=null` alone would send it into _evaluarSinCirculo().
         state._resultadoFinal = PreaprobacionV3.evaluar({
             ingreso_mensual_est:   state._ingresoMensual || 10000,
             pago_semanal_voltika:  credito.pagoSemanal,
@@ -624,13 +634,19 @@ var PasoCreditoResultado = {
 
             // NO_VIABLE retry path (legacy Policy C escape — kept for
             // backward compat with any cached evaluations that still set
-            // enganche_min_para_continuar).
+            // enganche_min_para_continuar). Set modoCondicional + bounds
+            // so Paso4B opens with the slider locked at the escape value
+            // (otherwise it'd render as unrestricted 25%~80% and let the
+            // user drop below the minimum needed to pass).
             if (typeof prior.enganche_min_para_continuar === 'number') {
                 self.app.state.enganchePorcentaje = prior.enganche_min_para_continuar;
+                self.app.state.enganchePctMin    = prior.enganche_min_para_continuar;
             }
             if (typeof prior.plazo_max_para_continuar === 'number') {
-                self.app.state.plazoMeses = prior.plazo_max_para_continuar;
+                self.app.state.plazoMeses     = prior.plazo_max_para_continuar;
+                self.app.state.plazoMesesMax  = prior.plazo_max_para_continuar;
             }
+            self.app.state.modoCondicional = true;
             self.app.state._resultadoFinal = null;
             self.app.state.creditoAprobado = false;
             self.app.state.metodoPago = 'credito';
