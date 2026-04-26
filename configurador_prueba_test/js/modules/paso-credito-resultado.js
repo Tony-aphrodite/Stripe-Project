@@ -7,9 +7,72 @@ var PasoCreditoResultado = {
 
     init: function(app) {
         this.app = app;
+
+        // Auto-advance flag — only bypass on the FIRST visit. If user
+        // navigated back from credito-pago and reached resultado again,
+        // render the legacy in-place screens (yellow CONDICIONAL or
+        // _renderNoViable WhatsApp + alt cards) so they have a way out
+        // instead of being bounced into an infinite back-button loop.
+        var alreadyAdvanced = !!app.state._resultadoYaAvanzado;
+
         this._evaluarResultado();
+
+        // Customer brief 2026-04-26 v2: CONDICIONAL and NO_VIABLE both
+        // render on the unified "Tu Voltika está lista" screen
+        // (credito-pago). Auto-advance on first visit. PREAPROBADO keeps
+        // its own path (consentimiento → credito-loading), so this
+        // resultado screen only renders for direct test-mode entry or
+        // back-navigation.
+        var status = (app.state._resultadoFinal && app.state._resultadoFinal.status) || '';
+        var bypass = !alreadyAdvanced &&
+                     (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO' ||
+                      status === 'NO_VIABLE');
+        if (bypass) {
+            app.state._resultadoYaAvanzado = true;
+            this._aplicarEstadoResultado(status, app.state._resultadoFinal);
+            app.irAPaso('credito-pago');
+            return;
+        }
+
         this.render();
         this.bindEvents();
+    },
+
+    /**
+     * Apply algorithm output to app state — extracted from the Continuar
+     * click handler so it can run without user interaction during the
+     * CONDICIONAL/NO_VIABLE auto-advance.
+     */
+    _aplicarEstadoResultado: function(status, resultado) {
+        var s = this.app.state;
+        s.creditoAprobado = (status !== 'NO_VIABLE');
+        if (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO') {
+            s.modoCondicional = true;
+            s.engancheAjustado = false;
+            s.plazoAjustado    = false;
+            if (resultado && resultado.enganche_requerido_min) {
+                var minEnganche = resultado.enganche_requerido_min;
+                var prevPct = s.enganchePorcentaje || 0.30;
+                s.enganchePorcentajeOriginal = prevPct;
+                s.enganchePctMin = minEnganche;
+                if (prevPct < minEnganche) {
+                    s.enganchePorcentaje = minEnganche;
+                    s.engancheAjustado = true;
+                }
+            }
+            if (resultado && resultado.plazo_max_meses) {
+                var maxPlazo = resultado.plazo_max_meses;
+                var prevPlazo = s.plazoMeses || 36;
+                s.plazoMesesOriginal = prevPlazo;
+                s.plazoMesesMax = maxPlazo;
+                if (prevPlazo > maxPlazo) {
+                    s.plazoMeses = maxPlazo;
+                    s.plazoAjustado = true;
+                }
+            }
+        } else {
+            s.modoCondicional = false;
+        }
     },
 
     /**

@@ -176,34 +176,17 @@ if ($person_found === false) {
     // Con datos completos de Círculo
     // 1. KO reales
     if ($score < $V3['KO']['scoreMin']) {
-        // POLICY C extended (customer brief 2026-04-26): low-score applicants
-        // can still pass with a very high enganche (60%) and shortest plazo.
-        // CDC has confirmed they exist (so it's not fake identity), and the
-        // financial exposure is minimal at 60% upfront. Truora identity check
-        // remains mandatory downstream.
-        $lowScoreEngThreshold = 0.60;
-        $lowScorePlazoMax     = 12;
-        if ($enganche_pct >= $lowScoreEngThreshold) {
-            $result = [
-                'status'                 => 'CONDICIONAL',
-                'pti_total'              => round($pti_total, 4),
-                'enganche_min'           => $lowScoreEngThreshold,
-                'enganche_requerido_min' => $lowScoreEngThreshold,
-                'plazo_max_meses'        => $lowScorePlazoMax,
-                'reasons'                => ['SCORE_BAJO_APROBADO_POR_ENGANCHE_ALTO'],
-                'mensaje'                => 'Tu score es bajo, pero tu enganche elevado permite avanzar con condiciones especiales.',
-            ];
-        } else {
-            $result = [
-                'status'                      => 'NO_VIABLE',
-                'pti_total'                   => round($pti_total, 4),
-                'enganche_min'                => $eng_min,
-                'reasons'                     => ['KO_SCORE_LT_MIN'],
-                'enganche_min_para_continuar' => $lowScoreEngThreshold,
-                'plazo_max_para_continuar'    => $lowScorePlazoMax,
-                'mensaje'                     => 'Tu score crediticio actual es bajo. Para continuar puedes subir tu enganche al ' . round($lowScoreEngThreshold * 100) . '% o contactar a un asesor.',
-            ];
-        }
+        // Customer brief 2026-04-26 v2: REJECTED is REJECTED. Removed the
+        // 60%-enganche escape from earlier Policy C — low score now goes
+        // straight to NO_VIABLE and the user is routed to alternative
+        // payment options (contado / MSI) on the credito-pago screen.
+        $result = [
+            'status'    => 'NO_VIABLE',
+            'pti_total' => round($pti_total, 4),
+            'enganche_min' => $eng_min,
+            'reasons'   => ['KO_SCORE_LT_MIN'],
+            'mensaje'   => 'Tu score crediticio actual no permite aprobación. Puedes pagar al contado o con 9 MSI sin intereses.',
+        ];
     }
     elseif ($V3['KO']['severeDPD'] && $mora_severa) {
         $result = ['status' => 'NO_VIABLE', 'pti_total' => round($pti_total, 4), 'enganche_min' => $eng_min, 'reasons' => ['KO_SEVERE_DPD_90PLUS']];
@@ -222,12 +205,17 @@ if ($person_found === false) {
                    'enganche_min' => $eng_min, 'enganche_requerido_min' => $eng_min,
                    'plazo_max_meses' => calcularPlazoMax($score, $pti_total, $V3)];
     }
-    // 4. CONDICIONAL
+    // 4. CONDICIONAL — customer brief 2026-04-26 v2: simplified to a
+    // single hard threshold (50% enganche, 12-month plazo). Replaces the
+    // PTI-tiered downPaymentRequiredByPTI table which produced confusing
+    // variable values (25/30/35/45%) and inconsistent plazo caps. The
+    // single 50%/12 rule keeps Voltika's risk uniformly low across all
+    // CONDICIONAL applicants and matches the messaging on the unified
+    // credito-pago screen.
     else {
-        $eng_req = min(max(calcularEngancheMin($pti_total, $V3), $eng_min), 0.60);
         $result  = ['status' => 'CONDICIONAL', 'pti_total' => round($pti_total, 4),
-                    'enganche_min' => $eng_min, 'enganche_requerido_min' => $eng_req,
-                    'plazo_max_meses' => calcularPlazoMax($score, $pti_total, $V3)];
+                    'enganche_min' => $eng_min, 'enganche_requerido_min' => 0.50,
+                    'plazo_max_meses' => 12];
     }
 }
 

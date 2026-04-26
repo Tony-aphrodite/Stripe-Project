@@ -91,27 +91,15 @@ var PreaprobacionV3 = {
 
         var s = Number(score);
 
-        // 1) KO reales → NO_VIABLE (with high-enganche fallback for low score)
+        // 1) KO reales → NO_VIABLE
+        // Customer brief 2026-04-26 v2: removed the 60%-enganche escape.
+        // Low score = REJECTED, route to alternative payment options.
         if (s < cfg.KO.scoreMin) {
-            // Policy C: low score + high enganche (≥60%) → CONDICIONAL
-            var lowScoreEngThreshold = 0.60;
-            if (engPct >= lowScoreEngThreshold) {
-                return {
-                    status: 'CONDICIONAL',
-                    pti: pti,
-                    enganche_min:           lowScoreEngThreshold,
-                    enganche_requerido_min: lowScoreEngThreshold,
-                    plazo_max_meses:        12,
-                    reasons:                ['SCORE_BAJO_APROBADO_POR_ENGANCHE_ALTO']
-                };
-            }
             return {
                 status: 'NO_VIABLE',
                 pti: pti,
-                enganche_min:                cfg.downPaymentMin,
-                reasons:                     ['KO_SCORE_LT_MIN'],
-                enganche_min_para_continuar: lowScoreEngThreshold,
-                plazo_max_para_continuar:    12
+                enganche_min: cfg.downPaymentMin,
+                reasons:      ['KO_SCORE_LT_MIN']
             };
         }
         if (cfg.KO.severeDPD && mora) {
@@ -137,14 +125,15 @@ var PreaprobacionV3 = {
             };
         }
 
-        // 4) CONDICIONAL — palancas: enganche mayor y/o plazo más corto
-        var engReq = Math.min(Math.max(this._engancheMin(pti), cfg.downPaymentMin), 0.60);
+        // 4) CONDICIONAL — single hard threshold (customer brief 2026-04-26 v2):
+        //    50% enganche, 12-month max plazo for ALL conditional applicants.
+        //    Replaces the PTI-tiered table for consistency and simpler messaging.
         return {
             status: 'CONDICIONAL',
             pti: pti,
-            enganche_min:          cfg.downPaymentMin,
-            enganche_requerido_min: engReq,
-            plazo_max_meses:       this._plazoMax(s, pti)
+            enganche_min:           cfg.downPaymentMin,
+            enganche_requerido_min: 0.50,
+            plazo_max_meses:        12
         };
     },
 
