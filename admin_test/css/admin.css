@@ -244,6 +244,37 @@ html,body{
   box-shadow:var(--ad-shadow);
 }
 
+/* Ventas-specific table — 11 columns fit inside the viewport without
+   horizontal scroll (customer brief 2026-04-28). Tighter padding, smaller
+   font, word wrapping on long content. Action column has min-width to
+   keep buttons readable. */
+.ad-table--ventas th,
+.ad-table--ventas td{
+  padding:10px 10px;
+  font-size:12.5px;
+  word-break:break-word;
+  overflow-wrap:break-word;
+  vertical-align:top;
+}
+.ad-table--ventas th{
+  font-size:10.5px;
+  padding:12px 10px;
+}
+.ad-table--ventas td:last-child{
+  min-width:140px;
+}
+/* Override the global .ad-badge nowrap inside the ventas table so long
+   labels (e.g. "Pendiente asignar", "Engache · Crédito", any Stripe
+   payment-method description that slipped through) wrap onto two lines
+   instead of overflowing into the next column. */
+.ad-table--ventas .ad-badge{
+  white-space:normal;
+  text-align:center;
+  line-height:1.25;
+  padding:4px 10px;
+  max-width:100%;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    BADGES / PILLS
    ══════════════════════════════════════════════════════════════════════════ */

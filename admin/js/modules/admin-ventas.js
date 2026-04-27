@@ -323,7 +323,29 @@ window.AD_ventas = (function(){
       return;
     }
 
-    var html = '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
+    // Customer brief 2026-04-28: avoid horizontal scroll on the ventas
+    // table (action buttons were cut off the right side). Fixed table
+    // layout + colgroup distributes the 11 columns within 100% width and
+    // CSS wraps long text instead of growing the table. The
+    // overflow-x:auto wrapper is kept as a safety net for very small
+    // screens but the column widths are tuned so it shouldn't trigger
+    // on a normal desktop viewport.
+    var html = '<div class="ad-table-wrap"><div style="overflow-x:auto;">'+
+      '<table class="ad-table ad-table--ventas" style="table-layout:fixed;width:100%;">'+
+      '<colgroup>'+
+        '<col style="width:9%">'+   // Pedido
+        '<col style="width:14%">'+  // Cliente
+        '<col style="width:7%">'+   // Modelo
+        '<col style="width:7%">'+   // Color
+        '<col style="width:7%">'+   // Tipo
+        '<col style="width:8%">'+   // Monto
+        '<col style="width:11%">'+  // Estatus de Pago
+        '<col style="width:9%">'+   // Punto
+        '<col style="width:7%">'+   // Fecha
+        '<col style="width:9%">'+   // Moto asignada
+        '<col style="width:12%">'+  // Accion
+      '</colgroup>'+
+      '<thead><tr>'+
       '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Color</th>'+
       '<th>Tipo</th><th>Monto</th><th>Estatus de Pago</th><th>Punto</th><th>Fecha</th><th>Moto asignada</th><th>Accion</th>'+
       '</tr></thead><tbody>';
@@ -345,8 +367,13 @@ window.AD_ventas = (function(){
       var tipoBadge = 'blue';
       if(r.tipo === 'credito-orfano') tipoBadge = 'yellow';
       if(r.tipo === 'error-captura') tipoBadge = 'red';
-      // Display label: normalize legacy 'unico' → 'contado' for operators.
-      var tipoDisplay = (r.tipo === 'unico') ? 'contado' : (r.tipo || '-');
+      // Display label: normalize legacy 'unico' → 'contado'. Stripe sends
+      // its raw payment-method description ("Tarjeta de débito o crédito")
+      // which is too long for the TIPO column — shorten it (customer
+      // brief 2026-04-28: long badge overflowed into the MONTO column).
+      var tipoDisplay = r.tipo || '-';
+      if (tipoDisplay === 'unico') tipoDisplay = 'contado';
+      else if (/tarjeta de [dc]/i.test(tipoDisplay)) tipoDisplay = 'tarjeta';
       var alertaHtml = r.alerta
         ? '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">'+esc(r.alerta)+'</div>'
         : '';
