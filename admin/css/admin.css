@@ -263,6 +263,17 @@ html,body{
 .ad-table--ventas td:last-child{
   min-width:140px;
 }
+/* Override the global .ad-badge nowrap inside the ventas table so long
+   labels (e.g. "Pendiente asignar", "Engache · Crédito", any Stripe
+   payment-method description that slipped through) wrap onto two lines
+   instead of overflowing into the next column. */
+.ad-table--ventas .ad-badge{
+  white-space:normal;
+  text-align:center;
+  line-height:1.25;
+  padding:4px 10px;
+  max-width:100%;
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    BADGES / PILLS

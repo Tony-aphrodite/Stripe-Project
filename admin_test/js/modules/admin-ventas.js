@@ -367,8 +367,13 @@ window.AD_ventas = (function(){
       var tipoBadge = 'blue';
       if(r.tipo === 'credito-orfano') tipoBadge = 'yellow';
       if(r.tipo === 'error-captura') tipoBadge = 'red';
-      // Display label: normalize legacy 'unico' → 'contado' for operators.
-      var tipoDisplay = (r.tipo === 'unico') ? 'contado' : (r.tipo || '-');
+      // Display label: normalize legacy 'unico' → 'contado'. Stripe sends
+      // its raw payment-method description ("Tarjeta de débito o crédito")
+      // which is too long for the TIPO column — shorten it (customer
+      // brief 2026-04-28: long badge overflowed into the MONTO column).
+      var tipoDisplay = r.tipo || '-';
+      if (tipoDisplay === 'unico') tipoDisplay = 'contado';
+      else if (/tarjeta de [dc]/i.test(tipoDisplay)) tipoDisplay = 'tarjeta';
       var alertaHtml = r.alerta
         ? '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">'+esc(r.alerta)+'</div>'
         : '';
