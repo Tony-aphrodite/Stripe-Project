@@ -766,7 +766,7 @@ var Paso3 = {
         h += '<div class="vk-radio-circle" data-radio-id="centro-cercano" style="width:20px;height:20px;border-radius:50%;background:transparent;border:2px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;">';
         h += '</div>';
         h += '<div style="min-width:0;">';
-        h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);">Centro Voltika cercano' + titleCiudad + '</div>';
+        h += '<div style="font-weight:800;font-size:17px;color:var(--vk-text-primary);">Buscar un Centro más cercano' + titleCiudad + '</div>';
         h += '<div style="font-size:12px;color:#1a3a5c;font-weight:600;">Red nacional de centros autorizados Voltika</div>';
         h += '</div>';
         h += '</div>';

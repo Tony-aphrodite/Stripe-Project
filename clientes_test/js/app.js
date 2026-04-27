@@ -106,7 +106,7 @@ window.VKApp = (function(){
       var q = new URLSearchParams(window.location.search);
       var pago = q.get('pago');
       var ct   = q.get('cambio_tarjeta');
-      pendingAction   = q.get('action'); // 'pay' from payment reminders
+      pendingAction   = q.get('action');
       if (pago === 'ok')        setTimeout(function(){ toast('Pago recibido. Gracias.'); }, 400);
       else if (pago === 'cancelado') setTimeout(function(){ toast('Pago cancelado.'); }, 400);
       else if (ct === 'ok')          setTimeout(function(){ toast('Tarjeta actualizada.'); }, 400);

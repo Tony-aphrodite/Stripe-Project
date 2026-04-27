@@ -213,7 +213,8 @@ if (CDC_PASS)      $headers[] = 'password: ' . CDC_PASS;
 if ($signatureHex) $headers[] = 'x-signature: ' . $signatureHex;
 
 // Capture response headers so we can verify CDC's x-signature against the
-// response body.
+// response body (required per apihub docs — responses are signed with CDC's
+// private key; we verify with the public cert downloaded from the portal).
 $responseHeaders = [];
 $curlOpts = [
     CURLOPT_URL            => CDC_BASE_URL,
@@ -237,7 +238,9 @@ $curlOpts = [
 ];
 
 // Mutual TLS — many CDC v2 products require the client certificate at the
-// TLS layer in addition to the x-signature header.
+// TLS layer in addition to the x-signature header. Attaching both is
+// harmless (Apigee ignores mTLS when not enforced). Without this, some
+// CDC products return 503 with an empty body.
 $tmpCert = null; $tmpKey = null;
 if ($certPem && $keyPem) {
     $tmpCert = tempnam(sys_get_temp_dir(), 'cdc_cert_');
@@ -248,17 +251,28 @@ if ($certPem && $keyPem) {
     $curlOpts[CURLOPT_SSLKEY]  = $tmpKey;
 }
 
-// Auto-retry on transient CDC failures (HTTP 0/502/503/504 or curl error).
-// Customer report 2026-04-23: a 758-score applicant was rejected once because
-// of a one-off HTTP 0 timeout; retry the same request seconds later and it
-// succeeds. Without this loop, transient blips become lost sales.
+// ── Auto-retry on transient CDC failures ───────────────────────────────────
+// Customer report 2026-04-23: a customer with CDC score 758 (excellent) was
+// rejected because one CDC call returned HTTP 0 (network timeout). Retrying
+// the exact same request seconds later succeeded. Auto-retry closes this
+// gap so good applicants don't get rejected by a one-off network blip.
+//
+// We retry only on:
+//   - curl-level error (timeout, connection reset, DNS)
+//   - HTTP 0 (no response)
+//   - HTTP 502/503/504 (upstream/gateway issues — Apigee often returns 503
+//     momentarily when the CDC backend is warming up)
+// We do NOT retry on:
+//   - 2xx (already good)
+//   - 4xx (body/auth problem — retry won't help, just burn quota)
 $retryableHttp    = [0, 502, 503, 504];
 $cdcAttemptsLog   = [];
-$maxAttempts      = 2;
+$maxAttempts      = 2;          // initial + 1 retry
 $retryDelaySec    = 2;
 
 $response = ''; $httpCode = 0; $curlErr = '';
 for ($try = 1; $try <= $maxAttempts; $try++) {
+    // Reset response headers for each attempt (only the final one is kept).
     $responseHeaders = [];
     $ch = curl_init();
     curl_setopt_array($ch, $curlOpts);
@@ -275,9 +289,9 @@ for ($try = 1; $try <= $maxAttempts; $try++) {
     ];
 
     $transient = ($curlErr !== '') || in_array((int)$httpCode, $retryableHttp, true);
-    if (!$transient) break;
-    if ($try >= $maxAttempts) break;
-    sleep($retryDelaySec);
+    if (!$transient) break;                         // success or permanent 4xx → stop
+    if ($try >= $maxAttempts) break;                // out of retries
+    sleep($retryDelaySec);                          // short backoff before retry
 }
 
 if ($tmpCert) @unlink($tmpCert);
@@ -331,7 +345,7 @@ $logEntry = [
     'curlErr'      => $curlErr,
     'response'     => substr((string)$response, 0, 2000),
     'resp_sig_ok'  => $responseSigStatus,
-    'attempts'     => $cdcAttemptsLog,
+    'attempts'     => $cdcAttemptsLog,   // trace of retries for diagnostics
     'retried'      => count($cdcAttemptsLog) > 1,
 ];
 try {

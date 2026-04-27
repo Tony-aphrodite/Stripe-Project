@@ -52,6 +52,11 @@ var PreaprobacionV3 = {
         var buro   = inputs.pago_mensual_buro || 0;
         var dpd90  = inputs.dpd90_flag;
         var dpdMax = inputs.dpd_max;
+        // enganche_pct enables Policy C: high-enganche fallback for
+        // null-score and low-score applicants. Defaults to 0.25 if not
+        // provided so legacy callers still get sensible behavior (no
+        // accidental approval).
+        var engPct = (typeof inputs.enganche_pct === 'number') ? inputs.enganche_pct : 0.25;
         // Tri-state identity flag from consultar-buro.php:
         //   true  → CDC confirmed the persona exists (approval flow continues)
         //   false → CDC returned 404.1 "no existe"  → hard REJECT
@@ -79,16 +84,23 @@ var PreaprobacionV3 = {
             };
         }
 
-        // Sin datos de Círculo → evaluación estimada solo por PTI
+        // Sin datos de Círculo → Policy C: high-enganche fallback
         if (score === null || score === undefined) {
-            return this._evaluarSinCirculo(pti);
+            return this._evaluarSinCirculo(pti, engPct, personFound);
         }
 
         var s = Number(score);
 
         // 1) KO reales → NO_VIABLE
+        // Customer brief 2026-04-26 v2: removed the 60%-enganche escape.
+        // Low score = REJECTED, route to alternative payment options.
         if (s < cfg.KO.scoreMin) {
-            return { status: 'NO_VIABLE', pti: pti, enganche_min: cfg.downPaymentMin, reasons: ['KO_SCORE_LT_MIN'] };
+            return {
+                status: 'NO_VIABLE',
+                pti: pti,
+                enganche_min: cfg.downPaymentMin,
+                reasons:      ['KO_SCORE_LT_MIN']
+            };
         }
         if (cfg.KO.severeDPD && mora) {
             return { status: 'NO_VIABLE', pti: pti, enganche_min: cfg.downPaymentMin, reasons: ['KO_SEVERE_DPD_90PLUS'] };
@@ -113,29 +125,47 @@ var PreaprobacionV3 = {
             };
         }
 
-        // 4) CONDICIONAL — palancas: enganche mayor y/o plazo más corto
-        var engReq = Math.min(Math.max(this._engancheMin(pti), cfg.downPaymentMin), 0.60);
+        // 4) CONDICIONAL — single hard threshold (customer brief 2026-04-26 v2):
+        //    50% enganche, 12-month max plazo for ALL conditional applicants.
+        //    Replaces the PTI-tiered table for consistency and simpler messaging.
         return {
             status: 'CONDICIONAL',
             pti: pti,
-            enganche_min:          cfg.downPaymentMin,
-            enganche_requerido_min: engReq,
-            plazo_max_meses:       this._plazoMax(s, pti)
+            enganche_min:           cfg.downPaymentMin,
+            enganche_requerido_min: 0.50,
+            plazo_max_meses:        12
         };
     },
 
-    // Sin Círculo: option B (customer decision 2026-04-23). Without a REAL
-    // credit-bureau score we cannot verify any claim the applicant made, so
-    // we reject outright instead of self-scoring. This mirrors the server
-    // behavior in preaprobacion-v3.php and prevents fake identities from
-    // reaching the conditional-approval screen when CDC returns thin-file
-    // or is unreachable.
-    _evaluarSinCirculo: function(pti) {
+    // Sin Círculo: Policy C (customer brief 2026-04-26). High enganche
+    // (≥50%) lets the applicant pass with a CONDICIONAL_ESTIMADO status —
+    // Voltika's risk is covered by the upfront amount + asset repossession
+    // rights + mandatory Truora identity verification downstream. Below
+    // the threshold, NO_VIABLE but with a clear path forward (raise to
+    // 50%) instead of a dead end.
+    _evaluarSinCirculo: function(pti, engPct, personFound) {
+        var threshold = 0.50;
+        var plazoMax  = 12;
+        if (typeof engPct === 'number' && engPct >= threshold) {
+            return {
+                status:                 'CONDICIONAL_ESTIMADO',
+                pti:                    pti,
+                enganche_min:           threshold,
+                enganche_requerido_min: threshold,
+                plazo_max_meses:        plazoMax,
+                reasons:                ['SIN_SCORE_APROBADO_POR_ENGANCHE_ALTO'],
+                mensaje:                'Aprobación condicional por enganche elevado. Verificación de identidad obligatoria.',
+                person_found:           personFound
+            };
+        }
         return {
-            status:  'NO_VIABLE',
-            pti:     pti,
-            reasons: ['SIN_SCORE_CDC_NO_AUTO_APROBACION'],
-            mensaje: 'No podemos otorgar crédito en este momento. No se obtuvo un reporte completo del Buró de Crédito para confirmar tu historial.'
+            status:                       'NO_VIABLE',
+            pti:                          pti,
+            reasons:                      ['SIN_SCORE_RECOMIENDA_AUMENTAR_ENGANCHE'],
+            mensaje:                      'No obtuvimos tu historial crediticio. Sube tu enganche al ' + Math.round(threshold * 100) + '% para continuar tu solicitud.',
+            enganche_min_para_continuar:  threshold,
+            plazo_max_para_continuar:     plazoMax,
+            person_found:                 personFound
         };
     },
 
@@ -165,32 +195,53 @@ var Paso4B = {
         this.app = app;
         var s = app.state || {};
 
-        // Dual-mode init:
-        //   - INITIAL configurator visit → default to 25% / 36 months.
-        //   - CONDICIONAL post-evaluation (customer brief 2026-04-24) →
-        //     seed with the min-compliant values set by
-        //     paso-credito-resultado.js so the slider starts in a valid
-        //     position. Restrictions (min enganche, max plazo) are read
-        //     from state.enganchePctMin / state.plazoMesesMax during
-        //     render() and bindEvents().
-        if (s.modoCondicional) {
-            // Seed from current state, then clamp to algorithm-authorized
-            // bounds. Without clamping, a user who set 25%/36 months during
-            // the initial (unrestricted) Paso4B visit would land here with
-            // values that violate the CONDICIONAL algorithm output (e.g.
-            // enganchePctMin=0.40, plazoMesesMax=24) and the UI buttons for
-            // the old plazo would be absent, leaving no selected plazo.
+        // Customer brief 2026-04-27: SELF-DETERMINING restriction mode.
+        // Two independent signals are checked, EITHER triggers restricted
+        // mode. This belt-and-suspenders approach handles every edge case
+        // observed in production:
+        //   (a) _resultadoFinal.status — fresh server result (most flows)
+        //   (b) modoCondicional + enganchePctMin scalars — survives page
+        //       refresh because configurador._saveState only persists
+        //       scalars (objects like _resultadoFinal are dropped on
+        //       sessionStorage reload). Without (b), refreshing the page
+        //       mid-flow would silently downgrade Paso4B to unrestricted.
+        var resultStatus = (s._resultadoFinal && s._resultadoFinal.status) || '';
+        var fromResult   = (resultStatus === 'CONDICIONAL' || resultStatus === 'CONDICIONAL_ESTIMADO');
+        var fromScalars  = (s.modoCondicional === true && typeof s.enganchePctMin === 'number' && s.enganchePctMin > 0);
+        var isCondicional = fromResult || fromScalars;
+
+        if (isCondicional) {
+            var resultado = s._resultadoFinal || {};
+            // Sync derived fields from server result so render() /
+            // bindEvents() reading state.modoCondicional /
+            // state.enganchePctMin / state.plazoMesesMax always see the
+            // correct values — no matter what code path led here.
+            s.modoCondicional = true;
+            if (resultado.enganche_requerido_min) s.enganchePctMin = resultado.enganche_requerido_min;
+            if (resultado.plazo_max_meses)        s.plazoMesesMax  = resultado.plazo_max_meses;
+
+            var engMin = s.enganchePctMin || 0.50;
+            var plazoMax = s.plazoMesesMax || 12;
+
+            // Seed values clamped to bounds. If the user previously set
+            // values that violate the bounds (e.g. 25%/36 from initial
+            // exploration), force them to the compliant minimum.
             var engSeed = (typeof s.enganchePorcentaje === 'number')
-                ? s.enganchePorcentaje
-                : (s.enganchePctMin || 0.40);
+                ? s.enganchePorcentaje : engMin;
             var plazoSeed = (typeof s.plazoMeses === 'number')
-                ? s.plazoMeses
-                : (s.plazoMesesMax || 24);
-            if (s.enganchePctMin && engSeed < s.enganchePctMin) engSeed = s.enganchePctMin;
-            if (s.plazoMesesMax  && plazoSeed > s.plazoMesesMax) plazoSeed = s.plazoMesesMax;
+                ? s.plazoMeses : plazoMax;
+            if (engSeed < engMin)   engSeed = engMin;
+            if (plazoSeed > plazoMax) plazoSeed = plazoMax;
             this._enganchePct = engSeed;
             this._plazoMeses  = plazoSeed;
         } else {
+            // INITIAL exploration mode (no credit evaluation yet, or
+            // PREAPROBADO/Cambiar reset). Defensive: clear any stale
+            // CONDICIONAL flags that might persist from a previous
+            // session in sessionStorage.
+            s.modoCondicional = false;
+            s.enganchePctMin  = null;
+            s.plazoMesesMax   = null;
             this._enganchePct = 0.25;
             this._plazoMeses  = 36;
         }
@@ -413,14 +464,11 @@ var Paso4B = {
         };
 
         // CTA — route depends on flow mode:
-        //   CONDICIONAL (customer brief 2026-04-25): credit evaluation
-        //     already ran once. User just adjusted enganche/plazo within
-        //     the algorithm's authorized bounds. Go to Truora
-        //     (credito-identidad), NOT back through credito-resultado or
-        //     any ingreso/evaluation step — re-posting to
-        //     preaprobacion-v3.php would create duplicate rows in
-        //     preaprobacion_log / solicitudes_credito. After Truora
-        //     completes, the flow continues to credito-enganche (Stripe).
+        //   CONDICIONAL (customer brief 2026-04-26 v3): user has adjusted
+        //     enganche/plazo within the 50%/12 lock. Route to credito-pago
+        //     for the confirmation screen ("Tu Voltika está lista") which
+        //     shows the chosen amount + acceptance checkboxes BEFORE
+        //     advancing to Truora.
         //   NORMAL (first-time config, no evaluation yet): user hasn't
         //     picked a color yet — go to the color selector.
         $(document).on('click', '#vk-confirmar-credito', function() {
@@ -431,7 +479,7 @@ var Paso4B = {
             self.app.state.cuotaSemanal = credito.pagoSemanal;
 
             if (self.app.state.modoCondicional) {
-                self.app.irAPaso('credito-identidad');
+                self.app.irAPaso('credito-pago');
             } else {
                 self.app.irAPaso(2);
             }

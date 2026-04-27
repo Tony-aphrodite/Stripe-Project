@@ -36,7 +36,7 @@
   </p>
   <p class="mini">
     ⚠ Idempotente: podés correrlo varias veces sin riesgo. Columnas existentes se saltan.<br>
-    ⚠ Debes estar logueado en <a href="/admin_test/" target="_blank">/admin_test</a> (rol admin).
+    ⚠ Debes estar logueado en <a href="/admin/" target="_blank">/admin_test</a> (rol admin).
   </p>
 
   <div style="display:flex;flex-wrap:wrap;gap:8px;">
@@ -64,7 +64,7 @@
 </div>
 
 <script>
-const ENDPOINT = '/admin_test/php/checklists/reparar-schema-origen.php';
+const ENDPOINT = '/admin/php/checklists/reparar-schema-origen.php';
 
 async function run(dryRun) {
   const summary  = document.getElementById('summary');
@@ -96,7 +96,7 @@ async function run(dryRun) {
     if (!res.ok || data.error) {
       summary.innerHTML = `<div class="summary fail">❌ HTTP ${res.status}: ${data.error || 'error'}</div>`;
       if (res.status === 401) {
-        summary.innerHTML += `<div class="card">No estás autenticado. Abrí <a href="/admin_test/" target="_blank">/admin_test</a>, iniciá sesión, y volvé a esta página.</div>`;
+        summary.innerHTML += `<div class="card">No estás autenticado. Abrí <a href="/admin/" target="_blank">/admin_test</a>, iniciá sesión, y volvé a esta página.</div>`;
       }
       return;
     }

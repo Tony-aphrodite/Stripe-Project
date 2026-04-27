@@ -3,7 +3,7 @@
  * Voltika Portal - Stripe webhook listener (DEPRECATED)
  *
  * Payment webhook handling has been consolidated into the main webhook:
- *   configurador_prueba_test/php/stripe-webhook.php
+ *   configurador_prueba/php/stripe-webhook.php
  *
  * This file remains for backward compatibility — if Stripe still sends
  * events to this URL, it will process them locally as before.
@@ -29,7 +29,7 @@ if (STRIPE_WEBHOOK_SECRET && $sig) {
 }
 
 $event = json_decode($payload, true);
-$logDir = __DIR__ . '/../../../configurador_prueba_test/php/logs';
+$logDir = __DIR__ . '/../../../configurador_prueba/php/logs';
 if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
 $logFile = $logDir . '/portal-webhook.log';
 @file_put_contents($logFile, json_encode([

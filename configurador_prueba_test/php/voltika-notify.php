@@ -599,8 +599,10 @@ function voltikaLogisticsEmailShell(string $hero, string $heroSub, string $inner
     return voltikaEmailShell($hero, $heroSub, $innerRows);
 }
 
-// Email-safe CTA button linking to the customer portal. Table-wrapped so
-// Outlook and Gmail render padding correctly across clients.
+// Email-safe CTA button linking to the customer portal. Wrapped in a table
+// so Outlook and Gmail render the padding correctly (inline-block is not
+// reliable across all clients). Takes a context label + optional emoji so
+// the button makes sense next to each section (pagos / factura / permiso).
 function vkPortalBtn(string $label): string {
     return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0;">'
          . '<tr><td style="background:#039fe1;border-radius:10px;box-shadow:0 2px 6px rgba(3,159,225,0.28);">'

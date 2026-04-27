@@ -38,7 +38,7 @@
     con origen <code>reparar_estados_retroactivo</code>.
   </p>
   <p class="mini">
-    ⚠ Debes estar logueado en <a href="/admin_test/" target="_blank">/admin_test</a> (rol admin) antes de usar los botones.
+    ⚠ Debes estar logueado en <a href="/admin/" target="_blank">/admin</a> (rol admin) antes de usar los botones.
   </p>
 
   <div style="display:flex;flex-wrap:wrap;gap:8px;">
@@ -65,7 +65,7 @@
 </div>
 
 <script>
-const ENDPOINT = '/admin_test/php/inventario/reparar-estados.php';
+const ENDPOINT = '/admin/php/inventario/reparar-estados.php';
 
 async function run(dryRun) {
   const summary   = document.getElementById('summary');
@@ -95,7 +95,7 @@ async function run(dryRun) {
     if (!res.ok || data.error) {
       summary.innerHTML = `<div class="summary fail">❌ HTTP ${res.status}: ${data.error || 'error'}</div>`;
       if (res.status === 401) {
-        summary.innerHTML += `<div class="card">No estás autenticado. Abrí <a href="/admin_test/" target="_blank">/admin_test</a>, iniciá sesión, y volvé a esta página.</div>`;
+        summary.innerHTML += `<div class="card">No estás autenticado. Abrí <a href="/admin/" target="_blank">/admin</a>, iniciá sesión, y volvé a esta página.</div>`;
       }
       return;
     }

@@ -88,7 +88,9 @@ if (!empty($_POST)) {
 
 // CURP is REQUIRED — without it Truora's Mexico person check returns
 // `not_found` for every real user because name+DOB+state matching against
-// RENAPO is too weak on its own.
+// RENAPO is too weak on its own. The frontend now enforces an 18-char CURP
+// so this guard should never trigger from the configurador UI, but we keep
+// it for any direct API callers (admin retries, tests).
 if (!$curp || !preg_match('/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/', $curp)) {
     http_response_code(400);
     echo json_encode([
@@ -99,13 +101,19 @@ if (!$curp || !preg_match('/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/', $curp)) {
     exit;
 }
 
-// Derive gender from CURP position 11 if not supplied by frontend.
+// Derive gender from CURP position 11 (H=Hombre → Truora M, M=Mujer → Truora F)
+// only if the frontend didn't already supply it. This removes the previous
+// hard-coded "default to M" which caused female customers to fail the
+// government cross-match.
 if (!$gender) {
     $genderFromCurp = strtoupper($curp[10]);
     $gender = ($genderFromCurp === 'M') ? 'F' : 'M';
 }
 
 // Normalize state_id to Truora's enum codes (CDMX, JAL, NL, MEX, ...).
+// Customer sent "ESTADO DE MEXICO" (with spaces) which Truora silently
+// accepts but then fails the government lookup because it's not a valid
+// enum value. Same failure mode we fixed for CDC with cdcEstadoEnum().
 $stateId = truoraEstadoEnum($stateId);
 
 // Last-resort fallback: if frontend sent everything in nombre, split it
@@ -843,7 +851,10 @@ function truoraDocumentValidation(string $ineFrontePath, string $ineReversoPath,
 
 /**
  * Normalize free-text estado to Truora's Mexico state enum (2-4 char codes).
- * See production copy of this function for full rationale.
+ * Accepts full names ("Estado de México"), common acronyms ("EDOMEX"),
+ * capitalized or lowercase, with or without accents. Anything unrecognized
+ * falls back to CDMX — the previous behavior of passing arbitrary strings
+ * caused silent government-lookup failures (score=0 for every user).
  */
 function truoraEstadoEnum(string $raw): string {
     $k = strtoupper(trim($raw));

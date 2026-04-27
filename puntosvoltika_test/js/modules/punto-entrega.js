@@ -279,10 +279,13 @@ window.PV_entrega = (function(){
     });
   }
   // Step 5: Wait for ACTA + finalize.
-  // Polls entrega/estado-acta.php every 4 s so the Finalizar entrega button
-  // auto-enables when the customer signs on their portal. Before this fix
-  // dealers clicked Finalizar while the customer's ACTA-signing was still
-  // failing (Moto no encontrada bug) and saw a confusing 400 error.
+  //
+  // The customer must sign the ACTA on their own portal before this dealer
+  // can finalize. We poll entrega/estado-acta.php every 4 s so the button
+  // auto-enables the moment the signature is recorded — the dealer doesn't
+  // have to refresh or guess. Before our ACTA-signing bugfix this step
+  // appeared broken because dealers clicked Finalizar while the signature
+  // was silently failing on the portal side.
   var _step5Poll = null;
   function step5(){
     PVApp.modal(
@@ -313,10 +316,15 @@ window.PV_entrega = (function(){
     }
 
     function checkStatus(){
+      // Stop polling if the modal got closed (X, backdrop, or moved to another
+      // step). PVApp.modal uses a shared #pvModal element that is only
+      // hidden — not removed — so we detect closure by checking visibility
+      // and by confirming our button is still the one in the body.
       if (!$('#pvS5').length || !$('#pvModal').is(':visible')) {
         stopPolling();
         return;
       }
+      // No second arg → PVApp.api issues a GET (see punto-app.js).
       PVApp.api('entrega/estado-acta.php?moto_id='+encodeURIComponent(ctx.moto_id))
         .done(function(r){
           if(!r) return;
@@ -329,6 +337,8 @@ window.PV_entrega = (function(){
         })
         .fail(function(){ /* transient — keep polling */ });
     }
+    // First check immediately so a customer who signed before step 5 opened
+    // doesn't wait the poll interval.
     checkStatus();
     _step5Poll = setInterval(checkStatus, 4000);
 

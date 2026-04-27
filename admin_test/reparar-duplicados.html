@@ -28,7 +28,7 @@
 
 <div class="card">
   <p>Por cada <code>pedido</code> duplicado: <strong>conserva el id más antiguo</strong> y elimina el resto.</p>
-  <p style="color:#666;font-size:.85rem;">⚠ Debes estar logueado en <a href="/admin_test/" target="_blank">/admin_test</a> como admin.</p>
+  <p style="color:#666;font-size:.85rem;">⚠ Debes estar logueado en <a href="/admin/" target="_blank">/admin</a> como admin.</p>
   <div>
     <button class="btn-dry" onclick="run(true)">1. Previsualizar</button>
     <button class="btn-run" id="btnRun" disabled onclick="go()">2. Ejecutar DELETE</button>
@@ -43,7 +43,7 @@
 <div class="card" id="resCard" style="display:none"><h3 style="margin-top:0">Respuesta</h3><div class="result" id="result"></div></div>
 
 <script>
-const ENDPOINT = '/admin_test/php/ventas/reparar-duplicados.php';
+const ENDPOINT = '/admin/php/ventas/reparar-duplicados.php';
 
 async function run(dryRun) {
   const sum = document.getElementById('summary');

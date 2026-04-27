@@ -545,21 +545,28 @@ var PasoCreditoConsentimiento = {
         // Idempotency guard (customer brief 2026-04-25): if V3 evaluation
         // already completed for this session, do NOT POST to
         // preaprobacion-v3.php again — duplicate rows would be written to
-        // preaprobacion_log / solicitudes_credito. Re-use the stored result
-        // and route to the appropriate next screen. This protects against:
-        //   - user hitting Back from credito-pago / Paso4B and retriggering
-        //     the consent flow,
-        //   - page refresh mid-flow with persisted state,
-        //   - any future routing bug that loops through consentimiento.
-        // A legitimate re-evaluation (e.g., user changes ingresos) must
-        // clear state._resultadoFinal explicitly before re-submission.
+        // preaprobacion_log / solicitudes_credito.
+        //
+        // EXCEPTION (customer brief 2026-04-26): if the prior result was
+        // NO_VIABLE, allow re-submission. Otherwise the user gets stuck on
+        // the rejection screen with no way to escape (browser-back through
+        // consent flow looped them back to NO_VIABLE forever). For
+        // NO_VIABLE, any new submission has likely changed data (different
+        // identity, different income range, etc.) and the server-side
+        // 5-minute dedup in preaprobacion-v3.php still catches accidental
+        // exact-duplicate POSTs.
         if (state._resultadoFinal && state._resultadoFinal.status) {
-            if (state._resultadoFinal.status === 'PREAPROBADO') {
+            var prior = state._resultadoFinal.status;
+            if (prior === 'PREAPROBADO') {
                 self.app.irAPaso('credito-loading');
-            } else {
-                self.app.irAPaso('credito-resultado');
+                return;
             }
-            return;
+            if (prior === 'CONDICIONAL' || prior === 'CONDICIONAL_ESTIMADO') {
+                self.app.irAPaso('credito-resultado');
+                return;
+            }
+            // NO_VIABLE / unknown → fall through to re-submission so the
+            // user has a path forward.
         }
 
         var credito = VkCalculadora.calcular(
@@ -606,18 +613,13 @@ var PasoCreditoConsentimiento = {
             }),
             success: function(resultado) {
                 state._resultadoFinal = resultado;
-                // The "¡Felicidades!" approval screen is reserved for
-                // applicants with a REAL Círculo score that crossed the PRE
-                // threshold. CONDICIONAL and every _ESTIMADO variant lack
-                // verified credit-bureau data, so they must render in the
-                // yellow credito-resultado screen (where the applicant can
-                // still proceed if they accept the conditions) — NOT in the
-                // green approval screen. NO_VIABLE lands in resultado too.
-                if (resultado.status === 'PREAPROBADO') {
-                    self.app.irAPaso('credito-loading');
-                } else {
-                    self.app.irAPaso('credito-resultado');
-                }
+                // Customer brief 2026-04-26: every credit result waits on
+                // the same loading animation before revealing the verdict.
+                // credito-loading auto-advances based on resultado.status:
+                //   PREAPROBADO → credito-aprobado (green felicidades)
+                //   else        → credito-resultado (which auto-advances
+                //                 to credito-pago for CONDICIONAL/NO_VIABLE)
+                self.app.irAPaso('credito-loading');
             },
             error: function() {
                 // Last-resort client-side eval if server endpoint is down
@@ -625,6 +627,7 @@ var PasoCreditoConsentimiento = {
                     state._resultadoFinal = PreaprobacionV3.evaluar({
                         ingreso_mensual_est:  state._ingresoMensual || 10000,
                         pago_semanal_voltika: credito.pagoSemanal,
+                        enganche_pct:         state.enganchePorcentaje || 0.25,
                         score:                buroRes.score || null,
                         pago_mensual_buro:    buroRes.pago_mensual_buro || 0,
                         dpd90_flag:           buroRes.dpd90_flag || false,

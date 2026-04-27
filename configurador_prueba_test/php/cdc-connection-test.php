@@ -1,9 +1,31 @@
 <?php
 /**
- * CDC Connection Test — staging mirror.
- * See production copy at ../../configurador_prueba/php/cdc-connection-test.php
+ * CDC Connection Test — standalone verification script.
+ *
+ * Usage:  /configurador_prueba/php/cdc-connection-test.php?key=voltika_cdc_2026
+ *
+ * What it does:
+ *   1. Reports which env vars are loaded (user, pass length, folio, api_key)
+ *      without exposing the password in plain text.
+ *   2. Verifies the private key + certificate can be loaded.
+ *   3. Sends a minimal signed request to CDC with a well-formed but fake
+ *      identity — we don't care about the credit result, we only want to
+ *      see the HTTP code. Anything that's NOT 503 means auth is working.
+ *   4. Optional: tries both CDC_USER variants (RMD4694MGE with "00" stripped
+ *      vs RMD004694MGE legacy) when `?try_both=1` is in the URL — useful
+ *      while confirming which user the support team activated.
+ *
+ * Interpretation guide:
+ *   - HTTP 200/400/404 → auth works, body shape may be off (expected for
+ *                        fake identity). 200/404.1 = CDC fully working.
+ *   - HTTP 401/403     → auth failure (wrong user/pass/api-key).
+ *   - HTTP 503         → Apigee signature/transport issue — most likely the
+ *                        password still has HTTP-unsafe chars, or the
+ *                        x-signature didn't verify.
+ *   - curl error       → TLS/network layer issue (check mTLS cert pair).
  */
 
+// Guard with a simple key so this isn't publicly accessible.
 $secret = $_GET['key'] ?? '';
 $expected = getenv('CDC_DIAG_KEY') ?: 'voltika_cdc_2026';
 if ($secret !== $expected) { http_response_code(403); exit('Forbidden'); }
@@ -12,6 +34,7 @@ require_once __DIR__ . '/config.php';
 
 header('Content-Type: text/html; charset=utf-8');
 
+// ── Collect env state ───────────────────────────────────────────────────────
 $cdcBase   = defined('CDC_BASE_URL') ? CDC_BASE_URL : (getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rccficoscore');
 $cdcApiKey = defined('CDC_API_KEY') ? CDC_API_KEY : (getenv('CDC_API_KEY') ?: '');
 $cdcUser   = defined('CDC_USER')    ? CDC_USER    : (getenv('CDC_USER')    ?: '');
@@ -37,6 +60,7 @@ function charInventory(string $s): string {
     return $out ? implode(', ', $out) : '(sin caracteres especiales)';
 }
 
+// ── Load cert/key ───────────────────────────────────────────────────────────
 $keyPem = null; $certPem = null; $keySource = 'missing'; $certSource = 'missing';
 try {
     $pdoTmp = getDB();
@@ -45,7 +69,7 @@ try {
         if (!empty($row['private_key']))  { $keyPem  = $row['private_key'];  $keySource  = 'DB'; }
         if (!empty($row['certificate']))  { $certPem = $row['certificate']; $certSource = 'DB'; }
     }
-} catch (Throwable $e) { }
+} catch (Throwable $e) { /* no table yet */ }
 
 $keyFile  = __DIR__ . '/certs/cdc_private.key';
 $certFile = __DIR__ . '/certs/cdc_certificate.pem';
@@ -56,8 +80,10 @@ $privValid = false;
 if ($keyPem) {
     $priv = @openssl_pkey_get_private($keyPem);
     $privValid = (bool)$priv;
+    if ($priv && PHP_VERSION_ID < 80000) openssl_pkey_free($priv);
 }
 
+// ── Ping test helper ────────────────────────────────────────────────────────
 function cdcPing(string $url, string $apiKey, string $user, string $pass, ?string $keyPem, ?string $certPem): array {
     $body = [
         'primerNombre'    => 'JUAN',
@@ -139,6 +165,7 @@ function cdcPing(string $url, string $apiKey, string $user, string $pass, ?strin
     ];
 }
 
+// ── Run pings ───────────────────────────────────────────────────────────────
 $runPing = !isset($_GET['no_ping']);
 $tryBoth = !empty($_GET['try_both']);
 
@@ -146,12 +173,15 @@ $results = [];
 if ($runPing) {
     $results[] = cdcPing($cdcBase, $cdcApiKey, $cdcUser, $cdcPass, $keyPem, $certPem);
     if ($tryBoth) {
+        // Try the alternative form: if current user is 10 chars, try the 12-char
+        // legacy; if it's 12 chars (RMD004694MGE), try the 10-char form.
         $alt = '';
         if (preg_match('/^([A-Z]{3})0*(\d+)([A-Z]+)$/', $cdcUser, $m)) {
+            // Either strip the leading zeros or add them back
             if (strpos($cdcUser, $m[1] . '00') === 0) {
-                $alt = $m[1] . $m[2] . $m[3];
+                $alt = $m[1] . $m[2] . $m[3];          // strip 00
             } else {
-                $alt = $m[1] . '00' . $m[2] . $m[3];
+                $alt = $m[1] . '00' . $m[2] . $m[3];   // add 00
             }
         }
         if ($alt && $alt !== $cdcUser) {
@@ -184,7 +214,7 @@ function verdict(int $code, string $err): string {
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>CDC Connection Test (STAGING)</title>
+<title>CDC Connection Test</title>
 <style>
 body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background:#0f172a; color:#e2e8f0; margin:0; padding:24px; }
 .container { max-width: 1000px; margin: 0 auto; }
@@ -204,11 +234,12 @@ pre { background:#0b1220; border:1px solid #1e293b; border-radius:6px; padding:1
 </head>
 <body>
 <div class="container">
-<h1>🔌 CDC Connection Test <span style="color:#f59e0b;font-size:14px;">(STAGING)</span></h1>
+<h1>🔌 CDC Connection Test</h1>
 <p class="links">
     <a href="?key=<?= htmlspecialchars($secret) ?>">▶ Ejecutar test</a>
     <a href="?key=<?= htmlspecialchars($secret) ?>&amp;try_both=1">▶ Probar ambos usuarios</a>
     <a href="?key=<?= htmlspecialchars($secret) ?>&amp;no_ping=1">▶ Solo mostrar env</a>
+    <a href="cdc-password-diag.php?key=voltika_pass_2026">Password diag</a>
 </p>
 
 <h2>1. Environment</h2>
@@ -224,11 +255,12 @@ pre { background:#0b1220; border:1px solid #1e293b; border-radius:6px; padding:1
 </div>
 
 <?php
+// Warn if user still looks like the old form
 if (preg_match('/^[A-Z]{3}00\d+[A-Z]+$/', $cdcUser)):
 ?>
 <div class="card" style="border-color:#f59e0b;">
     <span class="warn">⚠ CDC_USER todavía tiene el formato antiguo con "00" (ej. RMD<b>00</b>4694MGE).</span><br>
-    El equipo CDC pidió cambiarlo a <b>RMD4694MGE</b>. Actualiza Plesk → Environment Variables y reinicia PHP-FPM.
+    El equipo CDC pidió cambiarlo a <b>RMD4694MGE</b> (sin los dos ceros). Actualiza la variable en Plesk y reinicia PHP-FPM.
 </div>
 <?php elseif ($cdcUser === ''): ?>
 <div class="card" style="border-color:#ef4444;">
@@ -247,7 +279,7 @@ if (preg_match('/^[A-Z]{3}00\d+[A-Z]+$/', $cdcUser)):
 
 <?php if ($runPing): ?>
 <h2>3. Ping a CDC</h2>
-<p style="color:#94a3b8;font-size:13px;">Enviamos un payload mínimo con datos ficticios. Lo importante es el HTTP code, no el resultado del buró.</p>
+<p style="color:#94a3b8;font-size:13px;">Enviamos un payload mínimo válido con datos ficticios. Lo que nos interesa es el HTTP code, no el resultado del buró.</p>
 
 <?php foreach ($results as $idx => $r): ?>
 <div class="card">
@@ -275,17 +307,17 @@ if (preg_match('/^[A-Z]{3}00\d+[A-Z]+$/', $cdcUser)):
 
 <h2>4. Guía de interpretación</h2>
 <div class="card" style="font-size:13px; line-height:1.7;">
-    <div><span class="ok">HTTP 200</span> → CDC funcionando completamente.</div>
-    <div><span class="warn">HTTP 400</span> → Auth OK. Cuerpo rechazado (esperado con datos falsos).</div>
-    <div><span class="warn">HTTP 404</span> → Auth OK. Persona no encontrada.</div>
-    <div><span class="bad">HTTP 401/403</span> → Credenciales mal. Verifica user/pass/api-key.</div>
-    <div><span class="bad">HTTP 503</span> → Apigee rechazó. Firma inválida o password con caracteres peligrosos.</div>
-    <div><span class="bad">curl-error</span> → TLS/mTLS. Verifica el par cert+key activo en el portal.</div>
+    <div><span class="ok">HTTP 200</span> → CDC funcionando completamente (score devuelto).</div>
+    <div><span class="warn">HTTP 400</span> → Auth OK. Cuerpo rechazado por schema (esperado con datos falsos).</div>
+    <div><span class="warn">HTTP 404</span> → Auth OK. Persona no encontrada (esperado con datos falsos).</div>
+    <div><span class="bad">HTTP 401/403</span> → Credenciales mal. Verifica CDC_USER / CDC_PASS / CDC_API_KEY.</div>
+    <div><span class="bad">HTTP 503</span> → Apigee rechazó la request. Causas comunes: (a) contraseña con CR/LF/TAB, (b) x-signature no verifica contra el cert registrado.</div>
+    <div><span class="bad">curl-error</span> → TLS/mTLS. Verifica que el cert+key mutuos sean el par activo en el portal.</div>
 </div>
 <?php endif; ?>
 
 <div style="text-align:center;color:#64748b;margin-top:40px;font-size:11px;">
-    Voltika CDC diagnostic (staging) · <?= date('Y-m-d H:i:s') ?>
+    Voltika CDC diagnostic · <?= date('Y-m-d H:i:s') ?>
 </div>
 </div>
 </body>

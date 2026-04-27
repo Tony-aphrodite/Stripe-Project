@@ -41,9 +41,14 @@
         init: function() {
             var self = this;
 
-            // ── Test mode: ?test_credito=condicional|no_viable|truora_fail ──
+            // ── Test mode: ?test_credito=preaprobado|condicional|no_viable|truora_fail ──
+            //              ?test_credito=score&score=NNN  (custom-score mode)
+            // Voltika QA tooling — lets internal testers verify each branch
+            // (PREAPROBADO / CONDICIONAL / NO_VIABLE / Truora) end-to-end
+            // without needing real CDC test identities.
             var urlParams = new URLSearchParams(window.location.search);
             var testMode  = urlParams.get('test_credito');
+            var testScore = urlParams.get('score');
 
             if (testMode) {
                 // Set minimum required state for the resultado screen
@@ -54,23 +59,70 @@
                 self.state.plazoMeses = 12;
                 self.state._ingresoMensual = 10000;
 
-                if (testMode === 'condicional') {
+                if (testMode === 'preaprobado') {
+                    // High score, low PTI → green approval screen → Truora → Stripe
+                    self.state._buroResult = { score: 720, pagoMensual: 1500, dpd90: false, dpdMax: 0, person_found: true };
+                    self.state._truoraResult = { status: 'approved', fallback: true };
+                } else if (testMode === 'condicional') {
                     // Círculo de Crédito low score → enganche increase screen
-                    self.state._buroResult = { score: 430, pagoMensual: 5000, dpd90: false, dpdMax: 0 };
+                    self.state._buroResult = { score: 430, pagoMensual: 5000, dpd90: false, dpdMax: 0, person_found: true };
                     self.state._truoraResult = { status: 'approved', fallback: true };
                 } else if (testMode === 'no_viable') {
                     // Círculo de Crédito very low score → credit denied screen
-                    self.state._buroResult = { score: 350, pagoMensual: 8000, dpd90: true, dpdMax: 120 };
+                    self.state._buroResult = { score: 350, pagoMensual: 8000, dpd90: true, dpdMax: 120, person_found: true };
                     self.state._truoraResult = { status: 'approved', fallback: true };
                 } else if (testMode === 'truora_fail') {
                     // Truora identity verification failed
-                    self.state._buroResult = { score: 500, pagoMensual: 3000, dpd90: false, dpdMax: 0 };
+                    self.state._buroResult = { score: 500, pagoMensual: 3000, dpd90: false, dpdMax: 0, person_found: true };
                     self.state._truoraResult = { status: 'rejected', fallback: false };
+                } else if (testMode === 'score' && testScore) {
+                    // Custom score (Tony fine-grained QA): ?test_credito=score&score=520
+                    self.state._buroResult = { score: parseInt(testScore, 10), pagoMensual: 2000, dpd90: false, dpdMax: 0, person_found: true };
+                    self.state._truoraResult = { status: 'approved', fallback: true };
+                }
+
+                // Visible banner so testers never confuse this with prod data
+                $('body').prepend(
+                    '<div id="vk-test-banner" style="background:#f97316;color:#fff;padding:8px 14px;' +
+                    'text-align:center;font-size:12px;font-weight:700;position:fixed;top:0;left:0;right:0;' +
+                    'z-index:99999;box-shadow:0 2px 6px rgba(0,0,0,.15);">' +
+                    '⚠ MODO TEST: ' + testMode + (testScore ? ' (score=' + testScore + ')' : '') +
+                    ' &middot; <a href="' + window.location.pathname + '" style="color:#fff;text-decoration:underline;">Salir</a>' +
+                    '</div>'
+                );
+
+                // Pre-compute _resultadoFinal so credito-loading routes
+                // to the right next screen (PREAPROBADO → credito-aprobado,
+                // others → credito-resultado → credito-pago auto-advance).
+                if (typeof PreaprobacionV3 !== 'undefined') {
+                    var _testModelo = self.getModelo(self.state.modeloSeleccionado);
+                    if (_testModelo) {
+                        var _testCredito = VkCalculadora.calcular(
+                            _testModelo.precioContado,
+                            self.state.enganchePorcentaje,
+                            self.state.plazoMeses
+                        );
+                        var _br = self.state._buroResult || {};
+                        self.state._resultadoFinal = PreaprobacionV3.evaluar({
+                            ingreso_mensual_est:  self.state._ingresoMensual,
+                            pago_semanal_voltika: _testCredito.pagoSemanal,
+                            enganche_pct:         self.state.enganchePorcentaje,
+                            score:                _br.score || null,
+                            pago_mensual_buro:    _br.pagoMensual || 0,
+                            dpd90_flag:           _br.dpd90 || false,
+                            dpd_max:              _br.dpdMax || 0,
+                            person_found:         (_br.person_found === undefined) ? null : _br.person_found
+                        });
+                    }
                 }
 
                 VkUI.renderProgressBar(4, 'credito');
                 setTimeout(function() {
-                    self.irAPaso('credito-resultado');
+                    // Customer brief 2026-04-26: test URLs should also
+                    // play the loading animation so testers see the same
+                    // UX as real users. credito-loading auto-advances
+                    // based on resultado.status.
+                    self.irAPaso('credito-loading');
                 }, 500);
                 self.bindGlobalEvents();
                 return;
@@ -382,6 +434,17 @@
             try {
                 // Copy only scalar / plain fields — skip File/Blob/Function
                 // references (not serializable + privacy).
+                //
+                // EXCEPTION (customer brief 2026-04-27): a small whitelist
+                // of plain-data result objects must persist across page
+                // refresh, otherwise the user's CONDICIONAL state is lost
+                // on F5 and Paso4B silently reverts to unrestricted mode.
+                // These objects contain no PII / Files / Blobs — safe.
+                var OBJECT_WHITELIST = {
+                    '_resultadoFinal': true,
+                    '_buroResult':     true,
+                    '_truoraResult':   true
+                };
                 var safe = {};
                 Object.keys(self.state).forEach(function(k) {
                     var v = self.state[k];
@@ -389,6 +452,14 @@
                     var t = typeof v;
                     if (t === 'string' || t === 'number' || t === 'boolean') {
                         safe[k] = v;
+                    } else if (t === 'object' && OBJECT_WHITELIST[k]) {
+                        try {
+                            // Verify the object is JSON-serializable and
+                            // doesn't contain Files/Blobs/cycles before
+                            // storing.
+                            JSON.stringify(v);
+                            safe[k] = v;
+                        } catch (e) { /* skip if non-serializable */ }
                     }
                 });
                 sessionStorage.setItem(self._PERSIST_KEY, JSON.stringify({

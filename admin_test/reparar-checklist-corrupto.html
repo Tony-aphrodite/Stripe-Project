@@ -37,7 +37,7 @@
   <label style="display:block;margin-bottom:12px;"><input type="radio" name="action" value="delete"> <strong>Eliminar</strong> — borrar la fila completa</label>
 
   <p class="mini">⚠ Al desbloquear, si la moto pasó a <code>recibida</code> por este checklist se devuelve a <code>por_llegar</code> automáticamente (solo si no hay otro origen completado).</p>
-  <p class="mini">⚠ Debes estar logueado en <a href="/admin_test/" target="_blank">/admin_test</a> como admin.</p>
+  <p class="mini">⚠ Debes estar logueado en <a href="/admin/" target="_blank">/admin_test</a> como admin.</p>
 
   <div>
     <button class="btn-dry" onclick="run(true)">1. Previsualizar</button>
@@ -56,7 +56,7 @@
 <div class="card" id="resCard" style="display:none"><h3 style="margin-top:0">Respuesta</h3><div class="result" id="result"></div></div>
 
 <script>
-const ENDPOINT = '/admin_test/php/checklists/reparar-checklist-corrupto.php';
+const ENDPOINT = '/admin/php/checklists/reparar-checklist-corrupto.php';
 
 async function run(dryRun, action) {
   action = action || document.querySelector('input[name=action]:checked').value;

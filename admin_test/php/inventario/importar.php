@@ -130,13 +130,11 @@ function normalizeModelo(string $raw): string {
     $low = strtolower($raw);
     if ($low === '') return $raw;
 
-    // Specific models — keep priority order (longer matches first)
     if (strpos($low, 'pesgo plus') !== false) return 'Pesgo Plus';
     if (strpos($low, 'mino')       !== false) return 'Mino-B';
     if (strpos($low, 'ukko')       !== false) return 'Ukko S+';
     if (strpos($low, 'mc10')       !== false) return 'MC10 Streetx';
 
-    // Generic "M##" pattern (M03, M05 etc)
     if (preg_match('/\bM(\d+)\b/i', $raw, $m)) return 'M' . $m[1];
 
     return $raw;

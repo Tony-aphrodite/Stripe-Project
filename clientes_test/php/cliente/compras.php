@@ -38,9 +38,15 @@ $email = $cliente['email'] ?? null;
 
 $compras = [];
 
-// Fetch every moto linked to this customer ONCE so we can pair each
-// subscription to its own moto by date proximity (customer report 2026-04-23:
-// LIMIT-1 inside the loop gave every subscription the same VIN).
+// ── 1) Credit subscriptions ────────────────────────────────────────────────
+// FIX 2026-04-23: previously each subscription ran a LIMIT-1 moto lookup
+// against the SAME telefono/email → every subscription ended up linked to
+// the same (latest) moto, so a customer with 3 credit subs saw the same VIN
+// 3 times on "Mis compras". Now we fetch ALL motos for the customer ONCE,
+// then pair each subscription to the moto whose `freg` is closest to the
+// subscription's own `freg` (within 24h). Each moto is consumed at most
+// once — extra subscriptions correctly show `moto: null` ("Sin moto
+// asignada todavía").
 $allCustomerMotos = [];
 try {
     $mAllSql = "SELECT id, vin, vin_display, estado, modelo, color, freg,
@@ -63,7 +69,6 @@ try {
 } catch (Throwable $e) { error_log('compras all motos: ' . $e->getMessage()); }
 $usedMotoIds = [];
 
-// ── 1) Credit subscriptions ────────────────────────────────────────────────
 try {
     $sql = "SELECT id, modelo, color, monto_semanal, plazo_meses, plazo_semanas,
                 fecha_inicio, fecha_entrega, freg, estado,
@@ -78,7 +83,9 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
-        // Pair this subscription to the closest-in-time unused moto.
+        // Match this subscription to its own moto by timestamp proximity.
+        // Each moto is used at most once — prevents the old bug where every
+        // subscription got the same VIN.
         $moto = null;
         $bestDiff = null;
         $subTs = strtotime((string)($s['freg'] ?? '')) ?: 0;
@@ -91,6 +98,9 @@ try {
                 $bestDiff = $diff;
             }
         }
+        // Accept the pairing only if the moto was created within 24h of the
+        // subscription — otherwise assume it belongs to a different
+        // purchase or hasn't been created yet.
         if ($moto !== null && $bestDiff !== null && $bestDiff <= 86400) {
             $usedMotoIds[] = (int)$moto['id'];
         } else {

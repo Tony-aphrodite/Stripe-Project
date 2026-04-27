@@ -61,7 +61,7 @@ $conditions = []; $params = [];
 if (!empty($moto['cliente_email'])) { $conditions[] = "email=?"; $params[] = $moto['cliente_email']; }
 if (!empty($moto['cliente_telefono'])) { $conditions[] = "telefono=?"; $params[] = $moto['cliente_telefono']; }
 
-$selfieDir = __DIR__ . '/../../configurador_prueba_test/php/uploads/';
+$selfieDir = __DIR__ . '/../../configurador_prueba/php/uploads/';
 
 if ($conditions) {
     $sql = "SELECT files_saved FROM verificaciones_identidad WHERE (" . implode(' OR ', $conditions) . ") ORDER BY freg DESC LIMIT 1";

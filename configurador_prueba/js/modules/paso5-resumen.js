@@ -116,7 +116,9 @@ var PasoResumen = {
             html += '<div style="margin-bottom:14px;"></div>';
             html += '<button id="vk-resumen-pagar-contado-main" style="display:block;width:100%;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">PAGAR ' + VkUI.formatPrecio(total) + ' HOY</button>';
         }
-        html += '<div style="margin-top:10px;font-size:12px;color:var(--vk-text-muted);">&#128274; Pago seguro con ' + VkUI.renderCardLogos() + '</div>';
+        // Inline "Pago seguro con [icons]" removed (customer brief 2026-04-26):
+        // the unified VkUI.renderTrustFooter() at the bottom of the screen
+        // covers this with a richer, consistent presentation.
         html += '</div>';
 
         // 4. Opciones de pago — radio style interactivo (vertical)
@@ -190,6 +192,10 @@ var PasoResumen = {
         }
         html += '</div>';
         html += '</div>';
+
+        // Unified trust footer at the bottom of every payment screen
+        // (customer brief 2026-04-26 item 1).
+        html += VkUI.renderTrustFooter();
 
         jQuery('#vk-resumen-container').html(html);
 
@@ -316,6 +322,9 @@ var PasoResumen = {
         }
         html += '<button id="vk-switch-contado" style="flex:1;background:none;border:none;font-size:13px;font-weight:700;color:var(--vk-text-secondary);cursor:pointer;padding:8px 4px;">PAGO DE CONTADO</button>';
         html += '</div>';
+
+        // Unified trust footer (customer brief 2026-04-26 item 1).
+        html += VkUI.renderTrustFooter();
 
         jQuery('#vk-resumen-container').html(html);
     },
