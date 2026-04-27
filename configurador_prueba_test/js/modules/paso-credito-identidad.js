@@ -32,6 +32,29 @@ var PasoCreditoIdentidad = {
 
     init: function(app) {
         this.app = app;
+
+        // ── TEST-MIRROR ONLY (configurador_prueba_test) ────────────────
+        // DO NOT COPY THIS BLOCK TO PROD (configurador_prueba/).
+        //
+        // Customer brief 2026-04-27: in TEST mode we use a simulated
+        // verification UI instead of the live Truora iframe. The iframe
+        // only works when voltika.mx is on Truora's frame-ancestors
+        // whitelist (production-only feature). For internal QA we render
+        // a multi-step progress simulation that visually walks through
+        // INE → selfie → RENAPO → completion in ~5 seconds, then
+        // advances to credito-enganche just like a successful real flow.
+        //
+        // LIVE mode (configurador_prueba/paso-credito-identidad.js) is
+        // unchanged — it always renders the real Truora iframe.
+        var state = app.state || {};
+        var isTestMode = state._truoraResult &&
+                         state._truoraResult.status === 'approved' &&
+                         state._truoraResult.fallback === true;
+        if (isTestMode) {
+            this._renderTestSimulator();
+            return;
+        }
+
         this._iframeReady    = false;
         this._tokenFetched   = false;
         this._currentProcessId = null;
@@ -39,6 +62,108 @@ var PasoCreditoIdentidad = {
         this.render();
         this._startIframe();
         this._bindMessageListener();
+    },
+
+    /**
+     * TEST-MIRROR ONLY — simulates the Truora identity verification
+     * pipeline without actually calling Truora. Used when state was
+     * pre-populated by configurador.js test mode (?test_credito=...).
+     * Visually shows a 4-step progress flow then auto-advances.
+     */
+    _renderTestSimulator: function() {
+        var self = this;
+        var html = '';
+
+        // Logo
+        html += '<div class="vk-identidad-logo">';
+        html += '<img src="img/voltika_logo_h.svg" alt="Voltika">';
+        html += '</div>';
+
+        // Progress: paso 1 (Crédito aprobado) ✓ + paso 2 (Confirmar identidad) active
+        html += '<div class="vk-identidad-progress">';
+        html += '<div class="vk-identidad-progress__step vk-identidad-progress__step--done">';
+        html += '<span class="vk-identidad-progress__num">&#10003;</span>';
+        html += '<span class="vk-identidad-progress__label">Crédito aprobado</span>';
+        html += '</div>';
+        html += '<div class="vk-identidad-progress__line"></div>';
+        html += '<div class="vk-identidad-progress__step vk-identidad-progress__step--active">';
+        html += '<span class="vk-identidad-progress__num">2</span>';
+        html += '<span class="vk-identidad-progress__label">Confirmar identidad</span>';
+        html += '</div>';
+        html += '</div>';
+
+        // Title
+        html += '<h2 class="vk-identidad-title">Confirma tu identidad</h2>';
+        html += '<p class="vk-identidad-subtitle">Validando tus datos con las bases del gobierno mexicano…</p>';
+
+        // TEST MODE banner
+        html += '<div style="background:#FFF3E0;border:1.5px solid #FB8C00;border-radius:10px;padding:12px 14px;margin-bottom:16px;">';
+        html += '<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:#E65100;font-size:13px;">';
+        html += '<span>⚠</span><span>MODO TEST · Simulación de Verificación</span>';
+        html += '</div>';
+        html += '<div style="font-size:11.5px;color:#5d4037;margin-top:4px;line-height:1.5;">';
+        html += 'En producción este paso usa el iframe real de Truora con captura de INE + selfie + biometría.';
+        html += '</div>';
+        html += '</div>';
+
+        // Security callout
+        html += '<div class="vk-identidad-security">';
+        html += '<div class="vk-identidad-security__icon">&#128274;</div>';
+        html += '<div>';
+        html += '<div class="vk-identidad-security__title">Verificación certificada</div>';
+        html += '<div class="vk-identidad-security__text">Tu identidad es validada por Truora con tecnología certificada y segura.</div>';
+        html += '</div>';
+        html += '</div>';
+
+        // Progress steps (animated)
+        var steps = [
+            { id: 1, label: 'Capturando documento INE', delay: 1000 },
+            { id: 2, label: 'Verificando rostro y biometría', delay: 2200 },
+            { id: 3, label: 'Validando con RENAPO', delay: 3400 },
+            { id: 4, label: 'Verificación completa', delay: 4400 }
+        ];
+
+        html += '<div id="vk-test-id-steps" style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;margin-top:8px;">';
+        for (var i = 0; i < steps.length; i++) {
+            html += '<div id="vk-test-id-step-' + steps[i].id + '" ' +
+                    'style="display:flex;align-items:center;gap:12px;padding:10px 0;' +
+                    (i < steps.length - 1 ? 'border-bottom:1px solid #f3f4f6;' : '') + '">' +
+                    '<span id="vk-test-id-icon-' + steps[i].id + '" ' +
+                        'style="width:24px;height:24px;border-radius:50%;border:2px solid #d1d5db;' +
+                        'display:inline-flex;align-items:center;justify-content:center;color:#9ca3af;' +
+                        'font-size:13px;font-weight:700;flex-shrink:0;">' + steps[i].id + '</span>' +
+                    '<span id="vk-test-id-label-' + steps[i].id + '" ' +
+                        'style="font-size:14px;font-weight:600;color:#9ca3af;flex:1;">' +
+                        steps[i].label + '</span>' +
+                    '</div>';
+        }
+        html += '</div>';
+
+        jQuery('#vk-credito-identidad-container').html(html);
+
+        // Animate each step
+        steps.forEach(function(step) {
+            setTimeout(function() {
+                jQuery('#vk-test-id-icon-' + step.id).css({
+                    'background': '#10b981',
+                    'border-color': '#10b981',
+                    'color': '#fff'
+                }).html('&#10003;');
+                jQuery('#vk-test-id-label-' + step.id).css({
+                    'color': '#111',
+                    'font-weight': '700'
+                });
+            }, step.delay);
+        });
+
+        // After last step, advance to credito-enganche
+        setTimeout(function() {
+            self.app.state._identidadVerificada = true;
+            self.app.state._truoraProcessId = 'TEST-' + Date.now();
+            if (self.app && typeof self.app.irAPaso === 'function') {
+                self.app.irAPaso('credito-enganche');
+            }
+        }, 5500);
     },
 
     render: function() {
