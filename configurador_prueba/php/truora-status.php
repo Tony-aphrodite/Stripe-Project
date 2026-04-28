@@ -17,21 +17,53 @@ header('Access-Control-Allow-Origin: *');
 
 require_once __DIR__ . '/config.php';
 
+// Accept process_id (preferred — used by iframe flow) OR account_id/email
+// (popup fallback flow where the JS doesn't have process_id yet because
+// it's embedded in the JWT that opened in another tab). The webhook
+// stores both, so either lookup works.
 $processId = trim((string)($_GET['process_id'] ?? ''));
-if ($processId === '') {
+$accountId = trim((string)($_GET['account_id'] ?? ''));
+$email     = trim((string)($_GET['email']      ?? ''));
+
+if ($processId === '' && $accountId === '' && $email === '') {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'process_id requerido']);
+    echo json_encode(['ok' => false, 'error' => 'process_id, account_id o email requerido']);
     exit;
 }
 
 try {
     $pdo = getDB();
-    $stmt = $pdo->prepare("SELECT approved, truora_status, truora_failure_status,
-            truora_declined_reason, truora_updated_at, truora_last_event
-        FROM verificaciones_identidad
-        WHERE truora_process_id = ?
-        ORDER BY id DESC LIMIT 1");
-    $stmt->execute([$processId]);
+    // Lazy schema: ensure account_id column exists for popup-flow lookups.
+    try {
+        $cols = $pdo->query("SHOW COLUMNS FROM verificaciones_identidad LIKE 'truora_account_id'")->fetch();
+        if (!$cols) $pdo->exec("ALTER TABLE verificaciones_identidad ADD COLUMN truora_account_id VARCHAR(120) NULL");
+    } catch (Throwable $e) {}
+
+    if ($processId !== '') {
+        $stmt = $pdo->prepare("SELECT approved, truora_status, truora_failure_status,
+                truora_declined_reason, truora_updated_at, truora_last_event,
+                truora_process_id
+            FROM verificaciones_identidad
+            WHERE truora_process_id = ?
+            ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$processId]);
+    } elseif ($accountId !== '') {
+        $stmt = $pdo->prepare("SELECT approved, truora_status, truora_failure_status,
+                truora_declined_reason, truora_updated_at, truora_last_event,
+                truora_process_id
+            FROM verificaciones_identidad
+            WHERE truora_account_id = ?
+            ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$accountId]);
+    } else {
+        $stmt = $pdo->prepare("SELECT approved, truora_status, truora_failure_status,
+                truora_declined_reason, truora_updated_at, truora_last_event,
+                truora_process_id
+            FROM verificaciones_identidad
+            WHERE email = ?
+            ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$email]);
+    }
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
         echo json_encode([
@@ -45,7 +77,7 @@ try {
     }
     echo json_encode([
         'ok'              => true,
-        'process_id'      => $processId,
+        'process_id'      => $row['truora_process_id'] ?: $processId,
         'approved'        => is_null($row['approved']) ? null : (int)$row['approved'],
         'status'          => $row['truora_status'] ?: 'pending',
         'failure_status'  => $row['truora_failure_status'],
