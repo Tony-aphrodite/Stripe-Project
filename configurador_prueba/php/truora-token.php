@@ -66,10 +66,26 @@ $telefono  = trim((string)($in['telefono']   ?? ''));
 $email     = trim((string)($in['email']      ?? ''));
 $curp      = strtoupper(trim((string)($in['curp'] ?? '')));
 
-// account_id anchors the Truora process to our customer. Use a stable,
-// URL-safe identifier. Regex per Truora docs: [a-zA-Z0-9_.-]+
-$accountId = $clienteId !== '' ? 'voltika_c_' . preg_replace('/[^a-zA-Z0-9]/', '', $clienteId)
-                               : 'voltika_t_' . bin2hex(random_bytes(6));
+// account_id anchors the Truora process to our customer. Regex per Truora
+// docs: [a-zA-Z0-9_.-]+
+//
+// IMPORTANT: must be UNIQUE per call. Empirically verified 2026-04-29:
+//   - When the same account_id is reused, Truora returns a token that
+//     points to the previous (stale/completed) process, and the iframe
+//     loads BLANK with no error event.
+//   - Diagnostic page worked because it embeds time() in the cliente_id.
+//   - Test mode worked because state.telefono is empty so we hit the
+//     random branch.
+//   - Real flow failed because every retry by the same phone number
+//     produced the same account_id voltika_c_<phone>.
+//
+// Fix: always append a random suffix. We still embed the cliente_id (phone)
+// so admin/forensics can correlate; the cliente_id + nombre + email also
+// land in our verificaciones_identidad stub row for the webhook.
+$randomSuffix = bin2hex(random_bytes(4)); // 8 hex chars
+$accountId = $clienteId !== ''
+    ? 'voltika_c_' . preg_replace('/[^a-zA-Z0-9]/', '', $clienteId) . '_' . $randomSuffix
+    : 'voltika_t_' . $randomSuffix;
 
 // ── Build the redirect URL (where Truora sends the user after the flow) ─
 $redirectBase = defined('VOLTIKA_BASE_URL') ? VOLTIKA_BASE_URL : (getenv('VOLTIKA_BASE_URL') ?: 'https://www.voltika.mx');
