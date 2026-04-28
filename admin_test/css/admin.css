@@ -552,6 +552,26 @@ html,body{
   .ad-kpi .value{font-size:clamp(14px,4.2vw,22px)}
   .ad-kpi .label{font-size:10px;letter-spacing:.5px}
   .ad-table{font-size:12px;display:block;overflow-x:auto}
+
+  /* Ventas table mobile fix (2026-04-29): the 11-column table uses
+     table-layout:fixed + word-break:break-word inline so it fits the
+     desktop viewport. On phones those rules collapse columns down to
+     character-per-line vertical text. Force the table wider than the
+     viewport so the wrapper's overflow-x:auto kicks in (horizontal
+     scroll) instead of breaking words. */
+  .ad-table--ventas{
+    table-layout:auto !important;
+    min-width:1100px;
+  }
+  .ad-table--ventas td,
+  .ad-table--ventas th{
+    word-break:normal !important;
+    overflow-wrap:normal !important;
+    white-space:normal;
+  }
+  .ad-table--ventas .ad-badge{
+    white-space:nowrap;
+  }
   .ad-h1{font-size:22px}
   .ad-toolbar{flex-direction:column;align-items:stretch}
   .ad-modal-content{width:95%;padding:24px}
