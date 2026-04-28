@@ -334,16 +334,16 @@ window.AD_ventas = (function(){
       '<table class="ad-table ad-table--ventas" style="table-layout:fixed;width:100%;">'+
       '<colgroup>'+
         '<col style="width:9%">'+   // Pedido
-        '<col style="width:14%">'+  // Cliente
-        '<col style="width:7%">'+   // Modelo
-        '<col style="width:7%">'+   // Color
+        '<col style="width:13%">'+  // Cliente (-1)
+        '<col style="width:6%">'+   // Modelo  (-1)
+        '<col style="width:6%">'+   // Color   (-1)
         '<col style="width:7%">'+   // Tipo
         '<col style="width:8%">'+   // Monto
-        '<col style="width:11%">'+  // Estatus de Pago
+        '<col style="width:10%">'+  // Estatus de Pago (-1)
         '<col style="width:9%">'+   // Punto
         '<col style="width:7%">'+   // Fecha
         '<col style="width:9%">'+   // Moto asignada
-        '<col style="width:12%">'+  // Accion
+        '<col style="width:16%">'+  // Accion (+4 — 4 buttons after dossier addition)
       '</colgroup>'+
       '<thead><tr>'+
       '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Color</th>'+
@@ -483,11 +483,15 @@ window.AD_ventas = (function(){
       // (contado / unico / msi / spei / oxxo / tarjeta). Credit orders use
       // a different contract pipeline. Admin session bypasses the HMAC
       // token check inside descargar-contrato.php.
+      // Compact icon-only buttons — the Accion column has 4 items now
+      // (Asignar/Ver + Contrato + Dossier). Trim padding to fit cleanly.
+      var iconBtnStyle = 'padding:5px 7px;font-size:13px;line-height:1;'
+                       + 'text-decoration:none;display:inline-flex;align-items:center;justify-content:center;';
       var contratoBtn = '';
       var _tp = (r.tipo||r.tpago||'').toLowerCase();
       if (['contado','unico','msi','spei','oxxo','tarjeta'].indexOf(_tp) >= 0 && r.pedido) {
         contratoBtn = '<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
-          'style="'+btnStyleBase+';text-decoration:none;display:inline-flex;align-items:center;" '+
+          'style="'+iconBtnStyle+'" '+
           'title="Descargar contrato de compraventa" '+
           'href="../configurador_prueba/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1">📄</a>';
       }
@@ -500,7 +504,7 @@ window.AD_ventas = (function(){
       if (r.moto_id || r.pedido) {
         var dParams = r.moto_id ? ('moto_id=' + r.moto_id) : ('pedido=' + encodeURIComponent(r.pedido));
         dossierBtn = '<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
-          'style="'+btnStyleBase+';text-decoration:none;display:inline-flex;align-items:center;background:#fffbeb;border-color:#f59e0b;color:#92400e;" '+
+          'style="'+iconBtnStyle+';background:#fffbeb;border-color:#f59e0b;color:#92400e;" '+
           'title="Descargar Dossier de Defensa (ZIP — todas las evidencias para Stripe/PROFECO)" '+
           'href="../configurador_prueba/php/descargar-dossier.php?'+dParams+'&format=zip">📦</a>';
       }
