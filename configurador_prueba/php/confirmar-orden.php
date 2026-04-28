@@ -96,6 +96,31 @@ $codigoReferido = strtoupper(trim($json['codigo_referido'] ?? ''));
 $referidoId     = isset($json['referido_id']) && $json['referido_id'] !== null ? intval($json['referido_id']) : null;
 $referidoTipo   = trim($json['referido_tipo'] ?? ''); // 'referido' | 'punto' | ''
 
+// ─ Contract acceptance metadata (only meaningful for non-credit purchases:
+//   contado / msi / spei / oxxo). The data feeds the Contrato Voltika
+//   Contado v3 PDF generated below. Captured server-side so the values
+//   can't be tampered with from the client. The optional fields (otp_*,
+//   geolocation, terms_*) come from the client when the user confirmed
+//   the checkout; the rest is taken from $_SERVER.
+$apellidoPaterno   = trim((string)($json['apellidoPaterno'] ?? ''));
+$apellidoMaterno   = trim((string)($json['apellidoMaterno'] ?? ''));
+$customerCp        = trim((string)($json['cp'] ?? '')) ?: trim((string)($json['codigoPostal'] ?? ''));
+$contratoOtpOk     = !empty($json['otpValidated']) ? 1 : 0;
+$contratoTermsAt   = trim((string)($json['termsAcceptedAt'] ?? ''));
+$contratoGeo       = trim((string)($json['geolocation'] ?? ''));
+$contratoIp        = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+if ($contratoIp !== '' && strpos($contratoIp, ',') !== false) {
+    // X-Forwarded-For can be a list — keep the first (original client) entry only.
+    $contratoIp = trim(explode(',', $contratoIp)[0]);
+}
+$contratoUa        = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500);
+// Acceptance timestamp prefers the client-supplied UTC time (when checkbox
+// was actually ticked). Fall back to NOW() so a missing field never stops
+// the contract from being generated.
+$contratoAcceptedAt = $contratoTermsAt !== ''
+    ? gmdate('Y-m-d H:i:s', strtotime($contratoTermsAt) ?: time())
+    : gmdate('Y-m-d H:i:s');
+
 // ─ Purchase case number per dashboards_diagrams.pdf ─────────────────────────
 //   CASE 1-A — no referido code, no point selected (punto_id = 'centro-cercano')
 //   CASE 1-B — no referido code, user picked a point in the configurador
@@ -979,6 +1004,118 @@ if ($esCredito) {
     voltikaNotifyDelayed('portal_contado', $notifyData, 300);
 }
 
+// ── Contrato de Compraventa al Contado (PDF + email + DB record) ────────
+// Customer brief 2026-04-28: every 100 %-payment purchase (contado / msi /
+// spei / oxxo) gets a personalised contract auto-generated server-side
+// from the Contrato Voltika Contado v3 template. Cincel signature is NOT
+// invoked here — acceptance comes from checkbox + OTP + payment per
+// Cláusula Tercera of the contract itself. The credit/financed flow
+// continues to use generar-contrato-pdf.php with its own template.
+$contratoUrl   = null;
+$contratoToken = null;
+if (!$esCredito) {
+    require_once __DIR__ . '/contrato-contado.php';
+    try {
+        $pdoCC = getDB();
+        contratoContadoEnsureSchema($pdoCC);
+
+        $fullName = trim(implode(' ', array_filter([
+            $nombre,
+            $apellidoPaterno,
+            $apellidoMaterno,
+        ])));
+        if ($fullName === '') $fullName = $nombre;
+
+        // Payment reference: Stripe PI for card/MSI/SPEI/OXXO; falls back to
+        // the internal pedido number when Stripe didn't return one
+        // (e.g. SPEI flows that bypass create-payment-intent).
+        $paymentReference = $paymentIntentId ?: $pedidoNum;
+
+        // vehicle_year — current year as a sane default; can be overridden
+        // by future requests once inventario_motos exposes año-modelo.
+        $vehicleYear = isset($json['modelo_anio']) && (int)$json['modelo_anio']
+            ? (int)$json['modelo_anio']
+            : (int)date('Y');
+
+        $contratoData = [
+            // pedido = internal id (used for filename, URL token, DB lookup);
+            // folio = customer-facing identifier (VK-YYYYMMDD-XXX) shown
+            // inside the contract body as the binding folio.
+            'pedido'                  => $pedidoNum,
+            'folio'                   => $folioContrato ?: $pedidoNum,
+            'contract_date'           => date('d/m/Y'),
+            'customer_full_name'      => $fullName,
+            'customer_email'          => $email,
+            'customer_phone'          => $telefono,
+            'customer_zip'            => $customerCp,
+            'vehicle_model'           => $modelo,
+            'vehicle_color'           => $color,
+            'vehicle_year'            => $vehicleYear,
+            'vehicle_price'           => $total,
+            // Logistics cost only applies to MSI per Cláusula Segunda.
+            'logistics_cost'          => $pagoTipo === 'msi' ? floatval($json['costoLogistico'] ?? 0) : 0,
+            'total_amount'            => $pagoTipo === 'msi' ? ($total + floatval($json['costoLogistico'] ?? 0)) : $total,
+            'payment_method'          => $pagoTipo,
+            'payment_reference'       => $paymentReference,
+            'payment_date'            => date('d/m/Y H:i'),
+            'estimated_delivery_date' => $fechaEstimada,
+            'acceptance_timestamp'    => $contratoAcceptedAt,
+            'acceptance_ip'           => $contratoIp,
+            'acceptance_user_agent'   => $contratoUa,
+            'acceptance_geolocation'  => $contratoGeo,
+            'otp_validated'           => $contratoOtpOk,
+        ];
+
+        $genResult = contratoContadoGenerate($contratoData);
+        if ($genResult['ok']) {
+            $relPath       = contratoContadoRelativePath($pedidoNum);
+            $contratoToken = contratoContadoDownloadToken($pedidoNum, (string)$paymentIntentId);
+            $contratoUrl   = 'php/descargar-contrato.php?pedido=' . urlencode($pedidoNum)
+                           . '&token=' . urlencode($contratoToken);
+
+            // Persist the path + acceptance metadata so admin and the
+            // customer portal can re-download / re-verify later.
+            try {
+                $pdoCC->prepare("UPDATE transacciones
+                        SET contrato_pdf_path      = ?,
+                            contrato_aceptado_at   = ?,
+                            contrato_aceptado_ip   = ?,
+                            contrato_aceptado_ua   = ?,
+                            contrato_geolocation   = ?,
+                            contrato_otp_validated = ?
+                        WHERE pedido = ?
+                        ORDER BY id DESC LIMIT 1")
+                    ->execute([
+                        $relPath,
+                        $contratoAcceptedAt,
+                        $contratoIp,
+                        $contratoUa,
+                        $contratoGeo,
+                        $contratoOtpOk,
+                        $pedidoNum,
+                    ]);
+            } catch (Throwable $e) {
+                error_log('confirmar-orden contrato persist: ' . $e->getMessage());
+            }
+
+            // Email PDF as attachment. Best-effort — we don't fail the
+            // whole confirmation if SMTP is down (the PDF is already on
+            // disk and downloadable from the success screen).
+            if (!empty($email)) {
+                try {
+                    contratoContadoSendEmail($contratoData, $genResult['path']);
+                } catch (Throwable $e) {
+                    error_log('confirmar-orden contrato email: ' . $e->getMessage());
+                }
+            }
+        } else {
+            error_log('confirmar-orden contrato generate failed: ' . ($genResult['error'] ?? 'n/a'));
+        }
+    } catch (Throwable $e) {
+        error_log('confirmar-orden contrato block: ' . $e->getMessage());
+    }
+}
+
 // ── Admin alerts for Servicios adicionales ──────────────────────────────
 // When the client opts in for license-plate advisory or Quálitas insurance,
 // notify the Voltika admin so they can follow up manually. The admin number
@@ -1052,11 +1189,13 @@ if ($seguroQualitasInt === 1) {
 }
 
 echo json_encode([
-    'status'    => $dbSaveOk ? 'ok' : 'ok_warn',
-    'pedido'    => $pedidoNum,
-    'emailSent' => $emailSent,
-    'db_saved'  => $dbSaveOk,
-    'db_warning'=> $dbSaveOk ? null : 'La orden quedó registrada en recuperación. Contactar soporte con número de pedido.',
+    'status'        => $dbSaveOk ? 'ok' : 'ok_warn',
+    'pedido'        => $pedidoNum,
+    'emailSent'     => $emailSent,
+    'db_saved'      => $dbSaveOk,
+    'db_warning'    => $dbSaveOk ? null : 'La orden quedó registrada en recuperación. Contactar soporte con número de pedido.',
+    'contrato_url'  => $contratoUrl   ?? null,
+    'contrato_token'=> $contratoToken ?? null,
 ]);
 
 // ═════════════════════════════════════════════════════════════════════════════

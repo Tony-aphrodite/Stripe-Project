@@ -213,6 +213,25 @@ var PasoExito = {
         html += '<p style="font-size:13px;color:#777;margin:6px 0 0;">Gracias por confiar en nosotros &#128522;</p>';
         html += '</div>';
 
+        // === Contrato de Compraventa download ===
+        // confirmar-orden.php returns this URL after generating the
+        // personalized PDF (contado / msi / spei / oxxo flows). It is
+        // also delivered by email \u2014 this card is a convenience for the
+        // customer who is still on the success screen.
+        if (state.contratoUrl) {
+            html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;background:#F1F9FF;border:1px solid #B3D4FC;">';
+            html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">';
+            html += '<span style="font-size:24px;">&#128196;</span>';
+            html += '<div style="font-size:15px;font-weight:800;color:#1a3a5c;">Tu Contrato de Compraventa</div>';
+            html += '</div>';
+            html += '<p style="font-size:13px;color:#555;line-height:1.6;margin:0 0 12px;">Tambi\u00e9n te lo enviamos por correo. Cons\u00e9rvalo para tus registros.</p>';
+            html += '<a href="' + base + state.contratoUrl + '" target="_blank" rel="noopener" ';
+            html += 'style="display:block;width:100%;padding:12px;background:#039fe1;color:#fff;text-align:center;text-decoration:none;border-radius:8px;font-size:14px;font-weight:800;letter-spacing:0.4px;">';
+            html += '&#11015; DESCARGAR CONTRATO (PDF)';
+            html += '</a>';
+            html += '</div>';
+        }
+
         // === Entendido button ===
         html += '<button class="vk-btn vk-btn--primary" id="vk-exito-entendido" ' +
             'style="font-size:16px;font-weight:800;padding:16px;margin-bottom:16px;">Entendido</button>';

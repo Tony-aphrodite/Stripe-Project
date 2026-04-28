@@ -479,6 +479,18 @@ window.AD_ventas = (function(){
           actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
         }
       }
+      // Contrato de Compraventa link — only for 100%-payment orders
+      // (contado / unico / msi / spei / oxxo / tarjeta). Credit orders use
+      // a different contract pipeline. Admin session bypasses the HMAC
+      // token check inside descargar-contrato.php.
+      var contratoBtn = '';
+      var _tp = (r.tipo||r.tpago||'').toLowerCase();
+      if (['contado','unico','msi','spei','oxxo','tarjeta'].indexOf(_tp) >= 0 && r.pedido) {
+        contratoBtn = '<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
+          'style="'+btnStyleBase+';text-decoration:none;display:inline-flex;align-items:center;" '+
+          'title="Descargar contrato de compraventa" '+
+          'href="../configurador_prueba/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1">📄</a>';
+      }
       var actionTd;
       if (actionsLayout === 'stacked_pago_pendiente') {
         actionTd = '<td style="min-width:170px;"><div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;">'+
@@ -491,11 +503,12 @@ window.AD_ventas = (function(){
               'onclick="AD_ventas.syncStripe('+r.id+', this)">🔄 Sinc</button>'+
             '<button class="ad-btn sm ghost" style="'+btnStyleBase+';flex:1;" '+
               'onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>'+
+            contratoBtn +
           '</div>'+
         '</div></td>';
       } else {
         actionTd = '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
-          actions +
+          actions + contratoBtn +
         '</div></td>';
       }
       html += '<td>'+motoCell+'</td>' + actionTd;
