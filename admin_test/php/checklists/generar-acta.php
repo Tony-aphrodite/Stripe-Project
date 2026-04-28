@@ -126,6 +126,10 @@ $fpdfPaths = [
     __DIR__ . '/../lib/fpdf.php',
     __DIR__ . '/../../../configurador_prueba/php/vendor/fpdf/fpdf.php',
     __DIR__ . '/../../../configurador_prueba/php/vendor/setasign/fpdf/fpdf.php',
+    // Cross-env fallback (Plesk hosting where FPDF is only in test)
+    __DIR__ . '/../../../configurador_prueba_test/php/vendor/fpdf/fpdf.php',
+    __DIR__ . '/../../../configurador_prueba_test/php/vendor/setasign/fpdf/fpdf.php',
+    __DIR__ . '/../../../admin_test/php/lib/fpdf.php',
 ];
 $fpdfFound = false;
 foreach ($fpdfPaths as $fp) {

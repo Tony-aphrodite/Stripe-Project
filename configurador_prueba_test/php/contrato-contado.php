@@ -25,12 +25,24 @@
 
 require_once __DIR__ . '/config.php';
 
-// FPDF (already used by generar-contrato-pdf.php). We try the same paths
-// it does so a single vendor install serves both contract generators.
+// FPDF — try multiple known install locations including the sibling
+// environment (prod ↔ test) so we work even when Plesk hosting denies
+// the PHP runtime user write access to copy code between siblings.
+// READING is always allowed, so cross-env load works fine.
 if (!class_exists('FPDF')) {
     foreach ([
         __DIR__ . '/vendor/fpdf/fpdf.php',
         __DIR__ . '/vendor/setasign/fpdf/fpdf.php',
+        // Cross-environment fallback (prod loads from test, or vice versa)
+        __DIR__ . '/../../configurador_prueba_test/php/vendor/fpdf/fpdf.php',
+        __DIR__ . '/../../configurador_prueba_test/php/vendor/setasign/fpdf/fpdf.php',
+        __DIR__ . '/../../configurador_prueba/php/vendor/fpdf/fpdf.php',
+        __DIR__ . '/../../configurador_prueba/php/vendor/setasign/fpdf/fpdf.php',
+        __DIR__ . '/../../admin/php/lib/fpdf.php',
+        __DIR__ . '/../../admin_test/php/lib/fpdf.php',
+        // Project-wide vendor (some installs share one)
+        dirname(__DIR__, 2) . '/vendor/fpdf/fpdf.php',
+        dirname(__DIR__, 2) . '/vendor/setasign/fpdf/fpdf.php',
     ] as $_p) {
         if (file_exists($_p)) { require_once $_p; break; }
     }

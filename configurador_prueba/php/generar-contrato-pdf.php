@@ -219,12 +219,23 @@ function generateContractPDF($nombre, $email, $telefono, $modelo, $color,
         file_put_contents($firmaImgPath, $firmaData);
     }
 
-    // Check if FPDF is available
-    $fpdfPath = __DIR__ . '/vendor/fpdf/fpdf.php';
-    if (!file_exists($fpdfPath)) {
-        $fpdfPath = __DIR__ . '/vendor/setasign/fpdf/fpdf.php';
+    // Check if FPDF is available — try canonical AND cross-env paths
+    // (Plesk hosting where vendor lives only in test environment).
+    $fpdfPath = false;
+    foreach ([
+        __DIR__ . '/vendor/fpdf/fpdf.php',
+        __DIR__ . '/vendor/setasign/fpdf/fpdf.php',
+        // Cross-env: prod loads from test, or vice versa
+        __DIR__ . '/../../configurador_prueba_test/php/vendor/fpdf/fpdf.php',
+        __DIR__ . '/../../configurador_prueba_test/php/vendor/setasign/fpdf/fpdf.php',
+        __DIR__ . '/../../configurador_prueba/php/vendor/fpdf/fpdf.php',
+        __DIR__ . '/../../configurador_prueba/php/vendor/setasign/fpdf/fpdf.php',
+        __DIR__ . '/../../admin/php/lib/fpdf.php',
+        __DIR__ . '/../../admin_test/php/lib/fpdf.php',
+    ] as $_p) {
+        if (file_exists($_p)) { $fpdfPath = $_p; break; }
     }
-    if (!file_exists($fpdfPath)) {
+    if (!$fpdfPath) {
         // Try autoload
         $autoload = __DIR__ . '/vendor/autoload.php';
         if (file_exists($autoload)) require_once $autoload;
