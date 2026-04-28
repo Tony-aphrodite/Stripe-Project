@@ -39,13 +39,27 @@
 
 require_once __DIR__ . '/config.php';
 
+// Locate FPDF — try multiple known install locations so we work in
+// production (configurador_prueba/php/vendor) and in any test or
+// admin-shared layout. Records the resolved path in a global so the
+// diagnostic page can surface "which paths did we try?".
 if (!class_exists('FPDF')) {
+    $GLOBALS['_dossier_fpdf_tried'] = [];
     foreach ([
         __DIR__ . '/vendor/fpdf/fpdf.php',
         __DIR__ . '/vendor/setasign/fpdf/fpdf.php',
-    ] as $_p) if (file_exists($_p)) { require_once $_p; break; }
+        __DIR__ . '/../../admin/php/lib/fpdf.php',
+        __DIR__ . '/../../admin_test/php/lib/fpdf.php',
+        // Fallback to a project-wide vendor (some installs share one)
+        dirname(__DIR__, 2) . '/vendor/fpdf/fpdf.php',
+        dirname(__DIR__, 2) . '/vendor/setasign/fpdf/fpdf.php',
+    ] as $_p) {
+        $GLOBALS['_dossier_fpdf_tried'][$_p] = file_exists($_p);
+        if (file_exists($_p)) { require_once $_p; break; }
+    }
     if (!class_exists('FPDF')) {
         $_a = __DIR__ . '/vendor/autoload.php';
+        $GLOBALS['_dossier_fpdf_tried'][$_a] = file_exists($_a);
         if (file_exists($_a)) require_once $_a;
     }
 }
@@ -97,7 +111,24 @@ function dossierEnsureSchema(PDO $pdo): void {
 
 function _dossierOutputDir(): string {
     $dir = __DIR__ . '/../dossiers';
-    if (!is_dir($dir)) @mkdir($dir, 0775, true);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+        // Try chmod even if mkdir failed — common case where parent
+        // already has restrictive perms but the dir got created by
+        // a previous run as a different user.
+        @chmod($dir, 0775);
+    }
+    // Last-resort fallback: write to system temp if local dir is not
+    // writable (still usable for download but not persistent across
+    // server reboots — surfaces clearly in diagnostic page).
+    if (!is_writable($dir)) {
+        $alt = sys_get_temp_dir() . '/voltika_dossiers';
+        if (!is_dir($alt)) @mkdir($alt, 0777, true);
+        if (is_writable($alt)) {
+            $GLOBALS['_dossier_using_temp_dir'] = true;
+            return $alt;
+        }
+    }
     return $dir;
 }
 

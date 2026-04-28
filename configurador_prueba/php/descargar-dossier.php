@@ -112,7 +112,32 @@ if (!$dossier) {
         // For admins, render a one-page HTML guidance instead of a bare
         // text 404 — explains exactly what's missing and what to do next.
         header('Content-Type: text/html; charset=UTF-8');
-        $reason = $buildErr ?: 'Esta orden aún no tiene moto asignada (VIN). El dossier se construye automáticamente cuando CEDIS asigna inventario.';
+
+        // Determine the most useful "reason" — server config issues take
+        // priority over per-order issues, since the latter resolves
+        // automatically once CEDIS assigns inventory.
+        $hasFpdf = class_exists('FPDF');
+        $dossiersDir = __DIR__ . '/../dossiers';
+        $dirOk = is_dir($dossiersDir) && is_writable($dossiersDir);
+        if (!$hasFpdf) {
+            $reason = 'Falta la librería FPDF en el servidor — se necesita para generar PDFs. Verifica la instalación (ver bloque "ARREGLO" abajo).';
+        } elseif (!$dirOk) {
+            $reason = 'El directorio dossiers/ no existe o no tiene permisos de escritura. Crear con los comandos del bloque "ARREGLO" abajo.';
+        } else {
+            $reason = $buildErr ?: 'Esta orden aún no tiene moto asignada (VIN). El dossier se construye automáticamente cuando CEDIS asigna inventario.';
+        }
+
+        // FPDF tried-paths (set by dossier-defensa.php loader).
+        $fpdfTried = $GLOBALS['_dossier_fpdf_tried'] ?? [];
+        $fpdfDetail = '';
+        if (!$hasFpdf && $fpdfTried) {
+            $fpdfDetail = ' · paths: ' . implode(', ', array_map(
+                fn($p, $exists) => basename(dirname($p)) . '/' . basename($p) . '=' . ($exists ? '✓' : '×'),
+                array_keys($fpdfTried), array_values($fpdfTried)
+            ));
+        }
+        $usingTemp = !empty($GLOBALS['_dossier_using_temp_dir']) ? ' (FALLBACK→ /tmp)' : '';
+
         $diag = [
             'admin'             => $adminOk ? 1 : 0,
             'moto_id'           => $motoId,
@@ -120,8 +145,10 @@ if (!$dossier) {
             'build_intentado'   => $motoId > 0 ? 'sí' : 'no — sin moto_id',
             'build_error'       => $buildErr,
             'php_zip'           => class_exists('ZipArchive') ? 'ok' : '⚠️ MISSING (apt install php-zip)',
-            'php_fpdf'          => class_exists('FPDF') ? 'ok' : '⚠️ MISSING',
-            'dossiers_dir'      => is_writable(__DIR__ . '/../dossiers') ? 'ok' : '⚠️ NO ESCRIBIBLE',
+            'php_fpdf'          => $hasFpdf ? 'ok' : '⚠️ MISSING' . $fpdfDetail,
+            'dossiers_dir'      => $dirOk
+                ? 'ok' . $usingTemp
+                : '⚠️ NO ESCRIBIBLE — ' . $dossiersDir,
         ];
         echo '<!doctype html><html lang="es"><head><meta charset="utf-8">';
         echo '<title>Dossier no disponible</title><style>';
@@ -145,8 +172,46 @@ if (!$dossier) {
             echo '<tr><td>' . htmlspecialchars($k) . '</td><td>' . htmlspecialchars((string)($v ?? '—')) . '</td></tr>';
         }
         echo '</table></div>';
+        // Server-fix block — only render commands for the issues we
+        // actually detected so the admin doesn't run unnecessary fixes.
+        $needsServerFix = !$hasFpdf || !$dirOk;
+        if ($needsServerFix) {
+            echo '<div class="card" style="background:#fef2f2;border-color:#fecaca;">';
+            echo '<div class="tag" style="background:#fecaca;color:#991b1b;">ARREGLO REQUERIDO EN EL SERVIDOR</div>';
+            echo '<p style="margin:10px 0 6px;font-size:13px;">Ejecuta estos comandos por SSH como root o con sudo:</p>';
+            echo '<pre style="background:#1e293b;color:#e2e8f0;padding:14px;border-radius:6px;font-size:12px;overflow-x:auto;line-height:1.6;">';
+            if (!$dirOk) {
+                echo "# Crear el directorio de dossiers + permisos de escritura\n";
+                echo "mkdir -p /var/www/voltika.mx/configurador_prueba/dossiers\n";
+                echo "chmod 0775 /var/www/voltika.mx/configurador_prueba/dossiers\n";
+                echo "chown www-data:www-data /var/www/voltika.mx/configurador_prueba/dossiers\n";
+                if (strpos($_SERVER['HTTP_HOST'] ?? '', 'test') !== false || strpos($_SERVER['REQUEST_URI'] ?? '', '_test') !== false) {
+                    echo "# (también para test)\n";
+                    echo "mkdir -p /var/www/voltika.mx/configurador_prueba_test/dossiers\n";
+                    echo "chmod 0775 /var/www/voltika.mx/configurador_prueba_test/dossiers\n";
+                    echo "chown www-data:www-data /var/www/voltika.mx/configurador_prueba_test/dossiers\n";
+                }
+                echo "\n";
+            }
+            if (!$hasFpdf) {
+                echo "# Verificar FPDF (debería existir si ya genera contratos PDF)\n";
+                echo "ls -la /var/www/voltika.mx/configurador_prueba/php/vendor/fpdf/fpdf.php\n";
+                echo "\n";
+                echo "# Si no existe, descargar e instalar:\n";
+                echo "cd /var/www/voltika.mx/configurador_prueba/php/vendor/\n";
+                echo "wget -O fpdf.zip http://www.fpdf.org/en/download/fpdf186.zip\n";
+                echo "unzip fpdf.zip -d fpdf/\n";
+                echo "mv fpdf/fpdf186/* fpdf/ && rmdir fpdf/fpdf186/\n";
+                echo "chown -R www-data:www-data fpdf/\n";
+            }
+            echo '</pre></div>';
+        }
+
         echo '<div class="next"><b>¿Qué hacer?</b><br>';
-        echo '1. Asigna una moto del inventario (botón <b>Asignar</b> en la lista de ventas).<br>';
+        if ($needsServerFix) {
+            echo '0. <b>Primero ejecuta los comandos del bloque rojo arriba</b> (arregla la infraestructura).<br>';
+        }
+        echo ($needsServerFix ? '1' : '1') . '. Asigna una moto del inventario (botón <b>Asignar</b> en la lista de ventas).<br>';
         echo '2. Una vez asignada, el cron <code>auto-dossier.php</code> generará el dossier dentro de 1 hora.<br>';
         echo '3. Para forzar inmediatamente: vuelve a hacer clic en 📦 después de asignar la moto, o llama con <code>&build=1</code>.<br>';
         echo '4. Si el chargeback es URGENTE y la moto aún no está asignada, descarga el contrato 📄 (suficiente para evidencia básica) mientras CEDIS asigna inventario.';
