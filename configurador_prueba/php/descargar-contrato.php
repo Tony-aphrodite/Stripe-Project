@@ -84,9 +84,71 @@ if ($absPath === '') {
     if (file_exists($candidate)) $absPath = $candidate;
 }
 
+// ── If no PDF exists, regenerate on-the-fly (admin only) ────────────────
+// Older orders (placed before contrato-contado.php deployment) and orders
+// whose temp PDFs were cleaned up have empty contrato_pdf_path. When an
+// admin clicks the button we should rebuild from the order's data so the
+// chargeback evidence is always available — never "lost in /tmp".
+if (($absPath === '' || !is_readable($absPath)) && $adminOk) {
+    try {
+        $bRow = $pdo->prepare("SELECT * FROM transacciones WHERE pedido = ? ORDER BY id DESC LIMIT 1");
+        $bRow->execute([$pedido]);
+        $tx = $bRow->fetch(PDO::FETCH_ASSOC);
+        if ($tx && in_array(strtolower($tx['tpago'] ?? ''), ['contado','unico','msi','spei','oxxo','tarjeta'], true)) {
+            $tpago = strtolower($tx['tpago']);
+            $total = floatval($tx['total'] ?: $tx['precio']);
+            $costoLog = $tpago === 'msi' ? 1800 : 0; // mirrors confirmar-orden.php default
+            $contratoData = [
+                'pedido'                  => $tx['pedido'],
+                'folio'                   => $tx['folio_contrato'] ?: $tx['pedido'],
+                'contract_date'           => date('d/m/Y', strtotime($tx['freg'] ?? 'now')),
+                'customer_full_name'      => $tx['nombre'] ?: 'Cliente Voltika',
+                'customer_email'          => $tx['email'] ?? '',
+                'customer_phone'          => $tx['telefono'] ?? '',
+                'customer_zip'            => $tx['cp'] ?? '',
+                'vehicle_model'           => $tx['modelo'] ?? '',
+                'vehicle_color'           => $tx['color'] ?? '',
+                'vehicle_year'            => (int)date('Y'),
+                'vehicle_price'           => $total,
+                'logistics_cost'          => $tpago === 'msi' ? $costoLog : 0,
+                'total_amount'            => $total,
+                'payment_method'          => $tpago,
+                'payment_reference'       => $tx['stripe_pi'] ?: $tx['pedido'],
+                'payment_date'            => date('d/m/Y H:i', strtotime($tx['freg'] ?? 'now')),
+                'estimated_delivery_date' => date('d/m/Y', strtotime('+10 days', strtotime($tx['freg'] ?? 'now'))),
+                'acceptance_timestamp'    => $tx['contrato_aceptado_at'] ?: ($tx['freg'] ?? gmdate('Y-m-d H:i:s')),
+                'acceptance_ip'           => $tx['contrato_aceptado_ip'] ?? '',
+                'acceptance_user_agent'   => $tx['contrato_aceptado_ua'] ?? '',
+                'acceptance_geolocation'  => $tx['contrato_geolocation'] ?? '',
+                'otp_validated'           => (int)($tx['contrato_otp_validated'] ?? 0),
+            ];
+            $r = contratoContadoGenerate($contratoData);
+            if ($r['ok']) {
+                $absPath = $r['path'];
+                // Update DB so next download is fast.
+                try {
+                    $relPath = contratoContadoRelativePath($pedido);
+                    $pdo->prepare("UPDATE transacciones
+                                    SET contrato_pdf_path = ?, contrato_pdf_hash = ?
+                                    WHERE pedido = ? AND (contrato_pdf_path IS NULL OR contrato_pdf_path = '')")
+                        ->execute([$relPath, $r['hash'] ?? null, $pedido]);
+                } catch (Throwable $e) { /* non-fatal */ }
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('descargar-contrato regen: ' . $e->getMessage());
+    }
+}
+
 if ($absPath === '' || !is_readable($absPath)) {
     http_response_code(404);
-    echo 'Contrato no disponible';
+    if (isset($_GET['debug']) && $_GET['debug'] === '1' && $adminOk) {
+        echo 'Contrato no disponible · pedido_db_path="' . htmlspecialchars($pdfPath, ENT_QUOTES) . '"'
+            . ' · canonical_existe=' . (file_exists(contratoContadoPdfPath($pedido)) ? '1' : '0')
+            . ' · admin=1';
+    } else {
+        echo 'Contrato no disponible';
+    }
     exit;
 }
 
