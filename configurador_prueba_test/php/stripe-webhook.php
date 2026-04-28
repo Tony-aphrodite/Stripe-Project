@@ -781,9 +781,112 @@ function handleChargebackOpened($dispute): void {
                            WHERE cliente_id = ? AND estado IN ('activa','pendiente_activacion')")
                 ->execute([$clienteId]);
         }
+
+        // ── Auto-attach the Defense Dossier to the Stripe dispute ──────
+        // Customer brief 2026-04-29: "we need the system to defend
+        // disputed customer payments automatically". When a chargeback
+        // arrives we must respond with evidence within 7 days; do it
+        // immediately while the data is fresh.
+        if ($transId) {
+            try {
+                $motoStmt = $pdo->prepare("SELECT id FROM inventario_motos WHERE transaccion_id = ? LIMIT 1");
+                $motoStmt->execute([$transId]);
+                $motoId = (int)($motoStmt->fetchColumn() ?: 0);
+                if ($motoId) {
+                    require_once __DIR__ . '/dossier-defensa.php';
+                    $r = dossierBuild($motoId, [
+                        'motivo' => 'chargeback_response',
+                        'stripe_dispute_id' => $disputeId,
+                    ]);
+                    if ($r['ok']) {
+                        webhookLog("dossier built for dispute $disputeId · id={$r['dossier_id']} · pdf={$r['pdf_path']}");
+                        // Try to attach the master PDF to the Stripe dispute.
+                        $attached = _stripeAttachDossierToDispute($disputeId, $r['pdf_path'], $pdo);
+                        if ($attached['ok']) {
+                            $pdo->prepare("UPDATE dossiers_defensa
+                                           SET enviado_a_stripe = 1, enviado_at = NOW()
+                                           WHERE id = ?")
+                                ->execute([$r['dossier_id']]);
+                            webhookLog("dossier auto-attached to Stripe dispute $disputeId");
+                        } else {
+                            webhookLog("dossier auto-attach failed: " . $attached['error']);
+                        }
+                    } else {
+                        webhookLog("dossier build failed for dispute $disputeId: " . ($r['error'] ?? 'unknown'));
+                    }
+                }
+            } catch (Throwable $e) {
+                webhookLog("dossier auto-attach error: " . $e->getMessage());
+            }
+        }
     } catch (Throwable $e) {
         webhookLog("chargeback handler error: " . $e->getMessage());
     }
+}
+
+/**
+ * Attach the Defense Dossier master PDF to a Stripe dispute.
+ *
+ * Stripe Disputes API flow:
+ *   1. POST /v1/files (purpose=dispute_evidence) → returns file id
+ *   2. POST /v1/disputes/{id} with evidence[uncategorized_file]=fileId
+ *      and evidence_details[submit]=false (we let admin click Submit
+ *      manually after reviewing what we attached).
+ *
+ * Falls back gracefully if STRIPE_SECRET_KEY is missing.
+ */
+function _stripeAttachDossierToDispute(string $disputeId, string $relPdfPath, PDO $pdo): array {
+    $stripeKey = defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : (getenv('STRIPE_SECRET_KEY') ?: '');
+    if (!$stripeKey) return ['ok' => false, 'error' => 'STRIPE_SECRET_KEY ausente'];
+
+    $absPdf = __DIR__ . '/../' . ltrim($relPdfPath, '/');
+    if (!file_exists($absPdf)) return ['ok' => false, 'error' => 'PDF dossier no encontrado: ' . $absPdf];
+
+    // Step 1: upload as a Stripe File with purpose=dispute_evidence.
+    // Files API uses files.stripe.com with multipart form-data.
+    $cfile = new CURLFile($absPdf, 'application/pdf', 'voltika_dossier.pdf');
+    $ch = curl_init('https://files.stripe.com/v1/files');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $stripeKey . ':',
+        CURLOPT_HTTPHEADER     => ['Stripe-Account: '],
+        CURLOPT_POSTFIELDS     => ['purpose' => 'dispute_evidence', 'file' => $cfile],
+        CURLOPT_TIMEOUT        => 60,
+    ]);
+    $raw = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+    if ($err || $code < 200 || $code >= 300) {
+        return ['ok' => false, 'error' => "Stripe file upload HTTP $code · $err · " . substr($raw, 0, 300)];
+    }
+    $fileResp = json_decode($raw, true) ?: [];
+    $fileId = $fileResp['id'] ?? null;
+    if (!$fileId) return ['ok' => false, 'error' => 'Stripe file id ausente en respuesta'];
+
+    // Step 2: PATCH the dispute with the evidence file.
+    $body = http_build_query([
+        'evidence[uncategorized_file]'  => $fileId,
+        'evidence[uncategorized_text]'  => 'Voltika Defense Dossier — manifest SHA-256 + Cincel NOM-151 timestamp. ZIP pack with all signed contracts, identity validation (Truora INE+selfie), CFDI 4.0, REPUVE notice, OTP-validated delivery acta + pagaré, IP/UA/geolocation evidence, full notification + payment logs. See attached PDF.',
+        'evidence_details[submit]'     => 'false',
+    ]);
+    $ch = curl_init('https://api.stripe.com/v1/disputes/' . urlencode($disputeId));
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST  => 'POST',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $stripeKey . ':',
+        CURLOPT_POSTFIELDS     => $body,
+        CURLOPT_TIMEOUT        => 30,
+    ]);
+    $raw2 = curl_exec($ch);
+    $code2 = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err2  = curl_error($ch);
+    curl_close($ch);
+    if ($err2 || $code2 < 200 || $code2 >= 300) {
+        return ['ok' => false, 'error' => "Stripe dispute update HTTP $code2 · " . substr($raw2, 0, 300)];
+    }
+    return ['ok' => true, 'file_id' => $fileId];
 }
 
 function handleChargebackResolved($dispute): void {
