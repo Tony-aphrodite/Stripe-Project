@@ -20,7 +20,13 @@ require_once __DIR__ . '/dossier-defensa.php';
 $pdo = getDB();
 dossierEnsureSchema($pdo);
 
-if (session_status() === PHP_SESSION_NONE) @session_start();
+// Admin session uses a custom session_name (VOLTIKA_ADMIN). Adopt it
+// BEFORE session_start so admin logins from the admin panel are
+// recognized when downloading from configurador_prueba/.
+if (session_status() === PHP_SESSION_NONE) {
+    @session_name('VOLTIKA_ADMIN');
+    @session_start();
+}
 $adminOk = !empty($_SESSION['admin_user_id']);
 
 $motoId = (int)($_GET['moto_id'] ?? 0);

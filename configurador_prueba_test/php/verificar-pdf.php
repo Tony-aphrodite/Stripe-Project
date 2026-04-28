@@ -80,7 +80,12 @@ if ($pedido !== '') {
 
 // ── Mode 2: delivery documents (admin only) ─────────────────────────────
 if ($motoId > 0) {
-    if (session_status() === PHP_SESSION_NONE) @session_start();
+    // Adopt the admin session name (VOLTIKA_ADMIN) so admin login is
+    // recognized when calling from configurador_prueba/.
+    if (session_status() === PHP_SESSION_NONE) {
+        @session_name('VOLTIKA_ADMIN');
+        @session_start();
+    }
     if (empty($_SESSION['admin_user_id'])) {
         echo json_encode(['ok' => false, 'error' => 'auth requerida para moto_id']);
         exit;

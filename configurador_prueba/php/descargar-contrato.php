@@ -43,15 +43,30 @@ try {
 }
 
 // ── Authorize ───────────────────────────────────────────────────────────
+// Admin session lives under session_name('VOLTIKA_ADMIN') (see
+// admin/php/bootstrap.php). We must adopt that name BEFORE session_start
+// or PHP creates a fresh empty session under PHPSESSID and admin auth
+// silently fails — that produced the misleading "No encontrado" 404
+// when an admin clicked the contract download button (2026-04-29).
 $adminOk = false;
-if (session_status() === PHP_SESSION_NONE) @session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    @session_name('VOLTIKA_ADMIN');
+    @session_start();
+}
 if (!empty($_SESSION['admin_user_id'])) {
     $adminOk = true;
 }
 
 if (!$adminOk && !contratoContadoVerifyToken($pedido, $stripePi, $token)) {
     http_response_code(404);
-    echo 'No encontrado';
+    // Helpful hint for admin who clicked the button without an active
+    // session (e.g. testing in a private window) — for end-customers
+    // we still return a generic 404 so we don't leak existence info.
+    if (isset($_GET['debug']) && $_GET['debug'] === '1') {
+        echo "404 · token inválido o sesión admin no detectada (session_name VOLTIKA_ADMIN). pedido_db_found=" . (!empty($r) ? '1' : '0');
+    } else {
+        echo 'No encontrado';
+    }
     exit;
 }
 
