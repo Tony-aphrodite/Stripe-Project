@@ -69,6 +69,16 @@ switch ($eventType) {
         handlePaymentPending($event->data->object);
         break;
 
+    // ── Tech Spec EN §7 — chargeback / dispute auto-escalation ─────────
+    case 'charge.dispute.created':
+    case 'charge.dispute.funds_withdrawn':
+        handleChargebackOpened($event->data->object);
+        break;
+    case 'charge.dispute.closed':
+    case 'charge.dispute.funds_reinstated':
+        handleChargebackResolved($event->data->object);
+        break;
+
     default:
         webhookLog("Unhandled event type: $eventType");
         break;
@@ -697,4 +707,158 @@ function handleCiclosPagoUpdate($paymentIntent) {
     } catch (PDOException $e) {
         webhookLog("ciclos_pago DB ERROR: " . $e->getMessage());
     }
+}
+
+
+// ── Tech Spec EN §7 — Chargeback / dispute escalation handlers ──────────
+// Stripe fires charge.dispute.* on the original charge (not the
+// PaymentIntent). We resolve back to our customer + order via
+// transacciones.stripe_pi (charge → PI lookup is implicit because we
+// store the PI). On chargeback: create an escalation row and freeze the
+// related subscription. On resolution: close the escalation; the
+// admin/php/escalations/actualizar.php side-effect resumes the
+// subscription if no other dispute is open.
+
+function handleChargebackOpened($dispute): void {
+    $disputeId = $dispute->id ?? '';
+    $piId      = $dispute->payment_intent ?? ($dispute->charge ?? '');
+    $reason    = $dispute->reason ?? 'unknown';
+    $amount    = ($dispute->amount ?? 0) / 100;
+    $status    = $dispute->status ?? 'needs_response';
+    webhookLog("dispute opened: $disputeId · PI=$piId · reason=$reason · status=$status");
+
+    try {
+        $pdo = getDB();
+        _ensureEscalationsTable($pdo);
+
+        // Resolve customer + order from PI
+        $clienteId = null; $transId = null; $email = ''; $nombre = '';
+        if ($piId) {
+            $st = $pdo->prepare("SELECT id, email, nombre FROM transacciones
+                                 WHERE stripe_pi = ? ORDER BY id DESC LIMIT 1");
+            $st->execute([$piId]);
+            if ($row = $st->fetch(PDO::FETCH_ASSOC)) {
+                $transId = (int)$row['id'];
+                $email   = (string)$row['email'];
+                $nombre  = (string)$row['nombre'];
+                if ($email) {
+                    $cs = $pdo->prepare("SELECT id FROM clientes WHERE email = ? ORDER BY id DESC LIMIT 1");
+                    $cs->execute([$email]);
+                    $clienteId = (int)($cs->fetchColumn() ?: 0) ?: null;
+                }
+            }
+        }
+
+        // Idempotency — if an open escalation already exists for this dispute,
+        // bail out (Stripe can re-send the same event during retries).
+        $exists = $pdo->prepare("SELECT id FROM escalations
+                                  WHERE kind IN ('chargeback','dispute')
+                                    AND ref_externa = ?
+                                    AND estado IN ('open','in_progress')
+                                  LIMIT 1");
+        $exists->execute([$disputeId]);
+        if ($exists->fetchColumn()) {
+            webhookLog("dispute $disputeId already escalated — skipping");
+            return;
+        }
+
+        $pdo->prepare("INSERT INTO escalations
+                (kind, severity, cliente_id, transaccion_id, ref_externa,
+                 titulo, detalle, asignado_a)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+            ->execute([
+                'chargeback', 'critical', $clienteId, $transId, $disputeId,
+                'Contracargo Stripe' . ($nombre ? ' — ' . $nombre : ''),
+                "Razón: $reason · Monto: $" . number_format($amount, 2) . " MXN · Estado Stripe: $status · PI: $piId",
+                'finance',
+            ]);
+
+        // Freeze related subscription so auto-cobro stops charging the
+        // disputed customer (per spec: open dispute = block all new ops).
+        if ($clienteId) {
+            $pdo->prepare("UPDATE subscripciones_credito
+                           SET estado = 'disputada'
+                           WHERE cliente_id = ? AND estado IN ('activa','pendiente_activacion')")
+                ->execute([$clienteId]);
+        }
+    } catch (Throwable $e) {
+        webhookLog("chargeback handler error: " . $e->getMessage());
+    }
+}
+
+function handleChargebackResolved($dispute): void {
+    $disputeId = $dispute->id ?? '';
+    $status    = $dispute->status ?? 'lost';
+    webhookLog("dispute resolved: $disputeId · status=$status");
+
+    try {
+        $pdo = getDB();
+        _ensureEscalationsTable($pdo);
+
+        // Mark every open escalation for this dispute as resolved/closed.
+        // Stripe `status` won/lost determines outcome wording.
+        $newEstado = $status === 'won' ? 'resolved' : 'closed';
+        $row = $pdo->prepare("SELECT id, cliente_id FROM escalations
+                              WHERE ref_externa = ?
+                                AND kind IN ('chargeback','dispute')
+                                AND estado IN ('open','in_progress')");
+        $row->execute([$disputeId]);
+        $escalations = $row->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($escalations as $esc) {
+            $pdo->prepare("UPDATE escalations
+                           SET estado = ?, resolved_at = NOW(),
+                               notas = COALESCE(notas, '') || ?
+                           WHERE id = ?")
+                ->execute([
+                    $newEstado,
+                    "\n[" . date('Y-m-d H:i') . "] Stripe dispute closed with status=$status",
+                    (int)$esc['id'],
+                ]);
+            // If no other open dispute exists for the customer, resume billing.
+            if (!empty($esc['cliente_id'])) {
+                $still = $pdo->prepare("SELECT COUNT(*) FROM escalations
+                    WHERE cliente_id = ?
+                      AND kind IN ('chargeback','dispute','profeco')
+                      AND estado IN ('open','in_progress')");
+                $still->execute([(int)$esc['cliente_id']]);
+                if ((int)$still->fetchColumn() === 0) {
+                    $pdo->prepare("UPDATE subscripciones_credito
+                                   SET estado = 'activa'
+                                   WHERE cliente_id = ? AND estado = 'disputada'")
+                        ->execute([(int)$esc['cliente_id']]);
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        webhookLog("chargeback resolution handler error: " . $e->getMessage());
+    }
+}
+
+function _ensureEscalationsTable(PDO $pdo): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS escalations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            kind VARCHAR(40) NOT NULL,
+            severity VARCHAR(20) NOT NULL DEFAULT 'critical',
+            cliente_id INT NULL,
+            transaccion_id INT NULL,
+            moto_id INT NULL,
+            ref_externa VARCHAR(120) NULL,
+            titulo VARCHAR(200) NOT NULL,
+            detalle TEXT NULL,
+            estado VARCHAR(20) NOT NULL DEFAULT 'open',
+            asignado_a VARCHAR(80) NULL,
+            notas MEDIUMTEXT NULL,
+            freg DATETIME DEFAULT CURRENT_TIMESTAMP,
+            fmod DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            resolved_at DATETIME NULL,
+            INDEX idx_estado_kind (estado, kind),
+            INDEX idx_cliente (cliente_id),
+            INDEX idx_transaccion (transaccion_id),
+            INDEX idx_ref (ref_externa)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (Throwable $e) { webhookLog('escalations table create: ' . $e->getMessage()); }
 }
