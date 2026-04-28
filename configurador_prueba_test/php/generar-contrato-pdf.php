@@ -544,136 +544,427 @@ function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $co
 }
 
 /**
- * Generate Contrato de Compraventa a Plazos pages (appended to Carátula PDF)
+ * Generate Contrato de Compraventa a Plazos pages (appended to Carátula PDF).
+ *
+ * Body content updated 2026-04-29 to the legal team's "Contrato Voltika v5
+ * Español" — final, signed-off version. The Carátula generator above is
+ * intentionally kept as-is per the customer brief: it remains the cover
+ * page (datos del cliente, precios, plan de pagos), and this function
+ * appends the full v5 body (DECLARACIONES + DEFINICIONES + 33 cláusulas
+ * + firmas) starting on a new page. The body references the carátula's
+ * folio in its header, matching the {{customer_id}} placeholder of the
+ * source document.
+ *
+ * NOM-151 / Cincel signature flow is unchanged — Cláusula Trigésima
+ * Primera of v5 explicitly endorses it.
  */
 function generateContratoPages($pdf, $enc, $folio, $nombre, $firmaImgPath, $fechaFirma) {
 
+    // ── Layout helpers — local closures keep the function self-contained
+    // and reuse the $enc transliterator the caller already wired.
+    $h2 = function($title) use ($pdf, $enc) {
+        $pdf->Ln(2);
+        $pdf->SetFont('Arial', 'B', 10);
+        $pdf->Cell(0, 6, $enc($title), 0, 1);
+        $pdf->Ln(0.5);
+    };
+    $h3 = function($title) use ($pdf, $enc) {
+        $pdf->Ln(1);
+        $pdf->SetFont('Arial', 'B', 8);
+        $pdf->MultiCell(0, 4, $enc($title));
+    };
+    $para = function($text) use ($pdf, $enc) {
+        $pdf->SetFont('Arial', '', 7.5);
+        $pdf->MultiCell(0, 3.6, $enc($text), 0, 'J');
+        $pdf->Ln(0.8);
+    };
+    $list = function(array $items) use ($pdf, $enc) {
+        $pdf->SetFont('Arial', '', 7.5);
+        foreach ($items as $it) {
+            $pdf->Cell(3); // small indent
+            $pdf->MultiCell(0, 3.6, $enc($it), 0, 'J');
+            $pdf->Ln(0.3);
+        }
+        $pdf->Ln(0.4);
+    };
+    $defList = function(array $pairs) use ($pdf, $enc) {
+        $pdf->SetFont('Arial', '', 7.5);
+        foreach ($pairs as $p) {
+            $pdf->SetFont('Arial', 'B', 7.5);
+            // Print term inline-bold then the rest of the definition justified.
+            $term = $p[0] . ': ';
+            $pdf->Write(3.6, $enc($term));
+            $pdf->SetFont('Arial', '', 7.5);
+            $pdf->Write(3.6, $enc($p[1]));
+            $pdf->Ln(4.6);
+        }
+        $pdf->Ln(0.4);
+    };
+
+    // ─── Page header (new page after carátula) ───────────────────────────
     $pdf->AddPage();
-
-    // Header with Folio
+    $pdf->SetFont('Arial', '', 7);
+    $pdf->Cell(0, 4, $enc('CONTRATO ASOCIADO AL FOLIO: ' . $folio), 0, 1, 'R');
+    $pdf->Ln(1);
     $pdf->SetFont('Arial', 'B', 12);
-    $pdf->Cell(0, 8, $enc('CONTRATO DE COMPRAVENTA A PLAZOS'), 0, 1, 'C');
-    $pdf->SetFont('Arial', '', 7);
-    $pdf->Cell(0, 5, $enc('Folio: ' . $folio), 0, 1, 'R');
-    $pdf->Ln(3);
-
-    // Opening paragraph
-    $pdf->SetFont('Arial', '', 7);
-    $pdf->MultiCell(0, 3.5, $enc('CON RESERVA DE DOMINIO QUE CELEBRAN POR UNA PARTE MTECH GEARS, S.A. DE C.V. (EN LO SUCESIVO VOLTIKA); Y POR LA OTRA PARTE POR PROPIO DERECHO LA PERSONA FISICA CUYOS DATOS GENERALES SE ENCONTRARAN EN LA CARATULA DEL PRESENTE CONTRATO, MISMA QUE FORMA PARTE INTEGRAL DEL MISMO (EN LO SUCESIVO CLIENTE); Y EN CONJUNTO CON VOLTIKA SE LES DENOMINARA LAS PARTES AL TENOR DE LAS SIGUIENTES DECLARACIONES, DEFINICIONES Y CLAUSULAS:'));
-    $pdf->Ln(3);
-
-    // DECLARACIONES
-    $pdf->SetFont('Arial', 'B', 9);
-    $pdf->Cell(0, 6, 'DECLARACIONES', 0, 1);
-    $pdf->SetFont('Arial', '', 7);
-    $decls = [
-        'Declara EL CLIENTE que es una persona fisica con capacidad juridica y economica para obligarse.',
-        'Domicilio y medios de comunicacion senalados en la caratula del Contrato.',
-        'EL CLIENTE reconoce que el numero telefonico registrado sera considerado como medio de autenticacion valido.',
-        'Documentos requeridos: identificacion oficial vigente y comprobante de domicilio (no mayor a 3 meses).',
-        'Aviso de Privacidad disponible en: https://www.voltika.mx/docs/privacidad_2026',
-        'EL CLIENTE ha recibido, revisado y aceptado la caratula de la operacion de compraventa a plazos.',
-        'VOLTIKA es una sociedad mexicana constituida bajo legislacion aplicable, con domicilio en Jaime Balmes 71, despacho 101 C, Polanco I Seccion, Miguel Hidalgo, C.P. 11510, Ciudad de Mexico.',
-    ];
-    foreach ($decls as $d) {
-        $pdf->MultiCell(0, 3.5, $enc('- ' . $d));
-        $pdf->Ln(1);
-    }
-
-    // DEFINICIONES
-    $pdf->Ln(2);
-    $pdf->SetFont('Arial', 'B', 9);
-    $pdf->Cell(0, 6, 'DEFINICIONES', 0, 1);
-    $pdf->SetFont('Arial', '', 7);
-    $defs = [
-        'Solicitud: Documento generado por VOLTIKA y firmado por EL CLIENTE, en el que se establecen en forma especifica los datos generales de EL CLIENTE. Forma parte integrante del presente Contrato.',
-        'Caratula: Documento generado por VOLTIKA y firmado por EL CLIENTE, que contiene los elementos esenciales de la operacion comercial de compraventa a plazos, incluyendo la identificacion del producto, precio de contado, precio total a plazo, enganche, saldo pendiente de pago, numero y periodicidad de pagos, monto por pago y monto total a pagar. Forma parte integrante del presente Contrato.',
-        'Saldo pendiente de pago o Saldo a Plazo: Parte del precio total a plazo pendiente de pago por EL CLIENTE conforme a la Caratula y al plan de pagos aceptado.',
-        'Saldo Insoluto: Monto pendiente de pago conforme al plan de pagos establecido en la Caratula y, en su caso, en la Tabla de Pagos.',
-        'Solicitud de Compra a Plazos: Documento generado por VOLTIKA y firmado por EL CLIENTE que contiene sus datos de identificacion personal, laboral y financiera para evaluar la viabilidad comercial de la operacion.',
-        'Tabla de Pagos: Documento puesto a disposicion de EL CLIENTE por medios fisicos o electronicos, que refleja el numero total de pagos, su periodicidad, el monto de cada pago y, en su caso, la fecha estimada de primer pago. Forma parte integrante del presente Contrato.',
-        'Autorizacion para consulta y monitoreo de Informacion Crediticia: Autorizacion otorgada por EL CLIENTE a VOLTIKA para solicitar, obtener o verificar informacion crediticia. Caracter irrevocable, vigente por tres anos o mientras exista relacion juridica.',
-        'Validacion electronica: Mecanismo de autenticacion mediante codigos de seguridad (OTP) enviados al numero telefonico registrado por EL CLIENTE, asi como confirmaciones digitales, registros electronicos, evidencia fotografica y demas mensajes de datos generados durante la contratacion, pago y entrega, con efectos juridicos conforme a la legislacion aplicable.',
-    ];
-    foreach ($defs as $d) {
-        $pdf->MultiCell(0, 3.5, $enc('- ' . $d));
-        $pdf->Ln(1);
-    }
-
-    // CLAUSULAS
-    $pdf->Ln(2);
-    $pdf->SetFont('Arial', 'B', 9);
-    $pdf->Cell(0, 6, 'CLAUSULAS', 0, 1);
-
-    $clausulas = [
-        ['PRIMERA. OBJETO', 'Compraventa a plazos de una motocicleta electrica. VOLTIKA vende a EL CLIENTE el vehiculo descrito en la Caratula, reservandose la propiedad del mismo hasta el pago total del precio a plazo pactado. EL CLIENTE reconoce que la entrega del vehiculo podra realizarse mediante validacion electronica (OTP, registros digitales, evidencia fotografica).'],
-        ['SEGUNDA. DESTINO', 'La presente operacion tiene como finalidad exclusiva la adquisicion del producto descrito en la Caratula.'],
-        ['TERCERA. PLAZO DEL CONTRATO', 'Segun numero total de pagos y periodicidad en la Caratula/Tabla de Pagos.'],
-        ['CUARTA. DOMICILIACION', 'EL CLIENTE autoriza cargos recurrentes a tarjeta bancaria o cuenta registrada. La cancelacion o rechazo de cargo no extingue la obligacion de pago.'],
-        ['QUINTA. ASIGNACIÓN DE LA UNIDAD', 'La entrega y asignacion del vehiculo estaran sujetas a la disponibilidad de inventario, modelo, color y al proceso de entrega establecido en la Caratula y en el presente Contrato.'],
-        ['SEXTA. PAGO DE ENGANCHE', 'El pago inicial constituye deposito en garantia para reserva del vehiculo. Si EL CLIENTE no continua tras aprobacion, VOLTIKA podra retener gastos administrativos. El pago del enganche por medios electronicos constituye aceptacion expresa.'],
-        ['SEXTA BIS. PAGOS DE LA OPERACIÓN A PLAZOS', 'EL CLIENTE pagara a VOLTIKA el saldo pendiente de pago mediante el numero total de pagos, con la periodicidad y por el monto establecido en la Caratula y en la Tabla de Pagos. Si fecha de pago cae en dia inhabil, el pago sera el dia habil inmediato anterior.'],
-        ['SEPTIMA. PRECIO TOTAL A PLAZO', 'EL CLIENTE reconoce que el monto total a pagar incluye el precio del vehiculo y el costo comercial derivado de la venta a plazos. EL CLIENTE manifiesta que conoce y acepta el precio de contado, el precio total a plazo, la periodicidad de los pagos, el importe de cada uno de ellos y el monto total a pagar.'],
-        ['OCTAVA. INCUMPLIMIENTO DE PAGO', 'VOLTIKA podra ejercer acciones de cobro, incluyendo vencimiento anticipado. Cargos por atraso conforme a politicas vigentes de cobranza.'],
-        ['NOVENA. MEDIOS DE ACREDITACION Y REGISTRO', 'VOLTIKA conservara registros fisicos y electronicos (mensajes de datos, IPs, OTP, evidencia fotografica, firma electronica). Constituiran evidencia suficiente.'],
-        ['DECIMA. LUGAR Y FORMA DE PAGO', 'Medios autorizados: cargos automaticos, transferencias electronicas, pagos referenciados, tiendas de conveniencia. EL CLIENTE debe mantener forma de pago vigente.'],
-        ['DECIMA PRIMERA. INFORMACION DE PAGOS', 'VOLTIKA pondra a disposicion informacion de pagos por medios electronicos o portal de cliente.'],
-        ['DECIMA SEGUNDA. PAGOS ANTICIPADOS', 'Sin penalizacion, conforme a medios autorizados.'],
-        ['DECIMA TERCERA. OBLIGACIONES', 'Mantener vehiculo en condiciones adecuadas; permitir inspecciones previo aviso; en caso de incumplimiento, aceptar devolucion voluntaria.'],
-        ['DECIMA TERCERA BIS. VALIDACION DE INFORMACION', 'VOLTIKA podra solicitar documentacion adicional. Informacion falsa podra dar lugar a cancelacion o restriccion de la operacion.'],
-        ['DECIMA CUARTA. RESERVA DE DOMINIO Y RECUPERACIÓN', 'La propiedad de la motocicleta permanecera en favor de VOLTIKA hasta el pago total del precio a plazo. En caso de incumplimiento, VOLTIKA podra ejercer acciones legales para la recuperacion del vehiculo. EL CLIENTE autoriza el uso de tecnologias de geolocalizacion y control remoto para fines de seguridad y recuperacion del bien.'],
-        ['DECIMA CUARTA BIS. GARANTIA PRENDARIA', 'En garantia del pago exacto y oportuno del precio a plazos y demas obligaciones derivadas del presente Contrato, EL CLIENTE constituye prenda en primer lugar a favor de VOLTIKA sobre el bien objeto de la presente compraventa a plazos.'],
-        ['DECIMA QUINTA. TIEMPOS DE ENTREGA', 'Plazo estimado de hasta 28 dias naturales a partir de firma del Contrato. La validacion mediante OTP, firma electronica y evidencia digital constituira constancia de entrega.'],
-        ['DECIMA SEXTA. POSESION DEL VEHICULO', 'EL CLIENTE conserva posesion como depositario.'],
-        ['DECIMA SEPTIMA. OBLIGADO SOLIDARIO', 'Se constituye obligado solidario conforme a los datos en el Contrato y la Caratula.'],
-        ['DECIMA OCTAVA. OPCIONES DE PROTECCION', 'VOLTIKA podra ofrecer seguros o mecanismos de proteccion opcionales.'],
-        ['DECIMA NOVENA. RESPONSABILIDAD SOBRE EL VEHICULO', 'EL CLIENTE es responsable del uso, resguardo y conservacion. Dano, perdida, robo o siniestro no libera de obligaciones de pago.'],
-        ['VIGESIMA. IMPUESTOS', 'EL CLIENTE pagara impuestos, derechos u obligaciones fiscales generados por el Contrato.'],
-        ['VIGESIMA PRIMERA. CAUSAS DE VENCIMIENTO ANTICIPADO', 'Falta de pago, incumplimiento, informacion falsa, venta no autorizada del vehiculo, siniestro no notificado, incumplimiento de otros contratos con VOLTIKA. Cancelacion sin responsabilidad dentro de 5 dias habiles si no ha recibido vehiculo.'],
-        ['VIGESIMA SEGUNDA. COMPENSACION', 'VOLTIKA autorizada para cargar contra cuenta de EL CLIENTE el monto de pagos sin necesidad de requerimiento.'],
-        ['VIGESIMA TERCERA. CESION DE LOS DERECHOS DE COBRO', 'VOLTIKA podra transmitir, ceder, negociar o titularizar los derechos de cobro derivados de la presente operacion de compraventa a plazos. EL CLIENTE no podra ceder sus derechos u obligaciones sin el consentimiento previo y por escrito de VOLTIKA.'],
-        ['VIGESIMA CUARTA. TERMINACION ANTICIPADA POR CAUSA JUSTIFICADA', 'VOLTIKA podra dar por terminado anticipadamente el presente Contrato unicamente por causa justificada, incluyendo el incumplimiento de EL CLIENTE o la imposibilidad legal o material de continuar con la operacion.'],
-        ['VIGESIMA QUINTA. DOMICILIOS', 'EL CLIENTE acepta notificaciones por correo electronico, SMS o WhatsApp. Cambio de domicilio con 10 dias habiles de anticipacion.'],
-        ['VIGESIMA SEXTA. TERMINACION DEL CONTRATO', 'VOLTIKA: 15 dias de anticipacion. EL CLIENTE: surte efectos al dia habil siguiente si no hay adeudos. Constancia de terminacion dentro de 10 dias habiles tras pago.'],
-        ['VIGESIMA SEPTIMA. JURISDICCION Y COMPETENCIA', 'Tribunales en la Ciudad de Mexico o del domicilio de EL CLIENTE, a eleccion de la parte actora.'],
-        ['VIGESIMA OCTAVA. FIRMA ELECTRONICA', 'Firma electronica simple o avanzada mediante plataforma designada por VOLTIKA. Validaciones OTP, registros digitales y confirmaciones tienen validez juridica. EL CLIENTE tuvo acceso previo al documento.'],
-    ];
-
-    foreach ($clausulas as $cl) {
-        $pdf->SetFont('Arial', 'B', 7);
-        $pdf->Cell(0, 4, $enc($cl[0] . '.'), 0, 1);
-        $pdf->SetFont('Arial', '', 7);
-        $pdf->MultiCell(0, 3.5, $enc($cl[1]));
-        $pdf->Ln(1.5);
-    }
-
-    // ── Signature section at the end ──────────────────────────────────────
-    $pdf->Ln(6);
-    $pdf->SetFont('Arial', 'B', 9);
-    $pdf->Cell(0, 6, $enc('FIRMA ELECTRÓNICA DEL CLIENTE'), 0, 1, 'C');
+    $pdf->MultiCell(0, 6, $enc('CONTRATO DE COMPRAVENTA A PLAZOS CON RESERVA DE DOMINIO'), 0, 'C');
     $pdf->Ln(2);
 
-    // Signature image
+    $para('Que celebran por una parte MTECH GEARS, S.A. DE C.V. (en lo sucesivo VOLTIKA); y por la otra parte por propio derecho la persona física cuyos datos generales se encontrarán en la Carátula del presente Contrato, misma que forma parte integral del mismo (en lo sucesivo EL CLIENTE); y en conjunto con VOLTIKA se les denominará LAS PARTES al tenor de las siguientes Declaraciones, Definiciones y Cláusulas:');
+
+    // ─── DECLARACIONES ───────────────────────────────────────────────────
+    $h2('DECLARACIONES');
+
+    $h3('I. Declara EL CLIENTE, por su propio derecho:');
+    $list([
+        'Es una persona física con la capacidad jurídica y económica para obligarse bajo los términos y condiciones del presente Contrato.',
+        'Para los efectos del presente contrato se señala como domicilio y medios de comunicación los señalados en la Carátula del Contrato.',
+        'EL CLIENTE reconoce que el número telefónico registrado será considerado como medio de autenticación válido para efectos del presente contrato.',
+    ]);
+    $para('BAJO PROTESTA DE DECIR VERDAD, EL CLIENTE DECLARA: (i) que es el legítimo titular del medio de pago utilizado para el enganche, los pagos periódicos y/o el pago total de contado, según corresponda; o bien, que cuenta con autorización expresa, vigente y suficiente del titular legítimo para utilizarlo en esta operación; (ii) que la información proporcionada durante el proceso de contratación es verdadera, completa y actualizada; (iii) que reconoce y acepta que el cargo aparecerá identificado en su estado de cuenta como "VOLTIKA MX" o descriptor similar designado por VOLTIKA, procesado a través de instituciones de pago autorizadas como Stripe, MercadoPago u otras; y (iv) que reconoce que cualquier falsedad en estas declaraciones podrá constituir el delito de fraude en términos del artículo 386 del Código Penal Federal y demás disposiciones aplicables.');
+    $para('Para proceder a la celebración de este Contrato, EL CLIENTE deberá exhibir los siguientes documentos originales, los cuales le serán devueltos previa digitalización:');
+    $list([
+        'Identificación oficial vigente emitida por la autoridad competente, con fotografía y firma.',
+        'Comprobante de domicilio con una antigüedad no mayor a 3 (tres) meses de su fecha de emisión.',
+    ]);
+
+    $h3('II. Protección de Datos Personales.');
+    $para('VOLTIKA hace del conocimiento de EL CLIENTE que los datos personales proporcionados durante el proceso de contratación, incluyendo datos de identificación, contacto, financieros, patrimoniales y, en su caso, biométricos, serán tratados conforme al Aviso de Privacidad Integral disponible en https://www.voltika.mx/docs/privacidad_2026. EL CLIENTE manifiesta que ha leído, entendido y aceptado el contenido del Aviso de Privacidad, otorgando su consentimiento para el tratamiento de sus datos personales para las siguientes finalidades:');
+    $list([
+        'Identificación y validación de identidad.',
+        'Evaluación de la operación comercial.',
+        'Procesamiento de pagos.',
+        'Entrega del producto.',
+        'Administración de la relación contractual.',
+        'Prevención de fraude y atención de aclaraciones o disputas.',
+        'Cobranza y recuperación.',
+        'Cumplimiento de obligaciones legales.',
+        'Captura, almacenamiento y validación de datos técnicos de la operación, incluyendo dirección IP, geolocalización del pago y de la entrega, dispositivo utilizado, hora y fecha de cada interacción, validaciones OTP y confirmaciones de email.',
+    ]);
+    $para('EL CLIENTE autoriza a VOLTIKA para compartir sus datos personales con terceros necesarios para la operación, incluyendo procesadores de pago (Stripe, MercadoPago, Openpay y similares), redes de tarjetas (Visa, Mastercard, American Express), bancos emisores y adquirentes, sociedades de información crediticia, proveedores tecnológicos de validación de identidad y aliados logísticos, exclusivamente para el cumplimiento de las finalidades antes señaladas. EL CLIENTE podrá ejercer en cualquier momento sus derechos de acceso, rectificación, cancelación u oposición (derechos ARCO), conforme a los mecanismos establecidos en el Aviso de Privacidad.');
+
+    $h3('III.');
+    $para('Que ha recibido, revisado y aceptado la carátula de la operación de compraventa a plazos, identificada con el Folio que aparece al encabezado, y reconoce que la misma forma parte integral del contrato.');
+
+    $h3('IV. Declara VOLTIKA, a través de su representante legal, que:');
+    $para('Es una sociedad mexicana debidamente constituida bajo la legislación aplicable de los Estados Unidos Mexicanos, y cuenta con la capacidad jurídica y económica para obligarse bajo los términos y condiciones del presente Contrato.');
+
+    $h3('V.');
+    $para('Cuenta con un Registro Federal de Contribuyentes.');
+
+    $h3('VI.');
+    $para('Para los efectos del presente contrato se señala como domicilio el ubicado en Jaime Balmes 71, despacho 101 C, Polanco I Sección, Miguel Hidalgo, C.P. 11510, Ciudad de México.');
+
+    $para('Las partes se reconocen mutuamente la capacidad con la que concurren a este acto, la personalidad para expresar su voluntad y en consecuencia para obligarse en los términos del presente Contrato.');
+
+    // ─── DEFINICIONES ────────────────────────────────────────────────────
+    $h2('DEFINICIONES');
+    $para('Las partes acuerdan que, para efectos del presente Contrato, los términos siguientes tendrán el significado que enseguida se enuncia:');
+    $defList([
+        ['Solicitud',         'Documento generado por VOLTIKA y firmado por EL CLIENTE, en el que se establecen los datos generales de EL CLIENTE.'],
+        ['Carátula',          'Documento generado por VOLTIKA y firmado por EL CLIENTE, que contiene los elementos esenciales de la operación: identificación del producto, precio de contado, precio total a plazo, enganche, saldo pendiente, número y periodicidad de pagos, monto por pago y monto total a pagar.'],
+        ['Saldo Pendiente de Pago', 'Parte del precio total a plazo pendiente de pago por EL CLIENTE.'],
+        ['Saldo Insoluto',    'Monto pendiente de pago conforme al plan establecido en la Carátula y Tabla de Pagos.'],
+        ['Tabla de Pagos',    'Documento que refleja el número total de pagos, su periodicidad, el monto de cada pago y la fecha estimada de primer pago.'],
+        ['Pagaré',            'Título de crédito ejecutivo suscrito por EL CLIENTE conforme a los artículos 170 y 173 de la Ley General de Títulos y Operaciones de Crédito, que ampara el saldo total a plazo.'],
+        ['Validación Electrónica', 'Mecanismo de autenticación mediante códigos de seguridad (OTP), confirmaciones digitales, registros electrónicos, evidencia fotográfica, captura de IP, geolocalización, firmas electrónicas y demás mensajes de datos generados durante la contratación, pago y entrega, con efectos jurídicos conforme a la legislación aplicable.'],
+        ['Descriptor de Cargo', 'Identificación con la que aparece la operación en el estado de cuenta del medio de pago utilizado por EL CLIENTE, siendo "VOLTIKA MX" o el descriptor que VOLTIKA designe.'],
+        ['Contracargo o Disputa', 'Procedimiento mediante el cual el titular de un medio de pago solicita a su banco emisor o procesador la reversión de un cargo previamente realizado.'],
+        ['Carta Factura',     'Documento que VOLTIKA entrega a EL CLIENTE como comprobante temporal de la operación, válido para los trámites de emplacamiento y registro vehicular estatal, mientras VOLTIKA conserva la factura original en custodia hasta la liquidación total del precio a plazo.'],
+        ['REPUVE',            'Registro Público Vehicular, conforme a la Ley del Registro Público Vehicular.'],
+        ['Punto de Entrega',  'Establecimiento autorizado por VOLTIKA designado para realizar la entrega física del vehículo a EL CLIENTE, mismo que queda registrado en la Carátula del presente Contrato.'],
+        ['Acta de Entrega',   'Documento firmado por EL CLIENTE al recibir el vehículo, mediante el cual reconoce expresamente la recepción del mismo y su conformidad con las condiciones físicas y funcionales del bien.'],
+        ['PSC',               'Prestador de Servicios de Certificación acreditado por la Secretaría de Economía conforme a la NOM-151-SCFI-2016 para emitir Constancias de Conservación de Mensajes de Datos y Sellos Digitales de Tiempo.'],
+    ]);
+
+    // ─── CLÁUSULAS (33 total) ────────────────────────────────────────────
+    $h2('CLÁUSULAS');
+
+    $h3('PRIMERA. OBJETO.');
+    $para('El objeto del presente Contrato es la compraventa a plazos de una motocicleta eléctrica, en adelante EL VEHÍCULO, por lo que VOLTIKA vende a EL CLIENTE el vehículo descrito en la Carátula, reservándose la propiedad del mismo hasta el pago total del precio a plazo pactado. Todos los datos de identificación, características, modalidades y demás elementos constitutivos de la operación son los que se especifican en la Carátula. El precio total a plazo incluye el precio del vehículo y el costo comercial derivado de la venta a plazos. EL CLIENTE reconoce que la entrega del vehículo se realizará mediante validación electrónica conforme a la Carátula, incluyendo códigos de seguridad (OTP), registros digitales, evidencia fotográfica y firma del Acta de Entrega, los cuales constituirán evidencia suficiente de la entrega conforme a la legislación aplicable.');
+
+    $h3('SEGUNDA. DESTINO.');
+    $para('EL CLIENTE reconoce que la presente operación tiene como finalidad exclusiva la adquisición del producto descrito en la Carátula y, en su caso, de los servicios adicionales contratados.');
+
+    $h3('TERCERA. PLAZO DEL CONTRATO.');
+    $para('El plazo del Contrato será el que resulte del número total de pagos y su periodicidad establecidos en la Carátula y, en su caso, en la Tabla de Pagos. El presente Contrato seguirá surtiendo sus efectos legales mientras existan saldos insolutos a cargo de EL CLIENTE.');
+
+    $h3('CUARTA. DOMICILIACIÓN Y MEDIOS DE PAGO.');
+    $para('EL CLIENTE registra como medio de pago la(s) tarjeta(s) bancaria(s) o cuenta(s) señalada(s) en LA SOLICITUD, para la domiciliación de los pagos derivados de la presente compraventa a plazos. EL CLIENTE autoriza expresamente a VOLTIKA para realizar cargos recurrentes a la tarjeta bancaria o cuenta registrada durante la contratación, con el fin de cubrir los pagos periódicos del mismo. EL CLIENTE se obliga a:');
+    $list([
+        'a) Mantener vigente y operativa una forma de pago autorizada durante toda la vigencia del contrato.',
+        'b) Notificar a VOLTIKA cualquier cambio, cancelación, vencimiento o pérdida de la tarjeta registrada, dentro de los 5 (cinco) días naturales siguientes.',
+        'c) Registrar nueva tarjeta válida en caso de cancelación, vencimiento o imposibilidad de cargo, en un plazo no mayor a 5 (cinco) días hábiles.',
+        'd) Realizar el pago por medios alternativos autorizados por VOLTIKA en caso de no contar con tarjeta vigente.',
+    ]);
+    $para('EL CLIENTE reconoce que el medio de pago registrado forma parte del proceso de autenticación y cumplimiento del presente Contrato. La cancelación, rechazo o imposibilidad de cargo NO extingue la obligación de pago.');
+
+    $h3('QUINTA. ASIGNACIÓN DE LA UNIDAD.');
+    $para('La entrega y asignación del vehículo estarán sujetas a la disponibilidad de inventario, modelo, color y al proceso de entrega establecido en la Carátula y en el presente Contrato.');
+
+    $h3('SEXTA. PAGO DE ENGANCHE Y RETENCIÓN POR CANCELACIÓN.');
+    $para('EL CLIENTE reconoce que el pago inicial, referido como ENGANCHE, realizado a VOLTIKA constituye un depósito en garantía para la reserva del vehículo seleccionado y el inicio del proceso de validación. Dicho depósito será aplicado al enganche de la operación una vez firmado el contrato correspondiente. En caso de que EL CLIENTE decida no continuar con la contratación después de haber sido aprobada la operación, VOLTIKA podrá retener un porcentaje del enganche pagado correspondiente a los gastos administrativos y operativos efectivamente incurridos hasta ese momento, los cuales podrán incluir, de manera enunciativa más no limitativa:');
+    $list([
+        'Validación crediticia ante sociedades de información crediticia.',
+        'Verificación de identidad y biométrica.',
+        'Análisis de la operación y aprobación crediticia.',
+        'Reserva de inventario.',
+        'Costos logísticos comprometidos.',
+        'Asignación operativa de la unidad.',
+    ]);
+    $para('La retención correspondiente será determinada CASO POR CASO conforme al avance del proceso al momento de la cancelación, con un mínimo del 10% (diez por ciento) del enganche pagado, pudiendo ser mayor cuando los gastos efectivamente incurridos así lo justifiquen, sin exceder los gastos reales y documentados.');
+    $para('EL CLIENTE reconoce que la validez, activación y ejecución del presente Contrato se encuentra condicionada a la acreditación efectiva del pago del enganche mediante los medios autorizados por VOLTIKA. El pago del enganche realizado por EL CLIENTE mediante medios electrónicos constituye aceptación expresa de la operación comercial, de la Carátula y del presente Contrato, así como autorización para la asignación del vehículo y el inicio del proceso de entrega.');
+
+    $h3('SÉPTIMA. PAGOS DE LA OPERACIÓN A PLAZOS.');
+    $para('EL CLIENTE pagará a VOLTIKA el saldo pendiente de pago mediante el número total de pagos, con la periodicidad y por el monto establecido en la Carátula y, en su caso, en la Tabla de Pagos. Los pagos deberán realizarse en las fechas que correspondan conforme al plan aceptado por EL CLIENTE. En caso de que una fecha de pago coincida con un día inhábil bancario, el pago deberá efectuarse el día hábil inmediato anterior o por el medio alternativo autorizado por VOLTIKA. VOLTIKA notificará a EL CLIENTE previo a cada cobro periódico mediante correo electrónico, WhatsApp o medio de contacto registrado.');
+
+    $h3('OCTAVA. PRECIO TOTAL A PLAZO.');
+    $para('EL CLIENTE reconoce que el monto total a pagar señalado en la Carátula incluye el precio del vehículo y el costo comercial derivado de la venta a plazos. EL CLIENTE manifiesta que conoce y acepta el precio de contado, el precio total a plazo, la periodicidad de los pagos, el importe de cada uno de ellos y el monto total a pagar, mismos que le fueron informados de manera clara, veraz y comprensible antes de la contratación, conforme al artículo 7 de la Ley Federal de Protección al Consumidor.');
+
+    $h3('NOVENA. INCUMPLIMIENTO DE PAGO.');
+    $para('En caso de que EL CLIENTE no pague puntualmente cualquier cantidad exigible conforme al presente Contrato, VOLTIKA podrá ejercer las acciones de cobro correspondientes, incluyendo el vencimiento anticipado de los pagos pendientes. VOLTIKA podrá aplicar cargos por atraso por cada evento de incumplimiento, los cuales serán determinados conforme a las políticas vigentes de cobranza.');
+
+    $h3('DÉCIMA. PROCEDIMIENTO DE ACLARACIÓN PREVIA.');
+    $para('Antes de presentar cualquier aclaración, queja o solicitud de reversión de cargo (contracargo) ante su institución financiera, EL CLIENTE se obliga a contactar primero a VOLTIKA mediante los canales oficiales de atención al cliente, con la finalidad de:');
+    $list([
+        'a) Verificar la información de la operación.',
+        'b) Recibir aclaración sobre cualquier cargo no reconocido.',
+        'c) Buscar solución a cualquier inconformidad.',
+    ]);
+    $para('VOLTIKA atenderá la solicitud dentro de un plazo máximo de 5 (cinco) días hábiles, conforme al artículo 99 de la Ley Federal de Protección al Consumidor. EL CLIENTE reconoce que: a) Una vez entregado el vehículo, firmados el contrato, el pagaré y el Acta de Entrega, y emitida la factura CFDI, la transacción se considera cumplida por VOLTIKA. b) Cualquier disputa relacionada con la operación debe seguir el procedimiento de aclaración establecido. c) En caso de disputa improcedente por acreditarse la entrega y la legitimidad de la operación, VOLTIKA podrá ejercer las acciones que se detallan en este Contrato, incluyendo recuperación del vehículo, cobro del saldo conforme al pagaré ejecutivo, reporte a sociedades de información crediticia y acciones legales que correspondan. Lo anterior sin perjuicio de los derechos de EL CLIENTE para reclamar cualquier vicio del producto conforme a la legislación aplicable.');
+
+    $h3('DÉCIMA PRIMERA. MEDIOS DE ACREDITACIÓN Y REGISTRO.');
+    $para('EL CLIENTE reconoce y acepta que VOLTIKA podrá conservar registros físicos y electrónicos relacionados con la contratación, pago, validación, entrega y cumplimiento del presente contrato, incluyendo mensajes de datos, registros de plataforma, direcciones IP, geolocalización, fecha y hora de operación, validaciones OTP, evidencia fotográfica, firma electrónica y cualquier otra constancia digital generada durante la operación. Dichos registros constituirán evidencia suficiente de la operación y podrán ser utilizados por VOLTIKA para fines de aclaración, cobranza, prevención de fraude, atención de contracargos, recuperación del vehículo y defensa en cualquier procedimiento legal o administrativo.');
+
+    $h3('DÉCIMA SEGUNDA. LUGAR Y FORMA DE PAGO.');
+    $para('Los pagos que deba efectuar EL CLIENTE en favor de VOLTIKA al amparo del presente Contrato deberán realizarse en las fechas convenidas conforme a la Carátula y al plan de pagos aceptado. EL CLIENTE podrá efectuar los pagos correspondientes mediante los medios autorizados por VOLTIKA, incluyendo cargos automáticos a tarjeta o cuenta bancaria (domiciliación), transferencias electrónicas (SPEI), pagos referenciados, tiendas de conveniencia u otros medios habilitados. EL CLIENTE reconoce que los pagos realizados mediante medios electrónicos, así como las validaciones electrónicas realizadas mediante códigos de verificación (OTP) y registros digitales, constituyen evidencia suficiente de la operación, aceptación del cargo y cumplimiento del presente Contrato. La domiciliación de pagos mediante tarjeta bancaria o cuenta autorizada será un requisito obligatorio para la vigencia del contrato. La falta de un medio de pago activo y válido podrá ser considerada como incumplimiento.');
+
+    $h3('DÉCIMA TERCERA. INFORMACIÓN DE PAGOS.');
+    $para('VOLTIKA pondrá a disposición de EL CLIENTE, por medios electrónicos o a través del portal de cliente, la información relativa al estado de sus pagos, incluyendo pagos realizados, pagos pendientes y fecha estimada del siguiente pago.');
+
+    $h3('DÉCIMA CUARTA. PAGOS ANTICIPADOS.');
+    $para('EL CLIENTE podrá realizar pagos anticipados o adelantar pagos en cualquier momento, sin penalización, conforme a los medios autorizados por VOLTIKA. Dichos pagos se aplicarán al saldo pendiente de la operación conforme al plan aceptado.');
+
+    $h3('DÉCIMA QUINTA. OBLIGACIONES DEL CLIENTE.');
+    $para('EL CLIENTE está obligado a cumplir durante la vigencia de este Contrato o mientras exista saldo insoluto las obligaciones siguientes:');
+    $list([
+        'a) Mantener y conservar en condiciones adecuadas de servicio el bien objeto del presente Contrato.',
+        'b) Permitir que VOLTIKA efectúe, previo aviso razonable, inspecciones del vehículo objeto de la garantía prendaria.',
+        'c) En caso de incumplimiento de pago, aceptar la devolución voluntaria del vehículo y la recuperación de su posesión por medios legales y procedimientos extrajudiciales permitidos por la legislación aplicable.',
+        'd) Mantener vigente la cobertura de seguro contratada o, en su defecto, asumir los riesgos del vehículo.',
+        'e) Notificar a VOLTIKA cualquier robo, siniestro o afectación del vehículo dentro de las 24 horas siguientes a su conocimiento.',
+    ]);
+
+    $h3('DÉCIMA SEXTA. RESERVA DE DOMINIO.');
+    $para('VOLTIKA conservará la propiedad del vehículo entregado en este contrato hasta que EL CLIENTE haya liquidado en su totalidad todos los gastos contemplados, así como la totalidad del precio total a plazo pactado. Mientras no se cumpla dicha condición, EL CLIENTE tendrá la posesión y uso de la motocicleta, pero no adquirirá la propiedad. EL CLIENTE reconoce y acepta que la motocicleta cuenta con dispositivos tecnológicos de geolocalización (GPS) y monitoreo, los cuales serán utilizados exclusivamente para fines de seguridad, prevención de fraude, protección del bien y seguimiento durante la vigencia del contrato. En caso de incumplimiento en el pago, VOLTIKA podrá implementar medidas razonables de control sobre el vehículo, conforme a la legislación aplicable, únicamente cuando el vehículo se encuentre estacionado y sin operación activa. El incumplimiento de pago faculta a VOLTIKA para ejercer las acciones de cobro, rescisión del contrato y recuperación del vehículo por los medios legales aplicables, incluyendo procedimientos extrajudiciales permitidos por la legislación vigente.');
+
+    $h3('DÉCIMA SÉPTIMA. GARANTÍA PRENDARIA.');
+    $para('En garantía del pago exacto y oportuno del precio a plazos y demás obligaciones derivadas del presente Contrato, EL CLIENTE constituye prenda en primer lugar a favor de VOLTIKA sobre el bien objeto de la presente compraventa a plazos. La ejecución de la garantía prendaria y la recuperación del vehículo podrán realizarse por los medios legales aplicables, incluyendo procedimientos extrajudiciales permitidos por la legislación vigente.');
+
+    $h3('DÉCIMA OCTAVA. PAGARÉ EJECUTIVO Y FIRMA AL ENTREGAR.');
+    $para('EL CLIENTE se obliga a SUSCRIBIR EN EL MOMENTO DE LA ENTREGA FÍSICA DEL VEHÍCULO, un PAGARÉ por el monto del saldo total a plazo de la operación, mismo que constituirá título ejecutivo a favor de VOLTIKA conforme a los artículos 170, 171, 172 y 173 de la Ley General de Títulos y Operaciones de Crédito. La firma del Pagaré es REQUISITO INDISPENSABLE para la entrega del vehículo. Sin la suscripción del Pagaré, VOLTIKA NO realizará la entrega del vehículo. El Pagaré garantiza el cumplimiento de las obligaciones de pago de EL CLIENTE y subsistirá hasta la liquidación total del precio a plazo. Su firma podrá ser autógrafa o electrónica conforme a la legislación aplicable. EL CLIENTE reconoce que el Pagaré es independiente del presente Contrato y constituye obligación causal autónoma, ejecutable por la vía mercantil ejecutiva conforme al artículo 1391 del Código de Comercio.');
+
+    $h3('DÉCIMA NOVENA. CARTA FACTURA Y REGISTRO ANTE REPUVE.');
+    $para('Considerando que la presente operación es de compraventa a plazos con reserva de dominio, las partes reconocen y acuerdan lo siguiente:');
+    $list([
+        'a) VOLTIKA emitirá el Comprobante Fiscal Digital por Internet (CFDI) correspondiente a la operación, conforme a las disposiciones fiscales aplicables.',
+        'b) VOLTIKA conservará la FACTURA ORIGINAL en custodia hasta la liquidación total del precio a plazo, conforme a la práctica estándar de financiamiento automotriz en México.',
+        'c) EL CLIENTE recibirá CARTA FACTURA con vigencia conforme a la legislación aplicable, válida para los trámites de emplacamiento y registro vehicular estatal.',
+        'd) Una vez liquidado el precio total a plazo y cumplidas todas las obligaciones de EL CLIENTE conforme al presente Contrato, VOLTIKA entregará a EL CLIENTE la FACTURA ORIGINAL del vehículo.',
+        'e) Conforme al artículo 23 de la Ley del Registro Público Vehicular, VOLTIKA presentará al REPUVE el aviso de compraventa correspondiente, indicando los datos de EL CLIENTE como nuevo propietario, dentro del día hábil siguiente al de la facturación.',
+        'f) EL CLIENTE podrá obtener su constancia de inscripción REPUVE a través de la consulta ciudadana en el portal oficial www.repuve.gob.mx, o acudiendo a los módulos físicos del REPUVE.',
+        'g) EL CLIENTE manifiesta haber sido informado de manera previa, clara y comprensible sobre las implicaciones de la inscripción ante el REPUVE y de la entrega de carta factura, conforme al artículo 7 de la Ley Federal de Protección al Consumidor.',
+    ]);
+
+    $h3('VIGÉSIMA. TIEMPOS DE ENTREGA.');
+    $para('VOLTIKA se compromete a realizar la entrega del producto conforme a los siguientes plazos, contados a partir de la firma del Contrato y la acreditación del enganche:');
+    $list([
+        'a) ENTREGA ESTÁNDAR: hasta 60 (sesenta) días naturales, cuando el modelo y color seleccionado se encuentre disponible en inventario.',
+        'b) ENTREGA EXTENDIDA: hasta 90 (noventa) días naturales, cuando el modelo o color esté sujeto a reposición de inventario, importación, ensamble o procesos logísticos especiales.',
+        'c) FUERZA MAYOR: en caso de causas ajenas al control de VOLTIKA, el plazo aplicable podrá extenderse hasta 30 (treinta) días naturales adicionales, previa notificación a EL CLIENTE.',
+    ]);
+    $para('VOLTIKA informará a EL CLIENTE el plazo aplicable a su operación al momento de la confirmación del pedido. EL CLIENTE acepta expresamente el plazo informado. La fecha definitiva de entrega será confirmada una vez asignada la unidad específica a EL CLIENTE, incluyendo modelo, color y número de serie (VIN/NIV).');
+    $para('Si transcurrido el plazo total aplicable VOLTIKA no ha entregado el vehículo, EL CLIENTE podrá: a) Continuar esperando con compensación equivalente conforme a las políticas vigentes de VOLTIKA. b) Solicitar la cancelación del Contrato con devolución íntegra del enganche y pagos realizados, en un plazo no mayor a 10 (diez) días hábiles.');
+
+    $h3('VIGÉSIMA PRIMERA. PUNTO DE ENTREGA.');
+    $para('EL CLIENTE acepta que el vehículo será entregado en el PUNTO DE ENTREGA AUTORIZADO POR VOLTIKA seleccionado por EL CLIENTE durante el proceso de compra, mismo que quedará registrado en la Carátula del presente Contrato. EL CLIENTE se obliga a:');
+    $list([
+        'a) Acudir PERSONALMENTE al punto de entrega asignado en la fecha y hora confirmada por VOLTIKA.',
+        'b) Presentarse con identificación oficial vigente original (INE, pasaporte o cédula profesional).',
+        'c) Realizar la inspección del vehículo conforme a la Cláusula Vigésima Segunda.',
+        'd) Suscribir los documentos correspondientes (Acta de Entrega y Pagaré).',
+    ]);
+    $para('VOLTIKA se reserva el derecho de NO ENTREGAR el vehículo en caso de que EL CLIENTE no se presente con la documentación e identificación requeridas, o cuando exista duda razonable sobre la identidad de la persona que se presenta. El cambio de punto de entrega deberá solicitarse con al menos 5 (cinco) días hábiles de anticipación a la fecha de entrega programada y estará sujeto a disponibilidad operativa de VOLTIKA. La entrega en domicilio del cliente, cuando sea aplicable, se considerará como punto de entrega para todos los efectos del presente Contrato.');
+
+    $h3('VIGÉSIMA SEGUNDA. INSPECCIÓN, VALIDACIÓN DE IDENTIDAD Y CONFORMIDAD DE LA ENTREGA.');
+    $para('El proceso de entrega incluirá los siguientes pasos obligatorios:');
+
+    $para('A) VALIDACIÓN DE IDENTIDAD. Al momento de la entrega, EL CLIENTE deberá presentarse PERSONALMENTE en el punto de entrega asignado y acreditar que es la misma persona que celebró el contrato mediante:');
+    $list([
+        'a) Identificación oficial vigente (INE/IFE, pasaporte o cédula profesional) con fotografía y firma, presentada en original.',
+        'b) Validación de Código OTP enviado al teléfono registrado por EL CLIENTE.',
+        'c) Coincidencia de la firma autógrafa de EL CLIENTE con la firma del contrato y de la identificación oficial.',
+        'd) Verificación visual por el personal de entrega de VOLTIKA o del punto autorizado.',
+    ]);
+    $para('VOLTIKA NO ENTREGARÁ EL VEHÍCULO si la persona que se presenta NO ES la misma que celebró el contrato, o si existe inconsistencia en la validación de identidad. En tal caso, la entrega se reprogramará y EL CLIENTE deberá acreditar su identidad mediante los procedimientos adicionales que VOLTIKA determine.');
+
+    $para('B) INSPECCIÓN DEL VEHÍCULO. Al momento de la entrega, EL CLIENTE deberá:');
+    $list([
+        'a) Inspeccionar físicamente el vehículo en presencia del personal de entrega.',
+        'b) Verificar que coincida con lo pactado en la Carátula (modelo, color, especificaciones, accesorios).',
+        'c) Revisar el estado físico del vehículo y la ausencia de daños o desperfectos visibles.',
+        'd) Probar el funcionamiento básico (encendido, luces, frenos, sistema eléctrico).',
+        'e) Verificar la documentación entregada (carta factura, manuales, llaves, accesorios).',
+        'f) Manifestar cualquier inconformidad ANTES de firmar el Acta de Entrega.',
+    ]);
+    $para('EL CLIENTE tiene el derecho de RECHAZAR la entrega si detecta cualquier inconformidad sustancial. En tal caso, VOLTIKA podrá: a) Reparar el desperfecto detectado. b) Sustituir el vehículo por otro en buen estado. c) En caso de imposibilidad técnica, las partes acordarán los términos del retorno y la reversión de la operación conforme a la legislación aplicable.');
+
+    $para('C) ACTA DE ENTREGA. Al recibir el vehículo conforme, EL CLIENTE firmará el ACTA DE ENTREGA que deberá contener al menos:');
+    $list([
+        'a) Datos generales de EL CLIENTE.',
+        'b) Datos del vehículo entregado (VIN/NIV, modelo, color, año).',
+        'c) Fecha, hora y punto de entrega.',
+        'd) Validación OTP capturada.',
+        'e) Firma autógrafa o electrónica de EL CLIENTE.',
+        'f) Firma del personal de entrega.',
+        'g) Foto de EL CLIENTE con el vehículo.',
+        'h) Manifestación expresa de conformidad con la entrega.',
+    ]);
+    $para('La firma del Acta de Entrega por EL CLIENTE constituye MANIFESTACIÓN EXPRESA de conformidad con las condiciones del vehículo recibido y con la operación celebrada. NO HABRÁ ENTREGA SIN: validación de identidad + inspección satisfactoria + Acta de Entrega firmada + Pagaré firmado. Posteriormente a la firma del Acta de Entrega, las inconformidades se atenderán conforme al procedimiento de garantía y vicios ocultos previstos en la legislación aplicable.');
+
+    $h3('VIGÉSIMA TERCERA. CANCELACIÓN.');
+    $para('Considerando la naturaleza específica del bien (vehículo automotor) y las disposiciones fiscales y administrativas aplicables (Código Fiscal de la Federación, Resolución Miscelánea Fiscal vigente, Ley del Registro Público Vehicular), las partes acuerdan los siguientes supuestos de cancelación:');
+    $para('(i) CANCELACIÓN ANTES DE LA EMISIÓN DEL CFDI: EL CLIENTE podrá solicitar la cancelación del Contrato mediante notificación por escrito a VOLTIKA, en cualquier momento previo a la emisión del CFDI correspondiente. Aplicará la retención de gastos administrativos y operativos conforme a la Cláusula Sexta del presente Contrato.');
+    $para('(ii) CANCELACIÓN POSTERIOR A LA EMISIÓN DEL CFDI: Una vez emitido el CFDI a nombre de EL CLIENTE y presentado el aviso correspondiente al REPUVE, las partes reconocen que la cancelación con devolución total del precio pagado NO PROCEDERÁ de manera automática, debido a que: a) Conforme a las reglas 2.7.1.34 y 2.7.1.35 de la Resolución Miscelánea Fiscal vigente y al artículo 29-A del Código Fiscal de la Federación, la cancelación del CFDI requiere aceptación del receptor y conlleva trámites fiscales específicos. b) El aviso al REPUVE requiere proceso administrativo formal para su reversión. c) El IVA correspondiente a la operación es enterado al SAT. d) El vehículo es susceptible de depreciación inmediata por el solo registro y uso potencial.');
+    $para('(iii) DERECHOS PRESERVADOS DE EL CLIENTE: No obstante lo anterior, EL CLIENTE conserva los siguientes derechos sustantivos:');
+    $list([
+        'a) RECHAZO AL MOMENTO DE LA ENTREGA conforme a la Cláusula Vigésima Segunda.',
+        'b) RECLAMOS POR DEFECTOS DE FÁBRICA conforme a la póliza de garantía aplicable.',
+        'c) VICIOS OCULTOS conforme al artículo 77 de la Ley Federal de Protección al Consumidor.',
+        'd) DEFECTOS GRAVES conforme al artículo 79 de la Ley Federal de Protección al Consumidor: reparación gratuita o sustitución por otro vehículo equivalente.',
+        'e) SERVICIO POST-VENTA conforme a las pólizas vigentes.',
+    ]);
+    $para('EL CLIENTE manifiesta que esta información le ha sido proporcionada de manera previa, clara y comprensible antes de la celebración del presente Contrato.');
+
+    $h3('VIGÉSIMA CUARTA. POSESIÓN DEL VEHÍCULO.');
+    $para('EL CLIENTE conservará la posesión del vehículo objeto del presente Contrato, en su carácter de depositario, obligándose a su cuidado, resguardo, conservación y uso adecuado conforme a lo establecido en el presente Contrato. EL CLIENTE reconoce que VOLTIKA mantiene la propiedad del vehículo hasta el pago total del precio a plazo conforme a la reserva de dominio.');
+
+    $h3('VIGÉSIMA QUINTA. RESPONSABILIDAD SOBRE EL VEHÍCULO.');
+    $para('EL CLIENTE reconoce que es responsable del uso, resguardo y conservación del vehículo. En caso de daño, pérdida, robo o cualquier siniestro que afecte el vehículo, EL CLIENTE no quedará liberado de sus obligaciones de pago conforme al presente Contrato. EL CLIENTE reconoce que el uso del vehículo es bajo su exclusiva responsabilidad. VOLTIKA no será responsable por actos, hechos, daños, infracciones o delitos cometidos por EL CLIENTE o por terceros que utilicen el vehículo una vez realizada la entrega. EL CLIENTE se obliga a sacar en paz y a salvo a VOLTIKA de cualquier reclamación, procedimiento o responsabilidad derivada del uso del vehículo posterior a su entrega.');
+
+    $h3('VIGÉSIMA SEXTA. CAUSAS DE VENCIMIENTO ANTICIPADO.');
+    $para('VOLTIKA tendrá derecho a declarar el vencimiento anticipado del presente Contrato, sin necesidad de declaración judicial previa, en caso de que ocurra cualquiera de las siguientes causas:');
+    $list([
+        '1) Si EL CLIENTE no paga puntual e íntegramente cualquier cantidad exigible conforme al presente Contrato.',
+        '2) Si EL CLIENTE incumple cualquiera de las obligaciones establecidas, incluyendo obligaciones de hacer o no hacer.',
+        '3) Si EL CLIENTE proporciona información falsa, inexacta o incompleta durante el proceso de contratación o durante la vigencia del Contrato.',
+        '4) Si EL CLIENTE vende, cede, grava o dispone del vehículo sin autorización previa y por escrito de VOLTIKA.',
+        '5) Si el vehículo es robado, siniestrado, embargado o afectado de cualquier forma y EL CLIENTE no notifica a VOLTIKA dentro de un plazo razonable.',
+        '6) Si EL CLIENTE presenta una disputa o contracargo improcedente sin haber agotado el procedimiento de aclaración previa establecido en la Cláusula Décima.',
+    ]);
+    $para('En caso de actualizarse cualquiera de las causas anteriores, VOLTIKA podrá declarar por vencido anticipadamente el plazo del Contrato y EL CLIENTE deberá pagar de manera inmediata el saldo insoluto pendiente, así como cualquier cantidad exigible conforme al Pagaré ejecutivo.');
+
+    $h3('VIGÉSIMA SÉPTIMA. COMPENSACIÓN.');
+    $para('En el supuesto de que EL CLIENTE incumpla con su obligación de pago, autoriza y faculta irrevocablemente a VOLTIKA para que cargue contra la cuenta o tarjeta autorizada para domiciliar el pago, por la cantidad igual al monto del plan aceptado, sin necesidad de requerimiento, aviso o demanda alguna.');
+
+    $h3('VIGÉSIMA OCTAVA. CESIÓN DE DERECHOS DE COBRO.');
+    $para('EL CLIENTE no podrá ceder sus derechos u obligaciones conforme a este contrato, ni interés en el mismo, sin el consentimiento previo y por escrito de VOLTIKA. Por su parte, VOLTIKA podrá transmitir, ceder, negociar o titularizar los derechos de cobro derivados de la presente operación de compraventa a plazos.');
+
+    $h3('VIGÉSIMA NOVENA. DOMICILIOS Y NOTIFICACIONES.');
+    $para('Para todos los efectos del presente contrato LAS PARTES señalan como sus domicilios los proporcionados en los respectivos apartados. Asimismo, EL CLIENTE acepta recibir notificaciones mediante correo electrónico, SMS o WhatsApp. Mientras EL CLIENTE no notifique a VOLTIKA por escrito el cambio de domicilio, los emplazamientos, notificaciones y demás diligencias judiciales o extrajudiciales se practicarán en el domicilio antes señalado. EL CLIENTE deberá informar a VOLTIKA del cambio de su domicilio con cuando menos 10 (diez) días hábiles de anticipación.');
+
+    $h3('TRIGÉSIMA. ATENCIÓN A CLIENTES.');
+    $para('Para cualquier aclaración, queja o reclamación relacionada con el presente Contrato, EL CLIENTE podrá comunicarse a los medios de contacto autorizados por VOLTIKA: correo electrónico contacto@voltika.mx, WhatsApp +52 55 1341 6370, o portal web www.voltika.mx.');
+
+    $h3('TRIGÉSIMA PRIMERA. FIRMA ELECTRÓNICA AVANZADA Y CONSERVACIÓN NOM-151.');
+    $para('Las partes podrán firmar el presente Contrato, sus anexos, la Carátula, el Acta de Entrega y el Pagaré de manera autógrafa o mediante FIRMA ELECTRÓNICA a través de la plataforma de Cincel S.A.P.I. de C.V. (en adelante "CINCEL") o cualquier otro Prestador de Servicios de Certificación (PSC) autorizado por la Secretaría de Economía conforme a la NOM-151-SCFI-2016. EL CLIENTE reconoce y acepta que la firma electrónica realizada a través de CINCEL, o el PSC autorizado que VOLTIKA designe, cumple con los siguientes estándares legales:');
+    $list([
+        'a) Es firma electrónica conforme al artículo 89 del Código de Comercio, equivalente a la firma autógrafa para todos los efectos legales.',
+        'b) Cumple con la NORMA OFICIAL MEXICANA NOM-151-SCFI-2016 "Requisitos que deben observarse para la conservación de mensajes de datos y digitalización de documentos".',
+        'c) Es certificada por un Prestador de Servicios de Certificación (PSC) acreditado por la Secretaría de Economía.',
+        'd) Genera CONSTANCIA DE CONSERVACIÓN DE MENSAJES DE DATOS (CCMD) que acredita la fecha cierta, integridad e inalterabilidad del documento firmado.',
+        'e) Incorpora SELLO DIGITAL DE TIEMPO (timestamp fiable) que prueba la fecha y hora exacta de la firma.',
+        'f) Incluye HUELLA DE AUDITORÍA completa con registros del proceso de firma, geolocalización, dirección IP, dispositivo utilizado y validación OTP.',
+    ]);
+    $para('EL CLIENTE manifiesta expresamente que la firma electrónica realizada conforme a los estándares anteriores tiene PLENO VALOR PROBATORIO equivalente al de la firma autógrafa, conforme a los artículos 89 a 95 del Código de Comercio, sin que pueda alegar desconocimiento, repudio o falta de identificación al respecto.');
+    $para('Las Partes reconocen adicionalmente que los mecanismos de validación electrónica utilizados por VOLTIKA durante el proceso de contratación, pago y entrega, incluyendo códigos de verificación (OTP) enviados al teléfono registrado, registros digitales, captura de IP, geolocalización, confirmación de datos por correo electrónico y WhatsApp, evidencia fotográfica y cualquier interacción realizada a través de las plataformas autorizadas, forman parte integral del proceso de contratación, ejecución y cumplimiento del presente Contrato, teniendo validez jurídica y efectos probatorios plenos conforme a la legislación aplicable.');
+    $para('La Constancia de Conservación de Mensajes de Datos emitida por el PSC podrá ser presentada por VOLTIKA como prueba documental plena en cualquier procedimiento judicial, administrativo, ante PROFECO, ante el SAT, ante autoridades vehiculares o ante procesadores de pago en caso de aclaraciones, contracargos o disputas.');
+
+    $h3('TRIGÉSIMA SEGUNDA. JURISDICCIÓN, COMPETENCIA Y DOMICILIO CONVENCIONAL.');
+    $para('Para todos los efectos derivados del presente Contrato, incluyendo su interpretación, ejecución, cumplimiento, incumplimiento, rescisión y demás consecuencias jurídicas, las partes acuerdan lo siguiente:');
+    $para('(i) DOMICILIO CONVENCIONAL: Las partes designan como DOMICILIO CONVENCIONAL para todos los efectos del presente Contrato la Ciudad de México, específicamente las oficinas de VOLTIKA ubicadas en Jaime Balmes 71, despacho 101 C, Polanco I Sección, Miguel Hidalgo, C.P. 11510.');
+    $para('(ii) JURISDICCIÓN EXPRESA: Las partes se someten EXPRESAMENTE a la jurisdicción y competencia de los tribunales competentes en la CIUDAD DE MÉXICO, renunciando expresamente a cualquier otro fuero que pudiera corresponderles por razón de sus domicilios presentes o futuros, lo anterior con fundamento en el artículo 1093 del Código de Comercio que permite la sumisión expresa de las partes a la jurisdicción de tribunales determinados.');
+    $para('(iii) FUNDAMENTO DE LA SUMISIÓN: Esta cláusula se sustenta en: a) El artículo 1093 del Código de Comercio, que faculta a las partes en materia mercantil a someterse expresamente a la jurisdicción de tribunales determinados. b) El principio de autonomía de la voluntad de las partes en materia mercantil. c) La justificación operativa de VOLTIKA, cuyo domicilio fiscal y operativo principal se encuentra en la Ciudad de México. d) La naturaleza mercantil del Contrato y la operación de compraventa a plazos.');
+    $para('(iv) RECONOCIMIENTO DE DERECHOS DEL CONSUMIDOR: Las partes reconocen que EL CLIENTE conserva en todo momento sus derechos previstos en la Ley Federal de Protección al Consumidor, incluyendo la facultad de presentar reclamaciones administrativas ante PROFECO en su entidad federativa, conforme al artículo 99 y demás aplicables de la LFPC, sin que ello afecte la sumisión expresa pactada para los efectos jurisdiccionales mercantiles.');
+    $para('(v) ACEPTACIÓN INFORMADA: EL CLIENTE manifiesta haber sido informado de manera previa, clara y comprensible sobre esta cláusula de jurisdicción, aceptándola expresamente como parte de las condiciones de la operación, conforme al artículo 7 de la Ley Federal de Protección al Consumidor.');
+
+    $h3('TRIGÉSIMA TERCERA. DECLARACIONES FINALES DE EL CLIENTE.');
+    $para('Al firmar el presente Contrato, EL CLIENTE manifiesta y declara, bajo protesta de decir verdad, lo siguiente:');
+    $list([
+        '(i) Ha leído íntegramente el presente Contrato y la Carátula adjunta.',
+        '(ii) Ha tenido oportunidad de hacer preguntas y aclarar dudas antes de firmar.',
+        '(iii) Conoce y acepta el precio de contado, el precio total a plazo, el monto del enganche, el número y periodicidad de los pagos, el monto de cada pago y el monto total a pagar.',
+        '(iv) Es titular o cuenta con autorización suficiente del medio de pago utilizado.',
+        '(v) Reconoce que el cargo aparecerá identificado como "VOLTIKA MX" o similar en su estado de cuenta.',
+        '(vi) Acepta los plazos de entrega establecidos (60 días estándar / 90 días extendido / hasta 30 días adicionales por fuerza mayor).',
+        '(vii) Acepta el punto de entrega asignado registrado en la Carátula.',
+        '(viii) Conoce y acepta que el vehículo cuenta con dispositivo GPS para fines de seguridad.',
+        '(ix) Reconoce que VOLTIKA mantendrá la propiedad del vehículo hasta el pago total (reserva de dominio).',
+        '(x) Acepta firmar el Pagaré al momento de la entrega como requisito indispensable.',
+        '(xi) Acepta el procedimiento de aclaración previa a cualquier disputa de cargo.',
+        '(xii) Acepta recibir notificaciones por correo electrónico, WhatsApp y/o SMS al número y correo registrados.',
+        '(xiii) Reconoce que los datos técnicos de la operación (IP, geolocalización, OTP, fecha/hora) serán capturados para fines de validación y seguridad.',
+        '(xiv) Conoce el régimen de carta factura y la inscripción ante REPUVE.',
+        '(xv) Acepta que la cancelación posterior a la emisión del CFDI requiere proceso administrativo formal y no procede de manera automática.',
+        '(xvi) Conoce sus derechos de rechazo al recibir, garantía, vicios ocultos y defectos graves.',
+        '(xvii) Acepta que la entrega solo procederá si la persona que se presenta es la misma que celebró el contrato y supera la validación de identidad.',
+        '(xviii) Reconoce expresamente que la firma electrónica realizada a través de Cincel u otro PSC autorizado conforme a la NOM-151-SCFI-2016 tiene pleno valor probatorio equivalente a la firma autógrafa, sin posibilidad de desconocimiento o repudio.',
+        '(xix) Acepta el sometimiento a la jurisdicción de los tribunales competentes en la Ciudad de México conforme a la Cláusula Trigésima Segunda.',
+    ]);
+    $para('EL CLIENTE manifiesta que ha celebrado este Contrato de manera libre, voluntaria, informada y sin vicios del consentimiento.');
+    $para('Leído que fue por las Partes el presente Contrato y enteradas de su contenido y alcance jurídico, lo firman para constancia el día de su fecha, por duplicado, en los espacios indicados para tal efecto, quedando un ejemplar en poder de VOLTIKA y otro en poder de EL CLIENTE.');
+
+    // ─── FIRMAS ─────────────────────────────────────────────────────────
+    $pdf->Ln(4);
+    $pdf->SetFont('Arial', 'B', 11);
+    $pdf->Cell(0, 7, $enc('FIRMAS'), 0, 1, 'C');
+    $pdf->Ln(2);
+
+    // EL CLIENTE block
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(0, 5, $enc('EL CLIENTE'), 0, 1, 'C');
+    $pdf->SetFont('Arial', '', 8);
+    $pdf->Cell(0, 5, $enc('Nombre: ' . $nombre), 0, 1, 'C');
+
     if ($firmaImgPath && file_exists($firmaImgPath)) {
-        $pdf->Image($firmaImgPath, $pdf->GetX() + 50, $pdf->GetY(), 60, 30);
-        $pdf->Ln(35);
+        $pdf->Image($firmaImgPath, $pdf->GetX() + 65, $pdf->GetY(), 60, 26);
+        $pdf->Ln(28);
     } else {
-        $pdf->Cell(0, 15, '', 0, 1);
+        $pdf->Ln(8);
         $x = $pdf->GetX();
-        $pdf->Line($x + 40, $pdf->GetY(), $x + 150, $pdf->GetY());
+        $pdf->Line($x + 50, $pdf->GetY(), $x + 140, $pdf->GetY());
         $pdf->Ln(3);
     }
-
-    // Name and Folio below signature
-    $pdf->SetFont('Arial', 'B', 9);
-    $pdf->Cell(0, 5, $enc('Nombre: ' . $nombre), 0, 1, 'C');
-    $pdf->SetFont('Arial', '', 8);
-    $pdf->Cell(0, 5, $enc('Folio del Contrato: ' . $folio), 0, 1, 'C');
-    $pdf->Cell(0, 5, $enc('Fecha: ' . $fechaFirma), 0, 1, 'C');
-
-    $pdf->Ln(6);
     $pdf->SetFont('Arial', 'I', 7);
-    $pdf->MultiCell(0, 3.5, $enc('Este documento ha sido firmado electronicamente y sera certificado con NOM-151 mediante Cincel Digital. La firma electronica tiene la misma validez juridica que una firma autografa conforme al Codigo de Comercio.'));
+    $pdf->Cell(0, 4, $enc('Firma autógrafa o electrónica'), 0, 1, 'C');
+    $pdf->SetFont('Arial', '', 8);
+    $pdf->Cell(0, 4, $enc('Folio del Contrato: ' . $folio), 0, 1, 'C');
+    $pdf->Cell(0, 4, $enc('Fecha: ' . $fechaFirma), 0, 1, 'C');
+
+    // VOLTIKA block
+    $pdf->Ln(6);
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(0, 5, $enc('VOLTIKA — MTECH GEARS, S.A. DE C.V.'), 0, 1, 'C');
+    $pdf->Ln(8);
+    $x = $pdf->GetX();
+    $pdf->Line($x + 50, $pdf->GetY(), $x + 140, $pdf->GetY());
+    $pdf->Ln(3);
+    $pdf->SetFont('Arial', 'I', 7);
+    $pdf->Cell(0, 4, $enc('Representante Legal'), 0, 1, 'C');
+
+    $pdf->Ln(4);
+    $pdf->SetFont('Arial', 'I', 7);
+    $pdf->MultiCell(0, 3.5, $enc('Este documento ha sido firmado electrónicamente y será certificado conforme a la NOM-151-SCFI-2016 mediante Cincel S.A.P.I. de C.V. o el PSC autorizado que VOLTIKA designe. La firma electrónica avanzada tiene la misma validez jurídica que una firma autógrafa conforme al artículo 89 del Código de Comercio.'), 0, 'C');
 }
 
 /**
