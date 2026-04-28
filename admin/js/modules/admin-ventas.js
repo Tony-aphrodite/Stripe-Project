@@ -491,6 +491,19 @@ window.AD_ventas = (function(){
           'title="Descargar contrato de compraventa" '+
           'href="../configurador_prueba/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1">📄</a>';
       }
+
+      // Dossier de Defensa — full evidence pack (ZIP + master PDF) for
+      // chargeback / lawsuit / PROFECO defense. Admin session is enough
+      // to download; if no dossier exists yet the endpoint builds one
+      // on the fly (or use &build=1 to force a fresh version).
+      var dossierBtn = '';
+      if (r.moto_id || r.pedido) {
+        var dParams = r.moto_id ? ('moto_id=' + r.moto_id) : ('pedido=' + encodeURIComponent(r.pedido));
+        dossierBtn = '<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
+          'style="'+btnStyleBase+';text-decoration:none;display:inline-flex;align-items:center;background:#fffbeb;border-color:#f59e0b;color:#92400e;" '+
+          'title="Descargar Dossier de Defensa (ZIP — todas las evidencias para Stripe/PROFECO)" '+
+          'href="../configurador_prueba/php/descargar-dossier.php?'+dParams+'&format=zip">📦</a>';
+      }
       var actionTd;
       if (actionsLayout === 'stacked_pago_pendiente') {
         actionTd = '<td style="min-width:170px;"><div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;">'+
@@ -503,12 +516,12 @@ window.AD_ventas = (function(){
               'onclick="AD_ventas.syncStripe('+r.id+', this)">🔄 Sinc</button>'+
             '<button class="ad-btn sm ghost" style="'+btnStyleBase+';flex:1;" '+
               'onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>'+
-            contratoBtn +
+            contratoBtn + dossierBtn +
           '</div>'+
         '</div></td>';
       } else {
         actionTd = '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
-          actions + contratoBtn +
+          actions + contratoBtn + dossierBtn +
         '</div></td>';
       }
       html += '<td>'+motoCell+'</td>' + actionTd;
