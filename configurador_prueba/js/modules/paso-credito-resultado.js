@@ -465,11 +465,11 @@ var PasoCreditoResultado = {
         // /img/tarjetas/{visa,mastercard,amex,spei,oxxo}.svg
         function payCard(id, logoHtml, title, subtitle){
             return '<button type="button" class="vk-nv-pay" id="'+id+'" style="'+
-                'display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s;min-height:78px;">'+
+                'display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s;min-height:78px;box-sizing:border-box;overflow:hidden;">'+
                 '<span style="width:54px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;">'+logoHtml+'</span>'+
-                '<span style="flex:1;min-width:0;">'+
-                    '<span style="display:block;font-size:13px;font-weight:700;color:#111;line-height:1.2;">'+title+'</span>'+
-                    '<span style="display:block;font-size:11px;color:#5b6b7a;margin-top:3px;line-height:1.35;">'+subtitle+'</span>'+
+                '<span style="flex:1;min-width:0;overflow-wrap:break-word;word-break:break-word;">'+
+                    '<span style="display:block;font-size:13.5px;font-weight:700;color:#111;line-height:1.2;">'+title+'</span>'+
+                    '<span style="display:block;font-size:11.5px;color:#5b6b7a;margin-top:4px;line-height:1.4;">'+subtitle+'</span>'+
                 '</span>'+
                 '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>'+
                 '</button>';
@@ -490,7 +490,7 @@ var PasoCreditoResultado = {
         var logoSpei = '<img src="'+base+'img/logo_spei.png" alt="SPEI" style="height:30px;width:auto;max-width:54px;object-fit:contain;">';
         var logoOxxo = '<img src="'+base+'img/oxxo_logo.png" alt="OXXO" style="height:32px;width:auto;max-width:54px;object-fit:contain;">';
 
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">';
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:18px;">';
         // 4. 9 MSI con tarjeta — only "9 pagos de $X MXN" subtitle (per spec)
         html += payCard(
             'vk-nv-msi',
