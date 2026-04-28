@@ -94,18 +94,67 @@ if (!$dossier && $motoId > 0) {
 }
 
 // If no dossier yet AND admin is calling, build one on the fly.
+$buildErr = null;
 if (!$dossier && $adminOk && $motoId > 0) {
     $r = dossierBuild($motoId, ['motivo' => 'manual']);
     if ($r['ok']) {
         $st = $pdo->prepare("SELECT * FROM dossiers_defensa WHERE id = ?");
         $st->execute([$r['dossier_id']]);
         $dossier = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    } else {
+        $buildErr = $r['error'] ?? 'unknown';
     }
 }
 
 if (!$dossier) {
     http_response_code(404);
-    exit('Dossier no disponible — el sistema requiere al menos VIN asignado y entrega registrada.');
+    if ($adminOk) {
+        // For admins, render a one-page HTML guidance instead of a bare
+        // text 404 — explains exactly what's missing and what to do next.
+        header('Content-Type: text/html; charset=UTF-8');
+        $reason = $buildErr ?: 'Esta orden aún no tiene moto asignada (VIN). El dossier se construye automáticamente cuando CEDIS asigna inventario.';
+        $diag = [
+            'admin'             => $adminOk ? 1 : 0,
+            'moto_id'           => $motoId,
+            'pedido'            => $pedido,
+            'build_intentado'   => $motoId > 0 ? 'sí' : 'no — sin moto_id',
+            'build_error'       => $buildErr,
+            'php_zip'           => class_exists('ZipArchive') ? 'ok' : '⚠️ MISSING (apt install php-zip)',
+            'php_fpdf'          => class_exists('FPDF') ? 'ok' : '⚠️ MISSING',
+            'dossiers_dir'      => is_writable(__DIR__ . '/../dossiers') ? 'ok' : '⚠️ NO ESCRIBIBLE',
+        ];
+        echo '<!doctype html><html lang="es"><head><meta charset="utf-8">';
+        echo '<title>Dossier no disponible</title><style>';
+        echo 'body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f8fafc;color:#1a3a5c;padding:32px;max-width:680px;margin:0 auto;}';
+        echo 'h1{font-size:20px;margin:0 0 6px;} h2{font-size:14px;color:#64748b;margin:0 0 24px;}';
+        echo '.card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:16px;}';
+        echo '.tag{display:inline-block;background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600;}';
+        echo 'table{width:100%;border-collapse:collapse;font-size:13px;}';
+        echo 'td{padding:6px 10px;border-bottom:1px solid #f1f5f9;}';
+        echo 'td:first-child{color:#64748b;width:40%;}';
+        echo '.next{background:#eff6ff;border-left:3px solid #039fe1;padding:14px 16px;border-radius:6px;margin-top:14px;font-size:13px;}';
+        echo '.next b{color:#1a3a5c;}';
+        echo 'code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px;}';
+        echo '</style></head><body>';
+        echo '<h1>📦 Dossier de Defensa no disponible</h1>';
+        echo '<h2>Pedido: ' . htmlspecialchars($pedido ?: '—') . ' · Moto ID: ' . (int)$motoId . '</h2>';
+        echo '<div class="card"><div class="tag">RAZÓN</div>';
+        echo '<p style="margin:10px 0 0;font-size:14px;">' . htmlspecialchars($reason) . '</p></div>';
+        echo '<div class="card"><div class="tag">DIAGNÓSTICO</div><table>';
+        foreach ($diag as $k => $v) {
+            echo '<tr><td>' . htmlspecialchars($k) . '</td><td>' . htmlspecialchars((string)($v ?? '—')) . '</td></tr>';
+        }
+        echo '</table></div>';
+        echo '<div class="next"><b>¿Qué hacer?</b><br>';
+        echo '1. Asigna una moto del inventario (botón <b>Asignar</b> en la lista de ventas).<br>';
+        echo '2. Una vez asignada, el cron <code>auto-dossier.php</code> generará el dossier dentro de 1 hora.<br>';
+        echo '3. Para forzar inmediatamente: vuelve a hacer clic en 📦 después de asignar la moto, o llama con <code>&build=1</code>.<br>';
+        echo '4. Si el chargeback es URGENTE y la moto aún no está asignada, descarga el contrato 📄 (suficiente para evidencia básica) mientras CEDIS asigna inventario.';
+        echo '</div></body></html>';
+    } else {
+        echo 'Dossier no disponible';
+    }
+    exit;
 }
 
 $relPath = $format === 'pdf' ? $dossier['master_pdf_path'] : $dossier['zip_path'];

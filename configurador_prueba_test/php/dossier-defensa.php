@@ -323,7 +323,7 @@ function _dossierLoadContext(PDO $pdo, int $motoId): array {
         WHERE m.id = ?");
     $stmt->execute([$motoId]);
     $ctx['moto'] = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    if (!$ctx['moto']) return ['ok' => false, 'error' => 'Moto no encontrada'];
+    if (!$ctx['moto']) return ['ok' => false, 'error' => 'Moto no encontrada (id=' . $motoId . ')'];
 
     // Transaction
     $ctx['transaccion'] = null;
