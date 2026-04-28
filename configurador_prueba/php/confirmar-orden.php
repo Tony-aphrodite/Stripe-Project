@@ -1072,12 +1072,20 @@ if (!$esCredito) {
             $contratoToken = contratoContadoDownloadToken($pedidoNum, (string)$paymentIntentId);
             $contratoUrl   = 'php/descargar-contrato.php?pedido=' . urlencode($pedidoNum)
                            . '&token=' . urlencode($contratoToken);
+            $contratoHash  = $genResult['hash'] ?? null;
 
-            // Persist the path + acceptance metadata so admin and the
-            // customer portal can re-download / re-verify later.
+            // Lazy-add hash column for older installs (Tech Spec EN §6).
+            try {
+                $cols = $pdoCC->query("SHOW COLUMNS FROM transacciones LIKE 'contrato_pdf_hash'")->fetch();
+                if (!$cols) $pdoCC->exec("ALTER TABLE transacciones ADD COLUMN contrato_pdf_hash CHAR(64) NULL");
+            } catch (Throwable $e) { /* non-fatal */ }
+
+            // Persist the path + hash + acceptance metadata so admin and
+            // the customer portal can re-download / re-verify later.
             try {
                 $pdoCC->prepare("UPDATE transacciones
                         SET contrato_pdf_path      = ?,
+                            contrato_pdf_hash      = ?,
                             contrato_aceptado_at   = ?,
                             contrato_aceptado_ip   = ?,
                             contrato_aceptado_ua   = ?,
@@ -1087,6 +1095,7 @@ if (!$esCredito) {
                         ORDER BY id DESC LIMIT 1")
                     ->execute([
                         $relPath,
+                        $contratoHash,
                         $contratoAcceptedAt,
                         $contratoIp,
                         $contratoUa,

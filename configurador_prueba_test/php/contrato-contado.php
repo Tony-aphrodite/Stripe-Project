@@ -175,7 +175,9 @@ function contratoContadoGenerate(array $data): array {
     if (!file_exists($path) || filesize($path) === 0) {
         return ['ok' => false, 'path' => null, 'error' => 'Archivo no escrito'];
     }
-    return ['ok' => true, 'path' => $path, 'error' => null];
+    // SHA-256 integrity hash (Tech Spec EN §6 — required for legal evidence).
+    $hash = hash_file('sha256', $path);
+    return ['ok' => true, 'path' => $path, 'hash' => $hash, 'error' => null];
 }
 
 function _contratoContadoEnc(string $s): string {
