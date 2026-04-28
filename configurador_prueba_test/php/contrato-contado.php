@@ -93,7 +93,22 @@ function contratoContadoVerifyToken(string $pedido, string $stripePi, string $to
 
 function contratoContadoOutputDir(): string {
     $dir = __DIR__ . '/../contratos/contado';
-    if (!is_dir($dir)) @mkdir($dir, 0775, true);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+        @chmod($dir, 0775);
+    }
+    // Plesk-style hosting often denies the PHP runtime user write access
+    // to code-tree directories. Fall back to /tmp so the contrato write
+    // never silently fails (chargeback evidence MUST be available).
+    if (!is_writable($dir)) {
+        $alt = sys_get_temp_dir() . '/voltika_contratos_contado';
+        if (!is_dir($alt)) @mkdir($alt, 0777, true);
+        @chmod($alt, 0777);
+        if (is_writable($alt)) {
+            $GLOBALS['_contrato_using_temp_dir'] = true;
+            return $alt;
+        }
+    }
     return $dir;
 }
 
@@ -105,9 +120,17 @@ function contratoContadoPdfPath(string $pedido): string {
 // Public URL relative to the configurador root. The descargar-contrato
 // endpoint is the supported access path; we return the file path here
 // only for record-keeping (used as the value persisted in transacciones).
+//
+// When /tmp fallback is active we persist the absolute path so the
+// download endpoint can find the file on the next request — otherwise
+// the relative "contratos/..." path resolves to an empty location.
 function contratoContadoRelativePath(string $pedido): string {
     $safe = preg_replace('/[^A-Za-z0-9_-]/', '_', $pedido);
-    return 'contratos/contado/contrato_contado_' . $safe . '.pdf';
+    $filename = 'contrato_contado_' . $safe . '.pdf';
+    if (!empty($GLOBALS['_contrato_using_temp_dir'])) {
+        return contratoContadoOutputDir() . '/' . $filename;  // absolute /tmp path
+    }
+    return 'contratos/contado/' . $filename;
 }
 
 // ─────────────────────────────────────────────────────────────────────────

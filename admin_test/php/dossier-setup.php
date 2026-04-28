@@ -51,6 +51,18 @@ $dirsToCreate = [
         'fallback'  => sys_get_temp_dir() . '/voltika_dossiers_test',
         'env'       => 'test',
     ],
+    // contratos/contado/ — used by contrato-contado.php for the customer
+    // purchase contract PDFs. Same Plesk perm pattern as dossiers.
+    [
+        'preferred' => $projectRoot . '/configurador_prueba/contratos/contado',
+        'fallback'  => sys_get_temp_dir() . '/voltika_contratos_contado',
+        'env'       => 'prod',
+    ],
+    [
+        'preferred' => $projectRoot . '/configurador_prueba_test/contratos/contado',
+        'fallback'  => sys_get_temp_dir() . '/voltika_contratos_contado',
+        'env'       => 'test',
+    ],
 ];
 foreach ($dirsToCreate as $cfg) {
     $d = $cfg['preferred'];
