@@ -1187,6 +1187,38 @@ function voltikaBuildRecordatorio2diasTemplate(): array {
     return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
 }
 
+// ── M1B: 24h antes del cargo (pre-charge per Tech Spec EN §9) ────────────
+// Mexican-law-compliant pre-charge notice required by Cláusula Séptima of
+// the v5 contract: customer must be notified before each recurring charge.
+// Emitted 1 day before the due date, at 6PM, so the customer has the
+// evening + early next day to switch payment method or pay manually.
+function voltikaBuildRecordatorio1diaTemplate(): array {
+    $subject = '🔔 Cargo automático mañana: ${monto_semanal} — Pedido {pedido_corto}';
+    $rows = '<tr><td style="padding:22px 28px 6px;">'
+          . '<div style="font-size:17px;color:#1a3a5c;">Hola <strong>{nombre}</strong> 👋</div>'
+          . '<p style="font-size:14px;line-height:1.6;color:#444;margin:10px 0 0;">Mañana <strong>{fecha_vencimiento}</strong> haremos el cargo automático a tu tarjeta registrada.</p>'
+          . '</td></tr>'
+          . '<tr><td style="padding:14px 28px;">'
+          . '<table cellpadding="0" cellspacing="0" style="background:#F1F9FF;border-radius:10px;width:100%;border:1px solid #B3D4FC;">'
+          . '<tr><td style="padding:14px;"><div style="font-size:11px;color:#777;text-transform:uppercase;letter-spacing:.5px;">Detalle del cargo</div>'
+          . '<div style="font-size:22px;font-weight:800;color:#1a3a5c;margin-top:4px;">${monto_semanal} MXN</div>'
+          . '<div style="font-size:13px;color:#444;margin-top:6px;">Tarjeta {card_brand} ··· {card_last4}</div>'
+          . '<div style="font-size:13px;color:#444;">Fecha: <strong>{fecha_vencimiento}</strong></div>'
+          . '</td></tr></table></td></tr>'
+          . '<tr><td style="padding:10px 28px;">'
+          . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">¿Quieres cambiar el medio?</div>'
+          . '<p style="font-size:13px;color:#444;margin:0;line-height:1.6;">Puedes pagar HOY por OXXO o SPEI desde tu portal — si lo haces antes del cargo, tu tarjeta no se cobra (no hay duplicado).</p>'
+          . '<p style="font-size:13px;color:#444;margin:8px 0 0;line-height:1.6;">También puedes <strong>actualizar tu tarjeta</strong> si la actual ya no funciona.</p>'
+          . '</td></tr>';
+    $emailHtml = voltikaBuildCobranzaEmailHtml('🔔 Cargo automático mañana', 'Pedido {pedido_corto} · ${monto_semanal}', $rows);
+
+    $body = "🔔 {nombre}, mañana {fecha_vencimiento}\nharemos el cargo automático\nde \${monto_semanal} a tu\ntarjeta {card_brand} ··· {card_last4}.\n\n"
+          . "¿Quieres pagar hoy por OXXO\no SPEI? No hay duplicado:\n💳 👉 {payment_link}\n\n"
+          . "También puedes actualizar tu\ntarjeta antes del cargo.";
+    $sms = "Voltika: {nombre}, mañana {fecha_vencimiento} cargo de \${monto_semanal} a tarjeta ··{card_last4}. Cambiar/pagar hoy: {payment_link}";
+    return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
+}
+
 // ── M2: vence hoy ───────────────────────────────────────────────────────────
 function voltikaBuildPagoVenceHoyTemplate(): array {
     $subject = '🔔 Hoy vence tu pago de ${monto_semanal} — Pedido {pedido_corto}';
@@ -1363,6 +1395,7 @@ function voltikaNotifyTemplates(): array {
     $tplActa        = voltikaBuildActaFirmadaTemplate();
     $tplIncidencia  = voltikaBuildIncidenciaTemplate();
     $tplCobr2d      = voltikaBuildRecordatorio2diasTemplate();
+    $tplCobr1d      = voltikaBuildRecordatorio1diaTemplate();
     $tplCobrHoy     = voltikaBuildPagoVenceHoyTemplate();
     $tplCobr48h     = voltikaBuildPagoVencido48hTemplate();
     $tplCobr96h     = voltikaBuildPagoVencido96hTemplate();
@@ -1396,6 +1429,7 @@ function voltikaNotifyTemplates(): array {
         'entrega_completada'          => $tplActa,    // alias — same content
         'recepcion_incidencia'        => $tplIncidencia,
         'recordatorio_pago_2dias'     => $tplCobr2d,
+        'recordatorio_pago_1dia'      => $tplCobr1d,
         'pago_vence_hoy'              => $tplCobrHoy,
         'pago_vencido_48h'            => $tplCobr48h,
         'pago_vencido_96h'            => $tplCobr96h,
