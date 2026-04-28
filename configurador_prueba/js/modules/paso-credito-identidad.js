@@ -89,21 +89,6 @@ var PasoCreditoIdentidad = {
         html += '<div id="vk-identidad-error" style="display:none;color:#C62828;font-size:13px;' +
             'background:#FFEBEE;border-radius:6px;padding:10px;margin-top:12px;"></div>';
 
-        // 6b. Popup fallback — visible always so users with broken iframe
-        //     embedding (mobile carrier DNS, HSTS corruption, browser
-        //     extensions, ad-blockers) can complete verification anyway.
-        //     The popup opens identity.truora.com directly in a new tab
-        //     where iframe restrictions don't apply. After the user
-        //     completes Truora, the redirect_url brings them back to
-        //     /configurador_prueba/#credito-identidad and we poll
-        //     truora-status.php for completion.
-        html += '<div id="vk-truora-popup-fallback" style="margin-top:12px;text-align:center;">';
-        html += '<button id="vk-truora-popup-btn" style="background:#fff;color:#039fe1;border:1.5px solid #039fe1;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;width:100%;">';
-        html += '📱 ¿La verificación no carga? Ábrela en una pestaña nueva';
-        html += '</button>';
-        html += '<div style="font-size:11px;color:#888;margin-top:6px;">Se abrirá identity.truora.com directamente. Cuando termines, regresa a esta pestaña.</div>';
-        html += '</div>';
-
         // 7. Retry button (shown only after errors)
         html += '<button id="vk-identidad-retry" style="display:none;width:100%;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;text-transform:uppercase;letter-spacing:0.5px;">Reintentar verificación</button>';
 
@@ -141,154 +126,6 @@ var PasoCreditoIdentidad = {
             self._startIframe();
         });
 
-        // Popup fallback handler. Opens Truora directly (no iframe), then
-        // polls truora-status.php for the result. Works even when iframe
-        // embedding is broken on the user's device (mobile carrier DNS,
-        // HSTS corruption, content blocker, etc.) because direct
-        // navigation never hits frame-ancestors restrictions.
-        jQuery(document).off('click', '#vk-truora-popup-btn');
-        jQuery(document).on('click', '#vk-truora-popup-btn', function() {
-            self._launchPopupFallback();
-        });
-    },
-
-    _launchPopupFallback: function() {
-        var self = this;
-        var state = (this.app && this.app.state) || {};
-
-        // If we already have an iframe URL captured from _startIframe(),
-        // reuse it. Otherwise refetch a fresh token.
-        if (state._truoraIframeUrl) {
-            self._openPopup(state._truoraIframeUrl);
-            return;
-        }
-
-        // Refetch token specifically for popup mode.
-        var apellidos = ((state.apellidoPaterno || '') + ' ' + (state.apellidoMaterno || '')).trim();
-        var payload = {
-            cliente_id: state.cliente_id || state.clienteId || state.telefono || '',
-            nombre:     (state.nombre || '').trim(),
-            apellidos:  apellidos,
-            telefono:   state.telefono || '',
-            email:      state.email || '',
-            curp:       (state.curp || '').toUpperCase(),
-        };
-
-        jQuery('#vk-truora-popup-btn').prop('disabled', true).text('Generando link…');
-        jQuery.ajax({
-            url: 'php/truora-token.php',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(payload),
-            dataType: 'json',
-        }).done(function(r) {
-            jQuery('#vk-truora-popup-btn').prop('disabled', false).html('📱 ¿La verificación no carga? Ábrela en una pestaña nueva');
-            if (!r || !r.ok || !r.iframe_url) {
-                self._showError(
-                    'No pudimos generar el link de verificación.',
-                    'Intenta de nuevo o contáctanos en WhatsApp +52 55 1341 6370.'
-                );
-                return;
-            }
-            state._truoraIframeUrl = r.iframe_url;
-            state._truoraAccountId = r.account_id;
-            self._openPopup(r.iframe_url);
-        }).fail(function() {
-            jQuery('#vk-truora-popup-btn').prop('disabled', false).html('📱 ¿La verificación no carga? Ábrela en una pestaña nueva');
-            self._showError(
-                'No pudimos conectar con el servicio de verificación.',
-                'Revisa tu conexión e intenta de nuevo.'
-            );
-        });
-    },
-
-    _openPopup: function(url) {
-        var self = this;
-        // Open in new tab (some mobile browsers don't honor popup specs).
-        var w = window.open(url, '_blank');
-        if (!w) {
-            // Popup was blocked. Fall back to a clear, clickable link.
-            self._showError(
-                'Tu navegador bloqueó la nueva pestaña.',
-                'Permite ventanas emergentes para voltika.mx, o copia y abre este link manualmente: ' + url
-            );
-            return;
-        }
-
-        // Replace the iframe area with a "verifying…" status and a poll
-        // indicator so the user knows we're watching for completion.
-        jQuery('#vk-truora-container').html(
-            '<div style="padding:40px;text-align:center;">' +
-              '<div style="font-size:48px;margin-bottom:14px;">📱</div>' +
-              '<div style="font-size:16px;font-weight:800;color:#1a3a5c;margin-bottom:8px;">Verificación abierta en otra pestaña</div>' +
-              '<div style="font-size:13px;color:#666;line-height:1.7;margin-bottom:18px;">' +
-                  'Completa la verificación en la pestaña que se abrió.<br>' +
-                  'Cuando termines, esta página continuará automáticamente.' +
-              '</div>' +
-              VkUI.renderSpinner() +
-              '<div style="font-size:11px;color:#888;margin-top:14px;">Detectando el resultado…</div>' +
-            '</div>'
-        );
-        jQuery('#vk-truora-popup-fallback').hide();
-
-        // Start polling. We don't have the process_id yet (it's embedded
-        // in the JWT that just got opened), so we rely on the webhook
-        // result keyed by account_id / email instead.
-        self._startPopupPolling();
-    },
-
-    /**
-     * Polls truora-status.php for completion when the user is in the
-     * popup flow. Looks up by account_id (we created it in our backend
-     * via truora-token.php) which matches what Truora's webhook sends.
-     * Up to 5 minutes (60 attempts × 5s).
-     */
-    _startPopupPolling: function() {
-        var self = this;
-        var state = self.app.state || {};
-        var accountId = state._truoraAccountId || '';
-        var email     = state.email || '';
-        var attempts  = 0;
-        var maxAttempts = 60;
-        if (self._popupPollTimer) clearInterval(self._popupPollTimer);
-        self._popupPollTimer = setInterval(function() {
-            attempts++;
-            jQuery.get('php/truora-status.php', {
-                account_id: accountId,
-                email:      email,
-            }).done(function(r) {
-                if (r && r.approved === 1) {
-                    clearInterval(self._popupPollTimer);
-                    self._finished = true;
-                    self.app.state._identidadVerificada = true;
-                    self.app.state._truoraProcessId = r.process_id || null;
-                    if (self.app && typeof self.app.irAPaso === 'function') {
-                        self.app.irAPaso('credito-enganche');
-                    }
-                } else if (r && r.approved === 0 && r.status === 'failure') {
-                    clearInterval(self._popupPollTimer);
-                    self._finished = true;
-                    self._showError(
-                        'No pudimos verificar tu identidad.',
-                        (r.declined_reason || '') + ' Intenta de nuevo o contáctanos.'
-                    );
-                }
-            });
-            if (attempts >= maxAttempts) {
-                clearInterval(self._popupPollTimer);
-                jQuery('#vk-truora-container').html(
-                    '<div style="padding:40px;text-align:center;">' +
-                      '<div style="font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:6px;">' +
-                          'Aún no detectamos tu verificación.</div>' +
-                      '<div style="font-size:12px;color:#666;line-height:1.6;">' +
-                          'Si ya la completaste en la otra pestaña, recarga esta página. ' +
-                          'Si no, vuelve a abrir el link.' +
-                      '</div>' +
-                    '</div>'
-                );
-                jQuery('#vk-truora-popup-fallback').show();
-            }
-        }, 5000);
     },
 
     _showError: function(msg, detail) {
@@ -335,41 +172,48 @@ var PasoCreditoIdentidad = {
 
             state._truoraAccountId = r.account_id;
             state._truoraFlowId    = r.flow_id;
-            state._truoraIframeUrl = r.iframe_url; // shared with popup fallback
+            state._truoraIframeUrl = r.iframe_url;
 
-            // Build iframe element programmatically and attach the load
-            // listener BEFORE adding it to the DOM — otherwise a cached
-            // iframe can fire `load` before jQuery .on() attaches and we
-            // miss the event entirely (race condition observed on mobile
-            // 2026-04-29).
+            // Build iframe element programmatically. Customer requirement:
+            // iframe MUST work (no popups). Key fixes:
             //
-            // We DO NOT probe contentWindow.location.href for blocked
-            // detection. On mobile browsers (Chrome Android in particular)
-            // the && short-circuit can return null *without* throwing
-            // SecurityError, even when the iframe is rendering Truora
-            // content correctly. That produced false positives — users
-            // saw "no se cargó" on a working iframe.
+            //   1. APPEND-then-SET-SRC ordering — some mobile browsers
+            //      (Chrome Android) don't fire `load` reliably when the
+            //      element is constructed off-DOM with src already set.
+            //      Standard pattern: build element, attach to DOM, THEN
+            //      assign src so the load triggers fresh.
             //
-            // Truth source: postMessage from Truora origin = iframe is
-            // alive and rendering. The 30s hard timeout is the only
-            // failure detection — if no postMessage and no completion in
-            // that window, we soft-error. The OTP/identity flow fires
-            // postMessages on every major step.
+            //   2. Cache-bust query param — ?_cb=<timestamp> defeats any
+            //      stale browser cache for identity.truora.com that may
+            //      have remembered a pre-whitelist failure response. The
+            //      JWT token already contains everything Truora needs to
+            //      identify the session; extra params are ignored.
+            //
+            //   3. Listener attached BEFORE src assignment — guarantees
+            //      no race condition.
+            //
+            //   4. allow attributes — explicit camera/mic/geo permissions
+            //      so mobile browsers don't strip them.
+            //
+            //   5. referrerpolicy origin — ensures Truora gets the right
+            //      origin in the Referer header for frame-ancestors
+            //      validation (some mobile browsers send no referrer
+            //      otherwise, which triggers stricter CSP enforcement).
             self._iframeLoaded = false;
             var iframe = document.createElement('iframe');
             iframe.id    = 'vk-truora-iframe';
-            iframe.src   = r.iframe_url;
-            iframe.allow = 'camera; microphone; geolocation';
+            iframe.allow = 'camera; microphone; geolocation; payment; clipboard-write';
+            iframe.setAttribute('allowfullscreen', '');
+            iframe.setAttribute('referrerpolicy', 'origin-when-cross-origin');
             iframe.setAttribute('style', 'width:100%;height:720px;border:0;display:block;background:#fff;');
+
+            // Listener BEFORE src.
             iframe.addEventListener('load', function() {
                 self._iframeLoaded = true;
-                // The fact that `load` fired AND the iframe is cross-origin
-                // means Truora responded. Browser would show its own
-                // "rechazó la conexión" page inside the iframe if blocked
-                // — at that point our error overlay would actively make
-                // the UX worse, so we let the iframe speak for itself.
+                if (window.console) console.log('[Truora iframe] load event fired');
             });
             iframe.addEventListener('error', function() {
+                if (window.console) console.error('[Truora iframe] error event fired');
                 if (self._finished || self._currentProcessId) return;
                 self._showError(
                     'La verificación de identidad no pudo cargar.',
@@ -377,7 +221,16 @@ var PasoCreditoIdentidad = {
                     'escríbenos a WhatsApp +52 55 1341 6370 o ventas@voltika.mx.'
                 );
             });
+
+            // Append to DOM FIRST, then set src — this is the canonical
+            // pattern that works across every mobile browser engine.
             jQuery('#vk-truora-container').empty().append(iframe);
+
+            // Cache-bust: append &_cb=<timestamp> so the browser cannot
+            // serve a stale cached response.
+            var url = r.iframe_url;
+            url += (url.indexOf('?') >= 0 ? '&' : '?') + '_cb=' + Date.now();
+            iframe.src = url;
             self._iframeReady = true;
 
             // Hard fallback: if `load` never fires AND no Truora postMessage
