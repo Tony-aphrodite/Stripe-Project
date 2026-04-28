@@ -105,6 +105,11 @@ var PasoCreditoIdentidad = {
         // 9. Footer
         html += '<div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:12px;">Tu moto permanecerá reservada mientras completas este paso.</div>';
 
+        // 10. Debug log panel (visible — captures iframe events on the
+        //     user's actual device since most won't open DevTools).
+        //     Hidden once we confirm production is stable.
+        html += '<div id="vk-truora-debug" style="margin-top:14px;padding:10px 12px;background:#0f172a;color:#94a3b8;border-radius:8px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;line-height:1.6;max-height:160px;overflow-y:auto;">[debug] esperando iniciar verificación...</div>';
+
         jQuery('#vk-credito-identidad-container').html(html);
 
         // Bind retry button
@@ -135,6 +140,19 @@ var PasoCreditoIdentidad = {
         ).show();
         jQuery('#vk-identidad-retry').show();
         jQuery('#vk-truora-loader').hide();
+        this._appendDebug('SHOW ERROR: ' + msg);
+    },
+
+    // Append a line to the on-page debug panel. Helps diagnose iframe
+    // failures on real devices where the user can't open DevTools.
+    _appendDebug: function(line) {
+        try {
+            var dbg = document.getElementById('vk-truora-debug');
+            if (!dbg) return;
+            if (dbg.innerText.indexOf('esperando iniciar') === 0) dbg.innerText = '';
+            dbg.innerText += '\n' + line;
+            dbg.scrollTop = dbg.scrollHeight;
+        } catch (e) {}
     },
 
     _startIframe: function() {
@@ -155,6 +173,8 @@ var PasoCreditoIdentidad = {
             curp:       (state.curp || '').toUpperCase(),
         };
 
+        self._appendDebug('POST truora-token.php... @ ' + new Date().toLocaleTimeString());
+
         jQuery.ajax({
             url: 'php/truora-token.php',
             method: 'POST',
@@ -163,6 +183,7 @@ var PasoCreditoIdentidad = {
             dataType: 'json',
         }).done(function(r) {
             if (!r || !r.ok || !r.iframe_url) {
+                self._appendDebug('token NOT OK: ' + JSON.stringify(r).substr(0, 100));
                 self._showError(
                     'No pudimos iniciar la verificación de identidad.',
                     (r && (r.error || r.body)) ? (r.error || '') + ' ' + (r.body || '') : ''
@@ -170,36 +191,32 @@ var PasoCreditoIdentidad = {
                 return;
             }
 
+            self._appendDebug('token OK · flow_id=' + r.flow_id + ' · account=' + r.account_id);
             state._truoraAccountId = r.account_id;
             state._truoraFlowId    = r.flow_id;
             state._truoraIframeUrl = r.iframe_url;
 
-            // Build iframe element programmatically. Customer requirement:
-            // iframe MUST work (no popups). Key fixes:
+            // Build iframe element programmatically.
             //
-            //   1. APPEND-then-SET-SRC ordering — some mobile browsers
-            //      (Chrome Android) don't fire `load` reliably when the
-            //      element is constructed off-DOM with src already set.
-            //      Standard pattern: build element, attach to DOM, THEN
-            //      assign src so the load triggers fresh.
+            // Canonical pattern (matches the working diagnostic page at
+            // truora-diag-completo.php which renders Truora correctly):
+            //   1. create element
+            //   2. set src
+            //   3. append to DOM
             //
-            //   2. Cache-bust query param — ?_cb=<timestamp> defeats any
-            //      stale browser cache for identity.truora.com that may
-            //      have remembered a pre-whitelist failure response. The
-            //      JWT token already contains everything Truora needs to
-            //      identify the session; extra params are ignored.
-            //
-            //   3. Listener attached BEFORE src assignment — guarantees
-            //      no race condition.
-            //
-            //   4. allow attributes — explicit camera/mic/geo permissions
-            //      so mobile browsers don't strip them.
-            //
-            //   5. referrerpolicy origin — ensures Truora gets the right
-            //      origin in the Referer header for frame-ancestors
-            //      validation (some mobile browsers send no referrer
-            //      otherwise, which triggers stricter CSP enforcement).
+            // We previously tried APPEND-first-then-SET-SRC + cache-bust
+            // ?_cb=<ts>. That combination broke real-flow rendering:
+            //   - APPEND-first triggered a phantom `load` event for
+            //     about:blank in some Chromium versions, marking the
+            //     iframe as "loaded" before the real URL was assigned.
+            //     Subsequent silent CSP/X-Frame blocks then weren't
+            //     caught by our 45 s timeout.
+            //   - The cache-bust param produced URLs not signed by the
+            //     JWT, which Truora's gateway in some configurations
+            //     treats as tampered — returning a blank page rather
+            //     than the flow.
             self._iframeLoaded = false;
+            self._iframeLoadCount = 0;
             var iframe = document.createElement('iframe');
             iframe.id    = 'vk-truora-iframe';
             iframe.allow = 'camera; microphone; geolocation; payment; clipboard-write';
@@ -207,13 +224,17 @@ var PasoCreditoIdentidad = {
             iframe.setAttribute('referrerpolicy', 'origin-when-cross-origin');
             iframe.setAttribute('style', 'width:100%;height:720px;border:0;display:block;background:#fff;');
 
-            // Listener BEFORE src.
+            // Listener BEFORE src so the very first load event is captured.
             iframe.addEventListener('load', function() {
+                self._iframeLoadCount++;
                 self._iframeLoaded = true;
-                if (window.console) console.log('[Truora iframe] load event fired');
+                var now = new Date().toLocaleTimeString();
+                if (window.console) console.log('[Truora iframe] load event fired (#' + self._iframeLoadCount + ' at ' + now + ')');
+                self._appendDebug('load #' + self._iframeLoadCount + ' @ ' + now);
             });
             iframe.addEventListener('error', function() {
                 if (window.console) console.error('[Truora iframe] error event fired');
+                self._appendDebug('ERROR event @ ' + new Date().toLocaleTimeString());
                 if (self._finished || self._currentProcessId) return;
                 self._showError(
                     'La verificación de identidad no pudo cargar.',
@@ -222,16 +243,16 @@ var PasoCreditoIdentidad = {
                 );
             });
 
-            // Append to DOM FIRST, then set src — this is the canonical
-            // pattern that works across every mobile browser engine.
-            jQuery('#vk-truora-container').empty().append(iframe);
+            // Set src BEFORE append. Use the URL exactly as Truora gave it
+            // (do NOT add cache-bust params — the JWT is unique per call so
+            // there is nothing to bust, and added params can void Truora's
+            // gateway validation).
+            iframe.src = r.iframe_url;
+            self._appendDebug('src set: ' + r.iframe_url.substr(0, 60) + '...');
 
-            // Cache-bust: append &_cb=<timestamp> so the browser cannot
-            // serve a stale cached response.
-            var url = r.iframe_url;
-            url += (url.indexOf('?') >= 0 ? '&' : '?') + '_cb=' + Date.now();
-            iframe.src = url;
+            jQuery('#vk-truora-container').empty().append(iframe);
             self._iframeReady = true;
+            self._appendDebug('iframe appended @ ' + new Date().toLocaleTimeString());
 
             // Hard fallback: if `load` never fires AND no Truora postMessage
             // arrives within 45s, network or browser-level block. We use
@@ -252,6 +273,7 @@ var PasoCreditoIdentidad = {
             }, 45000);
         }).fail(function(xhr) {
             var body = (xhr && xhr.responseJSON) || null;
+            self._appendDebug('AJAX FAIL: HTTP ' + (xhr && xhr.status));
             self._showError(
                 'No pudimos conectar con el servicio de verificación.',
                 (body && (body.error || body.hint)) || ('HTTP ' + (xhr && xhr.status))
@@ -283,6 +305,7 @@ var PasoCreditoIdentidad = {
             }
 
             if (!eventName || eventName.indexOf('truora') !== 0) return;
+            self._appendDebug('postMessage: ' + eventName + (processId ? ' (' + processId + ')' : ''));
 
             // Truora is talking — cancel the blank-iframe timeout so the
             // user doesn't see a false "no se cargó" error mid-flow.
