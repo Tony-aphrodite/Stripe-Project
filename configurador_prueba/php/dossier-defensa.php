@@ -146,13 +146,24 @@ function _dossierSanitize(string $s): string {
 }
 
 function _dossierPaths(string $pedido, string $vin, int $version = 1): array {
-    $base = _dossierSanitize($pedido) . '_' . _dossierSanitize($vin) . '_v' . $version;
+    $base    = _dossierSanitize($pedido) . '_' . _dossierSanitize($vin) . '_v' . $version;
+    $outDir  = _dossierOutputDir();
+    $usingTmp = !empty($GLOBALS['_dossier_using_temp_dir']);
     return [
         'work_dir' => sys_get_temp_dir() . '/voltika_dossier_build_' . $base . '_' . bin2hex(random_bytes(3)),
-        'zip'      => _dossierOutputDir() . '/voltika_defensa_' . $base . '.zip',
-        'pdf'      => _dossierOutputDir() . '/voltika_defensa_' . $base . '.pdf',
-        'rel_zip'  => 'dossiers/voltika_defensa_' . $base . '.zip',
-        'rel_pdf'  => 'dossiers/voltika_defensa_' . $base . '.pdf',
+        'zip'      => $outDir . '/voltika_defensa_' . $base . '.zip',
+        'pdf'      => $outDir . '/voltika_defensa_' . $base . '.pdf',
+        // When the canonical "dossiers/" dir isn't writable we fall back
+        // to /tmp. We must persist the ACTUAL absolute path in that case
+        // so descargar-dossier.php can find the file on the next request
+        // — otherwise the relative "dossiers/..." path resolves to an
+        // empty location.
+        'rel_zip'  => $usingTmp
+            ? $outDir . '/voltika_defensa_' . $base . '.zip'
+            : 'dossiers/voltika_defensa_' . $base . '.zip',
+        'rel_pdf'  => $usingTmp
+            ? $outDir . '/voltika_defensa_' . $base . '.pdf'
+            : 'dossiers/voltika_defensa_' . $base . '.pdf',
     ];
 }
 

@@ -227,10 +227,73 @@ if (!$relPath) {
     http_response_code(404);
     exit('Archivo del dossier no localizado');
 }
-$absPath = __DIR__ . '/../' . ltrim($relPath, '/');
-if (!file_exists($absPath)) {
+
+// Resolve the file path. New builds store an absolute path when /tmp
+// fallback is in use (DB column may now be either relative
+// "dossiers/..." OR an absolute path starting with "/"). Older rows
+// stored only relative paths even when the file went to /tmp, so we
+// also search known fallback locations before declaring "not found".
+$absPath = '';
+$filename = basename($relPath);
+
+// Build candidate list:
+//   1. If DB stored an absolute path, try it first.
+//   2. Canonical relative-to-project path.
+//   3. /tmp fallback locations (any that match the filename).
+$searchPaths = [];
+if ($relPath && $relPath[0] === '/') {
+    $searchPaths[] = $relPath;
+}
+$searchPaths = array_merge($searchPaths, [
+    __DIR__ . '/../' . ltrim($relPath, '/'),                       // canonical
+    sys_get_temp_dir() . '/voltika_dossiers_prod/' . $filename,    // prod /tmp fallback
+    sys_get_temp_dir() . '/voltika_dossiers_test/' . $filename,    // test /tmp fallback
+    sys_get_temp_dir() . '/voltika_dossiers/' . $filename,         // legacy generic /tmp name
+]);
+foreach ($searchPaths as $candidate) {
+    if ($candidate && file_exists($candidate) && is_readable($candidate)) {
+        $absPath = $candidate;
+        break;
+    }
+}
+
+if ($absPath === '') {
+    // File truly missing. If admin → trigger an immediate rebuild before
+    // giving up, since we have all the data needed and the regenerate
+    // takes a few seconds at most.
+    if ($adminOk && !empty($dossier['moto_id'])) {
+        require_once __DIR__ . '/dossier-defensa.php';
+        $r = dossierBuild((int)$dossier['moto_id'], ['motivo' => 'regenerate']);
+        if ($r['ok']) {
+            // Look up the freshly-built dossier (a new row, higher version).
+            $st = $pdo->prepare("SELECT * FROM dossiers_defensa WHERE id = ?");
+            $st->execute([$r['dossier_id']]);
+            $newD = $st->fetch(PDO::FETCH_ASSOC);
+            if ($newD) {
+                $relPath = $format === 'pdf' ? $newD['master_pdf_path'] : $newD['zip_path'];
+                $filename = basename($relPath);
+                foreach ([
+                    __DIR__ . '/../' . ltrim($relPath, '/'),
+                    sys_get_temp_dir() . '/voltika_dossiers_prod/' . $filename,
+                    sys_get_temp_dir() . '/voltika_dossiers_test/' . $filename,
+                ] as $candidate) {
+                    if (file_exists($candidate)) { $absPath = $candidate; $dossier = $newD; break; }
+                }
+            }
+        }
+    }
+}
+
+if ($absPath === '') {
     http_response_code(404);
-    exit('Archivo del dossier no encontrado en disco — regenerar con &build=1');
+    if ($adminOk) {
+        echo 'Archivo del dossier no encontrado en disco. Rutas verificadas:<br>';
+        foreach ($searchPaths as $sp) echo '· ' . htmlspecialchars($sp) . '<br>';
+        echo '<br>Llama con <code>?moto_id=' . (int)$dossier['moto_id'] . '&format=zip&build=1</code> para regenerar.';
+    } else {
+        echo 'Archivo del dossier no encontrado en disco — regenerar con &build=1';
+    }
+    exit;
 }
 
 $dispositionName = $format === 'pdf'
