@@ -43,11 +43,20 @@ require_once __DIR__ . '/config.php';
 // production (configurador_prueba/php/vendor) and in any test or
 // admin-shared layout. Records the resolved path in a global so the
 // diagnostic page can surface "which paths did we try?".
+//
+// IMPORTANT: also checks the "other" environment's vendor (prod ↔ test
+// cross-load) since Plesk-style hosting often denies the PHP runtime
+// write permission to copy code between siblings — but READING is fine.
 if (!class_exists('FPDF')) {
     $GLOBALS['_dossier_fpdf_tried'] = [];
     foreach ([
         __DIR__ . '/vendor/fpdf/fpdf.php',
         __DIR__ . '/vendor/setasign/fpdf/fpdf.php',
+        // Cross-environment fallback (prod loads from test, or vice versa)
+        __DIR__ . '/../../configurador_prueba_test/php/vendor/fpdf/fpdf.php',
+        __DIR__ . '/../../configurador_prueba_test/php/vendor/setasign/fpdf/fpdf.php',
+        __DIR__ . '/../../configurador_prueba/php/vendor/fpdf/fpdf.php',
+        __DIR__ . '/../../configurador_prueba/php/vendor/setasign/fpdf/fpdf.php',
         __DIR__ . '/../../admin/php/lib/fpdf.php',
         __DIR__ . '/../../admin_test/php/lib/fpdf.php',
         // Fallback to a project-wide vendor (some installs share one)
