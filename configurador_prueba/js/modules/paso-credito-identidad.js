@@ -182,24 +182,53 @@ var PasoCreditoIdentidad = {
             jQuery('#vk-truora-container').html(iframeHtml);
             self._iframeReady = true;
 
-            // Customer brief 2026-04-27: blank-iframe detection. Truora
-            // blocks embeds from unwhitelisted domains via X-Frame-Options
-            // / CSP frame-ancestors — the iframe element loads but stays
-            // blank, leaving the user staring at a white box. Set a 15s
-            // timeout: if no Truora postMessage event arrives by then,
-            // assume the embed is blocked and surface a clear next-step
-            // message with contact info.
+            // Blank-iframe detection. Truora can block embeds from
+            // unwhitelisted domains via X-Frame-Options / CSP
+            // frame-ancestors — the iframe element loads but stays blank.
+            // We detect this on the iframe `load` event by probing
+            // contentWindow.location.href: a SecurityError throw means
+            // cross-origin Truora content is rendered (good); a readable
+            // about:blank/empty URL means the embed was blocked (bad).
+            //
+            // We do NOT use a "no postMessage in N seconds" timeout —
+            // Truora only posts on major milestones, and the user can
+            // legitimately spend minutes inside the flow (granting
+            // camera/location, capturing INE, retrying selfie) without
+            // any postMessage firing. That produced false positives
+            // mid-flow (incident 2026-04-28).
             if (self._blankTimeout) clearTimeout(self._blankTimeout);
+            // Hard fallback: if `load` never fires within 30s, the
+            // iframe is unreachable (network/DNS).
             self._blankTimeout = setTimeout(function() {
-                if (self._finished) return;
-                if (self._currentProcessId) return; // iframe is talking to us — fine
+                if (self._finished || self._currentProcessId) return;
                 self._showError(
-                    'La verificación de identidad no se cargó correctamente.',
-                    'Esto suele ocurrir cuando el dominio aún no está autorizado por Truora. ' +
-                    'Si el problema persiste, escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370 ' +
-                    'para completar tu solicitud manualmente.'
+                    'La verificación de identidad tardó demasiado en cargar.',
+                    'Revisa tu conexión a internet y reintenta. Si el problema persiste, ' +
+                    'escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.'
                 );
-            }, 15000);
+            }, 30000);
+            jQuery('#vk-truora-iframe').on('load', function() {
+                if (self._blankTimeout) {
+                    clearTimeout(self._blankTimeout);
+                    self._blankTimeout = null;
+                }
+                if (self._finished || self._currentProcessId) return;
+                var blocked = false;
+                try {
+                    var href = this.contentWindow && this.contentWindow.location && this.contentWindow.location.href;
+                    if (!href || href === 'about:blank') blocked = true;
+                } catch (e) {
+                    // SecurityError = cross-origin Truora content rendered ✓
+                }
+                if (blocked) {
+                    self._showError(
+                        'La verificación de identidad no se cargó correctamente.',
+                        'Esto suele ocurrir cuando el dominio aún no está autorizado por Truora. ' +
+                        'Si el problema persiste, escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370 ' +
+                        'para completar tu solicitud manualmente.'
+                    );
+                }
+            });
         }).fail(function(xhr) {
             var body = (xhr && xhr.responseJSON) || null;
             self._showError(
