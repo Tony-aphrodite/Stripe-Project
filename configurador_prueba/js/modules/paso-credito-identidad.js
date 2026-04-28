@@ -172,63 +172,66 @@ var PasoCreditoIdentidad = {
             state._truoraAccountId = r.account_id;
             state._truoraFlowId    = r.flow_id;
 
-            // Replace loader with the iframe. Minimum size from Truora docs:
-            // 450x700 — we use 100% width and 720px height to fit mobile.
-            var iframeHtml = '<iframe id="vk-truora-iframe" ' +
-                'src="' + r.iframe_url + '" ' +
-                'allow="camera; microphone; geolocation" ' +
-                'style="width:100%;height:720px;border:0;display:block;background:#fff;">' +
-                '</iframe>';
-            jQuery('#vk-truora-container').html(iframeHtml);
-            self._iframeReady = true;
-
-            // Blank-iframe detection. Truora can block embeds from
-            // unwhitelisted domains via X-Frame-Options / CSP
-            // frame-ancestors — the iframe element loads but stays blank.
-            // We detect this on the iframe `load` event by probing
-            // contentWindow.location.href: a SecurityError throw means
-            // cross-origin Truora content is rendered (good); a readable
-            // about:blank/empty URL means the embed was blocked (bad).
+            // Build iframe element programmatically and attach the load
+            // listener BEFORE adding it to the DOM — otherwise a cached
+            // iframe can fire `load` before jQuery .on() attaches and we
+            // miss the event entirely (race condition observed on mobile
+            // 2026-04-29).
             //
-            // We do NOT use a "no postMessage in N seconds" timeout —
-            // Truora only posts on major milestones, and the user can
-            // legitimately spend minutes inside the flow (granting
-            // camera/location, capturing INE, retrying selfie) without
-            // any postMessage firing. That produced false positives
-            // mid-flow (incident 2026-04-28).
-            if (self._blankTimeout) clearTimeout(self._blankTimeout);
-            // Hard fallback: if `load` never fires within 30s, the
-            // iframe is unreachable (network/DNS).
-            self._blankTimeout = setTimeout(function() {
+            // We DO NOT probe contentWindow.location.href for blocked
+            // detection. On mobile browsers (Chrome Android in particular)
+            // the && short-circuit can return null *without* throwing
+            // SecurityError, even when the iframe is rendering Truora
+            // content correctly. That produced false positives — users
+            // saw "no se cargó" on a working iframe.
+            //
+            // Truth source: postMessage from Truora origin = iframe is
+            // alive and rendering. The 30s hard timeout is the only
+            // failure detection — if no postMessage and no completion in
+            // that window, we soft-error. The OTP/identity flow fires
+            // postMessages on every major step.
+            self._iframeLoaded = false;
+            var iframe = document.createElement('iframe');
+            iframe.id    = 'vk-truora-iframe';
+            iframe.src   = r.iframe_url;
+            iframe.allow = 'camera; microphone; geolocation';
+            iframe.setAttribute('style', 'width:100%;height:720px;border:0;display:block;background:#fff;');
+            iframe.addEventListener('load', function() {
+                self._iframeLoaded = true;
+                // The fact that `load` fired AND the iframe is cross-origin
+                // means Truora responded. Browser would show its own
+                // "rechazó la conexión" page inside the iframe if blocked
+                // — at that point our error overlay would actively make
+                // the UX worse, so we let the iframe speak for itself.
+            });
+            iframe.addEventListener('error', function() {
                 if (self._finished || self._currentProcessId) return;
                 self._showError(
-                    'La verificación de identidad tardó demasiado en cargar.',
-                    'Revisa tu conexión a internet y reintenta. Si el problema persiste, ' +
-                    'escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.'
+                    'La verificación de identidad no pudo cargar.',
+                    'Revisa tu conexión a internet. Si el problema persiste, ' +
+                    'escríbenos a WhatsApp +52 55 1341 6370 o ventas@voltika.mx.'
                 );
-            }, 30000);
-            jQuery('#vk-truora-iframe').on('load', function() {
-                if (self._blankTimeout) {
-                    clearTimeout(self._blankTimeout);
-                    self._blankTimeout = null;
-                }
+            });
+            jQuery('#vk-truora-container').empty().append(iframe);
+            self._iframeReady = true;
+
+            // Hard fallback: if `load` never fires AND no Truora postMessage
+            // arrives within 45s, network or browser-level block. We use
+            // 45s instead of 30 because cold-start Truora + slow mobile
+            // networks can take 15-25s; postMessages cancel the timer.
+            if (self._blankTimeout) clearTimeout(self._blankTimeout);
+            self._blankTimeout = setTimeout(function() {
                 if (self._finished || self._currentProcessId) return;
-                var blocked = false;
-                try {
-                    var href = this.contentWindow && this.contentWindow.location && this.contentWindow.location.href;
-                    if (!href || href === 'about:blank') blocked = true;
-                } catch (e) {
-                    // SecurityError = cross-origin Truora content rendered ✓
-                }
-                if (blocked) {
+                if (!self._iframeLoaded) {
                     self._showError(
-                        'La verificación de identidad no se cargó correctamente.',
-                        'Esto suele ocurrir cuando el dominio aún no está autorizado por Truora. ' +
-                        'Si el problema persiste, escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370 ' +
-                        'para completar tu solicitud manualmente.'
+                        'La verificación de identidad tardó demasiado en cargar.',
+                        'Revisa tu conexión a internet y reintenta. Si el problema persiste, ' +
+                        'escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.'
                     );
                 }
-            });
+                // If load fired but no postMessage, do NOTHING — the user
+                // may simply be reading the screen before interacting.
+            }, 45000);
         }).fail(function(xhr) {
             var body = (xhr && xhr.responseJSON) || null;
             self._showError(

@@ -32,29 +32,6 @@ var PasoCreditoIdentidad = {
 
     init: function(app) {
         this.app = app;
-
-        // ── TEST-MIRROR ONLY (configurador_prueba_test) ────────────────
-        // DO NOT COPY THIS BLOCK TO PROD (configurador_prueba/).
-        //
-        // Customer brief 2026-04-27: in TEST mode we use a simulated
-        // verification UI instead of the live Truora iframe. The iframe
-        // only works when voltika.mx is on Truora's frame-ancestors
-        // whitelist (production-only feature). For internal QA we render
-        // a multi-step progress simulation that visually walks through
-        // INE → selfie → RENAPO → completion in ~5 seconds, then
-        // advances to credito-enganche just like a successful real flow.
-        //
-        // LIVE mode (configurador_prueba/paso-credito-identidad.js) is
-        // unchanged — it always renders the real Truora iframe.
-        var state = app.state || {};
-        var isTestMode = state._truoraResult &&
-                         state._truoraResult.status === 'approved' &&
-                         state._truoraResult.fallback === true;
-        if (isTestMode) {
-            this._renderTestSimulator();
-            return;
-        }
-
         this._iframeReady    = false;
         this._tokenFetched   = false;
         this._currentProcessId = null;
@@ -62,108 +39,6 @@ var PasoCreditoIdentidad = {
         this.render();
         this._startIframe();
         this._bindMessageListener();
-    },
-
-    /**
-     * TEST-MIRROR ONLY — simulates the Truora identity verification
-     * pipeline without actually calling Truora. Used when state was
-     * pre-populated by configurador.js test mode (?test_credito=...).
-     * Visually shows a 4-step progress flow then auto-advances.
-     */
-    _renderTestSimulator: function() {
-        var self = this;
-        var html = '';
-
-        // Logo
-        html += '<div class="vk-identidad-logo">';
-        html += '<img src="img/voltika_logo_h.svg" alt="Voltika">';
-        html += '</div>';
-
-        // Progress: paso 1 (Crédito aprobado) ✓ + paso 2 (Confirmar identidad) active
-        html += '<div class="vk-identidad-progress">';
-        html += '<div class="vk-identidad-progress__step vk-identidad-progress__step--done">';
-        html += '<span class="vk-identidad-progress__num">&#10003;</span>';
-        html += '<span class="vk-identidad-progress__label">Crédito aprobado</span>';
-        html += '</div>';
-        html += '<div class="vk-identidad-progress__line"></div>';
-        html += '<div class="vk-identidad-progress__step vk-identidad-progress__step--active">';
-        html += '<span class="vk-identidad-progress__num">2</span>';
-        html += '<span class="vk-identidad-progress__label">Confirmar identidad</span>';
-        html += '</div>';
-        html += '</div>';
-
-        // Title
-        html += '<h2 class="vk-identidad-title">Confirma tu identidad</h2>';
-        html += '<p class="vk-identidad-subtitle">Validando tus datos con las bases del gobierno mexicano…</p>';
-
-        // TEST MODE banner
-        html += '<div style="background:#FFF3E0;border:1.5px solid #FB8C00;border-radius:10px;padding:12px 14px;margin-bottom:16px;">';
-        html += '<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:#E65100;font-size:13px;">';
-        html += '<span>⚠</span><span>MODO TEST · Simulación de Verificación</span>';
-        html += '</div>';
-        html += '<div style="font-size:11.5px;color:#5d4037;margin-top:4px;line-height:1.5;">';
-        html += 'En producción este paso usa el iframe real de Truora con captura de INE + selfie + biometría.';
-        html += '</div>';
-        html += '</div>';
-
-        // Security callout
-        html += '<div class="vk-identidad-security">';
-        html += '<div class="vk-identidad-security__icon">&#128274;</div>';
-        html += '<div>';
-        html += '<div class="vk-identidad-security__title">Verificación certificada</div>';
-        html += '<div class="vk-identidad-security__text">Tu identidad es validada por Truora con tecnología certificada y segura.</div>';
-        html += '</div>';
-        html += '</div>';
-
-        // Progress steps (animated)
-        var steps = [
-            { id: 1, label: 'Capturando documento INE', delay: 1000 },
-            { id: 2, label: 'Verificando rostro y biometría', delay: 2200 },
-            { id: 3, label: 'Validando con RENAPO', delay: 3400 },
-            { id: 4, label: 'Verificación completa', delay: 4400 }
-        ];
-
-        html += '<div id="vk-test-id-steps" style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;margin-top:8px;">';
-        for (var i = 0; i < steps.length; i++) {
-            html += '<div id="vk-test-id-step-' + steps[i].id + '" ' +
-                    'style="display:flex;align-items:center;gap:12px;padding:10px 0;' +
-                    (i < steps.length - 1 ? 'border-bottom:1px solid #f3f4f6;' : '') + '">' +
-                    '<span id="vk-test-id-icon-' + steps[i].id + '" ' +
-                        'style="width:24px;height:24px;border-radius:50%;border:2px solid #d1d5db;' +
-                        'display:inline-flex;align-items:center;justify-content:center;color:#9ca3af;' +
-                        'font-size:13px;font-weight:700;flex-shrink:0;">' + steps[i].id + '</span>' +
-                    '<span id="vk-test-id-label-' + steps[i].id + '" ' +
-                        'style="font-size:14px;font-weight:600;color:#9ca3af;flex:1;">' +
-                        steps[i].label + '</span>' +
-                    '</div>';
-        }
-        html += '</div>';
-
-        jQuery('#vk-credito-identidad-container').html(html);
-
-        // Animate each step
-        steps.forEach(function(step) {
-            setTimeout(function() {
-                jQuery('#vk-test-id-icon-' + step.id).css({
-                    'background': '#10b981',
-                    'border-color': '#10b981',
-                    'color': '#fff'
-                }).html('&#10003;');
-                jQuery('#vk-test-id-label-' + step.id).css({
-                    'color': '#111',
-                    'font-weight': '700'
-                });
-            }, step.delay);
-        });
-
-        // After last step, advance to credito-enganche
-        setTimeout(function() {
-            self.app.state._identidadVerificada = true;
-            self.app.state._truoraProcessId = 'TEST-' + Date.now();
-            if (self.app && typeof self.app.irAPaso === 'function') {
-                self.app.irAPaso('credito-enganche');
-            }
-        }, 5500);
     },
 
     render: function() {
@@ -297,63 +172,66 @@ var PasoCreditoIdentidad = {
             state._truoraAccountId = r.account_id;
             state._truoraFlowId    = r.flow_id;
 
-            // Replace loader with the iframe. Minimum size from Truora docs:
-            // 450x700 — we use 100% width and 720px height to fit mobile.
-            var iframeHtml = '<iframe id="vk-truora-iframe" ' +
-                'src="' + r.iframe_url + '" ' +
-                'allow="camera; microphone; geolocation" ' +
-                'style="width:100%;height:720px;border:0;display:block;background:#fff;">' +
-                '</iframe>';
-            jQuery('#vk-truora-container').html(iframeHtml);
-            self._iframeReady = true;
-
-            // Blank-iframe detection. Truora can block embeds from
-            // unwhitelisted domains via X-Frame-Options / CSP
-            // frame-ancestors — the iframe element loads but stays blank.
-            // We detect this on the iframe `load` event by probing
-            // contentWindow.location.href: a SecurityError throw means
-            // cross-origin Truora content is rendered (good); a readable
-            // about:blank/empty URL means the embed was blocked (bad).
+            // Build iframe element programmatically and attach the load
+            // listener BEFORE adding it to the DOM — otherwise a cached
+            // iframe can fire `load` before jQuery .on() attaches and we
+            // miss the event entirely (race condition observed on mobile
+            // 2026-04-29).
             //
-            // We do NOT use a "no postMessage in N seconds" timeout —
-            // Truora only posts on major milestones, and the user can
-            // legitimately spend minutes inside the flow (granting
-            // camera/location, capturing INE, retrying selfie) without
-            // any postMessage firing. That produced false positives
-            // mid-flow (incident 2026-04-28).
-            if (self._blankTimeout) clearTimeout(self._blankTimeout);
-            // Hard fallback: if `load` never fires within 30s, the
-            // iframe is unreachable (network/DNS).
-            self._blankTimeout = setTimeout(function() {
+            // We DO NOT probe contentWindow.location.href for blocked
+            // detection. On mobile browsers (Chrome Android in particular)
+            // the && short-circuit can return null *without* throwing
+            // SecurityError, even when the iframe is rendering Truora
+            // content correctly. That produced false positives — users
+            // saw "no se cargó" on a working iframe.
+            //
+            // Truth source: postMessage from Truora origin = iframe is
+            // alive and rendering. The 30s hard timeout is the only
+            // failure detection — if no postMessage and no completion in
+            // that window, we soft-error. The OTP/identity flow fires
+            // postMessages on every major step.
+            self._iframeLoaded = false;
+            var iframe = document.createElement('iframe');
+            iframe.id    = 'vk-truora-iframe';
+            iframe.src   = r.iframe_url;
+            iframe.allow = 'camera; microphone; geolocation';
+            iframe.setAttribute('style', 'width:100%;height:720px;border:0;display:block;background:#fff;');
+            iframe.addEventListener('load', function() {
+                self._iframeLoaded = true;
+                // The fact that `load` fired AND the iframe is cross-origin
+                // means Truora responded. Browser would show its own
+                // "rechazó la conexión" page inside the iframe if blocked
+                // — at that point our error overlay would actively make
+                // the UX worse, so we let the iframe speak for itself.
+            });
+            iframe.addEventListener('error', function() {
                 if (self._finished || self._currentProcessId) return;
                 self._showError(
-                    'La verificación de identidad tardó demasiado en cargar.',
-                    'Revisa tu conexión a internet y reintenta. Si el problema persiste, ' +
-                    'escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.'
+                    'La verificación de identidad no pudo cargar.',
+                    'Revisa tu conexión a internet. Si el problema persiste, ' +
+                    'escríbenos a WhatsApp +52 55 1341 6370 o ventas@voltika.mx.'
                 );
-            }, 30000);
-            jQuery('#vk-truora-iframe').on('load', function() {
-                if (self._blankTimeout) {
-                    clearTimeout(self._blankTimeout);
-                    self._blankTimeout = null;
-                }
+            });
+            jQuery('#vk-truora-container').empty().append(iframe);
+            self._iframeReady = true;
+
+            // Hard fallback: if `load` never fires AND no Truora postMessage
+            // arrives within 45s, network or browser-level block. We use
+            // 45s instead of 30 because cold-start Truora + slow mobile
+            // networks can take 15-25s; postMessages cancel the timer.
+            if (self._blankTimeout) clearTimeout(self._blankTimeout);
+            self._blankTimeout = setTimeout(function() {
                 if (self._finished || self._currentProcessId) return;
-                var blocked = false;
-                try {
-                    var href = this.contentWindow && this.contentWindow.location && this.contentWindow.location.href;
-                    if (!href || href === 'about:blank') blocked = true;
-                } catch (e) {
-                    // SecurityError = cross-origin Truora content rendered ✓
-                }
-                if (blocked) {
+                if (!self._iframeLoaded) {
                     self._showError(
-                        'La verificación de identidad no se cargó correctamente.',
-                        'Esto suele ocurrir cuando el dominio aún no está autorizado por Truora. ' +
-                        'Si el problema persiste, escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370 ' +
-                        'para completar tu solicitud manualmente.'
+                        'La verificación de identidad tardó demasiado en cargar.',
+                        'Revisa tu conexión a internet y reintenta. Si el problema persiste, ' +
+                        'escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.'
                     );
                 }
-            });
+                // If load fired but no postMessage, do NOTHING — the user
+                // may simply be reading the screen before interacting.
+            }, 45000);
         }).fail(function(xhr) {
             var body = (xhr && xhr.responseJSON) || null;
             self._showError(
