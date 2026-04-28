@@ -98,6 +98,13 @@ foreach ($ciclos as $ciclo) {
             SET estado = 'paid_auto', stripe_payment_intent = ?, fecha_pago = NOW(), origen = 'cron_auto'
             WHERE id = ?
         ")->execute([$resp['id'], $ciclo['id']]);
+        // Reset consecutive-fail counter on success.
+        try {
+            $pdo->prepare("UPDATE subscripciones_credito
+                           SET cobro_fallos_seguidos = 0
+                           WHERE stripe_customer_id = ?")
+                ->execute([$ciclo['stripe_customer_id']]);
+        } catch (Throwable $e) { /* column may be lazy — ignored */ }
         $charged++;
     } else {
         $errorMsg = $resp['error']['message']
@@ -108,6 +115,69 @@ foreach ($ciclos as $ciclo) {
             'error'    => $errorMsg,
             'status'   => $resp['status'] ?? 'failed',
         ];
+
+        // Tech Spec EN §7: "Card fails 3 times consecutively → notify
+        // customer (high priority)". Increment a per-subscription counter
+        // and open a card_fail escalation when it reaches 3.
+        try {
+            // Lazy column
+            $colCheck = $pdo->query("SHOW COLUMNS FROM subscripciones_credito LIKE 'cobro_fallos_seguidos'")->fetch();
+            if (!$colCheck) {
+                $pdo->exec("ALTER TABLE subscripciones_credito
+                            ADD COLUMN cobro_fallos_seguidos INT NOT NULL DEFAULT 0");
+            }
+            $pdo->prepare("UPDATE subscripciones_credito
+                           SET cobro_fallos_seguidos = cobro_fallos_seguidos + 1
+                           WHERE stripe_customer_id = ?")
+                ->execute([$ciclo['stripe_customer_id']]);
+
+            // Read back the new counter
+            $cntStmt = $pdo->prepare("SELECT id, cliente_id, nombre, cobro_fallos_seguidos
+                                       FROM subscripciones_credito
+                                       WHERE stripe_customer_id = ?
+                                       LIMIT 1");
+            $cntStmt->execute([$ciclo['stripe_customer_id']]);
+            $sub = $cntStmt->fetch(PDO::FETCH_ASSOC);
+            if ($sub && (int)$sub['cobro_fallos_seguidos'] === 3) {
+                // Idempotency: open only one card_fail escalation per subscripcion
+                $pdo->exec("CREATE TABLE IF NOT EXISTS escalations (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    kind VARCHAR(40) NOT NULL,
+                    severity VARCHAR(20) NOT NULL DEFAULT 'critical',
+                    cliente_id INT NULL, transaccion_id INT NULL, moto_id INT NULL,
+                    ref_externa VARCHAR(120) NULL,
+                    titulo VARCHAR(200) NOT NULL, detalle TEXT NULL,
+                    estado VARCHAR(20) NOT NULL DEFAULT 'open',
+                    asignado_a VARCHAR(80) NULL, notas MEDIUMTEXT NULL,
+                    freg DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    fmod DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    resolved_at DATETIME NULL,
+                    INDEX idx_estado_kind (estado, kind),
+                    INDEX idx_cliente (cliente_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+                $existsStmt = $pdo->prepare("SELECT id FROM escalations
+                    WHERE kind = 'card_fail'
+                      AND cliente_id = ?
+                      AND estado IN ('open','in_progress')
+                    LIMIT 1");
+                $existsStmt->execute([(int)$sub['cliente_id']]);
+                if (!$existsStmt->fetchColumn()) {
+                    $pdo->prepare("INSERT INTO escalations
+                            (kind, severity, cliente_id, ref_externa, titulo, detalle, asignado_a)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)")
+                        ->execute([
+                            'card_fail', 'high',
+                            (int)$sub['cliente_id'],
+                            'sub_' . $sub['id'],
+                            'Tarjeta rechazada 3 veces — ' . ($sub['nombre'] ?: 'cliente'),
+                            'Subscripción ' . $sub['id'] . ' tuvo 3 cobros automáticos consecutivos fallidos. '
+                                . 'Último error: ' . $errorMsg . '. '
+                                . 'Contactar al cliente para que actualice su tarjeta antes del siguiente ciclo.',
+                            'collections',
+                        ]);
+                }
+            }
+        } catch (Throwable $e) { error_log('auto-cobro card_fail tracker: ' . $e->getMessage()); }
     }
 }
 
