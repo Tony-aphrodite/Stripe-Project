@@ -336,6 +336,13 @@ var PasoCreditoResultado = {
         //     score-based KOs that plan adjustment cannot lift
         var reasons = resultado.reasons || [];
         var subtitle = 'Revisamos tu historial y hoy no aprobamos el plan que elegiste.';
+        // Customer brief 2026-04-30: "miss the button to change the enganche"
+        // — always show the retry CTA, even for severe rejections. The
+        // subtitle below still warns when retry is unlikely to help so the
+        // user is not misled, but the OPTION to adjust the plan is always
+        // available. (Previous v5 policy hid the button for KO_SEVERE_DPD,
+        // identity-not-in-CDC and similar pure rejections; the current
+        // brief overrides that.)
         var retryHelps = true;
         // Policy C (2026-04-26): When the algorithm returns NO_VIABLE with
         // a concrete escape value (enganche_min_para_continuar), the retry
@@ -359,31 +366,21 @@ var PasoCreditoResultado = {
             retryHelps = true;
         } else if (reasons.indexOf('KO_SEVERE_DPD_90PLUS') !== -1) {
             subtitle = 'Tu historial muestra pagos atrasados graves y hoy no podemos aprobar crédito.';
-            retryHelps = false;
         } else if (reasons.indexOf('KO_PTI_EXTREME') !== -1 || reasons.indexOf('PTI_EXTREMO_SIN_CIRCULO') !== -1) {
             subtitle = 'El pago semanal supera tu capacidad declarada. Ajustar enganche o plazo puede cambiar el resultado.';
-            retryHelps = true;
         } else if (reasons.indexOf('IDENTIDAD_NO_ENCONTRADA_EN_CDC') !== -1) {
             subtitle = 'No pudimos confirmar tu identidad en el Buró de Crédito. Puedes pagar directamente sin crédito.';
-            retryHelps = false;
         } else if (reasons.indexOf('SIN_SCORE_RECOMIENDA_AUMENTAR_ENGANCHE') !== -1) {
             // Policy C: real escape exists. Tell user EXACTLY what to do.
             subtitle = 'No obtuvimos tu historial crediticio. Sube tu enganche al ' + escapePct + '% para que tu solicitud avance — Voltika compensa la falta de score con un enganche mayor.';
-            retryHelps = true;
         } else if (reasons.indexOf('SIN_SCORE_CDC_NO_AUTO_APROBACION') !== -1) {
-            // Legacy reason (Option B). Kept for backward compatibility with
-            // any cached/in-flight evaluations from before Policy C deploy.
             subtitle = 'No obtuvimos tu historial crediticio. Puedes pagar directamente o contactar a un asesor.';
-            retryHelps = false;
         } else if (reasons.indexOf('KO_SCORE_LT_MIN') !== -1) {
-            // With Policy C, a low score still has an escape: 60% enganche.
             subtitle = hasEscape
                 ? ('Tu score crediticio es bajo, pero puedes avanzar subiendo tu enganche al ' + escapePct + '%.')
                 : 'Tu score crediticio actual está por debajo del mínimo requerido. Puedes pagar directamente o reintentar más adelante.';
-            retryHelps = hasEscape;
         } else if (reasons.indexOf('KO_GUARDRAIL_LOW_SCORE_HIGH_PTI') !== -1) {
             subtitle = 'La combinación de tu score y carga financiera no permite aprobar el plan elegido. Puedes pagar directamente o contactar a un asesor.';
-            retryHelps = false;
         }
 
         var html = '';
