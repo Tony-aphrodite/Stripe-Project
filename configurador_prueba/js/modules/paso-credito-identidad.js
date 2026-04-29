@@ -40,6 +40,12 @@ var PasoCreditoIdentidad = {
         this._tokenFetched   = false;
         this._currentProcessId = null;
         this._finished       = false;
+        // Cancel any in-flight poll from a previous attempt. Without this,
+        // a stale setInterval kept firing after the user clicked
+        // "Regresar y corregir datos" and walked back through OTP/CDC, and
+        // could navigate them away mid-step when an old verdict landed.
+        if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
+        if (this._blankTimeout) { clearTimeout(this._blankTimeout); this._blankTimeout = null; }
         this.render();
         // After render the debug panel exists — log init-count BEFORE
         // anything else so we know if SPA is calling init() multiple
@@ -500,16 +506,19 @@ var PasoCreditoIdentidad = {
                 }
                 if (aid && !state._truoraAccountId) state._truoraAccountId = aid;
                 self._appendDebug('redirect signal · pid=' + (pid || '?') + ' aid=' + (aid || '?'));
-                // Start the audit-trail polling in the background — we
-                // don't gate on it, but we want the row populated.
-                self._pollWebhookResult(state._truoraProcessId || self._currentProcessId);
-                // Advance to the payment screen NOW.
+                // Same gating as the in-iframe success path: do NOT advance
+                // to enganche on the redirect signal alone — wait for the
+                // server-side name/CURP comparison so brief #4
+                // (mismatch → refuse + back-to-nombre) actually fires here.
                 self._finished = true;
-                state._identidadVerificada = true;
+                state._identidadVerificada = false;
                 try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
-                if (self.app && typeof self.app.irAPaso === 'function') {
-                    self.app.irAPaso('credito-enganche');
-                }
+                jQuery('#vk-identidad-error')
+                    .css({color:'#0c4a6e',background:'#e0f2fe'})
+                    .html('<strong>Verificando datos…</strong>' +
+                          '<div style="margin-top:6px;font-size:11px;">Estamos confirmando que la información de tu INE coincide con los datos que ingresaste. Esto toma unos segundos.</div>')
+                    .show();
+                self._pollWebhookResult(state._truoraProcessId || self._currentProcessId);
                 return;
             }
 
@@ -560,34 +569,34 @@ var PasoCreditoIdentidad = {
 
         switch (eventName) {
             case 'truora.process.succeeded':
-                // Customer brief 2026-04-30: "If the truora validation is
-                // ok, send to the enganche pay screen." — immediate
-                // advance. Don't make the user wait while we wait for the
-                // webhook + CURP comparison; that gating was making the
-                // SPA miss the success window when the page reloaded or
-                // when the polling never resolved (boss kept landing back
-                // on credito-otp).
+                // Truora's own document/face checks passed. We DO NOT advance
+                // straight to enganche — we still need to confirm the
+                // verified name/CURP from the document matches the data the
+                // user typed on the previous screen (that anchored CDC).
                 //
-                // Anti-fraud is still enforced — but as a parallel check,
-                // not a gate:
-                //   1. The backend logs the CURP comparison in
-                //      truora_curp_audit (webhook + status.php fallback).
-                //   2. Server-side confirmar-orden.php / Stripe handler
-                //      refuses to create the actual purchase row when
-                //      curp_match === 0, so a fraudster who reaches
-                //      enganche still cannot complete the order.
-                //   3. Admin sees flagged identities in the dashboard for
-                //      manual review before delivery.
-                this._finished = true;
-                state._identidadVerificada = true;
+                // Customer test 2026-04-30: a fraudster typed name "X" at
+                // CDC, uploaded an INE for name "Y", Truora succeeded, SPA
+                // advanced immediately, mismatch was only caught later at
+                // confirmar-orden.php. Brief #4 explicitly requires the
+                // refusal to surface AT THIS STEP ("regresa, usa la misma
+                // información... reinicia la verificación"), not at
+                // checkout. So we hand off to the poll, which already has
+                // the correct branching:
+                //   - approved=1 + name_match!=0 + curp_match!=0 → enganche
+                //   - name_match=0 / curp_match=0          → back-to-nombre
+                //   - manual_review=1                       → crew handoff
                 state._truoraProcessId = (data && (data.process_id || data.identity_process_id)) || this._currentProcessId;
-                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
-                // Fire-and-forget background poll so the audit trail is
-                // populated even though we already advanced.
+                state._identidadVerificada = false; // not until poll confirms
+                // Block re-entry from a duplicate succeeded event but let
+                // _pollWebhookResult drive navigation. The poll itself
+                // resets `_finished`/sets it again on its terminal branches.
+                this._finished = true;
+                jQuery('#vk-identidad-error')
+                    .css({color:'#0c4a6e',background:'#e0f2fe'})
+                    .html('<strong>Verificando datos…</strong>' +
+                          '<div style="margin-top:6px;font-size:11px;">Estamos confirmando que la información de tu INE coincide con los datos que ingresaste. Esto toma unos segundos.</div>')
+                    .show();
                 this._pollWebhookResult(state._truoraProcessId || this._currentProcessId);
-                if (this.app && typeof this.app.irAPaso === 'function') {
-                    this.app.irAPaso('credito-enganche');
-                }
                 break;
 
             case 'truora.process.failed':
@@ -664,6 +673,10 @@ var PasoCreditoIdentidad = {
     _pollWebhookResult: function(processId) {
         if (!processId) return;
         var self = this;
+        // Replace any in-flight poll so we don't have two timers racing
+        // against each other (happens when the user fails name-match,
+        // walks back through credito-nombre and re-arrives at this step).
+        if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
         var tries = 0;
         var maxTries = 22;   // ~90 s at 4 s intervals
         var timer = setInterval(function() {
@@ -727,6 +740,7 @@ var PasoCreditoIdentidad = {
                 });
             if (tries >= maxTries) {
                 clearInterval(timer);
+                self._pollTimer = null;
                 // Keep the user informed but don't block — webhook will
                 // still settle the record asynchronously.
                 jQuery('#vk-identidad-error')
@@ -734,5 +748,6 @@ var PasoCreditoIdentidad = {
                     .show();
             }
         }, 4000);
+        this._pollTimer = timer;
     },
 };
