@@ -42,7 +42,7 @@ try {
     if ($processId !== '') {
         $stmt = $pdo->prepare("SELECT approved, truora_status, truora_failure_status,
                 truora_declined_reason, truora_updated_at, truora_last_event,
-                truora_process_id
+                truora_process_id, curp_match, expected_curp, verified_curp
             FROM verificaciones_identidad
             WHERE truora_process_id = ?
             ORDER BY id DESC LIMIT 1");
@@ -50,7 +50,7 @@ try {
     } elseif ($accountId !== '') {
         $stmt = $pdo->prepare("SELECT approved, truora_status, truora_failure_status,
                 truora_declined_reason, truora_updated_at, truora_last_event,
-                truora_process_id
+                truora_process_id, curp_match, expected_curp, verified_curp
             FROM verificaciones_identidad
             WHERE truora_account_id = ?
             ORDER BY id DESC LIMIT 1");
@@ -58,7 +58,7 @@ try {
     } else {
         $stmt = $pdo->prepare("SELECT approved, truora_status, truora_failure_status,
                 truora_declined_reason, truora_updated_at, truora_last_event,
-                truora_process_id
+                truora_process_id, curp_match, expected_curp, verified_curp
             FROM verificaciones_identidad
             WHERE email = ?
             ORDER BY id DESC LIMIT 1");
@@ -84,6 +84,8 @@ try {
         'declined_reason' => $row['truora_declined_reason'],
         'last_event'      => $row['truora_last_event'],
         'updated_at'      => $row['truora_updated_at'],
+        // Identity-vs-bureau cross-check (anti-fraud guard added 2026-04-29)
+        'curp_match'      => is_null($row['curp_match']) ? null : (int)$row['curp_match'],
     ]);
 } catch (Throwable $e) {
     echo json_encode(['ok' => false, 'error' => 'db_error', 'detail' => $e->getMessage()]);

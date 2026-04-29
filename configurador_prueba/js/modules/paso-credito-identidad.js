@@ -423,14 +423,29 @@ var PasoCreditoIdentidad = {
 
         switch (eventName) {
             case 'truora.process.succeeded':
-                // Hard success — all steps passed. Advance immediately.
-                this._finished = true;
-                state._identidadVerificada = true;
+                // SECURITY: do NOT advance on Truora's postMessage alone.
+                // Truora's iframe says "succeeded" when the user completed
+                // the steps from Truora's view, but this means only that
+                // the document/selfie passed Truora's checks — it tells us
+                // nothing about whether the identified person matches the
+                // CURP we already credit-checked at CDC.
+                //
+                // The backend (truora-webhook.php) fetches the verified
+                // document details from Truora's API and compares the
+                // extracted CURP with `expected_curp` we stored at token
+                // creation. Only when curp_match === 1 do we advance.
+                //
+                // Customer report 2026-04-29: a tester used different data
+                // in CDC vs Truora and the purchase was accepted. This
+                // bypass shut that down. The user now waits in a polling
+                // screen until the backend confirms identity matches.
                 state._truoraProcessId = (data && (data.process_id || data.identity_process_id)) || this._currentProcessId;
-                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
-                if (this.app && typeof this.app.irAPaso === 'function') {
-                    this.app.irAPaso('credito-enganche');
-                }
+                jQuery('#vk-identidad-error')
+                    .css({color:'#92400e',background:'#fef3c7'})
+                    .html('<strong>Validando concordancia…</strong>' +
+                        '<div style="margin-top:6px;font-size:11px;">Estamos confirmando que la identidad verificada coincide con la persona del estudio de crédito. Esto toma unos segundos.</div>')
+                    .show();
+                this._pollWebhookResult(state._truoraProcessId || this._currentProcessId);
                 break;
 
             case 'truora.process.failed':
@@ -469,12 +484,47 @@ var PasoCreditoIdentidad = {
             tries++;
             jQuery.get('php/truora-status.php', { process_id: processId })
                 .done(function(r) {
-                    if (r && r.approved === 1) {
+                    if (!r) return;
+                    self._appendDebug('poll #' + tries + ': approved=' + r.approved +
+                        ' status=' + r.status + ' curp_match=' + r.curp_match);
+
+                    // ── Anti-fraud guard ──────────────────────────────────
+                    // approved=0 + curp_match=0 means Truora's verified
+                    // CURP did NOT match the CURP we used for the credit
+                    // bureau check. Reject loudly.
+                    if (r.approved === 0 && (r.curp_match === 0 ||
+                        r.declined_reason === 'identity_curp_mismatch' ||
+                        r.declined_reason === 'verified_curp_unavailable')) {
+                        clearInterval(timer);
+                        self._finished = true;
+                        self._showError(
+                            'La identidad verificada no coincide con los datos del estudio de crédito.',
+                            'Por seguridad, la persona que sube su INE debe ser la misma que solicitó el crédito. ' +
+                            'Si crees que esto es un error, contáctanos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.'
+                        );
+                        return;
+                    }
+
+                    if (r.approved === 1) {
+                        // Defense-in-depth: only advance if curp_match is
+                        // explicitly 1 OR null (legacy rows from before
+                        // this column existed). curp_match === 0 should
+                        // never reach here because the webhook would have
+                        // set approved=0, but guard anyway.
+                        if (r.curp_match === 0) {
+                            clearInterval(timer);
+                            self._finished = true;
+                            self._showError(
+                                'Conflicto en los datos de identidad.',
+                                'La persona verificada no coincide con la del estudio de crédito.'
+                            );
+                            return;
+                        }
                         clearInterval(timer);
                         self._finished = true;
                         self.app.state._identidadVerificada = true;
                         self.app.irAPaso('credito-enganche');
-                    } else if (r && r.approved === 0 && r.status === 'failure') {
+                    } else if (r.approved === 0 && r.status === 'failure') {
                         clearInterval(timer);
                         self._finished = true;
                         self._showError(

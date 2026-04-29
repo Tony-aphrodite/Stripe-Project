@@ -179,18 +179,28 @@ if ($token === '') {
 // ── Pre-create a verificaciones_identidad stub so the webhook can upsert ─
 // by process_id. Even before Truora decides on a process_id, we record the
 // account_id so admin dashboards link the user to any incoming webhook.
+//
+// SECURITY: persist `expected_curp` (the CURP the customer used for the
+// CDC bureau check). When Truora's webhook arrives with the verified
+// document, we cross-check that the verified CURP matches expected_curp.
+// Mismatch = different person was used for identity vs credit bureau =
+// FRAUD. Without this row we would have no anchor to compare against.
 try {
     $pdo = getDB();
     foreach ([
         "ALTER TABLE verificaciones_identidad ADD COLUMN truora_account_id VARCHAR(120) NULL",
         "ALTER TABLE verificaciones_identidad ADD COLUMN truora_flow_id VARCHAR(64) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN expected_curp VARCHAR(20) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN verified_curp VARCHAR(20) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN curp_match TINYINT(1) NULL",
     ] as $ddl) {
         try { $pdo->exec($ddl); } catch (Throwable $e) {}
     }
     $pdo->prepare("INSERT INTO verificaciones_identidad
-            (nombre, apellidos, telefono, email, truora_account_id, truora_flow_id, identity_status, approved)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending', 0)")
-        ->execute([$nombre, $apellidos, $telefono, $email, $accountId, TRUORA_FLOW_ID]);
+            (nombre, apellidos, telefono, email, curp, expected_curp,
+             truora_account_id, truora_flow_id, identity_status, approved)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0)")
+        ->execute([$nombre, $apellidos, $telefono, $email, $curp, $curp, $accountId, TRUORA_FLOW_ID]);
 } catch (Throwable $e) { error_log('truora-token stub row: ' . $e->getMessage()); }
 
 // ── Respond ───────────────────────────────────────────────────────────────
