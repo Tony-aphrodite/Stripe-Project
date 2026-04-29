@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contrato de Compraventa al Contado · Voltika</title>
+<style>
+  :root {
+    --vk-text: #1a1a1a;
+    --vk-text-soft: #555;
+    --vk-accent: #039fe1;
+    --vk-bg: #ffffff;
+    --vk-rule: #e5e7eb;
+    --vk-placeholder-bg: #fff8d6;
+    --vk-placeholder-fg: #6b4f00;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--vk-text);
+    background: #f6f7f9;
+    line-height: 1.55;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .vk-doc {
+    max-width: 820px;
+    margin: 0 auto;
+    background: var(--vk-bg);
+    padding: 32px 36px 56px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .vk-doc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--vk-text);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .vk-doc-header h1 {
+    font-size: 18px;
+    margin: 0;
+    letter-spacing: 0.4px;
+  }
+  .vk-brand {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+  .vk-meta {
+    display: flex;
+    gap: 24px;
+    font-size: 13px;
+    color: var(--vk-text-soft);
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .vk-meta b { color: var(--vk-text); }
+  h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid var(--vk-rule);
+    padding-bottom: 6px;
+    margin: 28px 0 12px;
+  }
+  h3 {
+    font-size: 14px;
+    margin: 18px 0 8px;
+    color: var(--vk-text);
+  }
+  p { margin: 0 0 12px; text-align: justify; }
+  ol, ul { padding-left: 22px; margin: 0 0 12px; }
+  li { margin-bottom: 6px; }
+  .vk-placeholder {
+    display: inline-block;
+    background: var(--vk-placeholder-bg);
+    color: var(--vk-placeholder-fg);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-style: italic;
+    font-size: 0.92em;
+  }
+  table.vk-data {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 14px;
+    font-size: 14px;
+  }
+  table.vk-data th, table.vk-data td {
+    border: 1px solid var(--vk-rule);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.vk-data th {
+    background: #fafafa;
+    width: 40%;
+    font-weight: 600;
+  }
+  .vk-callout {
+    background: #f1f9ff;
+    border-left: 3px solid var(--vk-accent);
+    padding: 12px 14px;
+    margin: 14px 0;
+    font-size: 14px;
+  }
+  .vk-section-num {
+    display: inline-block;
+    margin-right: 4px;
+    font-weight: 700;
+  }
+  .vk-template-banner {
+    background: #fff5f0;
+    border: 1px solid #ffd9c2;
+    color: #8a3f00;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 22px;
+  }
+  a { color: var(--vk-accent); }
+  .vk-footer {
+    border-top: 1px solid var(--vk-rule);
+    margin-top: 36px;
+    padding-top: 14px;
+    font-size: 12px;
+    color: var(--vk-text-soft);
+    text-align: center;
+  }
+  @media (max-width: 600px) {
+    .vk-doc { padding: 20px 18px 40px; }
+    .vk-doc-header h1 { font-size: 15px; }
+    body { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+<article class="vk-doc">
+
+  <header class="vk-doc-header">
+    <span class="vk-brand">VOLTIKA</span>
+    <h1>Contrato de Compraventa al Contado</h1>
+  </header>
+
+  <div class="vk-template-banner">
+    Esta es la versi&oacute;n de consulta del contrato. Los datos marcados como <span class="vk-placeholder">{{ejemplo}}</span> se completan autom&aacute;ticamente con tu informaci&oacute;n al confirmar el pago.
+  </div>
+
+  <div class="vk-meta">
+    <span><b>FOLIO:</b> <span class="vk-placeholder">{{customer_id}}</span></span>
+    <span><b>FECHA:</b> <span class="vk-placeholder">{{contract_date}}</span></span>
+  </div>
+
+  <p><strong>CONTRATO DE COMPRAVENTA DE MOTOCICLETA NUEVA AL CONTADO</strong> que celebran por una parte <strong>MTECH GEARS, S.A. DE C.V.</strong>, comercialmente conocida como <strong>VOLTIKA</strong> (en lo sucesivo <strong>EL VENDEDOR</strong> o <strong>VOLTIKA</strong>); y por la otra parte por propio derecho la persona f&iacute;sica cuyos datos se indican en el apartado de &ldquo;DATOS DE LA OPERACI&Oacute;N&rdquo; del presente Contrato (en lo sucesivo <strong>EL COMPRADOR</strong>); y en conjunto <strong>LAS PARTES</strong>, al tenor del siguiente glosario, declaraciones y cl&aacute;usulas:</p>
+
+  <h2>Datos de la operaci&oacute;n</h2>
+
+  <h3>Datos de el comprador</h3>
+  <table class="vk-data">
+    <tr><th>Nombre completo</th><td><span class="vk-placeholder">{{customer_full_name}}</span></td></tr>
+    <tr><th>Correo electr&oacute;nico</th><td><span class="vk-placeholder">{{customer_email}}</span></td></tr>
+    <tr><th>Tel&eacute;fono</th><td><span class="vk-placeholder">{{customer_phone}}</span></td></tr>
+    <tr><th>C&oacute;digo Postal</th><td><span class="vk-placeholder">{{customer_zip}}</span></td></tr>
+  </table>
+
+  <h3>Datos del veh&iacute;culo</h3>
+  <table class="vk-data">
+    <tr><th>Marca</th><td>Voltika</td></tr>
+    <tr><th>Modelo</th><td><span class="vk-placeholder">{{vehicle_model}}</span></td></tr>
+    <tr><th>Color</th><td><span class="vk-placeholder">{{vehicle_color}}</span></td></tr>
+    <tr><th>A&ntilde;o-modelo</th><td><span class="vk-placeholder">{{vehicle_year}}</span></td></tr>
+    <tr><th>N&uacute;mero de Identificaci&oacute;n Vehicular (VIN/NIV)</th><td>Por asignar al momento de la entrega</td></tr>
+  </table>
+
+  <h3>Monto de la operaci&oacute;n</h3>
+  <table class="vk-data">
+    <tr><th>Precio del veh&iacute;culo (IVA incluido)</th><td>$ <span class="vk-placeholder">{{vehicle_price}}</span> MXN</td></tr>
+    <tr><th>Costo log&iacute;stico (aplica solo en MSI)</th><td>$ <span class="vk-placeholder">{{logistics_cost}}</span> MXN</td></tr>
+    <tr><th>Monto total de la operaci&oacute;n</th><td>$ <span class="vk-placeholder">{{total_amount}}</span> MXN</td></tr>
+  </table>
+
+  <h3>Forma de pago</h3>
+  <table class="vk-data">
+    <tr><th>Modalidad seleccionada</th><td><span class="vk-placeholder">{{payment_method}}</span></td></tr>
+    <tr><th>Procesador / Medio</th><td><span class="vk-placeholder">{{payment_processor}}</span></td></tr>
+    <tr><th>Referencia de pago</th><td><span class="vk-placeholder">{{payment_reference}}</span></td></tr>
+    <tr><th>Fecha de pago</th><td><span class="vk-placeholder">{{payment_date}}</span></td></tr>
+  </table>
+
+  <h3>Punto de entrega</h3>
+  <table class="vk-data">
+    <tr><th>Punto autorizado</th><td>Por definir</td></tr>
+    <tr><th>Fecha estimada de entrega</th><td><span class="vk-placeholder">{{estimated_delivery_date}}</span></td></tr>
+  </table>
+
+  <p>EL COMPRADOR reconoce y acepta que el <strong>PUNTO DE ENTREGA AUTORIZADO</strong> ser&aacute; asignado por VOLTIKA con posterioridad a la firma del presente Contrato y notificado a EL COMPRADOR mediante los medios de contacto registrados, formando parte integral del presente Contrato.</p>
+
+  <p>Previo a la celebraci&oacute;n del presente contrato, EL VENDEDOR dio a conocer a EL COMPRADOR el Aviso de Privacidad para el tratamiento de sus datos personales, disponible en <a href="https://www.voltika.mx/docs/privacidad_2026" target="_blank" rel="noopener">https://www.voltika.mx/docs/privacidad_2026</a>.</p>
+
+  <h2>Aceptaci&oacute;n electr&oacute;nica del contrato</h2>
+  <p>EL COMPRADOR manifiesta su <strong>CONSENTIMIENTO EXPRESO</strong> al presente Contrato mediante los siguientes mecanismos de aceptaci&oacute;n electr&oacute;nica realizados durante el proceso de compra en el configurador de VOLTIKA (voltika.mx):</p>
+  <ol type="a">
+    <li>Selecci&oacute;n de la casilla de aceptaci&oacute;n (checkbox) de los T&eacute;rminos y Condiciones, el Aviso de Privacidad y el presente Contrato.</li>
+    <li>Validaci&oacute;n del C&oacute;digo OTP enviado al TEL&Eacute;FONO REGISTRADO en el apartado DATOS DE LA OPERACI&Oacute;N.</li>
+    <li>Realizaci&oacute;n del pago total de la operaci&oacute;n por los medios autorizados.</li>
+  </ol>
+  <p>Las partes reconocen expresamente que la combinaci&oacute;n del checkbox aceptado, el OTP validado y el pago confirmado constituye <strong>CONSENTIMIENTO EXPRESO Y VINCULANTE</strong> para todos los efectos legales del presente Contrato, conforme al art&iacute;culo 89 del C&oacute;digo de Comercio y dem&aacute;s disposiciones aplicables.</p>
+  <p>VOLTIKA conservar&aacute; registro electr&oacute;nico completo de la aceptaci&oacute;n, incluyendo: timestamp UTC, direcci&oacute;n IP, geolocalizaci&oacute;n, dispositivo utilizado, c&oacute;digo OTP validado y datos del pago realizado.</p>
+  <p>La firma electr&oacute;nica avanzada conforme a la NOM-151-SCFI-2016 a trav&eacute;s de Cincel S.A.P.I. de C.V. o cualquier PSC autorizado se aplicar&aacute; exclusivamente al ACTA DE ENTREGA al momento de la recepci&oacute;n f&iacute;sica de EL VEH&Iacute;CULO, conforme a la Cl&aacute;usula correspondiente.</p>
+
+  <h2>Glosario</h2>
+  <ul>
+    <li><strong>Consumidor:</strong> Persona f&iacute;sica que adquiere en propiedad la motocicleta. Se le denominar&aacute; EL COMPRADOR.</li>
+    <li><strong>Proveedor:</strong> Persona moral que ofrece en venta motocicleta nueva con motor de propulsi&oacute;n el&eacute;ctrica. Se le denominar&aacute; EL VENDEDOR o VOLTIKA.</li>
+    <li><strong>Motocicleta nueva:</strong> Unidad de dos ruedas con motor de propulsi&oacute;n el&eacute;ctrica que no ha sido previamente registrada ni emplacada ante autoridad de control vehicular.</li>
+    <li><strong>Aceptaci&oacute;n Electr&oacute;nica:</strong> Mecanismo por el cual EL COMPRADOR manifiesta su consentimiento al presente Contrato mediante checkbox, validaci&oacute;n OTP y pago, conforme al art&iacute;culo 89 del C&oacute;digo de Comercio.</li>
+    <li><strong>Validaci&oacute;n de Identidad:</strong> Procedimiento al momento de la entrega que combina la presentaci&oacute;n de identificaci&oacute;n oficial (INE) con coincidencia de nombre, y la validaci&oacute;n de C&oacute;digo OTP enviado al tel&eacute;fono registrado.</li>
+    <li><strong>Descriptor de Cargo:</strong> Identificaci&oacute;n con la que aparece la operaci&oacute;n en el estado de cuenta del medio de pago utilizado: &ldquo;VOLTIKA MX&rdquo; o el descriptor que VOLTIKA designe.</li>
+    <li><strong>Carta Factura:</strong> Documento que VOLTIKA entrega a EL COMPRADOR AL MOMENTO DE LA ENTREGA del veh&iacute;culo, v&aacute;lido para los tr&aacute;mites de emplacamiento y registro vehicular estatal hasta que se entregue la factura original.</li>
+    <li><strong>Factura (CFDI):</strong> Comprobante Fiscal Digital por Internet emitido por VOLTIKA AL MOMENTO DE LA ENTREGA f&iacute;sica de EL VEH&Iacute;CULO a EL COMPRADOR.</li>
+    <li><strong>REPUVE:</strong> Registro P&uacute;blico Vehicular conforme a la Ley del Registro P&uacute;blico Vehicular.</li>
+    <li><strong>Punto de Entrega:</strong> Establecimiento autorizado por VOLTIKA designado con posterioridad a la firma del Contrato para realizar la entrega f&iacute;sica del veh&iacute;culo.</li>
+    <li><strong>Acta de Entrega:</strong> Documento firmado electr&oacute;nicamente mediante Cincel u otro PSC autorizado, por EL COMPRADOR al recibir el veh&iacute;culo, mediante el cual reconoce expresamente la recepci&oacute;n y conformidad con el bien.</li>
+    <li><strong>PSC:</strong> Prestador de Servicios de Certificaci&oacute;n acreditado por la Secretar&iacute;a de Econom&iacute;a conforme a la NOM-151-SCFI-2016.</li>
+  </ul>
+
+  <h2>Declaraciones</h2>
+
+  <h3>Primera. Declara EL VENDEDOR.</h3>
+  <ul>
+    <li>Ser una sociedad mercantil mexicana debidamente constituida bajo la legislaci&oacute;n de los Estados Unidos Mexicanos.</li>
+    <li>Estar debidamente representada por persona con plenas facultades para obligarla.</li>
+    <li>Tener como domicilio fiscal el ubicado en Jaime Balmes 71, despacho 101 C, Polanco I Secci&oacute;n, Miguel Hidalgo, C.P. 11510, Ciudad de M&eacute;xico.</li>
+    <li>Estar inscrita en el Registro Federal de Contribuyentes con clave MGE230316KA2.</li>
+    <li>Contar con personal capacitado para atender quejas y reclamaciones mediante WhatsApp +52 55 1341 6370 y correo contacto@voltika.mx, en horario de 9:00 a 19:00 horas, lunes a viernes.</li>
+    <li>Que la motocicleta objeto del contrato cumple con las disposiciones legales y Normas Oficiales Mexicanas vigentes.</li>
+    <li>Contar con la infraestructura para proporcionar servicios de garant&iacute;a conforme a la p&oacute;liza correspondiente.</li>
+  </ul>
+
+  <h3>Segunda. Declara EL COMPRADOR.</h3>
+  <ul>
+    <li>Ser persona f&iacute;sica con capacidad jur&iacute;dica y econ&oacute;mica para obligarse en los t&eacute;rminos del presente Contrato.</li>
+    <li>Llamarse como ha quedado anotado en el apartado de DATOS DE LA OPERACI&Oacute;N del presente contrato.</li>
+    <li>Haber recibido del VENDEDOR toda la informaci&oacute;n relativa a la motocicleta materia de este contrato, incluyendo especificaciones t&eacute;cnicas, autonom&iacute;a y caracter&iacute;sticas de uso.</li>
+    <li>Que el TEL&Eacute;FONO REGISTRADO en el apartado DATOS DE LA OPERACI&Oacute;N ser&aacute; considerado como el IDENTIFICADOR &Uacute;NICO DE VALIDACI&Oacute;N DE IDENTIDAD para todos los efectos del presente contrato, incluyendo la aceptaci&oacute;n electr&oacute;nica del Contrato y la entrega del veh&iacute;culo.</li>
+  </ul>
+  <p><strong>BAJO PROTESTA DE DECIR VERDAD,</strong> EL COMPRADOR DECLARA: (i) que es el leg&iacute;timo titular del medio de pago utilizado, o cuenta con autorizaci&oacute;n expresa, vigente y suficiente del titular leg&iacute;timo para utilizarlo en esta operaci&oacute;n; (ii) que la informaci&oacute;n proporcionada durante el proceso de contrataci&oacute;n es verdadera, completa y actualizada; (iii) que reconoce y acepta que el cargo aparecer&aacute; identificado en su estado de cuenta como &ldquo;VOLTIKA MX&rdquo; o descriptor similar designado por VOLTIKA; y (iv) que reconoce que cualquier falsedad en estas declaraciones podr&aacute; constituir el delito de fraude en t&eacute;rminos del art&iacute;culo 386 del C&oacute;digo Penal Federal.</p>
+
+  <h3>Tercera. Protecci&oacute;n de Datos Personales.</h3>
+  <p>EL COMPRADOR otorga su consentimiento para el tratamiento de sus datos personales conforme al Aviso de Privacidad de VOLTIKA, para finalidades de identificaci&oacute;n, procesamiento del pago, entrega del producto, atenci&oacute;n de aclaraciones, cumplimiento de obligaciones legales (CFDI, REPUVE) y captura de datos t&eacute;cnicos de la operaci&oacute;n (IP, geolocalizaci&oacute;n, dispositivo, OTP). EL COMPRADOR podr&aacute; ejercer en cualquier momento sus derechos ARCO conforme al Aviso de Privacidad.</p>
+  <p>Las partes se reconocen mutuamente la capacidad con la que concurren a este acto y se obligan en los t&eacute;rminos del presente Contrato.</p>
+
+  <h2>Cl&aacute;usulas</h2>
+
+  <h3>Primera. Objeto.</h3>
+  <p>VOLTIKA vende a EL COMPRADOR y &eacute;ste adquiere en propiedad la motocicleta el&eacute;ctrica cuyas caracter&iacute;sticas se detallan en el apartado DATOS DE LA OPERACI&Oacute;N del presente Contrato, en adelante EL VEH&Iacute;CULO. La compraventa se realiza al CONTADO; la propiedad de EL VEH&Iacute;CULO se transfiere a EL COMPRADOR una vez acreditado el pago total y firmada el Acta de Entrega al momento de la recepci&oacute;n f&iacute;sica. El N&uacute;mero de Identificaci&oacute;n Vehicular (VIN/NIV) y el Punto de Entrega ser&aacute;n asignados por VOLTIKA con posterioridad a la firma del presente Contrato y notificados a EL COMPRADOR previo a la entrega, formando parte integral del presente Contrato.</p>
+
+  <h3>Segunda. Precio y forma de pago.</h3>
+  <p>EL COMPRADOR se obliga a pagar el precio total de la operaci&oacute;n conforme al apartado DATOS DE LA OPERACI&Oacute;N, mediante alguna de las siguientes modalidades autorizadas por VOLTIKA:</p>
+  <ol type="a">
+    <li><strong>PAGO &Uacute;NICO CON TARJETA:</strong> cargo &uacute;nico a tarjeta de cr&eacute;dito o d&eacute;bito por el monto total.</li>
+    <li><strong>MESES SIN INTERESES (MSI):</strong> pago a 9 meses sin intereses con tarjeta de cr&eacute;dito participante. Esta modalidad incluye COSTO LOG&Iacute;STICO ADICIONAL al punto de entrega asignado.</li>
+    <li><strong>TRANSFERENCIA ELECTR&Oacute;NICA (SPEI):</strong> a la cuenta bancaria que VOLTIKA designe.</li>
+    <li><strong>PAGO EN OXXO:</strong> mediante referencia generada por VOLTIKA.</li>
+  </ol>
+  <p>La operaci&oacute;n se considera pagada hasta que VOLTIKA reciba la confirmaci&oacute;n efectiva de la acreditaci&oacute;n del monto total por parte del procesador de pago, banco o instituci&oacute;n correspondiente.</p>
+
+  <h3>Tercera. Aceptaci&oacute;n electr&oacute;nica y consentimiento.</h3>
+  <p>EL COMPRADOR reconoce expresamente que ha aceptado el presente Contrato mediante los mecanismos electr&oacute;nicos descritos en el apartado ACEPTACI&Oacute;N ELECTR&Oacute;NICA DEL CONTRATO, los cuales constituyen consentimiento expreso y vinculante conforme al art&iacute;culo 89 del C&oacute;digo de Comercio. La aceptaci&oacute;n realizada mediante checkbox, validaci&oacute;n OTP y pago confirmado tiene <strong>PLENO VALOR PROBATORIO</strong> para los efectos del presente Contrato. EL COMPRADOR no podr&aacute; alegar desconocimiento, repudio o falta de identificaci&oacute;n respecto del Contrato as&iacute; aceptado.</p>
+  <p>VOLTIKA conservar&aacute; registros electr&oacute;nicos completos de la aceptaci&oacute;n, incluyendo timestamp, IP, geolocalizaci&oacute;n, dispositivo, c&oacute;digo OTP validado y datos del pago, los cuales podr&aacute;n ser presentados como prueba documental plena en cualquier procedimiento judicial, administrativo, ante PROFECO o ante procesadores de pago.</p>
+
+  <h3>Cuarta. Garant&iacute;a.</h3>
+  <p>VOLTIKA garantiza el correcto funcionamiento de EL VEH&Iacute;CULO conforme a la p&oacute;liza de garant&iacute;a entregada al momento de la operaci&oacute;n, cuya vigencia no podr&aacute; ser inferior a 90 (noventa) d&iacute;as naturales conforme al art&iacute;culo 77 de la Ley Federal de Protecci&oacute;n al Consumidor. Ante desperfectos dentro del periodo de vigencia, EL COMPRADOR debe contactar a VOLTIKA mediante los canales oficiales. VOLTIKA informar&aacute; en un plazo no mayor a 10 (diez) d&iacute;as naturales sobre la procedencia o improcedencia de la reparaci&oacute;n. En caso de proceder, VOLTIKA reemplazar&aacute; cualquier pieza o componente defectuoso sin costo adicional. El tiempo que transcurra desde la solicitud hasta la devoluci&oacute;n de EL VEH&Iacute;CULO reparado no se computar&aacute; dentro de la vigencia de la garant&iacute;a. Si VOLTIKA no cuenta con las refacciones necesarias en un plazo m&aacute;ximo de 60 (sesenta) d&iacute;as naturales, asumir&aacute; los costos por incumplimiento conforme a la NOM aplicable y pol&iacute;ticas vigentes.</p>
+
+  <h3>Quinta. Procedimiento de aclaraci&oacute;n previa.</h3>
+  <p>Antes de presentar cualquier aclaraci&oacute;n, queja o solicitud de reversi&oacute;n de cargo (contracargo) ante su instituci&oacute;n financiera, EL COMPRADOR se obliga a contactar primero a VOLTIKA mediante los canales oficiales, con la finalidad de:</p>
+  <ol type="a">
+    <li>Verificar la informaci&oacute;n de la operaci&oacute;n.</li>
+    <li>Recibir aclaraci&oacute;n sobre cualquier cargo no reconocido.</li>
+    <li>Buscar soluci&oacute;n a cualquier inconformidad.</li>
+  </ol>
+  <p>VOLTIKA atender&aacute; la solicitud dentro de un plazo m&aacute;ximo de 5 (cinco) d&iacute;as h&aacute;biles, conforme al art&iacute;culo 99 de la Ley Federal de Protecci&oacute;n al Consumidor. EL COMPRADOR reconoce que una vez entregado EL VEH&Iacute;CULO, firmados el Acta de Entrega y emitida la factura CFDI, la transacci&oacute;n se considera cumplida por VOLTIKA. En caso de disputa improcedente, VOLTIKA podr&aacute; ejercer las acciones legales que correspondan.</p>
+
+  <h3>Sexta. Medios de acreditaci&oacute;n y registro.</h3>
+  <p>VOLTIKA podr&aacute; conservar registros f&iacute;sicos y electr&oacute;nicos relacionados con la contrataci&oacute;n, pago, validaci&oacute;n, entrega y cumplimiento del presente contrato, incluyendo mensajes de datos, registros de plataforma, direcciones IP, geolocalizaci&oacute;n, fecha y hora de operaci&oacute;n, validaciones OTP, evidencia fotogr&aacute;fica, aceptaci&oacute;n electr&oacute;nica del Contrato y firma electr&oacute;nica del Acta de Entrega. Dichos registros constituir&aacute;n evidencia suficiente de la operaci&oacute;n y podr&aacute;n ser utilizados por VOLTIKA para fines de aclaraci&oacute;n, prevenci&oacute;n de fraude, atenci&oacute;n de contracargos y defensa en cualquier procedimiento legal o administrativo.</p>
+
+  <h3>S&eacute;ptima. Emisi&oacute;n de factura y documentos de entrega.</h3>
+  <p>Las partes reconocen y acuerdan que la emisi&oacute;n de los siguientes documentos se realizar&aacute; AL MOMENTO DE LA ENTREGA F&Iacute;SICA del veh&iacute;culo:</p>
+  <ol type="a">
+    <li><strong>FACTURA (CFDI):</strong> VOLTIKA emitir&aacute; el Comprobante Fiscal Digital por Internet correspondiente a la operaci&oacute;n al momento de la entrega f&iacute;sica de EL VEH&Iacute;CULO, conforme a las disposiciones fiscales aplicables.</li>
+    <li><strong>CARTA FACTURA:</strong> documento entregado a EL COMPRADOR al momento de la entrega, v&aacute;lido para emplacamiento y registro vehicular estatal.</li>
+    <li><strong>P&Oacute;LIZA DE GARANT&Iacute;A:</strong> debidamente sellada y firmada.</li>
+    <li><strong>MANUAL DEL USUARIO:</strong> en idioma espa&ntilde;ol.</li>
+    <li><strong>LLAVES Y ACCESORIOS:</strong> est&aacute;ndar.</li>
+  </ol>
+  <p>VOLTIKA entregar&aacute; a EL COMPRADOR la FACTURA ORIGINAL del veh&iacute;culo dentro de un plazo de 15 (quince) d&iacute;as h&aacute;biles contados a partir de la fecha de la entrega f&iacute;sica.</p>
+
+  <h3>Octava. Registro ante REPUVE.</h3>
+  <p>Conforme al art&iacute;culo 23 de la Ley del Registro P&uacute;blico Vehicular, VOLTIKA presentar&aacute; al REPUVE el aviso de compraventa correspondiente, indicando los datos de EL COMPRADOR como nuevo propietario, dentro del d&iacute;a h&aacute;bil siguiente al de la facturaci&oacute;n. EL COMPRADOR podr&aacute; obtener su constancia de inscripci&oacute;n REPUVE en <a href="https://www.repuve.gob.mx" target="_blank" rel="noopener">www.repuve.gob.mx</a>. EL COMPRADOR manifiesta haber sido informado previamente sobre las implicaciones de la inscripci&oacute;n REPUVE y la entrega de carta factura.</p>
+
+  <h3>Novena. Tiempos de entrega.</h3>
+  <p>VOLTIKA se compromete a realizar la entrega de EL VEH&Iacute;CULO conforme a los siguientes plazos, contados a partir de la confirmaci&oacute;n efectiva del pago total:</p>
+  <ol type="a">
+    <li><strong>ENTREGA EST&Aacute;NDAR:</strong> hasta 60 (sesenta) d&iacute;as naturales, cuando el modelo y color se encuentre disponible en inventario.</li>
+    <li><strong>ENTREGA EXTENDIDA:</strong> hasta 90 (noventa) d&iacute;as naturales, cuando el modelo o color est&eacute; sujeto a reposici&oacute;n de inventario, importaci&oacute;n o ensamble.</li>
+    <li><strong>FUERZA MAYOR:</strong> hasta 30 (treinta) d&iacute;as naturales adicionales por causas ajenas al control de VOLTIKA, previa notificaci&oacute;n a EL COMPRADOR.</li>
+  </ol>
+  <p>VOLTIKA informar&aacute; a EL COMPRADOR el plazo aplicable a su operaci&oacute;n al momento de la confirmaci&oacute;n del pedido. EL COMPRADOR acepta expresamente el plazo informado. Si transcurrido el plazo total aplicable VOLTIKA no ha entregado EL VEH&Iacute;CULO, EL COMPRADOR podr&aacute;:</p>
+  <ol type="a">
+    <li>Continuar esperando con compensaci&oacute;n equivalente conforme a las pol&iacute;ticas vigentes de VOLTIKA.</li>
+    <li>Solicitar la cancelaci&oacute;n del Contrato con devoluci&oacute;n &iacute;ntegra del monto pagado en plazo no mayor a 10 (diez) d&iacute;as h&aacute;biles.</li>
+  </ol>
+
+  <h3>D&eacute;cima. Asignaci&oacute;n y notificaci&oacute;n del punto de entrega.</h3>
+  <p>EL COMPRADOR reconoce y acepta que el PUNTO DE ENTREGA AUTORIZADO por VOLTIKA ser&aacute; asignado con posterioridad a la firma del presente Contrato, conforme a la disponibilidad operativa, c&oacute;digo postal de EL COMPRADOR y log&iacute;stica de la operaci&oacute;n.</p>
+  <p>VOLTIKA notificar&aacute; a EL COMPRADOR el punto de entrega asignado, incluyendo direcci&oacute;n, fecha y hora, mediante los medios de contacto registrados en el apartado DATOS DE LA OPERACI&Oacute;N (correo electr&oacute;nico, WhatsApp y/o SMS al tel&eacute;fono registrado).</p>
+  <p>EL COMPRADOR se obliga a:</p>
+  <ol type="a">
+    <li>Acudir PERSONALMENTE al punto de entrega asignado en la fecha y hora confirmada por VOLTIKA.</li>
+    <li>Presentar identificaci&oacute;n oficial vigente original (INE, pasaporte o c&eacute;dula profesional).</li>
+    <li>Mantener disponible el TEL&Eacute;FONO REGISTRADO para recibir el c&oacute;digo OTP de validaci&oacute;n.</li>
+    <li>Realizar la inspecci&oacute;n de EL VEH&Iacute;CULO.</li>
+    <li>Suscribir el Acta de Entrega correspondiente mediante firma electr&oacute;nica avanzada.</li>
+  </ol>
+  <p>El cambio de punto de entrega podr&aacute; solicitarse con al menos 5 (cinco) d&iacute;as h&aacute;biles de anticipaci&oacute;n a la fecha programada y estar&aacute; sujeto a disponibilidad operativa.</p>
+
+  <h3>D&eacute;cima primera. Validaci&oacute;n de identidad, inspecci&oacute;n y acta de entrega.</h3>
+  <p>El proceso de entrega incluir&aacute; los siguientes pasos obligatorios:</p>
+
+  <p><strong>A) VALIDACI&Oacute;N DE IDENTIDAD.</strong> Al momento de la entrega, EL COMPRADOR deber&aacute; acreditar que es la misma persona que celebr&oacute; el contrato mediante DOS factores:</p>
+  <ol type="a">
+    <li><strong>VERIFICACI&Oacute;N DE NOMBRE:</strong> presentaci&oacute;n de identificaci&oacute;n oficial vigente original (INE, pasaporte o c&eacute;dula profesional) cuyo nombre coincida con el registrado en el apartado DATOS DE LA OPERACI&Oacute;N del presente Contrato.</li>
+    <li><strong>VERIFICACI&Oacute;N DE TEL&Eacute;FONO:</strong> validaci&oacute;n del C&oacute;digo OTP enviado al TEL&Eacute;FONO REGISTRADO en el apartado DATOS DE LA OPERACI&Oacute;N.</li>
+  </ol>
+  <p>EL COMPRADOR reconoce y acepta que el tel&eacute;fono registrado constituye el IDENTIFICADOR &Uacute;NICO DE VALIDACI&Oacute;N DE IDENTIDAD para efectos de la entrega.</p>
+  <div class="vk-callout">
+    <strong>VOLTIKA NO ENTREGAR&Aacute; EL VEH&Iacute;CULO si:</strong>
+    <ul>
+      <li>El nombre en la identificaci&oacute;n oficial NO coincide con el registrado en el contrato.</li>
+      <li>El C&oacute;digo OTP no es validado correctamente al tel&eacute;fono registrado.</li>
+      <li>Existe inconsistencia razonable en la validaci&oacute;n de identidad.</li>
+    </ul>
+    En tales casos, la entrega se reprogramar&aacute; y EL COMPRADOR deber&aacute; acreditar su identidad mediante los procedimientos adicionales que VOLTIKA determine.
+  </div>
+
+  <p><strong>B) INSPECCI&Oacute;N DEL VEH&Iacute;CULO.</strong> EL COMPRADOR deber&aacute; inspeccionar f&iacute;sicamente EL VEH&Iacute;CULO, verificando coincidencia con lo pactado en el apartado DATOS DE LA OPERACI&Oacute;N (modelo, color, especificaciones), estado f&iacute;sico, funcionamiento b&aacute;sico y documentaci&oacute;n entregada. EL COMPRADOR tiene el derecho de RECHAZAR la entrega si detecta cualquier inconformidad sustancial. En tal caso, VOLTIKA podr&aacute; reparar, sustituir el veh&iacute;culo o, en caso de imposibilidad t&eacute;cnica, reversar la operaci&oacute;n con devoluci&oacute;n &iacute;ntegra del monto pagado.</p>
+
+  <p><strong>C) ACTA DE ENTREGA CON FIRMA ELECTR&Oacute;NICA AVANZADA.</strong> Al recibir EL VEH&Iacute;CULO conforme, EL COMPRADOR firmar&aacute; el ACTA DE ENTREGA mediante FIRMA ELECTR&Oacute;NICA AVANZADA a trav&eacute;s de la plataforma de Cincel S.A.P.I. de C.V. (&ldquo;CINCEL&rdquo;) o cualquier otro Prestador de Servicios de Certificaci&oacute;n (PSC) autorizado por la Secretar&iacute;a de Econom&iacute;a conforme a la NOM-151-SCFI-2016.</p>
+  <p>El Acta de Entrega contendr&aacute;: datos de EL COMPRADOR, datos del veh&iacute;culo (VIN/NIV asignado, modelo, color), fecha, hora y punto de entrega, validaci&oacute;n OTP capturada, foto de EL COMPRADOR con el veh&iacute;culo, manifestaci&oacute;n expresa de conformidad y firma electr&oacute;nica avanzada de EL COMPRADOR.</p>
+  <p>La firma electr&oacute;nica del Acta de Entrega:</p>
+  <ol type="a">
+    <li>Es equivalente a la firma aut&oacute;grafa para todos los efectos legales conforme al art&iacute;culo 89 del C&oacute;digo de Comercio.</li>
+    <li>Genera CONSTANCIA DE CONSERVACI&Oacute;N DE MENSAJES DE DATOS (CCMD) emitida por el PSC.</li>
+    <li>Incorpora SELLO DIGITAL DE TIEMPO (timestamp fiable).</li>
+    <li>Incluye HUELLA DE AUDITOR&Iacute;A completa con registros del proceso de firma, geolocalizaci&oacute;n, direcci&oacute;n IP, dispositivo y validaci&oacute;n OTP.</li>
+  </ol>
+  <p>La firma del Acta de Entrega constituye MANIFESTACI&Oacute;N EXPRESA de conformidad con las condiciones del veh&iacute;culo recibido y con la operaci&oacute;n celebrada.</p>
+  <p><strong>NO HABR&Aacute; ENTREGA SIN:</strong> validaci&oacute;n de identidad (INE coincidente + OTP validado al tel&eacute;fono registrado) + inspecci&oacute;n satisfactoria + Acta de Entrega firmada electr&oacute;nicamente.</p>
+  <p>La CCMD del Acta de Entrega podr&aacute; ser presentada por VOLTIKA como prueba documental plena en cualquier procedimiento judicial, administrativo, ante PROFECO, ante el SAT, ante autoridades vehiculares o ante procesadores de pago en caso de aclaraciones, contracargos o disputas. Posteriormente a la firma del Acta de Entrega, las inconformidades se atender&aacute;n conforme al procedimiento de garant&iacute;a y vicios ocultos previstos en la legislaci&oacute;n aplicable.</p>
+
+  <h3>D&eacute;cima segunda. Revocaci&oacute;n y cancelaci&oacute;n.</h3>
+  <p>Considerando la naturaleza espec&iacute;fica del bien (veh&iacute;culo automotor) y las disposiciones fiscales y administrativas aplicables, las partes acuerdan:</p>
+  <p><strong>(i) REVOCACI&Oacute;N ANTES DE LA EMISI&Oacute;N DEL CFDI Y DE LA ENTREGA:</strong> EL COMPRADOR podr&aacute; revocar su consentimiento mediante notificaci&oacute;n por escrito a VOLTIKA en un plazo de 48 (cuarenta y ocho) horas posteriores a la aceptaci&oacute;n electr&oacute;nica del contrato, siempre que a&uacute;n no se haya emitido el CFDI ni entregado EL VEH&Iacute;CULO. VOLTIKA reembolsar&aacute; el monto pagado en un plazo no mayor a 10 (diez) d&iacute;as h&aacute;biles, descontando exclusivamente los gastos administrativos y operativos efectivamente incurridos.</p>
+  <p><strong>(ii) CANCELACI&Oacute;N POSTERIOR A LA ENTREGA Y EMISI&Oacute;N DEL CFDI:</strong> Una vez entregado EL VEH&Iacute;CULO, firmada el Acta de Entrega y emitido el CFDI a nombre de EL COMPRADOR, las partes reconocen que la cancelaci&oacute;n con devoluci&oacute;n total no proceder&aacute; de manera autom&aacute;tica debido a que la cancelaci&oacute;n del CFDI requiere aceptaci&oacute;n del receptor (reglas 2.7.1.34 y 2.7.1.35 RMF), el aviso REPUVE requiere proceso administrativo formal, el IVA ha sido enterado al SAT y el veh&iacute;culo es susceptible de depreciaci&oacute;n inmediata.</p>
+  <p><strong>(iii) DERECHOS PRESERVADOS DE EL COMPRADOR:</strong> EL COMPRADOR conserva los siguientes derechos sustantivos:</p>
+  <ol type="a">
+    <li>Rechazo al momento de la entrega conforme a la Cl&aacute;usula D&eacute;cima Primera.</li>
+    <li>Reclamos por defectos de f&aacute;brica conforme a la p&oacute;liza de garant&iacute;a.</li>
+    <li>Vicios ocultos conforme al art&iacute;culo 77 de la LFPC.</li>
+    <li>Defectos graves conforme al art&iacute;culo 79 de la LFPC: reparaci&oacute;n gratuita o sustituci&oacute;n.</li>
+    <li>Servicio post-venta conforme a las p&oacute;lizas vigentes.</li>
+  </ol>
+
+  <h3>D&eacute;cima tercera. Rescisi&oacute;n.</h3>
+  <p>Son causas de rescisi&oacute;n del presente contrato el incumplimiento sustancial de los t&eacute;rminos por cualquiera de las partes. La parte cumplida notificar&aacute; el incumplimiento a la otra y, en caso de que el incumplimiento sea imputable a VOLTIKA, &eacute;sta devolver&aacute; la cantidad recibida en plazo no mayor a 30 (treinta) d&iacute;as h&aacute;biles a partir de la notificaci&oacute;n.</p>
+
+  <h3>D&eacute;cima cuarta. Domicilios y notificaciones.</h3>
+  <p>Para todos los efectos del presente contrato, las notificaciones se realizar&aacute;n en los datos de contacto registrados en el apartado DATOS DE LA OPERACI&Oacute;N. EL COMPRADOR acepta recibir notificaciones mediante correo electr&oacute;nico, SMS o WhatsApp. EL COMPRADOR deber&aacute; notificar a VOLTIKA cualquier cambio en su correo electr&oacute;nico o tel&eacute;fono con cuando menos 5 (cinco) d&iacute;as h&aacute;biles de anticipaci&oacute;n, considerando que el tel&eacute;fono es el identificador &uacute;nico de validaci&oacute;n de identidad para la entrega.</p>
+
+  <h3>D&eacute;cima quinta. Atenci&oacute;n a clientes.</h3>
+  <p>Para cualquier aclaraci&oacute;n, queja o reclamaci&oacute;n, EL COMPRADOR podr&aacute; comunicarse a: correo electr&oacute;nico contacto@voltika.mx, WhatsApp +52 55 1341 6370 o portal web <a href="https://www.voltika.mx" target="_blank" rel="noopener">www.voltika.mx</a>.</p>
+
+  <h3>D&eacute;cima sexta. Jurisdicci&oacute;n, competencia y domicilio convencional.</h3>
+  <p><strong>(i) DOMICILIO CONVENCIONAL:</strong> Las partes designan como domicilio convencional para todos los efectos del presente Contrato la Ciudad de M&eacute;xico, espec&iacute;ficamente las oficinas de VOLTIKA.</p>
+  <p><strong>(ii) JURISDICCI&Oacute;N EXPRESA:</strong> Las partes se someten EXPRESAMENTE a la jurisdicci&oacute;n y competencia de los tribunales competentes en la CIUDAD DE M&Eacute;XICO, renunciando expresamente a cualquier otro fuero, conforme al art&iacute;culo 1093 del C&oacute;digo de Comercio.</p>
+  <p><strong>(iii) COMPETENCIA DE PROFECO:</strong> Sin perjuicio de lo anterior, las partes reconocen la competencia de la Procuradur&iacute;a Federal del Consumidor en la v&iacute;a administrativa para resolver controversias sobre la interpretaci&oacute;n o cumplimiento del presente Contrato y de las disposiciones de la Ley Federal de Protecci&oacute;n al Consumidor, conforme al art&iacute;culo 99 LFPC.</p>
+  <p><strong>(iv) ACEPTACI&Oacute;N INFORMADA:</strong> EL COMPRADOR manifiesta haber sido informado de manera previa, clara y comprensible sobre esta cl&aacute;usula de jurisdicci&oacute;n, conforme al art&iacute;culo 7 de la LFPC.</p>
+
+  <h3>D&eacute;cima s&eacute;ptima. Declaraciones finales de EL COMPRADOR.</h3>
+  <p>Al aceptar electr&oacute;nicamente el presente Contrato, EL COMPRADOR manifiesta y declara, bajo protesta de decir verdad:</p>
+  <ol>
+    <li>Ha le&iacute;do &iacute;ntegramente el presente Contrato, incluyendo el apartado DATOS DE LA OPERACI&Oacute;N.</li>
+    <li>Ha tenido oportunidad de hacer preguntas y aclarar dudas antes de aceptar.</li>
+    <li>Conoce y acepta el precio total, la modalidad de pago seleccionada y el costo log&iacute;stico aplicable, en su caso.</li>
+    <li>Es titular o cuenta con autorizaci&oacute;n suficiente del medio de pago utilizado.</li>
+    <li>Reconoce que el cargo aparecer&aacute; identificado como &ldquo;VOLTIKA MX&rdquo; en su estado de cuenta.</li>
+    <li>Acepta los plazos de entrega establecidos.</li>
+    <li>Acepta que el punto de entrega ser&aacute; asignado con posterioridad por VOLTIKA y notificado a trav&eacute;s de los medios de contacto registrados.</li>
+    <li>Acepta el procedimiento de aclaraci&oacute;n previa a cualquier disputa de cargo.</li>
+    <li>Acepta que la validaci&oacute;n de identidad al momento de la entrega se realizar&aacute; mediante INE coincidente con el nombre registrado + OTP validado al tel&eacute;fono registrado, siendo el tel&eacute;fono el identificador &uacute;nico de validaci&oacute;n.</li>
+    <li>Acepta recibir notificaciones por correo electr&oacute;nico, WhatsApp y/o SMS al tel&eacute;fono registrado.</li>
+    <li>Reconoce que los datos t&eacute;cnicos de la operaci&oacute;n ser&aacute;n capturados para fines de validaci&oacute;n y seguridad.</li>
+    <li>Conoce el r&eacute;gimen de carta factura, factura CFDI emitidos al momento de la entrega y la inscripci&oacute;n ante REPUVE.</li>
+    <li>Conoce sus derechos de rechazo al recibir, garant&iacute;a, vicios ocultos y defectos graves.</li>
+    <li>Reconoce que la aceptaci&oacute;n electr&oacute;nica del presente Contrato (checkbox + OTP + pago) tiene pleno valor probatorio conforme al art&iacute;culo 89 del C&oacute;digo de Comercio.</li>
+    <li>Reconoce que la firma electr&oacute;nica avanzada del Acta de Entrega a trav&eacute;s de Cincel u otro PSC conforme a la NOM-151-SCFI-2016 tiene pleno valor probatorio equivalente a la firma aut&oacute;grafa.</li>
+    <li>Acepta el sometimiento a la jurisdicci&oacute;n de los tribunales competentes en la Ciudad de M&eacute;xico.</li>
+  </ol>
+  <p>EL COMPRADOR manifiesta que ha celebrado este Contrato de manera libre, voluntaria, informada y sin vicios del consentimiento.</p>
+  <p>Las partes reconocen que el presente Contrato es aceptado y vinculante a partir de la confirmaci&oacute;n electr&oacute;nica del consentimiento por parte de EL COMPRADOR (checkbox + OTP + pago confirmado), quedando un ejemplar electr&oacute;nico en poder de VOLTIKA y otro disponible para EL COMPRADOR mediante los medios de contacto registrados.</p>
+
+  <h2>Registro de aceptaci&oacute;n electr&oacute;nica</h2>
+  <p>Este apartado ser&aacute; completado autom&aacute;ticamente por el sistema al momento de la aceptaci&oacute;n electr&oacute;nica:</p>
+  <table class="vk-data">
+    <tr><th>Folio del Contrato</th><td><span class="vk-placeholder">{{customer_id}}</span></td></tr>
+    <tr><th>Nombre de EL COMPRADOR</th><td><span class="vk-placeholder">{{customer_full_name}}</span></td></tr>
+    <tr><th>Fecha y hora de aceptaci&oacute;n (UTC)</th><td><span class="vk-placeholder">{{acceptance_timestamp}}</span></td></tr>
+    <tr><th>Direcci&oacute;n IP</th><td><span class="vk-placeholder">{{acceptance_ip}}</span></td></tr>
+    <tr><th>Geolocalizaci&oacute;n</th><td><span class="vk-placeholder">{{acceptance_geolocation}}</span></td></tr>
+    <tr><th>Dispositivo</th><td><span class="vk-placeholder">{{acceptance_device}}</span></td></tr>
+    <tr><th>C&oacute;digo OTP validado</th><td><span class="vk-placeholder">{{otp_validated}}</span></td></tr>
+    <tr><th>Referencia de pago</th><td><span class="vk-placeholder">{{payment_reference}}</span></td></tr>
+  </table>
+
+  <div class="vk-footer">
+    VOLTIKA &middot; MTECH GEARS, S.A. DE C.V.<br>
+    Aceptaci&oacute;n electr&oacute;nica registrada conforme al art&iacute;culo 89 del C&oacute;digo de Comercio.
+  </div>
+
+</article>
+</body>
+</html>

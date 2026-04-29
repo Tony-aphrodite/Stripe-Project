@@ -69,6 +69,16 @@ switch ($eventType) {
         handlePaymentPending($event->data->object);
         break;
 
+    // ── Tech Spec EN §7 — chargeback / dispute auto-escalation ─────────
+    case 'charge.dispute.created':
+    case 'charge.dispute.funds_withdrawn':
+        handleChargebackOpened($event->data->object);
+        break;
+    case 'charge.dispute.closed':
+    case 'charge.dispute.funds_reinstated':
+        handleChargebackResolved($event->data->object);
+        break;
+
     default:
         webhookLog("Unhandled event type: $eventType");
         break;
@@ -697,4 +707,261 @@ function handleCiclosPagoUpdate($paymentIntent) {
     } catch (PDOException $e) {
         webhookLog("ciclos_pago DB ERROR: " . $e->getMessage());
     }
+}
+
+
+// ── Tech Spec EN §7 — Chargeback / dispute escalation handlers ──────────
+// Stripe fires charge.dispute.* on the original charge (not the
+// PaymentIntent). We resolve back to our customer + order via
+// transacciones.stripe_pi (charge → PI lookup is implicit because we
+// store the PI). On chargeback: create an escalation row and freeze the
+// related subscription. On resolution: close the escalation; the
+// admin/php/escalations/actualizar.php side-effect resumes the
+// subscription if no other dispute is open.
+
+function handleChargebackOpened($dispute): void {
+    $disputeId = $dispute->id ?? '';
+    $piId      = $dispute->payment_intent ?? ($dispute->charge ?? '');
+    $reason    = $dispute->reason ?? 'unknown';
+    $amount    = ($dispute->amount ?? 0) / 100;
+    $status    = $dispute->status ?? 'needs_response';
+    webhookLog("dispute opened: $disputeId · PI=$piId · reason=$reason · status=$status");
+
+    try {
+        $pdo = getDB();
+        _ensureEscalationsTable($pdo);
+
+        // Resolve customer + order from PI
+        $clienteId = null; $transId = null; $email = ''; $nombre = '';
+        if ($piId) {
+            $st = $pdo->prepare("SELECT id, email, nombre FROM transacciones
+                                 WHERE stripe_pi = ? ORDER BY id DESC LIMIT 1");
+            $st->execute([$piId]);
+            if ($row = $st->fetch(PDO::FETCH_ASSOC)) {
+                $transId = (int)$row['id'];
+                $email   = (string)$row['email'];
+                $nombre  = (string)$row['nombre'];
+                if ($email) {
+                    $cs = $pdo->prepare("SELECT id FROM clientes WHERE email = ? ORDER BY id DESC LIMIT 1");
+                    $cs->execute([$email]);
+                    $clienteId = (int)($cs->fetchColumn() ?: 0) ?: null;
+                }
+            }
+        }
+
+        // Idempotency — if an open escalation already exists for this dispute,
+        // bail out (Stripe can re-send the same event during retries).
+        $exists = $pdo->prepare("SELECT id FROM escalations
+                                  WHERE kind IN ('chargeback','dispute')
+                                    AND ref_externa = ?
+                                    AND estado IN ('open','in_progress')
+                                  LIMIT 1");
+        $exists->execute([$disputeId]);
+        if ($exists->fetchColumn()) {
+            webhookLog("dispute $disputeId already escalated — skipping");
+            return;
+        }
+
+        $pdo->prepare("INSERT INTO escalations
+                (kind, severity, cliente_id, transaccion_id, ref_externa,
+                 titulo, detalle, asignado_a)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+            ->execute([
+                'chargeback', 'critical', $clienteId, $transId, $disputeId,
+                'Contracargo Stripe' . ($nombre ? ' — ' . $nombre : ''),
+                "Razón: $reason · Monto: $" . number_format($amount, 2) . " MXN · Estado Stripe: $status · PI: $piId",
+                'finance',
+            ]);
+
+        // Freeze related subscription so auto-cobro stops charging the
+        // disputed customer (per spec: open dispute = block all new ops).
+        if ($clienteId) {
+            $pdo->prepare("UPDATE subscripciones_credito
+                           SET estado = 'disputada'
+                           WHERE cliente_id = ? AND estado IN ('activa','pendiente_activacion')")
+                ->execute([$clienteId]);
+        }
+
+        // ── Auto-attach the Defense Dossier to the Stripe dispute ──────
+        // Customer brief 2026-04-29: "we need the system to defend
+        // disputed customer payments automatically". When a chargeback
+        // arrives we must respond with evidence within 7 days; do it
+        // immediately while the data is fresh.
+        if ($transId) {
+            try {
+                $motoStmt = $pdo->prepare("SELECT id FROM inventario_motos WHERE transaccion_id = ? LIMIT 1");
+                $motoStmt->execute([$transId]);
+                $motoId = (int)($motoStmt->fetchColumn() ?: 0);
+                if ($motoId) {
+                    require_once __DIR__ . '/dossier-defensa.php';
+                    $r = dossierBuild($motoId, [
+                        'motivo' => 'chargeback_response',
+                        'stripe_dispute_id' => $disputeId,
+                    ]);
+                    if ($r['ok']) {
+                        webhookLog("dossier built for dispute $disputeId · id={$r['dossier_id']} · pdf={$r['pdf_path']}");
+                        // Try to attach the master PDF to the Stripe dispute.
+                        $attached = _stripeAttachDossierToDispute($disputeId, $r['pdf_path'], $pdo);
+                        if ($attached['ok']) {
+                            $pdo->prepare("UPDATE dossiers_defensa
+                                           SET enviado_a_stripe = 1, enviado_at = NOW()
+                                           WHERE id = ?")
+                                ->execute([$r['dossier_id']]);
+                            webhookLog("dossier auto-attached to Stripe dispute $disputeId");
+                        } else {
+                            webhookLog("dossier auto-attach failed: " . $attached['error']);
+                        }
+                    } else {
+                        webhookLog("dossier build failed for dispute $disputeId: " . ($r['error'] ?? 'unknown'));
+                    }
+                }
+            } catch (Throwable $e) {
+                webhookLog("dossier auto-attach error: " . $e->getMessage());
+            }
+        }
+    } catch (Throwable $e) {
+        webhookLog("chargeback handler error: " . $e->getMessage());
+    }
+}
+
+/**
+ * Attach the Defense Dossier master PDF to a Stripe dispute.
+ *
+ * Stripe Disputes API flow:
+ *   1. POST /v1/files (purpose=dispute_evidence) → returns file id
+ *   2. POST /v1/disputes/{id} with evidence[uncategorized_file]=fileId
+ *      and evidence_details[submit]=false (we let admin click Submit
+ *      manually after reviewing what we attached).
+ *
+ * Falls back gracefully if STRIPE_SECRET_KEY is missing.
+ */
+function _stripeAttachDossierToDispute(string $disputeId, string $relPdfPath, PDO $pdo): array {
+    $stripeKey = defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : (getenv('STRIPE_SECRET_KEY') ?: '');
+    if (!$stripeKey) return ['ok' => false, 'error' => 'STRIPE_SECRET_KEY ausente'];
+
+    $absPdf = __DIR__ . '/../' . ltrim($relPdfPath, '/');
+    if (!file_exists($absPdf)) return ['ok' => false, 'error' => 'PDF dossier no encontrado: ' . $absPdf];
+
+    // Step 1: upload as a Stripe File with purpose=dispute_evidence.
+    // Files API uses files.stripe.com with multipart form-data.
+    $cfile = new CURLFile($absPdf, 'application/pdf', 'voltika_dossier.pdf');
+    $ch = curl_init('https://files.stripe.com/v1/files');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $stripeKey . ':',
+        CURLOPT_HTTPHEADER     => ['Stripe-Account: '],
+        CURLOPT_POSTFIELDS     => ['purpose' => 'dispute_evidence', 'file' => $cfile],
+        CURLOPT_TIMEOUT        => 60,
+    ]);
+    $raw = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+    if ($err || $code < 200 || $code >= 300) {
+        return ['ok' => false, 'error' => "Stripe file upload HTTP $code · $err · " . substr($raw, 0, 300)];
+    }
+    $fileResp = json_decode($raw, true) ?: [];
+    $fileId = $fileResp['id'] ?? null;
+    if (!$fileId) return ['ok' => false, 'error' => 'Stripe file id ausente en respuesta'];
+
+    // Step 2: PATCH the dispute with the evidence file.
+    $body = http_build_query([
+        'evidence[uncategorized_file]'  => $fileId,
+        'evidence[uncategorized_text]'  => 'Voltika Defense Dossier — manifest SHA-256 + Cincel NOM-151 timestamp. ZIP pack with all signed contracts, identity validation (Truora INE+selfie), CFDI 4.0, REPUVE notice, OTP-validated delivery acta + pagaré, IP/UA/geolocation evidence, full notification + payment logs. See attached PDF.',
+        'evidence_details[submit]'     => 'false',
+    ]);
+    $ch = curl_init('https://api.stripe.com/v1/disputes/' . urlencode($disputeId));
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST  => 'POST',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $stripeKey . ':',
+        CURLOPT_POSTFIELDS     => $body,
+        CURLOPT_TIMEOUT        => 30,
+    ]);
+    $raw2 = curl_exec($ch);
+    $code2 = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err2  = curl_error($ch);
+    curl_close($ch);
+    if ($err2 || $code2 < 200 || $code2 >= 300) {
+        return ['ok' => false, 'error' => "Stripe dispute update HTTP $code2 · " . substr($raw2, 0, 300)];
+    }
+    return ['ok' => true, 'file_id' => $fileId];
+}
+
+function handleChargebackResolved($dispute): void {
+    $disputeId = $dispute->id ?? '';
+    $status    = $dispute->status ?? 'lost';
+    webhookLog("dispute resolved: $disputeId · status=$status");
+
+    try {
+        $pdo = getDB();
+        _ensureEscalationsTable($pdo);
+
+        // Mark every open escalation for this dispute as resolved/closed.
+        // Stripe `status` won/lost determines outcome wording.
+        $newEstado = $status === 'won' ? 'resolved' : 'closed';
+        $row = $pdo->prepare("SELECT id, cliente_id FROM escalations
+                              WHERE ref_externa = ?
+                                AND kind IN ('chargeback','dispute')
+                                AND estado IN ('open','in_progress')");
+        $row->execute([$disputeId]);
+        $escalations = $row->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($escalations as $esc) {
+            $pdo->prepare("UPDATE escalations
+                           SET estado = ?, resolved_at = NOW(),
+                               notas = COALESCE(notas, '') || ?
+                           WHERE id = ?")
+                ->execute([
+                    $newEstado,
+                    "\n[" . date('Y-m-d H:i') . "] Stripe dispute closed with status=$status",
+                    (int)$esc['id'],
+                ]);
+            // If no other open dispute exists for the customer, resume billing.
+            if (!empty($esc['cliente_id'])) {
+                $still = $pdo->prepare("SELECT COUNT(*) FROM escalations
+                    WHERE cliente_id = ?
+                      AND kind IN ('chargeback','dispute','profeco')
+                      AND estado IN ('open','in_progress')");
+                $still->execute([(int)$esc['cliente_id']]);
+                if ((int)$still->fetchColumn() === 0) {
+                    $pdo->prepare("UPDATE subscripciones_credito
+                                   SET estado = 'activa'
+                                   WHERE cliente_id = ? AND estado = 'disputada'")
+                        ->execute([(int)$esc['cliente_id']]);
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        webhookLog("chargeback resolution handler error: " . $e->getMessage());
+    }
+}
+
+function _ensureEscalationsTable(PDO $pdo): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS escalations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            kind VARCHAR(40) NOT NULL,
+            severity VARCHAR(20) NOT NULL DEFAULT 'critical',
+            cliente_id INT NULL,
+            transaccion_id INT NULL,
+            moto_id INT NULL,
+            ref_externa VARCHAR(120) NULL,
+            titulo VARCHAR(200) NOT NULL,
+            detalle TEXT NULL,
+            estado VARCHAR(20) NOT NULL DEFAULT 'open',
+            asignado_a VARCHAR(80) NULL,
+            notas MEDIUMTEXT NULL,
+            freg DATETIME DEFAULT CURRENT_TIMESTAMP,
+            fmod DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            resolved_at DATETIME NULL,
+            INDEX idx_estado_kind (estado, kind),
+            INDEX idx_cliente (cliente_id),
+            INDEX idx_transaccion (transaccion_id),
+            INDEX idx_ref (ref_externa)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (Throwable $e) { webhookLog('escalations table create: ' . $e->getMessage()); }
 }

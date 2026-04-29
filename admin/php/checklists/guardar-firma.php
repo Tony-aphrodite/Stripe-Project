@@ -61,13 +61,77 @@ $checkId = $row['id'];
 $result = ['ok' => true, 'tipo' => $tipo];
 
 if ($tipo === 'acta') {
-    // ── Simple signature save — acta de entrega ─────────────────────────
+    // ── Acta signature — PDF generation + CINCEL NOM-151 ────────────────
+    // Per Cláusula Vigésima Segunda + Trigésima Primera of v5: the Acta
+    // de Entrega is signed and timestamped via Cincel at delivery, same
+    // legal weight as the Pagaré. Until 2026-04-29 only the raw signature
+    // image was stored — that left the Acta without a hashable PDF or
+    // NOM-151 timestamp. This branch closes the gap.
+
+    // Save raw signature first so we never lose it even if PDF fails.
     $pdo->prepare("UPDATE checklist_entrega_v2 SET firma_acta_data=?, firma_digital=1 WHERE id=?")
         ->execute([$firmaB64, $checkId]);
-
-    // Also save to legacy firma_data for backwards compatibility
     $pdo->prepare("UPDATE checklist_entrega_v2 SET firma_data=? WHERE id=?")
         ->execute([$firmaB64, $checkId]);
+
+    // Step 1: Generate Acta PDF with embedded signature
+    $pdfResult = regenerateActaPDFWithSignature($motoId, $firmaB64, $checkId, $pdo);
+
+    if (!$pdfResult['ok']) {
+        $result['pdf_warning'] = $pdfResult['error'];
+        $result['timestamp']   = date('Y-m-d H:i:s');
+    } else {
+        $pdfHash     = $pdfResult['pdf_hash'];
+        $pdfFilename = $pdfResult['pdf_path'];
+
+        // Step 2: Send PDF hash to CINCEL for NOM-151 timestamp
+        $cincelResult = cincelTimestampPDF($pdfHash, $motoId, 'acta');
+
+        // Collect evidence
+        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+        if ($ip) $ip = trim(explode(',', $ip)[0]);
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+        $evidencia = json_encode([
+            'ip'             => $ip,
+            'user_agent'     => substr($ua, 0, 500),
+            'fecha_hora'     => date('Y-m-d H:i:s'),
+            'otp_validado'   => $row['fase4_completada'] ? true : false,
+            'otp_code'       => $row['otp_code']      ?? null,
+            'otp_timestamp'  => $row['otp_timestamp'] ?? null,
+            'pdf_hash'       => $pdfHash,
+            'cincel_ok'      => $cincelResult['ok'],
+            'cincel_id'      => $cincelResult['cincel_id'] ?? null,
+            'generado_por'   => $uid,
+        ], JSON_UNESCAPED_UNICODE);
+
+        if ($cincelResult['ok']) {
+            $pdo->prepare("UPDATE checklist_entrega_v2
+                SET acta_pdf_timestamp=NOW(), acta_pdf_cincel_id=?,
+                    acta_pdf_path=?, acta_pdf_hash=?,
+                    acta_ip=?, acta_user_agent=?, acta_evidencia=?
+                WHERE id=?")
+                ->execute([
+                    $cincelResult['cincel_id'], $pdfFilename, $pdfHash,
+                    $ip, substr($ua, 0, 500), $evidencia, $checkId
+                ]);
+            $result['timestamp'] = date('Y-m-d H:i:s');
+            $result['cincel_id'] = $cincelResult['cincel_id'];
+            $result['pdf_hash']  = $pdfHash;
+            $result['pdf_path']  = $pdfFilename;
+        } else {
+            $pdo->prepare("UPDATE checklist_entrega_v2
+                SET acta_pdf_timestamp=NOW(),
+                    acta_pdf_path=?, acta_pdf_hash=?,
+                    acta_ip=?, acta_user_agent=?, acta_evidencia=?
+                WHERE id=?")
+                ->execute([$pdfFilename, $pdfHash, $ip, substr($ua, 0, 500), $evidencia, $checkId]);
+            $result['timestamp']       = date('Y-m-d H:i:s');
+            $result['pdf_hash']        = $pdfHash;
+            $result['pdf_path']        = $pdfFilename;
+            $result['cincel_warning']  = $cincelResult['error'];
+        }
+    }
 
 } else {
     // ── Pagaré signature — PDF generation + CINCEL NOM-151 ──────────────
@@ -203,7 +267,7 @@ function regeneratePagarePDFWithSignature(int $motoId, string $firmaB64, int $ch
 
 // ── CINCEL NOM-151 Timestamp (for PDF hash) ─────────────────────────────
 
-function cincelTimestampPDF(string $pdfHash, int $motoId): array {
+function cincelTimestampPDF(string $pdfHash, int $motoId, string $docType = 'pagare'): array {
     $apiUrl  = defined('CINCEL_API_URL')  ? CINCEL_API_URL  : '';
     $email   = defined('CINCEL_EMAIL')    ? CINCEL_EMAIL    : '';
     $pass    = defined('CINCEL_PASSWORD') ? CINCEL_PASSWORD : '';
@@ -243,7 +307,7 @@ function cincelTimestampPDF(string $pdfHash, int $motoId): array {
         CURLOPT_POSTFIELDS => json_encode([
             'hash'        => $pdfHash,
             'algorithm'   => 'SHA-256',
-            'description' => 'Pagaré PDF firmado — Moto ID ' . $motoId,
+            'description' => ($docType === 'acta' ? 'Acta de Entrega' : 'Pagaré') . ' PDF firmado — Moto ID ' . $motoId,
         ]),
         CURLOPT_TIMEOUT => 30,
     ]);
@@ -259,4 +323,61 @@ function cincelTimestampPDF(string $pdfHash, int $motoId): array {
 
     $cincelId = $tsResp['id'] ?? $tsResp['timestamp_id'] ?? $tsResp['data']['id'] ?? $pdfHash;
     return ['ok' => true, 'cincel_id' => (string)$cincelId];
+}
+
+
+// ── Re-generate Acta de Entrega PDF with signature embedded ─────────────
+
+function regenerateActaPDFWithSignature(int $motoId, string $firmaB64, int $checkId, PDO $pdo): array {
+    try {
+        // Internal HTTP call to generar-acta.php (same session cookie so
+        // adminRequireAuth passes). Mirrors the regeneratePagarePDFWithSignature
+        // pattern so both flows stay consistent.
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
+            . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $url = $baseUrl . dirname($_SERVER['SCRIPT_NAME']) . '/generar-acta.php';
+
+        $sessionName = session_name();
+        $sessionId = session_id();
+        $cookie = $sessionName . '=' . $sessionId;
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Cookie: ' . $cookie,
+            ],
+            CURLOPT_POSTFIELDS => json_encode([
+                'moto_id' => $motoId,
+                'firma_data' => $firmaB64,
+            ]),
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+        $resp = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlErr || $httpCode >= 400) {
+            error_log("Acta PDF regen failed: HTTP {$httpCode}, err: {$curlErr}, resp: " . substr($resp, 0, 500));
+            return ['ok' => false, 'error' => 'Error generando Acta PDF: ' . ($curlErr ?: "HTTP {$httpCode}")];
+        }
+
+        $data = json_decode($resp, true);
+        if (!$data || empty($data['ok'])) {
+            return ['ok' => false, 'error' => $data['error'] ?? 'Respuesta Acta PDF inválida'];
+        }
+
+        return [
+            'ok' => true,
+            'pdf_path' => $data['pdf_path'],
+            'pdf_hash' => $data['pdf_hash'],
+        ];
+    } catch (Throwable $e) {
+        error_log('Acta PDF exception: ' . $e->getMessage());
+        return ['ok' => false, 'error' => $e->getMessage()];
+    }
 }

@@ -642,13 +642,30 @@ var PasoCreditoResultado = {
             var status = prior.status || '';
             var isCondicional = (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO');
 
-            // Customer brief 2026-04-26 v4: CONDICIONAL retry must
-            // PRESERVE state (modoCondicional, enganchePctMin,
-            // plazoMesesMax) so Paso4B opens with the locked 50%/12
-            // slider. Nullifying _resultadoFinal here would put Paso4B
-            // in unrestricted initial-exploration mode — wrong.
+            // Customer brief 2026-04-28: BEFORE routing to Paso4B, force
+            // every state field that Paso4B init() will read. Belt-and-
+            // suspenders: Paso4B self-determines from _resultadoFinal,
+            // but we also pin scalar fallbacks here so any future code
+            // path that loses _resultadoFinal still finds modoCondicional
+            // + bounds.
             if (isCondicional) {
-                self.app.state.metodoPago = 'credito';
+                var s = self.app.state;
+                s.metodoPago      = 'credito';
+                s.modoCondicional = true;
+                if (typeof prior.enganche_requerido_min === 'number') {
+                    s.enganchePctMin = prior.enganche_requerido_min;
+                    if (typeof s.enganchePorcentaje !== 'number' ||
+                        s.enganchePorcentaje < prior.enganche_requerido_min) {
+                        s.enganchePorcentaje = prior.enganche_requerido_min;
+                    }
+                }
+                if (typeof prior.plazo_max_meses === 'number') {
+                    s.plazoMesesMax = prior.plazo_max_meses;
+                    if (typeof s.plazoMeses !== 'number' ||
+                        s.plazoMeses > prior.plazo_max_meses) {
+                        s.plazoMeses = prior.plazo_max_meses;
+                    }
+                }
                 self.app.irAPaso(4);
                 return;
             }

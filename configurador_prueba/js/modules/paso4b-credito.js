@@ -478,7 +478,23 @@ var Paso4B = {
             self.app.state.plazoMeses = self._plazoMeses;
             self.app.state.cuotaSemanal = credito.pagoSemanal;
 
-            if (self.app.state.modoCondicional) {
+            // Customer brief 2026-04-28: self-determine routing (same
+            // belt-and-suspenders pattern as init()). If a CONDICIONAL
+            // server result exists OR the modoCondicional scalar is set,
+            // route to the confirmation screen — NEVER back through paso 2
+            // (color picker), which would force the user to re-fill all
+            // forms (ingresos, OTP, CDC, etc.). The "user needs to pass
+            // all the screens again" complaint stops here.
+            var s = self.app.state || {};
+            var resStatus = (s._resultadoFinal && s._resultadoFinal.status) || '';
+            var isCond = (resStatus === 'CONDICIONAL' || resStatus === 'CONDICIONAL_ESTIMADO') ||
+                         (s.modoCondicional === true);
+
+            if (isCond) {
+                // Pin modoCondicional so downstream screens (credito-pago,
+                // credito-identidad) read consistent state regardless of
+                // whatever upstream path led here.
+                s.modoCondicional = true;
                 self.app.irAPaso('credito-pago');
             } else {
                 self.app.irAPaso(2);

@@ -66,33 +66,38 @@ $telefono  = trim((string)($in['telefono']   ?? ''));
 $email     = trim((string)($in['email']      ?? ''));
 $curp      = strtoupper(trim((string)($in['curp'] ?? '')));
 
-// account_id anchors the Truora process to our customer. Use a stable,
-// URL-safe identifier. Regex per Truora docs: [a-zA-Z0-9_.-]+
-$accountId = $clienteId !== '' ? 'voltika_c_' . preg_replace('/[^a-zA-Z0-9]/', '', $clienteId)
-                               : 'voltika_t_' . bin2hex(random_bytes(6));
+// account_id anchors the Truora process to our customer. Regex per Truora
+// docs: [a-zA-Z0-9_.-]+
+//
+// IMPORTANT: must be UNIQUE per call. Empirically verified 2026-04-29:
+//   - When the same account_id is reused, Truora returns a token that
+//     points to the previous (stale/completed) process, and the iframe
+//     loads BLANK with no error event.
+//   - Diagnostic page worked because it embeds time() in the cliente_id.
+//   - Test mode worked because state.telefono is empty so we hit the
+//     random branch.
+//   - Real flow failed because every retry by the same phone number
+//     produced the same account_id voltika_c_<phone>.
+//
+// Fix: always append a random suffix. We still embed the cliente_id (phone)
+// so admin/forensics can correlate; the cliente_id + nombre + email also
+// land in our verificaciones_identidad stub row for the webhook.
+$randomSuffix = bin2hex(random_bytes(4)); // 8 hex chars
+$accountId = $clienteId !== ''
+    ? 'voltika_c_' . preg_replace('/[^a-zA-Z0-9]/', '', $clienteId) . '_' . $randomSuffix
+    : 'voltika_t_' . $randomSuffix;
 
 // ── Build the redirect URL (where Truora sends the user after the flow) ─
 $redirectBase = defined('VOLTIKA_BASE_URL') ? VOLTIKA_BASE_URL : (getenv('VOLTIKA_BASE_URL') ?: 'https://www.voltika.mx');
 $redirectUrl  = rtrim($redirectBase, '/') . '/configurador_prueba/#credito-identidad';
 
-// ── Phone normalization (Truora MX format: +521 + 10 digits) ─────────────
-// Field learning 2026-04-24: diagnostic showed Truora rejects plain +52 MX
-// numbers with {"code":10400,"message":"Invalid request: invalid phone
-// number"}. Although current E.164 (post-2019) for MX is +52 + 10 digits,
-// Truora's validator still requires the legacy mobile prefix `+521`. We
-// strip any inbound variation down to 10 digits and re-prefix with +521.
-// Any number that doesn't match the 10-digit [2-9]... pattern is dropped
-// (the field is optional — the iframe will ask the user).
-$phoneE164 = '';
-if ($telefono) {
-    $d = preg_replace('/\D/', '', $telefono);
-    if (strlen($d) === 12 && substr($d, 0, 2) === '52')  $d = substr($d, 2);
-    if (strlen($d) === 13 && substr($d, 0, 3) === '521') $d = substr($d, 3);
-    if (strlen($d) === 11 && $d[0] === '1')              $d = substr($d, 1);
-    if (preg_match('/^[2-9]\d{9}$/', $d)) $phoneE164 = '+521' . $d;
-}
-
 // ── Call Truora: POST /v1/api-keys ───────────────────────────────────────
+// Customer report 2026-04-28: when we prefilled phones[]/emails[], Truora's
+// iframe rendered a "review your data" screen with an "Edit" button that
+// did nothing — only the blue continue button worked. To dodge that broken
+// step entirely we omit prefill and let Truora collect phone/email from
+// the user inside the flow. (We still record them in our own stub row
+// below for admin/forensics.)
 $fields = [
     'key_type'     => 'web',
     'grant'        => 'digital-identity',
@@ -101,20 +106,10 @@ $fields = [
     'account_id'   => $accountId,
     'redirect_url' => $redirectUrl,
 ];
-if ($phoneE164) $fields['phones[]'] = $phoneE164;
-if ($email)     $fields['emails[]'] = $email;
 
-$body = http_build_query($fields);
-// http_build_query uses phones%5B%5D — Truora expects repeated `phones`
-// without the bracket encoding. Rebuild manually:
 $bodyPairs = [];
 foreach ($fields as $k => $v) {
-    $k = str_replace('[]', '', $k);
-    if (is_array($v)) {
-        foreach ($v as $vv) $bodyPairs[] = urlencode($k) . '=' . urlencode((string)$vv);
-    } else {
-        $bodyPairs[] = urlencode($k) . '=' . urlencode((string)$v);
-    }
+    $bodyPairs[] = urlencode($k) . '=' . urlencode((string)$v);
 }
 $body = implode('&', $bodyPairs);
 
@@ -138,23 +133,6 @@ $callTruora = function(string $body): array {
 };
 
 list($resp, $httpCode, $curlErr) = $callTruora($body);
-
-// If Truora rejects the request as "Invalid request" (10400), retry once
-// WITHOUT optional pre-fill fields (phones[], emails[]). The iframe flow
-// will collect those from the user anyway. Better to surface a usable
-// iframe than to block the whole credit flow on a validator quirk.
-if ($httpCode === 400 && stripos((string)$resp, 'invalid') !== false &&
-    (isset($fields['phones[]']) || isset($fields['emails[]']))) {
-    $minimal = [];
-    foreach ($fields as $k => $v) {
-        if ($k === 'phones[]' || $k === 'emails[]') continue;
-        $minimal[] = urlencode($k) . '=' . urlencode((string)$v);
-    }
-    list($resp2, $hc2, $er2) = $callTruora(implode('&', $minimal));
-    if ($hc2 >= 200 && $hc2 < 300) {
-        $resp = $resp2; $httpCode = $hc2; $curlErr = $er2;
-    }
-}
 
 // ── Log the call for forensics ───────────────────────────────────────────
 try {

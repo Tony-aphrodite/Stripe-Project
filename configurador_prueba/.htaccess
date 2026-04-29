@@ -1,3 +1,16 @@
+# Voltika — Force non-www host for the configurador.
+# Truora's identity-iframe whitelist is registered for `voltika.mx` only.
+# When a customer reached `www.voltika.mx/configurador_prueba/`, the Truora
+# frame-ancestors check failed and Chrome showed "identity.truora.com
+# rechazó la conexión" inside the iframe (2026-04-29 incident). Redirect
+# at the server layer so the browser is on the matching origin BEFORE any
+# iframe loads, preventing state loss inside the SPA.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP_HOST} ^www\.voltika\.mx$ [NC]
+    RewriteRule ^(.*)$ https://voltika.mx/configurador_prueba/$1 [L,R=301]
+</IfModule>
+
 # Voltika — PHP upload limits (safety net; client-side image compressor
 # should keep most requests far under these values).
 <IfModule mod_php.c>

@@ -150,28 +150,45 @@ var Paso4A = {
         // 8. Contact + Card form (shown immediately — OTP moved to post-payment)
         html += '<div id="vk-checkout-form" style="border-top:2px solid var(--vk-border);padding-top:18px;">';
 
-        // Terms
+        // Terms — links underlined per customer request 2026-04-28; the
+        // amount span (#vk-checkbox-amount) is updated when the user
+        // toggles Pago único / 9 MSI so it always matches the actual
+        // charge.
+        var _checkboxAmount = _esMSICheckout
+            ? ('$' + msiPagoExact.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','))
+            : VkUI.formatPrecio(total);
         html += '<div class="vk-checkbox-group" style="margin-bottom:16px;">';
         html += '<input type="checkbox" class="vk-checkbox" id="vk-terms-check">';
         html += '<label class="vk-checkbox-label" for="vk-terms-check">' +
-            'Acepto los <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" style="color:var(--vk-green-primary);">T\u00e9rminos y Condiciones</a>, el <a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" style="color:var(--vk-green-primary);">Aviso de Privacidad</a> y autorizo expresamente el cargo a mi tarjeta por el monto total indicado, as\u00ed como las condiciones de entrega.' +
+            'Acepto <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">T\u00e9rminos y Condiciones</a>, ' +
+            '<a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">Aviso de Privacidad</a> y el ' +
+            '<a href="docs/contrato_compraventa_2026.html" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">Contrato de Compraventa</a>, ' +
+            'y autorizo el pago de <strong id="vk-checkbox-amount">' + _checkboxAmount + ' MXN</strong> por el medio seleccionado.' +
             '</label>';
         html += '</div>';
 
-        // Contact fields — first + last name
+        // Contact fields — nombre + 1er apellido + 2do apellido
+        // (split per customer request 2026-04-28 to match the credit-flow
+        // shape; downstream code can read state.apellidoPaterno /
+        // apellidoMaterno consistently). Email is mandatory and visually
+        // marked with an asterisk.
         html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">Nombre(s)</label>';
-        html += '<input type="text" class="vk-form-input" id="vk-nombre-pila" placeholder="Juan" autocomplete="given-name">';
+        html += '<label class="vk-form-label">Nombre(s) <span style="color:#C62828;">*</span></label>';
+        html += '<input type="text" class="vk-form-input" id="vk-nombre-pila" placeholder="Juan" autocomplete="given-name" required>';
         html += '</div>';
         html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">Apellidos</label>';
-        html += '<input type="text" class="vk-form-input" id="vk-apellidos" placeholder="P\u00e9rez L\u00f3pez" autocomplete="family-name">';
+        html += '<label class="vk-form-label">Primer apellido <span style="color:#C62828;">*</span></label>';
+        html += '<input type="text" class="vk-form-input" id="vk-apellido-paterno" placeholder="P\u00e9rez" autocomplete="family-name" required>';
+        html += '</div>';
+        html += '<div class="vk-form-group">';
+        html += '<label class="vk-form-label">Segundo apellido <span style="color:#C62828;">*</span></label>';
+        html += '<input type="text" class="vk-form-input" id="vk-apellido-materno" placeholder="L\u00f3pez" autocomplete="additional-name" required>';
         html += '</div>';
         html += '<input type="hidden" id="vk-nombre" value="">';
 
         html += '<div class="vk-form-group">';
-        html += '<label class="vk-form-label">Correo electr\u00f3nico</label>';
-        html += '<input type="email" class="vk-form-input" id="vk-email" placeholder="juanperez@email.com" autocomplete="email">';
+        html += '<label class="vk-form-label">Correo electr\u00f3nico <span style="color:#C62828;">*</span></label>';
+        html += '<input type="email" class="vk-form-input" id="vk-email" placeholder="juanperez@email.com" autocomplete="email" required>';
         html += '</div>';
 
         html += '<div class="vk-form-group">';
@@ -312,11 +329,31 @@ var Paso4A = {
     bindEvents: function() {
         var self = this;
 
+        // Capture acceptance metadata when the user ticks the terms
+        // checkbox (UTC timestamp now; geolocation best-effort, opt-in via
+        // the browser's permission prompt). These feed the contrato PDF
+        // generated server-side after payment confirmation.
+        $(document).off('change', '#vk-terms-check');
+        $(document).on('change', '#vk-terms-check', function() {
+            if (!this.checked) return;
+            self.app.state._termsAcceptedAt = new Date().toISOString();
+            if (navigator.geolocation && !self.app.state._geolocation) {
+                try {
+                    navigator.geolocation.getCurrentPosition(function(pos) {
+                        self.app.state._geolocation = pos.coords.latitude.toFixed(5) + ',' + pos.coords.longitude.toFixed(5);
+                    }, function() {
+                        // User declined or device unavailable — leave blank.
+                    }, { timeout: 4000, enableHighAccuracy: false, maximumAge: 60000 });
+                } catch (e) {}
+            }
+        });
+
         // Button 1: Pago unico
         $(document).off('click', '#vk-pay-unico');
         $(document).on('click', '#vk-pay-unico', function(e) {
             e.preventDefault();
             self._pagoTipo = 'unico';
+            self._refreshCheckboxAmount();
             self._handleSubmit();
         });
 
@@ -325,6 +362,7 @@ var Paso4A = {
         $(document).on('click', '#vk-pay-msi', function(e) {
             e.preventDefault();
             self._pagoTipo = 'msi';
+            self._refreshCheckboxAmount();
             self._handleSubmit();
         });
 
@@ -375,6 +413,8 @@ var Paso4A = {
                     paymentIntentId: self._pendingPaymentIntentId || '',
                     pagoTipo:  self._pendingPaymentMethod || 'spei',
                     nombre:    self._fullName(self.app.state) || self.app.state.nombre,
+                    apellidoPaterno: self.app.state.apellidoPaterno || '',
+                    apellidoMaterno: self.app.state.apellidoMaterno || '',
                     email:     self.app.state.email,
                     telefono:  self.app.state.telefono,
                     modelo:    _modelo ? _modelo.nombre : '',
@@ -383,6 +423,7 @@ var Paso4A = {
                     estado:    self.app.state.estado || '',
                     cp:        self.app.state.cp || '',
                     total:     _total,
+                    costoLogistico: self.app.state.costoLogistico || 0,
                     msiPago:   0,
                     msiMeses:  0,
                     asesoriaPlacas: self.app.state.asesoriaPlacos || false,
@@ -392,13 +433,21 @@ var Paso4A = {
                     punto_tipo:    centro.tipo || '',
                     codigo_referido: self.app.state.codigoReferido || '',
                     referido_id:     refData ? refData.id : null,
-                    referido_tipo:   refData ? refData.tipo : ''
+                    referido_tipo:   refData ? refData.tipo : '',
+                    termsAcceptedAt: self.app.state._termsAcceptedAt || new Date().toISOString(),
+                    geolocation:     self.app.state._geolocation     || '',
+                    otpValidated:    !!self.app.state._otpValidated
                 }),
-                success: function() {
+                success: function(response) {
                     // Keep the button disabled on success — dedup guard
                     // against double-submit when user navigates back after
                     // a downstream validation bounce (e.g. invalid RFC on
                     // factura page). Re-enable ONLY on error below.
+                    if (response && typeof response === 'object') {
+                        if (response.contrato_url)   self.app.state.contratoUrl   = response.contrato_url;
+                        if (response.contrato_token) self.app.state.contratoToken = response.contrato_token;
+                        if (response.pedido)         self.app.state.pedidoNum     = response.pedido;
+                    }
                     self._showPostPaymentOTP();
                 },
                 error: function() {
@@ -491,6 +540,7 @@ var Paso4A = {
             contentType: 'application/json',
             data: JSON.stringify({ telefono: self.app.state.telefono, codigo: code }),
             success: function(res) {
+                self.app.state._otpValidated = true;
                 if (res && (res.ok || res.valido)) {
                     $('#vk-post-otp-success').show();
                     $('#vk-post-otp-error').hide();
@@ -525,14 +575,21 @@ var Paso4A = {
             return;
         }
 
-        // Combine first + last name into hidden vk-nombre field
+        // Compose nombre + 1er apellido + 2do apellido into the hidden
+        // vk-nombre field (downstream code reads it as the full name).
+        // Also persist the split apellidos to state so customerData and
+        // _fullName() can use the same shape as the credit flow.
         var _np = ($('#vk-nombre-pila').val()||'').trim();
-        var _ap = ($('#vk-apellidos').val()||'').trim();
-        $('#vk-nombre').val((_np + ' ' + _ap).trim());
+        var _apP = ($('#vk-apellido-paterno').val()||'').trim();
+        var _apM = ($('#vk-apellido-materno').val()||'').trim();
+        $('#vk-nombre').val(((_np + ' ' + _apP + ' ' + _apM).replace(/\s+/g, ' ')).trim());
+        self.app.state.apellidoPaterno = _apP;
+        self.app.state.apellidoMaterno = _apM;
 
         var valid = true;
-        valid = VkValidacion.validarCampo($('#vk-nombre-pila'), VkValidacion.nombre, 'Ingresa tu nombre') && valid;
-        valid = VkValidacion.validarCampo($('#vk-apellidos'),   VkValidacion.nombre, 'Ingresa tus apellidos') && valid;
+        valid = VkValidacion.validarCampo($('#vk-nombre-pila'),       VkValidacion.nombre, 'Ingresa tu nombre')              && valid;
+        valid = VkValidacion.validarCampo($('#vk-apellido-paterno'),  VkValidacion.nombre, 'Ingresa tu primer apellido')     && valid;
+        valid = VkValidacion.validarCampo($('#vk-apellido-materno'),  VkValidacion.nombre, 'Ingresa tu segundo apellido')    && valid;
         valid = VkValidacion.validarCampo($('#vk-email'),    VkValidacion.email,    'Ingresa un correo valido')   && valid;
         valid = VkValidacion.validarCampo($('#vk-telefono'), VkValidacion.telefono, 'Ingresa un telefono valido (10 digitos)') && valid;
         if (!valid) return;
@@ -639,6 +696,8 @@ var Paso4A = {
             paymentIntentId: paymentIntentId,
             pagoTipo:  self._pagoTipo,
             nombre:    self._fullName(self.app.state) || customerData.nombre,
+            apellidoPaterno: self.app.state.apellidoPaterno || '',
+            apellidoMaterno: self.app.state.apellidoMaterno || '',
             email:     customerData.email,
             telefono:  customerData.telefono,
             modelo:    customerData.modelo,
@@ -647,6 +706,7 @@ var Paso4A = {
             estado:    customerData.estado,
             cp:        customerData.cp,
             total:     total,
+            costoLogistico: self.app.state.costoLogistico || 0,
             msiPago:   msiPago,
             msiMeses:  modelo.msiMeses,
             asesoriaPlacas: self.app.state.asesoriaPlacos || false,
@@ -656,7 +716,14 @@ var Paso4A = {
             punto_tipo:    centro.tipo || '',
             codigo_referido: self.app.state.codigoReferido || '',
             referido_id:     refData ? refData.id : null,
-            referido_tipo:   refData ? refData.tipo : ''
+            referido_tipo:   refData ? refData.tipo : '',
+            // Contract acceptance metadata. termsAcceptedAt is captured the
+            // moment the customer ticked the checkbox; otpValidated stays
+            // false here (the post-payment OTP step toggles it later);
+            // geolocation is opt-in via navigator.geolocation.
+            termsAcceptedAt: self.app.state._termsAcceptedAt || new Date().toISOString(),
+            geolocation:     self.app.state._geolocation     || '',
+            otpValidated:    !!self.app.state._otpValidated
         };
 
         // Persist BEFORE the AJAX so a synchronous crash still leaves a
@@ -687,8 +754,16 @@ var Paso4A = {
             url: url, method: 'POST', contentType: 'application/json',
             data: JSON.stringify(payload), timeout: 20000
         });
-        xhr.done(function() {
+        xhr.done(function(response) {
             try { localStorage.removeItem('vk_pending_confirm'); } catch (e) {}
+            // Stash the contrato download link + pedido for the success
+            // screen. confirmar-orden.php fills these in for non-credit
+            // purchases (contado / msi / spei / oxxo).
+            if (response && typeof response === 'object') {
+                if (response.contrato_url)  self.app.state.contratoUrl   = response.contrato_url;
+                if (response.contrato_token) self.app.state.contratoToken = response.contrato_token;
+                if (response.pedido)         self.app.state.pedidoNum     = response.pedido;
+            }
         }).fail(function(x, status) {
             if (attempt < 3 && status !== 'abort') {
                 setTimeout(function(){
@@ -865,20 +940,45 @@ var Paso4A = {
     },
 
     /**
+     * Refresh the amount shown inside the terms checkbox to match the
+     * currently-selected payment mode. Called from the unico / MSI click
+     * handlers before submitting so the checkbox text always reflects
+     * what is actually being charged.
+     */
+    _refreshCheckboxAmount: function() {
+        var modelo = this.app.getModelo(this.app.state.modeloSeleccionado);
+        if (!modelo) return;
+        var costoLog = this.app.state.costoLogistico || 0;
+        var total    = modelo.precioContado;
+        var totalMSI = modelo.precioContado + costoLog;
+        var msiPago  = modelo.tieneMSI ? Math.round((modelo.precioMSI * 9 + costoLog) / 9) : Math.round(totalMSI / 9);
+        var amount   = (this._pagoTipo === 'msi')
+            ? VkUI.formatPrecio(msiPago)
+            : VkUI.formatPrecio(total);
+        $('#vk-checkbox-amount').text(amount + ' MXN');
+    },
+
+    /**
      * Shared validation for name + email + phone before any checkout submission
      * (card path has its own inline validation; SPEI/OXXO now share this helper
      * so mandatory fields are enforced in all payment paths).
      */
     _validarDatosContacto: function() {
-        // Merge first + last name into hidden vk-nombre field so downstream code
-        // reads the composed value consistently.
-        var _np = ($('#vk-nombre-pila').val()||'').trim();
-        var _ap = ($('#vk-apellidos').val()||'').trim();
-        $('#vk-nombre').val((_np + ' ' + _ap).trim());
+        // Compose nombre + 1er + 2do apellido into the hidden vk-nombre
+        // field (downstream code reads it as the full name) and persist
+        // the split apellidos to state so customerData has the same shape
+        // as the credit flow.
+        var _np  = ($('#vk-nombre-pila').val()||'').trim();
+        var _apP = ($('#vk-apellido-paterno').val()||'').trim();
+        var _apM = ($('#vk-apellido-materno').val()||'').trim();
+        $('#vk-nombre').val(((_np + ' ' + _apP + ' ' + _apM).replace(/\s+/g, ' ')).trim());
+        this.app.state.apellidoPaterno = _apP;
+        this.app.state.apellidoMaterno = _apM;
 
         var valid = true;
-        valid = VkValidacion.validarCampo($('#vk-nombre-pila'), VkValidacion.nombre,   'Ingresa tu nombre')                       && valid;
-        valid = VkValidacion.validarCampo($('#vk-apellidos'),   VkValidacion.nombre,   'Ingresa tus apellidos')                   && valid;
+        valid = VkValidacion.validarCampo($('#vk-nombre-pila'),       VkValidacion.nombre,   'Ingresa tu nombre')                       && valid;
+        valid = VkValidacion.validarCampo($('#vk-apellido-paterno'),  VkValidacion.nombre,   'Ingresa tu primer apellido')              && valid;
+        valid = VkValidacion.validarCampo($('#vk-apellido-materno'),  VkValidacion.nombre,   'Ingresa tu segundo apellido')             && valid;
         valid = VkValidacion.validarCampo($('#vk-email'),       VkValidacion.email,    'Ingresa un correo valido')                && valid;
         valid = VkValidacion.validarCampo($('#vk-telefono'),    VkValidacion.telefono, 'Ingresa un telefono valido (10 digitos)') && valid;
         if (!valid) {

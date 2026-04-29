@@ -216,6 +216,66 @@ foreach ($consigEstancada as $ce) {
     ];
 }
 
+// ── Tech Spec EN §7 — operational triggers (CRITICAL) ───────────────────
+// Lazy-create escalations table so chargeback / PROFECO / dispute events
+// land somewhere queryable. Stripe webhook + admin UI both write to it.
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS escalations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        kind        VARCHAR(40)  NOT NULL,    -- chargeback | profeco | dispute | card_fail | identity_mismatch
+        severity    VARCHAR(20)  NOT NULL DEFAULT 'critical',
+        cliente_id  INT NULL,
+        transaccion_id INT NULL,
+        moto_id     INT NULL,
+        ref_externa VARCHAR(120) NULL,        -- Stripe dispute id, PROFECO folio, etc.
+        titulo      VARCHAR(200) NOT NULL,
+        detalle     TEXT NULL,
+        estado      VARCHAR(20)  NOT NULL DEFAULT 'open',  -- open | in_progress | resolved | closed
+        asignado_a  VARCHAR(80)  NULL,        -- legal | finance | ops | admin user id
+        notas       MEDIUMTEXT   NULL,
+        freg        DATETIME DEFAULT CURRENT_TIMESTAMP,
+        fmod        DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        resolved_at DATETIME NULL,
+        INDEX idx_estado_kind (estado, kind),
+        INDEX idx_cliente (cliente_id),
+        INDEX idx_transaccion (transaccion_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+} catch (Throwable $e) { error_log('escalations table: ' . $e->getMessage()); }
+
+// Surface every OPEN escalation as an alert. Sort by severity later.
+$openEscalations = $safeAll(
+    "SELECT id, kind, severity, titulo, detalle, ref_externa, freg
+     FROM escalations
+     WHERE estado IN ('open','in_progress')
+     ORDER BY freg DESC LIMIT 100"
+);
+$kindIcon = [
+    'chargeback'        => 'pago_fallo',
+    'profeco'           => 'detenida',
+    'dispute'           => 'pago_fallo',
+    'card_fail'         => 'pago_fallo',
+    'identity_mismatch' => 'detenida',
+];
+$kindLabel = [
+    'chargeback'        => 'Contracargo (chargeback)',
+    'profeco'           => 'PROFECO',
+    'dispute'           => 'Disputa abierta',
+    'card_fail'         => 'Tarjeta fallida (3+ intentos)',
+    'identity_mismatch' => 'Identidad NO coincide',
+];
+foreach ($openEscalations as $esc) {
+    $alerts[] = [
+        'tipo'      => 'escalation_' . $esc['kind'],
+        'prioridad' => $esc['severity'] === 'critical' ? 'alta' : ($esc['severity'] === 'high' ? 'alta' : 'media'),
+        'titulo'    => ($kindLabel[$esc['kind']] ?? $esc['kind']) . ': ' . $esc['titulo'],
+        'mensaje'   => ($esc['detalle'] ? $esc['detalle'] . ' · ' : '')
+                     . ($esc['ref_externa'] ? 'Ref ' . $esc['ref_externa'] . ' · ' : '')
+                     . 'Abierta el ' . date('d/m/Y', strtotime($esc['freg'])),
+        'icono'     => $kindIcon[$esc['kind']] ?? 'detenida',
+        'escalation_id' => (int)$esc['id'],
+    ];
+}
+
 // Sort: alta first, then media, then info
 $prioOrder = ['alta' => 0, 'media' => 1, 'info' => 2];
 usort($alerts, function($a, $b) use ($prioOrder) {

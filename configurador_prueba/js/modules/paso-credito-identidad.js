@@ -30,13 +30,21 @@ var PasoCreditoIdentidad = {
     _currentProcessId: null,
     _finished: false,
 
+    _initCount: 0,
+
     init: function(app) {
+        this._initCount = (this._initCount || 0) + 1;
+        var thisCount = this._initCount;
         this.app = app;
         this._iframeReady    = false;
         this._tokenFetched   = false;
         this._currentProcessId = null;
         this._finished       = false;
         this.render();
+        // After render the debug panel exists — log init-count BEFORE
+        // anything else so we know if SPA is calling init() multiple
+        // times (which would explain a destroyed-iframe symptom).
+        this._appendDebug('init() call #' + thisCount + ' @ ' + new Date().toLocaleTimeString());
         this._startIframe();
         this._bindMessageListener();
     },
@@ -105,6 +113,11 @@ var PasoCreditoIdentidad = {
         // 9. Footer
         html += '<div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:12px;">Tu moto permanecerá reservada mientras completas este paso.</div>';
 
+        // 10. Debug log panel (visible — captures iframe events on the
+        //     user's actual device since most won't open DevTools).
+        //     Hidden once we confirm production is stable.
+        html += '<div id="vk-truora-debug" style="margin-top:14px;padding:10px 12px;background:#0f172a;color:#94a3b8;border-radius:8px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;line-height:1.6;max-height:160px;overflow-y:auto;">[debug] esperando iniciar verificación...</div>';
+
         jQuery('#vk-credito-identidad-container').html(html);
 
         // Bind retry button
@@ -125,6 +138,7 @@ var PasoCreditoIdentidad = {
             );
             self._startIframe();
         });
+
     },
 
     _showError: function(msg, detail) {
@@ -134,6 +148,19 @@ var PasoCreditoIdentidad = {
         ).show();
         jQuery('#vk-identidad-retry').show();
         jQuery('#vk-truora-loader').hide();
+        this._appendDebug('SHOW ERROR: ' + msg);
+    },
+
+    // Append a line to the on-page debug panel. Helps diagnose iframe
+    // failures on real devices where the user can't open DevTools.
+    _appendDebug: function(line) {
+        try {
+            var dbg = document.getElementById('vk-truora-debug');
+            if (!dbg) return;
+            if (dbg.innerText.indexOf('esperando iniciar') === 0) dbg.innerText = '';
+            dbg.innerText += '\n' + line;
+            dbg.scrollTop = dbg.scrollHeight;
+        } catch (e) {}
     },
 
     _startIframe: function() {
@@ -154,6 +181,30 @@ var PasoCreditoIdentidad = {
             curp:       (state.curp || '').toUpperCase(),
         };
 
+        // Capture browser-level events that might silently block iframes.
+        if (!self._envProbed) {
+            self._envProbed = true;
+            document.addEventListener('securitypolicyviolation', function(ev) {
+                self._appendDebug('CSP-violation: ' + ev.violatedDirective + ' blocked=' + ev.blockedURI);
+            });
+            try {
+                if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+                    navigator.serviceWorker.getRegistrations().then(function(regs) {
+                        if (regs && regs.length) {
+                            self._appendDebug('SW: ' + regs.length + ' registrations · ' +
+                                regs.map(function(r){ return r.scope; }).join(', '));
+                        } else {
+                            self._appendDebug('SW: none');
+                        }
+                    });
+                }
+            } catch (e) {}
+            self._appendDebug('cookies-enabled=' + navigator.cookieEnabled +
+                ' · UA=' + (navigator.userAgent || '').substr(0, 80));
+        }
+
+        self._appendDebug('POST truora-token.php... @ ' + new Date().toLocaleTimeString());
+
         jQuery.ajax({
             url: 'php/truora-token.php',
             method: 'POST',
@@ -162,6 +213,7 @@ var PasoCreditoIdentidad = {
             dataType: 'json',
         }).done(function(r) {
             if (!r || !r.ok || !r.iframe_url) {
+                self._appendDebug('token NOT OK: ' + JSON.stringify(r).substr(0, 100));
                 self._showError(
                     'No pudimos iniciar la verificación de identidad.',
                     (r && (r.error || r.body)) ? (r.error || '') + ' ' + (r.body || '') : ''
@@ -169,39 +221,130 @@ var PasoCreditoIdentidad = {
                 return;
             }
 
+            self._appendDebug('token OK · flow_id=' + r.flow_id + ' · account=' + r.account_id);
             state._truoraAccountId = r.account_id;
             state._truoraFlowId    = r.flow_id;
+            state._truoraIframeUrl = r.iframe_url;
 
-            // Replace loader with the iframe. Minimum size from Truora docs:
-            // 450x700 — we use 100% width and 720px height to fit mobile.
-            var iframeHtml = '<iframe id="vk-truora-iframe" ' +
-                'src="' + r.iframe_url + '" ' +
-                'allow="camera; microphone; geolocation" ' +
-                'style="width:100%;height:720px;border:0;display:block;background:#fff;">' +
-                '</iframe>';
-            jQuery('#vk-truora-container').html(iframeHtml);
+            // Build iframe element programmatically.
+            //
+            // Canonical pattern (matches the working diagnostic page at
+            // truora-diag-completo.php which renders Truora correctly):
+            //   1. create element
+            //   2. set src
+            //   3. append to DOM
+            //
+            // We previously tried APPEND-first-then-SET-SRC + cache-bust
+            // ?_cb=<ts>. That combination broke real-flow rendering:
+            //   - APPEND-first triggered a phantom `load` event for
+            //     about:blank in some Chromium versions, marking the
+            //     iframe as "loaded" before the real URL was assigned.
+            //     Subsequent silent CSP/X-Frame blocks then weren't
+            //     caught by our 45 s timeout.
+            //   - The cache-bust param produced URLs not signed by the
+            //     JWT, which Truora's gateway in some configurations
+            //     treats as tampered — returning a blank page rather
+            //     than the flow.
+            self._iframeLoaded = false;
+            self._iframeLoadCount = 0;
+            var iframe = document.createElement('iframe');
+            iframe.id    = 'vk-truora-iframe';
+            iframe.allow = 'camera; microphone; geolocation; payment; clipboard-write';
+            iframe.setAttribute('allowfullscreen', '');
+            iframe.setAttribute('referrerpolicy', 'origin-when-cross-origin');
+            iframe.setAttribute('style', 'width:100%;height:720px;border:0;display:block;background:#fff;');
+
+            // Listener BEFORE src so the very first load event is captured.
+            iframe.addEventListener('load', function() {
+                self._iframeLoadCount++;
+                self._iframeLoaded = true;
+                var now = new Date().toLocaleTimeString();
+                if (window.console) console.log('[Truora iframe] load event fired (#' + self._iframeLoadCount + ' at ' + now + ')');
+                self._appendDebug('load #' + self._iframeLoadCount + ' @ ' + now);
+            });
+            iframe.addEventListener('error', function() {
+                if (window.console) console.error('[Truora iframe] error event fired');
+                self._appendDebug('ERROR event @ ' + new Date().toLocaleTimeString());
+                if (self._finished || self._currentProcessId) return;
+                self._showError(
+                    'La verificación de identidad no pudo cargar.',
+                    'Revisa tu conexión a internet. Si el problema persiste, ' +
+                    'escríbenos a WhatsApp +52 55 1341 6370 o ventas@voltika.mx.'
+                );
+            });
+
+            // Wrap the Truora iframe in our own host page (php/truora-iframe-host.php)
+            // so it loads in an isolated browsing context. The host page is
+            // a same-origin minimal HTML that embeds Truora as a nested
+            // iframe and forwards postMessages back to us via
+            // window.parent.postMessage with a `__from_truora_host` flag.
+            //
+            // Why: empirical testing 2026-04-29 (truora-test-personal.php)
+            // proved the Truora iframe renders perfectly in any standalone
+            // page on this same origin — including pages that reproduce
+            // the SPA's exact DOM nesting and CSS. Yet the iframe renders
+            // BLANK when embedded directly in the configurador SPA. The
+            // SPA's window scope (one of the many JS modules loaded during
+            // the credit flow) interferes with Truora; loading Truora in a
+            // sub-iframe gives it a fresh window where nothing has touched
+            // the postMessage path or DOM observers.
+            var hostUrl = 'php/truora-iframe-host.php?u=' + encodeURIComponent(r.iframe_url);
+            iframe.src = hostUrl;
+            self._appendDebug('host src set: ' + hostUrl.substr(0, 80) + '...');
+
+            jQuery('#vk-truora-container').empty().append(iframe);
             self._iframeReady = true;
+            self._appendDebug('iframe appended @ ' + new Date().toLocaleTimeString());
+            self._appendDebug('referrer=' + (document.referrer || '(empty)') + ' · location=' + location.href);
 
-            // Customer brief 2026-04-27: blank-iframe detection. Truora
-            // blocks embeds from unwhitelisted domains via X-Frame-Options
-            // / CSP frame-ancestors — the iframe element loads but stays
-            // blank, leaving the user staring at a white box. Set a 15s
-            // timeout: if no Truora postMessage event arrives by then,
-            // assume the embed is blocked and surface a clear next-step
-            // message with contact info.
+            // Probe iframe state at intervals — tells us if Truora is
+            // initializing inside the iframe even when no postMessage
+            // arrives. Cross-origin access throws SecurityError = good
+            // (Truora's content is loaded). Returns about:blank/null = bad.
+            var probe = function(label) {
+                try {
+                    var f = document.getElementById('vk-truora-iframe');
+                    if (!f) { self._appendDebug(label + ': iframe MISSING from DOM!'); return; }
+                    var rect = f.getBoundingClientRect();
+                    var info = label + ': size=' + Math.round(rect.width) + 'x' + Math.round(rect.height) +
+                               ' visible=' + (rect.width > 0 && rect.height > 0);
+                    try {
+                        var loc = f.contentWindow && f.contentWindow.location;
+                        var href = loc && loc.href;
+                        info += ' contentLoc=' + (href || 'null');
+                    } catch (e) {
+                        // SecurityError = cross-origin content loaded (good — Truora is there)
+                        info += ' contentLoc=BLOCKED(cross-origin OK · ' + (e.name || 'err') + ')';
+                    }
+                    self._appendDebug(info);
+                } catch (e) {
+                    self._appendDebug(label + ' probe failed: ' + (e.message || e));
+                }
+            };
+            setTimeout(function(){ probe('probe@3s'); }, 3000);
+            setTimeout(function(){ probe('probe@10s'); }, 10000);
+            setTimeout(function(){ probe('probe@25s'); }, 25000);
+
+            // Hard fallback: if `load` never fires AND no Truora postMessage
+            // arrives within 45s, network or browser-level block. We use
+            // 45s instead of 30 because cold-start Truora + slow mobile
+            // networks can take 15-25s; postMessages cancel the timer.
             if (self._blankTimeout) clearTimeout(self._blankTimeout);
             self._blankTimeout = setTimeout(function() {
-                if (self._finished) return;
-                if (self._currentProcessId) return; // iframe is talking to us — fine
-                self._showError(
-                    'La verificación de identidad no se cargó correctamente.',
-                    'Esto suele ocurrir cuando el dominio aún no está autorizado por Truora. ' +
-                    'Si el problema persiste, escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370 ' +
-                    'para completar tu solicitud manualmente.'
-                );
-            }, 15000);
+                if (self._finished || self._currentProcessId) return;
+                if (!self._iframeLoaded) {
+                    self._showError(
+                        'La verificación de identidad tardó demasiado en cargar.',
+                        'Revisa tu conexión a internet y reintenta. Si el problema persiste, ' +
+                        'escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.'
+                    );
+                }
+                // If load fired but no postMessage, do NOTHING — the user
+                // may simply be reading the screen before interacting.
+            }, 45000);
         }).fail(function(xhr) {
             var body = (xhr && xhr.responseJSON) || null;
+            self._appendDebug('AJAX FAIL: HTTP ' + (xhr && xhr.status));
             self._showError(
                 'No pudimos conectar con el servicio de verificación.',
                 (body && (body.error || body.hint)) || ('HTTP ' + (xhr && xhr.status))
@@ -214,12 +357,38 @@ var PasoCreditoIdentidad = {
         if (this._messageBound) return;
         this._messageBound = true;
 
+        // VERBOSE: log EVERY postMessage from ANY origin so we can see
+        // if Truora is sending anything at all (we previously filtered to
+        // only `truora.*` events but observed silence — need to know if
+        // events are arriving with different naming).
         window.addEventListener('message', function(event) {
-            // Only accept messages from identity.truora.com origin. Truora
-            // docs do not guarantee a specific origin string, so we
-            // accept anything that looks like a Truora event.
+            var d = event && event.data;
+            var origin = event && event.origin || '?';
+            var preview = '';
+            if (typeof d === 'string') preview = d.substr(0, 80);
+            else if (d && typeof d === 'object') {
+                try { preview = JSON.stringify(d).substr(0, 80); } catch (e) { preview = '[unserializable]'; }
+            } else preview = '(empty)';
+            self._appendDebug('msg<' + origin + '> ' + preview);
+        }, false);
+
+        window.addEventListener('message', function(event) {
             var data = event && event.data;
             if (!data) return;
+
+            // Unwrap messages forwarded by truora-iframe-host.php. The
+            // host wraps each Truora postMessage as
+            //   { __from_truora_host: true, origin, data }
+            // and also emits its own host_event lifecycle pings so the
+            // SPA can see when the host iframe loaded.
+            if (data && typeof data === 'object' && data.__from_truora_host) {
+                if (data.host_event) {
+                    self._appendDebug('host: ' + data.host_event);
+                    return;
+                }
+                data = data.data;  // unwrap
+                if (!data) return;
+            }
 
             // Messages can be strings ("truora.process.succeeded") or
             // objects ({ event: "truora.process.succeeded", process_id, ... })
@@ -233,6 +402,7 @@ var PasoCreditoIdentidad = {
             }
 
             if (!eventName || eventName.indexOf('truora') !== 0) return;
+            self._appendDebug('truora-event: ' + eventName + (processId ? ' (' + processId + ')' : ''));
 
             // Truora is talking — cancel the blank-iframe timeout so the
             // user doesn't see a false "no se cargó" error mid-flow.

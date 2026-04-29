@@ -239,6 +239,17 @@
         inicializarPaso: function(paso) {
             switch (paso) {
                 case 1:
+                    // Paso1 normally renders only at app startup. But if the
+                    // user landed on a deep step via ?test_credito=... or via
+                    // localStorage restore (credito-resultado / no_viable
+                    // screens), Paso1.init() never ran and #vk-modelos-container
+                    // is empty. Clicking "Cambiar" on the no-viable screen
+                    // (irAPaso(1)) then showed a blank page (customer report
+                    // 2026-04-29). Re-initialize lazily when the container has
+                    // no rendered content yet — Paso1.render() is idempotent.
+                    if ($('#vk-modelos-container').children().length === 0) {
+                        Paso1.init(this);
+                    }
                     break;
                 case 2:
                     Paso2.init(this);

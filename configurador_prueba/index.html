@@ -3,6 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Force non-www host. Truora's identity-iframe whitelist is registered
+         for voltika.mx (no www) and Chrome blocks the iframe with
+         "rechazó la conexión" when embedded under www.voltika.mx. The
+         .htaccess rewrite covers this at the server layer; this script is
+         a defense-in-depth fallback in case the rewrite is disabled. -->
+    <script>
+    (function(){
+        if (location.hostname.indexOf('www.') === 0) {
+            location.replace(location.protocol + '//' +
+                location.hostname.substring(4) +
+                location.pathname + location.search + location.hash);
+        }
+    })();
+    </script>
     <!-- Anti-cache: the credit evaluation flow was blocked by stale JS + state
          after Ctrl+Shift+R. Ensure the configurador HTML + scripts are always
          re-fetched so verification-logic fixes propagate immediately. -->
@@ -47,7 +61,7 @@
 
     <!-- Voltika Configurador CSS -->
     <link rel="stylesheet" href="css/configurador-variables.css">
-    <link rel="stylesheet" href="css/configurador.css">
+    <link rel="stylesheet" href="css/configurador.css?v=20260429b">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
@@ -739,7 +753,7 @@
     <script src="js/modules/paso-credito-consentimiento.js?v=20260423b"></script>
     <script src="js/modules/paso-credito-loading.js?v=20260423b"></script>
     <script src="js/modules/paso-credito-aprobado.js?v=20260423b"></script>
-    <script src="js/modules/paso-credito-identidad.js?v=20260322"></script>
+    <script src="js/modules/paso-credito-identidad.js?v=20260429c"></script>
     <script src="js/modules/paso-credito-resultado.js?v=20260423d"></script>
     <script src="js/modules/paso-credito-pago.js?v=20260322"></script>
     <script src="js/modules/paso-credito-enganche.js?v=20260322"></script>
@@ -748,7 +762,7 @@
     <script src="js/modules/paso-credito-facturacion.js?v=20260411"></script>
     <script src="js/modules/paso-facturacion.js?v=20260322"></script>
     <script src="js/modules/paso-exito.js?v=20260329"></script>
-    <script src="js/configurador.js?v=20260423b"></script>
+    <script src="js/configurador.js?v=20260429d"></script>
 
     <!-- Model tabs fixed nav — body level to avoid CSS transform stacking context -->
     <div id="vk-modelo-nav-fixed" class="vk-modelo-nav-fixed" style="display:none;">
