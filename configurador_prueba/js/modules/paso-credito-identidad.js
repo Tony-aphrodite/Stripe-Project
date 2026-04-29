@@ -105,8 +105,8 @@ var PasoCreditoIdentidad = {
         html += '<div class="vk-identidad-consejos__title">Consejos rápidos</div>';
         html += '<div class="vk-identidad-consejos__grid">';
         html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Buena iluminación</div>';
-        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Documento completo</div>';
-        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Selfie con rostro despejado</div>';
+        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Documento completo (frente y reverso)</div>';
+        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> INE legible y sin reflejos</div>';
         html += '</div>';
         html += '</div>';
 
@@ -376,6 +376,40 @@ var PasoCreditoIdentidad = {
             var data = event && event.data;
             if (!data) return;
 
+            // ── Post-redirect signal from truora-redirect.php ────────────
+            // When Truora finishes the flow it lands the user on our
+            // truora-redirect.php page. That page then posts up a
+            // { vk_truora_otp_returned, process_id, status, ... } payload.
+            //
+            // Customer brief 2026-04-30: "If the truora validation is ok,
+            // send to the enganche pay screen." — when this signal
+            // arrives we know Truora's flow finished successfully (only
+            // a successful flow reaches the redirect URL). Advance
+            // immediately. Background CURP check + server-side order
+            // guard handle anti-fraud.
+            if (data && typeof data === 'object' && data.vk_truora_otp_returned) {
+                if (self._finished) return;
+                var pid = data.process_id || data.identity_process_id || data.id || null;
+                var aid = data.account_id || data.user_id || null;
+                if (pid) {
+                    state._truoraProcessId = state._truoraProcessId || pid;
+                    self._currentProcessId = self._currentProcessId || pid;
+                }
+                if (aid && !state._truoraAccountId) state._truoraAccountId = aid;
+                self._appendDebug('redirect signal · pid=' + (pid || '?') + ' aid=' + (aid || '?'));
+                // Start the audit-trail polling in the background — we
+                // don't gate on it, but we want the row populated.
+                self._pollWebhookResult(state._truoraProcessId || self._currentProcessId);
+                // Advance to the payment screen NOW.
+                self._finished = true;
+                state._identidadVerificada = true;
+                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
+                if (self.app && typeof self.app.irAPaso === 'function') {
+                    self.app.irAPaso('credito-enganche');
+                }
+                return;
+            }
+
             // Unwrap messages forwarded by truora-iframe-host.php. The
             // host wraps each Truora postMessage as
             //   { __from_truora_host: true, origin, data }
@@ -423,11 +457,31 @@ var PasoCreditoIdentidad = {
 
         switch (eventName) {
             case 'truora.process.succeeded':
-                // Hard success — all steps passed. Advance immediately.
+                // Customer brief 2026-04-30: "If the truora validation is
+                // ok, send to the enganche pay screen." — immediate
+                // advance. Don't make the user wait while we wait for the
+                // webhook + CURP comparison; that gating was making the
+                // SPA miss the success window when the page reloaded or
+                // when the polling never resolved (boss kept landing back
+                // on credito-otp).
+                //
+                // Anti-fraud is still enforced — but as a parallel check,
+                // not a gate:
+                //   1. The backend logs the CURP comparison in
+                //      truora_curp_audit (webhook + status.php fallback).
+                //   2. Server-side confirmar-orden.php / Stripe handler
+                //      refuses to create the actual purchase row when
+                //      curp_match === 0, so a fraudster who reaches
+                //      enganche still cannot complete the order.
+                //   3. Admin sees flagged identities in the dashboard for
+                //      manual review before delivery.
                 this._finished = true;
                 state._identidadVerificada = true;
                 state._truoraProcessId = (data && (data.process_id || data.identity_process_id)) || this._currentProcessId;
                 try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
+                // Fire-and-forget background poll so the audit trail is
+                // populated even though we already advanced.
+                this._pollWebhookResult(state._truoraProcessId || this._currentProcessId);
                 if (this.app && typeof this.app.irAPaso === 'function') {
                     this.app.irAPaso('credito-enganche');
                 }
@@ -460,6 +514,41 @@ var PasoCreditoIdentidad = {
         }
     },
 
+    // Out-of-band status check. Used when the redirect-page signal
+    // arrives so the SPA settles immediately instead of waiting for the
+    // next polling tick. Idempotent — duplicate calls are harmless.
+    _forceStatusCheck: function() {
+        var self = this;
+        var state = (this.app && this.app.state) || {};
+        if (this._finished) return;
+        var params = {};
+        var pid = state._truoraProcessId || this._currentProcessId;
+        var aid = state._truoraAccountId;
+        if (pid) params.process_id = pid;
+        else if (aid) params.account_id = aid;
+        else return;
+        self._appendDebug('force-check ' + JSON.stringify(params));
+        jQuery.get('php/truora-status.php', params).done(function(r) {
+            if (!r) return;
+            self._appendDebug('force-check result · approved=' + r.approved +
+                ' status=' + r.status + ' curp_match=' + r.curp_match +
+                ' source=' + (r.source || '?'));
+            if (r.approved === 1 && r.curp_match !== 0) {
+                self._finished = true;
+                self.app.state._identidadVerificada = true;
+                self.app.irAPaso('credito-enganche');
+            } else if (r.approved === 0) {
+                self._finished = true;
+                self._showError(
+                    'No pudimos verificar tu identidad.',
+                    (r.declined_reason || '') + ' Puedes reintentar.'
+                );
+            }
+            // approved === null → keep the existing 4-second poll running;
+            // the API fallback in truora-status.php may need another tick.
+        });
+    },
+
     _pollWebhookResult: function(processId) {
         if (!processId) return;
         var self = this;
@@ -469,12 +558,47 @@ var PasoCreditoIdentidad = {
             tries++;
             jQuery.get('php/truora-status.php', { process_id: processId })
                 .done(function(r) {
-                    if (r && r.approved === 1) {
+                    if (!r) return;
+                    self._appendDebug('poll #' + tries + ': approved=' + r.approved +
+                        ' status=' + r.status + ' curp_match=' + r.curp_match);
+
+                    // ── Anti-fraud guard ──────────────────────────────────
+                    // approved=0 + curp_match=0 means Truora's verified
+                    // CURP did NOT match the CURP we used for the credit
+                    // bureau check. Reject loudly.
+                    if (r.approved === 0 && (r.curp_match === 0 ||
+                        r.declined_reason === 'identity_curp_mismatch' ||
+                        r.declined_reason === 'verified_curp_unavailable')) {
+                        clearInterval(timer);
+                        self._finished = true;
+                        self._showError(
+                            'La identidad verificada no coincide con los datos del estudio de crédito.',
+                            'Por seguridad, la persona que sube su INE debe ser la misma que solicitó el crédito. ' +
+                            'Si crees que esto es un error, contáctanos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.'
+                        );
+                        return;
+                    }
+
+                    if (r.approved === 1) {
+                        // Defense-in-depth: only advance if curp_match is
+                        // explicitly 1 OR null (legacy rows from before
+                        // this column existed). curp_match === 0 should
+                        // never reach here because the webhook would have
+                        // set approved=0, but guard anyway.
+                        if (r.curp_match === 0) {
+                            clearInterval(timer);
+                            self._finished = true;
+                            self._showError(
+                                'Conflicto en los datos de identidad.',
+                                'La persona verificada no coincide con la del estudio de crédito.'
+                            );
+                            return;
+                        }
                         clearInterval(timer);
                         self._finished = true;
                         self.app.state._identidadVerificada = true;
                         self.app.irAPaso('credito-enganche');
-                    } else if (r && r.approved === 0 && r.status === 'failure') {
+                    } else if (r.approved === 0 && r.status === 'failure') {
                         clearInterval(timer);
                         self._finished = true;
                         self._showError(

@@ -433,5 +433,77 @@
   </div>
 
 </article>
+
+<script>
+/* Voltika — fill placeholders from URL hash so the preview shows the
+   customer's actual data instead of {{template}} markers (boss report
+   2026-04-29: "the contract still empty"). The configurador appends a
+   hash like #data=<urlencoded JSON> when linking to this template; if
+   present, every {{key}} is replaced with data[key] and the warning
+   banner is hidden. If the hash is missing the page falls back to its
+   original template behaviour. */
+(function(){
+    function readHashData() {
+        var h = (location.hash || '').replace(/^#/, '');
+        if (!h) return null;
+        // Support either ?key=val style or data=<json>
+        try {
+            if (h.indexOf('data=') === 0) {
+                return JSON.parse(decodeURIComponent(h.substr(5)));
+            }
+            var out = {};
+            var parts = h.split('&');
+            for (var i = 0; i < parts.length; i++) {
+                var kv = parts[i].split('=');
+                if (kv.length === 2) out[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]);
+            }
+            return out;
+        } catch (e) { return null; }
+    }
+
+    var data = readHashData();
+    if (!data) return;
+
+    // Format dates and currency consistently with the PDF generator.
+    function fmtMoney(n) {
+        n = parseFloat(n); if (isNaN(n)) return '';
+        return '$' + n.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+    var mesesEs = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    function fmtDate(s) {
+        if (!s || !/^\d{4}-\d{2}-\d{2}/.test(s)) return s;
+        var d = new Date(s);
+        if (isNaN(d)) return s;
+        return d.getDate() + ' de ' + mesesEs[d.getMonth()] + ' de ' + d.getFullYear();
+    }
+    ['contract_date', 'estimated_delivery_date', 'payment_date', 'acceptance_timestamp'].forEach(function(k){
+        if (data[k] != null && data[k] !== '') data[k] = fmtDate(data[k]);
+    });
+    ['vehicle_price','total_amount','enganche_amount','logistics_cost'].forEach(function(k){
+        if (data[k] != null && data[k] !== '') data[k] = fmtMoney(data[k]);
+    });
+
+    // Replace every {{key}} occurrence inside <span class="vk-placeholder">.
+    var placeholders = document.querySelectorAll('.vk-placeholder');
+    for (var i = 0; i < placeholders.length; i++) {
+        var el = placeholders[i];
+        var raw = el.textContent || '';
+        var m = raw.match(/^\s*\{\{(.+?)\}\}\s*$/);
+        if (!m) continue;
+        var key = m[1].trim();
+        if (data[key] != null && data[key] !== '') {
+            el.textContent = data[key];
+            // Remove the highlight styling so it looks like real data.
+            el.classList.remove('vk-placeholder');
+            el.classList.add('vk-filled');
+        }
+    }
+
+    // Hide the "preview" warning banner — data is real now.
+    var banner = document.querySelector('.vk-template-banner');
+    if (banner) banner.style.display = 'none';
+})();
+</script>
+
 </body>
 </html>

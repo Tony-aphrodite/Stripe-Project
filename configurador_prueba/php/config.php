@@ -81,8 +81,23 @@ if (!defined('TRUORA_WEBHOOK_SECRET')) {
 // Digital Identity Flow ID (IPFxxxxxx...). Created in Truora dashboard →
 // Products → Digital Identity → My Flows. Required for the iframe
 // integration in truora-token.php.
+//
+// 2026-04-30: switched from "Mi primer proceso"
+// (IPF3bde046a2faccbc75a9492d90a3918f5) to the new flow
+// IPFba752c90cbb921432ca3b452a1bb06e7 published after the boss
+// requested adding Face match (selfie + liveness). The previous flow
+// returned "enrollment not found" because Face Validation wasn't active
+// in the account; the new flow lives in the upgraded plan.
+//
+// Hardcoded here (not via getenv) on purpose — the production server's
+// env var was set to the old flow_id and changing it requires a Plesk
+// admin restart. Updating the constant in this file is faster and keeps
+// the deployment self-contained. To revert, replace the literal below.
 if (!defined('TRUORA_FLOW_ID')) {
-    define('TRUORA_FLOW_ID', getenv('TRUORA_FLOW_ID') ?: '');
+    // 2026-04-30 (later): Truora support confirmed it was not an
+    // authorization issue but a flow-level config problem. Customer
+    // provided this new flow_id to use instead.
+    define('TRUORA_FLOW_ID', 'IPF8b7d8f8bcfe036701638fbd9825a969d');
 }
 // Digital Identity API base URL — used for /v1/processes/* (process
 // results, PDFs). NOT used for /v1/api-keys (see TRUORA_ACCOUNT_API_URL).

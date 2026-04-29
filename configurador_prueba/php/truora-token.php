@@ -88,8 +88,24 @@ $accountId = $clienteId !== ''
     : 'voltika_t_' . $randomSuffix;
 
 // ── Build the redirect URL (where Truora sends the user after the flow) ─
-$redirectBase = defined('VOLTIKA_BASE_URL') ? VOLTIKA_BASE_URL : (getenv('VOLTIKA_BASE_URL') ?: 'https://www.voltika.mx');
-$redirectUrl  = rtrim($redirectBase, '/') . '/configurador_prueba/#credito-identidad';
+//
+// SECURITY/UX (2026-04-29 incident): redirect_url MUST NOT point at the
+// SPA itself. When Truora's email-OTP step redirects the user back to
+// `/configurador_prueba/#credito-identidad`, the SPA reloads, restores
+// state from localStorage, and routes to whatever paso the persisted
+// state holds (boss's case: landed on Círculo de Crédito consent screen
+// mid-Truora-flow, breaking the verification).
+//
+// Use a static landing page instead: confirms the OTP completed and
+// asks the user to return to the original tab. The SPA continues to
+// own its own state, untouched by Truora's redirect.
+//
+// Also use voltika.mx (no www) — the .htaccess force-redirects www
+// requests but using non-www directly avoids an extra hop and prevents
+// a www→non-www redirect from breaking Truora's call.
+$redirectBase = defined('VOLTIKA_BASE_URL') ? VOLTIKA_BASE_URL : (getenv('VOLTIKA_BASE_URL') ?: 'https://voltika.mx');
+$redirectBase = preg_replace('#^https?://www\.#i', 'https://', $redirectBase);
+$redirectUrl  = rtrim($redirectBase, '/') . '/configurador_prueba/php/truora-redirect.php';
 
 // ── Call Truora: POST /v1/api-keys ───────────────────────────────────────
 // Customer report 2026-04-28: when we prefilled phones[]/emails[], Truora's
@@ -98,6 +114,12 @@ $redirectUrl  = rtrim($redirectBase, '/') . '/configurador_prueba/#credito-ident
 // step entirely we omit prefill and let Truora collect phone/email from
 // the user inside the flow. (We still record them in our own stub row
 // below for admin/forensics.)
+// IMPORTANT: keep this body limited to fields Truora's /v1/api-keys
+// endpoint actually accepts. Adding unknown fields (we tried
+// `language`/`lang`/`locale` 2026-04-30 to force Spanish UI) causes the
+// endpoint to return 400 → we forward as 502. Spanish is enforced via
+// the iframe URL query string instead (see `$iframeUrl` below), which
+// Truora's frontend tolerates regardless of API-side validation.
 $fields = [
     'key_type'     => 'web',
     'grant'        => 'digital-identity',
@@ -179,22 +201,63 @@ if ($token === '') {
 // ── Pre-create a verificaciones_identidad stub so the webhook can upsert ─
 // by process_id. Even before Truora decides on a process_id, we record the
 // account_id so admin dashboards link the user to any incoming webhook.
+//
+// SECURITY: persist `expected_curp` (the CURP the customer used for the
+// CDC bureau check). When Truora's webhook arrives with the verified
+// document, we cross-check that the verified CURP matches expected_curp.
+// Mismatch = different person was used for identity vs credit bureau =
+// FRAUD. Without this row we would have no anchor to compare against.
 try {
     $pdo = getDB();
+    // The base table may pre-date these fields. Add them lazily — MySQL
+    // raises an error on duplicate ADD COLUMN which we swallow per ALTER.
+    // (BUG 2026-04-29: a previous version inserted into a `curp` column
+    // that never existed → INSERT failed silently → no anchor row for
+    // the webhook to update → user stuck on "Validando concordancia…"
+    // forever. Fixed by ALTERing all required columns before INSERT.)
     foreach ([
         "ALTER TABLE verificaciones_identidad ADD COLUMN truora_account_id VARCHAR(120) NULL",
         "ALTER TABLE verificaciones_identidad ADD COLUMN truora_flow_id VARCHAR(64) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN curp VARCHAR(20) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN expected_curp VARCHAR(20) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN verified_curp VARCHAR(20) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN curp_match TINYINT(1) NULL",
     ] as $ddl) {
         try { $pdo->exec($ddl); } catch (Throwable $e) {}
     }
-    $pdo->prepare("INSERT INTO verificaciones_identidad
-            (nombre, apellidos, telefono, email, truora_account_id, truora_flow_id, identity_status, approved)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending', 0)")
-        ->execute([$nombre, $apellidos, $telefono, $email, $accountId, TRUORA_FLOW_ID]);
+    // INSERT with explicit error surfacing — if this fails the user gets
+    // stuck mid-flow, so we want it loud in error_log instead of silently
+    // swallowed.
+    try {
+        $pdo->prepare("INSERT INTO verificaciones_identidad
+                (nombre, apellidos, telefono, email, curp, expected_curp,
+                 truora_account_id, truora_flow_id, identity_status, approved)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0)")
+            ->execute([$nombre, $apellidos, $telefono, $email, $curp, $curp, $accountId, TRUORA_FLOW_ID]);
+    } catch (Throwable $e2) {
+        error_log('truora-token INSERT failed: ' . $e2->getMessage());
+        // Fallback: insert with only the legacy columns so at least an
+        // anchor row exists. Webhook may still update it via account_id.
+        try {
+            $pdo->prepare("INSERT INTO verificaciones_identidad
+                    (nombre, apellidos, telefono, email,
+                     truora_account_id, truora_flow_id, identity_status, approved)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending', 0)")
+                ->execute([$nombre, $apellidos, $telefono, $email, $accountId, TRUORA_FLOW_ID]);
+        } catch (Throwable $e3) {
+            error_log('truora-token fallback INSERT also failed: ' . $e3->getMessage());
+        }
+    }
 } catch (Throwable $e) { error_log('truora-token stub row: ' . $e->getMessage()); }
 
 // ── Respond ───────────────────────────────────────────────────────────────
-$iframeUrl = 'https://identity.truora.com/?token=' . urlencode($token);
+// Append explicit language hints to the iframe URL as a second-line
+// defence — if Truora's API ignored the `language` field at token
+// creation, the iframe-side reader still picks up `lang=es` from the
+// query string. Both `lang` and `language` are listed because Truora's
+// docs use them inconsistently across product lines.
+$iframeUrl = 'https://identity.truora.com/?token=' . urlencode($token)
+    . '&lang=es&language=es&locale=es-MX&country=MX';
 
 echo json_encode([
     'ok'         => true,

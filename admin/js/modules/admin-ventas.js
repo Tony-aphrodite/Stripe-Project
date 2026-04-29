@@ -427,105 +427,144 @@ window.AD_ventas = (function(){
       }
 
       var isOrphan = r.source === 'transacciones_errores' || r.source === 'subscripciones_credito';
-      var motoCell, actions;
-      var actionsLayout = 'row';   // 'row' | 'stacked_pago_pendiente'
-      var btnStyleBase = 'padding:5px 10px;font-size:12px;white-space:nowrap;';
+      var motoCell;
+      var btnArr = [];                  // collected as separate items so we can grid them
+      var actionsLayout = 'row';        // 'row' | 'stacked_pago_pendiente'
+      // width:100% so each button fills its grid cell uniformly. Padding
+      // tightened to 5px 8px so two buttons fit comfortably side by side
+      // even on the mobile admin layout.
+      var btnStyleBase = 'padding:5px 8px;font-size:12px;white-space:nowrap;width:100%;box-sizing:border-box;';
+
+      // Inline SVG icons replace the previous emoji glyphs (📄/📦/🔄)
+      // which the customer flagged as looking AI-generated. Stroke uses
+      // currentColor so the icon picks up the surrounding button colour.
+      var iconStrokeBase = 'width:14px;height:14px;display:block;flex-shrink:0;';
+      var ICON_DOC =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="'+iconStrokeBase+'">'+
+        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'+
+        '<polyline points="14 2 14 8 20 8"/>'+
+        '<line x1="16" y1="13" x2="8" y2="13"/>'+
+        '<line x1="16" y1="17" x2="8" y2="17"/>'+
+        '<line x1="10" y1="9" x2="8" y2="9"/>'+
+        '</svg>';
+      var ICON_SHIELD =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="'+iconStrokeBase+'">'+
+        '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'+
+        '<polyline points="9 12 11 14 15 10"/>'+
+        '</svg>';
+      var ICON_REFRESH =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="'+iconStrokeBase+'">'+
+        '<polyline points="23 4 23 10 17 10"/>'+
+        '<polyline points="1 20 1 14 7 14"/>'+
+        '<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>'+
+        '</svg>';
+
       if(isOrphan){
         var isVksc = r.source === 'subscripciones_credito';
         var needsEdit = isVksc && (!r.modelo || r.modelo==='-' || !r.color || r.color==='-');
         motoCell = '<span class="ad-badge yellow">'+(r.source==='transacciones_errores'?'Error':'Crédito huérfano')+'</span>';
-        actions  = '';
         if(ADApp.canWrite()){
           if(needsEdit){
-            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#d97706;" '+
-                       'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar</button>';
+            btnArr.push('<button class="ad-btn primary" style="'+btnStyleBase+'background:#d97706;" '+
+                        'onclick="AD_ventas.showEditarVksc('+r.id+')">Editar</button>');
           }
-          actions += '<button class="ad-btn primary" style="'+btnStyleBase+'background:#b91c1c;" '+
-                     'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button>';
+          btnArr.push('<button class="ad-btn primary" style="'+btnStyleBase+'background:#b91c1c;" '+
+                      'onclick="AD_ventas.showRecuperar('+r.id+',\''+esc(r.source)+'\',\''+esc(r.stripe_pi||'')+'\')">Recuperar</button>');
         }
-        actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+        btnArr.push('<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>');
       } else if(asignada){
-        // Truncate long VINs so the ACCION column stays inside the viewport
         var vinFull  = (r.moto_vin||'****');
         var vinShort = vinFull.length > 10 ? vinFull.slice(-8) : vinFull;
         motoCell = '<span class="ad-badge green" title="'+esc(vinFull)+'" style="font-family:ui-monospace,Menlo,monospace;">'+esc(vinShort)+'</span>';
-        actions  = '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+        btnArr.push('<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>');
       } else {
         motoCell = '<span class="ad-badge red">Sin asignar</span>'+stockInfo;
-        actions  = '';
         if(ADApp.canWrite()){
-          // Only allow "Asignar" once payment is confirmed. Credit-family orders
-          // release the moto on the enganche (pago_estado='parcial'); every other
-          // tpago (contado/unico/msi/spei/oxxo) needs full 'pagada'.
           var pe = (r.pago_estado||'').toLowerCase();
           var tp = (r.tipo||r.tpago||'').toLowerCase();
           var isCreditFam = ['credito','credito-orfano','enganche','parcial'].indexOf(tp) >= 0;
           var canAssign = (pe === 'pagada' || pe === 'aprobada' || pe === 'approved' || pe === 'paid')
                        || (isCreditFam && pe === 'parcial');
           if (canAssign) {
-            actions += '<button class="ad-btn primary" style="'+btnStyleBase+'" '+
-                       'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\''+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'\')">Asignar</button>';
+            btnArr.push('<button class="ad-btn primary" style="'+btnStyleBase+'" '+
+                        'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\''+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'\')">Asignar</button>');
           } else if (r.stripe_pi) {
-            // Payment not confirmed: Enviar link prominently on top (full width),
-            // Sinc + Ver on the bottom row. Prevents "Ver" from overflowing to
-            // the right when 3 buttons stack horizontally.
             actionsLayout = 'stacked_pago_pendiente';
           } else {
-            actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+';opacity:.55;cursor:not-allowed;" '+
-                       'title="El pago de esta orden aún no ha sido confirmado" disabled>Pendiente</button>';
+            btnArr.push('<button class="ad-btn sm ghost" style="'+btnStyleBase+';opacity:.55;cursor:not-allowed;" '+
+                        'title="El pago de esta orden aún no ha sido confirmado" disabled>Pendiente</button>');
           }
         }
         if (actionsLayout !== 'stacked_pago_pendiente') {
-          actions += '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>';
+          btnArr.push('<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>');
         }
       }
-      // Contrato de Compraventa link — only for 100%-payment orders
-      // (contado / unico / msi / spei / oxxo / tarjeta). Credit orders use
-      // a different contract pipeline. Admin session bypasses the HMAC
-      // token check inside descargar-contrato.php.
-      // Compact icon-only buttons — the Accion column has 4 items now
-      // (Asignar/Ver + Contrato + Dossier). Trim padding to fit cleanly.
-      var iconBtnStyle = 'padding:5px 7px;font-size:13px;line-height:1;'
+
+      // Icon-only buttons (contract preview + defense dossier).
+      var iconBtnStyle = 'padding:5px 7px;font-size:13px;line-height:1;width:100%;box-sizing:border-box;'
                        + 'text-decoration:none;display:inline-flex;align-items:center;justify-content:center;';
-      var contratoBtn = '';
       var _tp = (r.tipo||r.tpago||'').toLowerCase();
       if (['contado','unico','msi','spei','oxxo','tarjeta'].indexOf(_tp) >= 0 && r.pedido) {
-        contratoBtn = '<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
+        btnArr.push('<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
           'style="'+iconBtnStyle+'" '+
           'title="Descargar contrato de compraventa" '+
-          'href="../configurador_prueba/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1">📄</a>';
+          'href="../configurador_prueba/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1">'+ICON_DOC+'</a>');
       }
-
-      // Dossier de Defensa — full evidence pack (ZIP + master PDF) for
-      // chargeback / lawsuit / PROFECO defense. Admin session is enough
-      // to download; if no dossier exists yet the endpoint builds one
-      // on the fly (or use &build=1 to force a fresh version).
-      var dossierBtn = '';
       if (r.moto_id || r.pedido) {
         var dParams = r.moto_id ? ('moto_id=' + r.moto_id) : ('pedido=' + encodeURIComponent(r.pedido));
-        dossierBtn = '<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
+        btnArr.push('<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
           'style="'+iconBtnStyle+';background:#fffbeb;border-color:#f59e0b;color:#92400e;" '+
-          'title="Descargar Dossier de Defensa (ZIP — todas las evidencias para Stripe/PROFECO)" '+
-          'href="../configurador_prueba/php/descargar-dossier.php?'+dParams+'&format=zip">📦</a>';
+          'title="Descargar Dossier de Defensa (ZIP — evidencias para Stripe/PROFECO)" '+
+          'href="../configurador_prueba/php/descargar-dossier.php?'+dParams+'&format=zip">'+ICON_SHIELD+'</a>');
       }
+
+      // ── Layout (request 2026-04-29):
+      //    1 button   → single
+      //    2 buttons  → side by side
+      //    3 buttons  → wide top + 2 below
+      //    4+ buttons → 2-column grid (rows of 2)
       var actionTd;
+      var n = btnArr.length;
       if (actionsLayout === 'stacked_pago_pendiente') {
+        // Special pago-pendiente layout: "Enviar link" full-width on top,
+        // then Sinc + Ver + (icons) below in a 2-col grid.
+        var iconRow = '';
+        // Pull the dossier/contrato icons out of btnArr so we can place
+        // them next to Sinc/Ver in the bottom row.
+        var iconBtns = btnArr.filter(function(b){ return b.indexOf('descargar-contrato') !== -1 || b.indexOf('descargar-dossier') !== -1; });
+        var bottomBtns = [
+          '<button class="ad-btn sm" style="'+btnStyleBase+';background:#0ea5e9;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:4px;" '+
+            'title="Verificar estado real con Stripe" '+
+            'onclick="AD_ventas.syncStripe('+r.id+', this)">'+ICON_REFRESH+' Sinc</button>',
+          '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" '+
+            'onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>'
+        ].concat(iconBtns);
+        var bottomCols = bottomBtns.length === 1 ? '1fr' : (bottomBtns.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr');
+        var bottomGrid = '<div style="display:grid;grid-template-columns:'+bottomCols+';gap:5px;">'+ bottomBtns.join('') +'</div>';
         actionTd = '<td style="min-width:170px;"><div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;">'+
-          '<button class="ad-btn sm" style="'+btnStyleBase+';background:#d97706;color:#fff;width:100%;" '+
+          '<button class="ad-btn sm" style="'+btnStyleBase+';background:#d97706;color:#fff;" '+
             'title="Reenviar link de pago al cliente" '+
             'onclick="AD_ventas.showEnviarLink('+r.id+')">Enviar link</button>'+
-          '<div style="display:flex;gap:5px;">'+
-            '<button class="ad-btn sm" style="'+btnStyleBase+';background:#0ea5e9;color:#fff;flex:1;" '+
-              'title="Verificar estado real con Stripe" '+
-              'onclick="AD_ventas.syncStripe('+r.id+', this)">🔄 Sinc</button>'+
-            '<button class="ad-btn sm ghost" style="'+btnStyleBase+';flex:1;" '+
-              'onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>'+
-            contratoBtn + dossierBtn +
-          '</div>'+
+          bottomGrid +
+        '</div></td>';
+      } else if (n === 0) {
+        actionTd = '<td></td>';
+      } else if (n === 1) {
+        actionTd = '<td><div style="min-width:90px;">'+ btnArr[0] +'</div></td>';
+      } else if (n === 2) {
+        actionTd = '<td><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;min-width:140px;">'+
+          btnArr.join('') +
+        '</div></td>';
+      } else if (n === 3) {
+        // Wide top + 2 below: first button spans both columns.
+        actionTd = '<td><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;min-width:140px;">'+
+          '<div style="grid-column:1/-1;display:flex;">'+ btnArr[0] +'</div>'+
+          btnArr[1] + btnArr[2] +
         '</div></td>';
       } else {
-        actionTd = '<td><div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;">'+
-          actions + contratoBtn + dossierBtn +
+        // 4+ buttons → 2x2 (extras flow into a 5th/6th cell as needed).
+        actionTd = '<td><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;min-width:140px;">'+
+          btnArr.join('') +
         '</div></td>';
       }
       html += '<td>'+motoCell+'</td>' + actionTd;

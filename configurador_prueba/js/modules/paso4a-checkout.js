@@ -157,15 +157,21 @@ var Paso4A = {
         var _checkboxAmount = _esMSICheckout
             ? ('$' + msiPagoExact.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','))
             : VkUI.formatPrecio(total);
-        html += '<div class="vk-checkbox-group" style="margin-bottom:16px;">';
-        html += '<input type="checkbox" class="vk-checkbox" id="vk-terms-check">';
-        html += '<label class="vk-checkbox-label" for="vk-terms-check">' +
+        // NOTE: checkbox group moved below the card-element block so the
+        // form is filled BEFORE the customer clicks the "Contrato de
+        // Compraventa" link (boss report 2026-04-29: contract opened with
+        // empty placeholders because the checkbox sat above the inputs).
+        // We build the HTML into _checkboxHtml here and inject it later.
+        var _checkboxHtml =
+            '<div class="vk-checkbox-group" style="margin-bottom:16px;">' +
+            '<input type="checkbox" class="vk-checkbox" id="vk-terms-check">' +
+            '<label class="vk-checkbox-label" for="vk-terms-check">' +
             'Acepto <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">T\u00e9rminos y Condiciones</a>, ' +
             '<a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">Aviso de Privacidad</a> y el ' +
-            '<a href="docs/contrato_compraventa_2026.html" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">Contrato de Compraventa</a>, ' +
+            '<a href="docs/contrato_compraventa_2026.html" target="_blank" rel="noopener" id="vk-contrato-preview-link" style="color:var(--vk-green-primary);text-decoration:underline;">Contrato de Compraventa</a>, ' +
             'y autorizo el pago de <strong id="vk-checkbox-amount">' + _checkboxAmount + ' MXN</strong> por el medio seleccionado.' +
-            '</label>';
-        html += '</div>';
+            '</label>' +
+            '</div>';
 
         // Contact fields — nombre + 1er apellido + 2do apellido
         // (split per customer request 2026-04-28 to match the credit-flow
@@ -209,6 +215,13 @@ var Paso4A = {
         html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:4px;margin-bottom:8px;">' +
             '&#128274; Pago cifrado SSL &middot; ' + VkUI.renderCardLogos() +
             '</div>';
+
+        // Terms-acceptance checkbox — emitted here (not at the top of the
+        // form) so the customer fills name/email/phone/card BEFORE
+        // ticking the box. The "Contrato de Compraventa" link inside the
+        // label opens with the form values pre-filled into the contract
+        // template via URL hash.
+        html += _checkboxHtml;
 
         // 8. Two payment option cards — inside checkout form (after OTP)
 
@@ -328,6 +341,84 @@ var Paso4A = {
 
     bindEvents: function() {
         var self = this;
+
+        // Contract preview link — build a URL hash with the customer's
+        // current form values so the static contract template renders
+        // their actual data instead of {{placeholders}}. Boss report
+        // 2026-04-29: "the contract still empty". The static HTML had no
+        // way of knowing the buyer's data; we now ship it via the hash.
+        $(document).off('click', '#vk-contrato-preview-link');
+        $(document).on('click', '#vk-contrato-preview-link', function(e) {
+            e.preventDefault();
+            var state = self.app.state;
+            var modelo = self.app.getModelo(state.modeloSeleccionado);
+            var nombre  = ($('#vk-nombre-pila').val() || '').trim();
+            var apP     = ($('#vk-apellido-paterno').val() || '').trim();
+            var apM     = ($('#vk-apellido-materno').val() || '').trim();
+            var fullName = [nombre, apP, apM].filter(Boolean).join(' ');
+
+            // Payment method + processor based on the user's selection. The
+            // user toggles _pagoTipo when they click "Pago único" / "9 MSI"
+            // and we set _pendingPaymentMethod for SPEI/OXXO. Default to
+            // 'unico' if nothing has been clicked yet (preview-friendly).
+            var pagoTipo = (self._pagoTipo || self._pendingPaymentMethod || 'unico').toLowerCase();
+            var paymentLabels = {
+                unico:   { method: 'Pago único de contado',          processor: 'Stripe (tarjeta crédito/débito)' },
+                msi:     { method: '9 Meses sin intereses (MSI)',    processor: 'Stripe (tarjeta crédito)' },
+                spei:    { method: 'Transferencia electrónica SPEI', processor: 'Stripe (SPEI)' },
+                oxxo:    { method: 'Pago en efectivo OXXO',          processor: 'Stripe (OXXO)' },
+                tarjeta: { method: 'Pago con tarjeta',               processor: 'Stripe (tarjeta crédito/débito)' }
+            };
+            var payInfo = paymentLabels[pagoTipo] || paymentLabels.unico;
+
+            // Logistics cost only applies to MSI (contado includes free freight).
+            var costoLog = state.costoLogistico || 0;
+            var precio   = modelo ? modelo.precioContado : 0;
+            var total    = (pagoTipo === 'msi') ? (precio + costoLog) : precio;
+            var logForContract = (pagoTipo === 'msi') ? costoLog : 0;
+
+            // Estimated delivery date (uses same logic as the resumen card).
+            var cfg = (window.VOLTIKA_PRODUCTOS && VOLTIKA_PRODUCTOS.config) || {};
+            var enInv = state._invColorEnStock !== undefined ? state._invColorEnStock : true;
+            var dEntrega = enInv ? (cfg.entregaDiasInventario || 15) : (cfg.entregaDiasSinInventario || 70);
+            var fd = new Date(); fd.setDate(fd.getDate() + dEntrega);
+            var deliveryIsoDate = fd.toISOString().substr(0, 10); // HTML formats this nicely
+
+            var data = {
+                customer_id:        state._customerRef || ('VK-' + Date.now()),
+                contract_date:      new Date().toISOString().substr(0, 10),
+                customer_full_name: fullName || (state.nombre || ''),
+                customer_email:     ($('#vk-email').val() || state.email || '').trim(),
+                customer_phone:     ($('#vk-telefono').val() || state.telefono || '').trim(),
+                customer_zip:       (state.codigoPostal || state._cp || '').toString().trim(),
+                vehicle_brand:      'Voltika',
+                vehicle_model:      modelo ? modelo.nombre : '',
+                vehicle_year:       new Date().getFullYear().toString(),
+                vehicle_color:      state.colorSeleccionado || '',
+                vehicle_price:      precio,
+                total_amount:       total,
+                logistics_cost:     logForContract,
+                payment_method:     payInfo.method,
+                payment_processor:  payInfo.processor,
+                // Reference + date are only known AFTER payment confirms.
+                // Show a clear "pending" message so the user understands
+                // these are filled at payment time, not blanked.
+                payment_reference:  'Por asignar al confirmar el pago',
+                payment_date:       'Por asignar al confirmar el pago',
+                estimated_delivery_date: deliveryIsoDate,
+                delivery_point:     (state.centroEntrega && state.centroEntrega.nombre) || '',
+                // Acceptance evidence — populated only when the customer has
+                // already ticked the checkbox (state._termsAcceptedAt set in
+                // the existing #vk-terms-check change handler below).
+                acceptance_timestamp:   state._termsAcceptedAt || 'Por asignar al confirmar el pago',
+                acceptance_ip:          'Se registrará al confirmar el pago',
+                acceptance_geolocation: state._geolocation || 'Por asignar al confirmar el pago',
+                acceptance_device:      navigator.userAgent ? navigator.userAgent.substr(0, 80) : '',
+                otp_validated:          'Por asignar al confirmar el pago'
+            };
+            var url = $(this).attr('href') + '#data=' + encodeURIComponent(JSON.stringify(data));
+            window.open(url, '_blank', 'noopener');
+        });
 
         // Capture acceptance metadata when the user ticks the terms
         // checkbox (UTC timestamp now; geolocation best-effort, opt-in via

@@ -149,6 +149,135 @@ function truoraB64UrlDecode(string $s) {
 }
 
 /**
+ * Pull the full process detail from Truora's API so we can read the
+ * extracted CURP / national_id_number from the verified document.
+ *
+ * The webhook payload only contains high-level status; the verified
+ * document fields (CURP, name, etc.) require a follow-up GET. The
+ * endpoint differs slightly between Truora flows; we try the most common
+ * shapes and return whichever responds with 200.
+ *
+ * Returns the decoded JSON array, or null on failure. Logged to
+ * truora_fetch_log for forensics.
+ */
+function truoraFetchProcessDetails(string $processId): ?array {
+    if (!defined('TRUORA_API_KEY') || !TRUORA_API_KEY) return null;
+    if (!defined('TRUORA_IDENTITY_API_URL')) define('TRUORA_IDENTITY_API_URL', 'https://api.identity.truora.com');
+
+    $candidates = [
+        TRUORA_IDENTITY_API_URL . '/v1/processes/' . urlencode($processId),
+        TRUORA_IDENTITY_API_URL . '/v1/identity/' . urlencode($processId),
+        TRUORA_IDENTITY_API_URL . '/v1/processes/' . urlencode($processId) . '/result',
+    ];
+
+    foreach ($candidates as $url) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 12,
+            CURLOPT_HTTPHEADER     => [
+                'Truora-API-Key: ' . TRUORA_API_KEY,
+                'Accept: application/json',
+            ],
+        ]);
+        $body = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        // Log for forensics, regardless of outcome.
+        try {
+            $pdo = getDB();
+            $pdo->exec("CREATE TABLE IF NOT EXISTS truora_fetch_log (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                process_id VARCHAR(64) NULL,
+                url VARCHAR(255) NULL,
+                http_code INT NULL,
+                response MEDIUMTEXT NULL,
+                curl_err VARCHAR(500) NULL,
+                fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_process (process_id)
+            )");
+            $pdo->prepare("INSERT INTO truora_fetch_log
+                    (process_id, url, http_code, response, curl_err)
+                VALUES (?, ?, ?, ?, ?)")
+                ->execute([
+                    $processId, $url, $code,
+                    substr((string)$body, 0, 8000),
+                    substr((string)$err, 0, 500),
+                ]);
+        } catch (Throwable $e) {}
+
+        if ($code >= 200 && $code < 300 && $body) {
+            $arr = json_decode((string)$body, true);
+            if (is_array($arr) && !empty($arr)) return $arr;
+        }
+    }
+    return null;
+}
+
+/**
+ * Walk a Truora process-details payload and extract the verified CURP
+ * (a.k.a. national_id_number on Mexico flows). The exact field path
+ * depends on the flow_id configuration, so we search in several common
+ * locations and return the first 18-character RFC-shaped match.
+ */
+function truoraExtractCurp(?array $details): ?string {
+    if (!is_array($details)) return null;
+
+    $candidates = [];
+
+    // Common direct fields.
+    foreach (['national_id_number', 'curp', 'document_id', 'identification_number'] as $k) {
+        if (!empty($details[$k]) && is_string($details[$k])) $candidates[] = $details[$k];
+    }
+
+    // Nested `person_information` / `validations` / `document` blocks.
+    foreach (['person_information', 'document', 'identity', 'result'] as $section) {
+        if (!empty($details[$section]) && is_array($details[$section])) {
+            foreach (['national_id_number', 'curp', 'document_id', 'identification_number'] as $k) {
+                if (!empty($details[$section][$k]) && is_string($details[$section][$k])) {
+                    $candidates[] = $details[$section][$k];
+                }
+            }
+        }
+    }
+
+    // `validations` is typically an array of objects with `validation_name`
+    // and `validation_data` fields. Look for anything CURP-like inside.
+    if (!empty($details['validations']) && is_array($details['validations'])) {
+        foreach ($details['validations'] as $v) {
+            if (!is_array($v)) continue;
+            foreach ($v as $val) {
+                if (is_string($val) && preg_match('/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/i', $val)) {
+                    $candidates[] = $val;
+                }
+            }
+        }
+    }
+
+    // Generic deep walk — last resort. Find any 18-char CURP-shaped value.
+    $stack = [$details];
+    while ($stack) {
+        $node = array_pop($stack);
+        if (is_array($node)) {
+            foreach ($node as $v) {
+                if (is_array($v)) $stack[] = $v;
+                elseif (is_string($v) && preg_match('/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/i', $v)) {
+                    $candidates[] = $v;
+                }
+            }
+        }
+    }
+
+    foreach ($candidates as $c) {
+        $c = strtoupper(trim($c));
+        if (preg_match('/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/', $c)) return $c;
+    }
+    return null;
+}
+
+/**
  * Apply one Truora event to verificaciones_identidad.
  *
  * event_type examples observed in Truora docs:
@@ -201,6 +330,97 @@ function truoraProcessEvent(PDO $pdo, array $ev): void {
         elseif ($action === 'failed') $approved = 0;
     }
 
+    // ── SECURITY: cross-check Truora-verified CURP against the CURP the
+    //    customer used for the credit bureau check (CDC). If they differ,
+    //    the user fed identity-document A to Truora while bureau-checking
+    //    person B → fraud → reject regardless of Truora's verdict.
+    //    (Customer report 2026-04-29: a tester used different data in CDC
+    //    vs. Truora and the purchase was accepted. This must never happen.)
+    //
+    // CURP extraction strategy (most reliable first):
+    //   1. Walk the webhook event's `object` directly — Truora ships the
+    //      verified document fields here for completed identity processes
+    //      and this avoids any dependency on a separate REST endpoint.
+    //   2. Fall back to GET /v1/processes/<id> only if the webhook
+    //      payload has no usable CURP.
+    //   3. Strict block on mismatch OR if no CURP could be obtained.
+    $verifiedCurp = null;
+    $curpMatch = null;
+    $curpSource = null;
+    if ($approved === 1) {
+        // Try webhook payload first (cheapest, most reliable).
+        $verifiedCurp = truoraExtractCurp($object);
+        if ($verifiedCurp) $curpSource = 'webhook_object';
+
+        // Some flows put the verified data only at the top of the event,
+        // not inside `object`. Walk the entire event as a fallback.
+        if (!$verifiedCurp) {
+            $verifiedCurp = truoraExtractCurp($ev);
+            if ($verifiedCurp) $curpSource = 'webhook_event';
+        }
+
+        // Last resort: GET full process details from Truora's API.
+        if (!$verifiedCurp) {
+            $details = truoraFetchProcessDetails($processId);
+            $verifiedCurp = truoraExtractCurp($details);
+            if ($verifiedCurp) $curpSource = 'api_fetch';
+        }
+
+        // Look up expected CURP we stored at token creation.
+        $expectedCurp = null;
+        try {
+            $q = $pdo->prepare("SELECT expected_curp FROM verificaciones_identidad
+                WHERE truora_process_id = ? OR truora_account_id = ?
+                ORDER BY id DESC LIMIT 1");
+            $q->execute([$processId, $accountId]);
+            $expectedCurp = $q->fetchColumn() ?: null;
+        } catch (Throwable $e) {}
+
+        // Log every comparison decision so admin can audit fraud rejections.
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS truora_curp_audit (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                process_id VARCHAR(64) NULL,
+                expected_curp VARCHAR(20) NULL,
+                verified_curp VARCHAR(20) NULL,
+                curp_source VARCHAR(40) NULL,
+                decision VARCHAR(40) NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_process (process_id)
+            )");
+            $decision = ($expectedCurp && $verifiedCurp)
+                ? (strtoupper(trim($expectedCurp)) === strtoupper(trim($verifiedCurp)) ? 'match' : 'mismatch')
+                : ($expectedCurp ? 'no_verified_curp' : 'no_expected_curp');
+            $pdo->prepare("INSERT INTO truora_curp_audit
+                    (process_id, expected_curp, verified_curp, curp_source, decision)
+                VALUES (?, ?, ?, ?, ?)")
+                ->execute([$processId, $expectedCurp, $verifiedCurp, $curpSource, $decision]);
+        } catch (Throwable $e) {}
+
+        if ($expectedCurp && $verifiedCurp) {
+            $curpMatch = (strtoupper(trim($expectedCurp)) === strtoupper(trim($verifiedCurp))) ? 1 : 0;
+            if (!$curpMatch) {
+                // FRAUD GUARD: identity document does not match the bureau check.
+                $approved = 0;
+                $declined = 'identity_curp_mismatch';
+                $failStatus = 'curp_mismatch';
+            }
+        } elseif ($expectedCurp && !$verifiedCurp) {
+            // Truora succeeded but we could not retrieve verified CURP.
+            // STRICT mode: do not approve. Customer requirement 2026-04-29:
+            // an order MUST NOT appear in admin until identity is fully
+            // cross-checked. The admin can review via truora_curp_audit +
+            // truora_fetch_log to find the missing field.
+            $approved = 0;
+            $declined = 'verified_curp_unavailable';
+            $failStatus = 'identity_unverifiable';
+        }
+        // If $expectedCurp is missing entirely (legacy rows or test mode
+        // where the customer didn't provide CURP), leave approved=1 with a
+        // null curp_match. New rows always have expected_curp set when
+        // CDC ran on real customer data.
+    }
+
     // Upsert by process_id.
     $existingId = null;
     try {
@@ -220,6 +440,8 @@ function truoraProcessEvent(PDO $pdo, array $ev): void {
         'truora_updated_at'      => ($updateDate && strtotime($updateDate))
             ? date('Y-m-d H:i:s', strtotime($updateDate))
             : date('Y-m-d H:i:s'),
+        'verified_curp'          => $verifiedCurp,
+        'curp_match'             => $curpMatch,
     ];
     if ($approved !== null) {
         $fields['approved'] = $approved;
