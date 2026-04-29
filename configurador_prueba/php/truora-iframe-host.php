@@ -1,4 +1,12 @@
 <?php
+// Force non-www host before emitting any HTML — Truora's whitelist is
+// registered for voltika.mx only and Chrome blocks the iframe under
+// www.voltika.mx with "rechazó la conexión".
+if (preg_match('/^www\./i', $_SERVER['HTTP_HOST'] ?? '')) {
+    $newHost = preg_replace('/^www\./i', '', $_SERVER['HTTP_HOST']);
+    header('Location: https://' . $newHost . ($_SERVER['REQUEST_URI'] ?? ''), true, 301);
+    exit;
+}
 /**
  * Voltika — Truora iframe host page.
  *

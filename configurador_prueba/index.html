@@ -3,6 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Force non-www host. Truora's identity-iframe whitelist is registered
+         for voltika.mx (no www) and Chrome blocks the iframe with
+         "rechazó la conexión" when embedded under www.voltika.mx. The
+         .htaccess rewrite covers this at the server layer; this script is
+         a defense-in-depth fallback in case the rewrite is disabled. -->
+    <script>
+    (function(){
+        if (location.hostname.indexOf('www.') === 0) {
+            location.replace(location.protocol + '//' +
+                location.hostname.substring(4) +
+                location.pathname + location.search + location.hash);
+        }
+    })();
+    </script>
     <!-- Anti-cache: the credit evaluation flow was blocked by stale JS + state
          after Ctrl+Shift+R. Ensure the configurador HTML + scripts are always
          re-fetched so verification-logic fixes propagate immediately. -->
