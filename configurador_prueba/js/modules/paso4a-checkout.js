@@ -162,7 +162,7 @@ var Paso4A = {
         html += '<label class="vk-checkbox-label" for="vk-terms-check">' +
             'Acepto <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">T\u00e9rminos y Condiciones</a>, ' +
             '<a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">Aviso de Privacidad</a> y el ' +
-            '<a href="docs/contrato_compraventa_2026.html" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">Contrato de Compraventa</a>, ' +
+            '<a href="docs/contrato_compraventa_2026.html" target="_blank" rel="noopener" id="vk-contrato-preview-link" style="color:var(--vk-green-primary);text-decoration:underline;">Contrato de Compraventa</a>, ' +
             'y autorizo el pago de <strong id="vk-checkbox-amount">' + _checkboxAmount + ' MXN</strong> por el medio seleccionado.' +
             '</label>';
         html += '</div>';
@@ -328,6 +328,38 @@ var Paso4A = {
 
     bindEvents: function() {
         var self = this;
+
+        // Contract preview link — build a URL hash with the customer's
+        // current form values so the static contract template renders
+        // their actual data instead of {{placeholders}}. Boss report
+        // 2026-04-29: "the contract still empty". The static HTML had no
+        // way of knowing the buyer's data; we now ship it via the hash.
+        $(document).off('click', '#vk-contrato-preview-link');
+        $(document).on('click', '#vk-contrato-preview-link', function(e) {
+            e.preventDefault();
+            var modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
+            var nombre  = ($('#vk-nombre-pila').val() || '').trim();
+            var apP     = ($('#vk-apellido-paterno').val() || '').trim();
+            var apM     = ($('#vk-apellido-materno').val() || '').trim();
+            var fullName = [nombre, apP, apM].filter(Boolean).join(' ');
+            var data = {
+                customer_id:        self.app.state._customerRef || ('VK-' + Date.now()),
+                contract_date:      new Date().toISOString().substr(0, 10),
+                customer_full_name: fullName || (self.app.state.nombre || ''),
+                customer_email:     ($('#vk-email').val() || self.app.state.email || '').trim(),
+                customer_phone:     ($('#vk-telefono').val() || self.app.state.telefono || '').trim(),
+                customer_zip:       (self.app.state.codigoPostal || self.app.state._cp || '').toString().trim(),
+                vehicle_brand:      'Voltika',
+                vehicle_model:      modelo ? modelo.nombre : '',
+                vehicle_year:       new Date().getFullYear().toString(),
+                vehicle_color:      self.app.state.colorSeleccionado || '',
+                vehicle_price:      modelo ? modelo.precioContado : '',
+                total_amount:       modelo ? modelo.precioContado : '',
+                delivery_point:     (self.app.state.centroEntrega && self.app.state.centroEntrega.nombre) || ''
+            };
+            var url = $(this).attr('href') + '#data=' + encodeURIComponent(JSON.stringify(data));
+            window.open(url, '_blank', 'noopener');
+        });
 
         // Capture acceptance metadata when the user ticks the terms
         // checkbox (UTC timestamp now; geolocation best-effort, opt-in via
