@@ -105,8 +105,8 @@ var PasoCreditoIdentidad = {
         html += '<div class="vk-identidad-consejos__title">Consejos rápidos</div>';
         html += '<div class="vk-identidad-consejos__grid">';
         html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Buena iluminación</div>';
-        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Documento completo</div>';
-        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Selfie con rostro despejado</div>';
+        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> Documento completo (frente y reverso)</div>';
+        html += '<div class="vk-identidad-consejos__item"><span class="vk-identidad-check">&#10003;</span> INE legible y sin reflejos</div>';
         html += '</div>';
         html += '</div>';
 
