@@ -376,6 +376,35 @@ var PasoCreditoIdentidad = {
             var data = event && event.data;
             if (!data) return;
 
+            // ── Post-redirect signal from truora-redirect.php ────────────
+            // When Truora finishes the flow it lands the user on our
+            // truora-redirect.php page. That page then posts up a
+            // { vk_truora_otp_returned, process_id, status, ... } payload.
+            // Customer report 2026-04-29: the iframe shows "Hemos
+            // completado tu verificación" → truora-redirect.php → "Oh no"
+            // (Truora's own session-ended page) and the SPA stays on
+            // "Validando concordancia…" forever because nothing acted on
+            // the redirect signal. Use it to (a) capture the process_id
+            // we may have missed and (b) force an immediate status poll
+            // instead of waiting for the next 4-second tick.
+            if (data && typeof data === 'object' && data.vk_truora_otp_returned) {
+                var pid = data.process_id || data.identity_process_id || data.id || null;
+                var aid = data.account_id || data.user_id || null;
+                if (pid) {
+                    state._truoraProcessId = state._truoraProcessId || pid;
+                    self._currentProcessId = self._currentProcessId || pid;
+                }
+                if (aid && !state._truoraAccountId) state._truoraAccountId = aid;
+                self._appendDebug('redirect signal · pid=' + (pid || '?') + ' aid=' + (aid || '?'));
+                // Start polling now (idempotent — _pollWebhookResult won't
+                // double-start because of clearInterval).
+                self._pollWebhookResult(state._truoraProcessId || self._currentProcessId);
+                // Trigger an immediate status check so the user doesn't
+                // wait for the 4-second polling tick.
+                self._forceStatusCheck();
+                return;
+            }
+
             // Unwrap messages forwarded by truora-iframe-host.php. The
             // host wraps each Truora postMessage as
             //   { __from_truora_host: true, origin, data }
@@ -473,6 +502,41 @@ var PasoCreditoIdentidad = {
                 // Unknown Truora event — ignore silently but log for debugging.
                 if (window.console) console.log('[Truora]', eventName, data);
         }
+    },
+
+    // Out-of-band status check. Used when the redirect-page signal
+    // arrives so the SPA settles immediately instead of waiting for the
+    // next polling tick. Idempotent — duplicate calls are harmless.
+    _forceStatusCheck: function() {
+        var self = this;
+        var state = (this.app && this.app.state) || {};
+        if (this._finished) return;
+        var params = {};
+        var pid = state._truoraProcessId || this._currentProcessId;
+        var aid = state._truoraAccountId;
+        if (pid) params.process_id = pid;
+        else if (aid) params.account_id = aid;
+        else return;
+        self._appendDebug('force-check ' + JSON.stringify(params));
+        jQuery.get('php/truora-status.php', params).done(function(r) {
+            if (!r) return;
+            self._appendDebug('force-check result · approved=' + r.approved +
+                ' status=' + r.status + ' curp_match=' + r.curp_match +
+                ' source=' + (r.source || '?'));
+            if (r.approved === 1 && r.curp_match !== 0) {
+                self._finished = true;
+                self.app.state._identidadVerificada = true;
+                self.app.irAPaso('credito-enganche');
+            } else if (r.approved === 0) {
+                self._finished = true;
+                self._showError(
+                    'No pudimos verificar tu identidad.',
+                    (r.declined_reason || '') + ' Puedes reintentar.'
+                );
+            }
+            // approved === null → keep the existing 4-second poll running;
+            // the API fallback in truora-status.php may need another tick.
+        });
     },
 
     _pollWebhookResult: function(processId) {

@@ -63,11 +63,29 @@ function closeOrReturn() {
 }
 
 // If we're inside an iframe (Truora may load us inside its own iframe
-// post-OTP), notify the topmost window we completed and stop there —
-// do NOT navigate the parent or top.
+// post-OTP), notify the topmost window we completed and FORWARD any
+// URL params Truora appended (process_id, status, account_id, etc.)
+// so the SPA can poll truora-status.php with the right anchor and
+// settle the flow without timing out.
 try {
+    var qs = location.search.replace(/^\?/, '');
+    var params = {};
+    qs.split('&').forEach(function(p){
+        if (!p) return;
+        var kv = p.split('=');
+        params[decodeURIComponent(kv[0]||'')] = decodeURIComponent(kv[1]||'');
+    });
+    var msg = { vk_truora_otp_returned: true };
+    // Truora uses several names; copy whichever appears.
+    ['process_id','identity_process_id','id','user_id','account_id','status','result'].forEach(function(k){
+        if (params[k]) msg[k] = params[k];
+    });
     if (window.top !== window) {
-        window.top.postMessage({ vk_truora_otp_returned: true }, '*');
+        window.top.postMessage(msg, '*');
+    }
+    // Also broadcast to opener (if Truora opened us as a popup).
+    if (window.opener && window.opener !== window) {
+        try { window.opener.postMessage(msg, '*'); } catch(e) {}
     }
 } catch(e) {}
 </script>
