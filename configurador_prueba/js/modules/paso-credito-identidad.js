@@ -273,12 +273,24 @@ var PasoCreditoIdentidad = {
                 );
             });
 
-            // Set src BEFORE append. Use the URL exactly as Truora gave it
-            // (do NOT add cache-bust params — the JWT is unique per call so
-            // there is nothing to bust, and added params can void Truora's
-            // gateway validation).
-            iframe.src = r.iframe_url;
-            self._appendDebug('src set: ' + r.iframe_url.substr(0, 60) + '...');
+            // Wrap the Truora iframe in our own host page (php/truora-iframe-host.php)
+            // so it loads in an isolated browsing context. The host page is
+            // a same-origin minimal HTML that embeds Truora as a nested
+            // iframe and forwards postMessages back to us via
+            // window.parent.postMessage with a `__from_truora_host` flag.
+            //
+            // Why: empirical testing 2026-04-29 (truora-test-personal.php)
+            // proved the Truora iframe renders perfectly in any standalone
+            // page on this same origin — including pages that reproduce
+            // the SPA's exact DOM nesting and CSS. Yet the iframe renders
+            // BLANK when embedded directly in the configurador SPA. The
+            // SPA's window scope (one of the many JS modules loaded during
+            // the credit flow) interferes with Truora; loading Truora in a
+            // sub-iframe gives it a fresh window where nothing has touched
+            // the postMessage path or DOM observers.
+            var hostUrl = 'php/truora-iframe-host.php?u=' + encodeURIComponent(r.iframe_url);
+            iframe.src = hostUrl;
+            self._appendDebug('host src set: ' + hostUrl.substr(0, 80) + '...');
 
             jQuery('#vk-truora-container').empty().append(iframe);
             self._iframeReady = true;
@@ -361,11 +373,22 @@ var PasoCreditoIdentidad = {
         }, false);
 
         window.addEventListener('message', function(event) {
-            // Only accept messages from identity.truora.com origin. Truora
-            // docs do not guarantee a specific origin string, so we
-            // accept anything that looks like a Truora event.
             var data = event && event.data;
             if (!data) return;
+
+            // Unwrap messages forwarded by truora-iframe-host.php. The
+            // host wraps each Truora postMessage as
+            //   { __from_truora_host: true, origin, data }
+            // and also emits its own host_event lifecycle pings so the
+            // SPA can see when the host iframe loaded.
+            if (data && typeof data === 'object' && data.__from_truora_host) {
+                if (data.host_event) {
+                    self._appendDebug('host: ' + data.host_event);
+                    return;
+                }
+                data = data.data;  // unwrap
+                if (!data) return;
+            }
 
             // Messages can be strings ("truora.process.succeeded") or
             // objects ({ event: "truora.process.succeeded", process_id, ... })

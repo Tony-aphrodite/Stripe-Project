@@ -53,6 +53,10 @@ $defaults = [
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Truora · Test Personal (sin gasto)</title>
+<!-- Load the SAME CSS files as the real SPA so the iframe environment
+     reproduces the configurador as faithfully as possible. -->
+<link rel="stylesheet" href="../css/configurador-variables.css">
+<link rel="stylesheet" href="../css/configurador.css">
 <style>
 *{box-sizing:border-box}
 body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f0f4f8;color:#0c2340;margin:0;padding:18px;line-height:1.5;}
@@ -115,13 +119,21 @@ h2{font-size:12px;color:#64748b;margin:0 0 22px;text-transform:uppercase;letter-
     <button class="btn gray" onclick="rerunIframeOnly()">↻ Re-render iframe (mismo URL)</button>
     <button class="btn red" onclick="clearAll()">🗑 Limpiar caché + iframe</button>
   </div>
-  <div style="margin-top:10px;font-size:13px;">
+  <div style="margin-top:10px;font-size:13px;display:flex;gap:18px;flex-wrap:wrap;">
     <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-      <input type="checkbox" id="repro-spa-bug">
-      <span><b>Reproducir bug del SPA</b> — envuelve el iframe en un div con
-      <code>transform: translateX(...)</code> + <code>animation</code>
-      idéntico a <code>.vk-paso--active</code>. Si esto rompe el iframe →
-      hipótesis confirmada.</span>
+      <input type="checkbox" id="repro-transform">
+      <span><b>+ transform parent</b> (wrapper con animación translateX).</span>
+    </label>
+    <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="repro-spa-dom">
+      <span><b>+ SPA DOM completo</b> (anida iframe en
+      <code>.vk-paso.vk-paso--active &gt; .vk-paso__content &gt; #vk-credito-identidad-container</code>
+      como el flujo real). Marca esto para reproducir la falla del SPA.</span>
+    </label>
+    <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="use-host">
+      <span><b>+ Wrapper host-iframe</b> — embebe Truora a través de
+      <code>php/truora-iframe-host.php</code> (solución para el SPA).</span>
     </label>
   </div>
   <div id="cache-status" class="tip" style="margin-top:10px;">Estado: cargando…</div>
@@ -251,25 +263,64 @@ function renderIframe(url) {
         dbg('iframe ERROR @ ' + new Date().toLocaleTimeString());
     });
 
-    iframe.src = url;
-    dbg('src set');
+    // If host-mode is on, replace the Truora URL with the host page URL,
+    // passing the Truora URL via ?u=. The host page renders Truora inside
+    // itself and forwards postMessages to us.
+    var useHost = document.getElementById('use-host').checked;
+    var srcUrl = useHost ? ('truora-iframe-host.php?u=' + encodeURIComponent(url)) : url;
+
+    iframe.src = srcUrl;
+    dbg('src set' + (useHost ? ' [via host]' : ''));
     var c = document.getElementById('vk-truora-container');
     c.innerHTML = '';
 
-    // Optional: reproduce the SPA bug by wrapping the iframe in a div
-    // that has `transform: translate(...)` and a slide animation — the
-    // exact pattern .vk-paso--active uses in configurador.css.
-    var repro = document.getElementById('repro-spa-bug').checked;
-    if (repro) {
-        dbg('REPRO MODE: envolviendo iframe en transform parent (bug del SPA)');
+    // Optional reproduction wrappers — let us isolate which environment
+    // factor in the SPA breaks the iframe.
+    //   - repro-transform: wraps in a div with `animation: translateX(...)`
+    //     (the .vk-paso--active CSS pattern). Already verified NOT to be
+    //     the cause when used alone.
+    //   - repro-spa-dom: nests iframe in the SAME DOM hierarchy and class
+    //     names that the configurador SPA uses for the credito-identidad
+    //     step. Combined with the SPA's CSS (loaded at top of this page),
+    //     this should faithfully reproduce the bug.
+    var reproT  = document.getElementById('repro-transform').checked;
+    var reproDom = document.getElementById('repro-spa-dom').checked;
+    var modes = [];
+
+    var anchor = c;
+    if (reproDom) {
+        // Build the EXACT structure the SPA uses:
+        //   <div class="vk-paso vk-paso--active" id="vk-paso-credito-identidad">
+        //     <div class="vk-paso__content" id="vk-credito-identidad-container">
+        //       <div id="vk-truora-container">{iframe}</div>
+        //     </div>
+        //   </div>
+        var paso = document.createElement('div');
+        paso.className = 'vk-paso vk-paso--active';
+        paso.id = 'vk-paso-credito-identidad';
+        var content = document.createElement('div');
+        content.className = 'vk-paso__content';
+        content.id = 'vk-credito-identidad-container';
+        var inner = document.createElement('div');
+        inner.id = 'vk-truora-container';
+        inner.style.cssText = 'position:relative;width:100%;min-height:720px;border-radius:14px;overflow:hidden;background:#f8fafc;border:1px solid #e2e8f0;';
+        content.appendChild(inner);
+        paso.appendChild(content);
+        c.appendChild(paso);
+        anchor = inner;
+        modes.push('SPA-DOM');
+    }
+    if (reproT) {
         var wrapper = document.createElement('div');
         wrapper.className = 'spa-wrapper';
         wrapper.appendChild(iframe);
-        c.appendChild(wrapper);
+        anchor.appendChild(wrapper);
+        modes.push('transform');
     } else {
-        c.appendChild(iframe);
+        anchor.appendChild(iframe);
     }
-    dbg('iframe appended @ ' + new Date().toLocaleTimeString() + (repro ? ' [con transform parent]' : ''));
+    dbg('iframe appended @ ' + new Date().toLocaleTimeString() +
+        (modes.length ? ' [' + modes.join('+') + ']' : ' [plain]'));
 
     // Probes
     function probe(label) {
@@ -321,10 +372,23 @@ function clearAll() {
     refreshCacheStatus();
 }
 
-// Capture EVERYTHING we can about postMessages + CSP + service workers
+// Capture EVERYTHING we can about postMessages + CSP + service workers.
+// Host-mode wraps Truora messages as { __from_truora_host, origin, data };
+// log them in a way that surfaces both the wrapper and the inner payload.
 window.addEventListener('message', function(ev) {
     var d = ev.data;
     var origin = ev.origin || '?';
+    if (d && typeof d === 'object' && d.__from_truora_host) {
+        if (d.host_event) {
+            dbg('host-event: ' + d.host_event);
+            return;
+        }
+        var inner = d.data;
+        var preview = (typeof inner === 'string') ? inner.substr(0, 90)
+            : (inner ? JSON.stringify(inner).substr(0, 90) : '(empty)');
+        dbg('msg(via host)<' + (d.origin || '?') + '> ' + preview);
+        return;
+    }
     var preview = '';
     if (typeof d === 'string') preview = d.substr(0, 90);
     else if (d && typeof d === 'object') {
