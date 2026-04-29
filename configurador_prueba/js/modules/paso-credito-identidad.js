@@ -30,13 +30,21 @@ var PasoCreditoIdentidad = {
     _currentProcessId: null,
     _finished: false,
 
+    _initCount: 0,
+
     init: function(app) {
+        this._initCount = (this._initCount || 0) + 1;
+        var thisCount = this._initCount;
         this.app = app;
         this._iframeReady    = false;
         this._tokenFetched   = false;
         this._currentProcessId = null;
         this._finished       = false;
         this.render();
+        // After render the debug panel exists — log init-count BEFORE
+        // anything else so we know if SPA is calling init() multiple
+        // times (which would explain a destroyed-iframe symptom).
+        this._appendDebug('init() call #' + thisCount + ' @ ' + new Date().toLocaleTimeString());
         this._startIframe();
         this._bindMessageListener();
     },
@@ -173,6 +181,28 @@ var PasoCreditoIdentidad = {
             curp:       (state.curp || '').toUpperCase(),
         };
 
+        // Capture browser-level events that might silently block iframes.
+        if (!self._envProbed) {
+            self._envProbed = true;
+            document.addEventListener('securitypolicyviolation', function(ev) {
+                self._appendDebug('CSP-violation: ' + ev.violatedDirective + ' blocked=' + ev.blockedURI);
+            });
+            try {
+                if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+                    navigator.serviceWorker.getRegistrations().then(function(regs) {
+                        if (regs && regs.length) {
+                            self._appendDebug('SW: ' + regs.length + ' registrations · ' +
+                                regs.map(function(r){ return r.scope; }).join(', '));
+                        } else {
+                            self._appendDebug('SW: none');
+                        }
+                    });
+                }
+            } catch (e) {}
+            self._appendDebug('cookies-enabled=' + navigator.cookieEnabled +
+                ' · UA=' + (navigator.userAgent || '').substr(0, 80));
+        }
+
         self._appendDebug('POST truora-token.php... @ ' + new Date().toLocaleTimeString());
 
         jQuery.ajax({
@@ -253,6 +283,35 @@ var PasoCreditoIdentidad = {
             jQuery('#vk-truora-container').empty().append(iframe);
             self._iframeReady = true;
             self._appendDebug('iframe appended @ ' + new Date().toLocaleTimeString());
+            self._appendDebug('referrer=' + (document.referrer || '(empty)') + ' · location=' + location.href);
+
+            // Probe iframe state at intervals — tells us if Truora is
+            // initializing inside the iframe even when no postMessage
+            // arrives. Cross-origin access throws SecurityError = good
+            // (Truora's content is loaded). Returns about:blank/null = bad.
+            var probe = function(label) {
+                try {
+                    var f = document.getElementById('vk-truora-iframe');
+                    if (!f) { self._appendDebug(label + ': iframe MISSING from DOM!'); return; }
+                    var rect = f.getBoundingClientRect();
+                    var info = label + ': size=' + Math.round(rect.width) + 'x' + Math.round(rect.height) +
+                               ' visible=' + (rect.width > 0 && rect.height > 0);
+                    try {
+                        var loc = f.contentWindow && f.contentWindow.location;
+                        var href = loc && loc.href;
+                        info += ' contentLoc=' + (href || 'null');
+                    } catch (e) {
+                        // SecurityError = cross-origin content loaded (good — Truora is there)
+                        info += ' contentLoc=BLOCKED(cross-origin OK · ' + (e.name || 'err') + ')';
+                    }
+                    self._appendDebug(info);
+                } catch (e) {
+                    self._appendDebug(label + ' probe failed: ' + (e.message || e));
+                }
+            };
+            setTimeout(function(){ probe('probe@3s'); }, 3000);
+            setTimeout(function(){ probe('probe@10s'); }, 10000);
+            setTimeout(function(){ probe('probe@25s'); }, 25000);
 
             // Hard fallback: if `load` never fires AND no Truora postMessage
             // arrives within 45s, network or browser-level block. We use
@@ -286,6 +345,21 @@ var PasoCreditoIdentidad = {
         if (this._messageBound) return;
         this._messageBound = true;
 
+        // VERBOSE: log EVERY postMessage from ANY origin so we can see
+        // if Truora is sending anything at all (we previously filtered to
+        // only `truora.*` events but observed silence — need to know if
+        // events are arriving with different naming).
+        window.addEventListener('message', function(event) {
+            var d = event && event.data;
+            var origin = event && event.origin || '?';
+            var preview = '';
+            if (typeof d === 'string') preview = d.substr(0, 80);
+            else if (d && typeof d === 'object') {
+                try { preview = JSON.stringify(d).substr(0, 80); } catch (e) { preview = '[unserializable]'; }
+            } else preview = '(empty)';
+            self._appendDebug('msg<' + origin + '> ' + preview);
+        }, false);
+
         window.addEventListener('message', function(event) {
             // Only accept messages from identity.truora.com origin. Truora
             // docs do not guarantee a specific origin string, so we
@@ -305,7 +379,7 @@ var PasoCreditoIdentidad = {
             }
 
             if (!eventName || eventName.indexOf('truora') !== 0) return;
-            self._appendDebug('postMessage: ' + eventName + (processId ? ' (' + processId + ')' : ''));
+            self._appendDebug('truora-event: ' + eventName + (processId ? ' (' + processId + ')' : ''));
 
             // Truora is talking — cancel the blank-iframe timeout so the
             // user doesn't see a false "no se cargó" error mid-flow.
