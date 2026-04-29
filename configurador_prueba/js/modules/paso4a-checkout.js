@@ -350,25 +350,71 @@ var Paso4A = {
         $(document).off('click', '#vk-contrato-preview-link');
         $(document).on('click', '#vk-contrato-preview-link', function(e) {
             e.preventDefault();
-            var modelo = self.app.getModelo(self.app.state.modeloSeleccionado);
+            var state = self.app.state;
+            var modelo = self.app.getModelo(state.modeloSeleccionado);
             var nombre  = ($('#vk-nombre-pila').val() || '').trim();
             var apP     = ($('#vk-apellido-paterno').val() || '').trim();
             var apM     = ($('#vk-apellido-materno').val() || '').trim();
             var fullName = [nombre, apP, apM].filter(Boolean).join(' ');
+
+            // Payment method + processor based on the user's selection. The
+            // user toggles _pagoTipo when they click "Pago único" / "9 MSI"
+            // and we set _pendingPaymentMethod for SPEI/OXXO. Default to
+            // 'unico' if nothing has been clicked yet (preview-friendly).
+            var pagoTipo = (self._pagoTipo || self._pendingPaymentMethod || 'unico').toLowerCase();
+            var paymentLabels = {
+                unico:   { method: 'Pago único de contado',          processor: 'Stripe (tarjeta crédito/débito)' },
+                msi:     { method: '9 Meses sin intereses (MSI)',    processor: 'Stripe (tarjeta crédito)' },
+                spei:    { method: 'Transferencia electrónica SPEI', processor: 'Stripe (SPEI)' },
+                oxxo:    { method: 'Pago en efectivo OXXO',          processor: 'Stripe (OXXO)' },
+                tarjeta: { method: 'Pago con tarjeta',               processor: 'Stripe (tarjeta crédito/débito)' }
+            };
+            var payInfo = paymentLabels[pagoTipo] || paymentLabels.unico;
+
+            // Logistics cost only applies to MSI (contado includes free freight).
+            var costoLog = state.costoLogistico || 0;
+            var precio   = modelo ? modelo.precioContado : 0;
+            var total    = (pagoTipo === 'msi') ? (precio + costoLog) : precio;
+            var logForContract = (pagoTipo === 'msi') ? costoLog : 0;
+
+            // Estimated delivery date (uses same logic as the resumen card).
+            var cfg = (window.VOLTIKA_PRODUCTOS && VOLTIKA_PRODUCTOS.config) || {};
+            var enInv = state._invColorEnStock !== undefined ? state._invColorEnStock : true;
+            var dEntrega = enInv ? (cfg.entregaDiasInventario || 15) : (cfg.entregaDiasSinInventario || 70);
+            var fd = new Date(); fd.setDate(fd.getDate() + dEntrega);
+            var deliveryIsoDate = fd.toISOString().substr(0, 10); // HTML formats this nicely
+
             var data = {
-                customer_id:        self.app.state._customerRef || ('VK-' + Date.now()),
+                customer_id:        state._customerRef || ('VK-' + Date.now()),
                 contract_date:      new Date().toISOString().substr(0, 10),
-                customer_full_name: fullName || (self.app.state.nombre || ''),
-                customer_email:     ($('#vk-email').val() || self.app.state.email || '').trim(),
-                customer_phone:     ($('#vk-telefono').val() || self.app.state.telefono || '').trim(),
-                customer_zip:       (self.app.state.codigoPostal || self.app.state._cp || '').toString().trim(),
+                customer_full_name: fullName || (state.nombre || ''),
+                customer_email:     ($('#vk-email').val() || state.email || '').trim(),
+                customer_phone:     ($('#vk-telefono').val() || state.telefono || '').trim(),
+                customer_zip:       (state.codigoPostal || state._cp || '').toString().trim(),
                 vehicle_brand:      'Voltika',
                 vehicle_model:      modelo ? modelo.nombre : '',
                 vehicle_year:       new Date().getFullYear().toString(),
-                vehicle_color:      self.app.state.colorSeleccionado || '',
-                vehicle_price:      modelo ? modelo.precioContado : '',
-                total_amount:       modelo ? modelo.precioContado : '',
-                delivery_point:     (self.app.state.centroEntrega && self.app.state.centroEntrega.nombre) || ''
+                vehicle_color:      state.colorSeleccionado || '',
+                vehicle_price:      precio,
+                total_amount:       total,
+                logistics_cost:     logForContract,
+                payment_method:     payInfo.method,
+                payment_processor:  payInfo.processor,
+                // Reference + date are only known AFTER payment confirms.
+                // Show a clear "pending" message so the user understands
+                // these are filled at payment time, not blanked.
+                payment_reference:  'Por asignar al confirmar el pago',
+                payment_date:       'Por asignar al confirmar el pago',
+                estimated_delivery_date: deliveryIsoDate,
+                delivery_point:     (state.centroEntrega && state.centroEntrega.nombre) || '',
+                // Acceptance evidence — populated only when the customer has
+                // already ticked the checkbox (state._termsAcceptedAt set in
+                // the existing #vk-terms-check change handler below).
+                acceptance_timestamp:   state._termsAcceptedAt || 'Por asignar al confirmar el pago',
+                acceptance_ip:          'Se registrará al confirmar el pago',
+                acceptance_geolocation: state._geolocation || 'Por asignar al confirmar el pago',
+                acceptance_device:      navigator.userAgent ? navigator.userAgent.substr(0, 80) : '',
+                otp_validated:          'Por asignar al confirmar el pago'
             };
             var url = $(this).attr('href') + '#data=' + encodeURIComponent(JSON.stringify(data));
             window.open(url, '_blank', 'noopener');
