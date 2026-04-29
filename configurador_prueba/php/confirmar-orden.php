@@ -363,6 +363,67 @@ try {
         $pagoEstadoInit = 'pendiente';
     }
 
+    // ── Anti-fraud guard: identity-vs-credit-bureau cross-check ──────────
+    // Customer brief 2026-04-30: even though the SPA advances to enganche
+    // immediately on Truora success (so the user does not get stuck), a
+    // mismatch between the CURP that Truora extracted from the INE and
+    // the CURP we used for the credit bureau check (CDC) MUST stop the
+    // order from being created. truora-webhook.php and
+    // truora-status.php's API fallback both populate
+    // verificaciones_identidad.curp_match; we read it here and refuse if
+    // it is 0 (mismatch confirmed). curp_match=NULL is treated as
+    // "unknown" → allow, since a permanent block on null would punish
+    // legitimate users when the webhook is slow or the Truora API
+    // response shape doesn't include the CURP field we look for.
+    $isCreditFlow = in_array($pagoTipo, ['credito', 'enganche', 'parcial'], true)
+                 || (($json['metodoPago'] ?? '') === 'credito');
+    if ($isCreditFlow && $telefono) {
+        try {
+            $identStmt = $pdo->prepare("SELECT id, curp_match, expected_curp, verified_curp,
+                    truora_account_id, truora_process_id
+                FROM verificaciones_identidad
+                WHERE telefono = ?
+                ORDER BY id DESC LIMIT 1");
+            $identStmt->execute([$telefono]);
+            $ident = $identStmt->fetch(PDO::FETCH_ASSOC);
+            if ($ident && isset($ident['curp_match']) && (int)$ident['curp_match'] === 0) {
+                // Log the rejection for admin forensics.
+                try {
+                    $pdo->exec("CREATE TABLE IF NOT EXISTS confirmar_orden_rechazos (
+                        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                        reason VARCHAR(80) NULL,
+                        payload MEDIUMTEXT NULL,
+                        rejected_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )");
+                    $pdo->prepare("INSERT INTO confirmar_orden_rechazos (reason, payload) VALUES (?, ?)")
+                        ->execute([
+                            'identity_curp_mismatch',
+                            json_encode([
+                                'telefono'           => $telefono,
+                                'identity_id'        => $ident['id'],
+                                'expected_curp'      => $ident['expected_curp'],
+                                'verified_curp'      => $ident['verified_curp'],
+                                'truora_process_id'  => $ident['truora_process_id'],
+                                'stripe_pi'          => $paymentIntentId,
+                            ], JSON_UNESCAPED_UNICODE),
+                        ]);
+                } catch (Throwable $e) { error_log('rejection log: ' . $e->getMessage()); }
+                http_response_code(403);
+                echo json_encode([
+                    'ok'    => false,
+                    'error' => 'identity_mismatch',
+                    'message' => 'La identidad verificada no coincide con la persona del estudio de crédito. ' .
+                                 'Por seguridad, esta orden no puede completarse.',
+                ]);
+                exit;
+            }
+        } catch (Throwable $e) {
+            // Non-fatal — log and continue. Better to let a legit order
+            // through than to block everyone if the lookup itself errors.
+            error_log('confirmar-orden CURP guard query failed: ' . $e->getMessage());
+        }
+    }
+
     // INSERT IGNORE so if UNIQUE INDEX catches a duplicate stripe_pi the row
     // is silently skipped (we fetch the existing pedido afterwards). Without
     // IGNORE, a UNIQUE violation would throw and land in transacciones_errores.

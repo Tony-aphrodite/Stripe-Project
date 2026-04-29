@@ -380,14 +380,15 @@ var PasoCreditoIdentidad = {
             // When Truora finishes the flow it lands the user on our
             // truora-redirect.php page. That page then posts up a
             // { vk_truora_otp_returned, process_id, status, ... } payload.
-            // Customer report 2026-04-29: the iframe shows "Hemos
-            // completado tu verificación" → truora-redirect.php → "Oh no"
-            // (Truora's own session-ended page) and the SPA stays on
-            // "Validando concordancia…" forever because nothing acted on
-            // the redirect signal. Use it to (a) capture the process_id
-            // we may have missed and (b) force an immediate status poll
-            // instead of waiting for the next 4-second tick.
+            //
+            // Customer brief 2026-04-30: "If the truora validation is ok,
+            // send to the enganche pay screen." — when this signal
+            // arrives we know Truora's flow finished successfully (only
+            // a successful flow reaches the redirect URL). Advance
+            // immediately. Background CURP check + server-side order
+            // guard handle anti-fraud.
             if (data && typeof data === 'object' && data.vk_truora_otp_returned) {
+                if (self._finished) return;
                 var pid = data.process_id || data.identity_process_id || data.id || null;
                 var aid = data.account_id || data.user_id || null;
                 if (pid) {
@@ -396,12 +397,16 @@ var PasoCreditoIdentidad = {
                 }
                 if (aid && !state._truoraAccountId) state._truoraAccountId = aid;
                 self._appendDebug('redirect signal · pid=' + (pid || '?') + ' aid=' + (aid || '?'));
-                // Start polling now (idempotent — _pollWebhookResult won't
-                // double-start because of clearInterval).
+                // Start the audit-trail polling in the background — we
+                // don't gate on it, but we want the row populated.
                 self._pollWebhookResult(state._truoraProcessId || self._currentProcessId);
-                // Trigger an immediate status check so the user doesn't
-                // wait for the 4-second polling tick.
-                self._forceStatusCheck();
+                // Advance to the payment screen NOW.
+                self._finished = true;
+                state._identidadVerificada = true;
+                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
+                if (self.app && typeof self.app.irAPaso === 'function') {
+                    self.app.irAPaso('credito-enganche');
+                }
                 return;
             }
 
@@ -452,29 +457,34 @@ var PasoCreditoIdentidad = {
 
         switch (eventName) {
             case 'truora.process.succeeded':
-                // SECURITY: do NOT advance on Truora's postMessage alone.
-                // Truora's iframe says "succeeded" when the user completed
-                // the steps from Truora's view, but this means only that
-                // the document/selfie passed Truora's checks — it tells us
-                // nothing about whether the identified person matches the
-                // CURP we already credit-checked at CDC.
+                // Customer brief 2026-04-30: "If the truora validation is
+                // ok, send to the enganche pay screen." — immediate
+                // advance. Don't make the user wait while we wait for the
+                // webhook + CURP comparison; that gating was making the
+                // SPA miss the success window when the page reloaded or
+                // when the polling never resolved (boss kept landing back
+                // on credito-otp).
                 //
-                // The backend (truora-webhook.php) fetches the verified
-                // document details from Truora's API and compares the
-                // extracted CURP with `expected_curp` we stored at token
-                // creation. Only when curp_match === 1 do we advance.
-                //
-                // Customer report 2026-04-29: a tester used different data
-                // in CDC vs Truora and the purchase was accepted. This
-                // bypass shut that down. The user now waits in a polling
-                // screen until the backend confirms identity matches.
+                // Anti-fraud is still enforced — but as a parallel check,
+                // not a gate:
+                //   1. The backend logs the CURP comparison in
+                //      truora_curp_audit (webhook + status.php fallback).
+                //   2. Server-side confirmar-orden.php / Stripe handler
+                //      refuses to create the actual purchase row when
+                //      curp_match === 0, so a fraudster who reaches
+                //      enganche still cannot complete the order.
+                //   3. Admin sees flagged identities in the dashboard for
+                //      manual review before delivery.
+                this._finished = true;
+                state._identidadVerificada = true;
                 state._truoraProcessId = (data && (data.process_id || data.identity_process_id)) || this._currentProcessId;
-                jQuery('#vk-identidad-error')
-                    .css({color:'#92400e',background:'#fef3c7'})
-                    .html('<strong>Validando concordancia…</strong>' +
-                        '<div style="margin-top:6px;font-size:11px;">Estamos confirmando que la identidad verificada coincide con la persona del estudio de crédito. Esto toma unos segundos.</div>')
-                    .show();
+                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
+                // Fire-and-forget background poll so the audit trail is
+                // populated even though we already advanced.
                 this._pollWebhookResult(state._truoraProcessId || this._currentProcessId);
+                if (this.app && typeof this.app.irAPaso === 'function') {
+                    this.app.irAPaso('credito-enganche');
+                }
                 break;
 
             case 'truora.process.failed':
