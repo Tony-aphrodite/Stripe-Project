@@ -203,20 +203,45 @@ if ($token === '') {
 // FRAUD. Without this row we would have no anchor to compare against.
 try {
     $pdo = getDB();
+    // The base table may pre-date these fields. Add them lazily — MySQL
+    // raises an error on duplicate ADD COLUMN which we swallow per ALTER.
+    // (BUG 2026-04-29: a previous version inserted into a `curp` column
+    // that never existed → INSERT failed silently → no anchor row for
+    // the webhook to update → user stuck on "Validando concordancia…"
+    // forever. Fixed by ALTERing all required columns before INSERT.)
     foreach ([
         "ALTER TABLE verificaciones_identidad ADD COLUMN truora_account_id VARCHAR(120) NULL",
         "ALTER TABLE verificaciones_identidad ADD COLUMN truora_flow_id VARCHAR(64) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN curp VARCHAR(20) NULL",
         "ALTER TABLE verificaciones_identidad ADD COLUMN expected_curp VARCHAR(20) NULL",
         "ALTER TABLE verificaciones_identidad ADD COLUMN verified_curp VARCHAR(20) NULL",
         "ALTER TABLE verificaciones_identidad ADD COLUMN curp_match TINYINT(1) NULL",
     ] as $ddl) {
         try { $pdo->exec($ddl); } catch (Throwable $e) {}
     }
-    $pdo->prepare("INSERT INTO verificaciones_identidad
-            (nombre, apellidos, telefono, email, curp, expected_curp,
-             truora_account_id, truora_flow_id, identity_status, approved)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0)")
-        ->execute([$nombre, $apellidos, $telefono, $email, $curp, $curp, $accountId, TRUORA_FLOW_ID]);
+    // INSERT with explicit error surfacing — if this fails the user gets
+    // stuck mid-flow, so we want it loud in error_log instead of silently
+    // swallowed.
+    try {
+        $pdo->prepare("INSERT INTO verificaciones_identidad
+                (nombre, apellidos, telefono, email, curp, expected_curp,
+                 truora_account_id, truora_flow_id, identity_status, approved)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0)")
+            ->execute([$nombre, $apellidos, $telefono, $email, $curp, $curp, $accountId, TRUORA_FLOW_ID]);
+    } catch (Throwable $e2) {
+        error_log('truora-token INSERT failed: ' . $e2->getMessage());
+        // Fallback: insert with only the legacy columns so at least an
+        // anchor row exists. Webhook may still update it via account_id.
+        try {
+            $pdo->prepare("INSERT INTO verificaciones_identidad
+                    (nombre, apellidos, telefono, email,
+                     truora_account_id, truora_flow_id, identity_status, approved)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending', 0)")
+                ->execute([$nombre, $apellidos, $telefono, $email, $accountId, TRUORA_FLOW_ID]);
+        } catch (Throwable $e3) {
+            error_log('truora-token fallback INSERT also failed: ' . $e3->getMessage());
+        }
+    }
 } catch (Throwable $e) { error_log('truora-token stub row: ' . $e->getMessage()); }
 
 // ── Respond ───────────────────────────────────────────────────────────────
