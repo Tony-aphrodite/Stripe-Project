@@ -80,8 +80,7 @@ var PasoCreditoAprobado = {
         html += '</div>';
         html += '<p style="font-size:14px;color:var(--vk-text-secondary);margin-bottom:10px;">Para proteger tu cr\u00e9dito y evitar fraudes necesitamos confirmar tu identidad.</p>';
         var chk = '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#039fe1;color:#fff;font-size:12px;flex-shrink:0;">&#10003;</span>';
-        html += '<div class="vk-aprobado-steps__item" style="font-size:15px;margin-bottom:8px;">' + chk + ' Foto de tu INE</div>';
-        html += '<div class="vk-aprobado-steps__item" style="font-size:15px;margin-bottom:8px;">' + chk + ' Selfie r\u00e1pida</div>';
+        html += '<div class="vk-aprobado-steps__item" style="font-size:15px;margin-bottom:8px;">' + chk + ' Foto de tu INE (frente y reverso)</div>';
         html += '<div class="vk-aprobado-steps__item" style="font-size:14px;">&#128274; Tu informaci\u00f3n est\u00e1 protegida y cifrada</div>';
         html += '</div>';
 

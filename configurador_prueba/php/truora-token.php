@@ -88,8 +88,24 @@ $accountId = $clienteId !== ''
     : 'voltika_t_' . $randomSuffix;
 
 // ── Build the redirect URL (where Truora sends the user after the flow) ─
-$redirectBase = defined('VOLTIKA_BASE_URL') ? VOLTIKA_BASE_URL : (getenv('VOLTIKA_BASE_URL') ?: 'https://www.voltika.mx');
-$redirectUrl  = rtrim($redirectBase, '/') . '/configurador_prueba/#credito-identidad';
+//
+// SECURITY/UX (2026-04-29 incident): redirect_url MUST NOT point at the
+// SPA itself. When Truora's email-OTP step redirects the user back to
+// `/configurador_prueba/#credito-identidad`, the SPA reloads, restores
+// state from localStorage, and routes to whatever paso the persisted
+// state holds (boss's case: landed on Círculo de Crédito consent screen
+// mid-Truora-flow, breaking the verification).
+//
+// Use a static landing page instead: confirms the OTP completed and
+// asks the user to return to the original tab. The SPA continues to
+// own its own state, untouched by Truora's redirect.
+//
+// Also use voltika.mx (no www) — the .htaccess force-redirects www
+// requests but using non-www directly avoids an extra hop and prevents
+// a www→non-www redirect from breaking Truora's call.
+$redirectBase = defined('VOLTIKA_BASE_URL') ? VOLTIKA_BASE_URL : (getenv('VOLTIKA_BASE_URL') ?: 'https://voltika.mx');
+$redirectBase = preg_replace('#^https?://www\.#i', 'https://', $redirectBase);
+$redirectUrl  = rtrim($redirectBase, '/') . '/configurador_prueba/php/truora-redirect.php';
 
 // ── Call Truora: POST /v1/api-keys ───────────────────────────────────────
 // Customer report 2026-04-28: when we prefilled phones[]/emails[], Truora's
