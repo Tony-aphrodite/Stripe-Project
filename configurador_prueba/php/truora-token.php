@@ -114,19 +114,17 @@ $redirectUrl  = rtrim($redirectBase, '/') . '/configurador_prueba/php/truora-red
 // step entirely we omit prefill and let Truora collect phone/email from
 // the user inside the flow. (We still record them in our own stub row
 // below for admin/forensics.)
-// Force Spanish UI (boss report 2026-04-29: Truora iframe rendered
-// "Location locked: enable to continue", "Are you still having problems?"
-// in English even though all customers are Mexican). Truora normally
-// auto-detects from browser locale, which fails when the device language
-// is English. Sending language explicitly at token creation locks it.
+// IMPORTANT: keep this body limited to fields Truora's /v1/api-keys
+// endpoint actually accepts. Adding unknown fields (we tried
+// `language`/`lang`/`locale` 2026-04-30 to force Spanish UI) causes the
+// endpoint to return 400 → we forward as 502. Spanish is enforced via
+// the iframe URL query string instead (see `$iframeUrl` below), which
+// Truora's frontend tolerates regardless of API-side validation.
 $fields = [
     'key_type'     => 'web',
     'grant'        => 'digital-identity',
     'flow_id'      => TRUORA_FLOW_ID,
     'country'      => 'MX',
-    'language'     => 'es',
-    'lang'         => 'es',
-    'locale'       => 'es-MX',
     'account_id'   => $accountId,
     'redirect_url' => $redirectUrl,
 ];
