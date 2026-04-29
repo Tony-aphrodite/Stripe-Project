@@ -137,6 +137,30 @@ html {
     }
 }
 
+/* IFRAME-RELATED STEPS — never use transform-based animations.
+   Chromium bug: an iframe loaded inside an element that has `transform`
+   applied (even transform: translateX(0) at the end of animation-fill:forwards)
+   creates a new stacking context where iframe content paint can stall — the
+   HTTP `load` event fires but the inner UI never renders. Symptom:
+   blank gray box with broken-page icon (Truora identity flow 2026-04-29).
+   Fade-only animation avoids this entirely. */
+#vk-paso-credito-identidad.vk-paso--active,
+#vk-paso-credito-identidad.vk-paso--exit {
+    animation: vkFadeOnly 0.25s ease forwards;
+    transform: none !important;
+}
+#vk-paso-credito-identidad.vk-paso--exit {
+    animation: vkFadeOut 0.2s ease forwards;
+}
+@keyframes vkFadeOnly {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes vkFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
 /* Paso Header */
 .vk-paso__header {
     margin-bottom: var(--vk-space-md);

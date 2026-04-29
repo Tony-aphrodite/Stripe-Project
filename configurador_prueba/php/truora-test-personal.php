@@ -76,6 +76,16 @@ h2{font-size:12px;color:#64748b;margin:0 0 22px;text-transform:uppercase;letter-
 .status{display:inline-block;padding:2px 9px;border-radius:4px;font-weight:700;font-size:11px;}
 .status.cached{background:#dcfce7;color:#14532d;}
 .status.fresh{background:#fef3c7;color:#78350f;}
+/* Reproduce-the-SPA-bug wrapper: applies the EXACT same animation/transform
+   the configurador's .vk-paso--active uses, so we can prove the iframe
+   blank-paint bug is caused by a transformed parent. */
+.spa-wrapper {
+    animation: spaSlideIn 0.35s ease forwards;
+}
+@keyframes spaSlideIn {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
 </style>
 </head>
 <body>
@@ -104,6 +114,15 @@ h2{font-size:12px;color:#64748b;margin:0 0 22px;text-transform:uppercase;letter-
     <button class="btn amber" onclick="forceFresh()">⟳ Forzar token NUEVO (gasta 1 API)</button>
     <button class="btn gray" onclick="rerunIframeOnly()">↻ Re-render iframe (mismo URL)</button>
     <button class="btn red" onclick="clearAll()">🗑 Limpiar caché + iframe</button>
+  </div>
+  <div style="margin-top:10px;font-size:13px;">
+    <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="repro-spa-bug">
+      <span><b>Reproducir bug del SPA</b> — envuelve el iframe en un div con
+      <code>transform: translateX(...)</code> + <code>animation</code>
+      idéntico a <code>.vk-paso--active</code>. Si esto rompe el iframe →
+      hipótesis confirmada.</span>
+    </label>
   </div>
   <div id="cache-status" class="tip" style="margin-top:10px;">Estado: cargando…</div>
 </div>
@@ -236,8 +255,21 @@ function renderIframe(url) {
     dbg('src set');
     var c = document.getElementById('vk-truora-container');
     c.innerHTML = '';
-    c.appendChild(iframe);
-    dbg('iframe appended @ ' + new Date().toLocaleTimeString());
+
+    // Optional: reproduce the SPA bug by wrapping the iframe in a div
+    // that has `transform: translate(...)` and a slide animation — the
+    // exact pattern .vk-paso--active uses in configurador.css.
+    var repro = document.getElementById('repro-spa-bug').checked;
+    if (repro) {
+        dbg('REPRO MODE: envolviendo iframe en transform parent (bug del SPA)');
+        var wrapper = document.createElement('div');
+        wrapper.className = 'spa-wrapper';
+        wrapper.appendChild(iframe);
+        c.appendChild(wrapper);
+    } else {
+        c.appendChild(iframe);
+    }
+    dbg('iframe appended @ ' + new Date().toLocaleTimeString() + (repro ? ' [con transform parent]' : ''));
 
     // Probes
     function probe(label) {
