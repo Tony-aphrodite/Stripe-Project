@@ -222,18 +222,40 @@ try {
         "ALTER TABLE verificaciones_identidad ADD COLUMN expected_curp VARCHAR(20) NULL",
         "ALTER TABLE verificaciones_identidad ADD COLUMN verified_curp VARCHAR(20) NULL",
         "ALTER TABLE verificaciones_identidad ADD COLUMN curp_match TINYINT(1) NULL",
+        // Name-mismatch guard (customer brief 2026-04-30): Truora-verified
+        // document name must match the name the customer entered on the
+        // previous CDC screen. Mismatch → ask user to retry with the same
+        // info (typing typo / picked the wrong INE). expected_name is the
+        // anchor we compare against when the webhook arrives.
+        "ALTER TABLE verificaciones_identidad ADD COLUMN expected_name VARCHAR(220) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN verified_name VARCHAR(220) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN name_match TINYINT(1) NULL",
+        // Manual-review queue marker (customer brief 2026-04-30): when
+        // Truora declines for false-info reasons we stop the flow and
+        // hand it to the crew rather than auto-retrying.
+        "ALTER TABLE verificaciones_identidad ADD COLUMN manual_review_required TINYINT(1) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN manual_review_reason VARCHAR(160) NULL",
     ] as $ddl) {
         try { $pdo->exec($ddl); } catch (Throwable $e) {}
     }
+
+    // Compose the expected name from the previous-screen fields. This is
+    // the same string that was sent to CDC, so a mismatch on Truora's
+    // side means either the user typed it wrong on the previous screen
+    // or uploaded an INE belonging to someone else.
+    $expectedName = trim($nombre . ' ' . $apellidos);
+
     // INSERT with explicit error surfacing — if this fails the user gets
     // stuck mid-flow, so we want it loud in error_log instead of silently
     // swallowed.
     try {
         $pdo->prepare("INSERT INTO verificaciones_identidad
                 (nombre, apellidos, telefono, email, curp, expected_curp,
+                 expected_name,
                  truora_account_id, truora_flow_id, identity_status, approved)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0)")
-            ->execute([$nombre, $apellidos, $telefono, $email, $curp, $curp, $accountId, TRUORA_FLOW_ID]);
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0)")
+            ->execute([$nombre, $apellidos, $telefono, $email, $curp, $curp,
+                       $expectedName, $accountId, TRUORA_FLOW_ID]);
     } catch (Throwable $e2) {
         error_log('truora-token INSERT failed: ' . $e2->getMessage());
         // Fallback: insert with only the legacy columns so at least an

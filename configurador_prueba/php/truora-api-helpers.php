@@ -144,3 +144,124 @@ function truoraExtractStatus(?array $details): ?string {
     return null;
 }
 }
+
+if (!function_exists('truoraExtractName')) {
+/**
+ * Extract the verified person's full name from a Truora payload.
+ *
+ * Truora flow versions ship the verified name under several keys depending
+ * on flow_id and document type:
+ *   - { first_name, last_name, second_last_name } (Mexico INE flows)
+ *   - { name, surname }
+ *   - { full_name }
+ *   - { person_information: { ... } }
+ *   - { document: { ... } }
+ *
+ * Returns an array { first_name, last_name, full_name } where full_name is
+ * always populated (constructed from parts when needed). All values are
+ * uppercased + trimmed for case-insensitive comparison. Returns null when
+ * nothing recognisable is found.
+ */
+function truoraExtractName(?array $details): ?array {
+    if (!is_array($details)) return null;
+
+    $first = '';
+    $last  = '';
+    $second = '';
+    $full  = '';
+
+    $readSection = function(array $node) use (&$first, &$last, &$second, &$full) {
+        foreach (['first_name', 'firstName', 'name', 'nombres', 'nombre'] as $k) {
+            if ($first === '' && !empty($node[$k]) && is_string($node[$k])) $first = $node[$k];
+        }
+        foreach (['last_name', 'lastName', 'surname', 'apellido_paterno', 'paternal_last_name'] as $k) {
+            if ($last === '' && !empty($node[$k]) && is_string($node[$k])) $last = $node[$k];
+        }
+        foreach (['second_last_name', 'secondLastName', 'apellido_materno', 'maternal_last_name', 'mother_surname'] as $k) {
+            if ($second === '' && !empty($node[$k]) && is_string($node[$k])) $second = $node[$k];
+        }
+        foreach (['full_name', 'fullName', 'nombre_completo', 'complete_name', 'person_name'] as $k) {
+            if ($full === '' && !empty($node[$k]) && is_string($node[$k])) $full = $node[$k];
+        }
+    };
+
+    // Top-level
+    $readSection($details);
+
+    // Common nested sections
+    foreach (['person_information', 'person', 'document', 'identity', 'result', 'document_data', 'document_information'] as $section) {
+        if (!empty($details[$section]) && is_array($details[$section])) {
+            $readSection($details[$section]);
+        }
+    }
+
+    // `validations` is typically an array of { validation_name, validation_data: {...} }
+    if (!empty($details['validations']) && is_array($details['validations'])) {
+        foreach ($details['validations'] as $v) {
+            if (!is_array($v)) continue;
+            $readSection($v);
+            if (!empty($v['validation_data']) && is_array($v['validation_data'])) {
+                $readSection($v['validation_data']);
+            }
+        }
+    }
+
+    // Build full_name from parts when the API didn't ship it.
+    if ($full === '' && ($first !== '' || $last !== '')) {
+        $full = trim($first . ' ' . $last . ' ' . $second);
+    }
+
+    if ($first === '' && $last === '' && $full === '') return null;
+
+    $norm = function(string $s): string {
+        $s = mb_strtoupper(trim($s), 'UTF-8');
+        // Strip diacritics for comparison stability (José === JOSE)
+        $from = ['Á','É','Í','Ó','Ú','Ü','Ñ'];
+        $to   = ['A','E','I','O','U','U','N'];
+        $s = str_replace($from, $to, $s);
+        // Collapse whitespace
+        $s = preg_replace('/\s+/', ' ', $s);
+        return $s;
+    };
+
+    return [
+        'first_name' => $norm($first),
+        'last_name'  => $norm($last),
+        'second_last_name' => $norm($second),
+        'full_name'  => $norm($full),
+    ];
+}
+}
+
+if (!function_exists('truoraNamesMatch')) {
+/**
+ * Loose name comparison used to decide if Truora's verified document name
+ * matches the name the customer entered on the CDC step.
+ *
+ * Loose because: real INEs frequently have ordering quirks ("MARIA DEL
+ * CARMEN" vs "DEL CARMEN MARIA"), missing accents, abbreviated middle
+ * names, etc. We require the major tokens (≥3 chars) of the *expected*
+ * name to all appear in the verified name. That tolerates extra middle
+ * names on the document but blocks a fully different person.
+ *
+ * Returns true / false. Both inputs should already be uppercase + ASCII.
+ */
+function truoraNamesMatch(string $expected, string $verified): bool {
+    $expected = preg_replace('/\s+/', ' ', trim($expected));
+    $verified = preg_replace('/\s+/', ' ', trim($verified));
+    if ($expected === '' || $verified === '') return false;
+
+    $tokens = array_filter(explode(' ', $expected), function($t) {
+        return strlen($t) >= 3;
+    });
+    if (!$tokens) return false;
+
+    foreach ($tokens as $t) {
+        // Word-boundary-ish containment check.
+        if (strpos(' ' . $verified . ' ', ' ' . $t . ' ') === false) {
+            return false;
+        }
+    }
+    return true;
+}
+}

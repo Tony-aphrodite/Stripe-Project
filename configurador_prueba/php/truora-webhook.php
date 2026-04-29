@@ -36,6 +36,7 @@
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/truora-api-helpers.php';
 header('Content-Type: application/json');
 
 // Only POST is valid for webhooks (return 200 anyway to avoid retry storms).
@@ -142,10 +143,12 @@ exit;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+if (!function_exists('truoraB64UrlDecode')) {
 function truoraB64UrlDecode(string $s) {
     $remainder = strlen($s) % 4;
     if ($remainder) $s .= str_repeat('=', 4 - $remainder);
     return base64_decode(strtr($s, '-_', '+/'), true);
+}
 }
 
 /**
@@ -160,6 +163,7 @@ function truoraB64UrlDecode(string $s) {
  * Returns the decoded JSON array, or null on failure. Logged to
  * truora_fetch_log for forensics.
  */
+if (!function_exists('truoraFetchProcessDetails')) {
 function truoraFetchProcessDetails(string $processId): ?array {
     if (!defined('TRUORA_API_KEY') || !TRUORA_API_KEY) return null;
     if (!defined('TRUORA_IDENTITY_API_URL')) define('TRUORA_IDENTITY_API_URL', 'https://api.identity.truora.com');
@@ -215,6 +219,7 @@ function truoraFetchProcessDetails(string $processId): ?array {
     }
     return null;
 }
+}
 
 /**
  * Walk a Truora process-details payload and extract the verified CURP
@@ -222,6 +227,7 @@ function truoraFetchProcessDetails(string $processId): ?array {
  * depends on the flow_id configuration, so we search in several common
  * locations and return the first 18-character RFC-shaped match.
  */
+if (!function_exists('truoraExtractCurp')) {
 function truoraExtractCurp(?array $details): ?string {
     if (!is_array($details)) return null;
 
@@ -276,6 +282,7 @@ function truoraExtractCurp(?array $details): ?string {
     }
     return null;
 }
+}
 
 /**
  * Apply one Truora event to verificaciones_identidad.
@@ -316,6 +323,11 @@ function truoraProcessEvent(PDO $pdo, array $ev): void {
         "ALTER TABLE verificaciones_identidad ADD COLUMN truora_declined_reason VARCHAR(160) NULL",
         "ALTER TABLE verificaciones_identidad ADD COLUMN truora_last_event VARCHAR(80) NULL",
         "ALTER TABLE verificaciones_identidad ADD COLUMN truora_updated_at DATETIME NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN expected_name VARCHAR(220) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN verified_name VARCHAR(220) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN name_match TINYINT(1) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN manual_review_required TINYINT(1) NULL",
+        "ALTER TABLE verificaciones_identidad ADD COLUMN manual_review_reason VARCHAR(160) NULL",
         "ALTER TABLE verificaciones_identidad ADD INDEX idx_truora_process (truora_process_id)",
     ] as $ddl) {
         try { $pdo->exec($ddl); } catch (Throwable $e) {}
@@ -421,6 +433,84 @@ function truoraProcessEvent(PDO $pdo, array $ev): void {
         // CDC ran on real customer data.
     }
 
+    // ── Name cross-check (customer brief 2026-04-30) ────────────────────────
+    // "If the name is different from the CDC validation, we need to send a
+    //  message: use the same information of the previous screen and restart
+    //  truora validation."
+    //
+    // Compare Truora-verified document name against the name we anchored at
+    // token creation time (expected_name = nombre + apellidos from the
+    // previous CDC screen). A mismatch is recoverable — typically a typo
+    // or the user grabbing the wrong INE — so we surface a specific
+    // declined_reason the frontend translates into a "use same info, retry"
+    // CTA, distinct from the manual-review path.
+    $verifiedName = null;
+    $nameMatch    = null;
+    if ($approved === 1) {
+        $expectedName = null;
+        try {
+            $q = $pdo->prepare("SELECT expected_name FROM verificaciones_identidad
+                WHERE truora_process_id = ? OR truora_account_id = ?
+                ORDER BY id DESC LIMIT 1");
+            $q->execute([$processId, $accountId]);
+            $expectedName = $q->fetchColumn() ?: null;
+        } catch (Throwable $e) {}
+
+        $nameInfo = truoraExtractName($object);
+        if (!$nameInfo) $nameInfo = truoraExtractName($ev);
+        if (!$nameInfo) {
+            $details = truoraFetchProcessDetails($processId);
+            if (is_array($details)) $nameInfo = truoraExtractName($details);
+        }
+        if (is_array($nameInfo)) {
+            $verifiedName = $nameInfo['full_name'] ?: trim(
+                ($nameInfo['first_name'] ?? '') . ' ' .
+                ($nameInfo['last_name']  ?? '') . ' ' .
+                ($nameInfo['second_last_name'] ?? '')
+            );
+            $verifiedName = trim((string)$verifiedName);
+        }
+
+        if ($expectedName && $verifiedName) {
+            // Normalise expected to the same upper/no-accent shape used by
+            // truoraExtractName so the comparison is symmetric.
+            $expectedNorm = strtoupper(strtr(
+                preg_replace('/\s+/', ' ', trim($expectedName)),
+                ['Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N',
+                 'á'=>'A','é'=>'E','í'=>'I','ó'=>'O','ú'=>'U','ü'=>'U','ñ'=>'N']
+            ));
+            $nameMatch = truoraNamesMatch($expectedNorm, $verifiedName) ? 1 : 0;
+            if (!$nameMatch) {
+                $approved = 0;
+                $declined = 'identity_name_mismatch';
+                $failStatus = 'name_mismatch';
+            }
+        }
+    }
+
+    // ── Manual-review escalation (customer brief 2026-04-30) ────────────────
+    // "If the validation fails, ... because truora detect false information,
+    //  we need to send a message for manual validation for our crew."
+    //
+    // Any time the process ends in failure for a non-data-mismatch reason
+    // (Truora's own fraud / liveness / document-tampering checks), we set
+    // manual_review_required=1. The admin dashboard surfaces these so the
+    // crew can call the customer back. CURP/name-mismatch failures are
+    // user-recoverable and stay out of the manual queue.
+    $manualReview       = null;
+    $manualReviewReason = null;
+    if ($approved === 0 && $isProcessEvent && $action === 'failed') {
+        $userRecoverable = in_array($declined, [
+            'identity_curp_mismatch',
+            'identity_name_mismatch',
+            'verified_curp_unavailable',
+        ], true);
+        if (!$userRecoverable) {
+            $manualReview = 1;
+            $manualReviewReason = $declined ?: ($failStatus ?: 'truora_validation_failed');
+        }
+    }
+
     // Upsert by process_id.
     $existingId = null;
     try {
@@ -442,7 +532,13 @@ function truoraProcessEvent(PDO $pdo, array $ev): void {
             : date('Y-m-d H:i:s'),
         'verified_curp'          => $verifiedCurp,
         'curp_match'             => $curpMatch,
+        'verified_name'          => $verifiedName,
+        'name_match'             => $nameMatch,
     ];
+    if ($manualReview !== null) {
+        $fields['manual_review_required'] = $manualReview;
+        $fields['manual_review_reason']   = $manualReviewReason;
+    }
     if ($approved !== null) {
         $fields['approved'] = $approved;
         $fields['identity_status'] = $approved ? 'valid' : 'declined';

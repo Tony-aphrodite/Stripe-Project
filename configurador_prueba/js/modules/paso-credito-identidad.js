@@ -100,6 +100,18 @@ var PasoCreditoIdentidad = {
         // 7. Retry button (shown only after errors)
         html += '<button id="vk-identidad-retry" style="display:none;width:100%;padding:14px;background:#039fe1;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;text-transform:uppercase;letter-spacing:0.5px;">Reintentar verificación</button>';
 
+        // 7b. "Regresar a datos" button — used by the name/CURP-mismatch branch
+        //     so the user can fix what they typed on the previous CDC screen
+        //     and re-run Truora with consistent data.
+        html += '<button id="vk-identidad-back-nombre" style="display:none;width:100%;padding:14px;background:#ffffff;color:#039fe1;border:1.5px solid #039fe1;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;text-transform:uppercase;letter-spacing:0.5px;">Regresar y corregir datos</button>';
+
+        // 7c. Manual-review explainer — shown when Truora flagged false info.
+        //     The crew handles these cases offline; no retry button is shown
+        //     because the user can't fix this themselves.
+        html += '<div id="vk-identidad-manual-note" style="display:none;margin-top:10px;padding:12px;background:#FFF8E1;border:1px solid #F9A825;border-radius:8px;font-size:12px;color:#5D4037;line-height:1.55;">';
+        html += '<strong>Tu solicitud queda en revisión.</strong><br>Nuestro equipo de Voltika revisará tu caso y te contactará por WhatsApp o correo dentro de las próximas horas hábiles.';
+        html += '</div>';
+
         // 8. Consejos rápidos
         html += '<div class="vk-identidad-consejos" style="margin-top:16px;">';
         html += '<div class="vk-identidad-consejos__title">Consejos rápidos</div>';
@@ -125,6 +137,8 @@ var PasoCreditoIdentidad = {
         jQuery(document).off('click', '#vk-identidad-retry');
         jQuery(document).on('click', '#vk-identidad-retry', function() {
             jQuery('#vk-identidad-error').hide();
+            jQuery('#vk-identidad-manual-note').hide();
+            jQuery('#vk-identidad-back-nombre').hide();
             jQuery(this).hide();
             self._tokenFetched = false;
             self._iframeReady = false;
@@ -139,16 +153,72 @@ var PasoCreditoIdentidad = {
             self._startIframe();
         });
 
+        // "Regresar a corregir datos" — sends the user back to the CDC name
+        // screen so they can fix what they typed and re-run Truora with
+        // consistent data. (Customer brief 2026-04-30 — name mismatch.)
+        jQuery(document).off('click', '#vk-identidad-back-nombre');
+        jQuery(document).on('click', '#vk-identidad-back-nombre', function() {
+            if (self.app && typeof self.app.irAPaso === 'function') {
+                self.app.irAPaso('credito-nombre');
+            }
+        });
+
     },
 
-    _showError: function(msg, detail) {
+    _showError: function(msg, detail, opts) {
+        opts = opts || {};
         jQuery('#vk-identidad-error').html(
             '<strong>' + msg + '</strong>' +
             (detail ? '<div style="margin-top:6px;font-size:11px;color:#666;white-space:pre-wrap;">' + detail + '</div>' : '')
         ).show();
-        jQuery('#vk-identidad-retry').show();
+        // Three CTAs depending on the failure class:
+        //   - retry-truora: name/CURP mismatch → user re-runs identity with same data
+        //   - back-to-name: explicit "go fix the previous screen" button
+        //   - manual-review: Truora flagged false info → no retry, crew will reach out
+        jQuery('#vk-identidad-retry').toggle(opts.retry !== false);
+        jQuery('#vk-identidad-back-nombre').toggle(!!opts.backToNombre);
+        jQuery('#vk-identidad-manual-note').toggle(!!opts.manualReview);
         jQuery('#vk-truora-loader').hide();
-        this._appendDebug('SHOW ERROR: ' + msg);
+        this._appendDebug('SHOW ERROR: ' + msg + (opts.code ? ' [' + opts.code + ']' : ''));
+    },
+
+    // Map Truora declined_reason → customer-facing message + CTA.
+    // The three classes come from the customer brief 2026-04-30:
+    //   1. CURP/name mismatch  → "use same info as previous screen, retry"
+    //   2. Truora false-info   → manual review by crew
+    //   3. Generic failure     → retry
+    _mapDeclinedReason: function(declinedReason, fallbackDetail) {
+        var msg, detail, opts = { retry: true };
+        switch (declinedReason) {
+            case 'identity_name_mismatch':
+                msg = 'Los datos no coinciden con la información del paso anterior.';
+                detail = 'El nombre que aparece en tu INE no coincide con el que ingresaste en la pantalla anterior. ' +
+                         'Por favor regresa, usa la misma información que aparece en tu INE y reinicia la verificación.';
+                opts.backToNombre = true;
+                break;
+            case 'identity_curp_mismatch':
+                msg = 'La identidad verificada no coincide con los datos del estudio de crédito.';
+                detail = 'Por seguridad, la persona que sube su INE debe ser la misma que solicitó el crédito. ' +
+                         'Usa la misma información del paso anterior y reinicia la verificación.';
+                opts.backToNombre = true;
+                break;
+            case 'verified_curp_unavailable':
+                msg = 'No pudimos confirmar el CURP de tu documento.';
+                detail = 'Reintenta la verificación con un INE más legible. Si el problema persiste, ' +
+                         'contáctanos y revisaremos tu caso manualmente.';
+                break;
+            default:
+                // Anything else from Truora (liveness, document tampering,
+                // inconsistent face, blacklist hit, etc.) → manual review.
+                msg = 'Tu verificación necesita revisión manual.';
+                detail = 'Detectamos información que requiere validación adicional por parte de nuestro equipo. ' +
+                         'Nos pondremos en contacto contigo a la brevedad para completar tu solicitud. ' +
+                         'Puedes escribirnos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.' +
+                         (fallbackDetail ? '\n\nDetalle: ' + fallbackDetail : '');
+                opts.retry = false;
+                opts.manualReview = true;
+        }
+        return { msg: msg, detail: detail, opts: opts };
     },
 
     // Append a line to the on-page debug panel. Helps diagnose iframe
@@ -488,12 +558,20 @@ var PasoCreditoIdentidad = {
                 break;
 
             case 'truora.process.failed':
-                // Hard failure — identity rejected.
+                // Hard failure from Truora's side. We do NOT decide the
+                // user-facing branch here — the webhook (or status.php's
+                // API fallback) does, because only the server can read the
+                // declined_reason / failure_status payload. Kick a status
+                // poll so the right branch (retry vs back-to-name vs
+                // manual-review) gets shown as soon as the verdict lands.
                 this._finished = true;
-                this._showError(
-                    'No pudimos verificar tu identidad.',
-                    'Revisa que el documento esté completo y que la selfie coincida con tu INE. Puedes reintentar.'
-                );
+                jQuery('#vk-identidad-error')
+                    .css({color:'#92400e',background:'#fef3c7'})
+                    .html('<strong>Procesando resultado…</strong>' +
+                          '<div style="margin-top:6px;font-size:11px;">Estamos confirmando el motivo con Truora. Esto toma unos segundos.</div>')
+                    .show();
+                this._finished = false; // allow the poll to settle
+                this._pollWebhookResult(state._truoraProcessId || this._currentProcessId);
                 break;
 
             case 'truora.steps.completed':
@@ -533,16 +611,17 @@ var PasoCreditoIdentidad = {
             self._appendDebug('force-check result · approved=' + r.approved +
                 ' status=' + r.status + ' curp_match=' + r.curp_match +
                 ' source=' + (r.source || '?'));
-            if (r.approved === 1 && r.curp_match !== 0) {
+            if (r.approved === 1 && r.curp_match !== 0 && r.name_match !== 0) {
                 self._finished = true;
                 self.app.state._identidadVerificada = true;
                 self.app.irAPaso('credito-enganche');
             } else if (r.approved === 0) {
                 self._finished = true;
-                self._showError(
-                    'No pudimos verificar tu identidad.',
-                    (r.declined_reason || '') + ' Puedes reintentar.'
+                var mappedFC = self._mapDeclinedReason(
+                    r.declined_reason || r.manual_review_reason || 'truora_validation_failed',
+                    r.failure_status
                 );
+                self._showError(mappedFC.msg, mappedFC.detail, mappedFC.opts);
             }
             // approved === null → keep the existing 4-second poll running;
             // the API fallback in truora-status.php may need another tick.
@@ -562,20 +641,23 @@ var PasoCreditoIdentidad = {
                     self._appendDebug('poll #' + tries + ': approved=' + r.approved +
                         ' status=' + r.status + ' curp_match=' + r.curp_match);
 
-                    // ── Anti-fraud guard ──────────────────────────────────
-                    // approved=0 + curp_match=0 means Truora's verified
-                    // CURP did NOT match the CURP we used for the credit
-                    // bureau check. Reject loudly.
-                    if (r.approved === 0 && (r.curp_match === 0 ||
+                    // ── Recoverable mismatch branch ───────────────────────
+                    // CURP or NAME doesn't match what was sent to CDC →
+                    // surface the "use the same info as previous screen,
+                    // restart" CTA (customer brief 2026-04-30).
+                    if (r.approved === 0 && (
                         r.declined_reason === 'identity_curp_mismatch' ||
-                        r.declined_reason === 'verified_curp_unavailable')) {
+                        r.declined_reason === 'identity_name_mismatch' ||
+                        r.declined_reason === 'verified_curp_unavailable' ||
+                        r.curp_match === 0 ||
+                        r.name_match === 0
+                    )) {
                         clearInterval(timer);
                         self._finished = true;
-                        self._showError(
-                            'La identidad verificada no coincide con los datos del estudio de crédito.',
-                            'Por seguridad, la persona que sube su INE debe ser la misma que solicitó el crédito. ' +
-                            'Si crees que esto es un error, contáctanos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.'
-                        );
+                        var mapped = self._mapDeclinedReason(r.declined_reason ||
+                            (r.name_match === 0 ? 'identity_name_mismatch' :
+                             r.curp_match === 0 ? 'identity_curp_mismatch' : ''));
+                        self._showError(mapped.msg, mapped.detail, mapped.opts);
                         return;
                     }
 
@@ -585,26 +667,29 @@ var PasoCreditoIdentidad = {
                         // this column existed). curp_match === 0 should
                         // never reach here because the webhook would have
                         // set approved=0, but guard anyway.
-                        if (r.curp_match === 0) {
+                        if (r.curp_match === 0 || r.name_match === 0) {
                             clearInterval(timer);
                             self._finished = true;
-                            self._showError(
-                                'Conflicto en los datos de identidad.',
-                                'La persona verificada no coincide con la del estudio de crédito.'
+                            var mapped2 = self._mapDeclinedReason(
+                                r.name_match === 0 ? 'identity_name_mismatch' : 'identity_curp_mismatch'
                             );
+                            self._showError(mapped2.msg, mapped2.detail, mapped2.opts);
                             return;
                         }
                         clearInterval(timer);
                         self._finished = true;
                         self.app.state._identidadVerificada = true;
                         self.app.irAPaso('credito-enganche');
-                    } else if (r.approved === 0 && r.status === 'failure') {
+                    } else if (r.approved === 0 && (r.status === 'failure' || r.manual_review === 1)) {
+                        // Truora outright failed (liveness, doc tampering,
+                        // blacklist hit, etc.) → manual-review branch.
                         clearInterval(timer);
                         self._finished = true;
-                        self._showError(
-                            'No pudimos verificar tu identidad.',
-                            (r.declined_reason || '') + ' Puedes reintentar.'
+                        var mapped3 = self._mapDeclinedReason(
+                            r.declined_reason || r.manual_review_reason || 'truora_validation_failed',
+                            r.failure_status || r.declined_reason
                         );
+                        self._showError(mapped3.msg, mapped3.detail, mapped3.opts);
                     }
                 });
             if (tries >= maxTries) {
