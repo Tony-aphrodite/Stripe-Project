@@ -98,6 +98,40 @@ if (!$primerNombre || !$apellidoPaterno) {
     exit;
 }
 
+// ── CDC test mode ────────────────────────────────────────────────────────────
+// Customer brief 2026-04-30: "We can't continue doing fail tests anymore,
+// because we lose score. The better way is you put CDC in test mode."
+// Each live CDC query consumes the merchant's quota and repeated negative
+// patterns dent their CDC reputation. While iterating on the Truora →
+// enganche downstream flow we mock CDC entirely: the response shape and
+// session/storage side effects mirror a real successful query (score 720,
+// no DPD90, person found) so credito-loading → credito-aprobado →
+// credito-identidad (Truora) → credito-enganche all proceed identically.
+// Truora itself still hits live Truora — only CDC is mocked.
+// Toggle via CDC_TEST_MODE=1 in .env (defaults to off → live CDC calls).
+$cdcTestMode = strtolower((string)(getenv('CDC_TEST_MODE') ?: '0'));
+$cdcTestMode = in_array($cdcTestMode, ['1','true','yes','on'], true);
+if ($cdcTestMode) {
+    $folio = 'TEST-' . date('YmdHis') . '-' . substr(uniqid(), -6);
+    $_SESSION['cdc_score']             = 720;
+    $_SESSION['cdc_pago_mensual_buro'] = 0;
+    $_SESSION['cdc_dpd90_flag']        = false;
+    $_SESSION['cdc_dpd_max']           = 0;
+    $_SESSION['cdc_folio_consulta']    = $folio;
+    $_SESSION['cdc_person_found']      = true;
+    echo json_encode([
+        'success'           => true,
+        'score'             => 720,
+        'pago_mensual_buro' => 0,
+        'dpd90_flag'        => false,
+        'dpd_max'           => 0,
+        'num_cuentas'       => 0,
+        'folioConsulta'     => $folio,
+        'test_mode'         => true,
+    ]);
+    exit;
+}
+
 // ── Normalize everything to ASCII-only uppercase ──────────────────────────
 // CDC v2 is strict about the signed body — accents (ñ, á, é) or mixed case
 // can cause 503 "signature mismatch" or 400 validation. Collapse everything
