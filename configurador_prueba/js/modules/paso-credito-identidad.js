@@ -40,6 +40,7 @@ var PasoCreditoIdentidad = {
         this._tokenFetched   = false;
         this._currentProcessId = null;
         this._finished       = false;
+        if (this._deviceBlockTimer) { clearTimeout(this._deviceBlockTimer); this._deviceBlockTimer = null; }
         this.render();
         // After render the debug panel exists — log init-count BEFORE
         // anything else so we know if SPA is calling init() multiple
@@ -445,6 +446,11 @@ var PasoCreditoIdentidad = {
         window.addEventListener('message', function(event) {
             var data = event && event.data;
             if (!data) return;
+            // Capture state for every branch in this listener (redirect-signal,
+            // host-event, truora-event). Without this, the redirect-signal
+            // branch threw ReferenceError on `state._truoraProcessId` and the
+            // success → enganche advance silently failed.
+            var state = (self.app && self.app.state) || {};
 
             // ── Post-redirect signal from truora-redirect.php ────────────
             // When Truora finishes the flow it lands the user on our
@@ -488,6 +494,27 @@ var PasoCreditoIdentidad = {
             if (data && typeof data === 'object' && data.__from_truora_host) {
                 if (data.host_event) {
                     self._appendDebug('host: ' + data.host_event);
+                    // Customer brief 2026-04-30: "When shows this screen
+                    // [Truora's 'no es posible continuar' device-block],
+                    // send to CDC otp screen." Truora doesn't emit a
+                    // postMessage when its in-iframe pre-flight (camera /
+                    // browser / in-app webview) refuses to start, so we
+                    // detect it via timeout: once the host iframe has
+                    // loaded, if no truora.* progress event arrives within
+                    // 60 s, route the user to credito-otp so they can
+                    // restart the flow (Truora is still mandatory — this
+                    // is a restart, not a bypass).
+                    if (data.host_event === 'host-iframe-load') {
+                        if (self._deviceBlockTimer) clearTimeout(self._deviceBlockTimer);
+                        self._deviceBlockTimer = setTimeout(function() {
+                            if (self._finished) return;
+                            self._appendDebug('device-block timeout · routing to credito-otp');
+                            self._finished = true;
+                            if (self.app && typeof self.app.irAPaso === 'function') {
+                                self.app.irAPaso('credito-otp');
+                            }
+                        }, 60000);
+                    }
                     return;
                 }
                 data = data.data;  // unwrap
@@ -509,10 +536,16 @@ var PasoCreditoIdentidad = {
             self._appendDebug('truora-event: ' + eventName + (processId ? ' (' + processId + ')' : ''));
 
             // Truora is talking — cancel the blank-iframe timeout so the
-            // user doesn't see a false "no se cargó" error mid-flow.
+            // user doesn't see a false "no se cargó" error mid-flow, and
+            // cancel the device-block timeout (any truora.* event proves
+            // the iframe got past the pre-flight camera check).
             if (self._blankTimeout) {
                 clearTimeout(self._blankTimeout);
                 self._blankTimeout = null;
+            }
+            if (self._deviceBlockTimer) {
+                clearTimeout(self._deviceBlockTimer);
+                self._deviceBlockTimer = null;
             }
 
             if (processId) self._currentProcessId = processId;
