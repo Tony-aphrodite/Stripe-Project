@@ -157,15 +157,21 @@ var Paso4A = {
         var _checkboxAmount = _esMSICheckout
             ? ('$' + msiPagoExact.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','))
             : VkUI.formatPrecio(total);
-        html += '<div class="vk-checkbox-group" style="margin-bottom:16px;">';
-        html += '<input type="checkbox" class="vk-checkbox" id="vk-terms-check">';
-        html += '<label class="vk-checkbox-label" for="vk-terms-check">' +
+        // NOTE: checkbox group moved below the card-element block so the
+        // form is filled BEFORE the customer clicks the "Contrato de
+        // Compraventa" link (boss report 2026-04-29: contract opened with
+        // empty placeholders because the checkbox sat above the inputs).
+        // We build the HTML into _checkboxHtml here and inject it later.
+        var _checkboxHtml =
+            '<div class="vk-checkbox-group" style="margin-bottom:16px;">' +
+            '<input type="checkbox" class="vk-checkbox" id="vk-terms-check">' +
+            '<label class="vk-checkbox-label" for="vk-terms-check">' +
             'Acepto <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">T\u00e9rminos y Condiciones</a>, ' +
             '<a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">Aviso de Privacidad</a> y el ' +
             '<a href="docs/contrato_compraventa_2026.html" target="_blank" rel="noopener" id="vk-contrato-preview-link" style="color:var(--vk-green-primary);text-decoration:underline;">Contrato de Compraventa</a>, ' +
             'y autorizo el pago de <strong id="vk-checkbox-amount">' + _checkboxAmount + ' MXN</strong> por el medio seleccionado.' +
-            '</label>';
-        html += '</div>';
+            '</label>' +
+            '</div>';
 
         // Contact fields — nombre + 1er apellido + 2do apellido
         // (split per customer request 2026-04-28 to match the credit-flow
@@ -209,6 +215,13 @@ var Paso4A = {
         html += '<div style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:4px;margin-bottom:8px;">' +
             '&#128274; Pago cifrado SSL &middot; ' + VkUI.renderCardLogos() +
             '</div>';
+
+        // Terms-acceptance checkbox — emitted here (not at the top of the
+        // form) so the customer fills name/email/phone/card BEFORE
+        // ticking the box. The "Contrato de Compraventa" link inside the
+        // label opens with the form values pre-filled into the contract
+        // template via URL hash.
+        html += _checkboxHtml;
 
         // 8. Two payment option cards — inside checkout form (after OTP)
 
