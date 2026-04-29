@@ -114,11 +114,19 @@ $redirectUrl  = rtrim($redirectBase, '/') . '/configurador_prueba/php/truora-red
 // step entirely we omit prefill and let Truora collect phone/email from
 // the user inside the flow. (We still record them in our own stub row
 // below for admin/forensics.)
+// Force Spanish UI (boss report 2026-04-29: Truora iframe rendered
+// "Location locked: enable to continue", "Are you still having problems?"
+// in English even though all customers are Mexican). Truora normally
+// auto-detects from browser locale, which fails when the device language
+// is English. Sending language explicitly at token creation locks it.
 $fields = [
     'key_type'     => 'web',
     'grant'        => 'digital-identity',
     'flow_id'      => TRUORA_FLOW_ID,
     'country'      => 'MX',
+    'language'     => 'es',
+    'lang'         => 'es',
+    'locale'       => 'es-MX',
     'account_id'   => $accountId,
     'redirect_url' => $redirectUrl,
 ];
@@ -245,7 +253,13 @@ try {
 } catch (Throwable $e) { error_log('truora-token stub row: ' . $e->getMessage()); }
 
 // ── Respond ───────────────────────────────────────────────────────────────
-$iframeUrl = 'https://identity.truora.com/?token=' . urlencode($token);
+// Append explicit language hints to the iframe URL as a second-line
+// defence — if Truora's API ignored the `language` field at token
+// creation, the iframe-side reader still picks up `lang=es` from the
+// query string. Both `lang` and `language` are listed because Truora's
+// docs use them inconsistently across product lines.
+$iframeUrl = 'https://identity.truora.com/?token=' . urlencode($token)
+    . '&lang=es&language=es&locale=es-MX&country=MX';
 
 echo json_encode([
     'ok'         => true,
