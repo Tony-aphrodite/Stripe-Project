@@ -122,10 +122,12 @@ curl_close($ch);
 // code at one of `code` or `otp_code` (docs vary across regions);
 // support both defensively.
 $otpRespArr = json_decode((string)$response, true);
-$otpAccepted = is_array($otpRespArr) && (
-    !empty($otpRespArr['success']) ||
-    (isset($otpRespArr['status']) && (int)$otpRespArr['status'] >= 200 && (int)$otpRespArr['status'] < 300)
-);
+// SMSMasivos /otp/send returns HTTP 200 even when it rejects (e.g. code
+// `verification_03`: "Código ya enviado, esperando por verificación" —
+// 24-hour cooldown per number after a code is dispatched). The body's
+// `success` boolean is the only reliable acceptance signal. Treat
+// HTTP-200-with-success-false as failure so the /sms/send fallback fires.
+$otpAccepted = is_array($otpRespArr) && !empty($otpRespArr['success']);
 if ($otpAccepted && $httpCode >= 200 && $httpCode < 300) {
     // SMSMasivos /otp/send response shape (verified 2026-04-30):
     //   code              = response status code (e.g. "verification_01")  ← NOT the OTP
