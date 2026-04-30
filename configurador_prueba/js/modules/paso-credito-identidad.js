@@ -47,6 +47,7 @@ var PasoCreditoIdentidad = {
         if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
         if (this._blankTimeout) { clearTimeout(this._blankTimeout); this._blankTimeout = null; }
         if (this._verdictTimeout) { clearTimeout(this._verdictTimeout); this._verdictTimeout = null; }
+        this._verdictResolved = false;
         this.render();
         // After render the debug panel exists — log init-count BEFORE
         // anything else so we know if SPA is calling init() multiple
@@ -518,12 +519,12 @@ var PasoCreditoIdentidad = {
                 }
                 if (aid && !state._truoraAccountId) state._truoraAccountId = aid;
                 self._appendDebug('redirect signal · pid=' + (pid || '?') + ' aid=' + (aid || '?'));
-                // Same gating as the in-iframe succeeded branch — wait for
-                // the server verdict before navigating so brief #4
-                // (mismatch → back to credito-nombre) actually fires here
-                // and not later at checkout.
+                // Same gating as the in-iframe succeeded branch — wait
+                // for verdict before navigating so brief #4 (mismatch →
+                // back to credito-nombre) fires here and not at checkout.
                 self._finished = true;
                 state._identidadVerificada = false;
+                self._verdictResolved = false;
                 try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
                 jQuery('#vk-truora-container').hide();
                 jQuery('#vk-identidad-error')
@@ -531,10 +532,15 @@ var PasoCreditoIdentidad = {
                     .html('<strong>Verificando datos…</strong>' +
                           '<div style="margin-top:6px;font-size:11px;">Estamos confirmando que la información de tu INE coincide con los datos que ingresaste. Esto toma unos segundos.</div>')
                     .show();
-                self._pollWebhookResult(state._truoraProcessId || self._currentProcessId);
+                var pollKey2;
+                if (state._truoraProcessId) pollKey2 = { process_id: state._truoraProcessId };
+                else if (self._currentProcessId) pollKey2 = { process_id: self._currentProcessId };
+                else if (state._truoraAccountId) pollKey2 = { account_id: state._truoraAccountId };
+                self._appendDebug('poll key (redirect): ' + JSON.stringify(pollKey2 || null));
+                if (pollKey2) self._pollWebhookResult(pollKey2);
                 if (self._verdictTimeout) clearTimeout(self._verdictTimeout);
                 self._verdictTimeout = setTimeout(function() {
-                    if (!self._pollTimer) return;
+                    if (self._verdictResolved) return;
                     self._appendDebug('verdict timeout · showing retry');
                     if (self._pollTimer) { clearInterval(self._pollTimer); self._pollTimer = null; }
                     jQuery('#vk-identidad-error')
@@ -594,32 +600,39 @@ var PasoCreditoIdentidad = {
 
         switch (eventName) {
             case 'truora.process.succeeded':
-                // Wait for the server verdict before navigating. The
-                // companion fix in truora-status.php (account_id fallback
-                // lookup) makes the API fallback reliably write the verdict
-                // to the DB within ~1-2 s even when the webhook signature
-                // is broken — so the poll resolves quickly. Customer brief
-                // #4 (2026-04-30) requires that mismatch users be sent
-                // back to credito-nombre at THIS step, not at checkout.
+                // Wait for the server verdict before navigating.
+                // status.php (with the account_id-fallback writeback fix)
+                // delivers the verdict via API even when the webhook
+                // signature is broken. Customer brief #4 (2026-04-30)
+                // requires mismatch refusal at THIS step, not at checkout.
                 state._truoraProcessId = (data && (data.process_id || data.identity_process_id)) || this._currentProcessId;
                 state._identidadVerificada = false;
                 this._finished = true;
+                this._verdictResolved = false;
                 jQuery('#vk-truora-container').hide();
                 jQuery('#vk-identidad-error')
                     .css({color:'#0c4a6e',background:'#e0f2fe'})
                     .html('<strong>Verificando datos…</strong>' +
                           '<div style="margin-top:6px;font-size:11px;">Estamos confirmando que la información de tu INE coincide con los datos que ingresaste. Esto toma unos segundos.</div>')
                     .show();
-                this._pollWebhookResult(state._truoraProcessId || this._currentProcessId);
-                // Safety timeout: if the verdict still hasn't arrived in
-                // 20 s, surface a retry CTA (we do NOT auto-advance here
-                // because that would let mismatch users reach enganche;
-                // server-side guard at confirmar-orden.php is defence in
-                // depth, but the customer brief is explicit that refusal
-                // should be visible at the identity step).
+                // Build poll key — prefer process_id; if missing, fall
+                // back to account_id (status.php accepts either). The
+                // 2026-04-30 stuck-on-verifying issue traced back to
+                // some Truora flow paths not including process_id in the
+                // postMessage payload — without this fallback the poll
+                // never started.
+                var pollKey1;
+                if (state._truoraProcessId) pollKey1 = { process_id: state._truoraProcessId };
+                else if (this._currentProcessId) pollKey1 = { process_id: this._currentProcessId };
+                else if (state._truoraAccountId) pollKey1 = { account_id: state._truoraAccountId };
+                this._appendDebug('poll key: ' + JSON.stringify(pollKey1 || null));
+                if (pollKey1) this._pollWebhookResult(pollKey1);
+                // Safety timeout — fires when no verdict was reached
+                // (poll never started OR poll exhausted). Distinguishes
+                // from "poll resolved cleanly" via _verdictResolved.
                 if (this._verdictTimeout) clearTimeout(this._verdictTimeout);
                 this._verdictTimeout = setTimeout(function() {
-                    if (!self._pollTimer) return; // poll already resolved
+                    if (self._verdictResolved) return; // verdict reached
                     self._appendDebug('verdict timeout · showing retry');
                     if (self._pollTimer) { clearInterval(self._pollTimer); self._pollTimer = null; }
                     jQuery('#vk-identidad-error')
@@ -703,8 +716,26 @@ var PasoCreditoIdentidad = {
     },
 
     _pollWebhookResult: function(processId) {
-        if (!processId) return;
+        // Accept either a process_id string (legacy) or a query-params
+        // object {process_id} or {account_id}. Customer report 2026-04-30:
+        // when Truora's flow goes through the OTP-redirect path it does
+        // not always include process_id in the postMessage / URL params
+        // — the SPA had it from the truora-token call as account_id, but
+        // the old signature only accepted process_id, so the poll silently
+        // never started and the user got stuck on "Verificando datos…"
+        // with no retry CTA (the timeout logic also misclassified
+        // never-started as already-resolved).
+        var qs;
+        if (typeof processId === 'object' && processId) {
+            qs = processId;
+        } else if (typeof processId === 'string' && processId) {
+            qs = { process_id: processId };
+        }
+        if (!qs || (!qs.process_id && !qs.account_id)) return;
         var self = this;
+        // Reset the verdict-resolved flag — the poll will set it true
+        // when (and only when) a terminal verdict is observed.
+        self._verdictResolved = false;
         // Replace any in-flight poll so we don't have two timers racing
         // against each other (happens when the user fails name-match,
         // walks back through credito-nombre and re-arrives at this step).
@@ -719,15 +750,19 @@ var PasoCreditoIdentidad = {
         // Stop the poll cleanly from any branch — uses self._pollTimer
         // (the canonical reference) so all stops behave the same and
         // init()/duplicate _pollWebhookResult calls can also tear it down.
+        // ALSO sets _verdictResolved=true so the safety timeout (in the
+        // success / redirect-signal handlers) knows the verdict was
+        // delivered cleanly and stays out of the way.
         var stopPoll = function() {
             resolved = true;
+            self._verdictResolved = true;
             if (self._pollTimer) { clearInterval(self._pollTimer); self._pollTimer = null; }
         };
 
         var checkOnce = function() {
             if (resolved) return;
             tries++;
-            jQuery.get('php/truora-status.php', { process_id: processId })
+            jQuery.get('php/truora-status.php', qs)
                 .done(function(r) {
                     if (resolved) return;
                     if (!r) return;
