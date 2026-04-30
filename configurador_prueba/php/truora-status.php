@@ -181,6 +181,93 @@ try {
                     ->execute([$apiResolvedProcessId, $expectedCurp, $verifiedCurp, 'api_fallback', $decision]);
             } catch (Throwable $e) {}
 
+            // ── Anchor fallback: look up by account_id when process_id miss ──
+            // The webhook is the path that normally writes truora_process_id
+            // onto the anchor row created by truora-token.php. When the
+            // webhook signature is misconfigured (TRUORA_WEBHOOK_SECRET out
+            // of sync), webhooks are rejected and the anchor row never gets
+            // its process_id set. Status.php's lookup-by-process_id then
+            // misses, $row stays null, and the verdict computed by the API
+            // fallback above can never be persisted — the SPA polls forever
+            // and the user is stuck on "Verificando datos…".
+            //
+            // Fix: when $row is null but the API call returned the account_id
+            // (which is set at token-creation time and DOES exist on the
+            // anchor row), look the row up by truora_account_id and proceed
+            // with the UPDATE. Subsequent polls will hit the now-populated
+            // process_id and behave normally. Customer report 2026-04-30.
+            if (!$row) {
+                $apiAccountId = is_array($details) ? trim((string)($details['account_id'] ?? '')) : '';
+                if ($apiAccountId !== '') {
+                    try {
+                        $stmt2 = $pdo->prepare($sql);
+                        // Re-bind with account_id criterion. We can't change
+                        // $where mid-flight, so build a parallel query.
+                        $sqlAcc = "SELECT id, freg, approved, truora_status, truora_failure_status,
+                                truora_declined_reason, truora_updated_at, truora_last_event,
+                                truora_process_id, truora_account_id,
+                                curp_match, expected_curp, verified_curp,
+                                name_match, expected_name, verified_name,
+                                manual_review_required, manual_review_reason
+                            FROM verificaciones_identidad
+                            WHERE truora_account_id = ?
+                            ORDER BY id DESC LIMIT 1";
+                        $stmt2 = $pdo->prepare($sqlAcc);
+                        $stmt2->execute([$apiAccountId]);
+                        $row = $stmt2->fetch(PDO::FETCH_ASSOC) ?: null;
+                        if ($row) {
+                            // Re-evaluate expected_curp / expected_name now that
+                            // we have the row — earlier we computed against
+                            // null which suppressed the comparison.
+                            $expectedCurp = $row['expected_curp'] ?? null;
+                            if ($newApproved === 1 && $expectedCurp && $verifiedCurp) {
+                                $newCurpMatch = (strtoupper(trim($expectedCurp)) === strtoupper(trim($verifiedCurp))) ? 1 : 0;
+                                if (!$newCurpMatch) {
+                                    $newApproved   = 0;
+                                    $newDeclined   = 'identity_curp_mismatch';
+                                    $newFailStatus = 'curp_mismatch';
+                                }
+                            } elseif ($newApproved === 1 && $expectedCurp && !$verifiedCurp) {
+                                $newApproved   = 0;
+                                $newDeclined   = 'verified_curp_unavailable';
+                                $newFailStatus = 'identity_unverifiable';
+                            }
+                            $expectedName = $row['expected_name'] ?? null;
+                            if ($newApproved === 1 && $expectedName && $verifiedName) {
+                                $expectedNorm = strtoupper(strtr(
+                                    preg_replace('/\s+/', ' ', trim($expectedName)),
+                                    ['Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N',
+                                     'á'=>'A','é'=>'E','í'=>'I','ó'=>'O','ú'=>'U','ü'=>'U','ñ'=>'N']
+                                ));
+                                $newNameMatch = truoraNamesMatch($expectedNorm, $verifiedName) ? 1 : 0;
+                                if (!$newNameMatch) {
+                                    $newApproved   = 0;
+                                    $newDeclined   = 'identity_name_mismatch';
+                                    $newFailStatus = 'name_mismatch';
+                                }
+                            }
+                            // Recompute manual-review escalation on the now-known reason.
+                            if ($newApproved === 0) {
+                                $userRecoverable = in_array($newDeclined, [
+                                    'identity_curp_mismatch',
+                                    'identity_name_mismatch',
+                                    'verified_curp_unavailable',
+                                ], true);
+                                if (!$userRecoverable) {
+                                    $newManualReview       = 1;
+                                    $newManualReviewReason = $newDeclined ?: ($newFailStatus ?: 'truora_validation_failed');
+                                } else {
+                                    $newManualReview       = 0;
+                                    $newManualReviewReason = null;
+                                }
+                            }
+                        }
+                    } catch (Throwable $e) {
+                        error_log('status.php account_id fallback lookup: ' . $e->getMessage());
+                    }
+                }
+            }
+
             // Update row (or insert anchor if it didn't exist yet).
             if ($row) {
                 try {
