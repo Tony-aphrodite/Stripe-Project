@@ -8,7 +8,7 @@
  * Per dashboards_diagrams.pdf this is CASE 4 (showroom sale). The moto is already
  * physically at the punto (inventario_venta); the point simply hands it to the client
  * and we record the sale. For CASE 3 (general sale via online configurador), see
- * configurador_prueba/php/confirmar-orden.php.
+ * configurador/php/confirmar-orden.php.
  */
 require_once __DIR__ . '/../bootstrap.php';
 $ctx = puntoRequireAuth();
@@ -104,7 +104,7 @@ puntoLog('venta_showroom', ['moto_id' => $motoId, 'canal' => $canal, 'caso' => 4
 // available for pickup at the point. The bike is physically in the showroom,
 // so there's no shipping step — the client just needs the point info.
 if (!empty($d['cliente_telefono']) || !empty($d['cliente_email'])) {
-    require_once __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php';
+    require_once __DIR__ . '/../../../configurador/php/voltika-notify.php';
     try {
         voltikaNotify('punto_asignado', [
             'nombre'    => $d['cliente_nombre'] ?? '',

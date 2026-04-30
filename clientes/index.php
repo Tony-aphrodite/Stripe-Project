@@ -20,7 +20,7 @@ $asset = function(string $rel): string {
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Voltika — Mi cuenta</title>
-<link rel="icon" type="image/svg+xml" href="../configurador_prueba/img/favicon.svg">
+<link rel="icon" type="image/svg+xml" href="../configurador/img/favicon.svg">
 <link rel="stylesheet" href="<?= $asset('css/portal.css') ?>">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
@@ -42,7 +42,7 @@ $asset = function(string $rel): string {
      Loading it here makes the clientes portal pull speed/autonomy from the
      single source of truth instead of a duplicated, drift-prone hardcoded map
      that was causing the M05 "85 km/h / 120 km" bug. -->
-<script src="<?= $asset('../configurador_prueba/js/data/productos.js') ?>"></script>
+<script src="<?= $asset('../configurador/js/data/productos.js') ?>"></script>
 <script src="<?= $asset('js/data/catalogo-specs.js') ?>"></script>
 <script src="<?= $asset('js/app.js') ?>"></script>
 <script src="<?= $asset('js/modules/login.js') ?>"></script>

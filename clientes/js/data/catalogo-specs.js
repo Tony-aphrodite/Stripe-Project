@@ -1,7 +1,7 @@
 /* ==========================================================================
    Voltika clientes · Catálogo unificado de specs
    Fuente única de verdad:
-     - velocidad / autonomía: configurador_prueba/js/data/productos.js
+     - velocidad / autonomía: configurador/js/data/productos.js
        (cargado antes que este archivo en index.php)
      - voltaje batería: mapa local aquí (productos.js no lo incluye)
 

@@ -229,7 +229,7 @@ echo '<div class="summary">';
 $cdcBase = defined('CDC_BASE_URL') ? CDC_BASE_URL : null;
 if ($cdcBase === null) {
     // Peek at the source without executing the whole script
-    $src = @file_get_contents(__DIR__ . '/../../../configurador_prueba/php/consultar-buro.php');
+    $src = @file_get_contents(__DIR__ . '/../../../configurador/php/consultar-buro.php');
     if ($src && preg_match("/define\s*\(\s*'CDC_BASE_URL'\s*,\s*getenv\('CDC_BASE_URL'\)\s*\?:\s*'([^']+)'/", $src, $m)) {
         $cdcBase = '(hardcoded fallback) ' . $m[1];
     }
@@ -253,7 +253,7 @@ try {
     echo '<div class="kv"><b>cdc_certificates</b> <span class="tag amber">' . h($e->getMessage()) . '</span></div>';
 }
 
-$serverCert = __DIR__ . '/../../../configurador_prueba/php/certs/cdc_server_certificate.pem';
+$serverCert = __DIR__ . '/../../../configurador/php/certs/cdc_server_certificate.pem';
 echo '<div class="kv"><b>cdc_server_certificate.pem</b> ' . (is_file($serverCert) ? ('✓ ' . filesize($serverCert) . ' bytes') : '<span class="tag red">falta</span>') . '</div>';
 echo '</div>';
 

@@ -22,14 +22,14 @@ $asset = function(string $rel): string {
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Voltika — Admin Dashboard</title>
-<link rel="icon" type="image/svg+xml" href="../configurador_prueba/img/favicon.svg">
+<link rel="icon" type="image/svg+xml" href="../configurador/img/favicon.svg">
 <link rel="stylesheet" href="<?= $asset('css/admin.css') ?>">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
 <div id="adApp" class="ad-app">
   <nav id="adSidebar" class="ad-sidebar" style="display:none">
-    <div class="ad-logo"><img src="../configurador_prueba/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'"></div>
+    <div class="ad-logo"><img src="../configurador/img/voltika_logo_h_white.svg" alt="Voltika" onerror="this.style.display='none'"></div>
     <button class="ad-hamburger" id="adHamburger">&#9776;</button>
     <div class="ad-nav">
       <!-- ═══ OPERACIONES ═══ -->
@@ -91,7 +91,7 @@ $asset = function(string $rel): string {
 <!-- Shared catalog so admin modals (referidos commissions, etc.) can read
      model slugs + nombres from the same single source of truth the store
      and clientes portal use. Avoids hardcoded fallbacks drifting out of sync. -->
-<script src="<?= $asset('../configurador_prueba/js/data/productos.js') ?>"></script>
+<script src="<?= $asset('../configurador/js/data/productos.js') ?>"></script>
 <script src="<?= $asset('js/voltika-image-compress.js') ?>"></script>
 <script src="<?= $asset('js/admin-app.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-login.js') ?>"></script>

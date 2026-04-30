@@ -20,7 +20,7 @@
 
 set -u
 
-URL="${1:-${CDC_URL:-https://voltika.mx/configurador_prueba/php/consultar-buro.php}}"
+URL="${1:-${CDC_URL:-https://voltika.mx/configurador/php/consultar-buro.php}}"
 
 PAYLOAD='{
   "primerNombre":"JUAN",
@@ -134,7 +134,7 @@ else
   echo " Likely causes:"
   echo "  1. .env on the server is missing the line:    CDC_TEST_MODE=1"
   echo "  2. .env file is at the wrong path (config.php"
-  echo "     expects ../.env relative to configurador_prueba/php/)"
+  echo "     expects ../.env relative to configurador/php/)"
   echo "  3. The uploaded consultar-buro.php is the OLD version"
   echo "     (search for the string 'CDC test mode' inside it — should"
   echo "      appear near line 101)"

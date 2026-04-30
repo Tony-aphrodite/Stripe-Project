@@ -16,7 +16,7 @@
 set -u
 
 PHONE="${1:-${PHONE:-}}"
-BASE="${2:-https://voltika.mx/configurador_prueba}"
+BASE="${2:-https://voltika.mx/configurador}"
 
 if [ -z "$PHONE" ]; then
   cat <<EOF

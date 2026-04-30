@@ -11,8 +11,8 @@
  */
 require_once __DIR__ . '/../php/bootstrap.php';
 
-// ── voltika-notify.php lives in configurador_prueba/php (shared) ────────────
-$notifyPath = realpath(__DIR__ . '/../../configurador_prueba/php/voltika-notify.php');
+// ── voltika-notify.php lives in configurador/php (shared) ────────────
+$notifyPath = realpath(__DIR__ . '/../../configurador/php/voltika-notify.php');
 if (!$notifyPath) {
     $notifyPath = realpath(__DIR__ . '/../../configurador_prueba_test/php/voltika-notify.php');
 }

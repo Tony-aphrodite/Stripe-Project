@@ -55,7 +55,7 @@ try {
 } catch (Throwable $e) { error_log('verificar-rostro tpago lookup: ' . $e->getMessage()); }
 
 // ── Save uploaded photos to disk ─────────────────────────────────────────────
-$uploadsDir = __DIR__ . '/../../../configurador_prueba/php/uploads/entregas';
+$uploadsDir = __DIR__ . '/../../../configurador/php/uploads/entregas';
 if (!is_dir($uploadsDir)) @mkdir($uploadsDir, 0755, true);
 
 $savedPaths = [];
@@ -68,7 +68,7 @@ foreach (['foto_cliente' => 'cliente', 'foto_ine' => 'identificacion'] as $key =
             $fname = "{$tipo}_{$motoId}_" . time() . '.jpg';
             $path  = "$uploadsDir/$fname";
             file_put_contents($path, $bin);
-            $url = "/configurador_prueba/php/uploads/entregas/$fname";
+            $url = "/configurador/php/uploads/entregas/$fname";
             $pdo->prepare("INSERT INTO fotos_entrega (entrega_id, moto_id, tipo, url) VALUES (?,?,?,?)")
                 ->execute([$entregaId, $motoId, $tipo, $url]);
             $savedPaths[$tipo] = $url;
@@ -112,7 +112,7 @@ try {
             if ($candidate) {
                 // Resolve relative paths against the uploads dir used by verificar-identidad.php
                 if (!preg_match('#^(/|[A-Za-z]:)#', $candidate)) {
-                    $candidate = __DIR__ . '/../../../configurador_prueba/php/uploads/' . ltrim($candidate, '/');
+                    $candidate = __DIR__ . '/../../../configurador/php/uploads/' . ltrim($candidate, '/');
                 }
                 if (file_exists($candidate)) $originalSelfie = $candidate;
             }

@@ -12,9 +12,9 @@
  */
 require_once __DIR__ . '/../php/bootstrap.php';
 
-$configuradorPhp = realpath(__DIR__ . '/../../configurador_prueba/php')
+$configuradorPhp = realpath(__DIR__ . '/../../configurador/php')
                 ?: realpath(__DIR__ . '/../../configurador_prueba_test/php');
-if (!$configuradorPhp) adminJsonOut(['error' => 'configurador_prueba/php not found'], 500);
+if (!$configuradorPhp) adminJsonOut(['error' => 'configurador/php not found'], 500);
 require_once $configuradorPhp . '/dossier-defensa.php';
 
 $cronToken = defined('VOLTIKA_CRON_TOKEN') ? VOLTIKA_CRON_TOKEN : (getenv('VOLTIKA_CRON_TOKEN') ?: '');

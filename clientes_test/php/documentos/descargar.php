@@ -730,7 +730,7 @@ if ($tipo === 'recibo' || $tipo === 'comprobante_contado') {
     // Config file lives next to stripe-webhook.php in the configurador tree.
     $cfgPath = null;
     foreach ([
-        __DIR__ . '/../../../configurador_prueba/php/config.php',
+        __DIR__ . '/../../../configurador/php/config.php',
         __DIR__ . '/../../../configurador_prueba_test/php/config.php',
     ] as $_p) { if (is_file($_p)) { $cfgPath = $_p; break; } }
     if ($cfgPath) { try { require_once $cfgPath; } catch (Throwable $e) {} }

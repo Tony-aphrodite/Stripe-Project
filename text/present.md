@@ -559,8 +559,8 @@ The client document defines a **real-time web dashboard** ("Master Dashboard Sys
 **Key Files for Implementation:**
 - Admin routes: `admin/js/admin-app.js` (add new routes here)
 - Admin bootstrap: `admin/php/bootstrap.php` (session/role logic)
-- Database schema: `configurador_prueba/php/master-bootstrap.php`
-- Config: `configurador_prueba/php/config.php`
+- Database schema: `configurador/php/master-bootstrap.php`
+- Config: `configurador/php/config.php`
 - KPIs reference: `admin/php/dashboard/kpis.php`
 
 **For each new module, create:**

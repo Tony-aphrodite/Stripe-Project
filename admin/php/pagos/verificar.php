@@ -6,11 +6,11 @@
 require_once __DIR__ . '/../bootstrap.php';
 // Load config.php which reads .env and defines STRIPE_SECRET_KEY
 if (!defined('STRIPE_SECRET_KEY')) {
-    require_once __DIR__ . '/../../../configurador_prueba/php/config.php';
+    require_once __DIR__ . '/../../../configurador/php/config.php';
 }
 // Fallback: if .env didn't have the key, try loading it directly
 if (!defined('STRIPE_SECRET_KEY') || STRIPE_SECRET_KEY === '') {
-    $envPath = __DIR__ . '/../../../configurador_prueba/.env';
+    $envPath = __DIR__ . '/../../../configurador/.env';
     if (file_exists($envPath)) {
         foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $ln) {
             $ln = trim($ln);

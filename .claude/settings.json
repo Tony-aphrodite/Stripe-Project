@@ -2,9 +2,9 @@
   "permissions": {
     "allow": [
       "Read(//tmp/**)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://www.voltika.mx/configurador_prueba/img/voltika_logo.svg\")",
-      "Bash(curl -sI \"https://www.voltika.mx/configurador_prueba/img/voltika_logo.svg\")",
-      "Bash(curl -s \"https://www.voltika.mx/configurador_prueba/js/modules/ui-components.js\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://www.voltika.mx/configurador/img/voltika_logo.svg\")",
+      "Bash(curl -sI \"https://www.voltika.mx/configurador/img/voltika_logo.svg\")",
+      "Bash(curl -s \"https://www.voltika.mx/configurador/js/modules/ui-components.js\")",
       "Bash(curl -s \"https://www.voltika.mx/\")",
       "Bash(curl -s \"https://www.voltika.mx/configurador\")",
       "Bash(curl -sI \"https://www.voltika.mx/configurador\")",
@@ -19,7 +19,7 @@
       "Bash(git push origin main)",
       "Bash(curl -sI \"https://www.voltika.mx/configurador_wrapper.html\")",
       "Bash(git add configurador/index.html)",
-      "Bash(curl -sI \"https://www.voltika.mx/configurador_prueba/\")",
+      "Bash(curl -sI \"https://www.voltika.mx/configurador/\")",
       "Bash(curl -s \"https://www.voltika.mx/css/main.css\")",
       "Bash(curl -s \"https://www.voltika.mx/css/custom.css\")",
       "Bash(git add configurador/index.html configurador/js/modules/paso2-color.js)",
@@ -58,7 +58,7 @@
       "Bash(git add .gitignore)",
       "Bash(unzip -l /home/houseph/Project/MVP-DOC/configurador_old_version.zip)",
       "Bash(git add configurador/router.php configurador/index.html .gitignore)",
-      "Bash(curl -s https://www.voltika.mx/configurador_prueba/)",
+      "Bash(curl -s https://www.voltika.mx/configurador/)",
       "Bash(curl -s https://www.voltika.mx/css/main.css)",
       "Bash(zip -r configurador.zip configurador/)"
     ],

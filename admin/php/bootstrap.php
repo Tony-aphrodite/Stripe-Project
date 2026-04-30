@@ -3,7 +3,7 @@
  * Voltika Admin/CEDIS — Bootstrap
  * Central entry point for all admin panel endpoints.
  */
-require_once __DIR__ . '/../../configurador_prueba/php/master-bootstrap.php';
+require_once __DIR__ . '/../../configurador/php/master-bootstrap.php';
 voltikaEnsureSchema();
 
 $isApiRequest = (basename($_SERVER['SCRIPT_NAME'] ?? '') !== 'index.php');

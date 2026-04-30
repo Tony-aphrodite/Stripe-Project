@@ -730,7 +730,7 @@ if ($tipo === 'recibo' || $tipo === 'comprobante_contado') {
     // Config file lives next to stripe-webhook.php in the configurador tree.
     $cfgPath = null;
     foreach ([
-        __DIR__ . '/../../../configurador_prueba/php/config.php',
+        __DIR__ . '/../../../configurador/php/config.php',
         __DIR__ . '/../../../configurador_prueba_test/php/config.php',
     ] as $_p) { if (is_file($_p)) { $cfgPath = $_p; break; } }
     if ($cfgPath) { try { require_once $cfgPath; } catch (Throwable $e) {} }
@@ -829,7 +829,7 @@ if ($tipo === 'contrato_contado') {
     $safe     = preg_replace('/[^A-Za-z0-9_-]/', '_', $pedidoStr);
     $filename = 'contrato_contado_' . $safe . '.pdf';
     $candidates = [
-        __DIR__ . '/../../../configurador_prueba/contratos/contado/' . $filename,
+        __DIR__ . '/../../../configurador/contratos/contado/' . $filename,
         __DIR__ . '/../../../configurador_prueba_test/contratos/contado/' . $filename,
         sys_get_temp_dir() . '/voltika_contratos_contado/' . $filename,
     ];
@@ -838,10 +838,10 @@ if ($tipo === 'contrato_contado') {
             serveFile($cand, 'contrato_voltika_contado.pdf');
         }
     }
-    // No saved PDF — try regen via the configurador_prueba helpers.
+    // No saved PDF — try regen via the configurador helpers.
     // We require contrato-contado.php directly so we don't depend on
     // the URL-based descargar-contrato.php (which has its own auth).
-    $helperPath = __DIR__ . '/../../../configurador_prueba/php/contrato-contado.php';
+    $helperPath = __DIR__ . '/../../../configurador/php/contrato-contado.php';
     if (is_file($helperPath)) {
         try {
             require_once $helperPath;

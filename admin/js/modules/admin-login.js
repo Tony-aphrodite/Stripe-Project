@@ -7,7 +7,7 @@ window.AD_login = (function(){
     ADApp.render(
       '<div class="ad-login">'+
         '<div style="margin-bottom:28px;display:flex;justify-content:center;">'+
-          '<img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" style="height:44px;width:auto;" onerror="this.style.display=\'none\'">'+
+          '<img src="../configurador/img/voltika_logo_h.svg" alt="Voltika" style="height:44px;width:auto;" onerror="this.style.display=\'none\'">'+
         '</div>'+
         '<div style="font-size:22px;font-weight:800;color:var(--ad-navy);margin-bottom:6px;">Panel de Administraci\u00f3n</div>'+
         '<div style="font-size:13px;color:var(--ad-dim);margin-bottom:24px;">Ingresa tus credenciales para continuar</div>'+
@@ -43,7 +43,7 @@ window.AD_login = (function(){
     ADApp.render(
       '<div class="ad-login">'+
         '<div style="margin-bottom:28px;display:flex;justify-content:center;">'+
-          '<img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" style="height:44px;width:auto;" onerror="this.style.display=\'none\'">'+
+          '<img src="../configurador/img/voltika_logo_h.svg" alt="Voltika" style="height:44px;width:auto;" onerror="this.style.display=\'none\'">'+
         '</div>'+
         '<div style="font-size:20px;font-weight:800;color:var(--ad-navy);margin-bottom:6px;">Recuperar contrase\u00f1a</div>'+
         '<div style="font-size:13px;color:var(--ad-dim);margin-bottom:24px;">Ingresa tu email y te enviaremos un c\u00f3digo de verificaci\u00f3n</div>'+
@@ -79,7 +79,7 @@ window.AD_login = (function(){
     ADApp.render(
       '<div class="ad-login">'+
         '<div style="margin-bottom:28px;display:flex;justify-content:center;">'+
-          '<img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" style="height:44px;width:auto;" onerror="this.style.display=\'none\'">'+
+          '<img src="../configurador/img/voltika_logo_h.svg" alt="Voltika" style="height:44px;width:auto;" onerror="this.style.display=\'none\'">'+
         '</div>'+
         '<div style="font-size:20px;font-weight:800;color:var(--ad-navy);margin-bottom:6px;">Verificar c\u00f3digo</div>'+
         '<div style="font-size:13px;color:var(--ad-dim);margin-bottom:24px;">Ingresa el c\u00f3digo de 6 d\u00edgitos enviado a <strong>'+_recoveryEmail+'</strong></div>'+
@@ -126,7 +126,7 @@ window.AD_login = (function(){
     ADApp.render(
       '<div class="ad-login">'+
         '<div style="margin-bottom:28px;display:flex;justify-content:center;">'+
-          '<img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" style="height:44px;width:auto;" onerror="this.style.display=\'none\'">'+
+          '<img src="../configurador/img/voltika_logo_h.svg" alt="Voltika" style="height:44px;width:auto;" onerror="this.style.display=\'none\'">'+
         '</div>'+
         '<div style="font-size:20px;font-weight:800;color:var(--ad-navy);margin-bottom:6px;">Nueva contrase\u00f1a</div>'+
         '<div style="font-size:13px;color:var(--ad-dim);margin-bottom:24px;">Ingresa tu nueva contrase\u00f1a (m\u00ednimo 6 caracteres)</div>'+

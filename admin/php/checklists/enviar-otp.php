@@ -46,7 +46,7 @@ $waSent  = false;
 $notifyPath = null;
 foreach ([
     __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php',
-    __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php',
+    __DIR__ . '/../../../configurador/php/voltika-notify.php',
 ] as $p) {
     if (is_file($p)) { $notifyPath = $p; break; }
 }

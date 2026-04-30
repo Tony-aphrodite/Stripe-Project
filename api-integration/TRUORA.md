@@ -2,7 +2,7 @@
 
 > This document contains **only content that has been actually verified** from the following sources:
 > - Official documentation local HTML (`api-integration/Truora - API reference...html`, `Authentication Guide.html`, `Getting started with Digital Identity...html`, `Main Concepts...html`, `Create First Flow...html`, `Create Account ID...html`, `Create a Process Link...html`, `Web Integration Token Guide.html`)
-> - **In-project implementation code** (`configurador_prueba/php/truora-diag.php`, `truora-webhook.php`, `config.php`)
+> - **In-project implementation code** (`configurador/php/truora-diag.php`, `truora-webhook.php`, `config.php`)
 > - Official web docs (`dev.truora.com/guides/declined_reasons_details/`, `/guides/webhook_rule/`)
 
 ---

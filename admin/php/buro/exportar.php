@@ -14,7 +14,7 @@ if (empty($_SESSION['admin_user_id'])) {
     exit('No autorizado');
 }
 
-require_once __DIR__ . '/../../configurador_prueba/php/config.php';
+require_once __DIR__ . '/../../configurador/php/config.php';
 $pdo = getDB();
 
 $desde = $_GET['desde'] ?? '';

@@ -85,7 +85,7 @@ window.VK_inicio = (function(){
   //  Customer brief 2026-04-19: hero moto card + payment summary.
   // ================================================================
 
-  // Specs are resolved from the SHARED catalog (configurador_prueba/js/data/
+  // Specs are resolved from the SHARED catalog (configurador/js/data/
   // productos.js + clientes/js/data/catalogo-specs.js) so that velocidad and
   // autonomía always match the configurador home page — no more drift
   // between the store ("M05 75 km/h 90 km") and the portal ("M05 85 km/h
@@ -107,7 +107,7 @@ window.VK_inicio = (function(){
     var c = (color||'').toLowerCase();
     var colorFile = null;
     for (var k in colorMap) if (c.indexOf(k) !== -1) { colorFile = colorMap[k] + '_side.png'; break; }
-    var base = '../configurador_prueba/img/' + slug + '/';
+    var base = '../configurador/img/' + slug + '/';
     return colorFile ? (base + colorFile) : (base + 'model.png');
   }
   function colorDot(color){

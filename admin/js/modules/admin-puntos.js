@@ -303,7 +303,7 @@ window.AD_puntos = (function(){
       var cp = $(this).val().replace(/\D/g, '');
       if(cp.length !== 5) return;
       $.ajax({
-        url: '../configurador_prueba/php/buscar-colonias.php?cp=' + cp,
+        url: '../configurador/php/buscar-colonias.php?cp=' + cp,
         dataType: 'json'
       }).done(function(r){
         if(!r.ok) return;

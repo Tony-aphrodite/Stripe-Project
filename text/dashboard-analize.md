@@ -159,13 +159,13 @@ The table below summarizes whether each feature is implemented, partially implem
 | **Delivery checklist + photos** | Implemented | 4 checks + 3 photos (front / side / rear) |
 | **ACTA DE ENTREGA signing** | Implemented | [clientes/](clientes/) — digital signature, name confirmation + acceptance checkbox |
 | **Client Panel delivery tracking** | Implemented | `entrega.js` — step-by-step stepper UI |
-| **Configurator 4-step flow** | Implemented | [configurador_prueba/](configurador_prueba/) — model · color · delivery · payment |
+| **Configurator 4-step flow** | Implemented | [configurador/](configurador/) — model · color · delivery · payment |
 | **CASE 1-A** (no referral · no point selected) | Implemented | Stored with `punto_id='centro-cercano'`, waits for assignment |
 | **CASE 1-B** (no referral · point picked in configurador) | Implemented | `paso3-delivery.js` — `_renderCentros()` / `_selectCentro()` provide the point picker (initial analysis was wrong to call this missing) |
 | **CASE 3** (referral, general sale) | Implemented | `validar-referido.php` + `confirmar-orden.php` `caso=3` branch + `ventas_count` increment |
 | **CASE 4** (referral, showroom sale) | Implemented | `puntosvoltika/php/asignar/referido.php` — `tipo_asignacion='consignacion'`, `ventas_log.tipo='venta_showroom'` |
 | **Shipping without order (diagram 5)** | Partial | `admin-envios.js` supports "sin orden" shipments, but the `type of assignment` picker (showroom vs. for-delivery) is missing |
-| **CODIGO REFERIDO validation** | Implemented | `configurador_prueba/php/validar-referido.php` + debounced check in `paso2-color.js` |
+| **CODIGO REFERIDO validation** | Implemented | `configurador/php/validar-referido.php` + debounced check in `paso2-color.js` |
 | **Point Panel assembly UI** | Implemented | `punto-inventario.js` — "🔧 Iniciar ensamble" / "✅ Marcar lista para entrega" buttons added |
 | **LISTA PARA ENTREGA transition UI** | Implemented | `puntosvoltika/php/inventario/cambiar-estado.php` — state transition + date input + notification |
 | **Pickup-date input** | Implemented | `cambiar-estado.php` requires `fecha_entrega_estimada` and embeds it in the `lista_para_recoger` notification |

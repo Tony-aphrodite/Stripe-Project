@@ -21,7 +21,7 @@ require_once __DIR__ . '/php/bootstrap.php';
 adminRequireAuth(['admin']);
 
 // bootstrap.php already loads master-bootstrap.php which already loads the
-// right config.php (prod → configurador_prueba, test → configurador_prueba_test),
+// right config.php (prod → configurador, test → configurador_prueba_test),
 // so STRIPE_SECRET_KEY and getDB() are already available. Do NOT require
 // another config.php — both files declare `function getDB()` without a guard,
 // so double-including from the "other" environment triggers "Cannot redeclare

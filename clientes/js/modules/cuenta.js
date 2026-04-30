@@ -23,7 +23,7 @@ window.VK_cuenta = (function(){
 
   function render(){
     VKApp.render(
-      '<div class="vk-logo"><img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" onerror="this.style.display=\'none\'"></div>'+
+      '<div class="vk-logo"><img src="../configurador/img/voltika_logo_h.svg" alt="Voltika" onerror="this.style.display=\'none\'"></div>'+
       '<div class="vk-h1">Mi cuenta</div>'+
       '<div class="vk-muted" style="margin-bottom:14px"><span class="vk-spin"></span> Cargando...</div>'
     );
@@ -41,7 +41,7 @@ window.VK_cuenta = (function(){
     var estadoMoto = (m.estado||'activa');
 
     VKApp.render(
-      '<div class="vk-logo"><img src="../configurador_prueba/img/voltika_logo_h.svg" alt="Voltika" onerror="this.style.display=\'none\'"></div>'+
+      '<div class="vk-logo"><img src="../configurador/img/voltika_logo_h.svg" alt="Voltika" onerror="this.style.display=\'none\'"></div>'+
       '<div class="vk-h1">Mi cuenta</div>'+
       '<div class="vk-muted" style="margin-bottom:14px">Administra tu perfil, tu Voltika y tus preferencias.</div>'+
 

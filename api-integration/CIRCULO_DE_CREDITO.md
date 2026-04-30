@@ -2,7 +2,7 @@
 
 > This document contains **only content that has been actually verified** from the following sources:
 > - Official documentation local HTML (`api-integration/Integration guide _ apihub.html`, `Prueba de seguridad _ apihub.html`, `Voltika aplicación _ apihub.html`)
-> - **Working in-project PHP implementation code** (`configurador_prueba/php/consultar-buro.php`, `cdc-security-test.php`, `generar-certificado-cdc.php`, `config.php`)
+> - **Working in-project PHP implementation code** (`configurador/php/consultar-buro.php`, `cdc-security-test.php`, `generar-certificado-cdc.php`, `config.php`)
 
 ---
 
@@ -151,7 +151,7 @@ Lookup order:
      freg         DATETIME DEFAULT CURRENT_TIMESTAMP
    )
    ```
-3. Disk: `configurador_prueba/php/certs/cdc_private.key`, `cdc_certificate.pem`
+3. Disk: `configurador/php/certs/cdc_private.key`, `cdc_certificate.pem`
 
 ---
 

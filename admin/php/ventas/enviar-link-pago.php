@@ -24,14 +24,14 @@ adminRequireAuth(['admin','cedis']);
 
 // Notify system (WhatsApp + SMS + Email)
 $notifyCandidates = [
-    __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php',
+    __DIR__ . '/../../../configurador/php/voltika-notify.php',
     __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php',
 ];
 foreach ($notifyCandidates as $p) { if (file_exists($p)) { require_once $p; break; } }
 
 // Stripe config
 $configCandidates = [
-    __DIR__ . '/../../../configurador_prueba/php/config.php',
+    __DIR__ . '/../../../configurador/php/config.php',
     __DIR__ . '/../../../configurador_prueba_test/php/config.php',
 ];
 foreach ($configCandidates as $p) { if (file_exists($p)) { require_once $p; break; } }
@@ -115,8 +115,8 @@ if ($stripePi && defined('STRIPE_SECRET_KEY') && STRIPE_SECRET_KEY) {
     if (!$paymentUrl) {
         $amountCents = (int) round(((float)$order['total']) * 100);
         $origin = (defined('APP_URL') && APP_URL) ? APP_URL : 'https://voltika.mx';
-        $successUrl = rtrim($origin, '/') . '/configurador_prueba/?order=' . urlencode($order['pedido']) . '&resume=ok';
-        $cancelUrl  = rtrim($origin, '/') . '/configurador_prueba/?order=' . urlencode($order['pedido']) . '&resume=cancel';
+        $successUrl = rtrim($origin, '/') . '/configurador/?order=' . urlencode($order['pedido']) . '&resume=ok';
+        $cancelUrl  = rtrim($origin, '/') . '/configurador/?order=' . urlencode($order['pedido']) . '&resume=cancel';
 
         $fields = [
             'mode' => 'payment',

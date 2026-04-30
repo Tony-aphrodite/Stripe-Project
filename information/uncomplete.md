@@ -9,16 +9,16 @@
 
 ### Current State
 - OTP-based signature only (canvas capture)
-- TODO block at `configurador_prueba/js/modules/paso-credito-contrato.js:657`
+- TODO block at `configurador/js/modules/paso-credito-contrato.js:657`
 - Cincel API documented (sandbox.api.cincel.digital/v3)
 
 ### What Exists
 - Canvas-based signature capture on contract page
-- PDF contract generation with embedded signature image (`configurador_prueba/php/generar-contrato-pdf.php`)
+- PDF contract generation with embedded signature image (`configurador/php/generar-contrato-pdf.php`)
 - OTP validation flow for identity confirmation
 
 ### What Needs to Be Built
-1. **Backend endpoint:** `configurador_prueba/php/cincel-firma.php`
+1. **Backend endpoint:** `configurador/php/cincel-firma.php`
    - Create document in Cincel API (POST /v3/documents)
    - Add signer (POST /v3/documents/{id}/signers)
    - Confirm signing (POST /v3/documents/{id}/confirm)
@@ -38,8 +38,8 @@
    - `CINCEL_WEBHOOK_URL`
 
 ### Relevant Files
-- `configurador_prueba/js/modules/paso-credito-contrato.js` (lines 656-712)
-- `configurador_prueba/php/generar-contrato-pdf.php`
+- `configurador/js/modules/paso-credito-contrato.js` (lines 656-712)
+- `configurador/php/generar-contrato-pdf.php`
 
 ### Legal Note
 Without NOM-151, credit contracts may not be legally enforceable in Mexico. Use OTP-only as interim with documented legal risk.
@@ -55,16 +55,16 @@ Without NOM-151, credit contracts may not be legally enforceable in Mexico. Use 
 - WhatsApp: Stub function only, not sending
 
 ### What Exists
-- 3 Meta-approved template names defined in `configurador_prueba/whatsapp-templates.md`:
+- 3 Meta-approved template names defined in `configurador/whatsapp-templates.md`:
   - `voltika_punto_asignado` (punto assigned to customer)
   - `voltika_en_camino` (moto in transit)
   - `voltika_lista_entrega` (ready for pickup)
-- Phone normalization: `normalizarTelefonoMx()` in `configurador_prueba/php/notificaciones.php`
+- Phone normalization: `normalizarTelefonoMx()` in `configurador/php/notificaciones.php`
 - Idempotency columns in DB: `notif_*_wa_sent_at`
 - Stub function at `notificaciones.php:276`
 
 ### What Needs to Be Built
-1. **Implement `enviarWhatsAppReal()`** in `configurador_prueba/php/notificaciones.php`
+1. **Implement `enviarWhatsAppReal()`** in `configurador/php/notificaciones.php`
    - Use Meta Cloud API (graph.facebook.com/v18.0/{phone_id}/messages)
    - Or use SMSMasivos WhatsApp API if supported
    - Send template messages with variable substitution
@@ -75,8 +75,8 @@ Without NOM-151, credit contracts may not be legally enforceable in Mexico. Use 
 3. **Error handling:** Log failures, retry logic, fallback to SMS
 
 ### Relevant Files
-- `configurador_prueba/php/notificaciones.php` (lines 262-281)
-- `configurador_prueba/whatsapp-templates.md`
+- `configurador/php/notificaciones.php` (lines 262-281)
+- `configurador/whatsapp-templates.md`
 
 ---
 
@@ -129,14 +129,14 @@ Without NOM-151, credit contracts may not be legally enforceable in Mexico. Use 
 ### What Needs to Be Built
 1. **Delete model endpoint** — Soft delete with inventory check warning
 2. **Image upload** — Currently URL-only, needs file upload handler
-3. **Sync with configurator** — Models in admin DB vs hardcoded in `configurador_prueba/js/data/productos.js` need synchronization. Either:
+3. **Sync with configurator** — Models in admin DB vs hardcoded in `configurador/js/data/productos.js` need synchronization. Either:
    - Option A: Configurator reads from DB API instead of hardcoded JS
    - Option B: Admin generates/exports `productos.js` on model save
 
 ### Relevant Files
 - `admin/js/modules/admin-modelos.js`
 - `admin/php/modelos/*.php`
-- `configurador_prueba/js/data/productos.js` (hardcoded models)
+- `configurador/js/data/productos.js` (hardcoded models)
 
 ---
 
@@ -165,7 +165,7 @@ Without NOM-151, credit contracts may not be legally enforceable in Mexico. Use 
 ### Relevant Files
 - `admin/js/modules/admin-precios.js`
 - `admin/php/precios/*.php`
-- `configurador_prueba/js/data/productos.js` (hardcoded prices)
+- `configurador/js/data/productos.js` (hardcoded prices)
 
 ---
 

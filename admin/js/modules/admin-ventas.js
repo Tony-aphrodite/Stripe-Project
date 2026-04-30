@@ -508,14 +508,14 @@ window.AD_ventas = (function(){
         btnArr.push('<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
           'style="'+iconBtnStyle+'" '+
           'title="Descargar contrato de compraventa" '+
-          'href="../configurador_prueba/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1">'+ICON_DOC+'</a>');
+          'href="../configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1">'+ICON_DOC+'</a>');
       }
       if (r.moto_id || r.pedido) {
         var dParams = r.moto_id ? ('moto_id=' + r.moto_id) : ('pedido=' + encodeURIComponent(r.pedido));
         btnArr.push('<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
           'style="'+iconBtnStyle+';background:#fffbeb;border-color:#f59e0b;color:#92400e;" '+
           'title="Descargar Dossier de Defensa (ZIP — evidencias para Stripe/PROFECO)" '+
-          'href="../configurador_prueba/php/descargar-dossier.php?'+dParams+'&format=zip">'+ICON_SHIELD+'</a>');
+          'href="../configurador/php/descargar-dossier.php?'+dParams+'&format=zip">'+ICON_SHIELD+'</a>');
       }
 
       // ── Layout (request 2026-04-29):

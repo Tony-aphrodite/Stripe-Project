@@ -965,12 +965,12 @@ button{font-family:inherit}
 
   /* Voltika logo injected before the first nav button.
      Path is relative to THIS CSS file (clientes/css/portal.css) — two levels
-     up to reach voltika.mx root, then into configurador_prueba/img/. */
+     up to reach voltika.mx root, then into configurador/img/. */
   .vk-tabbar::before {
     content: "";
     display: block;
     height: 34px;
-    background: url('../../configurador_prueba/img/voltika_logo_h_white.svg') left center / contain no-repeat;
+    background: url('../../configurador/img/voltika_logo_h_white.svg') left center / contain no-repeat;
     margin: 0 10px 32px;
   }
 

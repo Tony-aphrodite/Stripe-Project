@@ -9,7 +9,7 @@
  *      (both prod and test) so PHP can write generated PDFs/ZIPs.
  *
  *   2. Locates FPDF on the server. If not found anywhere, downloads it
- *      from fpdf.org and installs to configurador_prueba/php/vendor/fpdf/.
+ *      from fpdf.org and installs to configurador/php/vendor/fpdf/.
  *
  * Designed for managed/shared hosting where shell access is unavailable.
  * Admin session required.
@@ -42,7 +42,7 @@ $results = [];
 // `_dossierOutputDir()` and the dossiers metadata live in DB anyway.
 $dirsToCreate = [
     [
-        'preferred' => $projectRoot . '/configurador_prueba/dossiers',
+        'preferred' => $projectRoot . '/configurador/dossiers',
         'fallback'  => sys_get_temp_dir() . '/voltika_dossiers_prod',
         'env'       => 'prod',
     ],
@@ -54,7 +54,7 @@ $dirsToCreate = [
     // contratos/contado/ — used by contrato-contado.php for the customer
     // purchase contract PDFs. Same Plesk perm pattern as dossiers.
     [
-        'preferred' => $projectRoot . '/configurador_prueba/contratos/contado',
+        'preferred' => $projectRoot . '/configurador/contratos/contado',
         'fallback'  => sys_get_temp_dir() . '/voltika_contratos_contado',
         'env'       => 'prod',
     ],
@@ -110,8 +110,8 @@ foreach ($dirsToCreate as $cfg) {
 // STEP 2: FPDF library
 // ─────────────────────────────────────────────────────────────────────────
 $fpdfCandidates = [
-    $projectRoot . '/configurador_prueba/php/vendor/fpdf/fpdf.php',
-    $projectRoot . '/configurador_prueba/php/vendor/setasign/fpdf/fpdf.php',
+    $projectRoot . '/configurador/php/vendor/fpdf/fpdf.php',
+    $projectRoot . '/configurador/php/vendor/setasign/fpdf/fpdf.php',
     $projectRoot . '/configurador_prueba_test/php/vendor/fpdf/fpdf.php',
     $projectRoot . '/admin/php/lib/fpdf.php',
     $projectRoot . '/admin_test/php/lib/fpdf.php',
@@ -135,7 +135,7 @@ $fpdfEntry = [
 ];
 
 // Where we want it installed (so the loader in dossier-defensa.php finds it)
-$fpdfTargetDir  = $projectRoot . '/configurador_prueba/php/vendor/fpdf';
+$fpdfTargetDir  = $projectRoot . '/configurador/php/vendor/fpdf';
 $fpdfTargetFile = $fpdfTargetDir . '/fpdf.php';
 $fpdfTargetTest = $projectRoot . '/configurador_prueba_test/php/vendor/fpdf';
 
@@ -210,7 +210,7 @@ $results[] = $zipEntry;
 $schemaEntry = ['type' => 'db', 'name' => 'tablas SQL', 'action' => null, 'ok' => false];
 if ($run) {
     try {
-        require_once $projectRoot . '/configurador_prueba/php/dossier-defensa.php';
+        require_once $projectRoot . '/configurador/php/dossier-defensa.php';
         if (function_exists('dossierEnsureSchema')) {
             dossierEnsureSchema(getDB());
             $schemaEntry['action'] = 'dossiers_defensa table verified/created';
@@ -219,8 +219,8 @@ if ($run) {
             $schemaEntry['action'] = 'dossier-defensa.php cargado pero función ausente';
         }
         // Also run archivo + escalations schemas if available
-        if (file_exists($projectRoot . '/configurador_prueba/php/archivo-larga-duracion.php')) {
-            require_once $projectRoot . '/configurador_prueba/php/archivo-larga-duracion.php';
+        if (file_exists($projectRoot . '/configurador/php/archivo-larga-duracion.php')) {
+            require_once $projectRoot . '/configurador/php/archivo-larga-duracion.php';
             if (function_exists('archivoEnsureSchema')) archivoEnsureSchema(getDB());
         }
     } catch (Throwable $e) {

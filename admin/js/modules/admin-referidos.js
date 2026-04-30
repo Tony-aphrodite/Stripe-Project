@@ -123,7 +123,7 @@ window.AD_referidos = (function(){
   }
 
   // Catalog of models for per-model commission inputs. Sourced from
-  // configurador_prueba/js/data/productos.js when available (loaded by the
+  // configurador/js/data/productos.js when available (loaded by the
   // page), falls back to a static list so the modal never breaks.
   function _modelosCatalogo(){
     if (window.VOLTIKA_PRODUCTOS && Array.isArray(window.VOLTIKA_PRODUCTOS.modelos)) {

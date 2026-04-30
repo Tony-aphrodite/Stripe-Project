@@ -30,7 +30,7 @@ window.VK_mivoltika = (function(){
     var colorSlug = color.toLowerCase().replace(/\s+/g,'_');
 
     html += '<div class="vk-card" style="text-align:center;padding:24px 16px">';
-    html += '<img src="../configurador_prueba/img/'+modelSlug+'/model.png" alt="'+modelo+'" style="max-width:220px;height:auto;margin-bottom:12px" onerror="this.style.display=\'none\'">';
+    html += '<img src="../configurador/img/'+modelSlug+'/model.png" alt="'+modelo+'" style="max-width:220px;height:auto;margin-bottom:12px" onerror="this.style.display=\'none\'">';
     html += '<div style="font-size:20px;font-weight:800;color:#333">'+modelo+'</div>';
     if(color) html += '<div style="font-size:14px;color:#555;margin-top:2px">Color: '+color+'</div>';
     html += '<span class="vk-pill ok" style="margin-top:8px;display:inline-block">COMPRA CONFIRMADA</span>';
@@ -96,7 +96,7 @@ window.VK_mivoltika = (function(){
     var modelSlug = modelo.toLowerCase().replace(/\s+/g,'_');
 
     html += '<div class="vk-card" style="text-align:center;padding:24px 16px">';
-    html += '<img src="../configurador_prueba/img/'+modelSlug+'/model.png" alt="'+modelo+'" style="max-width:220px;height:auto;margin-bottom:12px" onerror="this.style.display=\'none\'">';
+    html += '<img src="../configurador/img/'+modelSlug+'/model.png" alt="'+modelo+'" style="max-width:220px;height:auto;margin-bottom:12px" onerror="this.style.display=\'none\'">';
     html += '<div style="font-size:20px;font-weight:800;color:#333">'+modelo+'</div>';
     if(color) html += '<div style="font-size:14px;color:#555;margin-top:2px">Color: '+color+'</div>';
     html += '<span class="vk-pill ok" style="margin-top:8px;display:inline-block">ACTIVA</span>';

@@ -7,9 +7,9 @@
  * (también funciona si el servidor tiene rewrite de .pdf → .php)
  */
 
-// Resolver FPDF desde configurador_prueba/php/vendor/fpdf
+// Resolver FPDF desde configurador/php/vendor/fpdf
 $fpdfCandidates = [
-    __DIR__ . '/../configurador_prueba/php/vendor/fpdf/fpdf.php',
+    __DIR__ . '/../configurador/php/vendor/fpdf/fpdf.php',
     __DIR__ . '/../configurador_prueba_test/php/vendor/fpdf/fpdf.php',
 ];
 foreach ($fpdfCandidates as $p) { if (file_exists($p)) { require_once $p; break; } }

@@ -9,11 +9,11 @@
 # Usage:
 #   ./test-truora-status.sh IDP1234567890abcdef
 #   PROCESS_ID=IDP1234... ./test-truora-status.sh
-#   ./test-truora-status.sh IDP123 https://staging.voltika.mx/configurador_prueba/php/truora-status.php
+#   ./test-truora-status.sh IDP123 https://staging.voltika.mx/configurador/php/truora-status.php
 #
 # How to find a process_id:
 #   1. Open the diag page in your browser:
-#      https://voltika.mx/configurador_prueba/php/truora-diag-pipeline.php?token=voltika_diag_2026
+#      https://voltika.mx/configurador/php/truora-diag-pipeline.php?token=voltika_diag_2026
 #   2. Look at Section 4 ("truora_fetch_log") — most recent rows show process_id
 #   3. OR Section 1 ("verificaciones_identidad") — truora_process_id column
 #      (after the fix is working, this column will be populated)
@@ -21,7 +21,7 @@
 set -u
 
 PROCESS_ID="${1:-${PROCESS_ID:-}}"
-URL="${2:-https://voltika.mx/configurador_prueba/php/truora-status.php}"
+URL="${2:-https://voltika.mx/configurador/php/truora-status.php}"
 
 if [ -z "$PROCESS_ID" ]; then
   cat <<EOF

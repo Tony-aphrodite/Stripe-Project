@@ -14,10 +14,10 @@ require_once __DIR__ . '/php/bootstrap.php';
 adminRequireAuth(['admin','cedis']);
 
 // Load the runtime templates so this catalog stays in sync with production.
-// The notify file lives in either configurador_prueba (prod) or
+// The notify file lives in either configurador (prod) or
 // configurador_prueba_test (test). Resolve the right one at runtime.
 $notifyCandidates = [
-    __DIR__ . '/../configurador_prueba/php/voltika-notify.php',
+    __DIR__ . '/../configurador/php/voltika-notify.php',
     __DIR__ . '/../configurador_prueba_test/php/voltika-notify.php',
 ];
 $notifyPath = null;
@@ -26,7 +26,7 @@ foreach ($notifyCandidates as $p) {
 }
 if (!$notifyPath) {
     http_response_code(500);
-    echo 'No se encontró voltika-notify.php en configurador_prueba/php/ ni en configurador_prueba_test/php/.';
+    echo 'No se encontró voltika-notify.php en configurador/php/ ni en configurador_prueba_test/php/.';
     exit;
 }
 require_once $notifyPath;
@@ -287,7 +287,7 @@ header('Content-Type: text/html; charset=utf-8');
 <h1>Catálogo de notificaciones — proceso de compra</h1>
 <p class="lead">
   Todas las comunicaciones automáticas que el sistema envía al cliente (y algunas internas) durante el ciclo completo de compra.<br>
-  Para editar un texto: modificar el archivo <code>configurador_prueba/php/voltika-notify.php</code> — función <code>voltikaNotifyTemplates()</code>.<br>
+  Para editar un texto: modificar el archivo <code>configurador/php/voltika-notify.php</code> — función <code>voltikaNotifyTemplates()</code>.<br>
   Los valores entre llaves como <span class="var">{nombre}</span> son variables que el sistema reemplaza automáticamente antes de enviar.
 </p>
 
@@ -369,7 +369,7 @@ header('Content-Type: text/html; charset=utf-8');
     <div class="meta">
       <span><strong>Audiencia:</strong> Cliente</span>
       <span><strong>Canales:</strong> <span class="channel email">EMAIL</span></span>
-      <span><strong>Origen:</strong> <code>configurador_prueba/php/stripe-webhook.php → sendConfirmationEmail()</code></span>
+      <span><strong>Origen:</strong> <code>configurador/php/stripe-webhook.php → sendConfirmationEmail()</code></span>
     </div>
     <div class="block">
       <div class="label">Asunto</div>
@@ -395,7 +395,7 @@ header('Content-Type: text/html; charset=utf-8');
       </ol>
       <p style="font-size:12px;color:#5b6b80;margin:8px 0 0;">
         Para ver el HTML completo del email con su diseño visual, abrir el archivo
-        <code>configurador_prueba/php/stripe-webhook.php</code> a partir de la línea 214
+        <code>configurador/php/stripe-webhook.php</code> a partir de la línea 214
         (función <code>sendConfirmationEmail()</code>). El HTML está integrado dentro
         de la función — modificar ahí el texto o diseño.
       </p>
@@ -424,7 +424,7 @@ header('Content-Type: text/html; charset=utf-8');
     <div class="meta">
       <span><strong>Audiencia:</strong> Cliente</span>
       <span><strong>Canales:</strong> <span class="channel email">EMAIL</span></span>
-      <span><strong>Origen:</strong> <code>configurador_prueba/php/create-payment-intent.php → _sendReminderEmail()</code></span>
+      <span><strong>Origen:</strong> <code>configurador/php/create-payment-intent.php → _sendReminderEmail()</code></span>
     </div>
     <div class="block">
       <div class="label">Asunto / Contenido</div>

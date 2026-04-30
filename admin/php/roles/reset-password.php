@@ -31,7 +31,7 @@ adminLog('usuario_password_reset', ['usuario_id' => $usuarioId, 'email' => $user
 
 $notifyResult = null;
 if ($notificar) {
-    $notifyPath = realpath(__DIR__ . '/../../../configurador_prueba/php/voltika-notify.php');
+    $notifyPath = realpath(__DIR__ . '/../../../configurador/php/voltika-notify.php');
     if (!$notifyPath) $notifyPath = realpath(__DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php');
     if ($notifyPath && file_exists($notifyPath)) {
         require_once $notifyPath;

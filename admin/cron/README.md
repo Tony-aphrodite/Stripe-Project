@@ -125,6 +125,6 @@ O registra como tarea en el Programador de Tareas con
 | Síntoma | Causa | Solución |
 |---|---|---|
 | `401 No autorizado` | Token incorrecto o no seteado en .env del servidor | Verifica `echo $VOLTIKA_CRON_TOKEN` en el shell del cron y `getenv('VOLTIKA_CRON_TOKEN')` en PHP |
-| `502 Stripe API` | Red / API key inválida | Revisa `STRIPE_SECRET_KEY` en `configurador_prueba/.env` |
+| `502 Stripe API` | Red / API key inválida | Revisa `STRIPE_SECRET_KEY` en `configurador/.env` |
 | `orphans=0` siempre | El endpoint sí funciona pero no hay lagunas (esperado en estado sano) | OK |
 | `orphans > 0` repetido | Hay un bug persistente en `confirmar-orden.php` | Abrir cada fila en el dashboard con **Recuperar** y revisar root cause |

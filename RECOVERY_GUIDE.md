@@ -12,7 +12,7 @@
 |------|---------|----------|
 | `backup_2026-04-06.sql` | Original backup (do not modify) | Project root |
 | `recovery_transacciones_2026-04-24.sql` | Converted recovery SQL | Project root |
-| `configurador_prueba/php/db-recovery-transacciones.php` | Server-side PHP runner script | PHP folder |
+| `configurador/php/db-recovery-transacciones.php` | Server-side PHP runner script | PHP folder |
 | `generate-recovery-sql.py` | SQL regeneration script (if needed) | Project root |
 | `RECOVERY_GUIDE.md` | This document | Project root |
 
@@ -40,7 +40,7 @@
 Upload the following 2 files to the server:
 
 ```
-[server-root]/configurador_prueba/php/db-recovery-transacciones.php
+[server-root]/configurador/php/db-recovery-transacciones.php
 [server-root]/recovery_transacciones_2026-04-24.sql
 ```
 
@@ -48,7 +48,7 @@ Upload the following 2 files to the server:
 
 Open this URL in a browser:
 ```
-https://[domain]/configurador_prueba/php/db-recovery-transacciones.php?key=voltika-recovery-2026&dry=1
+https://[domain]/configurador/php/db-recovery-transacciones.php?key=voltika-recovery-2026&dry=1
 ```
 
 Verify on the page:
@@ -61,7 +61,7 @@ Verify on the page:
 
 If everything looks correct, change `&dry=1` in the URL to `&apply=1`:
 ```
-https://[domain]/configurador_prueba/php/db-recovery-transacciones.php?key=voltika-recovery-2026&apply=1
+https://[domain]/configurador/php/db-recovery-transacciones.php?key=voltika-recovery-2026&apply=1
 ```
 
 On success you'll see:
@@ -74,7 +74,7 @@ On success you'll see:
 
 After a successful recovery, you **must** delete the script from the server:
 ```bash
-rm /path/to/configurador_prueba/php/db-recovery-transacciones.php
+rm /path/to/configurador/php/db-recovery-transacciones.php
 ```
 
 ---
@@ -210,5 +210,5 @@ These rows can then be INSERTed into the `transacciones` table to close the gap.
 ## 🔗 References
 
 - Original requirements / design: [DEVELOPER_HANDOFF.pdf](Voltika Aliados App Developer Handoff.pdf)
-- Existing backup tool: [db-backup.php](configurador_prueba/php/db-backup.php)
+- Existing backup tool: [db-backup.php](configurador/php/db-backup.php)
 - SQL generator: [generate-recovery-sql.py](generate-recovery-sql.py)

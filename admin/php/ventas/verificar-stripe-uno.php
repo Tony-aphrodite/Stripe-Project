@@ -19,7 +19,7 @@ adminRequireAuth(['admin','cedis','operador']);
 
 // Load Stripe secret
 $cfgCandidates = [
-    __DIR__ . '/../../../configurador_prueba/php/config.php',
+    __DIR__ . '/../../../configurador/php/config.php',
     __DIR__ . '/../../../configurador_prueba_test/php/config.php',
 ];
 foreach ($cfgCandidates as $p) { if (file_exists($p)) { require_once $p; break; } }

@@ -85,7 +85,7 @@ $msg = "Voltika: Tu código de entrega es {$otp}. Muéstralo al asesor en el pun
 $notifyResult = null;
 $notifyPath = null;
 foreach ([
-    __DIR__ . '/../../../configurador_prueba/php/voltika-notify.php',
+    __DIR__ . '/../../../configurador/php/voltika-notify.php',
     __DIR__ . '/../../../configurador_prueba_test/php/voltika-notify.php',
 ] as $_p) {
     if (is_file($_p)) { $notifyPath = $_p; break; }

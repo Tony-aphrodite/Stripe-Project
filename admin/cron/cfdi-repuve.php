@@ -19,9 +19,9 @@
 require_once __DIR__ . '/../php/bootstrap.php';
 
 // Locate the configurador shared helpers.
-$configuradorPhp = realpath(__DIR__ . '/../../configurador_prueba/php')
+$configuradorPhp = realpath(__DIR__ . '/../../configurador/php')
                 ?: realpath(__DIR__ . '/../../configurador_prueba_test/php');
-if (!$configuradorPhp) adminJsonOut(['error' => 'configurador_prueba/php not found'], 500);
+if (!$configuradorPhp) adminJsonOut(['error' => 'configurador/php not found'], 500);
 
 require_once $configuradorPhp . '/sat-pac.php';
 require_once $configuradorPhp . '/repuve.php';
