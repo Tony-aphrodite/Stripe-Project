@@ -1,12 +1,16 @@
 <?php
 /**
- * Voltika — SMS OTP delivery diagnostic.
+ * Voltika — SMS OTP delivery diagnostic + auto-repair.
  *
- * Shows the last N entries from logs/sms-otp.log so we can see exactly
- * what SMSMasivos returns for each send attempt. Customer report
- * 2026-04-30: 5,144 credits available but SMS not arriving — answers
- * the question of whether the API is failing silently or returning
- * success but the carrier is dropping the message.
+ * Diagnoses why SMS isn't arriving when 5,144+ credits are available.
+ *
+ * Tests (in order):
+ *   1. logs/ directory existence + writability + auto-create if missing
+ *   2. SMSMASIVOS_API_KEY env var configured + non-placeholder
+ *   3. Recent log entries (if any)
+ *   4. Live SMSMasivos balance check (read-only, no SMS sent)
+ *      — confirms API key authenticates correctly
+ *   5. Diagnosis with concrete next-step action
  *
  * Auth: ?token=voltika_diag_2026 (or admin session).
  *   https://voltika.mx/configurador_prueba/php/sms-diag.php?token=voltika_diag_2026
@@ -44,108 +48,222 @@ h2{color:#60a5fa;margin-top:22px;border-bottom:1px solid #334155;padding-bottom:
 .muted{color:#64748b;}
 pre{background:#020617;padding:8px 10px;border-radius:4px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-all;margin:6px 0 0;}
 .diag{background:#1e293b;padding:14px;border-radius:8px;border-left:4px solid #f59e0b;margin:14px 0;}
+.diag.success{border-left-color:#10b981;}
+.diag.fail{border-left-color:#ef4444;}
 code{background:#020617;padding:1px 5px;border-radius:3px;color:#fbbf24;}
+.row{padding:6px 0;border-bottom:1px solid #334155;}
+.row:last-child{border-bottom:none;}
+.label{display:inline-block;min-width:200px;color:#94a3b8;}
 </style></head><body>
-<h1>SMS OTP delivery diagnostic</h1>
+<h1>SMS OTP diagnostic + auto-repair</h1>
 <p class="muted">Generated <?= date('Y-m-d H:i:s') ?></p>
 
 <?php
-$logFile = __DIR__ . '/logs/sms-otp.log';
+$findings = [];      // accumulator: each is ['status'=>'ok|warn|bad', 'msg'=>...]
+$canSend = true;     // overall verdict
 
-echo '<h2>1. Log file</h2>';
-echo '<p>Path: <code>' . htmlspecialchars($logFile) . '</code></p>';
-if (!file_exists($logFile)) {
-    echo '<p class="bad">[FAIL] Log file does not exist.</p>';
-    echo '<div class="diag"><strong>Diagnosis:</strong> No SMS sends recorded yet on this server, OR the <code>logs/</code> directory could not be created (permissions). If you have tested SMS recently and this file is missing, the <code>enviar-otp.php</code> endpoint isn\'t being reached at all (front-end isn\'t calling it, or PHP can\'t write to <code>php/logs/</code>).</div>';
-    exit;
-}
-$size = filesize($logFile);
-echo '<p>Size: ' . number_format($size) . ' bytes · last modified: ' . date('Y-m-d H:i:s', filemtime($logFile)) . '</p>';
+// ── 1. logs/ directory ─────────────────────────────────────────
+echo '<h2>1. Log directory</h2>';
+$logDir = __DIR__ . '/logs';
+$logFile = $logDir . '/sms-otp.log';
 
-echo '<h2>2. Last 15 send attempts (most recent first)</h2>';
-$raw = @file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-if (!$raw) {
-    echo '<p class="warn">[WARN] Log file empty or unreadable.</p>';
-    exit;
-}
-$entries = array_reverse($raw);
-$entries = array_slice($entries, 0, 15);
+echo '<div class="row"><span class="label">Path:</span> <code>' . htmlspecialchars($logDir) . '</code></div>';
+$dirExists = is_dir($logDir);
+$dirWritable = $dirExists && is_writable($logDir);
+echo '<div class="row"><span class="label">Exists:</span> ' . ($dirExists ? '<span class="ok">YES</span>' : '<span class="bad">NO</span>') . '</div>';
+echo '<div class="row"><span class="label">Writable:</span> ' . ($dirWritable ? '<span class="ok">YES</span>' : '<span class="bad">NO</span>') . '</div>';
 
-$totalShown = 0;
-$successCount = 0;
-$apiErrorCount = 0;
-$curlErrorCount = 0;
-$lastEntry = null;
-
-foreach ($entries as $line) {
-    $e = json_decode($line, true);
-    if (!is_array($e)) continue;
-    $totalShown++;
-    if ($lastEntry === null) $lastEntry = $e;
-
-    $http = (int)($e['httpCode'] ?? 0);
-    $curl = (string)($e['curlErr'] ?? '');
-    $resp = (string)($e['response'] ?? '');
-    $respDecoded = json_decode($resp, true);
-    $apiSuccess = is_array($respDecoded) && !empty($respDecoded['success']);
-
-    $status = '?';
-    $cls = 'warn';
-    if ($curl !== '') {
-        $status = 'cURL error';
-        $cls = 'bad';
-        $curlErrorCount++;
-    } elseif ($http >= 200 && $http < 300 && $apiSuccess) {
-        $status = 'API success';
-        $cls = 'ok';
-        $successCount++;
+// Auto-repair: create the directory if missing.
+if (!$dirExists) {
+    echo '<p class="warn">Auto-repair: attempting to create <code>logs/</code>…</p>';
+    $created = @mkdir($logDir, 0775, true);
+    if ($created) {
+        @chmod($logDir, 0775);
+        echo '<p class="ok">[OK] Directory created with 0775 permissions.</p>';
+        $findings[] = ['ok', 'logs/ directory was missing — created automatically.'];
+        $dirExists = true;
+        $dirWritable = is_writable($logDir);
     } else {
-        $status = 'API error';
-        $cls = 'bad';
-        $apiErrorCount++;
+        $err = error_get_last();
+        echo '<p class="bad">[FAIL] Could not create directory. Last error: ' .
+             htmlspecialchars($err['message'] ?? '(unknown)') . '</p>';
+        echo '<p class="bad">Likely cause: PHP-FPM user lacks write permission on parent dir <code>' .
+             htmlspecialchars(dirname($logDir)) . '</code>. Fix from SSH:</p>';
+        echo '<pre>chown -R psaadm:psacln ' . htmlspecialchars(dirname($logDir)) . '
+chmod -R 0775 ' . htmlspecialchars(dirname($logDir)) . '</pre>';
+        $findings[] = ['bad', 'logs/ cannot be created. SMS may still send but logs are lost — diagnosis blind.'];
     }
-
-    echo '<div class="entry">';
-    echo '<strong>' . htmlspecialchars($e['timestamp'] ?? '?') . '</strong>';
-    echo ' · phone: <code>' . htmlspecialchars($e['telefono'] ?? '?') . '</code>';
-    echo ' · HTTP <span class="' . $cls . '">' . $http . '</span>';
-    echo ' · <span class="' . $cls . '">' . $status . '</span>';
-    if (isset($e['send_count'])) echo ' · attempt #' . (int)$e['send_count'];
-    if ($curl !== '') echo '<br><span class="bad">cURL:</span> ' . htmlspecialchars($curl);
-    if ($resp !== '') {
-        echo '<pre>' . htmlspecialchars(substr($resp, 0, 600)) . '</pre>';
-    }
-    echo '</div>';
 }
 
-echo '<p class="muted">Counts in last ' . $totalShown . ': ' .
-     '<span class="ok">' . $successCount . ' OK</span>, ' .
-     '<span class="bad">' . $apiErrorCount . ' API error</span>, ' .
-     '<span class="bad">' . $curlErrorCount . ' cURL error</span></p>';
+// Test write a probe entry.
+if ($dirExists) {
+    $probe = $logDir . '/diag-probe.tmp';
+    $writeOk = @file_put_contents($probe, 'probe ' . date('c'));
+    if ($writeOk !== false) {
+        @unlink($probe);
+        echo '<p class="ok">[OK] Probe write succeeded — directory is fully writable.</p>';
+    } else {
+        echo '<p class="bad">[FAIL] Directory exists but cannot write probe file. Permission issue.</p>';
+        $findings[] = ['bad', 'logs/ exists but PHP cannot write — fix permissions on the directory.'];
+    }
+}
 
-// ── Diagnosis ──────────────────────────────────────────────────
-echo '<h2>3. Diagnosis</h2>';
-echo '<div class="diag">';
-if ($totalShown === 0) {
-    echo '<p class="bad">Log has no parseable entries.</p>';
-} elseif ($curlErrorCount > 0 && $curlErrorCount === $totalShown) {
-    echo '<p class="bad"><strong>Every recent send hit a cURL error.</strong> The server cannot reach <code>api.smsmasivos.com.mx</code>. Check outbound HTTPS connectivity, DNS, or firewall rules from this host.</p>';
-} elseif ($apiErrorCount > 0 && $successCount === 0) {
-    echo '<p class="bad"><strong>SMSMasivos is rejecting every request.</strong> Look at the response body in the most-recent entry above. Common causes: <ul>';
-    echo '<li>Wrong / expired <code>SMSMASIVOS_API_KEY</code> in <code>.env</code> (most common — credit balance still visible because it\'s a different account property)</li>';
-    echo '<li>Account suspended or in test mode (the dashboard credits may not actually be usable)</li>';
-    echo '<li>Wrong endpoint or auth header — verify <code>apikey:</code> header and <code>https://api.smsmasivos.com.mx/sms/send</code> URL with SMSMasivos support</li>';
-    echo '</ul></p>';
-} elseif ($successCount === $totalShown) {
-    echo '<p class="warn"><strong>SMSMasivos confirms every send as successful, but the customer doesn\'t receive the SMS.</strong> The bottleneck is downstream of SMSMasivos:<ul>';
-    echo '<li><strong>Carrier filtering / antispam</strong> — Telcel/Movistar/AT&T often silently drop unsolicited SMS in México. Ask SMSMasivos support whether your sender ID needs to be registered with Mexican carriers.</li>';
-    echo '<li><strong>Recipient blocked SMS</strong> — Test with a different phone number on a different carrier (Telcel vs Movistar) to isolate.</li>';
-    echo '<li><strong>SMS body content</strong> — words like "código" or international format issues sometimes trigger spam filters. Current body uses ASCII without accents, so this is unlikely.</li>';
-    echo '<li><strong>Phone format</strong> — SMSMasivos receives <code>numbers=' . htmlspecialchars($lastEntry['telefono'] ?? '') . '</code> with <code>country_code=52</code>. Confirm the dashboard\'s "Sent" log actually shows delivery to this number.</li>';
-    echo '</ul></p>';
-    echo '<p class="warn">Best next step: check the SMSMasivos web dashboard\'s send-history view for the most recent number — it should show delivery status per message (delivered / failed / pending). If the dashboard shows "delivered" but the phone never received, the issue is 100% carrier-side.</p>';
+// ── 2. API key configuration ───────────────────────────────────
+echo '<h2>2. SMSMasivos API key</h2>';
+$apiKey = defined('SMSMASIVOS_API_KEY') ? SMSMASIVOS_API_KEY : (getenv('SMSMASIVOS_API_KEY') ?: '');
+$keyLen = strlen($apiKey);
+$keyMasked = $keyLen > 0 ? substr($apiKey, 0, 4) . str_repeat('•', max(0, $keyLen - 8)) . substr($apiKey, -4) : '(empty)';
+
+echo '<div class="row"><span class="label">SMSMASIVOS_API_KEY:</span> <code>' . htmlspecialchars($keyMasked) . '</code> (' . $keyLen . ' chars)</div>';
+
+if ($keyLen === 0) {
+    echo '<p class="bad">[FAIL] API key is empty. Set <code>SMSMASIVOS_API_KEY</code> in <code>.env</code>.</p>';
+    $findings[] = ['bad', 'SMSMASIVOS_API_KEY is empty in env. Cannot send SMS.'];
+    $canSend = false;
+} elseif (in_array($apiKey, ['your_smsmasivos_api_key', 'CHANGEME', 'PLACEHOLDER'], true) ||
+          stripos($apiKey, 'placeholder') !== false || stripos($apiKey, 'your_') !== false) {
+    echo '<p class="bad">[FAIL] API key looks like a placeholder. Replace with the real key from your SMSMasivos account.</p>';
+    $findings[] = ['bad', 'SMSMASIVOS_API_KEY contains a placeholder value, not the real key.'];
+    $canSend = false;
 } else {
-    echo '<p class="warn">Mixed results — some sends OK, some failing. Inspect the failing entries above; the failing pattern (specific number? specific time? recurring HTTP code?) will tell us where to look.</p>';
+    echo '<p class="ok">[OK] API key is set (length looks plausible).</p>';
+}
+
+// ── 3. Recent log entries ──────────────────────────────────────
+echo '<h2>3. Recent send attempts</h2>';
+if (!file_exists($logFile)) {
+    echo '<p class="warn">[INFO] No log file yet — either no sends ever attempted or earlier writes failed.</p>';
+} else {
+    $size = filesize($logFile);
+    echo '<p>Size: ' . number_format($size) . ' bytes · last modified: ' . date('Y-m-d H:i:s', filemtime($logFile)) . '</p>';
+    $raw = @file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+    $entries = array_reverse($raw);
+    $entries = array_slice($entries, 0, 8);
+    $successCount = 0; $apiErrorCount = 0; $curlErrorCount = 0;
+    foreach ($entries as $line) {
+        $e = json_decode($line, true);
+        if (!is_array($e)) continue;
+        $http = (int)($e['httpCode'] ?? 0);
+        $curl = (string)($e['curlErr'] ?? '');
+        $resp = (string)($e['response'] ?? '');
+        $respDecoded = json_decode($resp, true);
+        $apiSuccess = is_array($respDecoded) && !empty($respDecoded['success']);
+
+        $cls = 'warn'; $status = '?';
+        if ($curl !== '') { $status = 'cURL error'; $cls = 'bad'; $curlErrorCount++; }
+        elseif ($http >= 200 && $http < 300 && $apiSuccess) { $status = 'API success'; $cls = 'ok'; $successCount++; }
+        else { $status = 'API error'; $cls = 'bad'; $apiErrorCount++; }
+
+        echo '<div class="entry">';
+        echo '<strong>' . htmlspecialchars($e['timestamp'] ?? '?') . '</strong>';
+        echo ' · <code>' . htmlspecialchars($e['telefono'] ?? '?') . '</code>';
+        echo ' · HTTP <span class="' . $cls . '">' . $http . '</span>';
+        echo ' · <span class="' . $cls . '">' . $status . '</span>';
+        if ($curl !== '') echo '<br><span class="bad">cURL:</span> ' . htmlspecialchars($curl);
+        if ($resp !== '') echo '<pre>' . htmlspecialchars(substr($resp, 0, 400)) . '</pre>';
+        echo '</div>';
+    }
+    if (count($entries) === 0) {
+        echo '<p class="muted">(log file exists but no parseable entries)</p>';
+    } else {
+        echo '<p class="muted">Last ' . count($entries) . ': ' .
+             '<span class="ok">' . $successCount . ' OK</span>, ' .
+             '<span class="bad">' . $apiErrorCount . ' API err</span>, ' .
+             '<span class="bad">' . $curlErrorCount . ' cURL err</span></p>';
+        if ($apiErrorCount > 0 && $successCount === 0) {
+            $findings[] = ['bad', 'All recent sends failed at the API. See response body above.'];
+        }
+        if ($curlErrorCount > 0 && $successCount === 0) {
+            $findings[] = ['bad', 'All recent sends had cURL errors — server cannot reach SMSMasivos.'];
+        }
+        if ($successCount > 0 && $apiErrorCount === 0 && $curlErrorCount === 0) {
+            $findings[] = ['warn', 'SMSMasivos confirms send success but customer says SMS not arriving. Issue is downstream of SMSMasivos (carrier filtering or recipient blocked SMS).'];
+        }
+    }
+}
+
+// ── 4. Live API auth probe (read-only) ─────────────────────────
+echo '<h2>4. Live SMSMasivos API auth check (no SMS sent)</h2>';
+if ($keyLen === 0) {
+    echo '<p class="muted">Skipped — no API key configured.</p>';
+} else {
+    // Try the credit/balance endpoint — read-only, costs nothing.
+    // SMSMasivos exposes: GET https://api.smsmasivos.com.mx/credits/consult
+    // (per the v2 API docs at app.smsmasivos.com.mx/api-docs/v2)
+    $probeUrl = 'https://api.smsmasivos.com.mx/credits/consult';
+    $ch = curl_init($probeUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['apikey: ' . $apiKey],
+        CURLOPT_TIMEOUT        => 10,
+    ]);
+    $probeResp = curl_exec($ch);
+    $probeHttp = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $probeErr  = curl_error($ch);
+    curl_close($ch);
+
+    echo '<div class="row"><span class="label">URL:</span> <code>' . htmlspecialchars($probeUrl) . '</code></div>';
+    echo '<div class="row"><span class="label">HTTP:</span> <span class="' . ($probeHttp >= 200 && $probeHttp < 300 ? 'ok' : 'bad') . '">' . $probeHttp . '</span></div>';
+    if ($probeErr) echo '<div class="row"><span class="label">cURL:</span> <span class="bad">' . htmlspecialchars($probeErr) . '</span></div>';
+    if ($probeResp) echo '<pre>' . htmlspecialchars(substr($probeResp, 0, 600)) . '</pre>';
+
+    if ($probeErr) {
+        $findings[] = ['bad', 'Cannot reach api.smsmasivos.com.mx from this server. Check outbound firewall / DNS.'];
+        $canSend = false;
+    } elseif ($probeHttp === 401 || $probeHttp === 403) {
+        $findings[] = ['bad', 'API key is rejected by SMSMasivos (HTTP ' . $probeHttp . '). Verify the key is active and has SMS-send permission.'];
+        $canSend = false;
+    } elseif ($probeHttp === 404) {
+        echo '<p class="warn">Credits endpoint returned 404 — the v2 path may differ for your account. Try alternate endpoint:</p>';
+        $alt = 'https://api.smsmasivos.com.mx/account';
+        $ch2 = curl_init($alt);
+        curl_setopt_array($ch2, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_HTTPHEADER=>['apikey: '.$apiKey], CURLOPT_TIMEOUT=>10]);
+        $r2 = curl_exec($ch2); $h2 = curl_getinfo($ch2, CURLINFO_HTTP_CODE); curl_close($ch2);
+        echo '<pre>HTTP ' . $h2 . "\n" . htmlspecialchars(substr((string)$r2, 0, 400)) . '</pre>';
+        if ($h2 === 401 || $h2 === 403) {
+            $findings[] = ['bad', 'API key rejected by alternate endpoint too — key is bad.'];
+            $canSend = false;
+        }
+    } elseif ($probeHttp >= 200 && $probeHttp < 300) {
+        $findings[] = ['ok', 'API key authenticates successfully against SMSMasivos. Send pipeline is live.'];
+    } else {
+        $findings[] = ['warn', 'SMSMasivos returned HTTP ' . $probeHttp . ' on the auth probe. Inspect response body for clue.'];
+    }
+}
+
+// ── 5. Diagnosis ───────────────────────────────────────────────
+echo '<h2>5. Diagnosis & action</h2>';
+$cls = $canSend ? 'success' : 'fail';
+echo '<div class="diag ' . $cls . '">';
+if (count($findings) === 0) {
+    echo '<p>No specific findings. Default action: check SMSMasivos dashboard\'s "Sent messages" tab for the recipient number to see actual delivery status.</p>';
+} else {
+    echo '<ul>';
+    foreach ($findings as $f) {
+        $cls2 = $f[0] === 'ok' ? 'ok' : ($f[0] === 'warn' ? 'warn' : 'bad');
+        echo '<li><span class="' . $cls2 . '">[' . strtoupper($f[0]) . ']</span> ' . htmlspecialchars($f[1]) . '</li>';
+    }
+    echo '</ul>';
+}
+
+// Pragmatic next-step guidance based on findings.
+echo '<h3>Concrete next step</h3>';
+$hasSendFail = false; $hasAuthOk = false; $hasAuthFail = false; $hasCarrierSuspect = false;
+foreach ($findings as $f) {
+    if (strpos($f[1], 'authenticates successfully') !== false) $hasAuthOk = true;
+    if (strpos($f[1], 'rejected by SMSMasivos') !== false || strpos($f[1], 'key is bad') !== false) $hasAuthFail = true;
+    if (strpos($f[1], 'failed at the API') !== false || strpos($f[1], 'cURL') !== false) $hasSendFail = true;
+    if (strpos($f[1], 'carrier filtering') !== false) $hasCarrierSuspect = true;
+}
+
+if ($hasAuthFail) {
+    echo '<p>Fix: log in to <a href="https://app.smsmasivos.com.mx" target="_blank">app.smsmasivos.com.mx</a>, copy the current API key, paste it into <code>.env</code> as <code>SMSMASIVOS_API_KEY=...</code>, save. Then refresh this page.</p>';
+} elseif ($hasCarrierSuspect) {
+    echo '<p>API is healthy but SMS isn\'t arriving — that\'s a Mexican carrier filtering issue or recipient block. Test with a different phone number first to confirm. If it\'s carrier-wide, contact SMSMasivos support to register a sender ID with Telcel/AT&T/Movistar.</p>';
+} elseif ($hasAuthOk && !$hasSendFail) {
+    echo '<p>Pipeline looks healthy on our side. The SMS is leaving our server. Check the SMSMasivos dashboard\'s send-history for the test number — it will show "delivered", "failed", or "blocked" per carrier. That tells us whether the issue is upstream (us → SMSMasivos) or downstream (SMSMasivos → carrier → phone).</p>';
+} else {
+    echo '<p>Run a test send through the configurador and refresh this page. The new log entry will pinpoint where the request fails.</p>';
 }
 echo '</div>';
 ?>
