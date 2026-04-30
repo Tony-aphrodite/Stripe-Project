@@ -126,6 +126,83 @@ if ($action === 'list') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// ACTION: stream — dump one DB and stream the gzipped SQL straight to the
+//   browser as an attachment. No server-side disk writes — solves the
+//   "mkdir permission denied" case on locked-down Plesk hosting and lets
+//   the operator save the file directly to their own machine.
+//
+// Usage: ?action=stream&db=voltika_&token=TOKEN
+// ─────────────────────────────────────────────────────────────────────────
+if ($action === 'stream') {
+    $db = (string)($_GET['db'] ?? '');
+    if ($db === '') {
+        http_response_code(400);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'missing_db_parameter', 'hint' => '?action=stream&db=NAME&token=TOKEN']);
+        exit;
+    }
+    // Confirm the user can actually see this DB before we stream anything.
+    $allDbs = $pdo->query("SHOW DATABASES")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array($db, $allDbs, true)) {
+        http_response_code(404);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'database_not_found_or_no_permission', 'db' => $db]);
+        exit;
+    }
+
+    // Discourage proxy buffering and tell the browser this is a download.
+    while (ob_get_level() > 0) { @ob_end_clean(); }
+    $stamp    = date('Ymd-His');
+    $safeName = preg_replace('/[^A-Za-z0-9_.-]/', '_', $db);
+    $fileName = $safeName . '-' . $stamp . '.sql.gz';
+    header('Content-Type: application/gzip');
+    header('Content-Disposition: attachment; filename="' . $fileName . '"');
+    header('X-Accel-Buffering: no');
+    header('Cache-Control: no-store');
+
+    $mysqldump   = trim((string)@shell_exec('command -v mysqldump 2>/dev/null'));
+    $useMysqldump = ($mysqldump !== '' && is_executable($mysqldump) && function_exists('popen'));
+
+    if ($useMysqldump) {
+        // mysqldump | gzip → stdout, streamed to the browser.
+        $cmd = sprintf(
+            '%s --host=%s --user=%s --password=%s --single-transaction --quick --routines --triggers --events --default-character-set=utf8mb4 --hex-blob %s 2>/dev/null | gzip -c',
+            escapeshellarg($mysqldump),
+            escapeshellarg($mysqlHost),
+            escapeshellarg($mysqlUser),
+            escapeshellarg($mysqlPass),
+            escapeshellarg($db)
+        );
+        $ph = @popen($cmd, 'rb');
+        if (!$ph) {
+            // Fall through to the PHP path.
+            $useMysqldump = false;
+        } else {
+            while (!feof($ph)) {
+                $chunk = fread($ph, 1 << 16);
+                if ($chunk === false) break;
+                echo $chunk;
+                @ob_flush(); @flush();
+            }
+            pclose($ph);
+            exit;
+        }
+    }
+
+    // PHP fallback: zlib.deflate filter with gzip framing (window 31).
+    $out = fopen('php://output', 'wb');
+    $filter = stream_filter_append($out, 'zlib.deflate', STREAM_FILTER_WRITE, [
+        'level'  => 6,
+        'window' => 31,
+        'memory' => 9,
+    ]);
+    voltikaPhpDumpToStream($mysqlHost, $mysqlUser, $mysqlPass, $db, $out);
+    if ($filter) stream_filter_remove($filter);
+    fclose($out);
+    exit;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // ACTION: download — stream a previously-created backup as tar.gz
 // ─────────────────────────────────────────────────────────────────────────
 if ($action === 'download') {
@@ -323,10 +400,11 @@ http_response_code(400);
 header('Content-Type: application/json');
 echo json_encode([
     'error' => 'unknown_action',
-    'valid' => ['list', 'backup', 'backup-all', 'download'],
+    'valid' => ['list', 'stream', 'backup', 'backup-all', 'download'],
     'usage' => [
         '?action=list&token=TOKEN',
-        '?action=backup-all&token=TOKEN',
+        '?action=stream&db=NAME&token=TOKEN  (downloads .sql.gz directly to your PC)',
+        '?action=backup-all&token=TOKEN  (writes to server, then download)',
         '?action=backup&db=NAME&token=TOKEN',
         '?action=download&id=ID&sig=HMAC&token=TOKEN',
     ],
@@ -342,14 +420,23 @@ exit;
 // anyway, and mysqldump is the canonical path when those are needed.
 // ─────────────────────────────────────────────────────────────────────────
 function voltikaPhpDumpDatabase(string $host, string $user, string $pass, string $db, string $outFile): void {
+    $fh = fopen($outFile, 'wb');
+    if (!$fh) throw new RuntimeException('cannot open output file');
+    voltikaPhpDumpToStream($host, $user, $pass, $db, $fh);
+    fclose($fh);
+}
+
+/**
+ * Same as voltikaPhpDumpDatabase but writes to an already-open stream
+ * resource. Used by the stream action which pipes through a zlib.deflate
+ * filter so output is gzip-compressed on the fly.
+ */
+function voltikaPhpDumpToStream(string $host, string $user, string $pass, string $db, $fh): void {
     $pdo = new PDO(
         "mysql:host=$host;dbname=$db;charset=utf8mb4",
         $user, $pass,
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
-
-    $fh = fopen($outFile, 'wb');
-    if (!$fh) throw new RuntimeException('cannot open output file');
 
     fwrite($fh, "-- Voltika DB dump (php fallback) — " . date('c') . "\n");
     fwrite($fh, "-- Database: $db\n");
