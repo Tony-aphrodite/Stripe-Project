@@ -702,10 +702,25 @@ var PasoCreditoIdentidad = {
         if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
         var tries = 0;
         var maxTries = 22;   // ~90 s at 4 s intervals
-        var timer = setInterval(function() {
+        // Verdict-resolved flag: prevents the immediate first check and
+        // the first interval tick from BOTH advancing/refusing when their
+        // responses arrive close to each other.
+        var resolved = false;
+
+        // Stop the poll cleanly from any branch — uses self._pollTimer
+        // (the canonical reference) so all stops behave the same and
+        // init()/duplicate _pollWebhookResult calls can also tear it down.
+        var stopPoll = function() {
+            resolved = true;
+            if (self._pollTimer) { clearInterval(self._pollTimer); self._pollTimer = null; }
+        };
+
+        var checkOnce = function() {
+            if (resolved) return;
             tries++;
             jQuery.get('php/truora-status.php', { process_id: processId })
                 .done(function(r) {
+                    if (resolved) return;
                     if (!r) return;
                     self._appendDebug('poll #' + tries + ': approved=' + r.approved +
                         ' status=' + r.status + ' curp_match=' + r.curp_match);
@@ -721,8 +736,12 @@ var PasoCreditoIdentidad = {
                         r.curp_match === 0 ||
                         r.name_match === 0
                     )) {
-                        clearInterval(timer);
+                        stopPoll();
                         self._finished = true;
+                        // Iframe stays hidden (already hidden by the
+                        // success/redirect handler when polling started)
+                        // — the user sees the back-to-nombre CTA without
+                        // Truora's post-flow noise behind it.
                         var mapped = self._mapDeclinedReason(r.declined_reason ||
                             (r.name_match === 0 ? 'identity_name_mismatch' :
                              r.curp_match === 0 ? 'identity_curp_mismatch' : ''));
@@ -737,7 +756,7 @@ var PasoCreditoIdentidad = {
                         // never reach here because the webhook would have
                         // set approved=0, but guard anyway.
                         if (r.curp_match === 0 || r.name_match === 0) {
-                            clearInterval(timer);
+                            stopPoll();
                             self._finished = true;
                             var mapped2 = self._mapDeclinedReason(
                                 r.name_match === 0 ? 'identity_name_mismatch' : 'identity_curp_mismatch'
@@ -745,14 +764,17 @@ var PasoCreditoIdentidad = {
                             self._showError(mapped2.msg, mapped2.detail, mapped2.opts);
                             return;
                         }
-                        clearInterval(timer);
+                        stopPoll();
                         self._finished = true;
                         self.app.state._identidadVerificada = true;
                         self.app.irAPaso('credito-enganche');
-                    } else if (r.approved === 0 && (r.status === 'failure' || r.manual_review === 1)) {
+                    } else if (r.approved === 0 && (r.status === 'failure' || r.status === 'failed' || r.manual_review === 1)) {
                         // Truora outright failed (liveness, doc tampering,
                         // blacklist hit, etc.) → manual-review branch.
-                        clearInterval(timer);
+                        // Accept both 'failure' and 'failed' since
+                        // truora-status.php passes through Truora's raw
+                        // status string (which is 'failed' on /v1 API).
+                        stopPoll();
                         self._finished = true;
                         var mapped3 = self._mapDeclinedReason(
                             r.declined_reason || r.manual_review_reason || 'truora_validation_failed',
@@ -760,17 +782,33 @@ var PasoCreditoIdentidad = {
                         );
                         self._showError(mapped3.msg, mapped3.detail, mapped3.opts);
                     }
+                    // approved === null → keep polling; the webhook may
+                    // still arrive, and the API fallback in truora-status.php
+                    // may need another tick to fetch from Truora's REST API.
                 });
             if (tries >= maxTries) {
-                clearInterval(timer);
-                self._pollTimer = null;
-                // Keep the user informed but don't block — webhook will
-                // still settle the record asynchronously.
+                stopPoll();
+                // 90 s elapsed without verdict — neither webhook nor API
+                // fallback resolved. Surface a clear retry CTA so the user
+                // isn't trapped on the holding screen forever; the back-end
+                // CURP / name-match guard at confirmar-orden.php still
+                // refuses to create a fraudulent order if the user
+                // somehow continued anyway.
                 jQuery('#vk-identidad-error')
-                    .html('<strong>Tu verificación sigue procesando.</strong><div style="margin-top:6px;font-size:11px;">Puedes esperar unos minutos más o reintentar.</div>')
+                    .css({color:'#92400e',background:'#fef3c7'})
+                    .html('<strong>Tu verificación sigue procesando.</strong>' +
+                          '<div style="margin-top:6px;font-size:11px;">Puede haber un retraso de Truora. Espera unos minutos más, o reintenta la verificación desde cero.</div>')
                     .show();
+                jQuery('#vk-identidad-retry').show();
             }
-        }, 4000);
+        };
+
+        // Customer report 2026-04-30: users were stuck on "Verificando
+        // datos…" because the first status check only fired AFTER the
+        // initial 4 s timer cycle. Fire one immediately so the verdict
+        // surfaces as soon as the webhook (or API fallback) is ready.
+        checkOnce();
+        var timer = setInterval(checkOnce, 4000);
         this._pollTimer = timer;
     },
 };
