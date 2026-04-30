@@ -1,5 +1,23 @@
 window.VK_documentos = (function(){
 
+  // ── Launch-period override ──────────────────────────────────────
+  // Customer brief 2026-04-30: during the soft-launch, every document
+  // EXCEPT the payment receipt should be presented with a
+  // "Próximamente" badge and locked state, so customers know the
+  // document will arrive but isn't yet downloadable. Toggle this flag
+  // to false (or remove the constant) once every doc is fully wired.
+  var DOCS_PROXIMAMENTE_MODE = true;
+
+  // Payment-related document tipos that REMAIN available during the
+  // proximamente window (these prove the customer's payment was made
+  // and must always be downloadable).
+  var DOCS_PAYMENT_TYPES = ['recibo', 'comprobantes', 'comprobante_contado'];
+
+  function isProximamente(tipo) {
+    if (!DOCS_PROXIMAMENTE_MODE) return false;
+    return DOCS_PAYMENT_TYPES.indexOf(tipo) === -1;
+  }
+
   // ── Document metadata for CREDIT customers ──────────────────────
   var DOC_META_CREDITO = {
     contrato: {
@@ -108,6 +126,7 @@ window.VK_documentos = (function(){
 
   function badgeFor(doc){
     var t = doc.tipo;
+    if (isProximamente(t)) return '<span class="vk-doc-badge gray">Próximamente</span>';
     if(t==='contrato')     return doc.disponible ? '<span class="vk-doc-badge green">Firmado digitalmente</span>' : '<span class="vk-doc-badge gray">Pendiente</span>';
     if(t==='acta_entrega') return doc.disponible ? '<span class="vk-doc-badge green">Confirmada</span>'           : '<span class="vk-doc-badge gray">Pendiente</span>';
     if(t==='manual')       return doc.disponible ? '<span class="vk-doc-badge green">Disponible</span>'           : '<span class="vk-doc-badge gray">Pendiente</span>';
@@ -178,9 +197,10 @@ window.VK_documentos = (function(){
     for(var i=0;i<keys.length;i++){
       var k = keys[i];
       var d = docs[k];
-      var isAvail = d.available || entregado;
-      var badge = isAvail ? 'DISPONIBLE' : d.badge;
-      var badgeCol = isAvail ? 'green' : d.badgeColor;
+      var prox = isProximamente(k);
+      var isAvail = !prox && (d.available || entregado);
+      var badge = prox ? 'PRÓXIMAMENTE' : (isAvail ? 'DISPONIBLE' : d.badge);
+      var badgeCol = prox ? 'gray' : (isAvail ? 'green' : d.badgeColor);
 
       html += '<div class="vk-cdoc-row'+(isAvail?'':' locked')+'">';
       html += '<div class="vk-cdoc-icon">'+d.icon+'</div>';
@@ -233,7 +253,10 @@ window.VK_documentos = (function(){
 
     $('[data-tipo]').on('click', function(){ _openDoc($(this).data('tipo')); });
     $('#vkDownloadAll').on('click',function(){
-      var avail = keys.filter(function(k){ return DOC_META_CONTADO[k].available || entregado; });
+      var avail = keys.filter(function(k){
+        if (isProximamente(k)) return false;
+        return DOC_META_CONTADO[k].available || entregado;
+      });
       avail.forEach(_openDoc);
     });
   }
@@ -264,6 +287,12 @@ window.VK_documentos = (function(){
 
     var meta = DOC_META_CREDITO.carta_factura;
 
+    // During proximamente mode, force the highlighted carta_factura into the
+    // locked state regardless of its real availability — payment-only override.
+    if (carta && isProximamente('carta_factura')) {
+      carta.disponible = false;
+    }
+
     var cartaHtml = '';
     if(carta){
       if(carta.disponible){
@@ -285,29 +314,39 @@ window.VK_documentos = (function(){
             '</div>'+
           '</div>';
       } else {
+        var isProx = isProximamente('carta_factura');
+        var lockedBadgeLabel = isProx ? 'PRÓXIMAMENTE' : 'NO DISPONIBLE';
         cartaHtml =
           '<div class="vk-doc-highlight locked">'+
             '<div class="vk-doc-hl-header">'+
               '<div class="vk-doc-hl-icon" style="opacity:.5">'+meta.icon+'</div>'+
               '<div class="vk-doc-hl-info">'+
-                '<div class="vk-doc-hl-title">Carta factura <span class="vk-doc-badge gray">NO DISPONIBLE</span></div>'+
+                '<div class="vk-doc-hl-title">Carta factura <span class="vk-doc-badge gray">'+lockedBadgeLabel+'</span></div>'+
                 '<div class="vk-doc-hl-sub">Para emplacar tu Voltika</div>'+
               '</div>'+
             '</div>'+
-          '</div>'+
-          '<div class="vk-doc-warn-banner">'+
-            '<div class="vk-doc-warn-text">'+
-              '<strong>¿Aun no puedes descargarla?</strong><br>'+
-              '<span>'+meta.descLocked+'</span>'+
-            '</div>'+
-            '<button class="vk-doc-warn-btn" onclick="VKApp.go(\'inicio\')">PONERME AL CORRIENTE</button>'+
           '</div>';
+        // Skip the "ponerme al corriente" CTA during proximamente mode —
+        // the document isn't blocked by payment status, it just isn't ready.
+        if (!isProx) {
+          cartaHtml +=
+            '<div class="vk-doc-warn-banner">'+
+              '<div class="vk-doc-warn-text">'+
+                '<strong>¿Aun no puedes descargarla?</strong><br>'+
+                '<span>'+meta.descLocked+'</span>'+
+              '</div>'+
+              '<button class="vk-doc-warn-btn" onclick="VKApp.go(\'inicio\')">PONERME AL CORRIENTE</button>'+
+            '</div>';
+        }
       }
     }
 
     var otrosHtml = otros.map(function(d){
       var dm = DOC_META_CREDITO[d.tipo]||{};
-      return '<div class="vk-doc-row'+(d.disponible?'':' locked')+'">'+
+      // proximamente mode forces non-payment docs into the locked variant
+      // even if the backend marked them disponible.
+      var disp = d.disponible && !isProximamente(d.tipo);
+      return '<div class="vk-doc-row'+(disp?'':' locked')+'">'+
         '<div class="vk-doc-row-icon">'+(dm.icon||'')+'</div>'+
         '<div class="vk-doc-row-body">'+
           '<div class="vk-doc-row-title">'+d.titulo+' '+badgeFor(d)+'</div>'+
@@ -315,7 +354,7 @@ window.VK_documentos = (function(){
         '</div>'+
         '<div class="vk-doc-row-right">'+
           '<div class="vk-doc-row-size">'+(dm.size||'PDF')+'</div>'+
-          (d.disponible
+          (disp
             ? '<button class="vk-doc-ver" data-tipo="'+d.tipo+'">VER</button>'
             : '<span class="vk-doc-lock">&#128274;</span>')+
         '</div>'+
@@ -346,7 +385,7 @@ window.VK_documentos = (function(){
       window.open('php/documentos/descargar.php?tipo='+encodeURIComponent(t)+ext,'_blank');
     });
     $('#vkDownloadAll').on('click',function(){
-      var avail = docs.filter(function(d){return d.disponible;});
+      var avail = docs.filter(function(d){return d.disponible && !isProximamente(d.tipo);});
       avail.forEach(function(d){
         var sc = VKApp.state.activeCompra;
         var ext = (sc && sc.tipo && sc.id) ? '&compra_tipo='+encodeURIComponent(sc.tipo)+'&compra_id='+encodeURIComponent(sc.id) : '';
