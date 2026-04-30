@@ -213,24 +213,18 @@ var PasoExito = {
         html += '<p style="font-size:13px;color:#777;margin:6px 0 0;">Gracias por confiar en nosotros &#128522;</p>';
         html += '</div>';
 
-        // === Contrato de Compraventa download ===
-        // confirmar-orden.php returns this URL after generating the
-        // personalized PDF (contado / msi / spei / oxxo flows). It is
-        // also delivered by email \u2014 this card is a convenience for the
-        // customer who is still on the success screen.
-        if (state.contratoUrl) {
-            html += '<div class="vk-card" style="padding:16px;margin-bottom:16px;background:#F1F9FF;border:1px solid #B3D4FC;">';
-            html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">';
-            html += '<span style="font-size:24px;">&#128196;</span>';
-            html += '<div style="font-size:15px;font-weight:800;color:#1a3a5c;">Tu Contrato de Compraventa</div>';
-            html += '</div>';
-            html += '<p style="font-size:13px;color:#555;line-height:1.6;margin:0 0 12px;">Tambi\u00e9n te lo enviamos por correo. Cons\u00e9rvalo para tus registros.</p>';
-            html += '<a href="' + base + state.contratoUrl + '" target="_blank" rel="noopener" ';
-            html += 'style="display:block;width:100%;padding:12px;background:#039fe1;color:#fff;text-align:center;text-decoration:none;border-radius:8px;font-size:14px;font-weight:800;letter-spacing:0.4px;">';
-            html += '&#11015; DESCARGAR CONTRATO (PDF)';
-            html += '</a>';
-            html += '</div>';
-        }
+        // === Contrato de Compraventa download \u2014 INTENTIONALLY OMITTED ===
+        // Customer brief 2026-04-30: contract download must NOT appear on
+        // the post-payment success screen. The contract is released to
+        // the customer only after motorcycle delivery is completed (acta
+        // de entrega signed), via the consumer portal at /clientes/.
+        // This timing guarantees the audit trail in the contract PDF is
+        // fully populated (purchase OTP + delivery OTP + INE check) when
+        // the customer first sees it \u2014 legally far stronger than handing
+        // out a half-validated contract immediately at payment.
+        // The state.contratoUrl is still set by confirmar-orden.php for
+        // the admin pipeline (dossier-defensa / forensics) \u2014 we just
+        // don't surface it to the customer here.
 
         // === Entendido button ===
         html += '<button class="vk-btn vk-btn--primary" id="vk-exito-entendido" ' +

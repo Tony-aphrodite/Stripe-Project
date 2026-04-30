@@ -127,6 +127,23 @@ if ($scopedTxnId > 0) {
             ];
         }
     } catch (Throwable $e) {}
+
+    // Contrato de Compraventa al Contado — customer brief 2026-04-30:
+    // surface the contract in the portal ONLY after motorcycle delivery
+    // is completed (acta_entrega signed). Before delivery, show the row
+    // with disponible=false so the customer sees it's coming, but can't
+    // download yet. The audit trail in the PDF (purchase OTP + delivery
+    // OTP) is fully populated by then, making it strong legal evidence.
+    $docs[] = [
+        'tipo'       => 'contrato_contado',
+        'titulo'     => 'Contrato de Compraventa al Contado',
+        'subtitulo'  => $actaDisponible
+                            ? ('Disponible — entrega confirmada' . ($actaFecha ? ' el ' . substr($actaFecha, 0, 10) : ''))
+                            : 'Disponible al confirmarse la entrega',
+        'disponible' => $actaDisponible,
+        'fecha'      => $actaDisponible ? $actaFecha : null,
+        'destacado'  => $actaDisponible,
+    ];
 }
 
 // Pagaré — REMOVED from customer-facing list per brief 2026-04-19. The signed

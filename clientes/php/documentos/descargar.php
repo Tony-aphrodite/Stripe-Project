@@ -777,6 +777,122 @@ if ($tipo === 'recibo' || $tipo === 'comprobante_contado') {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// CONTRATO DE COMPRAVENTA AL CONTADO — released after delivery
+// ═══════════════════════════════════════════════════════════════════════
+// Customer brief 2026-04-30: cash-purchase contract is released to the
+// customer ONLY after motorcycle delivery is completed (acta_entrega
+// signed). At that point all audit fields (purchase OTP + delivery OTP +
+// INE check) are populated, so the PDF is strong legal evidence.
+if ($tipo === 'contrato_contado') {
+    // Gate: requires a completed delivery for this client (or for the
+    // scoped txn). Mirrors the disponible-flag computation in lista.php.
+    $deliveryDone = false;
+    try {
+        $hasActasTbl = (bool)$pdo->query("SHOW TABLES LIKE 'actas_entrega'")->fetch();
+        if ($hasActasTbl) {
+            if (!empty($trans['id'])) {
+                $stmt = $pdo->prepare("SELECT a.id FROM actas_entrega a
+                    JOIN inventario_motos m ON m.id = a.moto_id
+                    WHERE a.cliente_id = ? AND m.transaccion_id = ?
+                    LIMIT 1");
+                $stmt->execute([$cid, (int)$trans['id']]);
+            } else {
+                $stmt = $pdo->prepare("SELECT id FROM actas_entrega WHERE cliente_id = ? LIMIT 1");
+                $stmt->execute([$cid]);
+            }
+            if ($stmt->fetch(PDO::FETCH_ASSOC)) $deliveryDone = true;
+        }
+        if (!$deliveryDone) {
+            $stmt = $pdo->prepare("SELECT ce.id FROM checklist_entrega_v2 ce
+                JOIN inventario_motos m ON m.id = ce.moto_id
+                WHERE (m.cliente_id = ? OR m.cliente_telefono = ?) AND ce.completado = 1
+                LIMIT 1");
+            $tel = $cliente['telefono'] ?? ($trans['telefono'] ?? '');
+            $stmt->execute([$cid, $tel]);
+            if ($stmt->fetch(PDO::FETCH_ASSOC)) $deliveryDone = true;
+        }
+    } catch (Throwable $e) {}
+
+    if (!$deliveryDone) {
+        header('Content-Type: application/json');
+        portalJsonOut([
+            'error' => 'Contrato disponible al confirmarse la entrega de tu Voltika',
+        ], 403);
+    }
+
+    // Find the saved cash contract PDF (canonical + tmp fallback).
+    $pedidoStr = (string)($trans['pedido'] ?? '');
+    if ($pedidoStr === '') {
+        header('Content-Type: application/json');
+        portalJsonOut(['error' => 'Pedido no asociado a esta compra'], 404);
+    }
+    $safe     = preg_replace('/[^A-Za-z0-9_-]/', '_', $pedidoStr);
+    $filename = 'contrato_contado_' . $safe . '.pdf';
+    $candidates = [
+        __DIR__ . '/../../../configurador_prueba/contratos/contado/' . $filename,
+        __DIR__ . '/../../../configurador_prueba_test/contratos/contado/' . $filename,
+        sys_get_temp_dir() . '/voltika_contratos_contado/' . $filename,
+    ];
+    foreach ($candidates as $cand) {
+        if (file_exists($cand) && is_readable($cand)) {
+            serveFile($cand, 'contrato_voltika_contado.pdf');
+        }
+    }
+    // No saved PDF — try regen via the configurador_prueba helpers.
+    // We require contrato-contado.php directly so we don't depend on
+    // the URL-based descargar-contrato.php (which has its own auth).
+    $helperPath = __DIR__ . '/../../../configurador_prueba/php/contrato-contado.php';
+    if (is_file($helperPath)) {
+        try {
+            require_once $helperPath;
+            // Build $contratoData from the transactions row (mirrors
+            // descargar-contrato.php regen path).
+            $tpagoNorm = strtolower((string)($trans['tpago'] ?? ''));
+            $costoLog = (strpos($tpagoNorm, 'msi') !== false) ? 1800 : 0;
+            $total = floatval($trans['total'] ?: ($trans['precio'] ?? 0));
+            $contratoData = [
+                'pedido'                  => $pedidoStr,
+                'folio'                   => $trans['folio_contrato'] ?: $pedidoStr,
+                'contract_date'           => date('d/m/Y'),
+                'customer_full_name'      => $nombreCompleto ?: ($trans['nombre'] ?? 'Cliente Voltika'),
+                'customer_email'          => $trans['email'] ?? '',
+                'customer_phone'          => $trans['telefono'] ?? '',
+                'customer_zip'            => $trans['cp'] ?? '',
+                'vehicle_model'           => $trans['modelo'] ?? '',
+                'vehicle_color'           => $trans['color'] ?? '',
+                'vehicle_year'            => (int)date('Y'),
+                'vehicle_price'           => $total,
+                'logistics_cost'          => (strpos($tpagoNorm, 'msi') !== false) ? $costoLog : 0,
+                'total_amount'            => $total,
+                'payment_method'          => $tpagoNorm ?: 'contado',
+                'payment_reference'       => $trans['stripe_pi'] ?: $pedidoStr,
+                'payment_date'            => date('d/m/Y H:i', strtotime($trans['freg'] ?? 'now')),
+                'estimated_delivery_date' => date('d/m/Y', strtotime('+10 days', strtotime($trans['freg'] ?? 'now'))),
+                'acceptance_timestamp'    => $trans['contrato_aceptado_at'] ?: ($trans['freg'] ?? gmdate('Y-m-d H:i:s')),
+                'acceptance_ip'           => $trans['contrato_aceptado_ip'] ?? '',
+                'acceptance_user_agent'   => $trans['contrato_aceptado_ua'] ?? '',
+                'acceptance_geolocation'  => $trans['contrato_geolocation'] ?? '',
+                'otp_validated'           => (int)($trans['contrato_otp_validated'] ?? 0),
+                'otp_validated_at'        => $trans['contrato_otp_validated_at'] ?? null,
+                'otp_phone_masked'        => $trans['contrato_otp_phone_masked'] ?? null,
+                'otp_code_sha256'         => $trans['contrato_otp_code_sha256']  ?? null,
+                'otp_ip'                  => $trans['contrato_otp_ip']           ?? null,
+                'otp_send_count'          => (int)($trans['contrato_otp_send_count'] ?? 0),
+            ];
+            $r = contratoContadoGenerate($contratoData);
+            if ($r['ok'] && !empty($r['path']) && file_exists($r['path'])) {
+                serveFile($r['path'], 'contrato_voltika_contado.pdf');
+            }
+        } catch (Throwable $e) {
+            error_log('portal contrato_contado regen: ' . $e->getMessage());
+        }
+    }
+
+    header('Content-Type: application/json');
+    portalJsonOut(['error' => 'No fue posible generar el contrato. Contacta soporte.'], 500);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // DEFAULT: unknown tipo
 // ═══════════════════════════════════════════════════════════════════════
 header('Content-Type: application/json');

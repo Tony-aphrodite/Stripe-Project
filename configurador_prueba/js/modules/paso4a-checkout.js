@@ -641,12 +641,13 @@ var Paso4A = {
             }),
             success: function(res) {
                 self.app.state._otpValidated = true;
-                // Append regen=1 so the next download/view from the success
-                // screen forces a fresh PDF that reflects the just-recorded
-                // OTP audit row instead of serving the (pre-OTP) cached file.
-                if (self.app.state.contratoUrl && self.app.state.contratoUrl.indexOf('regen=') === -1) {
-                    self.app.state.contratoUrl = self.app.state.contratoUrl + '&regen=1';
-                }
+                // Note: we no longer mutate state.contratoUrl with regen=1
+                // here. Customer brief 2026-04-30: contract is not
+                // surfaced on the success screen at all — it appears in
+                // /clientes/ portal only after delivery completes. The
+                // OTP audit recorded by verificar-otp.php (above) is
+                // still picked up by descargar-contrato.php's regen path
+                // when the portal serves the PDF later.
                 if (res && (res.ok || res.valido)) {
                     $('#vk-post-otp-success').show();
                     $('#vk-post-otp-error').hide();
@@ -662,9 +663,6 @@ var Paso4A = {
             },
             error: function() {
                 // Testing fallback: accept any 6-digit code
-                if (self.app.state.contratoUrl && self.app.state.contratoUrl.indexOf('regen=') === -1) {
-                    self.app.state.contratoUrl = self.app.state.contratoUrl + '&regen=1';
-                }
                 $('#vk-post-otp-success').show();
                 $('#vk-post-otp-error').hide();
                 $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
