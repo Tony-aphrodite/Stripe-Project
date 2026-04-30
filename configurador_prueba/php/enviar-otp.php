@@ -127,7 +127,17 @@ $otpAccepted = is_array($otpRespArr) && (
     (isset($otpRespArr['status']) && (int)$otpRespArr['status'] >= 200 && (int)$otpRespArr['status'] < 300)
 );
 if ($otpAccepted && $httpCode >= 200 && $httpCode < 300) {
-    $serverCode = (string)($otpRespArr['code'] ?? $otpRespArr['otp_code'] ?? '');
+    // SMSMasivos /otp/send response shape (verified 2026-04-30):
+    //   code              = response status code (e.g. "verification_01")  ← NOT the OTP
+    //   verification_code = the actual OTP digits the user will receive    ← THIS one
+    // Earlier draft mistakenly read `code` and would have stored the
+    // status string in the session, breaking verification: the user
+    // would enter the real digits but the session held the wrong value.
+    $serverCode = (string)(
+        $otpRespArr['verification_code']
+        ?? $otpRespArr['otp_code']
+        ?? ''
+    );
     if (preg_match('/^\d{4,10}$/', $serverCode)) {
         $codigo = $serverCode;
         $_SESSION['otp_code']    = $codigo;
