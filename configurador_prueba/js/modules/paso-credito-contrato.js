@@ -600,6 +600,8 @@ var PasoCreditoContrato = {
                 // Replace autofill placeholders
                 para = para.replace(/XXXXXXXXXXX/g, folio);
                 para = para.replace(/XXXXXXXXXX/g, folio);
+                para = para.replace(/\{\{customer_full_name\}\}/g, nombreCompleto);
+                para = para.replace(/\{\{customer_id\}\}/g, folio);
                 // Bold clause headers
                 var isBold = /^(CONTRATO|DECLARACIONES|DEFINICIONES|PROTECCI|CL\u00c1USULAS|PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA|S\u00c9PTIMA|OCTAVA|NOVENA|D\u00c9CIMA|VIG\u00c9SIMA|EL CLIENTE$|Firma electr)/.test(para);
                 if (isBold) {
@@ -611,14 +613,6 @@ var PasoCreditoContrato = {
         } else {
             html += '<p>Error: Contrato de Compraventa a Plazos no disponible.</p>';
         }
-
-        // Signature section with autofill
-        html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #ddd;">';
-        html += '<p><strong>EL CLIENTE</strong></p>';
-        html += '<p>Nombre: <strong>' + nombreCompleto + '</strong></p>';
-        html += '<p>Firma electr\u00f3nica de EL CLIENTE</p>';
-        html += '<p>Folio del Contrato: <strong>' + folio + '</strong></p>';
-        html += '</div>';
 
         html += '</div>'; // end scrollable
 
