@@ -356,77 +356,94 @@ function truoraProcessEvent(PDO $pdo, array $ev): void {
     //   2. Fall back to GET /v1/processes/<id> only if the webhook
     //      payload has no usable CURP.
     //   3. Strict block on mismatch OR if no CURP could be obtained.
+    // CURP cross-check — runs REGARDLESS of Truora's own status.
+    // Customer brief 2026-04-30 (false-manual-review fix): when a user
+    // typed CURP X and uploaded an INE for CURP Y, Truora's RENAPO/face
+    // check often returns `failed` outright (not "success with curp
+    // mismatch"). Our old code gated the curp-compare on
+    // `$approved === 1`, so the actionable mismatch was hidden behind
+    // a generic manual-review path. We now extract the verified CURP
+    // and compare even when Truora itself failed — if expected ≠
+    // verified, classify as identity_curp_mismatch (user-recoverable)
+    // instead of routing through the crew. Truora's failure with no
+    // CURP available still falls through to manual review at the
+    // escalation block below.
     $verifiedCurp = null;
-    $curpMatch = null;
-    $curpSource = null;
+    $curpMatch    = null;
+    $curpSource   = null;
+
+    // Try webhook payload first (cheapest, most reliable).
+    $verifiedCurp = truoraExtractCurp($object);
+    if ($verifiedCurp) $curpSource = 'webhook_object';
+    if (!$verifiedCurp) {
+        $verifiedCurp = truoraExtractCurp($ev);
+        if ($verifiedCurp) $curpSource = 'webhook_event';
+    }
+    if (!$verifiedCurp) {
+        $details = truoraFetchProcessDetails($processId);
+        $verifiedCurp = truoraExtractCurp($details);
+        if ($verifiedCurp) $curpSource = 'api_fetch';
+    }
+
+    // Look up expected CURP we stored at token creation.
+    $expectedCurp = null;
+    try {
+        $q = $pdo->prepare("SELECT expected_curp FROM verificaciones_identidad
+            WHERE truora_process_id = ? OR truora_account_id = ?
+            ORDER BY id DESC LIMIT 1");
+        $q->execute([$processId, $accountId]);
+        $expectedCurp = $q->fetchColumn() ?: null;
+    } catch (Throwable $e) {}
+
+    // Log every comparison decision so admin can audit fraud rejections.
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS truora_curp_audit (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            process_id VARCHAR(64) NULL,
+            expected_curp VARCHAR(20) NULL,
+            verified_curp VARCHAR(20) NULL,
+            curp_source VARCHAR(40) NULL,
+            decision VARCHAR(40) NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_process (process_id)
+        )");
+        $decision = ($expectedCurp && $verifiedCurp)
+            ? (strtoupper(trim($expectedCurp)) === strtoupper(trim($verifiedCurp)) ? 'match' : 'mismatch')
+            : ($expectedCurp ? 'no_verified_curp' : 'no_expected_curp');
+        $pdo->prepare("INSERT INTO truora_curp_audit
+                (process_id, expected_curp, verified_curp, curp_source, decision)
+            VALUES (?, ?, ?, ?, ?)")
+            ->execute([$processId, $expectedCurp, $verifiedCurp, $curpSource, $decision]);
+    } catch (Throwable $e) {}
+
+    if ($expectedCurp && $verifiedCurp) {
+        $curpMatch = (strtoupper(trim($expectedCurp)) === strtoupper(trim($verifiedCurp))) ? 1 : 0;
+        if (!$curpMatch) {
+            // FRAUD GUARD / RECOVERABLE INPUT MISTAKE: classify both
+            // Truora-success-with-mismatch AND Truora-failure-with-mismatch
+            // as identity_curp_mismatch so the SPA shows the clean
+            // "regresa, corrige tu CURP" CTA.
+            $approved   = 0;
+            $declined   = 'identity_curp_mismatch';
+            $failStatus = 'curp_mismatch';
+        }
+    } elseif ($approved === 1 && $expectedCurp && !$verifiedCurp) {
+        // Truora succeeded but we could not retrieve verified CURP.
+        // STRICT mode: do not approve. Customer requirement 2026-04-29:
+        // an order MUST NOT appear in admin until identity is fully
+        // cross-checked. The admin can review via truora_curp_audit +
+        // truora_fetch_log to find the missing field.
+        $approved   = 0;
+        $declined   = 'verified_curp_unavailable';
+        $failStatus = 'identity_unverifiable';
+    }
+    // If $expectedCurp is missing entirely (legacy rows or test mode),
+    // leave $approved unchanged with a null $curpMatch.
+
+    // Legacy `if ($approved === 1)` block kept for the name cross-check
+    // below — that section reads expected_name and is conceptually a
+    // different branch from CURP. Wrap it without re-fetching things.
     if ($approved === 1) {
-        // Try webhook payload first (cheapest, most reliable).
-        $verifiedCurp = truoraExtractCurp($object);
-        if ($verifiedCurp) $curpSource = 'webhook_object';
-
-        // Some flows put the verified data only at the top of the event,
-        // not inside `object`. Walk the entire event as a fallback.
-        if (!$verifiedCurp) {
-            $verifiedCurp = truoraExtractCurp($ev);
-            if ($verifiedCurp) $curpSource = 'webhook_event';
-        }
-
-        // Last resort: GET full process details from Truora's API.
-        if (!$verifiedCurp) {
-            $details = truoraFetchProcessDetails($processId);
-            $verifiedCurp = truoraExtractCurp($details);
-            if ($verifiedCurp) $curpSource = 'api_fetch';
-        }
-
-        // Look up expected CURP we stored at token creation.
-        $expectedCurp = null;
-        try {
-            $q = $pdo->prepare("SELECT expected_curp FROM verificaciones_identidad
-                WHERE truora_process_id = ? OR truora_account_id = ?
-                ORDER BY id DESC LIMIT 1");
-            $q->execute([$processId, $accountId]);
-            $expectedCurp = $q->fetchColumn() ?: null;
-        } catch (Throwable $e) {}
-
-        // Log every comparison decision so admin can audit fraud rejections.
-        try {
-            $pdo->exec("CREATE TABLE IF NOT EXISTS truora_curp_audit (
-                id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                process_id VARCHAR(64) NULL,
-                expected_curp VARCHAR(20) NULL,
-                verified_curp VARCHAR(20) NULL,
-                curp_source VARCHAR(40) NULL,
-                decision VARCHAR(40) NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_process (process_id)
-            )");
-            $decision = ($expectedCurp && $verifiedCurp)
-                ? (strtoupper(trim($expectedCurp)) === strtoupper(trim($verifiedCurp)) ? 'match' : 'mismatch')
-                : ($expectedCurp ? 'no_verified_curp' : 'no_expected_curp');
-            $pdo->prepare("INSERT INTO truora_curp_audit
-                    (process_id, expected_curp, verified_curp, curp_source, decision)
-                VALUES (?, ?, ?, ?, ?)")
-                ->execute([$processId, $expectedCurp, $verifiedCurp, $curpSource, $decision]);
-        } catch (Throwable $e) {}
-
-        if ($expectedCurp && $verifiedCurp) {
-            $curpMatch = (strtoupper(trim($expectedCurp)) === strtoupper(trim($verifiedCurp))) ? 1 : 0;
-            if (!$curpMatch) {
-                // FRAUD GUARD: identity document does not match the bureau check.
-                $approved = 0;
-                $declined = 'identity_curp_mismatch';
-                $failStatus = 'curp_mismatch';
-            }
-        } elseif ($expectedCurp && !$verifiedCurp) {
-            // Truora succeeded but we could not retrieve verified CURP.
-            // STRICT mode: do not approve. Customer requirement 2026-04-29:
-            // an order MUST NOT appear in admin until identity is fully
-            // cross-checked. The admin can review via truora_curp_audit +
-            // truora_fetch_log to find the missing field.
-            $approved = 0;
-            $declined = 'verified_curp_unavailable';
-            $failStatus = 'identity_unverifiable';
-        }
         // If $expectedCurp is missing entirely (legacy rows or test mode
         // where the customer didn't provide CURP), leave approved=1 with a
         // null curp_match. New rows always have expected_curp set when

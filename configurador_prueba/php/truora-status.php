@@ -117,23 +117,34 @@ try {
             }
 
             // Compare against expected CURP if we have one.
+            // Customer brief 2026-04-30 (false-manual-review fix): the
+            // comparison runs even when Truora itself returned failure.
+            // Real-world case 2026-04-30: a user typed CURP X but
+            // uploaded an INE for CURP Y → Truora's RENAPO/face check
+            // failed and returned `failure` with no specific
+            // declined_reason. Our old code skipped the curp compare
+            // (because `$newApproved !== 1`) and routed to manual review.
+            // The user's actionable mistake (wrong CURP for this INE) was
+            // hidden behind a "we'll contact you" message that's harder
+            // to recover from. Now: if expected ≠ verified at the bare
+            // string level, classify as identity_curp_mismatch regardless
+            // of Truora's status, so the SPA shows the clean
+            // "regresa, corrige tu CURP" CTA.
             $expectedCurp = $row['expected_curp'] ?? null;
             $newCurpMatch = null;
             $newDeclined  = null;
             $newFailStatus = null;
-            if ($newApproved === 1) {
-                if ($expectedCurp && $verifiedCurp) {
-                    $newCurpMatch = (strtoupper(trim($expectedCurp)) === strtoupper(trim($verifiedCurp))) ? 1 : 0;
-                    if (!$newCurpMatch) {
-                        $newApproved = 0;
-                        $newDeclined = 'identity_curp_mismatch';
-                        $newFailStatus = 'curp_mismatch';
-                    }
-                } elseif ($expectedCurp && !$verifiedCurp) {
-                    $newApproved = 0;
-                    $newDeclined = 'verified_curp_unavailable';
-                    $newFailStatus = 'identity_unverifiable';
+            if ($expectedCurp && $verifiedCurp) {
+                $newCurpMatch = (strtoupper(trim($expectedCurp)) === strtoupper(trim($verifiedCurp))) ? 1 : 0;
+                if (!$newCurpMatch) {
+                    $newApproved   = 0;
+                    $newDeclined   = 'identity_curp_mismatch';
+                    $newFailStatus = 'curp_mismatch';
                 }
+            } elseif ($newApproved === 1 && $expectedCurp && !$verifiedCurp) {
+                $newApproved   = 0;
+                $newDeclined   = 'verified_curp_unavailable';
+                $newFailStatus = 'identity_unverifiable';
             }
 
             // Name cross-check — RECORDED ONLY, NOT BLOCKING.
@@ -242,9 +253,12 @@ try {
                         if ($row) {
                             // Re-evaluate expected_curp / expected_name now that
                             // we have the row — earlier we computed against
-                            // null which suppressed the comparison.
+                            // null which suppressed the comparison. Same
+                            // CURP-anchor logic as the primary block: compare
+                            // even when Truora returned failure so an
+                            // actionable mismatch isn't hidden in manual review.
                             $expectedCurp = $row['expected_curp'] ?? null;
-                            if ($newApproved === 1 && $expectedCurp && $verifiedCurp) {
+                            if ($expectedCurp && $verifiedCurp) {
                                 $newCurpMatch = (strtoupper(trim($expectedCurp)) === strtoupper(trim($verifiedCurp))) ? 1 : 0;
                                 if (!$newCurpMatch) {
                                     $newApproved   = 0;
