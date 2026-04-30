@@ -1090,6 +1090,17 @@ $contratoUrl   = null;
 $contratoToken = null;
 if (!$esCredito) {
     require_once __DIR__ . '/contrato-contado.php';
+
+    // Pre-compute the download URL using the deterministic
+    // (pedido + stripe_pi) HMAC token. We do this BEFORE attempting
+    // PDF generation so the URL is available even when generation
+    // fails — descargar-contrato.php has its own regen path that will
+    // build the file on demand from the row's persisted data. Customer
+    // brief 2026-04-30: success page MUST always offer a download.
+    $contratoToken = contratoContadoDownloadToken($pedidoNum, (string)$paymentIntentId);
+    $contratoUrl   = 'php/descargar-contrato.php?pedido=' . urlencode($pedidoNum)
+                   . '&token=' . urlencode($contratoToken);
+
     try {
         $pdoCC = getDB();
         contratoContadoEnsureSchema($pdoCC);
@@ -1139,14 +1150,24 @@ if (!$esCredito) {
             'acceptance_user_agent'   => $contratoUa,
             'acceptance_geolocation'  => $contratoGeo,
             'otp_validated'           => $contratoOtpOk,
+            // OTP audit trail — populated when verificar-otp.php has
+            // already run during this session OR (after the post-payment
+            // OTP step) when descargar-contrato.php force-regens reading
+            // the persisted columns from transacciones. Customer brief
+            // 2026-04-30: legal evidence requires more than "Sí/No".
+            'otp_validated_at'        => $_SESSION['otp_audit']['validated_at']   ?? null,
+            'otp_phone_masked'        => $_SESSION['otp_audit']['phone_masked']   ?? null,
+            'otp_code_sha256'         => $_SESSION['otp_audit']['code_sha256']    ?? null,
+            'otp_ip'                  => $_SESSION['otp_audit']['ip']             ?? null,
+            'otp_send_count'          => $_SESSION['otp_audit']['send_count']     ?? null,
         ];
 
         $genResult = contratoContadoGenerate($contratoData);
         if ($genResult['ok']) {
+            // contratoUrl + contratoToken already pre-computed above so
+            // the URL is returned even when generation fails — keep the
+            // redundant assignment commented out for clarity.
             $relPath       = contratoContadoRelativePath($pedidoNum);
-            $contratoToken = contratoContadoDownloadToken($pedidoNum, (string)$paymentIntentId);
-            $contratoUrl   = 'php/descargar-contrato.php?pedido=' . urlencode($pedidoNum)
-                           . '&token=' . urlencode($contratoToken);
             $contratoHash  = $genResult['hash'] ?? null;
 
             // Lazy-add hash column for older installs (Tech Spec EN §6).

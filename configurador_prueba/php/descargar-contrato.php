@@ -164,6 +164,16 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
                     'acceptance_user_agent'   => $tx['contrato_aceptado_ua'] ?? '',
                     'acceptance_geolocation'  => $tx['contrato_geolocation'] ?? '',
                     'otp_validated'           => (int)($tx['contrato_otp_validated'] ?? 0),
+                    // OTP audit-trail (post-payment OTP step persists these
+                    // via verificar-otp.php). When ?regen=1 hits this path
+                    // after the user completes the SMS OTP step, the
+                    // refreshed PDF includes the full audit row in its
+                    // REGISTRO DE ACEPTACIÓN ELECTRÓNICA.
+                    'otp_validated_at'        => $tx['contrato_otp_validated_at'] ?? null,
+                    'otp_phone_masked'        => $tx['contrato_otp_phone_masked'] ?? null,
+                    'otp_code_sha256'         => $tx['contrato_otp_code_sha256']  ?? null,
+                    'otp_ip'                  => $tx['contrato_otp_ip']           ?? null,
+                    'otp_send_count'          => (int)($tx['contrato_otp_send_count'] ?? 0),
                 ];
                 $r = contratoContadoGenerate($contratoData);
                 if ($r['ok'] && !empty($r['path']) && file_exists($r['path'])) {

@@ -629,9 +629,24 @@ var Paso4A = {
             url: (window.VK_BASE_PATH || '') + 'php/verificar-otp.php',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ telefono: self.app.state.telefono, codigo: code }),
+            // Customer brief 2026-04-30: passing `pedido` lets verificar-otp.php
+            // persist the OTP audit trail (timestamp, masked phone, SHA-256 of
+            // the validated code, IP) onto the matching transactions row, so
+            // the contract PDF — when re-downloaded with ?regen=1 — includes
+            // a full legal audit row in its REGISTRO DE ACEPTACIÓN ELECTRÓNICA.
+            data: JSON.stringify({
+                telefono: self.app.state.telefono,
+                codigo:   code,
+                pedido:   self.app.state.pedidoNum || ''
+            }),
             success: function(res) {
                 self.app.state._otpValidated = true;
+                // Append regen=1 so the next download/view from the success
+                // screen forces a fresh PDF that reflects the just-recorded
+                // OTP audit row instead of serving the (pre-OTP) cached file.
+                if (self.app.state.contratoUrl && self.app.state.contratoUrl.indexOf('regen=') === -1) {
+                    self.app.state.contratoUrl = self.app.state.contratoUrl + '&regen=1';
+                }
                 if (res && (res.ok || res.valido)) {
                     $('#vk-post-otp-success').show();
                     $('#vk-post-otp-error').hide();
@@ -647,6 +662,9 @@ var Paso4A = {
             },
             error: function() {
                 // Testing fallback: accept any 6-digit code
+                if (self.app.state.contratoUrl && self.app.state.contratoUrl.indexOf('regen=') === -1) {
+                    self.app.state.contratoUrl = self.app.state.contratoUrl + '&regen=1';
+                }
                 $('#vk-post-otp-success').show();
                 $('#vk-post-otp-error').hide();
                 $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');

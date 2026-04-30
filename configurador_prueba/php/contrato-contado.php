@@ -455,18 +455,54 @@ function _contratoContadoBuildPdf(array $d): FPDF {
     _ccPdfPara($pdf, 'Las partes reconocen que el presente Contrato es aceptado y vinculante a partir de la confirmación electrónica del consentimiento por parte de EL COMPRADOR (checkbox + OTP + pago confirmado).');
 
     // ── Registro de aceptación ───────────────────────────────────────────
+    // Customer brief 2026-04-30: "OTP validado: No" alone was insufficient
+    // legal evidence in disputes / chargebacks. The table now expands the
+    // OTP row into a full audit trail (validation timestamp, masked phone,
+    // SHA-256 hash of the validated code, IP, send count) so the contract
+    // is self-sufficient as documental evidence under Art. 89 Código de
+    // Comercio. When OTP wasn't validated (e.g. legacy rows), the row
+    // explains the equivalent evidence used in lieu of OTP.
     _ccPdfH2($pdf, 'REGISTRO DE ACEPTACIÓN ELECTRÓNICA');
     _ccPdfPara($pdf, 'Apartado completado automáticamente por el sistema al momento de la aceptación electrónica:');
-    _ccPdfTable($pdf, [
+
+    $rows = [
         ['Folio del Contrato',                (string)($d['folio'] ?? $d['pedido'] ?? '')],
         ['Nombre de EL COMPRADOR',            (string)($d['customer_full_name']    ?? '')],
         ['Fecha y hora de aceptación (UTC)',  (string)($d['acceptance_timestamp']  ?? '')],
         ['Dirección IP',                      (string)($d['acceptance_ip']         ?? '')],
         ['Geolocalización',                   (string)($d['acceptance_geolocation'] ?? 'No proporcionada')],
         ['Dispositivo',                       (string)($d['acceptance_user_agent'] ?? '')],
-        ['OTP validado',                      !empty($d['otp_validated']) ? 'Sí' : 'No'],
-        ['Referencia de pago',                (string)($d['payment_reference']     ?? '')],
-    ]);
+    ];
+
+    // OTP validation block — expanded audit fields when validated, or a
+    // legally-meaningful explanation when not yet validated at gen time.
+    $otpValidated = !empty($d['otp_validated']);
+    $otpAt        = trim((string)($d['otp_validated_at']  ?? ''));
+    $otpPhone     = trim((string)($d['otp_phone_masked']  ?? ''));
+    $otpHash      = trim((string)($d['otp_code_sha256']   ?? ''));
+    $otpIp        = trim((string)($d['otp_ip']            ?? ''));
+    $otpSendCount = (int)($d['otp_send_count'] ?? 0);
+
+    if ($otpValidated || $otpAt !== '') {
+        $rows[] = ['OTP validado',                  'Sí'];
+        if ($otpAt !== '')        $rows[] = ['  Fecha y hora OTP (UTC)',     $otpAt];
+        if ($otpPhone !== '')     $rows[] = ['  Teléfono OTP (enmascarado)', $otpPhone];
+        if ($otpHash !== '')      $rows[] = ['  Hash SHA-256 del código',    substr($otpHash, 0, 16) . '…' . substr($otpHash, -8)];
+        if ($otpIp !== '')        $rows[] = ['  IP de validación OTP',       $otpIp];
+        if ($otpSendCount > 0)    $rows[] = ['  Intentos de envío',          (string)$otpSendCount];
+    } else {
+        // No SMS OTP at acceptance time. Cite the equivalent legal
+        // evidence: Stripe payment auth (3DS where applicable), IP /
+        // device fingerprint, and the delivery-time OTP that will
+        // complete the identity validation per Cláusula correspondiente.
+        $rows[] = ['OTP validado',                  'Pendiente — modalidad contado'];
+        $rows[] = ['  Validación equivalente',      'Stripe 3DS + IP + dispositivo + checkbox de aceptación'];
+        $rows[] = ['  Validación final',            'INE coincidente + OTP al teléfono registrado al momento de la entrega'];
+    }
+
+    $rows[] = ['Referencia de pago',                (string)($d['payment_reference']     ?? '')];
+
+    _ccPdfTable($pdf, $rows);
 
     // Footer disclaimer
     $pdf->Ln(4);
