@@ -83,7 +83,27 @@ try {
     if ($apiResolvedProcessId === '' && $row && !empty($row['truora_process_id'])) {
         $apiResolvedProcessId = (string)$row['truora_process_id'];
     }
-    if ($apiResolvedProcessId !== '' && (!$row || is_null($row['approved']))) {
+    // account_id-only path: SPA polled with account_id (Truora event
+    // didn't include process_id), row found via truora_account_id, but
+    // truora_process_id is still empty (webhook never wrote). Probe
+    // Truora's API to find the latest process for this account, then
+    // proceed with the normal fetch path. Customer report 2026-04-30:
+    // "Verificando datos…" stuck because this lookup didn't exist.
+    if ($apiResolvedProcessId === '' && $row && !empty($row['truora_account_id'])) {
+        $resolvedPid = truoraFindProcessByAccountId((string)$row['truora_account_id']);
+        if ($resolvedPid) {
+            $apiResolvedProcessId = $resolvedPid;
+        }
+    }
+    // Trigger API fallback also when row exists with the default
+    // approved=0 but truora_process_id is still empty (no verdict yet
+    // from webhook or earlier fetch). Without this, the row's stub
+    // approved=0 made `is_null($row['approved'])` false and the fetch
+    // never ran.
+    $needsFetch = (!$row)
+        || is_null($row['approved'] ?? null)
+        || (empty($row['truora_process_id']) && (int)($row['approved'] ?? 0) === 0);
+    if ($apiResolvedProcessId !== '' && $needsFetch) {
         $details = truoraFetchProcessDetails($apiResolvedProcessId);
         if (is_array($details)) {
             $usedApiFallback = true;

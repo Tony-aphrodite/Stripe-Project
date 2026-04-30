@@ -80,6 +80,97 @@ function truoraFetchProcessDetails(string $processId): ?array {
 }
 }
 
+if (!function_exists('truoraFindProcessByAccountId')) {
+/**
+ * Find the most-recent process_id for a given account_id by probing
+ * Truora's list/search endpoints. Used when the SPA polls status.php
+ * with only an account_id (because Truora's postMessage / redirect URL
+ * didn't include process_id) and we have no process_id stored on the
+ * anchor row yet (because the webhook signature is misconfigured).
+ *
+ * Returns the IDP... string on success, null otherwise. Tries multiple
+ * URL shapes since Truora's docs are sparse on listing endpoints.
+ *
+ * Customer report 2026-04-30: SPA was stuck on "Verificando datos…"
+ * because the account_id-only poll could not be resolved to a process.
+ */
+function truoraFindProcessByAccountId(string $accountId): ?string {
+    if ($accountId === '' || !defined('TRUORA_API_KEY') || !TRUORA_API_KEY) return null;
+    if (!defined('TRUORA_IDENTITY_API_URL')) define('TRUORA_IDENTITY_API_URL', 'https://api.identity.truora.com');
+
+    // Probe shapes — first one that returns 200 with parseable
+    // process_id wins. Any 4xx/5xx is logged and we move on.
+    $candidates = [
+        TRUORA_IDENTITY_API_URL . '/v1/processes?account_id=' . urlencode($accountId),
+        TRUORA_IDENTITY_API_URL . '/v1/processes/account/' . urlencode($accountId),
+        TRUORA_IDENTITY_API_URL . '/v1/identity-processes?account_id=' . urlencode($accountId),
+        TRUORA_IDENTITY_API_URL . '/v1/accounts/' . urlencode($accountId) . '/processes',
+    ];
+
+    foreach ($candidates as $url) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_HTTPHEADER     => [
+                'Truora-API-Key: ' . TRUORA_API_KEY,
+                'Accept: application/json',
+            ],
+        ]);
+        $body = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        // Audit log this probe so the diag page can show what worked.
+        try {
+            $pdo = getDB();
+            $pdo->prepare("INSERT INTO truora_fetch_log
+                    (process_id, url, http_code, response, curl_err)
+                VALUES (?, ?, ?, ?, ?)")
+                ->execute([
+                    'lookup_by_account:' . substr($accountId, 0, 50),
+                    $url, $code,
+                    substr((string)$body, 0, 4000),
+                    substr((string)$err, 0, 500),
+                ]);
+        } catch (Throwable $e) {}
+
+        if ($code >= 200 && $code < 300 && $body) {
+            $arr = json_decode((string)$body, true);
+            if (!is_array($arr)) continue;
+
+            // Response shapes vary — search recursively for the first
+            // value that looks like an IDP... process id.
+            $found = _truoraScanForProcessId($arr);
+            if ($found !== null) return $found;
+        }
+    }
+    return null;
+}
+
+/** Recursive scanner — returns the first string matching IDP[a-f0-9]+. */
+function _truoraScanForProcessId($node): ?string {
+    if (is_string($node) && preg_match('/^IDP[a-f0-9]{20,}$/i', $node)) {
+        return $node;
+    }
+    if (is_array($node)) {
+        // Prefer direct keys when present.
+        foreach (['process_id', 'identity_process_id', 'id'] as $k) {
+            if (isset($node[$k]) && is_string($node[$k]) &&
+                preg_match('/^IDP[a-f0-9]{20,}$/i', $node[$k])) {
+                return $node[$k];
+            }
+        }
+        foreach ($node as $v) {
+            $r = _truoraScanForProcessId($v);
+            if ($r !== null) return $r;
+        }
+    }
+    return null;
+}
+}
+
 if (!function_exists('truoraExtractCurp')) {
 function truoraExtractCurp(?array $details): ?string {
     if (!is_array($details)) return null;
