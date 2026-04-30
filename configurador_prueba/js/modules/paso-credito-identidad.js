@@ -172,13 +172,16 @@ var PasoCreditoIdentidad = {
             self._startIframe();
         });
 
-        // "Regresar a corregir datos" — sends the user back to the CDC name
-        // screen so they can fix what they typed and re-run Truora with
-        // consistent data. (Customer brief 2026-04-30 — name mismatch.)
+        // "Regresar a corregir datos" — sends the user back to the CURP
+        // entry screen (credito-nacimiento) so they can fix the CURP they
+        // typed and re-run Truora with the corrected anchor. Customer
+        // brief 2026-04-30 (CURP-as-anchor revision): matching is by
+        // CURP only, so the relevant correction screen is credito-nacimiento
+        // where CURP is collected (not credito-nombre).
         jQuery(document).off('click', '#vk-identidad-back-nombre');
         jQuery(document).on('click', '#vk-identidad-back-nombre', function() {
             if (self.app && typeof self.app.irAPaso === 'function') {
-                self.app.irAPaso('credito-nombre');
+                self.app.irAPaso('credito-nacimiento');
             }
         });
 
@@ -202,23 +205,26 @@ var PasoCreditoIdentidad = {
     },
 
     // Map Truora declined_reason → customer-facing message + CTA.
-    // The three classes come from the customer brief 2026-04-30:
-    //   1. CURP/name mismatch  → "use same info as previous screen, retry"
+    // Three classes (customer brief 2026-04-30, CURP-anchor revision):
+    //   1. CURP mismatch       → "use same CURP as previous screen, retry"
+    //                            (name mismatch is no longer user-blocking)
     //   2. Truora false-info   → manual review by crew
     //   3. Generic failure     → retry
     _mapDeclinedReason: function(declinedReason, fallbackDetail) {
         var msg, detail, opts = { retry: true };
         switch (declinedReason) {
             case 'identity_name_mismatch':
-                msg = 'Los datos no coinciden con la información del paso anterior.';
-                detail = 'El nombre que aparece en tu INE no coincide con el que ingresaste en la pantalla anterior. ' +
-                         'Por favor regresa, usa la misma información que aparece en tu INE y reinicia la verificación.';
+                // Kept for legacy/backwards-compat — current poll logic no
+                // longer triggers this branch (name mismatch is logged
+                // only). Treat as CURP-anchor reminder.
+                msg = 'No pudimos confirmar tu identidad.';
+                detail = 'Verifica que la CURP del paso anterior coincida exactamente con la de tu INE y reinicia la verificación.';
                 opts.backToNombre = true;
                 break;
             case 'identity_curp_mismatch':
-                msg = 'La identidad verificada no coincide con los datos del estudio de crédito.';
-                detail = 'Por seguridad, la persona que sube su INE debe ser la misma que solicitó el crédito. ' +
-                         'Usa la misma información del paso anterior y reinicia la verificación.';
+                msg = 'La CURP no coincide con la de tu INE.';
+                detail = 'Por seguridad, la CURP que ingresaste debe coincidir exactamente con la que aparece en tu INE. ' +
+                         'Regresa, corrige tu CURP y reinicia la verificación.';
                 opts.backToNombre = true;
                 break;
             case 'verified_curp_unavailable':
@@ -770,41 +776,43 @@ var PasoCreditoIdentidad = {
                         ' status=' + r.status + ' curp_match=' + r.curp_match);
 
                     // ── Recoverable mismatch branch ───────────────────────
-                    // CURP or NAME doesn't match what was sent to CDC →
-                    // surface the "use the same info as previous screen,
-                    // restart" CTA (customer brief 2026-04-30).
+                    // CURP doesn't match what was anchored from the CURP
+                    // input on credito-nacimiento → surface the "regresa,
+                    // usa la misma CURP del paso anterior, reinicia" CTA.
+                    //
+                    // Customer brief 2026-04-30: matching by NAME was
+                    // refusing valid users for accent / whitespace / tilde
+                    // differences and burning bureau queries on each retry.
+                    // CURP is the standardized 18-char identifier with no
+                    // whitespace ambiguity — far more reliable. Name
+                    // mismatch is now logged for admin review only, not a
+                    // user-facing refusal.
                     if (r.approved === 0 && (
                         r.declined_reason === 'identity_curp_mismatch' ||
-                        r.declined_reason === 'identity_name_mismatch' ||
                         r.declined_reason === 'verified_curp_unavailable' ||
-                        r.curp_match === 0 ||
-                        r.name_match === 0
+                        r.curp_match === 0
                     )) {
                         stopPoll();
                         self._finished = true;
                         // Iframe stays hidden (already hidden by the
-                        // success/redirect handler when polling started)
-                        // — the user sees the back-to-nombre CTA without
-                        // Truora's post-flow noise behind it.
-                        var mapped = self._mapDeclinedReason(r.declined_reason ||
-                            (r.name_match === 0 ? 'identity_name_mismatch' :
-                             r.curp_match === 0 ? 'identity_curp_mismatch' : ''));
+                        // success/redirect handler when polling started).
+                        var mapped = self._mapDeclinedReason(
+                            r.declined_reason ||
+                            (r.curp_match === 0 ? 'identity_curp_mismatch' : '')
+                        );
                         self._showError(mapped.msg, mapped.detail, mapped.opts);
                         return;
                     }
 
                     if (r.approved === 1) {
-                        // Defense-in-depth: only advance if curp_match is
-                        // explicitly 1 OR null (legacy rows from before
-                        // this column existed). curp_match === 0 should
-                        // never reach here because the webhook would have
-                        // set approved=0, but guard anyway.
-                        if (r.curp_match === 0 || r.name_match === 0) {
+                        // Defense-in-depth: only refuse if curp_match is
+                        // explicitly 0. Name mismatch is intentionally
+                        // ignored here — it's logged in DB for admin
+                        // review but does not block the customer.
+                        if (r.curp_match === 0) {
                             stopPoll();
                             self._finished = true;
-                            var mapped2 = self._mapDeclinedReason(
-                                r.name_match === 0 ? 'identity_name_mismatch' : 'identity_curp_mismatch'
-                            );
+                            var mapped2 = self._mapDeclinedReason('identity_curp_mismatch');
                             self._showError(mapped2.msg, mapped2.detail, mapped2.opts);
                             return;
                         }

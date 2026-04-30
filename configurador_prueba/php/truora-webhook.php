@@ -480,11 +480,11 @@ function truoraProcessEvent(PDO $pdo, array $ev): void {
                  'á'=>'A','é'=>'E','í'=>'I','ó'=>'O','ú'=>'U','ü'=>'U','ñ'=>'N']
             ));
             $nameMatch = truoraNamesMatch($expectedNorm, $verifiedName) ? 1 : 0;
-            if (!$nameMatch) {
-                $approved = 0;
-                $declined = 'identity_name_mismatch';
-                $failStatus = 'name_mismatch';
-            }
+            // CURP-anchor revision (customer brief 2026-04-30):
+            // name_match is recorded but DOES NOT BLOCK. Accent /
+            // whitespace / homoclave-letter differences caused valid
+            // customers to be refused and burn bureau queries on every
+            // retry. The CURP comparison above is the strict gate.
         }
     }
 

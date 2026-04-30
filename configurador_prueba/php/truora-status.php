@@ -136,11 +136,18 @@ try {
                 }
             }
 
-            // Name cross-check (mirrors webhook logic) — same brief 2026-04-30.
+            // Name cross-check — RECORDED ONLY, NOT BLOCKING.
+            // CURP-anchor revision (customer brief 2026-04-30): name
+            // matching was rejecting valid customers for accent/whitespace
+            // differences (José vs Jose, double space, hyphen) and forcing
+            // them to retry, burning bureau queries and reputation. The
+            // CURP comparison above is the strict gate. We still compute
+            // and persist name_match for admin forensics, but never set
+            // newApproved=0 on a name mismatch.
             $expectedName = $row['expected_name'] ?? null;
             $verifiedName = null;
             $newNameMatch = null;
-            if ($newApproved === 1 && $expectedName) {
+            if ($expectedName) {
                 $nameInfo = truoraExtractName($details);
                 if (is_array($nameInfo)) {
                     $verifiedName = $nameInfo['full_name'] ?: trim(
@@ -157,11 +164,8 @@ try {
                          'á'=>'A','é'=>'E','í'=>'I','ó'=>'O','ú'=>'U','ü'=>'U','ñ'=>'N']
                     ));
                     $newNameMatch = truoraNamesMatch($expectedNorm, $verifiedName) ? 1 : 0;
-                    if (!$newNameMatch) {
-                        $newApproved = 0;
-                        $newDeclined = 'identity_name_mismatch';
-                        $newFailStatus = 'name_mismatch';
-                    }
+                    // Note: do NOT set newApproved/newDeclined here.
+                    // name_match is informational only post-revision.
                 }
             }
 
@@ -253,18 +257,15 @@ try {
                                 $newFailStatus = 'identity_unverifiable';
                             }
                             $expectedName = $row['expected_name'] ?? null;
-                            if ($newApproved === 1 && $expectedName && $verifiedName) {
+                            if ($expectedName && $verifiedName) {
                                 $expectedNorm = strtoupper(strtr(
                                     preg_replace('/\s+/', ' ', trim($expectedName)),
                                     ['Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N',
                                      'á'=>'A','é'=>'E','í'=>'I','ó'=>'O','ú'=>'U','ü'=>'U','ñ'=>'N']
                                 ));
                                 $newNameMatch = truoraNamesMatch($expectedNorm, $verifiedName) ? 1 : 0;
-                                if (!$newNameMatch) {
-                                    $newApproved   = 0;
-                                    $newDeclined   = 'identity_name_mismatch';
-                                    $newFailStatus = 'name_mismatch';
-                                }
+                                // CURP-anchor revision: name comparison is
+                                // recorded only, never blocks.
                             }
                             // Recompute manual-review escalation on the now-known reason.
                             if ($newApproved === 0) {

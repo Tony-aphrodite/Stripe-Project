@@ -387,17 +387,16 @@ try {
                 ORDER BY id DESC LIMIT 1");
             $identStmt->execute([$telefono]);
             $ident = $identStmt->fetch(PDO::FETCH_ASSOC);
-            // Brief #4 (2026-04-30): refuse on name_match=0 too (was only
-            // curp_match=0 before). Both fields are populated by either the
-            // webhook OR the API fallback in truora-status.php, so by the
-            // time the user clicks pay, at least one of them is set when
-            // an actual mismatch exists.
+            // CURP-anchor revision (customer brief 2026-04-30): match is
+            // by CURP only. Name comparison is preserved in the row for
+            // admin review/forensics but no longer blocks order creation
+            // — accent / whitespace / homoclave-letter differences caused
+            // valid customers to be rejected and burn bureau queries on
+            // each retry. CURP is the standardized 18-char identifier
+            // and is the strict gate.
             $curpMismatch = $ident && isset($ident['curp_match']) && (int)$ident['curp_match'] === 0;
-            $nameMismatch = $ident && isset($ident['name_match']) && (int)$ident['name_match'] === 0;
-            if ($curpMismatch || $nameMismatch) {
-                $rejectReason = $nameMismatch && !$curpMismatch
-                    ? 'identity_name_mismatch'
-                    : 'identity_curp_mismatch';
+            if ($curpMismatch) {
+                $rejectReason = 'identity_curp_mismatch';
                 // Log the rejection for admin forensics.
                 try {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS confirmar_orden_rechazos (
@@ -427,8 +426,8 @@ try {
                 echo json_encode([
                     'ok'    => false,
                     'error' => 'identity_mismatch',
-                    'message' => 'La identidad verificada no coincide con la información del estudio de crédito. ' .
-                                 'Por seguridad, esta orden no puede completarse. Regresa al inicio y usa la misma información que aparece en tu INE.',
+                    'message' => 'La CURP no coincide con la de tu INE. ' .
+                                 'Por seguridad, esta orden no puede completarse. Regresa, corrige tu CURP y reinicia la verificación.',
                 ]);
                 exit;
             }
