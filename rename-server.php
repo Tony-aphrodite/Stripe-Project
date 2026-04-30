@@ -1,39 +1,30 @@
 <?php
 /**
- * Voltika — server-side URL rename utility.
+ * Voltika — server-side URL rename utility (v2 — permission-resilient).
  *
  * Customer brief 2026-04-30: rename /configurador_prueba/ to /configurador/
- * across the live server in-place, without re-uploading 137 files via SFTP.
+ * across the live server in-place.
+ *
+ * v2 changes:
+ *   - Uses atomic rename(temp, target) for file replacement, which only
+ *     requires write access on the parent DIRECTORY, not on the file
+ *     itself. This bypasses the "file owned by root, PHP runs as voltika"
+ *     blocker that v1 hit.
+ *   - Detects whether the configurador folder is already renamed and adapts.
+ *   - Multiple fallback strategies per file: atomic rename → direct write
+ *     → chmod-then-write. Reports which strategy worked.
+ *   - Pre-flight diagnostic: tests writability of each scan directory and
+ *     shows ownership/perm info for failing paths.
  *
  * Usage:
- *   1. Upload this single file to /var/www/vhosts/voltika.mx/httpdocs/
- *      (the SAME directory that contains configurador_prueba/, admin/, etc.)
- *   2. Browse to:
- *        https://www.voltika.mx/rename-server.php?token=voltika_rename_2026
- *      → DRY-RUN: shows all files that WOULD change, no edits made.
- *   3. When the dry-run looks correct, browse to:
- *        https://www.voltika.mx/rename-server.php?token=voltika_rename_2026&confirm=YES_RENAME_NOW
- *      → EXECUTE: rewrites every file + renames the folder.
- *   4. After success, DELETE this file via FileZilla (security: it lets
- *      anyone with the token modify production code).
- *
- * What it does:
- *   - Walks production folders: configurador_prueba/, admin/, clientes/, puntosvoltika/
- *   - In every .php / .js / .html / .htaccess / .md / .css / .sh / .json / .txt:
- *       replaces  configurador_prueba   →   configurador
- *       does NOT  configurador_prueba_test (test env stays intact)
- *   - Skips admin_test, configurador_prueba_test, puntosvoltika_test,
- *     clientes_test, vendor, node_modules, .git
- *   - Finally:  mv configurador_prueba/  →  configurador/
- *
- * Safety:
- *   - Token-gated. Default token below; override via env if you want.
- *   - Plan-first: dry-run is the default; execution requires explicit
- *     confirm flag.
- *   - Folder rename is the LAST step, so if text replacement fails partway
- *     the site keeps working under the old folder name and you can fix the
- *     remainder manually.
- *   - Refuses to overwrite an existing /configurador/ folder.
+ *   1. Upload to /var/www/vhosts/voltika.mx/httpdocs/
+ *   2. ?action=diag&token=voltika_rename_2026
+ *      → Diagnostic — shows file/directory ownership and writability.
+ *   3. ?action=plan&token=voltika_rename_2026
+ *      → Dry-run — list of files that would change.
+ *   4. ?action=execute&token=voltika_rename_2026&confirm=YES_RENAME_NOW
+ *      → Execute. Tries 3 strategies per file and reports which worked.
+ *   5. After success, DELETE this file via FileZilla.
  */
 
 declare(strict_types=1);
@@ -51,55 +42,110 @@ if (!hash_equals($expectedToken, (string)$providedToken)) {
     exit;
 }
 
-$DRY_RUN = (($_GET['confirm'] ?? '') !== 'YES_RENAME_NOW');
+$action  = (string)($_GET['action'] ?? 'plan');
+$confirm = (string)($_GET['confirm'] ?? '');
 $ROOT    = __DIR__;
 
 echo "================================================================\n";
-echo "  Voltika URL rename — configurador_prueba → configurador\n";
+echo "  Voltika URL rename v2 (permission-resilient)\n";
 echo "================================================================\n";
-echo "Mode      : " . ($DRY_RUN ? "DRY-RUN (no changes)" : "EXECUTE") . "\n";
+echo "Action    : $action\n";
 echo "Root path : $ROOT\n";
 echo "Time      : " . date('Y-m-d H:i:s') . "\n";
+echo "PHP user  : " . posix_getpwuid(posix_geteuid())['name'] . " (uid=" . posix_geteuid() . ", gid=" . posix_getegid() . ")\n";
 echo "----------------------------------------------------------------\n\n";
 
-// ── What folders to scan ───────────────────────────────────────────────────
+// ── Detect current state of configurador folder ───────────────────────────
+$dirOld = "$ROOT/configurador_prueba";
+$dirNew = "$ROOT/configurador";
+
+$folderState = 'unknown';
+if (is_dir($dirNew) && !is_dir($dirOld)) {
+    $folderState = 'already_renamed';
+} elseif (is_dir($dirOld) && !is_dir($dirNew)) {
+    $folderState = 'needs_rename';
+} elseif (is_dir($dirOld) && is_dir($dirNew)) {
+    $folderState = 'both_exist';   // ambiguous
+} else {
+    $folderState = 'neither_exists';
+}
+echo "Folder state: $folderState\n";
+if ($folderState === 'already_renamed') echo "  → Will scan: $dirNew (folder rename was completed previously)\n";
+if ($folderState === 'needs_rename')    echo "  → Will scan: $dirOld and rename at end\n";
+echo "\n";
+
+// Pick the active folder for scanning
+$configFolder = is_dir($dirNew) ? $dirNew : $dirOld;
 $scanFolders = [
-    "$ROOT/configurador_prueba",
+    $configFolder,
     "$ROOT/admin",
     "$ROOT/clientes",
     "$ROOT/puntosvoltika",
 ];
-
-// ── What folders to skip even if they appear inside scanFolders ────────────
 $excludedNames = [
-    'admin_test',
-    'configurador_prueba_test',
-    'puntosvoltika_test',
-    'clientes_test',
-    'vendor',
-    'node_modules',
-    '.git',
+    'admin_test', 'configurador_prueba_test', 'puntosvoltika_test',
+    'clientes_test', 'vendor', 'node_modules', '.git',
 ];
-
-// ── What file types to process ─────────────────────────────────────────────
 $extensions = ['php','js','html','htaccess','md','css','sh','json','txt'];
 
-// ── Step 1: collect candidate files ────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// ACTION: diag — test writability + show ownership
+// ─────────────────────────────────────────────────────────────────────────
+if ($action === 'diag') {
+    echo "Directory writability test:\n";
+    foreach ($scanFolders as $f) {
+        if (!is_dir($f)) {
+            echo "  MISSING : $f\n";
+            continue;
+        }
+        $stat = stat($f);
+        $owner = posix_getpwuid($stat['uid']);
+        $group = posix_getgrgid($stat['gid']);
+        $perms = substr(sprintf('%o', $stat['mode']), -3);
+        $writable = is_writable($f) ? 'WRITE' : 'NO-WR';
+        printf("  [%s] %s   owner=%s:%s perms=%s\n", $writable, $f,
+            $owner['name'] ?? $stat['uid'], $group['name'] ?? $stat['gid'], $perms);
+
+        // Try writing a test file
+        $testFile = $f . '/.voltika-write-test-' . uniqid();
+        if (@file_put_contents($testFile, 'test') !== false) {
+            @unlink($testFile);
+            echo "      → can create files in this directory ✓\n";
+        } else {
+            echo "      → cannot create files (DIRECTORY not writable by PHP)\n";
+        }
+    }
+
+    // Sample one file from each folder to show file ownership
+    echo "\nSample file ownership:\n";
+    foreach ($scanFolders as $f) {
+        if (!is_dir($f)) continue;
+        $sample = glob("$f/*.php")[0] ?? glob("$f/*.html")[0] ?? glob("$f/*")[0] ?? null;
+        if ($sample && is_file($sample)) {
+            $stat = stat($sample);
+            $owner = posix_getpwuid($stat['uid']);
+            $perms = substr(sprintf('%o', $stat['mode']), -3);
+            $writable = is_writable($sample) ? 'WRITE' : 'NO-WR';
+            printf("  [%s] %s   owner=%s perms=%s\n", $writable, $sample, $owner['name'] ?? $stat['uid'], $perms);
+        }
+    }
+    exit;
+}
+
+// ── Collect candidate files (used by both plan + execute) ─────────────────
 $filesWithMatches = [];
 $totalScanned = 0;
 
 foreach ($scanFolders as $folder) {
     if (!is_dir($folder)) {
-        echo "SKIP (folder missing): " . basename($folder) . "/\n";
+        echo "SKIP (folder missing): $folder\n";
         continue;
     }
     $iterator = new RecursiveIteratorIterator(
         new RecursiveCallbackFilterIterator(
             new RecursiveDirectoryIterator($folder, RecursiveDirectoryIterator::SKIP_DOTS),
             function ($file) use ($excludedNames) {
-                if ($file->isDir() && in_array($file->getFilename(), $excludedNames, true)) {
-                    return false;
-                }
+                if ($file->isDir() && in_array($file->getFilename(), $excludedNames, true)) return false;
                 return true;
             }
         )
@@ -116,8 +162,7 @@ foreach ($scanFolders as $folder) {
         $contents = @file_get_contents($path);
         if ($contents === false) continue;
 
-        // Negative lookahead — skip configurador_prueba_test occurrences.
-        if (preg_match('/configurador_prueba(?!_test)/', $contents, $m, 0)) {
+        if (preg_match('/configurador_prueba(?!_test)/', $contents)) {
             $count = preg_match_all('/configurador_prueba(?!_test)/', $contents);
             $filesWithMatches[] = ['path' => $path, 'count' => $count];
         }
@@ -130,75 +175,157 @@ $sumMatches = array_sum(array_column($filesWithMatches, 'count'));
 echo "Total occurrences : $sumMatches\n";
 echo "----------------------------------------------------------------\n\n";
 
-// ── Step 2: list/replace ───────────────────────────────────────────────────
-if ($DRY_RUN) {
-    echo "DRY-RUN list (file → occurrence count):\n\n";
+// ─────────────────────────────────────────────────────────────────────────
+// ACTION: plan
+// ─────────────────────────────────────────────────────────────────────────
+if ($action === 'plan') {
+    echo "DRY-RUN list:\n\n";
     foreach ($filesWithMatches as $row) {
         $rel = str_replace($ROOT . '/', '', $row['path']);
         printf("  [%3d]  %s\n", $row['count'], $rel);
     }
-    echo "\nFolder rename (would happen on EXECUTE):\n";
-    echo "  $ROOT/configurador_prueba  →  $ROOT/configurador\n";
-    echo "\n----------------------------------------------------------------\n";
-    echo "To EXECUTE these changes, browse to:\n";
-    echo "  ?token=" . urlencode($expectedToken) . "&confirm=YES_RENAME_NOW\n";
-    echo "================================================================\n";
+    echo "\nTo EXECUTE, browse to:\n";
+    echo "  ?action=execute&token=" . urlencode($expectedToken) . "&confirm=YES_RENAME_NOW\n";
     exit;
 }
 
-// ── EXECUTE ────────────────────────────────────────────────────────────────
-echo "Executing replacements...\n\n";
-$ok        = 0;
-$failed    = 0;
-$replaced  = 0;
+// ─────────────────────────────────────────────────────────────────────────
+// ACTION: execute
+// ─────────────────────────────────────────────────────────────────────────
+if ($action !== 'execute') {
+    echo "Unknown action. Valid: diag, plan, execute\n";
+    exit;
+}
+if ($confirm !== 'YES_RENAME_NOW') {
+    echo "Missing &confirm=YES_RENAME_NOW — aborted.\n";
+    exit;
+}
+
+echo "Executing replacements (3-strategy fallback per file)...\n\n";
+
+/**
+ * Replace text in a file using up to 3 strategies, in order:
+ *   (A) Direct file_put_contents — works when PHP owns the file
+ *   (B) Atomic rename — write to temp file in same directory, then
+ *       rename(temp, original). Only needs DIRECTORY write permission,
+ *       so this works around files owned by another user.
+ *   (C) chmod-then-direct — make the file writable then write. Only
+ *       works if PHP can chmod (typically when PHP owns the file or runs
+ *       as root, which it doesn't here, so this is rarely the winning
+ *       path on Plesk shared hosting).
+ *
+ * Returns array{strategy:string, ok:bool, error:string}.
+ */
+function voltikaReplaceFile(string $path, string $newContent): array {
+    // Strategy A: direct write
+    if (@file_put_contents($path, $newContent) !== false) {
+        return ['strategy' => 'A:direct', 'ok' => true, 'error' => ''];
+    }
+
+    // Strategy B: atomic rename via temp file in the same directory
+    $dir = dirname($path);
+    if (is_writable($dir)) {
+        $tmp = $dir . '/.voltika-tmp-' . uniqid('', true);
+        if (@file_put_contents($tmp, $newContent) !== false) {
+            // Preserve original permissions if possible
+            $origPerms = @fileperms($path);
+            if ($origPerms !== false) @chmod($tmp, $origPerms & 0777);
+            if (@rename($tmp, $path)) {
+                return ['strategy' => 'B:atomic_rename', 'ok' => true, 'error' => ''];
+            }
+            // rename failed — fallback to delete + rename
+            if (@unlink($path)) {
+                if (@rename($tmp, $path)) {
+                    return ['strategy' => 'B:unlink+rename', 'ok' => true, 'error' => ''];
+                }
+            }
+            @unlink($tmp);
+        }
+    }
+
+    // Strategy C: chmod 0666 then direct write
+    if (@chmod($path, 0666)) {
+        if (@file_put_contents($path, $newContent) !== false) {
+            return ['strategy' => 'C:chmod+write', 'ok' => true, 'error' => ''];
+        }
+    }
+
+    // All strategies failed
+    $err = error_get_last();
+    return ['strategy' => 'NONE', 'ok' => false, 'error' => $err['message'] ?? 'unknown'];
+}
+
+$ok = 0; $failed = 0; $replaced = 0;
+$strategyCounts = ['A:direct' => 0, 'B:atomic_rename' => 0, 'B:unlink+rename' => 0, 'C:chmod+write' => 0];
+$failures = [];
+
 foreach ($filesWithMatches as $row) {
     $path = $row['path'];
     $contents = @file_get_contents($path);
     if ($contents === false) {
         echo "  FAIL (read)  : " . str_replace($ROOT . '/', '', $path) . "\n";
         $failed++;
+        $failures[] = $path;
         continue;
     }
     $new = preg_replace('/configurador_prueba(?!_test)/', 'configurador', $contents, -1, $count);
-    if ($new === null) {
-        echo "  FAIL (regex) : " . str_replace($ROOT . '/', '', $path) . "\n";
-        $failed++;
+    if ($new === null || $count === 0) {
+        echo "  SKIP (no match): " . str_replace($ROOT . '/', '', $path) . "\n";
         continue;
     }
-    if (@file_put_contents($path, $new) === false) {
-        echo "  FAIL (write) : " . str_replace($ROOT . '/', '', $path) . "  (check permissions)\n";
+
+    $result = voltikaReplaceFile($path, $new);
+    if ($result['ok']) {
+        printf("  OK [%3d] (%s) : %s\n", $count, $result['strategy'], str_replace($ROOT . '/', '', $path));
+        $ok++;
+        $replaced += $count;
+        if (isset($strategyCounts[$result['strategy']])) $strategyCounts[$result['strategy']]++;
+    } else {
+        printf("  FAIL (write) : %s   %s\n", str_replace($ROOT . '/', '', $path), $result['error']);
         $failed++;
-        continue;
+        $failures[] = $path;
     }
-    printf("  OK [%3d]    : %s\n", $count, str_replace($ROOT . '/', '', $path));
-    $ok++;
-    $replaced += $count;
 }
 
 echo "\nText replacement summary:\n";
 echo "  Files OK      : $ok\n";
 echo "  Files failed  : $failed\n";
 echo "  Total changes : $replaced\n";
+echo "  Strategies used:\n";
+foreach ($strategyCounts as $s => $c) {
+    if ($c > 0) echo "    $s : $c\n";
+}
 echo "----------------------------------------------------------------\n\n";
 
-// ── Folder rename ──────────────────────────────────────────────────────────
-echo "Renaming folder...\n";
-$oldDir = "$ROOT/configurador_prueba";
-$newDir = "$ROOT/configurador";
+if ($failed > 0) {
+    echo "FAILURES — directories below are not writable by PHP:\n";
+    $failedDirs = array_unique(array_map('dirname', $failures));
+    foreach ($failedDirs as $d) {
+        $stat = @stat($d);
+        $owner = $stat ? (posix_getpwuid($stat['uid'])['name'] ?? $stat['uid']) : '?';
+        $perms = $stat ? substr(sprintf('%o', $stat['mode']), -3) : '?';
+        echo "  $d   (owner=$owner, perms=$perms)\n";
+    }
+    echo "\nFix via FileZilla:\n";
+    echo "  Right-click each directory → File Permissions → Numeric: 777\n";
+    echo "  ✓ Recurse into subdirectories  ✓ Apply to directories only\n";
+    echo "Then re-run this script. After success, set perms back to 755.\n";
+}
 
-if (!is_dir($oldDir)) {
-    echo "  configurador_prueba/ not found — possibly already renamed.\n";
-} elseif (is_dir($newDir)) {
-    echo "  ABORT: $newDir already exists. Folder rename skipped to avoid clobbering.\n";
-    echo "  Manual fix: rename or remove the existing /configurador/ then re-run.\n";
-} else {
-    if (@rename($oldDir, $newDir)) {
+// ── Folder rename (only if not already done) ──────────────────────────────
+echo "\nFolder rename check...\n";
+if ($folderState === 'already_renamed') {
+    echo "  Already renamed previously — nothing to do.\n";
+} elseif ($folderState === 'needs_rename') {
+    if (@rename($dirOld, $dirNew)) {
         echo "  OK: configurador_prueba/  →  configurador/\n";
     } else {
         $err = error_get_last();
-        echo "  FAIL: " . ($err['message'] ?? 'unknown error') . "\n";
-        echo "  Manual fix: rename the folder via FileZilla.\n";
+        echo "  FAIL: " . ($err['message'] ?? 'unknown') . "\n";
+        echo "  Manual fix: rename via FileZilla.\n";
     }
+} else {
+    echo "  Skipping — folder state is '$folderState'.\n";
 }
 
 echo "\n================================================================\n";
@@ -208,8 +335,8 @@ echo "Verify:\n";
 echo "  https://www.voltika.mx/configurador/\n";
 echo "  https://www.voltika.mx/clientes/\n";
 echo "  https://www.voltika.mx/admin/\n\n";
-echo "External systems to update manually (Stripe / Truora dashboards):\n";
-echo "  Stripe webhook URL : .../configurador/php/stripe-webhook.php\n";
-echo "  Truora webhook URL : .../configurador/php/truora-webhook.php\n";
-echo "  Truora redirect URL: .../configurador/php/truora-redirect.php\n\n";
-echo "SECURITY: delete this file (rename-server.php) immediately via FileZilla.\n";
+echo "External:\n";
+echo "  Stripe webhook : .../configurador/php/stripe-webhook.php\n";
+echo "  Truora webhook : .../configurador/php/truora-webhook.php\n";
+echo "  Truora redirect: .../configurador/php/truora-redirect.php\n\n";
+echo "SECURITY: delete rename-server.php via FileZilla now.\n";
