@@ -140,34 +140,81 @@ function truoraFindProcessByAccountId(string $accountId): ?string {
             $arr = json_decode((string)$body, true);
             if (!is_array($arr)) continue;
 
-            // Response shapes vary — search recursively for the first
-            // value that looks like an IDP... process id.
-            $found = _truoraScanForProcessId($arr);
-            if ($found !== null) return $found;
+            // Truora's /v1/processes?account_id=... endpoint may ignore
+            // the filter and return processes globally (verified
+            // 2026-04-30 — same IDP returned regardless of account_id).
+            // To avoid cross-account verdict bleed (a customer being
+            // told "name mismatch" because their row was compared
+            // against another customer's verified data), strictly match
+            // each process's account_id field against our query before
+            // returning. Sort by creation date desc so we pick the
+            // newest matching process.
+            $items = _truoraExtractProcessList($arr);
+            if (!empty($items)) {
+                // Filter to items whose account_id matches our query
+                // (case-insensitive, since Truora may store as-sent).
+                $matching = array_filter($items, function($it) use ($accountId) {
+                    return is_array($it) && isset($it['account_id'])
+                        && strcasecmp((string)$it['account_id'], $accountId) === 0;
+                });
+                if (!empty($matching)) {
+                    // Newest first — try common date keys, fall back to
+                    // first-encountered ordering.
+                    usort($matching, function($a, $b) {
+                        $ka = $a['creation_date'] ?? $a['created_at'] ?? '';
+                        $kb = $b['creation_date'] ?? $b['created_at'] ?? '';
+                        return strcmp((string)$kb, (string)$ka);
+                    });
+                    foreach ($matching as $it) {
+                        foreach (['process_id', 'identity_process_id', 'id'] as $k) {
+                            if (!empty($it[$k]) && is_string($it[$k]) &&
+                                preg_match('/^IDP[a-f0-9]{20,}$/i', $it[$k])) {
+                                return $it[$k];
+                            }
+                        }
+                    }
+                }
+                // List had items but none matched our account_id —
+                // do NOT fall through to a global scan that would
+                // return the wrong customer's process.
+                continue;
+            }
+
+            // No list shape detected — try a top-level direct
+            // process_id (some endpoints return a single process).
+            // Only safe to scan top-level keys, not recursively.
+            foreach (['process_id', 'identity_process_id', 'id'] as $k) {
+                if (isset($arr[$k]) && is_string($arr[$k]) &&
+                    preg_match('/^IDP[a-f0-9]{20,}$/i', $arr[$k]) &&
+                    isset($arr['account_id']) && strcasecmp((string)$arr['account_id'], $accountId) === 0) {
+                    return $arr[$k];
+                }
+            }
         }
     }
     return null;
 }
 
-/** Recursive scanner — returns the first string matching IDP[a-f0-9]+. */
-function _truoraScanForProcessId($node): ?string {
-    if (is_string($node) && preg_match('/^IDP[a-f0-9]{20,}$/i', $node)) {
+/**
+ * Extract the array of process items from a list-shaped response.
+ * Truora's responses use various wrappers ("data", "items", "results",
+ * "processes", or the array at top level). Return the first list-of-
+ * objects we find; otherwise empty.
+ */
+function _truoraExtractProcessList($node): array {
+    if (!is_array($node)) return [];
+    // Top-level numeric array of objects.
+    if (array_keys($node) === range(0, count($node) - 1)
+        && !empty($node) && is_array($node[0])) {
         return $node;
     }
-    if (is_array($node)) {
-        // Prefer direct keys when present.
-        foreach (['process_id', 'identity_process_id', 'id'] as $k) {
-            if (isset($node[$k]) && is_string($node[$k]) &&
-                preg_match('/^IDP[a-f0-9]{20,}$/i', $node[$k])) {
-                return $node[$k];
-            }
-        }
-        foreach ($node as $v) {
-            $r = _truoraScanForProcessId($v);
-            if ($r !== null) return $r;
+    foreach (['data', 'items', 'results', 'processes', 'identity_processes'] as $k) {
+        if (isset($node[$k]) && is_array($node[$k])
+            && !empty($node[$k]) && is_array($node[$k][0] ?? null)) {
+            return $node[$k];
         }
     }
-    return null;
+    return [];
 }
 }
 
