@@ -90,13 +90,18 @@ $defaultKeepPatterns = [
 $cliKeep = array_filter(array_map('trim', explode(',', (string)($_GET['keep'] ?? ''))));
 $cliWipe = array_filter(array_map('trim', explode(',', (string)($_GET['wipe'] ?? ''))));
 
-// Get all base tables in the current DB
+// Get all base tables in the current DB.
+// PDO's default fetch mode is FETCH_BOTH which doubles every column (numeric
+// AND string-keyed copies); array_values() then returns duplicates and the
+// "BASE TABLE" check always fails. Force FETCH_NUM so $row[0]=name and
+// $row[1]=Table_type cleanly.
 $allTables = [];
 $rs = $pdo->query("SHOW FULL TABLES");
-foreach ($rs as $row) {
-    $name = array_values($row)[0];
-    $type = array_values($row)[1] ?? 'BASE TABLE';
-    if ($type === 'BASE TABLE') $allTables[] = $name;
+$rs->setFetchMode(PDO::FETCH_NUM);
+while ($row = $rs->fetch()) {
+    $name = $row[0] ?? null;
+    $type = $row[1] ?? 'BASE TABLE';
+    if ($name && $type === 'BASE TABLE') $allTables[] = $name;
 }
 sort($allTables);
 
