@@ -380,13 +380,24 @@ try {
     if ($isCreditFlow && $telefono) {
         try {
             $identStmt = $pdo->prepare("SELECT id, curp_match, expected_curp, verified_curp,
+                    name_match, expected_name, verified_name,
                     truora_account_id, truora_process_id
                 FROM verificaciones_identidad
                 WHERE telefono = ?
                 ORDER BY id DESC LIMIT 1");
             $identStmt->execute([$telefono]);
             $ident = $identStmt->fetch(PDO::FETCH_ASSOC);
-            if ($ident && isset($ident['curp_match']) && (int)$ident['curp_match'] === 0) {
+            // Brief #4 (2026-04-30): refuse on name_match=0 too (was only
+            // curp_match=0 before). Both fields are populated by either the
+            // webhook OR the API fallback in truora-status.php, so by the
+            // time the user clicks pay, at least one of them is set when
+            // an actual mismatch exists.
+            $curpMismatch = $ident && isset($ident['curp_match']) && (int)$ident['curp_match'] === 0;
+            $nameMismatch = $ident && isset($ident['name_match']) && (int)$ident['name_match'] === 0;
+            if ($curpMismatch || $nameMismatch) {
+                $rejectReason = $nameMismatch && !$curpMismatch
+                    ? 'identity_name_mismatch'
+                    : 'identity_curp_mismatch';
                 // Log the rejection for admin forensics.
                 try {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS confirmar_orden_rechazos (
@@ -397,12 +408,16 @@ try {
                     )");
                     $pdo->prepare("INSERT INTO confirmar_orden_rechazos (reason, payload) VALUES (?, ?)")
                         ->execute([
-                            'identity_curp_mismatch',
+                            $rejectReason,
                             json_encode([
                                 'telefono'           => $telefono,
                                 'identity_id'        => $ident['id'],
                                 'expected_curp'      => $ident['expected_curp'],
                                 'verified_curp'      => $ident['verified_curp'],
+                                'expected_name'      => $ident['expected_name'],
+                                'verified_name'      => $ident['verified_name'],
+                                'curp_match'         => $ident['curp_match'],
+                                'name_match'         => $ident['name_match'],
                                 'truora_process_id'  => $ident['truora_process_id'],
                                 'stripe_pi'          => $paymentIntentId,
                             ], JSON_UNESCAPED_UNICODE),
@@ -412,8 +427,8 @@ try {
                 echo json_encode([
                     'ok'    => false,
                     'error' => 'identity_mismatch',
-                    'message' => 'La identidad verificada no coincide con la persona del estudio de crédito. ' .
-                                 'Por seguridad, esta orden no puede completarse.',
+                    'message' => 'La identidad verificada no coincide con la información del estudio de crédito. ' .
+                                 'Por seguridad, esta orden no puede completarse. Regresa al inicio y usa la misma información que aparece en tu INE.',
                 ]);
                 exit;
             }

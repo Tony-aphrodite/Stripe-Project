@@ -46,6 +46,7 @@ var PasoCreditoIdentidad = {
         // could navigate them away mid-step when an old verdict landed.
         if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
         if (this._blankTimeout) { clearTimeout(this._blankTimeout); this._blankTimeout = null; }
+        if (this._verdictTimeout) { clearTimeout(this._verdictTimeout); this._verdictTimeout = null; }
         this.render();
         // After render the debug panel exists — log init-count BEFORE
         // anything else so we know if SPA is calling init() multiple
@@ -517,18 +518,32 @@ var PasoCreditoIdentidad = {
                 }
                 if (aid && !state._truoraAccountId) state._truoraAccountId = aid;
                 self._appendDebug('redirect signal · pid=' + (pid || '?') + ' aid=' + (aid || '?'));
-                // Background poll — populates the audit row but does not
-                // gate navigation. See the in-iframe `truora.process.succeeded`
-                // branch for the full rationale (webhook may be unreliable;
-                // server-side guard at confirmar-orden.php handles fraud).
-                self._pollWebhookResult(state._truoraProcessId || self._currentProcessId);
-                // Advance to enganche immediately.
+                // Same gating as the in-iframe succeeded branch — wait for
+                // the server verdict before navigating so brief #4
+                // (mismatch → back to credito-nombre) actually fires here
+                // and not later at checkout.
                 self._finished = true;
-                state._identidadVerificada = true;
+                state._identidadVerificada = false;
                 try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
-                if (self.app && typeof self.app.irAPaso === 'function') {
-                    self.app.irAPaso('credito-enganche');
-                }
+                jQuery('#vk-truora-container').hide();
+                jQuery('#vk-identidad-error')
+                    .css({color:'#0c4a6e',background:'#e0f2fe'})
+                    .html('<strong>Verificando datos…</strong>' +
+                          '<div style="margin-top:6px;font-size:11px;">Estamos confirmando que la información de tu INE coincide con los datos que ingresaste. Esto toma unos segundos.</div>')
+                    .show();
+                self._pollWebhookResult(state._truoraProcessId || self._currentProcessId);
+                if (self._verdictTimeout) clearTimeout(self._verdictTimeout);
+                self._verdictTimeout = setTimeout(function() {
+                    if (!self._pollTimer) return;
+                    self._appendDebug('verdict timeout · showing retry');
+                    if (self._pollTimer) { clearInterval(self._pollTimer); self._pollTimer = null; }
+                    jQuery('#vk-identidad-error')
+                        .css({color:'#92400e',background:'#fef3c7'})
+                        .html('<strong>La verificación está tardando más de lo normal.</strong>' +
+                              '<div style="margin-top:6px;font-size:11px;">Esto suele resolverse en segundos. Reintenta o contacta soporte si persiste.</div>')
+                        .show();
+                    jQuery('#vk-identidad-retry').show();
+                }, 20000);
                 return;
             }
 
@@ -579,30 +594,41 @@ var PasoCreditoIdentidad = {
 
         switch (eventName) {
             case 'truora.process.succeeded':
-                // Advance to enganche immediately. The strict-gating
-                // experiment from earlier in the session (which held the
-                // user on a "Verificando datos…" screen until the webhook
-                // verdict arrived) trapped users when the Truora webhook
-                // signature was misconfigured: no webhook → no verdict →
-                // permanent stall. Reverted to the original behaviour:
-                // advance on the front-end signal, log the audit trail
-                // via the background poll, and let the server-side guard
-                // at confirmar-orden.php refuse order creation when
-                // name_match=0 or curp_match=0. Once the webhook secret is
-                // verified working in TRUORA_WEBHOOK_SECRET we can revisit
-                // strict gating without re-introducing the stall risk.
-                this._finished = true;
-                state._identidadVerificada = true;
+                // Wait for the server verdict before navigating. The
+                // companion fix in truora-status.php (account_id fallback
+                // lookup) makes the API fallback reliably write the verdict
+                // to the DB within ~1-2 s even when the webhook signature
+                // is broken — so the poll resolves quickly. Customer brief
+                // #4 (2026-04-30) requires that mismatch users be sent
+                // back to credito-nombre at THIS step, not at checkout.
                 state._truoraProcessId = (data && (data.process_id || data.identity_process_id)) || this._currentProcessId;
-                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
-                // Fire-and-forget background poll — populates the audit
-                // trail (verificaciones_identidad row) so admin can review
-                // mismatches and the server-side guard has the data to
-                // refuse the order at checkout.
+                state._identidadVerificada = false;
+                this._finished = true;
+                jQuery('#vk-truora-container').hide();
+                jQuery('#vk-identidad-error')
+                    .css({color:'#0c4a6e',background:'#e0f2fe'})
+                    .html('<strong>Verificando datos…</strong>' +
+                          '<div style="margin-top:6px;font-size:11px;">Estamos confirmando que la información de tu INE coincide con los datos que ingresaste. Esto toma unos segundos.</div>')
+                    .show();
                 this._pollWebhookResult(state._truoraProcessId || this._currentProcessId);
-                if (this.app && typeof this.app.irAPaso === 'function') {
-                    this.app.irAPaso('credito-enganche');
-                }
+                // Safety timeout: if the verdict still hasn't arrived in
+                // 20 s, surface a retry CTA (we do NOT auto-advance here
+                // because that would let mismatch users reach enganche;
+                // server-side guard at confirmar-orden.php is defence in
+                // depth, but the customer brief is explicit that refusal
+                // should be visible at the identity step).
+                if (this._verdictTimeout) clearTimeout(this._verdictTimeout);
+                this._verdictTimeout = setTimeout(function() {
+                    if (!self._pollTimer) return; // poll already resolved
+                    self._appendDebug('verdict timeout · showing retry');
+                    if (self._pollTimer) { clearInterval(self._pollTimer); self._pollTimer = null; }
+                    jQuery('#vk-identidad-error')
+                        .css({color:'#92400e',background:'#fef3c7'})
+                        .html('<strong>La verificación está tardando más de lo normal.</strong>' +
+                              '<div style="margin-top:6px;font-size:11px;">Esto suele resolverse en segundos. Reintenta o contacta soporte si persiste.</div>')
+                        .show();
+                    jQuery('#vk-identidad-retry').show();
+                }, 20000);
                 break;
 
             case 'truora.process.failed':
