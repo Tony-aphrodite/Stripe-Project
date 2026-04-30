@@ -87,24 +87,34 @@ if (!$dirExists) {
         $err = error_get_last();
         echo '<p class="bad">[FAIL] Could not create directory. Last error: ' .
              htmlspecialchars($err['message'] ?? '(unknown)') . '</p>';
-        echo '<p class="bad">Likely cause: PHP-FPM user lacks write permission on parent dir <code>' .
-             htmlspecialchars(dirname($logDir)) . '</code>. Fix from SSH:</p>';
-        echo '<pre>chown -R psaadm:psacln ' . htmlspecialchars(dirname($logDir)) . '
-chmod -R 0775 ' . htmlspecialchars(dirname($logDir)) . '</pre>';
-        $findings[] = ['bad', 'logs/ cannot be created. SMS may still send but logs are lost — diagnosis blind.'];
     }
 }
 
-// Test write a probe entry.
-if ($dirExists) {
+// Test write a probe entry; if it fails, attempt chmod auto-repair.
+if ($dirExists && !$dirWritable) {
+    echo '<p class="warn">Auto-repair: directory exists but not writable. Attempting <code>chmod 0775</code>…</p>';
+    $chmodOk = @chmod($logDir, 0775);
+    $dirWritable = is_writable($logDir);
+    if ($dirWritable) {
+        echo '<p class="ok">[OK] chmod succeeded — directory now writable.</p>';
+        $findings[] = ['ok', 'logs/ permissions auto-repaired (chmod 0775).'];
+    } else {
+        echo '<p class="bad">[FAIL] chmod also failed — PHP-FPM is not the owner of this directory.</p>';
+        echo '<p>Fix from SSH (run as root or with sudo):</p>';
+        echo '<pre>chown -R $(stat -c %u ' . htmlspecialchars(dirname($logDir)) . '):$(stat -c %g ' . htmlspecialchars(dirname($logDir)) . ') ' . htmlspecialchars($logDir) . '
+chmod -R 0775 ' . htmlspecialchars($logDir) . '</pre>';
+        echo '<p>Or, on Plesk shared hosting, the more common fix:</p>';
+        echo '<pre>chown -R psaadm:psacln ' . htmlspecialchars($logDir) . '
+chmod -R 0775 ' . htmlspecialchars($logDir) . '</pre>';
+        $findings[] = ['warn', 'logs/ not writable but enviar-otp.php now also writes to /tmp fallback — diagnostics work via that path.'];
+    }
+}
+if ($dirExists && $dirWritable) {
     $probe = $logDir . '/diag-probe.tmp';
     $writeOk = @file_put_contents($probe, 'probe ' . date('c'));
     if ($writeOk !== false) {
         @unlink($probe);
         echo '<p class="ok">[OK] Probe write succeeded — directory is fully writable.</p>';
-    } else {
-        echo '<p class="bad">[FAIL] Directory exists but cannot write probe file. Permission issue.</p>';
-        $findings[] = ['bad', 'logs/ exists but PHP cannot write — fix permissions on the directory.'];
     }
 }
 
@@ -131,14 +141,27 @@ if ($keyLen === 0) {
 
 // ── 3. Recent log entries ──────────────────────────────────────
 echo '<h2>3. Recent send attempts</h2>';
-if (!file_exists($logFile)) {
-    echo '<p class="warn">[INFO] No log file yet — either no sends ever attempted or earlier writes failed.</p>';
+// Read both canonical AND /tmp fallback log, merge by timestamp.
+$tmpLog = sys_get_temp_dir() . '/voltika-sms-otp.log';
+$rawCanon = file_exists($logFile) ? (@file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: []) : [];
+$rawTmp   = file_exists($tmpLog)  ? (@file($tmpLog,  FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: []) : [];
+echo '<p>Canonical log: ' . (file_exists($logFile)
+    ? number_format(filesize($logFile)) . ' bytes (' . count($rawCanon) . ' lines, last ' . date('H:i:s', filemtime($logFile)) . ')'
+    : '<span class="warn">absent</span>') . '</p>';
+echo '<p>/tmp fallback: ' . (file_exists($tmpLog)
+    ? number_format(filesize($tmpLog)) . ' bytes (' . count($rawTmp) . ' lines, last ' . date('H:i:s', filemtime($tmpLog)) . ')'
+    : '<span class="warn">absent</span>') . '</p>';
+$raw = array_unique(array_merge($rawCanon, $rawTmp));
+if (empty($raw)) {
+    echo '<p class="warn">[INFO] No log entries in either location yet — either no sends attempted, OR enviar-otp.php hasn\'t been redeployed with /tmp fallback. Run a fresh OTP send and refresh this page.</p>';
 } else {
-    $size = filesize($logFile);
-    echo '<p>Size: ' . number_format($size) . ' bytes · last modified: ' . date('Y-m-d H:i:s', filemtime($logFile)) . '</p>';
-    $raw = @file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-    $entries = array_reverse($raw);
-    $entries = array_slice($entries, 0, 8);
+    // Sort by timestamp (entries are JSON; first key = timestamp).
+    usort($raw, function($a, $b) {
+        $da = json_decode($a, true);
+        $db = json_decode($b, true);
+        return strcmp($db['timestamp'] ?? '', $da['timestamp'] ?? '');
+    });
+    $entries = array_slice($raw, 0, 8);
     $successCount = 0; $apiErrorCount = 0; $curlErrorCount = 0;
     foreach ($entries as $line) {
         $e = json_decode($line, true);

@@ -110,11 +110,14 @@ $curlErr  = curl_error($ch);
 curl_close($ch);
 
 // ── Logging ──────────────────────────────────────────────────────────────────
-$logFile = __DIR__ . '/logs/sms-otp.log';
-if (!is_dir(dirname($logFile))) {
-    mkdir(dirname($logFile), 0755, true);
-}
-file_put_contents($logFile, json_encode([
+// Dual-log to BOTH the canonical php/logs/sms-otp.log AND a /tmp fallback,
+// so diagnostics still work when the canonical directory is unwritable
+// (Plesk hosting frequently has the code-tree owned by a different user
+// than the PHP-FPM pool — file_put_contents silently fails). Customer
+// report 2026-04-30: customer was hitting the OTP screen, the codepath
+// here was running, but the log file never appeared because the
+// canonical directory had no PHP write permission.
+$logEntry = json_encode([
     'timestamp'    => date('c'),
     'action'       => 'send-sms',
     'telefono'     => substr($telefono, 0, 3) . '****' . substr($telefono, -3),
@@ -125,7 +128,24 @@ file_put_contents($logFile, json_encode([
     'curlErr'      => $curlErr,
     'sessionId'    => session_id(),
     'fileOk'       => ($written !== false),
-]) . "\n", FILE_APPEND | LOCK_EX);
+]) . "\n";
+
+$logFile = __DIR__ . '/logs/sms-otp.log';
+if (!is_dir(dirname($logFile))) {
+    @mkdir(dirname($logFile), 0775, true);
+}
+@file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+
+// /tmp fallback — always writable, survives canonical-dir permission issues.
+$tmpLog = sys_get_temp_dir() . '/voltika-sms-otp.log';
+@file_put_contents($tmpLog, $logEntry, FILE_APPEND | LOCK_EX);
+
+// Also surface to PHP's main error_log on hard failures so the hosting
+// panel's error log shows the diagnostic if both file logs fail.
+if ($curlErr || ($httpCode >= 400)) {
+    error_log('voltika-sms-otp: HTTP=' . $httpCode . ' curl=' . $curlErr .
+              ' resp=' . substr((string)$response, 0, 200));
+}
 
 // ── Response ─────────────────────────────────────────────────────────────────
 $data = json_decode($response, true);
