@@ -114,46 +114,82 @@ var PasoCreditoCPDom = {
             jQuery(this).val(val);
 
             if (val.length === 5) {
+                // Show an immediate (best-guess) city/state from the local
+                // VOLTIKA_CP table while the authoritative SEPOMEX lookup
+                // round-trips to the server. The local table is sparse —
+                // it only has anchor CPs per state (e.g. 54000 for
+                // Tlalnepantla) and the prefix-fallback can MISCLASSIFY
+                // CPs whose first 3 digits aren't anchored (e.g. 54948
+                // is Tultitlán, not Tlalnepantla, but falls through to
+                // 54000 because no 549xx entry exists). The AJAX call
+                // below ALWAYS overrides the displayed city/state with
+                // SEPOMEX truth — customer brief 2026-04-30.
                 var resultado = VOLTIKA_CP._buscar(val);
                 if (resultado) {
                     jQuery('#vk-ccp-estado-text').text(resultado.ciudad + ', ' + resultado.estado);
                     jQuery('#vk-ccp-estado').slideDown(200);
                     self.app.state.estadoDomicilio = resultado.estado;
                     self.app.state.ciudadDomicilio = resultado.ciudad;
+                }
 
-                    // Load colonias
-                    jQuery.ajax({
-                        url: (window.VK_BASE_PATH || '') + 'php/buscar-colonias.php',
-                        data: { cp: val },
-                        dataType: 'json',
-                        timeout: 10000,
-                        success: function(data) {
-                            if (data && data.ok && data.colonias && data.colonias.length) {
-                                var savedColonia = self.app.state.colonia || '';
-                                var opts = '<option value="">Selecciona tu colonia</option>';
-                                for (var i = 0; i < data.colonias.length; i++) {
-                                    var sel = (data.colonias[i] === savedColonia) ? ' selected' : '';
-                                    opts += '<option value="' + data.colonias[i] + '"' + sel + '>' + data.colonias[i] + '</option>';
-                                }
-                                jQuery('#vk-ccp-colonia').html(opts);
-                                jQuery('#vk-ccp-colonia-wrap').slideDown(200);
-                                // Enable continue if colonia already selected
-                                if (savedColonia) {
-                                    jQuery('#vk-ccp-continuar').prop('disabled', false);
-                                }
+                // Authoritative lookup via php/buscar-colonias.php which
+                // reads SEPOMEX. Returns { estado, municipio, ciudad,
+                // colonias[] } — we use ALL of these to overwrite the
+                // local guess and populate the colonia dropdown.
+                jQuery.ajax({
+                    url: (window.VK_BASE_PATH || '') + 'php/buscar-colonias.php',
+                    data: { cp: val },
+                    dataType: 'json',
+                    timeout: 10000,
+                    success: function(data) {
+                        if (!data || !data.ok) {
+                            // Server didn't recognise CP — keep whatever
+                            // the local guess showed (or hide if none).
+                            if (!resultado) {
+                                jQuery('#vk-ccp-estado').hide();
+                                jQuery('#vk-ccp-colonia-wrap').hide();
+                                jQuery('#vk-ccp-continuar').prop('disabled', true);
                             } else {
                                 PasoCreditoCPDom._coloniaFallback();
                             }
-                        },
-                        error: function() {
+                            return;
+                        }
+                        // ── Authoritative city/state (overrides local guess) ──
+                        var apiCiudad = (data.municipio || data.ciudad || '').toString().trim();
+                        var apiEstado = (data.estado || '').toString().trim();
+                        if (apiCiudad && apiEstado) {
+                            jQuery('#vk-ccp-estado-text').text(apiCiudad + ', ' + apiEstado);
+                            jQuery('#vk-ccp-estado').slideDown(200);
+                            self.app.state.estadoDomicilio = apiEstado;
+                            self.app.state.ciudadDomicilio = apiCiudad;
+                        }
+                        // ── Colonias dropdown ──
+                        if (data.colonias && data.colonias.length) {
+                            var savedColonia = self.app.state.colonia || '';
+                            var opts = '<option value="">Selecciona tu colonia</option>';
+                            for (var i = 0; i < data.colonias.length; i++) {
+                                var sel = (data.colonias[i] === savedColonia) ? ' selected' : '';
+                                opts += '<option value="' + data.colonias[i] + '"' + sel + '>' + data.colonias[i] + '</option>';
+                            }
+                            jQuery('#vk-ccp-colonia').html(opts);
+                            jQuery('#vk-ccp-colonia-wrap').slideDown(200);
+                            if (savedColonia) {
+                                jQuery('#vk-ccp-continuar').prop('disabled', false);
+                            }
+                        } else {
                             PasoCreditoCPDom._coloniaFallback();
                         }
-                    });
-                } else {
-                    jQuery('#vk-ccp-estado').hide();
-                    jQuery('#vk-ccp-colonia-wrap').hide();
-                    jQuery('#vk-ccp-continuar').prop('disabled', true);
-                }
+                    },
+                    error: function() {
+                        // Network error — fall back to colonia text input.
+                        // City/state stays as the local guess (if any).
+                        if (!resultado) {
+                            jQuery('#vk-ccp-estado').hide();
+                            jQuery('#vk-ccp-colonia-wrap').hide();
+                        }
+                        PasoCreditoCPDom._coloniaFallback();
+                    }
+                });
             } else {
                 jQuery('#vk-ccp-estado').hide();
                 jQuery('#vk-ccp-colonia-wrap').hide();

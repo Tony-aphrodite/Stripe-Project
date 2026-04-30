@@ -88,7 +88,11 @@ var PasoCreditoIdentidad = {
         html += '<div class="vk-identidad-security__icon">&#128274;</div>';
         html += '<div>';
         html += '<div class="vk-identidad-security__title">Verificación certificada</div>';
-        html += '<div class="vk-identidad-security__text">Tu identidad es validada por Truora con tecnología certificada y segura.</div>';
+        // Customer brief 2026-04-30: do not surface the third-party
+        // verification vendor (Truora) to end users. Keep the copy
+        // brand-neutral so the SPA can swap providers without copy
+        // changes and the user only sees the Voltika brand.
+        html += '<div class="vk-identidad-security__text">Tu identidad es validada con tecnología certificada y segura.</div>';
         html += '</div>';
         html += '</div>';
 
@@ -661,7 +665,7 @@ var PasoCreditoIdentidad = {
                 jQuery('#vk-identidad-error')
                     .css({color:'#92400e',background:'#fef3c7'})
                     .html('<strong>Procesando resultado…</strong>' +
-                          '<div style="margin-top:6px;font-size:11px;">Estamos confirmando el motivo con Truora. Esto toma unos segundos.</div>')
+                          '<div style="margin-top:6px;font-size:11px;">Estamos confirmando el motivo de la verificación. Esto toma unos segundos.</div>')
                     .show();
                 this._finished = false; // allow the poll to settle
                 this._pollWebhookResult(state._truoraProcessId || this._currentProcessId);
@@ -849,7 +853,7 @@ var PasoCreditoIdentidad = {
                 jQuery('#vk-identidad-error')
                     .css({color:'#92400e',background:'#fef3c7'})
                     .html('<strong>Tu verificación sigue procesando.</strong>' +
-                          '<div style="margin-top:6px;font-size:11px;">Puede haber un retraso de Truora. Espera unos minutos más, o reintenta la verificación desde cero.</div>')
+                          '<div style="margin-top:6px;font-size:11px;">Puede haber un retraso del servicio de verificación. Espera unos minutos más, o reintenta la verificación desde cero.</div>')
                     .show();
                 jQuery('#vk-identidad-retry').show();
             }

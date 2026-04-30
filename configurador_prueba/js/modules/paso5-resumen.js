@@ -279,8 +279,13 @@ var PasoResumen = {
         html += '<div style="margin-bottom:16px;">';
         html += '<div style="font-size:15px;font-weight:800;margin-bottom:12px;">Solo 5 pasos (menos de 2 minutos)</div>';
 
+        // Customer brief 2026-04-30 (CURP-anchor revision): identity
+        // verification now collects the CURP up front and uses it as the
+        // strict match against Truora's INE-extracted CURP. The intro
+        // copy is updated to reflect that \u2014 "CURP + INE + Selfie" \u2014 so
+        // the customer knows what to have ready before starting.
         var pasos = [
-            ['Verifica tu identidad',             'INE + selfie'],
+            ['Verifica tu identidad',             'CURP + INE + Selfie'],
             ['Confirma tu ciudad de entrega',      'Asignamos tu punto Voltika cercano'],
             ['Recibe tu aprobaci\u00f3n',          'En menos de 2 minutos'],
             ['Paga tu enganche de forma segura',   'Tarjeta, transferencia o efectivo'],
