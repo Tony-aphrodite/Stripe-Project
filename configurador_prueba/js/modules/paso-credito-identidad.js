@@ -517,27 +517,18 @@ var PasoCreditoIdentidad = {
                 }
                 if (aid && !state._truoraAccountId) state._truoraAccountId = aid;
                 self._appendDebug('redirect signal · pid=' + (pid || '?') + ' aid=' + (aid || '?'));
-                // Same gating as the in-iframe success path: do NOT advance
-                // to enganche on the redirect signal alone — wait for the
-                // server-side name/CURP comparison so brief #4
-                // (mismatch → refuse + back-to-nombre) actually fires here.
-                self._finished = true;
-                state._identidadVerificada = false;
-                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
-                // Hide the Truora iframe — once we have a process_id and
-                // are polling for the verdict, anything Truora shows in
-                // its iframe (success page, "Oh no, enlace inválido",
-                // expired-session screen, etc.) is just noise that
-                // confuses the user. Customer screenshot 2026-04-30
-                // showed Truora's "Oh no" page sitting above our
-                // "Verificando datos…" box.
-                jQuery('#vk-truora-container').hide();
-                jQuery('#vk-identidad-error')
-                    .css({color:'#0c4a6e',background:'#e0f2fe'})
-                    .html('<strong>Verificando datos…</strong>' +
-                          '<div style="margin-top:6px;font-size:11px;">Estamos confirmando que la información de tu INE coincide con los datos que ingresaste. Esto toma unos segundos.</div>')
-                    .show();
+                // Background poll — populates the audit row but does not
+                // gate navigation. See the in-iframe `truora.process.succeeded`
+                // branch for the full rationale (webhook may be unreliable;
+                // server-side guard at confirmar-orden.php handles fraud).
                 self._pollWebhookResult(state._truoraProcessId || self._currentProcessId);
+                // Advance to enganche immediately.
+                self._finished = true;
+                state._identidadVerificada = true;
+                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
+                if (self.app && typeof self.app.irAPaso === 'function') {
+                    self.app.irAPaso('credito-enganche');
+                }
                 return;
             }
 
@@ -588,38 +579,30 @@ var PasoCreditoIdentidad = {
 
         switch (eventName) {
             case 'truora.process.succeeded':
-                // Truora's own document/face checks passed. We DO NOT advance
-                // straight to enganche — we still need to confirm the
-                // verified name/CURP from the document matches the data the
-                // user typed on the previous screen (that anchored CDC).
-                //
-                // Customer test 2026-04-30: a fraudster typed name "X" at
-                // CDC, uploaded an INE for name "Y", Truora succeeded, SPA
-                // advanced immediately, mismatch was only caught later at
-                // confirmar-orden.php. Brief #4 explicitly requires the
-                // refusal to surface AT THIS STEP ("regresa, usa la misma
-                // información... reinicia la verificación"), not at
-                // checkout. So we hand off to the poll, which already has
-                // the correct branching:
-                //   - approved=1 + name_match!=0 + curp_match!=0 → enganche
-                //   - name_match=0 / curp_match=0          → back-to-nombre
-                //   - manual_review=1                       → crew handoff
-                state._truoraProcessId = (data && (data.process_id || data.identity_process_id)) || this._currentProcessId;
-                state._identidadVerificada = false; // not until poll confirms
-                // Block re-entry from a duplicate succeeded event but let
-                // _pollWebhookResult drive navigation. The poll itself
-                // resets `_finished`/sets it again on its terminal branches.
+                // Advance to enganche immediately. The strict-gating
+                // experiment from earlier in the session (which held the
+                // user on a "Verificando datos…" screen until the webhook
+                // verdict arrived) trapped users when the Truora webhook
+                // signature was misconfigured: no webhook → no verdict →
+                // permanent stall. Reverted to the original behaviour:
+                // advance on the front-end signal, log the audit trail
+                // via the background poll, and let the server-side guard
+                // at confirmar-orden.php refuse order creation when
+                // name_match=0 or curp_match=0. Once the webhook secret is
+                // verified working in TRUORA_WEBHOOK_SECRET we can revisit
+                // strict gating without re-introducing the stall risk.
                 this._finished = true;
-                // Hide the Truora iframe (see redirect-signal branch for
-                // rationale — keeps our holding screen clean instead of
-                // sandwiching it under whatever Truora renders post-flow).
-                jQuery('#vk-truora-container').hide();
-                jQuery('#vk-identidad-error')
-                    .css({color:'#0c4a6e',background:'#e0f2fe'})
-                    .html('<strong>Verificando datos…</strong>' +
-                          '<div style="margin-top:6px;font-size:11px;">Estamos confirmando que la información de tu INE coincide con los datos que ingresaste. Esto toma unos segundos.</div>')
-                    .show();
+                state._identidadVerificada = true;
+                state._truoraProcessId = (data && (data.process_id || data.identity_process_id)) || this._currentProcessId;
+                try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
+                // Fire-and-forget background poll — populates the audit
+                // trail (verificaciones_identidad row) so admin can review
+                // mismatches and the server-side guard has the data to
+                // refuse the order at checkout.
                 this._pollWebhookResult(state._truoraProcessId || this._currentProcessId);
+                if (this.app && typeof this.app.irAPaso === 'function') {
+                    this.app.irAPaso('credito-enganche');
+                }
                 break;
 
             case 'truora.process.failed':
