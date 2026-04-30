@@ -131,10 +131,17 @@ var PasoCreditoIdentidad = {
         // 9. Footer
         html += '<div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:12px;">Tu moto permanecerá reservada mientras completas este paso.</div>';
 
-        // 10. Debug log panel (visible — captures iframe events on the
-        //     user's actual device since most won't open DevTools).
-        //     Hidden once we confirm production is stable.
-        html += '<div id="vk-truora-debug" style="margin-top:14px;padding:10px 12px;background:#0f172a;color:#94a3b8;border-radius:8px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;line-height:1.6;max-height:160px;overflow-y:auto;">[debug] esperando iniciar verificación...</div>';
+        // 10. Debug log panel — hidden in production, surfaced only when
+        //     diagnostics are needed by appending ?debug=1 (or &debug=1)
+        //     to the page URL. Customer report 2026-04-30: end users were
+        //     seeing the iframe URLs and probe timestamps mid-flow and
+        //     reading them as errors. The panel is still rendered (so
+        //     `_appendDebug` writes don't error out) but kept off-screen.
+        var _debugVisible = /[?&]debug=1\b/i.test(location.search);
+        var _debugStyle = _debugVisible
+            ? 'margin-top:14px;padding:10px 12px;background:#0f172a;color:#94a3b8;border-radius:8px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;line-height:1.6;max-height:160px;overflow-y:auto;'
+            : 'display:none;';
+        html += '<div id="vk-truora-debug" style="' + _debugStyle + '">[debug] esperando iniciar verificación...</div>';
 
         jQuery('#vk-credito-identidad-container').html(html);
 
@@ -149,7 +156,11 @@ var PasoCreditoIdentidad = {
             self._tokenFetched = false;
             self._iframeReady = false;
             self._finished = false;
-            jQuery('#vk-truora-container').html(
+            // Re-show the iframe container — a previous attempt may have
+            // hidden it once polling started (see succeeded/redirect
+            // branches). Without `.show()` the rebuilt iframe would render
+            // into a display:none parent.
+            jQuery('#vk-truora-container').show().html(
                 '<div id="vk-truora-loader" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;">' +
                     '<div style="font-size:15px;font-weight:700;color:#1a3a5c;margin-bottom:8px;">Preparando tu verificación…</div>' +
                     '<div style="font-size:13px;color:#6b7280;margin-bottom:16px;">Esto toma unos segundos</div>' +
@@ -513,6 +524,14 @@ var PasoCreditoIdentidad = {
                 self._finished = true;
                 state._identidadVerificada = false;
                 try { sessionStorage.removeItem('vk_identidad_uploads'); } catch (e) {}
+                // Hide the Truora iframe — once we have a process_id and
+                // are polling for the verdict, anything Truora shows in
+                // its iframe (success page, "Oh no, enlace inválido",
+                // expired-session screen, etc.) is just noise that
+                // confuses the user. Customer screenshot 2026-04-30
+                // showed Truora's "Oh no" page sitting above our
+                // "Verificando datos…" box.
+                jQuery('#vk-truora-container').hide();
                 jQuery('#vk-identidad-error')
                     .css({color:'#0c4a6e',background:'#e0f2fe'})
                     .html('<strong>Verificando datos…</strong>' +
@@ -591,6 +610,10 @@ var PasoCreditoIdentidad = {
                 // _pollWebhookResult drive navigation. The poll itself
                 // resets `_finished`/sets it again on its terminal branches.
                 this._finished = true;
+                // Hide the Truora iframe (see redirect-signal branch for
+                // rationale — keeps our holding screen clean instead of
+                // sandwiching it under whatever Truora renders post-flow).
+                jQuery('#vk-truora-container').hide();
                 jQuery('#vk-identidad-error')
                     .css({color:'#0c4a6e',background:'#e0f2fe'})
                     .html('<strong>Verificando datos…</strong>' +

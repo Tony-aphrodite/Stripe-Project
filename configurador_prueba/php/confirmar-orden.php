@@ -1168,10 +1168,14 @@ if (!$esCredito) {
                 error_log('confirmar-orden contrato persist: ' . $e->getMessage());
             }
 
-            // Email PDF as attachment. Best-effort — we don't fail the
-            // whole confirmation if SMTP is down (the PDF is already on
-            // disk and downloadable from the success screen).
-            if (!empty($email)) {
+            // Email PDF as attachment — DISABLED by default per customer
+            // brief 2026-04-30: "Don't send any additional email to
+            // customer with contract." The PDF is already downloadable
+            // from the success screen, so the email is redundant.
+            // To re-enable in the future set SEND_CONTRACT_EMAIL=1 in .env.
+            $sendContractEmail = strtolower((string)(getenv('SEND_CONTRACT_EMAIL') ?: '0'));
+            $sendContractEmail = in_array($sendContractEmail, ['1','true','yes','on'], true);
+            if ($sendContractEmail && !empty($email)) {
                 try {
                     contratoContadoSendEmail($contratoData, $genResult['path']);
                 } catch (Throwable $e) {

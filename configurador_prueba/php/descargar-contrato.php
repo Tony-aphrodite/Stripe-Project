@@ -90,10 +90,24 @@ if ($pdfPath !== '') {
 }
 $searchPaths[] = __DIR__ . '/../contratos/contado/' . $filename;            // canonical
 $searchPaths[] = sys_get_temp_dir() . '/voltika_contratos_contado/' . $filename; // /tmp fallback
-foreach ($searchPaths as $candidate) {
-    if ($candidate && file_exists($candidate) && is_readable($candidate)) {
-        $absPath = $candidate;
-        break;
+
+// Force regeneration when test mode is on or ?regen=1 is passed. Customer
+// report 2026-04-30: a cached PDF on disk was being served with its
+// original generation date (April 28), but during repeated testing the
+// customer expects every download to reflect the current day. In live
+// mode the saved PDF is preserved (a contract's date should not silently
+// change between downloads for a real customer).
+$forceRegen = (
+    !empty($_GET['regen']) ||
+    in_array(strtolower((string)(getenv('CDC_TEST_MODE') ?: '0')), ['1','true','yes','on'], true)
+);
+
+if (!$forceRegen) {
+    foreach ($searchPaths as $candidate) {
+        if ($candidate && file_exists($candidate) && is_readable($candidate)) {
+            $absPath = $candidate;
+            break;
+        }
     }
 }
 
@@ -103,7 +117,7 @@ foreach ($searchPaths as $candidate) {
 // code-tree was previously read-only end up here. The /tmp fallback in
 // contratoContadoOutputDir() means the regen now always succeeds.
 $regenError = null;
-if (($absPath === '' || !is_readable($absPath)) && $adminOk) {
+if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
     try {
         $bRow = $pdo->prepare("SELECT * FROM transacciones WHERE pedido = ? ORDER BY id DESC LIMIT 1");
         $bRow->execute([$pedido]);
@@ -124,7 +138,13 @@ if (($absPath === '' || !is_readable($absPath)) && $adminOk) {
                 $contratoData = [
                     'pedido'                  => $tx['pedido'],
                     'folio'                   => $tx['folio_contrato'] ?: $tx['pedido'],
-                    'contract_date'           => date('d/m/Y', strtotime($tx['freg'] ?? 'now')),
+                    // Use today's date for the contract header. Customer
+                    // report 2026-04-30: regenerated contracts were showing
+                    // the transaction's `freg` (e.g. April 28) instead of
+                    // the date the contract is being issued (April 30).
+                    // Aligned with confirmar-orden.php:1107 which already
+                    // uses date('d/m/Y') at first generation.
+                    'contract_date'           => date('d/m/Y'),
                     'customer_full_name'      => $tx['nombre'] ?: 'Cliente Voltika',
                     'customer_email'          => $tx['email'] ?? '',
                     'customer_phone'          => $tx['telefono'] ?? '',

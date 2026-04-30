@@ -129,9 +129,31 @@ $fields = [
     'redirect_url' => $redirectUrl,
 ];
 
+// Prefill phone to force the country dropdown to Mexico (+52). The
+// `country` field above is for document-validation country, not the
+// phone-verification step's default — that defaults to Colombia (+57)
+// at the flow level and the only reliable way to override it from
+// outside the dashboard is to seed phones[] with a +52-prefixed number.
+//
+// The 2026-04-28 "review your data" screen with a broken Edit button
+// only reproduced when we prefilled BOTH phones AND emails together.
+// With phones-only prefill the iframe goes straight into the next step.
+//
+// We reuse the phone the user already entered in credito-otp earlier
+// in the flow, normalised to E.164 (+52XXXXXXXXXX). If the phone is
+// missing (e.g. test runs), we omit the prefill rather than send a
+// malformed value Truora would reject as 400.
+$cleanPhone = preg_replace('/[^0-9]/', '', $telefono);
+$cleanPhone = preg_replace('/^52/', '', $cleanPhone); // drop existing 52 prefix
+$cleanPhone = preg_replace('/^0/',  '', $cleanPhone); // drop leading 0
+$prefilledPhone = ($cleanPhone !== '' && strlen($cleanPhone) >= 10) ? ('+52' . $cleanPhone) : '';
+
 $bodyPairs = [];
 foreach ($fields as $k => $v) {
     $bodyPairs[] = urlencode($k) . '=' . urlencode((string)$v);
+}
+if ($prefilledPhone !== '') {
+    $bodyPairs[] = 'phones[0]=' . urlencode($prefilledPhone);
 }
 $body = implode('&', $bodyPairs);
 
