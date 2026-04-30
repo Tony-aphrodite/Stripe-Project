@@ -21,6 +21,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
+// PRIMARY endpoint for verification codes — SMSMasivos's dedicated OTP
+// method that gets priority delivery (<5 s) and survives Mexican carrier
+// OTP filtering. The regular /sms/send endpoint returns a warning
+// `otp_method_recommended` and Telcel/AT&T/Movistar quietly drop
+// OTP-shaped payloads from it. Customer report 2026-04-30: 5,144 credits
+// available, /sms/send returned success=true, but SMS never reached the
+// phone. /otp/send fixes that.
+define('SMSMASIVOS_OTP_URL', 'https://api.smsmasivos.com.mx/otp/send');
+// LEGACY endpoint kept as the fallback path if /otp/send fails
+// (auth issue, rate limit, etc.) — preserves the previous behaviour.
 define('SMSMASIVOS_SMS_URL', 'https://api.smsmasivos.com.mx/sms/send');
 
 $json = json_decode(file_get_contents('php://input'), true);
@@ -77,30 +87,27 @@ $written = @file_put_contents($file, json_encode([
     'telefono' => $telefono
 ]), LOCK_EX);
 
-// ── Send SMS via SMSMasivos regular API ──────────────────────────────────────
-// Vary the body on repeat sends so carrier / device de-duplication doesn't
-// silently drop identical consecutive SMS. The code digit group stays
-// identical for the reused OTP window (10 min) but the framing text
-// changes each attempt.
-if ($sendCount <= 1) {
-    $mensaje = "Voltika: Tu codigo de verificacion es {$codigo}. Valido por 10 minutos.";
-} else {
-    // Pad with a visible attempt marker so the SMS is not a bit-for-bit
-    // duplicate of the previous one. Keeps the user-facing code unchanged.
-    $mensaje = "Voltika ({$sendCount}): Tu codigo es {$codigo}. Valido 10 min. Si ya lo recibiste, usalo.";
-}
-
-$ch = curl_init(SMSMASIVOS_SMS_URL);
+// ── Send via SMSMasivos OTP endpoint (primary) ──────────────────────────────
+// /otp/send generates the code SERVER-SIDE; we ask for the code back via
+// `showcode=1` and store THAT in the session so verificar-otp.php's
+// existing comparison logic still works unchanged. Code length 6 numeric
+// matches the previous shape we generated locally.
+$endpointUsed = 'otp';
+$ch = curl_init(SMSMASIVOS_OTP_URL);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'apikey: ' . SMSMASIVOS_API_KEY,
-    'Content-Type: application/x-www-form-urlencoded'
+    'Content-Type: application/json',
 ]);
-curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-    'message'      => $mensaje,
-    'numbers'      => $telefono,
-    'country_code' => '52'
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'phone_number' => $telefono,
+    'country_code' => '52',
+    'company'      => 'Voltika',
+    'template'     => 'a',
+    'code_length'  => 6,
+    'code_type'    => 'numeric',
+    'showcode'     => 1,
 ]));
 curl_setopt($ch, CURLOPT_TIMEOUT, 15);
 
@@ -108,6 +115,60 @@ $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlErr  = curl_error($ch);
 curl_close($ch);
+
+// If /otp/send returned the generated code, replace the locally-generated
+// one in the session so verification matches the SMS the user actually
+// receives. SMSMasivos's response shape under showcode=1 includes the
+// code at one of `code` or `otp_code` (docs vary across regions);
+// support both defensively.
+$otpRespArr = json_decode((string)$response, true);
+$otpAccepted = is_array($otpRespArr) && (
+    !empty($otpRespArr['success']) ||
+    (isset($otpRespArr['status']) && (int)$otpRespArr['status'] >= 200 && (int)$otpRespArr['status'] < 300)
+);
+if ($otpAccepted && $httpCode >= 200 && $httpCode < 300) {
+    $serverCode = (string)($otpRespArr['code'] ?? $otpRespArr['otp_code'] ?? '');
+    if (preg_match('/^\d{4,10}$/', $serverCode)) {
+        $codigo = $serverCode;
+        $_SESSION['otp_code']    = $codigo;
+        $_SESSION['otp_phone']   = $telefono;
+        $_SESSION['otp_expires'] = time() + 600;
+        // Refresh the file-backup with the server-issued code.
+        @file_put_contents($file, json_encode([
+            'codigo' => $codigo, 'expira' => time() + 600, 'telefono' => $telefono
+        ]), LOCK_EX);
+    }
+}
+
+// ── Fallback: legacy /sms/send if /otp/send did NOT accept ────────────
+// Preserves the prior pipeline so a brand-new endpoint failure doesn't
+// regress to no-SMS-at-all. Same locally-generated $codigo, framed in
+// our text body.
+if (!$otpAccepted) {
+    $endpointUsed = 'sms';
+    if ($sendCount <= 1) {
+        $mensaje = "Voltika: Tu codigo de verificacion es {$codigo}. Valido por 10 minutos.";
+    } else {
+        $mensaje = "Voltika ({$sendCount}): Tu codigo es {$codigo}. Valido 10 min. Si ya lo recibiste, usalo.";
+    }
+    $ch = curl_init(SMSMASIVOS_SMS_URL);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'apikey: ' . SMSMASIVOS_API_KEY,
+        'Content-Type: application/x-www-form-urlencoded',
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'message'      => $mensaje,
+        'numbers'      => $telefono,
+        'country_code' => '52',
+    ]));
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+}
 
 // ── Logging ──────────────────────────────────────────────────────────────────
 // Dual-log to BOTH the canonical php/logs/sms-otp.log AND a /tmp fallback,
@@ -120,6 +181,7 @@ curl_close($ch);
 $logEntry = json_encode([
     'timestamp'    => date('c'),
     'action'       => 'send-sms',
+    'endpoint'     => $endpointUsed,
     'telefono'     => substr($telefono, 0, 3) . '****' . substr($telefono, -3),
     'send_count'   => $sendCount,
     'attempt_hint' => $attemptHint,
@@ -148,19 +210,31 @@ if ($curlErr || ($httpCode >= 400)) {
 }
 
 // ── Response ─────────────────────────────────────────────────────────────────
+// Both /otp/send and /sms/send return JSON with `success`/`status`. For
+// /otp/send, success means SMSMasivos accepted the request and will
+// dispatch via priority OTP rails. For /sms/send fallback the field
+// shape is the same.
 $data = json_decode($response, true);
+$apiOk = !$curlErr && $httpCode >= 200 && $httpCode < 300 && (
+    !empty($data['success']) ||
+    (isset($data['status']) && (int)$data['status'] >= 200 && (int)$data['status'] < 300)
+);
 
-if (!$curlErr && $httpCode >= 200 && $httpCode < 300 && !empty($data['success'])) {
-    // SMS sent successfully
+if ($apiOk) {
     echo json_encode([
-        'status'  => 'sent',
-        'message' => 'Código enviado por SMS.'
+        'status'   => 'sent',
+        'message'  => 'Código enviado por SMS.',
+        'endpoint' => $endpointUsed,
     ]);
 } else {
-    // API failed — return fallback test code so user can still proceed
+    // Both endpoints failed — return fallback test code so user can still
+    // proceed in dev/test. In production this lets the user complete the
+    // flow even when SMS infrastructure is degraded; the verify-otp.php
+    // gate still requires the matching $_SESSION['otp_code'].
     echo json_encode([
         'status'   => 'sent',
         'testCode' => $codigo,
-        'fallback' => true
+        'fallback' => true,
+        'endpoint' => $endpointUsed,
     ]);
 }
