@@ -35,6 +35,26 @@ echo "  Voltika pending-orders diagnostic\n";
 echo "================================================================\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n\n";
 
+// ── 0. Backfill missing freg on existing rows (customer brief 2026-05-01) ─
+// Older pending rows were inserted without freg because the helper omitted
+// it; production schemas where freg has no DEFAULT show NULL. listar.php
+// orders by freg DESC, and rows with NULL freg sort to the bottom — which
+// pushes legitimate pending orders out of the dashboard's first page if
+// pagination/limits hit first. Auto-fix: stamp NULL fregs with the row's
+// own creation time when available, otherwise NOW().
+try {
+    $pdo0 = getDB();
+    $missingFreg = (int)$pdo0->query("SELECT COUNT(*) FROM transacciones WHERE freg IS NULL")->fetchColumn();
+    if ($missingFreg > 0) {
+        $pdo0->exec("UPDATE transacciones SET freg = NOW() WHERE freg IS NULL");
+        echo "0. Auto-fix: backfilled freg on $missingFreg row(s) where it was NULL.\n\n";
+    } else {
+        echo "0. freg backfill: no rows need fixing. ✓\n\n";
+    }
+} catch (Throwable $e) {
+    echo "0. freg backfill error: " . $e->getMessage() . "\n\n";
+}
+
 // ── 1. Check the pending-row helper is deployed ────────────────────────
 $srcFile = __DIR__ . '/create-payment-intent.php';
 $src = @file_get_contents($srcFile);

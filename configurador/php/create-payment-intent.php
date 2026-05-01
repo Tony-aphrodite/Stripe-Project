@@ -79,7 +79,8 @@ function _voltikaInsertPendingTransaccion(string $stripePi, array $customer, int
             // Same applicant — refresh the existing pending row with the
             // current PI / method / amount. Preserve any non-empty fields
             // already on the row (defensive against blank customer payloads
-            // on subsequent calls).
+            // on subsequent calls). Touch freg too so the dashboard moves
+            // the entry to the top after every payment-method change.
             $upd = $pdo->prepare("UPDATE transacciones SET
                     stripe_pi   = ?,
                     tpago       = ?,
@@ -92,7 +93,8 @@ function _voltikaInsertPendingTransaccion(string $stripePi, array $customer, int
                     ciudad      = COALESCE(NULLIF(ciudad,''), ?),
                     estado      = COALESCE(NULLIF(estado,''), ?),
                     cp          = COALESCE(NULLIF(cp,''),     ?),
-                    environment = ?
+                    environment = ?,
+                    freg        = COALESCE(freg, NOW())
                 WHERE id = ?");
             $upd->execute([
                 $stripePi,
@@ -113,10 +115,13 @@ function _voltikaInsertPendingTransaccion(string $stripePi, array $customer, int
         }
 
         // No existing pending row — INSERT IGNORE for stripe_pi safety.
+        // freg is set explicitly so admin dashboard ORDER BY freg DESC
+        // returns rows in chronological order even on legacy schemas
+        // where the column may not have DEFAULT CURRENT_TIMESTAMP.
         $sql = "INSERT IGNORE INTO transacciones
                   (nombre, email, telefono, modelo, color, ciudad, estado, cp,
-                   tpago, precio, total, stripe_pi, msi_meses, pago_estado, environment)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)";
+                   tpago, precio, total, freg, stripe_pi, msi_meses, pago_estado, environment)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, 'pendiente', ?)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             $nombre,
