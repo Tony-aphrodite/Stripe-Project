@@ -43,13 +43,76 @@ function _voltikaInsertPendingTransaccion(string $stripePi, array $customer, int
         try { $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX uniq_stripe_pi (stripe_pi)"); }
         catch (Throwable $e) {}
 
-        $nombre = trim(($customer['nombre'] ?? '') . ' ' . ($customer['apellidos'] ?? ''));
-        $tpago  = $customer['tpago']
+        $email    = trim((string)($customer['email']    ?? ''));
+        $telefono = trim((string)($customer['telefono'] ?? ''));
+        $nombre   = trim(($customer['nombre'] ?? '') . ' ' . ($customer['apellidos'] ?? ''));
+        $tpago    = $customer['tpago']
                   ?? ($msiMeses > 0 ? 'msi' : ($method === 'oxxo' ? 'oxxo' : ($method === 'spei' ? 'spei' : 'contado')));
-        $total  = $amountCents / 100;
+        $total    = $amountCents / 100;
 
-        // INSERT IGNORE → if stripe_pi collides, leave the existing row alone.
-        // confirmar-orden.php will UPDATE it later with the final values.
+        // ── Customer-level dedup (customer brief 2026-05-01) ──────────────
+        // The same applicant may switch payment methods (card → OXXO/SPEI)
+        // or trigger several create-payment-intent calls (e.g. OXXO is
+        // split into multiple references). Each iteration must NOT create
+        // a separate dashboard row. We look for an existing 'pendiente'
+        // row matched by email or phone within the last 24h and UPDATE it
+        // with the latest PI / method / amount instead of inserting a new
+        // duplicate. Result: 1 row per applicant per session, no matter
+        // how many PIs Stripe creates under the hood.
+        $existingId = null;
+        if ($email !== '' || $telefono !== '') {
+            $where  = [];
+            $params = [];
+            if ($email !== '')    { $where[] = "email = ?";    $params[] = $email; }
+            if ($telefono !== '') { $where[] = "telefono = ?"; $params[] = $telefono; }
+            $sql = "SELECT id FROM transacciones
+                    WHERE pago_estado = 'pendiente'
+                      AND freg >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                      AND (" . implode(' OR ', $where) . ")
+                    ORDER BY id DESC LIMIT 1";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $existingId = $stmt->fetchColumn() ?: null;
+        }
+
+        if ($existingId) {
+            // Same applicant — refresh the existing pending row with the
+            // current PI / method / amount. Preserve any non-empty fields
+            // already on the row (defensive against blank customer payloads
+            // on subsequent calls).
+            $upd = $pdo->prepare("UPDATE transacciones SET
+                    stripe_pi   = ?,
+                    tpago       = ?,
+                    precio      = ?,
+                    total       = ?,
+                    msi_meses   = ?,
+                    nombre      = COALESCE(NULLIF(nombre,''), ?),
+                    modelo      = COALESCE(NULLIF(modelo,''), ?),
+                    color       = COALESCE(NULLIF(color,''),  ?),
+                    ciudad      = COALESCE(NULLIF(ciudad,''), ?),
+                    estado      = COALESCE(NULLIF(estado,''), ?),
+                    cp          = COALESCE(NULLIF(cp,''),     ?),
+                    environment = ?
+                WHERE id = ?");
+            $upd->execute([
+                $stripePi,
+                $tpago,
+                $total,
+                $total,
+                $msiMeses,
+                $nombre,
+                $customer['modelo']   ?? '',
+                $customer['color']    ?? '',
+                $customer['ciudad']   ?? '',
+                $customer['estado']   ?? '',
+                $customer['cp']       ?? '',
+                defined('APP_ENV') ? APP_ENV : 'test',
+                (int)$existingId,
+            ]);
+            return;
+        }
+
+        // No existing pending row — INSERT IGNORE for stripe_pi safety.
         $sql = "INSERT IGNORE INTO transacciones
                   (nombre, email, telefono, modelo, color, ciudad, estado, cp,
                    tpago, precio, total, stripe_pi, msi_meses, pago_estado, environment)
@@ -57,8 +120,8 @@ function _voltikaInsertPendingTransaccion(string $stripePi, array $customer, int
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             $nombre,
-            $customer['email']    ?? '',
-            $customer['telefono'] ?? '',
+            $email,
+            $telefono,
             $customer['modelo']   ?? '',
             $customer['color']    ?? '',
             $customer['ciudad']   ?? '',
@@ -605,10 +668,21 @@ try {
                     'paymentIntentId'    => $intent->id
                 ];
             }
+        }
 
-            // OXXO: track each split-PI as pendiente. The bank-reference email
-            // (existing _sendReminderEmail) is sent once below for all refs.
-            _voltikaInsertPendingTransaccion($intent->id, $customer, (int)$oxxoAmount, 'oxxo', 0);
+        // ── OXXO dashboard tracking (customer brief 2026-05-01) ───────────
+        // OXXO orders over $10k are split into multiple references in
+        // Stripe, but the customer expects ONE dashboard entry per order.
+        // Insert/update the pending row only ONCE, using the first PI as
+        // canonical and the TOTAL enganche amount (sum of refs).
+        if (!empty($oxxoRefs)) {
+            _voltikaInsertPendingTransaccion(
+                (string)$oxxoRefs[0]['paymentIntentId'],
+                $customer,
+                (int)$amount,
+                'oxxo',
+                0
+            );
         }
 
         $response = [
