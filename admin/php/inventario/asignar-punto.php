@@ -55,13 +55,8 @@ if (!empty($moto['bloqueado_venta'])) {
     adminJsonOut(['error' => 'Esta moto está bloqueada. Motivo: ' . ($moto['bloqueado_motivo'] ?? 'Sin motivo') . '. Desbloquéala primero.'], 403);
 }
 
-// Rule: checklist_origen must be complete
-$co = $pdo->prepare("SELECT completado FROM checklist_origen WHERE moto_id=? ORDER BY freg DESC LIMIT 1");
-$co->execute([$motoId]);
-$coRow = $co->fetch(PDO::FETCH_ASSOC);
-if (!$coRow || !$coRow['completado']) {
-    adminJsonOut(['error' => 'El checklist de origen no está completo. No se puede asignar.'], 400);
-}
+// Customer brief 2026-04-30: checklist_origen requirement removed for
+// punto assignment. Inspection now happens after the moto reaches the punto.
 
 // Verify punto exists
 $pStmt = $pdo->prepare("SELECT * FROM puntos_voltika WHERE id=? AND activo=1");

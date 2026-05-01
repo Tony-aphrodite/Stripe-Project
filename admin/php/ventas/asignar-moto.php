@@ -85,15 +85,9 @@ if (!$moto) {
     adminJsonOut(['error' => 'Moto no encontrada'], 404);
 }
 
-// Rule: checklist_origen must be complete before assigning a bike.
-$co = $pdo->prepare("SELECT completado FROM checklist_origen WHERE moto_id = ? ORDER BY freg DESC LIMIT 1");
-$co->execute([$motoId]);
-$coRow = $co->fetch(PDO::FETCH_ASSOC);
-if (!$coRow || !$coRow['completado']) {
-    adminJsonOut([
-        'error' => 'El checklist de origen no está completo para esta moto. Debe completarse antes de asignar.'
-    ], 403);
-}
+// Customer brief 2026-04-30: checklist_origen requirement removed. Sales can
+// proceed before physical inspection; CEDIS completes the checklist after
+// the order is placed. Only `bloqueado_venta` still blocks assignment.
 
 // Rule: sale-locked motos cannot be assigned.
 if (!empty($moto['bloqueado_venta'])) {

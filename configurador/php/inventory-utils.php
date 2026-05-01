@@ -9,8 +9,12 @@
  * Find and assign the oldest available moto (FIFO) matching model + color.
  *
  * Only considers motos that:
- * - Have completed checklist_origen
  * - Are not sale-locked (bloqueado_venta = 0)
+ *
+ * Customer brief 2026-04-30: motos must be sellable as soon as they are
+ * imported into inventario_motos. The CEDIS origin-checklist requirement
+ * was removed — physical inspection now happens AFTER sale, not as a
+ * gate before publication.
  *
  * @return int|null  moto_id if assigned, null if no match found
  */
@@ -28,7 +32,7 @@ function asignarMotoFIFO(
 ): ?int {
 
     // ── Find best FIFO match ─────────────────────────────────────────────────
-    // Must have: completed origin checklist, not sale-locked
+    // Must have: not sale-locked (origin-checklist gate removed 2026-04-30).
     $stmt = $pdo->prepare("
         SELECT m.id, m.vin, m.modelo, m.color, m.estado
         FROM inventario_motos m
@@ -39,10 +43,6 @@ function asignarMotoFIFO(
           AND (m.pedido_num IS NULL OR m.pedido_num = '')
           AND (m.cliente_email IS NULL OR m.cliente_email = '')
           AND (m.bloqueado_venta = 0 OR m.bloqueado_venta IS NULL)
-          AND EXISTS (
-              SELECT 1 FROM checklist_origen co
-              WHERE co.moto_id = m.id AND co.completado = 1
-          )
         ORDER BY
             CASE WHEN m.fecha_ingreso_pais IS NOT NULL THEN 0 ELSE 1 END,
             m.fecha_ingreso_pais ASC,
@@ -143,12 +143,14 @@ function contarDisponibles(PDO $pdo, string $modelo = '', string $color = '', in
         $colChecked = true;
     }
 
+    // Customer brief 2026-04-30: removed the checklist_origen requirement.
+    // Motos must be available for sale as soon as they're imported into
+    // inventario_motos; physical CEDIS inspection happens post-sale.
     $base  = ["m.activo = 1", "m.estado NOT IN ('entregada','retenida')",
                "(m.pedido_num IS NULL OR m.pedido_num = '')",
                "(m.cliente_email IS NULL OR m.cliente_email = '')",
                "m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'",
-               "(m.bloqueado_venta = 0 OR m.bloqueado_venta IS NULL)",
-               "EXISTS (SELECT 1 FROM checklist_origen co WHERE co.moto_id = m.id AND co.completado = 1)"];
+               "(m.bloqueado_venta = 0 OR m.bloqueado_venta IS NULL)"];
     $params = [];
 
     // Location filter: CEDIS + optional punto consignación (only venta_publico=1)
