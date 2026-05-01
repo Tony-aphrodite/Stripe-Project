@@ -609,18 +609,31 @@ try {
         exit;
     }
 
-    // ── 3D Secure enforcement for card payments ────────────────────────────
+    // ── 3D Secure handling for card payments ───────────────────────────────
     // Customer brief 2026-04-24: "All card payment transactions has to be
-    // with 3D secure". Value 'any' requests 3DS on cards that support it
-    // (essentially every modern Visa/MC/Amex) while gracefully falling
-    // through on legacy cards that can't do 3DS at all. This shifts
-    // chargeback liability to the issuer and blocks stolen-card fraud —
-    // critical for high-ticket items ($48k MXN motorcycles).
+    // with 3D secure".
+    //
+    // History:
+    //   - 'any' was forcing 3DS on EVERY card unconditionally. Diagnostic
+    //     2026-05-01 showed 90% of recent live PIs failing — 21/30 stuck at
+    //     `requires_payment_method` and 6/30 at `requires_action`. Many
+    //     Mexican issuing banks have spotty 3DS support: the popup either
+    //     doesn't appear, the SMS/email code never arrives, or the
+    //     authentication times out → customer reports "no deja pagar con
+    //     TDC". This was the production-breaking bug.
+    //
+    // Fix (customer brief 2026-05-01): change to 'automatic' — Stripe and
+    // the issuing bank decide together when 3DS is actually required (the
+    // issuer-mandated cases under SCA / EMV 3DS rules). This still
+    // protects high-risk transactions while letting low-risk/issuer-exempt
+    // transactions proceed without an unnecessary 3DS hurdle. Liability
+    // shift still applies whenever 3DS does run, which covers the
+    // chargeback concern for the $48k motorcycles.
     //
     // Off-session (MIT) payments — like the weekly credit auto-charge —
     // cannot do 3DS because the customer isn't present; Stripe handles
     // those via the MIT exemption captured during this first on-session
-    // payment, so forcing 3DS HERE is the right place.
+    // payment.
     if ($method === 'card') {
         if (!isset($intentData['payment_method_options'])) {
             $intentData['payment_method_options'] = [];
@@ -628,7 +641,7 @@ try {
         if (!isset($intentData['payment_method_options']['card'])) {
             $intentData['payment_method_options']['card'] = [];
         }
-        $intentData['payment_method_options']['card']['request_three_d_secure'] = 'any';
+        $intentData['payment_method_options']['card']['request_three_d_secure'] = 'automatic';
     }
 
     // Habilitar MSI si aplica (solo para card)
