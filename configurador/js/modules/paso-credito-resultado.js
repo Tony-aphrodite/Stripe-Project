@@ -35,7 +35,21 @@ var PasoCreditoResultado = {
      */
     _aplicarEstadoResultado: function(status, resultado) {
         var s = this.app.state;
-        s.creditoAprobado = (status !== 'NO_VIABLE');
+
+        // Detect low-score rejection so it routes to the configurator with
+        // FIXED locked enganche + plazo (customer brief 2026-05-01). Score
+        // below the KO threshold is no longer a hard reject — instead the
+        // applicant gets ONE last recovery path: pay a high down payment
+        // (60%) on the shortest term (12 mo). The slider and plazo buttons
+        // are locked in this case (modoCondicionalBloqueado=true), so the
+        // user accepts the fixed terms or chooses an alternative payment.
+        var isLowScore = (status === 'NO_VIABLE'
+            && resultado && Array.isArray(resultado.reasons)
+            && resultado.reasons.indexOf('KO_SCORE_LT_MIN') !== -1);
+
+        s.creditoAprobado = (status !== 'NO_VIABLE') || isLowScore;
+        s.modoCondicionalBloqueado = false;   // reset every render
+
         if (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO') {
             s.modoCondicional = true;
             s.engancheAjustado = false;
@@ -60,6 +74,19 @@ var PasoCreditoResultado = {
                     s.plazoAjustado = true;
                 }
             }
+        } else if (isLowScore) {
+            // Low score → locked recovery path. NOT a free CONDICIONAL.
+            // Force exact values: 60% enganche, 12 months. Slider/plazo
+            // buttons will be disabled in paso4b-credito.js when the
+            // bloqueado flag is set.
+            s.modoCondicional         = true;
+            s.modoCondicionalBloqueado = true;
+            s.enganchePctMin          = 0.60;
+            s.plazoMesesMax           = 12;
+            s.enganchePorcentaje      = 0.60;
+            s.plazoMeses              = 12;
+            s.engancheAjustado        = true;
+            s.plazoAjustado           = true;
         } else {
             s.modoCondicional = false;
         }

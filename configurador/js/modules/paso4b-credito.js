@@ -260,9 +260,12 @@ var Paso4B = {
         var img     = VkUI.getImagenMoto(modelo.id, state.colorSeleccionado || modelo.colorDefault);
 
         // CONDICIONAL mode limits exposed from paso-credito-resultado.js.
-        var cond      = !!state.modoCondicional;
-        var engPctMin = cond && state.enganchePctMin  ? state.enganchePctMin  : 0.25;
-        var plazoMax  = cond && state.plazoMesesMax   ? state.plazoMesesMax   : 36;
+        // bloqueado=true means low-score recovery: enganche+plazo are
+        // FIXED (no slider/buttons). Everything else is regular CONDICIONAL.
+        var cond       = !!state.modoCondicional;
+        var bloqueado  = cond && !!state.modoCondicionalBloqueado;
+        var engPctMin  = cond && state.enganchePctMin  ? state.enganchePctMin  : 0.25;
+        var plazoMax   = cond && state.plazoMesesMax   ? state.plazoMesesMax   : 36;
 
         var html = '';
 
@@ -285,9 +288,16 @@ var Paso4B = {
             html += '<div style="background:#FFF3E0;border:1.5px solid #FB8C00;border-radius:10px;padding:14px 16px;margin-bottom:16px;">';
             html += '<div style="font-weight:700;color:#E65100;margin-bottom:6px;font-size:14px;">⚠ Condiciones de tu aprobación</div>';
             html += '<div style="font-size:13px;color:#5d4037;line-height:1.5;">';
-            html += 'Tu evaluación crediticia requiere al menos <strong>' + Math.round(engPctMin * 100) + '% de enganche</strong>';
-            html += ' y un plazo máximo de <strong>' + plazoMax + ' meses</strong>. ';
-            html += 'Puedes subir más el enganche o bajar el plazo si quieres.';
+            if (bloqueado) {
+                // Locked recovery path — fixed terms, no flexibility.
+                html += 'Tu perfil crediticio requiere los siguientes términos <strong>fijos</strong>: ';
+                html += '<strong>' + Math.round(engPctMin * 100) + '% de enganche</strong> y un plazo de <strong>' + plazoMax + ' meses</strong>. ';
+                html += 'No puedes ajustar estos valores. Si prefieres más flexibilidad, considera pagar al contado o por MSI.';
+            } else {
+                html += 'Tu evaluación crediticia requiere al menos <strong>' + Math.round(engPctMin * 100) + '% de enganche</strong>';
+                html += ' y un plazo máximo de <strong>' + plazoMax + ' meses</strong>. ';
+                html += 'Puedes subir más el enganche o bajar el plazo si quieres.';
+            }
             html += '</div>';
             html += '</div>';
         }
@@ -317,12 +327,18 @@ var Paso4B = {
         // min-required enganche from the credit evaluation (customer
         // cannot go below it).
         var sliderMin = cond ? Math.max(25, Math.round(engPctMin * 100)) : 25;
-        var sliderVal = Math.max(sliderMin, Math.round(this._enganchePct * 100));
-        html += '<input type="range" id="vk-enganche-slider" min="' + sliderMin + '" max="80" value="' + sliderVal + '" step="5" ' +
-            'style="width:100%;">';
+        var sliderMax = bloqueado ? sliderMin : 80;
+        var sliderVal = bloqueado ? sliderMin : Math.max(sliderMin, Math.round(this._enganchePct * 100));
+        var sliderStyle = bloqueado ? 'width:100%;opacity:.55;cursor:not-allowed;' : 'width:100%;';
+        var sliderDisabled = bloqueado ? ' disabled aria-disabled="true"' : '';
+        html += '<input type="range" id="vk-enganche-slider" min="' + sliderMin + '" max="' + sliderMax + '" value="' + sliderVal + '" step="5"' + sliderDisabled + ' style="' + sliderStyle + '">';
         html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--vk-text-muted);margin-top:4px;">' +
-            '<span>' + sliderMin + '%</span><span>80%</span></div>';
-        html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-top:6px;">M\u00e1s enganche = menor pago semanal</div>';
+            '<span>' + sliderMin + '%</span><span>' + sliderMax + '%</span></div>';
+        if (bloqueado) {
+            html += '<div style="text-align:center;font-size:12px;color:#E65100;margin-top:6px;font-weight:700;">Enganche fijo seg\u00fan tu perfil crediticio</div>';
+        } else {
+            html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-top:6px;">M\u00e1s enganche = menor pago semanal</div>';
+        }
 
         // ── Plazo buttons ──────────────────────────────────────────────────
         // CONDICIONAL mode filters out any plazo longer than what the
@@ -332,12 +348,17 @@ var Paso4B = {
             plazoOptions = plazoOptions.filter(function(p){ return p <= plazoMax; });
             if (plazoOptions.length === 0) plazoOptions = [12];
         }
+        if (bloqueado) plazoOptions = [plazoMax];
         html += '<div style="margin-top:20px;">';
-        html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">Elige tu plazo</div>';
-        html += '<div id="vk-plazo-btns" style="display:flex;gap:8px;">';
+        html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">' + (bloqueado ? 'Plazo' : 'Elige tu plazo') + '</div>';
+        html += '<div id="vk-plazo-btns" style="display:flex;gap:8px;' + (bloqueado ? 'pointer-events:none;opacity:.85;' : '') + '">';
         html += this._renderPlazoBtns(plazoOptions, this._plazoMeses, null, modelo, this._enganchePct);
         html += '</div>';
-        html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-top:8px;">Mayor plazo = menor pago semanal</div>';
+        if (bloqueado) {
+            html += '<div style="text-align:center;font-size:12px;color:#E65100;margin-top:8px;font-weight:700;">Plazo fijo según tu perfil crediticio</div>';
+        } else {
+            html += '<div style="text-align:center;font-size:13px;color:var(--vk-text-secondary);margin-top:8px;">Mayor plazo = menor pago semanal</div>';
+        }
         html += '</div>';
 
         // ── Pago semanal result box ────────────────────────────────────────
