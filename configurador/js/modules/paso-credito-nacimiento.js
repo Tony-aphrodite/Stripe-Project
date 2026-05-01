@@ -26,6 +26,87 @@ var PasoCreditoNacimiento = {
     // + 1 alphanumeric homoclave + 1 digit verifier.
     _curpRegex: /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/,
 
+    // ── CURP-to-name local validation (anti-fraud, customer brief 2026-04-30) ──
+    // The first 4 letters of every CURP are deterministically derived from the
+    // person's name per RENAPO rules:
+    //   1. First letter of apellido paterno
+    //   2. First INTERNAL vowel of apellido paterno (A/E/I/O/U after position 0)
+    //   3. First letter of apellido materno (X if absent)
+    //   4. First letter of nombre (skipping JOSE/MARIA/MA/J prefix)
+    // If the typed name's derived initials don't match the typed CURP's
+    // first 4 letters, one of the two is fake → reject before hitting CDC,
+    // saving a bureau query and blocking impersonation attempts.
+    _stripAccents: function(s) {
+        if (!s) return '';
+        return String(s)
+            .normalize('NFD')
+            .replace(/[̀-ͯ]/g, '')
+            .toUpperCase()
+            .replace(/[^A-ZÑ ]/g, ' ')   // keep letters, Ñ, spaces
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+    _stripPreps: function(s) {
+        // Drop leading prepositions (DE, DEL, LA, LAS, LOS, MC, VAN, VON, Y).
+        // RENAPO ignores them when deriving the CURP initials.
+        var preps = {DE:1,DEL:1,LA:1,LAS:1,LOS:1,MC:1,VAN:1,VON:1,Y:1};
+        var parts = (s || '').split(/\s+/);
+        while (parts.length > 1 && preps[parts[0]]) parts.shift();
+        return parts.join(' ');
+    },
+    _curpInitialsFromName: function(nombre, paterno, materno) {
+        var clean = this._stripAccents;
+        var nom = clean(nombre);
+        var pat = this._stripPreps(clean(paterno));
+        var mat = this._stripPreps(clean(materno));
+
+        // Composite first names: skip JOSE/MARIA/MA/J prefix when more
+        // names follow — RENAPO uses the SECOND name in that case.
+        var nomParts = nom.split(/\s+/);
+        if (nomParts.length > 1 && {JOSE:1, MARIA:1, MA:1, J:1}[nomParts[0]]) {
+            nomParts.shift();
+        }
+        nom = nomParts[0] || '';
+
+        if (pat.length === 0 || nom.length === 0) return null;
+
+        // Letter 1 — first char of paterno (Ñ → X per RENAPO)
+        var l1 = pat.charAt(0) === 'Ñ' ? 'X' : pat.charAt(0);
+
+        // Letter 2 — first internal vowel of paterno
+        var l2 = 'X';
+        for (var i = 1; i < pat.length; i++) {
+            var c = pat.charAt(i);
+            if (c === 'A' || c === 'E' || c === 'I' || c === 'O' || c === 'U') {
+                l2 = c; break;
+            }
+        }
+
+        // Letter 3 — first char of materno (X if absent)
+        var l3 = 'X';
+        if (mat) {
+            var c3 = mat.charAt(0);
+            l3 = (c3 === 'Ñ') ? 'X' : c3;
+        }
+
+        // Letter 4 — first char of (non-prefix) nombre
+        var l4 = nom.charAt(0) === 'Ñ' ? 'X' : nom.charAt(0);
+
+        return l1 + l2 + l3 + l4;
+    },
+    _curpInitialsMatch: function(typed, expected) {
+        // Allow X anywhere on either side. RENAPO substitutes X when the
+        // computed initials would form a banned word (BUEY/KACA/etc.) so a
+        // valid CURP can legitimately contain X where the name predicts a
+        // different letter.
+        if (!typed || !expected || typed.length !== 4 || expected.length !== 4) return false;
+        for (var i = 0; i < 4; i++) {
+            var t = typed.charAt(i), e = expected.charAt(i);
+            if (t !== e && t !== 'X' && e !== 'X') return false;
+        }
+        return true;
+    },
+
     render: function() {
         var state = this.app.state;
         var html = '';
@@ -114,6 +195,31 @@ var PasoCreditoNacimiento = {
             }
             if (!self._curpRegex.test(curp)) {
                 jQuery('#vk-cnac-error').text('Formato de CURP inválido. Revisa el orden de letras y números.').show();
+                return;
+            }
+
+            // ── Anti-fraud: CURP initials must match the typed name ──────
+            // Customer brief 2026-04-30: blocks the case where a person
+            // submits a real CURP under a fake/typo'd name (e.g. "MARTEINEZ
+            // MENDE" — a real Carlos Martinez Mendez's CURP) so that CDC's
+            // loose matching can't be used to impersonate a real bureau
+            // history. The check is purely local — no bureau call yet.
+            var st = self.app.state || {};
+            var expected = self._curpInitialsFromName(st.nombre, st.apellidoPaterno, st.apellidoMaterno);
+            var typedInitials = curp.substring(0, 4);
+            if (expected && !self._curpInitialsMatch(typedInitials, expected)) {
+                jQuery('#vk-cnac-error').html(
+                    '<strong>Tu CURP no coincide con el nombre que ingresaste.</strong><br>' +
+                    'Esperado (por nombre): <code>' + expected + '·····</code><br>' +
+                    'Tu CURP comienza con: <code>' + typedInitials + '·····</code><br>' +
+                    'Verifica nombre, apellidos y CURP. ' +
+                    '<a href="#" id="vk-cnac-corregir-nombre" style="color:#039fe1;font-weight:700;">Regresar a corregir →</a>'
+                ).show();
+                jQuery(document).off('click', '#vk-cnac-corregir-nombre');
+                jQuery(document).on('click', '#vk-cnac-corregir-nombre', function(e) {
+                    e.preventDefault();
+                    self.app.irAPaso('credito-nombre');
+                });
                 return;
             }
 
