@@ -157,67 +157,120 @@ if ($code !== 200) {
 }
 echo "\n";
 
-// ── 4. Test PaymentIntent CREATE without confirming (no charge) ────────────
-echo "4. Test PaymentIntent CREATE (no charge — validates server-side flow):\n";
-$ch = curl_init('https://api.stripe.com/v1/payment_intents');
+// ── 4. Test PaymentIntent CREATE through OUR endpoint (validates fix) ──────
+// Customer brief 2026-05-01 followup: verify the 3DS=automatic fix is
+// actually deployed by hitting our own create-payment-intent.php (the
+// same code path real customers use), then inspecting the resulting PI's
+// payment_method_options. If we still see 3DS='any' the file isn't
+// uploaded; if we see 'automatic' the fix is live and active. The PI is
+// canceled immediately afterwards so no real charge ever happens.
+echo "4. End-to-end verification through OUR endpoint (no charge):\n";
+
+$selfBase = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'voltika.mx') . dirname($_SERVER['REQUEST_URI'] ?? '/configurador/php/');
+$selfBase = preg_replace('#/+$#', '', $selfBase);
+$payload = json_encode([
+    'amount'   => 5000,        // $50 MXN — above Stripe MX $10 minimum
+    'method'   => 'card',
+    'tipo'     => 'contado',
+    'customer' => [
+        'nombre'    => 'Voltika',
+        'apellidos' => 'Diag',
+        'email'     => 'diag+' . date('Ymd-His') . '@voltika.mx',
+        'telefono'  => '5500000000',
+        'modelo'    => 'M05',
+        'color'     => 'gris',
+        'ciudad'    => 'CDMX',
+        'estado'    => 'CDMX',
+        'cp'        => '01000',
+        'tpago'     => 'unico',
+    ],
+]);
+
+$ch = curl_init($selfBase . '/create-payment-intent.php');
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => [
-        'Authorization: Bearer ' . $sk,
-        'Content-Type: application/x-www-form-urlencoded',
-    ],
+    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
     CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => http_build_query([
-        'amount'                 => 500,        // $5 MXN — symbolic, not confirmed
-        'currency'               => 'mxn',
-        'payment_method_types[]' => 'card',
-        'description'            => 'Voltika diag (no charge)',
-        'metadata[diag_only]'    => '1',
-    ]),
-    CURLOPT_TIMEOUT        => 15,
+    CURLOPT_POSTFIELDS     => $payload,
+    CURLOPT_TIMEOUT        => 20,
+    CURLOPT_FOLLOWLOCATION => true,
 ]);
-$resp = curl_exec($ch);
-$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$selfResp = curl_exec($ch);
+$selfCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$selfErr  = curl_error($ch);
 curl_close($ch);
 
-if ($code !== 200) {
-    $errBody = json_decode((string)$resp, true);
-    echo "   FAIL HTTP $code\n";
-    if (isset($errBody['error'])) {
-        printf("   Error type    : %s\n", $errBody['error']['type'] ?? '?');
-        printf("   Error code    : %s\n", $errBody['error']['code'] ?? '?');
-        printf("   Error message : %s\n", $errBody['error']['message'] ?? '?');
-    } else {
-        echo "   Body: " . substr((string)$resp, 0, 500) . "\n";
-    }
-    echo "\n   ROOT CAUSE: Stripe API rejected our PI creation request.\n";
-    echo "   Check the error message above — common reasons:\n";
-    echo "     - Invalid API key (rotated, never updated in .env)\n";
-    echo "     - Account suspended / requirements unmet\n";
-    echo "     - Invalid metadata / amount\n";
+if ($selfErr) {
+    echo "   curl error hitting our endpoint: $selfErr\n";
+} elseif ($selfCode !== 200) {
+    echo "   FAIL HTTP $selfCode from our endpoint\n";
+    echo "   Body: " . substr((string)$selfResp, 0, 400) . "\n";
 } else {
-    $pi = json_decode((string)$resp, true);
-    printf("   OK ✓  PI created: %s  status=%s  amount=%d\n",
-        $pi['id'] ?? '?',
-        $pi['status'] ?? '?',
-        $pi['amount'] ?? 0);
-    echo "   → Server-side PI creation works. If customers still can't pay,\n";
-    echo "     the issue is in the FRONTEND (Stripe Elements iframe, JS, CSP)\n";
-    echo "     or at confirm-time (3DS, card declined, etc.).\n";
+    $j = json_decode((string)$selfResp, true);
+    if (empty($j['clientSecret'])) {
+        echo "   FAIL — endpoint returned no clientSecret\n";
+        echo "   Body: " . substr((string)$selfResp, 0, 400) . "\n";
+    } else {
+        printf("   OK ✓  Our endpoint returned clientSecret + PI created\n");
+        // Extract PI id from clientSecret format: pi_xxx_secret_yyy
+        $piId = (string)($j['paymentIntentId'] ?? '');
+        if ($piId === '' && preg_match('/^(pi_[A-Za-z0-9]+)_secret_/', (string)$j['clientSecret'], $m)) {
+            $piId = $m[1];
+        }
+        printf("   PI ID         : %s\n", $piId ?: '?');
 
-    // Cancel the test PI so it doesn't pollute Stripe dashboard
-    if (!empty($pi['id'])) {
-        $ch2 = curl_init("https://api.stripe.com/v1/payment_intents/" . urlencode($pi['id']) . "/cancel");
-        curl_setopt_array($ch2, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $sk],
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => '',
-            CURLOPT_TIMEOUT        => 10,
-        ]);
-        curl_exec($ch2);
-        curl_close($ch2);
-        echo "   (test PI canceled to keep dashboard clean)\n";
+        // ── KEY CHECK: fetch the PI from Stripe and inspect 3DS setting ──
+        if ($piId) {
+            $ch2 = curl_init('https://api.stripe.com/v1/payment_intents/' . urlencode($piId));
+            curl_setopt_array($ch2, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $sk],
+                CURLOPT_TIMEOUT        => 10,
+            ]);
+            $piResp = curl_exec($ch2);
+            $piCode = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+            curl_close($ch2);
+
+            if ($piCode === 200) {
+                $pi = json_decode((string)$piResp, true);
+                $tds = $pi['payment_method_options']['card']['request_three_d_secure'] ?? '(not set)';
+                $inst = $pi['payment_method_options']['card']['installments']['enabled'] ?? null;
+                printf("   amount        : %s MXN\n", number_format(($pi['amount'] ?? 0) / 100, 2));
+                printf("   currency      : %s\n", $pi['currency'] ?? '?');
+                printf("   description   : %s\n", $pi['description'] ?? '?');
+                printf("   3DS setting   : %s\n", $tds);
+
+                echo "\n   ┌─────────────────────────────────────────────────────────┐\n";
+                if ($tds === 'automatic') {
+                    echo "   │  ✅ FIX DEPLOYED — 3DS = 'automatic' (Stripe-recommended)│\n";
+                    echo "   │  Cards no longer forced through 3DS unconditionally.    │\n";
+                    echo "   │  Mexican cards should now succeed at the normal rate.   │\n";
+                } elseif ($tds === 'any') {
+                    echo "   │  ❌ FIX NOT DEPLOYED — 3DS = 'any' (still forcing 3DS)  │\n";
+                    echo "   │  Re-upload create-payment-intent.php via FileZilla.     │\n";
+                    echo "   │  PHP-FPM may need an opcache reset for changes to take. │\n";
+                } else {
+                    echo "   │  ⚠ Unexpected 3DS value: $tds                          │\n";
+                }
+                echo "   └─────────────────────────────────────────────────────────┘\n";
+
+                // Cancel the test PI so it doesn't pollute the dashboard.
+                $ch3 = curl_init('https://api.stripe.com/v1/payment_intents/' . urlencode($piId) . '/cancel');
+                curl_setopt_array($ch3, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $sk],
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => '',
+                    CURLOPT_TIMEOUT        => 10,
+                ]);
+                curl_exec($ch3);
+                curl_close($ch3);
+                echo "\n   (test PI canceled — no charge; tracking row left as 'pendiente'\n";
+                echo "    in DB will be cleaned manually if needed)\n";
+            } else {
+                echo "   could not fetch PI for verification (HTTP $piCode)\n";
+            }
+        }
     }
 }
 
