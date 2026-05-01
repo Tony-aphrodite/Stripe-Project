@@ -7,6 +7,15 @@
 require_once __DIR__ . '/../bootstrap.php';
 adminRequireAuth(['admin','cedis','operador']);
 
+// Customer brief 2026-05-01: the "Actualizar" button on the Ventas/Ordenes
+// dashboard appeared dead because Safari/Chrome was caching this JSON
+// response across calls — refreshing didn't pick up new pending orders
+// until the admin logged out and back in (different session = different
+// cache key). Force the browser to always re-hit the server.
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 $pdo = getDB();
 
 $rows = [];
@@ -94,7 +103,20 @@ try {
                (SELECT e.fecha_estimada_llegada FROM envios e WHERE e.moto_id = m.id ORDER BY e.id DESC LIMIT 1) AS envio_eta,
                p.direccion AS punto_direccion, p.colonia AS punto_colonia,
                p.ciudad AS punto_ciudad, p.estado AS punto_estado,
-               p.cp AS punto_cp, p.telefono AS punto_telefono
+               p.cp AS punto_cp, p.telefono AS punto_telefono,
+               -- Customer brief 2026-05-01: surface contract-signing state
+               -- so the dashboard can flag rows whose contract was signed
+               -- (green badge on the contract icon). Match firmas_contratos
+               -- by telefono OR email — the same identifiers used during
+               -- the credit/contado signing flow.
+               (SELECT fc.id FROM firmas_contratos fc
+                  WHERE (fc.telefono <> '' AND fc.telefono = t.telefono)
+                     OR (fc.email <> '' AND fc.email = t.email)
+                  ORDER BY fc.id DESC LIMIT 1) AS firma_id,
+               (SELECT fc.freg FROM firmas_contratos fc
+                  WHERE (fc.telefono <> '' AND fc.telefono = t.telefono)
+                     OR (fc.email <> '' AND fc.email = t.email)
+                  ORDER BY fc.id DESC LIMIT 1) AS firma_freg
         FROM transacciones t
         LEFT JOIN inventario_motos m
                ON m.id = (
@@ -194,6 +216,9 @@ try {
             'placas_cotizacion_mime'    => $r['placas_cotizacion_mime']    ?? null,
             'placas_cotizacion_size'    => $r['placas_cotizacion_size']    ?? null,
             'placas_cotizacion_subido'  => $r['placas_cotizacion_subido']  ?? null,
+            // Contract-signing state (customer brief 2026-05-01).
+            'firma_id'                  => $r['firma_id'] ? (int)$r['firma_id'] : null,
+            'firma_freg'                => $r['firma_freg'] ?? null,
         ];
     }
 } catch (Throwable $e) {

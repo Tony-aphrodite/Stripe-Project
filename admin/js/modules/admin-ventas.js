@@ -280,7 +280,9 @@ window.AD_ventas = (function(){
 
   function loadData(cb){
     var _loadStart = Date.now();
-    ADApp.api('ventas/listar.php').done(function(r){
+    // Cache-bust the request so the "Actualizar" button always pulls fresh
+    // data — Safari aggressively caches GET XHRs (customer brief 2026-05-01).
+    ADApp.api('ventas/listar.php?_=' + Date.now()).done(function(r){
       var elapsed = ((Date.now() - _loadStart) / 1000).toFixed(1);
       var now = new Date();
       var timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
@@ -504,11 +506,23 @@ window.AD_ventas = (function(){
       var iconBtnStyle = 'padding:5px 7px;font-size:13px;line-height:1;width:100%;box-sizing:border-box;'
                        + 'text-decoration:none;display:inline-flex;align-items:center;justify-content:center;';
       var _tp = (r.tipo||r.tpago||'').toLowerCase();
-      if (['contado','unico','msi','spei','oxxo','tarjeta'].indexOf(_tp) >= 0 && r.pedido) {
+      // Customer brief 2026-05-01: contract preview must also show for
+      // credit/enganche orders. Previously only contado/msi/etc. — credit
+      // applicants ended up with no way to verify their signed contract
+      // from the admin dashboard. Includes a green badge when the
+      // contract has actually been signed (firmas_contratos row exists).
+      var contractTypes = ['contado','unico','msi','spei','oxxo','tarjeta','enganche','credito'];
+      if (contractTypes.indexOf(_tp) >= 0 && r.pedido) {
+        var isSigned = !!r.firma_id;
+        var btnStyle = iconBtnStyle + (isSigned ? ';background:#dcfce7;border-color:#16a34a;color:#15803d;' : '');
+        var btnTitle = isSigned
+            ? 'Contrato firmado — ' + (r.firma_freg || '') + ' · clic para descargar'
+            : 'Descargar contrato de compraventa';
         btnArr.push('<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
-          'style="'+iconBtnStyle+'" '+
-          'title="Descargar contrato de compraventa" '+
-          'href="../configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1">'+ICON_DOC+'</a>');
+          'style="'+btnStyle+'" '+
+          'title="'+btnTitle.replace(/"/g, '&quot;')+'" '+
+          'href="../configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1">'+
+          ICON_DOC + (isSigned ? '<span style="margin-left:3px;font-size:10px;">✓</span>' : '') + '</a>');
       }
       if (r.moto_id || r.pedido) {
         var dParams = r.moto_id ? ('moto_id=' + r.moto_id) : ('pedido=' + encodeURIComponent(r.pedido));
