@@ -438,10 +438,73 @@ try {
         }
     }
 
+    // ── Promote any pre-existing 'pendiente' row created by
+    //    create-payment-intent.php (customer brief 2026-04-30). When a
+    //    customer reaches the enganche screen, create-payment-intent.php
+    //    inserts a placeholder row so abandoned/declined attempts stay
+    //    visible in the admin "Pago pendiente" tab. On successful charge
+    //    we promote that row to the final state instead of inserting a
+    //    duplicate. If no pending row exists, the legacy INSERT IGNORE
+    //    below handles fresh-create.
+    $promotedExistingPending = false;
+    if (!empty($paymentIntentId)) {
+        try {
+            $upd = $pdo->prepare("
+                UPDATE transacciones SET
+                    nombre = ?, email = ?, telefono = ?, modelo = ?, color = ?,
+                    ciudad = ?, estado = ?, cp = ?, tpago = ?,
+                    precio = ?, total = ?, pedido = ?,
+                    asesoria_placas = ?, seguro_qualitas = ?,
+                    punto_id = ?, punto_nombre = ?,
+                    msi_meses = ?, msi_pago = ?,
+                    referido = ?, referido_id = ?, referido_tipo = ?, caso = ?,
+                    folio_contrato = ?, pago_estado = ?, environment = ?
+                WHERE stripe_pi = ?
+                  AND (pago_estado = 'pendiente' OR pago_estado IS NULL OR pago_estado = '')
+                LIMIT 1
+            ");
+            $upd->execute([
+                $nombre ?: '',
+                $email ?: '',
+                $telefono ?: '',
+                $modelo ?: '',
+                $color ?: '',
+                $ciudad ?: '',
+                $estado ?: '',
+                $cp ?: '',
+                $pagoTipo ?: 'contado',
+                $pagoTipo === 'msi' ? $msiPago : $total,
+                $total,
+                $pedidoNum,
+                $asesoriaPlacasInt,
+                $seguroQualitasInt,
+                $puntoId ?: '',
+                $puntoNombre ?: '',
+                $pagoTipo === 'msi' ? $msiMeses : 0,
+                $pagoTipo === 'msi' ? $msiPago  : 0,
+                $codigoReferido ?: '',
+                $referidoId ?: 0,
+                $referidoTipo ?: '',
+                $caso ?: 1,
+                $folioContrato ?: '',
+                $pagoEstadoInit,
+                defined('APP_ENV') ? APP_ENV : 'test',
+                $paymentIntentId,
+            ]);
+            if ($upd->rowCount() > 0) {
+                $promotedExistingPending = true;
+                $dbSaveOk = true;
+            }
+        } catch (Throwable $e) {
+            error_log('confirmar-orden promote-pending failed: ' . $e->getMessage());
+            // Fall through to INSERT IGNORE below.
+        }
+    }
+
     // INSERT IGNORE so if UNIQUE INDEX catches a duplicate stripe_pi the row
     // is silently skipped (we fetch the existing pedido afterwards). Without
     // IGNORE, a UNIQUE violation would throw and land in transacciones_errores.
-    $stmt = $pdo->prepare("
+    $stmt = $promotedExistingPending ? null : $pdo->prepare("
         INSERT IGNORE INTO transacciones
             (nombre, email, telefono, modelo, color, ciudad, estado, cp, tpago,
              precio, total, freg, pedido, stripe_pi,
@@ -455,43 +518,46 @@ try {
     // If the production schema still has legacy NOT NULL constraints (the
     // ensureTransaccionesColumns() MODIFY above should fix them, but we
     // double-protect here) the INSERT still succeeds.
-    $stmt->execute([
-        $nombre ?: '',
-        $email ?: '',
-        $telefono ?: '',
-        $modelo ?: '',
-        $color ?: '',
-        $ciudad ?: '',
-        $estado ?: '',
-        $cp ?: '',
-        $pagoTipo ?: 'contado',
-        $pagoTipo === 'msi' ? $msiPago : $total,
-        $total,
-        $fecha,
-        $pedidoNum,
-        // stripe_pi: use NULL instead of '' so MySQL UNIQUE INDEX allows
-        // multiple empty/missing values (UNIQUE treats each NULL as distinct).
-        !empty($paymentIntentId) ? $paymentIntentId : null,
-        $asesoriaPlacasInt,
-        $seguroQualitasInt,
-        $puntoId ?: '',
-        $puntoNombre ?: '',
-        $pagoTipo === 'msi' ? $msiMeses : 0,
-        $pagoTipo === 'msi' ? $msiPago  : 0,
-        $codigoReferido ?: '',
-        $referidoId ?: 0,
-        $referidoTipo ?: '',
-        $caso ?: 1,
-        $folioContrato ?: '',
-        $pagoEstadoInit,
-        defined('APP_ENV') ? APP_ENV : 'test',
-    ]);
-    $dbSaveOk = true;
+    if ($stmt) {
+        $stmt->execute([
+            $nombre ?: '',
+            $email ?: '',
+            $telefono ?: '',
+            $modelo ?: '',
+            $color ?: '',
+            $ciudad ?: '',
+            $estado ?: '',
+            $cp ?: '',
+            $pagoTipo ?: 'contado',
+            $pagoTipo === 'msi' ? $msiPago : $total,
+            $total,
+            $fecha,
+            $pedidoNum,
+            // stripe_pi: use NULL instead of '' so MySQL UNIQUE INDEX allows
+            // multiple empty/missing values (UNIQUE treats each NULL as distinct).
+            !empty($paymentIntentId) ? $paymentIntentId : null,
+            $asesoriaPlacasInt,
+            $seguroQualitasInt,
+            $puntoId ?: '',
+            $puntoNombre ?: '',
+            $pagoTipo === 'msi' ? $msiMeses : 0,
+            $pagoTipo === 'msi' ? $msiPago  : 0,
+            $codigoReferido ?: '',
+            $referidoId ?: 0,
+            $referidoTipo ?: '',
+            $caso ?: 1,
+            $folioContrato ?: '',
+            $pagoEstadoInit,
+            defined('APP_ENV') ? APP_ENV : 'test',
+        ]);
+        $dbSaveOk = true;
+    }
 
     // If INSERT IGNORE silently dropped the row due to UNIQUE stripe_pi
     // collision, rowCount() is 0. Fetch the existing pedido and return it so
-    // the client still gets a consistent response.
-    if ($stmt->rowCount() === 0 && !empty($paymentIntentId)) {
+    // the client still gets a consistent response. Skip when we already
+    // promoted the pending row above (we have the canonical pedido).
+    if ($stmt && $stmt->rowCount() === 0 && !empty($paymentIntentId)) {
         try {
             $existingStmt = $pdo->prepare("SELECT pedido FROM transacciones WHERE stripe_pi = ? LIMIT 1");
             $existingStmt->execute([$paymentIntentId]);

@@ -17,6 +17,127 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ── Central config ───────────────────────────────────────────────────────────
 require_once __DIR__ . '/config.php';
 
+/**
+ * Insert (or upsert) a "pendiente" transaccion row when the PaymentIntent is
+ * created, before the customer has actually completed payment.
+ *
+ * Customer brief 2026-04-30: a credit applicant that finished CDC + Truora
+ * approval and reached the enganche screen but never paid (declined card,
+ * abandoned tab, etc.) was completely invisible — no DB row, no email, no
+ * admin queue. They want to be able to follow up on these high-quality
+ * leads. We now insert the row at PI-creation time and let
+ * confirmar-orden.php promote it to 'pagada' after a successful charge.
+ *
+ * Idempotent: if a row for this stripe_pi already exists, this is a no-op
+ * (UNIQUE uniq_stripe_pi catches it). Failure is logged but never blocks
+ * payment-intent creation — payments must still flow even if our tracking
+ * fails.
+ */
+function _voltikaInsertPendingTransaccion(string $stripePi, array $customer, int $amountCents, string $method, int $msiMeses): void {
+    if ($stripePi === '') return;
+    try {
+        $pdo = getDB();
+
+        // Make sure the UNIQUE index on stripe_pi exists (confirmar-orden.php
+        // also creates it; harmless duplicate-call-safe).
+        try { $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX uniq_stripe_pi (stripe_pi)"); }
+        catch (Throwable $e) {}
+
+        $nombre = trim(($customer['nombre'] ?? '') . ' ' . ($customer['apellidos'] ?? ''));
+        $tpago  = $customer['tpago']
+                  ?? ($msiMeses > 0 ? 'msi' : ($method === 'oxxo' ? 'oxxo' : ($method === 'spei' ? 'spei' : 'contado')));
+        $total  = $amountCents / 100;
+
+        // INSERT IGNORE → if stripe_pi collides, leave the existing row alone.
+        // confirmar-orden.php will UPDATE it later with the final values.
+        $sql = "INSERT IGNORE INTO transacciones
+                  (nombre, email, telefono, modelo, color, ciudad, estado, cp,
+                   tpago, precio, total, stripe_pi, msi_meses, pago_estado, environment)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            $nombre,
+            $customer['email']    ?? '',
+            $customer['telefono'] ?? '',
+            $customer['modelo']   ?? '',
+            $customer['color']    ?? '',
+            $customer['ciudad']   ?? '',
+            $customer['estado']   ?? '',
+            $customer['cp']       ?? '',
+            $tpago,
+            $total,
+            $total,
+            $stripePi,
+            $msiMeses,
+            defined('APP_ENV') ? APP_ENV : 'test',
+        ]);
+    } catch (Throwable $e) {
+        // Tracking failure must NEVER block the Stripe flow.
+        error_log('voltika pending-transaccion insert: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Recovery email for card / unattempted payments. OXXO/SPEI already have
+ * their dedicated _sendReminderEmail() with bank details; this generic
+ * variant tells the user "your Voltika is one step away — complete the
+ * down payment" and provides a CTA back to the configurator. Sent at
+ * PI-creation time so the customer has a written record of their
+ * almost-purchase even if they close the tab seconds later.
+ */
+function _voltikaSendIncompletePaymentEmail(string $email, string $nombre, array $customer, int $amountCents): void {
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) return;
+
+    $modelo  = htmlspecialchars($customer['modelo'] ?? 'tu Voltika');
+    $color   = htmlspecialchars($customer['color']  ?? '');
+    $monto   = '$' . number_format($amountCents / 100, 0, '.', ',') . ' MXN';
+    $name    = htmlspecialchars($nombre ?: 'Cliente Voltika');
+    $support = '+52 55 1341 6370';
+
+    $html =
+        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:auto;padding:24px;background:#fff;">' .
+        '<div style="text-align:center;background:#1a3a5c;padding:18px;border-radius:12px 12px 0 0;">' .
+        '<img src="https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg" alt="Voltika" style="height:34px;">' .
+        '</div>' .
+        '<div style="background:#F8FAFC;padding:24px;border-radius:0 0 12px 12px;border:1px solid #E5E7EB;border-top:none;">' .
+        '<h1 style="font-size:22px;color:#1a3a5c;margin:0 0 12px;">Hola ' . $name . ',</h1>' .
+        '<p style="font-size:15px;color:#333;line-height:1.5;margin:0 0 14px;">' .
+            'Tu solicitud de crédito fue <strong>aprobada</strong> y solo falta un paso: <strong>el enganche</strong>.' .
+        '</p>' .
+        '<div style="background:#fff;border-radius:10px;padding:16px;margin:12px 0;border:1px solid #E5E7EB;">' .
+            '<div style="font-size:13px;color:#888;margin-bottom:4px;">Tu Voltika</div>' .
+            '<div style="font-size:18px;font-weight:800;color:#333;margin-bottom:8px;">' . $modelo . ($color ? ' · ' . $color : '') . '</div>' .
+            '<div style="font-size:13px;color:#888;margin-bottom:4px;">Enganche pendiente</div>' .
+            '<div style="font-size:24px;font-weight:900;color:#039fe1;">' . $monto . '</div>' .
+        '</div>' .
+        '<a href="https://www.voltika.mx/configurador/" style="display:block;text-align:center;padding:14px;background:#039fe1;color:#fff;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none;margin:16px 0;">Completar mi pago</a>' .
+        '<p style="font-size:13px;color:#666;line-height:1.5;margin:16px 0 0;">' .
+            '¿Tienes alguna pregunta? Llámanos o escríbenos por WhatsApp al ' .
+            '<a href="https://wa.me/525513416370" style="color:#039fe1;text-decoration:none;font-weight:700;">' . $support . '</a>.' .
+        '</p>' .
+        '<p style="font-size:11px;color:#999;margin:16px 0 0;text-align:center;">' .
+            'Si ya completaste tu pago, ignora este mensaje.' .
+        '</p>' .
+        '</div>' .
+        '</div>';
+
+    $subject = 'Tu Voltika está casi lista — solo falta el enganche';
+
+    // Prefer the centralized PHPMailer-based sendMail() when available
+    // (config.php). Fall back to plain mail() if not loaded for any reason.
+    if (function_exists('sendMail')) {
+        try { @sendMail($email, $nombre, $subject, $html); } catch (Throwable $e) {
+            error_log('voltika incomplete-payment email: ' . $e->getMessage());
+        }
+    } else {
+        $headers = "MIME-Version: 1.0\r\n";
+        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+        $headers .= "From: Voltika <noreply@voltika.mx>\r\n";
+        $headers .= "Reply-To: ventas@voltika.mx\r\n";
+        @mail($email, $subject, $html, $headers);
+    }
+}
+
 // ── Reminder email for OXXO/SPEI ─────────────────────────────────────────────
 function _sendReminderEmail($email, $nombre, $customer, $monto, $metodo, $linkPago) {
     $pedidoNum = time();
@@ -321,6 +442,11 @@ try {
 
         $intent = \Stripe\PaymentIntent::create($intentData);
 
+        // SPEI: track as pendiente immediately. The bank-details email is
+        // sent below (existing _sendReminderEmail) so we only insert the
+        // DB row here — no duplicate email.
+        _voltikaInsertPendingTransaccion($intent->id, $customer, $amount, 'spei', 0);
+
         $response = ['clientSecret' => $intent->client_secret, 'paymentIntentId' => $intent->id];
 
         // Extract bank transfer details
@@ -479,6 +605,10 @@ try {
                     'paymentIntentId'    => $intent->id
                 ];
             }
+
+            // OXXO: track each split-PI as pendiente. The bank-reference email
+            // (existing _sendReminderEmail) is sent once below for all refs.
+            _voltikaInsertPendingTransaccion($intent->id, $customer, (int)$oxxoAmount, 'oxxo', 0);
         }
 
         $response = [
@@ -500,7 +630,15 @@ try {
 
     $intent = \Stripe\PaymentIntent::create($intentData);
 
-    $response = ['clientSecret' => $intent->client_secret];
+    // ── Track this attempt as a 'pendiente' transaccion + send recovery email.
+    //   Customer brief 2026-04-30: visibility on approved-but-not-paid leads.
+    _voltikaInsertPendingTransaccion($intent->id, $customer, $amount, $method, $installments ? $msiMeses : 0);
+    if (!empty($customer['email'])) {
+        $custNom = trim(($customer['nombre'] ?? '') . ' ' . ($customer['apellidos'] ?? ''));
+        _voltikaSendIncompletePaymentEmail($customer['email'], $custNom, $customer, $amount);
+    }
+
+    $response = ['clientSecret' => $intent->client_secret, 'paymentIntentId' => $intent->id];
 
     echo json_encode($response);
 
