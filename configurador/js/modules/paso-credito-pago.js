@@ -187,14 +187,18 @@ var PasoCreditoPago = {
             fmt(precio) + ' MXN',
             'Tarjeta, SPEI u OXXO · Se aparta al instante'
         );
-        html += payCard(
-            'vk-cpago-rej-msi',
-            '9 MSI SIN INTERESES',
-            '#039fe1',
-            '9 mensualidades sin intereses',
-            fmt(precioMSI) + ' / mes',
-            'Solo con tarjetas participantes · Primer pago hoy'
-        );
+        // MSI globally disabled (customer brief 2026-05-01) — re-expose by
+        // flipping the typeof check after a verified live test.
+        if (typeof MSI_ENABLED !== 'undefined' && MSI_ENABLED) {
+            html += payCard(
+                'vk-cpago-rej-msi',
+                '9 MSI SIN INTERESES',
+                '#039fe1',
+                '9 mensualidades sin intereses',
+                fmt(precioMSI) + ' / mes',
+                'Solo con tarjetas participantes · Primer pago hoy'
+            );
+        }
         html += '</div>';
 
         html += '<p style="text-align:center;font-size:12px;color:var(--vk-text-muted);margin-top:8px;">' +

@@ -4,6 +4,15 @@
    Desktop (1024px+): hero configurator — model tabs + large image + payment panel
    ========================================================================== */
 
+// ── MSI globally disabled (customer brief 2026-05-01) ──────────────────────
+// MSI was charging only 1 month's payment instead of the full motorcycle
+// price (paso4a-checkout.js bug). The fix is in code but the MSI tabs +
+// CTA buttons stay hidden everywhere until a verified live test confirms
+// the full-amount Stripe charge + 9-installment split. Toggle this flag
+// to true on a single line to re-expose MSI in all entry points (hero
+// tabs on desktop, card tabs on mobile, model-card CTAs).
+var MSI_ENABLED = false;
+
 var Paso1 = {
 
     _activeModeloId: null,
@@ -169,7 +178,9 @@ var Paso1 = {
         html += '<div class="vk-card__formas-sub">Selecciona tu opci&oacute;n</div>';
         html += '<div class="vk-hero__metodo-tabs" id="vk-hero-metodo-tabs">';
         html += '<button class="vk-hero__metodo-tab vk-hero__metodo-tab--active" data-htab="credito">' + VkUI.renderCreditoLogo(16) + '</button>';
-        html += '<button class="vk-hero__metodo-tab" data-htab="msi">MSI ' + VkUI.renderCardLogos() + '</button>';
+        if (MSI_ENABLED) {
+            html += '<button class="vk-hero__metodo-tab" data-htab="msi">MSI ' + VkUI.renderCardLogos() + '</button>';
+        }
         html += '<button class="vk-hero__metodo-tab" data-htab="contado">Contado ' + VkUI.renderCardLogos() + '</button>';
         html += '</div>';
 
@@ -334,7 +345,9 @@ var Paso1 = {
         html += '<div class="vk-card__formas-sub">Selecciona tu opci&oacute;n</div>';
         html += '<div class="vk-card__tabs">';
         html += '<button class="vk-tab vk-tab--active" data-tab="credito">' + VkUI.renderCreditoLogo(14) + '</button>';
-        html += '<button class="vk-tab" data-tab="msi">MSI</button>';
+        if (MSI_ENABLED) {
+            html += '<button class="vk-tab" data-tab="msi">MSI</button>';
+        }
         html += '<button class="vk-tab" data-tab="contado">Contado</button>';
         html += '</div>';
 
@@ -342,9 +355,11 @@ var Paso1 = {
         html += this.renderTabCredito(modelo);
         html += '</div>';
 
-        html += '<div class="vk-card__tab-content" data-tab-content="msi">';
-        html += this.renderTabMSI(modelo);
-        html += '</div>';
+        if (MSI_ENABLED) {
+            html += '<div class="vk-card__tab-content" data-tab-content="msi">';
+            html += this.renderTabMSI(modelo);
+            html += '</div>';
+        }
 
         html += '<div class="vk-card__tab-content" data-tab-content="contado">';
         html += this.renderTabContado(modelo);
