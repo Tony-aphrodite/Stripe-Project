@@ -157,121 +157,94 @@ if ($code !== 200) {
 }
 echo "\n";
 
-// ── 4. Test PaymentIntent CREATE through OUR endpoint (validates fix) ──────
-// Customer brief 2026-05-01 followup: verify the 3DS=automatic fix is
-// actually deployed by hitting our own create-payment-intent.php (the
-// same code path real customers use), then inspecting the resulting PI's
-// payment_method_options. If we still see 3DS='any' the file isn't
-// uploaded; if we see 'automatic' the fix is live and active. The PI is
-// canceled immediately afterwards so no real charge ever happens.
-echo "4. End-to-end verification through OUR endpoint (no charge):\n";
+// ── 4. Inspect 3DS setting on REAL recent customer PIs (no side effects) ───
+// Customer brief 2026-05-01 followup #2: an earlier version of this section
+// hit our create-payment-intent.php with a $50 MXN test payload, which
+// (correctly) cascaded into _voltikaInsertPendingTransaccion() + the
+// recovery email helper — sending a "Total a pagar $50 MXN" email and
+// inserting a phantom transacciones row. That looked like a bug to anyone
+// who saw the email. This version is read-only: it inspects the most
+// recent REAL customer PIs in Stripe and reports their 3DS configuration,
+// so we can verify the fix is live without creating new noise.
+echo "4. Inspect 3DS configuration on recent real customer PIs (read-only):\n";
 
-$selfBase = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'voltika.mx') . dirname($_SERVER['REQUEST_URI'] ?? '/configurador/php/');
-$selfBase = preg_replace('#/+$#', '', $selfBase);
-$payload = json_encode([
-    'amount'   => 5000,        // $50 MXN — above Stripe MX $10 minimum
-    'method'   => 'card',
-    'tipo'     => 'contado',
-    'customer' => [
-        'nombre'    => 'Voltika',
-        'apellidos' => 'Diag',
-        'email'     => 'diag+' . date('Ymd-His') . '@voltika.mx',
-        'telefono'  => '5500000000',
-        'modelo'    => 'M05',
-        'color'     => 'gris',
-        'ciudad'    => 'CDMX',
-        'estado'    => 'CDMX',
-        'cp'        => '01000',
-        'tpago'     => 'unico',
-    ],
-]);
-
-$ch = curl_init($selfBase . '/create-payment-intent.php');
+$ch = curl_init('https://api.stripe.com/v1/payment_intents?limit=10');
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-    CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => $payload,
-    CURLOPT_TIMEOUT        => 20,
-    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $sk],
+    CURLOPT_TIMEOUT        => 15,
 ]);
-$selfResp = curl_exec($ch);
-$selfCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$selfErr  = curl_error($ch);
+$listResp = curl_exec($ch);
+$listCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
-if ($selfErr) {
-    echo "   curl error hitting our endpoint: $selfErr\n";
-} elseif ($selfCode !== 200) {
-    echo "   FAIL HTTP $selfCode from our endpoint\n";
-    echo "   Body: " . substr((string)$selfResp, 0, 400) . "\n";
+if ($listCode !== 200) {
+    echo "   FAIL HTTP $listCode\n";
+    echo "   Body: " . substr((string)$listResp, 0, 300) . "\n";
 } else {
-    $j = json_decode((string)$selfResp, true);
-    if (empty($j['clientSecret'])) {
-        echo "   FAIL — endpoint returned no clientSecret\n";
-        echo "   Body: " . substr((string)$selfResp, 0, 400) . "\n";
+    $listData = json_decode((string)$listResp, true);
+    $pisRecent = $listData['data'] ?? [];
+    $cardPis = array_values(array_filter($pisRecent, function($p) {
+        $types = $p['payment_method_types'] ?? [];
+        return is_array($types) && in_array('card', $types, true);
+    }));
+
+    if (empty($cardPis)) {
+        echo "   No recent card PIs found.\n";
     } else {
-        printf("   OK ✓  Our endpoint returned clientSecret + PI created\n");
-        // Extract PI id from clientSecret format: pi_xxx_secret_yyy
-        $piId = (string)($j['paymentIntentId'] ?? '');
-        if ($piId === '' && preg_match('/^(pi_[A-Za-z0-9]+)_secret_/', (string)$j['clientSecret'], $m)) {
-            $piId = $m[1];
+        $countAuto = 0;
+        $countAny = 0;
+        $countOther = 0;
+        printf("   %-30s %-19s %-9s %-12s\n", 'PI ID', 'CREATED', 'AMOUNT', '3DS');
+        echo "   " . str_repeat('-', 75) . "\n";
+        foreach (array_slice($cardPis, 0, 8) as $pi) {
+            $tds = $pi['payment_method_options']['card']['request_three_d_secure'] ?? '(unset)';
+            if ($tds === 'automatic')      $countAuto++;
+            elseif ($tds === 'any')        $countAny++;
+            else                            $countOther++;
+            printf("   %-30s %-19s %-9s %-12s\n",
+                substr((string)($pi['id'] ?? ''), 0, 30),
+                date('Y-m-d H:i:s', (int)($pi['created'] ?? 0)),
+                '$' . number_format(($pi['amount'] ?? 0) / 100, 2),
+                $tds);
         }
-        printf("   PI ID         : %s\n", $piId ?: '?');
 
-        // ── KEY CHECK: fetch the PI from Stripe and inspect 3DS setting ──
-        if ($piId) {
-            $ch2 = curl_init('https://api.stripe.com/v1/payment_intents/' . urlencode($piId));
-            curl_setopt_array($ch2, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $sk],
-                CURLOPT_TIMEOUT        => 10,
-            ]);
-            $piResp = curl_exec($ch2);
-            $piCode = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
-            curl_close($ch2);
-
-            if ($piCode === 200) {
-                $pi = json_decode((string)$piResp, true);
-                $tds = $pi['payment_method_options']['card']['request_three_d_secure'] ?? '(not set)';
-                $inst = $pi['payment_method_options']['card']['installments']['enabled'] ?? null;
-                printf("   amount        : %s MXN\n", number_format(($pi['amount'] ?? 0) / 100, 2));
-                printf("   currency      : %s\n", $pi['currency'] ?? '?');
-                printf("   description   : %s\n", $pi['description'] ?? '?');
-                printf("   3DS setting   : %s\n", $tds);
-
-                echo "\n   ┌─────────────────────────────────────────────────────────┐\n";
-                if ($tds === 'automatic') {
-                    echo "   │  ✅ FIX DEPLOYED — 3DS = 'automatic' (Stripe-recommended)│\n";
-                    echo "   │  Cards no longer forced through 3DS unconditionally.    │\n";
-                    echo "   │  Mexican cards should now succeed at the normal rate.   │\n";
-                } elseif ($tds === 'any') {
-                    echo "   │  ❌ FIX NOT DEPLOYED — 3DS = 'any' (still forcing 3DS)  │\n";
-                    echo "   │  Re-upload create-payment-intent.php via FileZilla.     │\n";
-                    echo "   │  PHP-FPM may need an opcache reset for changes to take. │\n";
-                } else {
-                    echo "   │  ⚠ Unexpected 3DS value: $tds                          │\n";
-                }
-                echo "   └─────────────────────────────────────────────────────────┘\n";
-
-                // Cancel the test PI so it doesn't pollute the dashboard.
-                $ch3 = curl_init('https://api.stripe.com/v1/payment_intents/' . urlencode($piId) . '/cancel');
-                curl_setopt_array($ch3, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $sk],
-                    CURLOPT_POST           => true,
-                    CURLOPT_POSTFIELDS     => '',
-                    CURLOPT_TIMEOUT        => 10,
-                ]);
-                curl_exec($ch3);
-                curl_close($ch3);
-                echo "\n   (test PI canceled — no charge; tracking row left as 'pendiente'\n";
-                echo "    in DB will be cleaned manually if needed)\n";
-            } else {
-                echo "   could not fetch PI for verification (HTTP $piCode)\n";
-            }
+        echo "\n   ┌─────────────────────────────────────────────────────────────┐\n";
+        if ($countAuto > 0 && $countAny === 0) {
+            echo "   │  ✅ FIX DEPLOYED — recent PIs all use 3DS = 'automatic'      │\n";
+            echo "   │  Mexican cards should succeed at the normal issuer rate now.│\n";
+        } elseif ($countAny > 0 && $countAuto === 0) {
+            echo "   │  ❌ FIX NOT DEPLOYED — recent PIs still use 3DS = 'any'      │\n";
+            echo "   │  Re-upload create-payment-intent.php; PHP-FPM may need     │\n";
+            echo "   │  an opcache reset for the change to take effect.            │\n";
+        } elseif ($countAuto > 0 && $countAny > 0) {
+            echo "   │  ⚠ TRANSITIONAL — both 'automatic' AND 'any' seen recently. │\n";
+            echo "   │  The 'any' ones are pre-fix; 'automatic' ones are post-fix. │\n";
+            echo "   │  Confirm the most recent (top of table) is 'automatic'.    │\n";
+        } else {
+            echo "   │  ⚠ Could not determine 3DS setting from recent PIs.         │\n";
         }
+        echo "   └─────────────────────────────────────────────────────────────┘\n";
     }
+}
+
+// ── 5. Cleanup: remove diag-created phantom rows from previous runs ────────
+// Earlier diag versions inserted 'pendiente' rows + sent recovery emails.
+// Remove any leftover noise so the admin dashboard is clean.
+try {
+    $pdoCleanup = getDB();
+    $delStmt = $pdoCleanup->prepare("DELETE FROM transacciones
+        WHERE pago_estado = 'pendiente'
+          AND email LIKE 'diag+%@voltika.mx'");
+    $delStmt->execute();
+    $deleted = $delStmt->rowCount();
+    if ($deleted > 0) {
+        echo "5. Cleanup: removed $deleted phantom diag rows from transacciones.\n";
+    } else {
+        echo "5. Cleanup: no phantom diag rows to remove. ✓\n";
+    }
+} catch (Throwable $e) {
+    echo "5. Cleanup error: " . $e->getMessage() . "\n";
 }
 
 echo "\n================================================================\n";
