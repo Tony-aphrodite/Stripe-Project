@@ -148,7 +148,7 @@ function _voltikaInsertPendingTransaccion(string $stripePi, array $customer, int
  * PI-creation time so the customer has a written record of their
  * almost-purchase even if they close the tab seconds later.
  */
-function _voltikaSendIncompletePaymentEmail(string $email, string $nombre, array $customer, int $amountCents): void {
+function _voltikaSendIncompletePaymentEmail(string $email, string $nombre, array $customer, int $amountCents, string $purchaseTipo = 'contado', int $msiMeses = 0): void {
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) return;
 
     $modelo  = htmlspecialchars($customer['modelo'] ?? 'tu Voltika');
@@ -157,6 +157,39 @@ function _voltikaSendIncompletePaymentEmail(string $email, string $nombre, array
     $name    = htmlspecialchars($nombre ?: 'Cliente Voltika');
     $support = '+52 55 1341 6370';
 
+    // ── Email content by purchase type (customer brief 2026-05-01) ──────
+    // The same recovery email was being sent for credit-enganche, contado
+    // and MSI buyers — that produced the embarrassing "tu solicitud de
+    // crédito fue aprobada / falta el enganche" copy on a 9-MSI card
+    // purchase, where there is no enganche and no credit application.
+    // Branch on the actual purchase type so each customer sees correct
+    // language.
+    $tipo = strtolower(trim($purchaseTipo));
+    $isCredito = ($tipo === 'enganche' || $tipo === 'credito');
+    $isMsi     = ($tipo === 'msi') || ($msiMeses > 0 && !$isCredito);
+
+    if ($isCredito) {
+        $subject     = 'Tu Voltika está casi lista — solo falta el enganche';
+        $headline    = 'Tu solicitud de crédito fue <strong>aprobada</strong> y solo falta un paso: <strong>el enganche</strong>.';
+        $amountLabel = 'Enganche pendiente';
+        $amountValue = $monto;
+        $extraLine   = '';
+    } elseif ($isMsi) {
+        $subject     = 'Tu Voltika está casi lista — completa tu compra a 9 MSI';
+        $msiTxt      = $msiMeses > 0 ? ($msiMeses . ' meses sin intereses') : '9 meses sin intereses';
+        $headline    = 'Tu compra a <strong>' . htmlspecialchars($msiTxt) . '</strong> quedó pendiente. Para apartar tu Voltika solo falta completar el pago con tu tarjeta.';
+        $amountLabel = 'Total a pagar (a ' . htmlspecialchars($msiTxt) . ')';
+        $amountValue = $monto;
+        $extraLine   = '<div style="font-size:12px;color:#666;margin-top:6px;">Tu banco emisor dividirá este monto en pagos mensuales sin intereses.</div>';
+    } else {
+        // Contado (pago único)
+        $subject     = 'Tu Voltika está casi lista — completa tu pago';
+        $headline    = 'Tu compra está casi lista — solo falta <strong>completar el pago</strong> de tu Voltika.';
+        $amountLabel = 'Total a pagar';
+        $amountValue = $monto;
+        $extraLine   = '';
+    }
+
     $html =
         '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:auto;padding:24px;background:#fff;">' .
         '<div style="text-align:center;background:#1a3a5c;padding:18px;border-radius:12px 12px 0 0;">' .
@@ -164,14 +197,13 @@ function _voltikaSendIncompletePaymentEmail(string $email, string $nombre, array
         '</div>' .
         '<div style="background:#F8FAFC;padding:24px;border-radius:0 0 12px 12px;border:1px solid #E5E7EB;border-top:none;">' .
         '<h1 style="font-size:22px;color:#1a3a5c;margin:0 0 12px;">Hola ' . $name . ',</h1>' .
-        '<p style="font-size:15px;color:#333;line-height:1.5;margin:0 0 14px;">' .
-            'Tu solicitud de crédito fue <strong>aprobada</strong> y solo falta un paso: <strong>el enganche</strong>.' .
-        '</p>' .
+        '<p style="font-size:15px;color:#333;line-height:1.5;margin:0 0 14px;">' . $headline . '</p>' .
         '<div style="background:#fff;border-radius:10px;padding:16px;margin:12px 0;border:1px solid #E5E7EB;">' .
             '<div style="font-size:13px;color:#888;margin-bottom:4px;">Tu Voltika</div>' .
             '<div style="font-size:18px;font-weight:800;color:#333;margin-bottom:8px;">' . $modelo . ($color ? ' · ' . $color : '') . '</div>' .
-            '<div style="font-size:13px;color:#888;margin-bottom:4px;">Enganche pendiente</div>' .
-            '<div style="font-size:24px;font-weight:900;color:#039fe1;">' . $monto . '</div>' .
+            '<div style="font-size:13px;color:#888;margin-bottom:4px;">' . $amountLabel . '</div>' .
+            '<div style="font-size:24px;font-weight:900;color:#039fe1;">' . $amountValue . '</div>' .
+            $extraLine .
         '</div>' .
         '<a href="https://www.voltika.mx/configurador/" style="display:block;text-align:center;padding:14px;background:#039fe1;color:#fff;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none;margin:16px 0;">Completar mi pago</a>' .
         '<p style="font-size:13px;color:#666;line-height:1.5;margin:16px 0 0;">' .
@@ -183,8 +215,6 @@ function _voltikaSendIncompletePaymentEmail(string $email, string $nombre, array
         '</p>' .
         '</div>' .
         '</div>';
-
-    $subject = 'Tu Voltika está casi lista — solo falta el enganche';
 
     // Prefer the centralized PHPMailer-based sendMail() when available
     // (config.php). Fall back to plain mail() if not loaded for any reason.
@@ -423,6 +453,13 @@ $method           = trim($json['method'] ?? 'card');      // card, oxxo, spei
 $installments     = !empty($json['installments']);
 $msiMeses         = intval($json['msiMeses'] ?? 9);
 $customer         = $json['customer'] ?? [];
+// Purchase type drives the recovery-email language. Credit-flow callers
+// (paso-credito-enganche.js) send tipo='enganche'; the configurador
+// checkout (paso4a-checkout.js) sends customer.tpago='msi'|'unico'.
+$purchaseTipo     = (string)($json['tipo'] ?? ($customer['tpago'] ?? ''));
+if ($purchaseTipo === '') {
+    $purchaseTipo = $installments ? 'msi' : 'contado';
+}
 
 if ($amount <= 0) {
     http_response_code(400);
@@ -706,10 +743,12 @@ try {
 
     // ── Track this attempt as a 'pendiente' transaccion + send recovery email.
     //   Customer brief 2026-04-30: visibility on approved-but-not-paid leads.
+    //   Customer brief 2026-05-01: email language must match the actual
+    //   purchase type — credit/enganche, MSI, or contado.
     _voltikaInsertPendingTransaccion($intent->id, $customer, $amount, $method, $installments ? $msiMeses : 0);
     if (!empty($customer['email'])) {
         $custNom = trim(($customer['nombre'] ?? '') . ' ' . ($customer['apellidos'] ?? ''));
-        _voltikaSendIncompletePaymentEmail($customer['email'], $custNom, $customer, $amount);
+        _voltikaSendIncompletePaymentEmail($customer['email'], $custNom, $customer, $amount, $purchaseTipo, $installments ? $msiMeses : 0);
     }
 
     $response = ['clientSecret' => $intent->client_secret, 'paymentIntentId' => $intent->id];

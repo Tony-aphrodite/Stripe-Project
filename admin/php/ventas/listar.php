@@ -539,17 +539,24 @@ $sinAsignar = $total - $asignadas;
 $orfanos    = count(array_filter($rows, fn($r) => ($r['source'] ?? '') !== ''));
 $conPago    = count(array_filter($rows, fn($r) => ($r['pago_estado'] ?? '') === 'pagada'));
 $sinPago    = count(array_filter($rows, fn($r) => in_array($r['pago_estado'] ?? '', ['pendiente', 'parcial', 'error', 'orfano'], true)));
+// Customer brief 2026-05-01: surface refunds as their own counter so
+// dashboard reflects refunds processed in Stripe (via webhook handler
+// charge.refunded → pago_estado='reembolsado'). Refunded rows are
+// excluded from "Ventas con pago" automatically because pago_estado is
+// no longer 'pagada' for them.
+$reembolsadas = count(array_filter($rows, fn($r) => ($r['pago_estado'] ?? '') === 'reembolsado'));
 $phantom    = count(array_filter($rows, fn($r) => !empty($r['datos_incompletos'])));
 
 adminJsonOut([
     'ok'    => true,
     'rows'  => $rows,
     'total' => $total,
-    'asignadas'   => $asignadas,
-    'sin_asignar' => $sinAsignar,
-    'orfanos'     => $orfanos,
-    'con_pago'    => $conPago,
-    'sin_pago'    => $sinPago,
-    'phantom'     => $phantom,
-    'generated_at'=> date('c'),
+    'asignadas'    => $asignadas,
+    'sin_asignar'  => $sinAsignar,
+    'orfanos'      => $orfanos,
+    'con_pago'     => $conPago,
+    'sin_pago'     => $sinPago,
+    'reembolsadas' => $reembolsadas,
+    'phantom'      => $phantom,
+    'generated_at' => date('c'),
 ]);

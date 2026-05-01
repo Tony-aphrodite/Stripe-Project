@@ -79,6 +79,19 @@ switch ($eventType) {
         handleChargebackResolved($event->data->object);
         break;
 
+    // ── Refunds (customer brief 2026-05-01) ────────────────────────────
+    // Stripe fires charge.refunded on the original charge whenever an
+    // admin refunds (full or partial). charge.refund.updated fires on
+    // status changes of an in-progress refund. Both should bump our
+    // transacciones row to pago_estado='reembolsado' so the dashboard
+    // reflects the refund without manual intervention.
+    case 'charge.refunded':
+    case 'charge.refund.updated':
+    case 'refund.created':
+    case 'refund.updated':
+        handleRefundProcessed($event->data->object, $eventType);
+        break;
+
     default:
         webhookLog("Unhandled event type: $eventType");
         break;
@@ -964,4 +977,85 @@ function _ensureEscalationsTable(PDO $pdo): void {
             INDEX idx_ref (ref_externa)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     } catch (Throwable $e) { webhookLog('escalations table create: ' . $e->getMessage()); }
+}
+
+/**
+ * Handle Stripe refund events (charge.refunded, refund.created, refund.updated,
+ * charge.refund.updated). Fires whenever an admin issues a refund from the
+ * Stripe dashboard or via API. Updates transacciones.pago_estado='reembolsado'
+ * so the admin dashboard immediately reflects the refunded state.
+ *
+ * Customer brief 2026-05-01: refunds were silently invisible — the row stayed
+ * 'pagada' even after Stripe processed the return of funds, so the dashboard
+ * misrepresented sales.
+ *
+ * The Stripe event payload differs by event type:
+ *   - charge.refunded → object is the Charge (with .payment_intent, .refunded=true)
+ *   - refund.* / charge.refund.updated → object is the Refund (with .payment_intent)
+ * Both expose a payment_intent id we can match on transacciones.stripe_pi.
+ */
+function handleRefundProcessed($obj, string $eventType): void {
+    try {
+        $pdo = getDB();
+
+        // Pull the PI id from whichever shape Stripe sent.
+        $piId = '';
+        if (is_object($obj)) {
+            $piId = (string)($obj->payment_intent ?? '');
+            if ($piId === '' && isset($obj->charge)) {
+                // refund objects on older API versions reference the charge,
+                // which then references the PI.
+                try {
+                    $charge = \Stripe\Charge::retrieve((string)$obj->charge);
+                    $piId   = (string)($charge->payment_intent ?? '');
+                } catch (Throwable $e) {}
+            }
+        }
+        if ($piId === '') {
+            webhookLog("refund event $eventType missing payment_intent — skip");
+            return;
+        }
+
+        // Determine refund status. For charge.refunded, charge.refunded=true
+        // means it's done. For refund objects, .status='succeeded' is the
+        // terminal success state. Anything else (pending, canceled, failed)
+        // we leave alone and just log.
+        $isFullySucceeded = false;
+        if ($eventType === 'charge.refunded') {
+            $isFullySucceeded = !empty($obj->refunded);
+        } else {
+            // refund.* events
+            $status = (string)($obj->status ?? '');
+            $isFullySucceeded = ($status === 'succeeded');
+        }
+        if (!$isFullySucceeded) {
+            webhookLog("refund event $eventType for $piId not yet succeeded (status="
+                . (string)($obj->status ?? '?') . ") — skip");
+            return;
+        }
+
+        // Update transacciones row matched by stripe_pi.
+        $upd = $pdo->prepare("UPDATE transacciones
+            SET pago_estado = 'reembolsado'
+            WHERE stripe_pi = ?
+              AND (pago_estado IS NULL OR pago_estado != 'reembolsado')");
+        $upd->execute([$piId]);
+        $rows = $upd->rowCount();
+
+        // Mirror to inventario_motos (pago_estado is also stored there for
+        // CEDIS dashboard consistency).
+        try {
+            $upd2 = $pdo->prepare("UPDATE inventario_motos
+                SET pago_estado = 'reembolsado'
+                WHERE stripe_pi = ?
+                  AND (pago_estado IS NULL OR pago_estado != 'reembolsado')");
+            $upd2->execute([$piId]);
+        } catch (Throwable $e) {
+            webhookLog("refund inventario_motos update: " . $e->getMessage());
+        }
+
+        webhookLog("refund processed: pi=$piId rows_updated=$rows event=$eventType");
+    } catch (Throwable $e) {
+        webhookLog("refund handler error: " . $e->getMessage());
+    }
 }
