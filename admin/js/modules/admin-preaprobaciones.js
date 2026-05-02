@@ -369,42 +369,50 @@ window.AD_preaprobaciones = (function(){
   //   5. In progress (truora_status=in_progress / pending)
   //   6. Never attempted (no row in verificaciones_identidad)
   function truoraStatusBadge(row) {
-    var approved = row.truora_approved;
+    var approved = row.truora_approved;        // null = no verificaciones_identidad row
+    var curpM    = row.curp_match;              // null = unknown / never compared
     var status   = (row.truora_status || '').toLowerCase();
     var legacyOk = (row.truora_ok == 1);
+    var hasViRow = !!row.truora_process_id;     // truthy iff JOIN matched
 
-    // Verified path — either via approval flag or legacy bool.
-    if (approved == 1 && row.curp_match == 1) {
+    // ── Priority 1: no verificaciones_identidad row at all ─────────────
+    // approved/curp_match come back as NULL when there is no row. Without
+    // this short-circuit, `(int)NULL === 0` would falsely classify the
+    // row as "Rechazado". Either show "Verificado (legacy)" if the old
+    // truora_ok=1 flag is set, or "No iniciado" otherwise.
+    if (!hasViRow) {
+      if (legacyOk) {
+        return '<span style="color:#10b981;font-weight:700">✓ Verificado</span>'
+             + ' <span style="color:#6b7280;font-size:11px">(legacy)</span>';
+      }
+      return '<span style="color:#9ca3af;font-weight:600">— No iniciado</span>';
+    }
+
+    // ── Priority 2: explicit verified ──────────────────────────────────
+    if (approved == 1 && curpM == 1) {
       return '<span style="color:#10b981;font-weight:700">✓ Verificado</span>'
            + (row.truora_updated_at ? ' <span style="color:#6b7280;font-size:11px">' + esc(String(row.truora_updated_at).slice(0,16).replace('T',' ')) + '</span>' : '');
     }
-    if (legacyOk && !row.truora_process_id) {
-      return '<span style="color:#10b981;font-weight:700">✓ Verificado</span>'
-           + ' <span style="color:#6b7280;font-size:11px">(legacy)</span>';
-    }
 
-    // CURP mismatch — user-recoverable
-    if (approved == 0 && row.curp_match == 0) {
+    // ── Priority 3: CURP mismatch (user-recoverable) ──────────────────
+    // Only fires when curp_match is EXPLICITLY 0 — not null/undefined.
+    if (curpM === 0 || curpM === '0') {
       return '<span style="color:#dc2626;font-weight:700">✗ CURP no coincide</span>';
     }
 
-    // In-progress states
+    // ── Priority 4: in-progress ───────────────────────────────────────
     if (status === 'in_progress' || status === 'pending') {
       return '<span style="color:#f59e0b;font-weight:700">⏳ En proceso</span>';
     }
 
-    // Failed with reason
-    if (approved == 0) {
+    // ── Priority 5: explicit rejection ────────────────────────────────
+    // approved must be EXPLICITLY 0 (not null) to count as rejected.
+    if (approved === 0 || approved === '0') {
       return '<span style="color:#dc2626;font-weight:700">✗ Rechazado</span>';
     }
 
-    // No verificaciones_identidad row → never attempted
-    if (!row.truora_process_id && !legacyOk) {
-      return '<span style="color:#9ca3af;font-weight:600">— No iniciado</span>';
-    }
-
-    // Fallback
-    return '<span style="color:#dc2626">✗ No verificado</span>';
+    // Fallback — has a process_id but state is ambiguous
+    return '<span style="color:#9ca3af;font-weight:600">— Sin estado</span>';
   }
 
   return { render: render };

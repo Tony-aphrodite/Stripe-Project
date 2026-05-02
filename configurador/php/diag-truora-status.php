@@ -179,30 +179,41 @@ echo "DELETE this file (diag-truora-status.php) via FileZilla after use.\n";
  * exactly what the admin UI will render for each row.
  */
 function computeTruoraBadge(array $row): string {
-    $approved = $row['truora_approved'] ?? null;
+    $approved = $row['truora_approved'] ?? null;   // null = no JOIN match
+    $curpM    = $row['curp_match'] ?? null;         // null = unknown
     $status   = strtolower((string)($row['truora_status'] ?? ''));
     $legacyOk = ((int)($row['truora_ok'] ?? 0) === 1);
+    $hasViRow = !empty($row['truora_process_id']);
 
-    if ((int)$approved === 1 && (int)($row['curp_match'] ?? 0) === 1) {
+    // Priority 1: no verificaciones_identidad row → "No iniciado" or
+    // legacy verified. Without this short-circuit, (int)NULL === 0 would
+    // falsely classify all not-attempted rows as "Rechazado".
+    if (!$hasViRow) {
+        return $legacyOk ? "✓ Verificado (legacy)" : "— No iniciado";
+    }
+
+    // Priority 2: explicit verified
+    if ((int)$approved === 1 && (int)$curpM === 1) {
         $when = !empty($row['truora_updated_at'])
             ? '  ' . substr((string)$row['truora_updated_at'], 0, 16)
             : '';
         return "✓ Verificado$when";
     }
-    if ($legacyOk && empty($row['truora_process_id'])) {
-        return "✓ Verificado (legacy)";
-    }
-    if ((int)$approved === 0 && isset($row['curp_match']) && (int)$row['curp_match'] === 0) {
+
+    // Priority 3: CURP mismatch (only when explicitly 0)
+    if ($curpM !== null && (int)$curpM === 0) {
         return "✗ CURP no coincide";
     }
+
+    // Priority 4: in-progress
     if ($status === 'in_progress' || $status === 'pending') {
         return "⏳ En proceso";
     }
-    if ((int)$approved === 0) {
+
+    // Priority 5: explicit rejection
+    if ($approved !== null && (int)$approved === 0) {
         return "✗ Rechazado";
     }
-    if (empty($row['truora_process_id']) && !$legacyOk) {
-        return "— No iniciado";
-    }
-    return "✗ No verificado";
+
+    return "— Sin estado";
 }
