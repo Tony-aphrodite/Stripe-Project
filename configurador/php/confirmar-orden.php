@@ -222,10 +222,23 @@ try {
                 error_log('confirmar-orden GET_LOCK timeout for ' . $confirmLock);
                 $confirmLock = null;
             } else {
-                $dupStmt = $pdo->prepare("SELECT id, pedido FROM transacciones WHERE stripe_pi = ? ORDER BY id ASC LIMIT 1");
+                // Customer brief 2026-05-02: include pago_estado in the dedup
+                // check. With create-payment-intent.php now inserting a
+                // 'pendiente' tracking row at PI creation time, EVERY
+                // successful payment hits this check with an existing row —
+                // and the previous unconditional early-exit skipped the
+                // voltikaNotify('compra_confirmada_*') dispatch entirely
+                // (Adrian's $48,260 contado purchase: notif_sent_at NULL,
+                // no confirmation email sent). Only treat as a real
+                // duplicate when the existing row is ALREADY 'pagada' —
+                // that's the actual double-submit case this guard was
+                // built for. Pending rows must fall through so the
+                // promotion + notification flow can run.
+                $dupStmt = $pdo->prepare("SELECT id, pedido, pago_estado FROM transacciones WHERE stripe_pi = ? ORDER BY id ASC LIMIT 1");
                 $dupStmt->execute([$paymentIntentId]);
                 $dupRow = $dupStmt->fetch(PDO::FETCH_ASSOC);
-                if ($dupRow) {
+                if ($dupRow && (string)($dupRow['pago_estado'] ?? '') === 'pagada') {
+                    // Real duplicate — already paid + already promoted.
                     // Release lock before exit
                     $pdo->prepare("SELECT RELEASE_LOCK(?)")->execute([$confirmLock]);
                     echo json_encode([
@@ -238,8 +251,10 @@ try {
                     ]);
                     exit;
                 }
-                // Hold the lock through INSERT below so concurrent requests
-                // wait and observe the newly-created row on their turn.
+                // Existing row is 'pendiente' (or missing): fall through to
+                // the UPDATE-first promotion path + notification dispatch.
+                // Hold the lock through that block so concurrent requests
+                // observe the promoted row.
             }
         } catch (Throwable $e) {
             error_log('confirmar-orden dedup check: ' . $e->getMessage());
