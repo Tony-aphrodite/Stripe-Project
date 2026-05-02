@@ -289,6 +289,28 @@ window.AD_preaprobaciones = (function(){
     html += '<textarea id="apEditNotas" rows="4" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box">'+esc(row.notas_admin||'')+'</textarea>';
     html += '</div>';
 
+    // ── Manual review action bar (customer brief 2026-05-02) ─────────────
+    // Two buttons that recover stuck applications:
+    //  1. "Enviar link Truora" — when the applicant passed CDC but never
+    //     started Truora. Generates an HMAC-signed recovery URL and emails
+    //     + texts the customer so they can finish identity verification.
+    //  2. "Enviar a Ventas para cobro" — only enabled when ALL three
+    //     signals are green (CDC real + CURP match + Truora approved).
+    //     Promotes the row to a transacciones 'pendiente' entry and
+    //     emails the customer a payment link.
+    var canSendTruora = !row.truora_process_id;  // never started
+    var allVerified  = ((row.circulo_source === 'real' || row.circulo_source === 'cdc_sin_score' || row.circulo_source === 'score_bajo_pti_excelente')
+                       && (row.curp_match == 1) && (row.truora_approved == 1));
+
+    html += '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:16px 8px 8px;padding:14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;">';
+    html += '<button id="apSendTruoraLink" '+(canSendTruora?'':'disabled')+
+            ' title="'+(canSendTruora?'Enviar al cliente un link para completar la verificación Truora':'El cliente ya inició Truora')+'"'+
+            ' style="padding:10px 16px;background:'+(canSendTruora?'#0ea5e9':'#cbd5e1')+';color:#fff;border:none;border-radius:6px;font-weight:700;cursor:'+(canSendTruora?'pointer':'not-allowed')+';font-size:13px;">📧 Enviar link de Truora</button>';
+    html += '<button id="apSendToVentas" '+(allVerified?'':'disabled')+
+            ' title="'+(allVerified?'Promover esta solicitud a Ventas y enviar enlace de pago al cliente':'Requiere CDC real + CURP match + Truora aprobado')+'"'+
+            ' style="padding:10px 16px;background:'+(allVerified?'#10b981':'#cbd5e1')+';color:#fff;border:none;border-radius:6px;font-weight:700;cursor:'+(allVerified?'pointer':'not-allowed')+';font-size:13px;">💳 Enviar a Ventas para cobro</button>';
+    html += '</div>';
+
     // ── Action bar ───────────────────────────────────────────────────────
     html += '<div style="display:flex;gap:10px;justify-content:space-between;margin-top:16px;padding:0 8px;flex-wrap:wrap">';
     html += '<div style="display:flex;gap:8px">';
@@ -338,6 +360,65 @@ window.AD_preaprobaciones = (function(){
       ADApp.api('preaprobaciones/eliminar.php', { id: row.id, modo: 'eliminar' })
         .done(function(){ ADApp.closeModal(); load(); })
         .fail(function(xhr){ alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'Solo admin puede eliminar permanentemente')); });
+    });
+
+    // ── Manual-review: send Truora link to lost lead ────────────────────
+    $('#apSendTruoraLink').on('click', function(){
+      if ($(this).is(':disabled')) return;
+      var contactos = [row.email, row.telefono].filter(Boolean).join(' / ') || '(sin contacto)';
+      if (!confirm('¿Enviar link de Truora a este cliente?\n\n' + contactos + '\n\nEl cliente recibirá un email y SMS con un enlace personal (válido 7 días) para completar la verificación de identidad sin volver a llenar el formulario.')) return;
+      var $btn = $(this).prop('disabled', true).text('Enviando...');
+      ADApp.api('preaprobaciones/enviar-truora-link.php', { id: row.id })
+        .done(function(r){
+          if (r && r.ok) {
+            var parts = [];
+            if (r.email_sent) parts.push('✓ Email enviado');
+            if (r.sms_sent)   parts.push('✓ SMS enviado');
+            if (!parts.length) parts.push('⚠ Sin canal disponible — copia el enlace manualmente');
+            alert('Link enviado al cliente.\n\n' + parts.join('\n') + '\n\nEnlace:\n' + (r.recovery_url || ''));
+            ADApp.closeModal(); load();
+          } else {
+            alert('Error: ' + ((r && r.error) || 'desconocido'));
+            $btn.prop('disabled', false).text('📧 Enviar link de Truora');
+          }
+        })
+        .fail(function(xhr){
+          alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido'));
+          $btn.prop('disabled', false).text('📧 Enviar link de Truora');
+        });
+    });
+
+    // ── Manual-review: promote fully-verified lead to Ventas ────────────
+    $('#apSendToVentas').on('click', function(){
+      if ($(this).is(':disabled')) return;
+      var monto = row.precio_contado ? fmtMoney(row.precio_contado) : '';
+      if (!confirm('¿Promover esta solicitud a Ventas y enviar enlace de pago al cliente?\n\nCliente: ' + fullName + '\nModelo: ' + (row.modelo || '—') + '\nMonto: ' + monto + '\n\nSe creará una orden "pendiente" y el cliente recibirá un email con el enlace de pago.')) return;
+      var $btn = $(this).prop('disabled', true).text('Enviando...');
+      ADApp.api('preaprobaciones/enviar-a-ventas.php', { id: row.id })
+        .done(function(r){
+          if (r && r.ok) {
+            var parts = [];
+            parts.push('Orden #' + (r.transaccion_id || '?') + ' creada');
+            if (r.email_sent) parts.push('✓ Email de pago enviado');
+            if (r.sms_sent)   parts.push('✓ SMS enviado');
+            alert(r.message || 'Enviado a Ventas.\n\n' + parts.join('\n'));
+            ADApp.closeModal(); load();
+          } else {
+            var msg = (r && r.message) || (r && r.error) || 'desconocido';
+            if (r && r.detail) {
+              var d = r.detail;
+              msg += '\n\n' + (d.cdc_real ? '✓' : '✗') + ' CDC real'
+                  + '\n' + (d.curp_match ? '✓' : '✗') + ' CURP match'
+                  + '\n' + (d.truora_ok  ? '✓' : '✗') + ' Truora aprobado';
+            }
+            alert(msg);
+            $btn.prop('disabled', false).text('💳 Enviar a Ventas para cobro');
+          }
+        })
+        .fail(function(xhr){
+          alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido'));
+          $btn.prop('disabled', false).text('💳 Enviar a Ventas para cobro');
+        });
     });
   }
 

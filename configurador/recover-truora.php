@@ -1,0 +1,161 @@
+<?php
+/**
+ * Voltika — recovery landing page for the "send Truora link" admin action.
+ *
+ * Customer brief 2026-05-02: when the admin sends a manual-review link to
+ * a credit applicant who didn't complete Truora, this is where they land.
+ * Validates the HMAC token, looks up the preaprobacion row, then bounces
+ * the user into the configurador SPA with sessionStorage seeded so the
+ * flow lands directly at the Truora identity step (no CDC redo, no
+ * form re-entry).
+ *
+ * URL: /configurador/recover-truora.php?t=<id.expires.hmac>
+ */
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/php/config.php';
+
+$token = (string)($_GET['t'] ?? '');
+if ($token === '') {
+    http_response_code(400);
+    echo "Enlace inválido.";
+    exit;
+}
+
+// ── Validate HMAC token ────────────────────────────────────────────────────
+$parts = explode('.', $token);
+if (count($parts) !== 3) {
+    http_response_code(400);
+    echo "Enlace mal formado.";
+    exit;
+}
+[$id, $expires, $sig] = $parts;
+$id      = (int)$id;
+$expires = (int)$expires;
+
+if ($expires < time()) {
+    http_response_code(410);
+    echo "Este enlace ha expirado. Por favor solicita uno nuevo a soporte.";
+    exit;
+}
+
+$recoverSecret = defined('VOLTIKA_RECOVER_SECRET')
+    ? VOLTIKA_RECOVER_SECRET
+    : (getenv('VOLTIKA_RECOVER_SECRET') ?: 'voltika_recover_2026_default');
+$expected = hash_hmac('sha256', $id . '.' . $expires, $recoverSecret);
+if (!hash_equals($expected, $sig)) {
+    http_response_code(403);
+    echo "Enlace inválido (firma).";
+    exit;
+}
+
+// ── Load preaprobacion data ────────────────────────────────────────────────
+try {
+    $pdo = getDB();
+    $stmt = $pdo->prepare("SELECT * FROM preaprobaciones WHERE id = ? LIMIT 1");
+    $stmt->execute([$id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        http_response_code(404);
+        echo "Solicitud no encontrada.";
+        exit;
+    }
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo "Error interno.";
+    exit;
+}
+
+// ── Build state object the SPA expects ─────────────────────────────────────
+// We seed the same sessionStorage keys the configurador uses internally so
+// the user lands at the credit-identity step with everything pre-filled.
+// Only fields that actually existed during the original CDC submission —
+// no fabrication, no defaults.
+$state = [
+    'modeloSeleccionado'  => mapModeloIdFromName($row['modelo'] ?? ''),
+    'metodoPago'          => 'credito',
+    'nombre'              => $row['nombre']           ?? '',
+    'apellidoPaterno'     => $row['apellido_paterno'] ?? '',
+    'apellidoMaterno'     => $row['apellido_materno'] ?? '',
+    'email'               => $row['email']            ?? '',
+    'telefono'            => $row['telefono']         ?? '',
+    'fechaNacimiento'     => $row['fecha_nacimiento'] ?? '',
+    'codigoPostal'        => $row['cp']               ?? '',
+    'ciudad'              => $row['ciudad']           ?? '',
+    'estado'              => $row['estado']           ?? '',
+    '_recoveredFromAdmin' => true,
+    '_recoveredPreapId'   => (int)$row['id'],
+    '_skipCDC'            => true,    // do not re-evaluate, we already have a result
+    'creditoAprobado'     => true,
+    'modoCondicional'    => in_array($row['status'] ?? '', ['CONDICIONAL', 'CONDICIONAL_ESTIMADO'], true),
+];
+if ($row['enganche_requerido'] ?? null) {
+    $state['enganchePctMin']    = (float)$row['enganche_requerido'];
+    $state['enganchePorcentaje'] = max((float)$row['enganche_requerido'], 0.30);
+}
+if ($row['plazo_max'] ?? null) {
+    $state['plazoMesesMax'] = (int)$row['plazo_max'];
+    $state['plazoMeses']    = (int)$row['plazo_max'];
+}
+
+/**
+ * Best-effort map of the model name stored on the preaprobacion row to the
+ * configurador's modeloId slug. Falls back to lowercase of the name. The
+ * SPA's own `app.getModelo()` is forgiving with case + whitespace.
+ */
+function mapModeloIdFromName(string $name): string {
+    $n = strtolower(trim($name));
+    $map = [
+        'm05'           => 'm05',
+        'm03'           => 'm03',
+        'pesgo plus'    => 'pesgo-plus',
+        'mc10 streetx'  => 'mc10',
+        'mc10'          => 'mc10',
+        'ukko s+'       => 'ukko-s',
+        'mino-b'        => 'mino',
+        'mino'          => 'mino',
+    ];
+    return $map[$n] ?? preg_replace('/\s+/', '-', $n);
+}
+
+?><!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voltika — Continuando tu verificación</title>
+<link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+<style>
+body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#F8FAFC;margin:0;padding:24px;color:#222;}
+.box{max-width:480px;margin:60px auto;background:#fff;border-radius:14px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,.06);text-align:center;}
+.spin{width:32px;height:32px;border:3px solid #E5E7EB;border-top-color:#039fe1;border-radius:50%;animation:s 1s linear infinite;margin:0 auto 16px;}
+@keyframes s{to{transform:rotate(360deg)}}
+.logo{height:40px;margin-bottom:18px;}
+h1{font-size:18px;color:#1a3a5c;margin:0 0 8px;}
+p{font-size:14px;color:#555;margin:0 0 6px;}
+</style>
+</head><body>
+<div class="box">
+  <img src="img/voltika_logo_h_white.svg" alt="Voltika" class="logo" style="background:#1a3a5c;border-radius:6px;padding:6px 10px;">
+  <div class="spin"></div>
+  <h1>Continuando tu verificación...</h1>
+  <p>Estamos llevándote al paso final.</p>
+</div>
+<script>
+(function(){
+  var STATE = <?= json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+  try {
+    // The SPA reads its persisted state from sessionStorage under the key
+    // 'voltika_state'. Seed it with the recovered fields so when the SPA
+    // boots it picks up where the customer left off.
+    sessionStorage.setItem('voltika_state', JSON.stringify(STATE));
+    sessionStorage.setItem('voltika_recovered', '1');
+  } catch (e) {}
+  // Bounce to the SPA. The SPA reads the ?paso= hint and jumps straight
+  // to the Truora identity step.
+  setTimeout(function(){
+    window.location.href = '/configurador/?paso=credito-identidad&recovered=1';
+  }, 800);
+})();
+</script>
+</body></html>
