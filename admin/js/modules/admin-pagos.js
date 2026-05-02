@@ -41,20 +41,25 @@ window.AD_pagos = (function(){
     html += '</div>';
     html += '</div>';
 
-    // Filters — type + date range (customer brief 2026-05-02)
-    html += '<div class="ad-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">'+
-      '<select class="ad-select" id="adPTipo" title="Tipo de pago">'+
+    // Filters — type + date range (customer brief 2026-05-02 v2)
+    // Compact single-line layout. Native <input type="date"> defaults to
+    // full width inside a flex container; force fixed width (140px) and
+    // disable flex-grow so the row stays on one line on desktop AND on
+    // narrow screens (overflow-x:auto enables horizontal scroll if the
+    // viewport is too narrow rather than wrapping into ugly multi-line).
+    html += '<div class="ad-filters" style="display:flex;flex-wrap:nowrap;gap:8px;align-items:center;overflow-x:auto;padding:4px 2px 6px;">'+
+      '<select class="ad-select" id="adPTipo" title="Tipo de pago" style="flex:0 0 auto;font-size:12px;padding:5px 8px;height:30px;">'+
         '<option value="">Todos</option>'+
         '<option value="contado"'+(fa.tipo==='contado'?' selected':'')+'>Contado</option>'+
         '<option value="msi"'+(fa.tipo==='msi'?' selected':'')+'>MSI</option>'+
         '<option value="credito"'+(fa.tipo==='credito'?' selected':'')+'>Crédito</option>'+
       '</select>'+
-      '<label style="font-size:12px;color:var(--ad-dim);">Desde</label>'+
-      '<input type="date" class="ad-input" id="adPDesde" value="'+esc(fa.desde||'')+'" style="font-size:12px;padding:5px 8px;">'+
-      '<label style="font-size:12px;color:var(--ad-dim);">Hasta</label>'+
-      '<input type="date" class="ad-input" id="adPHasta" value="'+esc(fa.hasta||'')+'" style="font-size:12px;padding:5px 8px;">'+
-      '<button class="ad-btn sm ghost" id="adPFilter">Filtrar</button>'+
-      '<button class="ad-btn sm ghost" id="adPClear" title="Limpiar filtros">Limpiar</button>'+
+      '<span style="font-size:12px;color:var(--ad-dim);flex:0 0 auto;">Desde</span>'+
+      '<input type="date" id="adPDesde" value="'+esc(fa.desde||'')+'" style="flex:0 0 140px;width:140px;font-size:12px;padding:5px 8px;height:30px;border:1px solid var(--ad-border);border-radius:6px;background:#fff;box-sizing:border-box;">'+
+      '<span style="font-size:12px;color:var(--ad-dim);flex:0 0 auto;">Hasta</span>'+
+      '<input type="date" id="adPHasta" value="'+esc(fa.hasta||'')+'" style="flex:0 0 140px;width:140px;font-size:12px;padding:5px 8px;height:30px;border:1px solid var(--ad-border);border-radius:6px;background:#fff;box-sizing:border-box;">'+
+      '<button class="ad-btn sm ghost" id="adPFilter" style="flex:0 0 auto;height:30px;padding:0 12px;font-size:12px;">Filtrar</button>'+
+      '<button class="ad-btn sm ghost" id="adPClear" title="Limpiar filtros" style="flex:0 0 auto;height:30px;padding:0 12px;font-size:12px;">Limpiar</button>'+
     '</div>';
     // Table
     html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
