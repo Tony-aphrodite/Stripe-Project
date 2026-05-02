@@ -134,21 +134,20 @@ if ($person_found === false) {
         'mensaje'    => 'La persona no aparece en el Buró de Crédito. No es posible otorgar crédito a identidades que no se pueden verificar.',
     ];
 }
-// ── FIX 1 (customer brief 2026-05-01): CDC responded but no FICO score ────
-// CDC found the persona (person_found=true) but couldn't issue a FICO
-// score — typically a thin-file, low-demographic-confidence case (CDC
-// reasons E0/G1/J0). Real cases observed: Gabriela Luviano (Texcoco),
-// Ulises Oro (Tampico). The previous Policy C lumped these together with
-// "CDC unreachable" and forced a 50% enganche which killed conversion on
-// otherwise viable PTI profiles.
+// ── FIX 1 (customer brief 2026-05-01, refined 2026-05-02): CDC responded
+// but no FICO score. CDC found the persona (person_found=true) but couldn't
+// issue a FICO — typically thin-file / low-demographic-confidence (CDC
+// reasons E0/G1/J0). Real cases: Gabriela Luviano (Texcoco), Ulises Oro
+// (Tampico). Previously these were dumped into Policy C and required an
+// already-50% enganche to pass — this killed conversion on otherwise
+// viable PTI profiles.
 //
-// New rule: PTI-only evaluation with CONSERVATIVE caps (40% enganche min,
-// 18-month max plazo) — distinct from the standard fallback because we
-// have positive identity confirmation from CDC, just no scoring signal.
-// circulo_source='cdc_sin_score' tags these for 30-day review.
+// 2026-05-02 update: ALL conditional outcomes now use the SAME standard
+// terms (50% enganche min, 12-month max). No differentiation by case,
+// score band, or PTI level. Keeps downstream UI / messaging uniform.
 elseif ($score === null && $person_found === true) {
-    $minEng    = 0.40;
-    $maxPlazo  = 18;
+    $minEng    = 0.50;
+    $maxPlazo  = 12;
     $result = [
         'status'                 => 'CONDICIONAL_ESTIMADO',
         'pti_total'              => round($pti_total, 4),
@@ -156,7 +155,7 @@ elseif ($score === null && $person_found === true) {
         'enganche_requerido_min' => $minEng,
         'plazo_max_meses'        => $maxPlazo,
         'reasons'                => ['CDC_RESPONDIO_SIN_SCORE'],
-        'mensaje'                => 'Aprobación condicional especial: el Buró confirmó tu identidad pero no pudo emitir un score. Aprobamos con un enganche mínimo del ' . round($minEng * 100) . '% y un plazo de hasta ' . $maxPlazo . ' meses.',
+        'mensaje'                => 'Aprobación condicional: el Buró confirmó tu identidad pero no pudo emitir un score. Aprobamos con un enganche del ' . round($minEng * 100) . '% y un plazo de ' . $maxPlazo . ' meses.',
         'person_found'           => $person_found,
         'circulo_source'         => 'cdc_sin_score',
     ];
@@ -203,23 +202,25 @@ elseif ($score === null) {
 } else {
     // Con datos completos de Círculo
 
-    // ── FIX 2 (customer brief 2026-05-01): low score offset by excellent PTI ─
-    // Score 380-419 normally hits the absolute KO at line below, but real
-    // case Oscar Limón (score 409, PTI 6%, $40,001 monthly income) showed
-    // this is too rigid: a customer who only commits 6% of income has a
-    // very low default probability regardless of CDC's thin-file score.
-    // The 55% enganche covers the asset cost on day 1, eliminating loss
-    // risk for this profile. circulo_source='score_bajo_pti_excelente'
-    // tags these for 30-day review. Must run BEFORE the score<420 KO.
+    // ── FIX 2 (customer brief 2026-05-01, refined 2026-05-02): low score
+    // offset by excellent PTI. Score 380-419 normally hits the absolute KO
+    // at line below, but real case Oscar Limón (score 409, PTI 6%, $40,001
+    // monthly income) showed this is too rigid: a customer who only commits
+    // 6% of income has a very low default probability regardless of CDC's
+    // thin-file score. circulo_source='score_bajo_pti_excelente' tags
+    // these for 30-day review. Must run BEFORE the score<420 KO.
+    //
+    // 2026-05-02 update: standardized to 50% enganche / 12-month plazo —
+    // matching every other CONDITIONAL outcome (no per-case variation).
     if ($score >= 380 && $score < 420 && $pti_total <= 0.30 && !$mora_severa) {
         $result = [
             'status'                 => 'CONDICIONAL',
             'pti_total'              => round($pti_total, 4),
             'enganche_min'           => $eng_min,
-            'enganche_requerido_min' => 0.55,
+            'enganche_requerido_min' => 0.50,
             'plazo_max_meses'        => 12,
             'reasons'                => ['SCORE_BAJO_PTI_EXCELENTE'],
-            'mensaje'                => 'Aprobación condicional: tu capacidad de pago es excelente (PTI ' . round($pti_total * 100, 1) . '%). Requerimos 55% de enganche con plazo de 12 meses.',
+            'mensaje'                => 'Aprobación condicional: tu capacidad de pago es excelente (PTI ' . round($pti_total * 100, 1) . '%). Requerimos 50% de enganche con plazo de 12 meses.',
             'circulo_source'         => 'score_bajo_pti_excelente',
         ];
     }

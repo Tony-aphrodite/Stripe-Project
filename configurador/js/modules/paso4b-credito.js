@@ -84,18 +84,17 @@ var PreaprobacionV3 = {
             };
         }
 
-        // ── FIX 1 (customer brief 2026-05-01): CDC found persona but no score ──
-        // When CDC confirms identity (personFound=true) but couldn't issue a
-        // FICO score (thin file), use a conservative PTI-only path with 40%
-        // enganche / 18-month max instead of Policy C's 50% threshold. Real
-        // cases: Gabriela Luviano, Ulises Oro.
+        // ── FIX 1 (customer brief 2026-05-01, refined 2026-05-02): CDC found
+        // persona but no FICO score. Real cases: Gabriela Luviano, Ulises Oro.
+        // ALL conditional outcomes use the same standard terms (50%/12mo) —
+        // no differentiation by case, score band, or PTI level.
         if ((score === null || score === undefined) && personFound === true) {
             return {
                 status:                 'CONDICIONAL_ESTIMADO',
                 pti:                    pti,
-                enganche_min:           0.40,
-                enganche_requerido_min: 0.40,
-                plazo_max_meses:        18,
+                enganche_min:           0.50,
+                enganche_requerido_min: 0.50,
+                plazo_max_meses:        12,
                 reasons:                ['CDC_RESPONDIO_SIN_SCORE'],
                 circulo_source:         'cdc_sin_score',
                 person_found:           personFound
@@ -109,17 +108,16 @@ var PreaprobacionV3 = {
 
         var s = Number(score);
 
-        // ── FIX 2 (customer brief 2026-05-01): low score offset by excellent PTI ──
-        // Real case Oscar Limón (score 409, PTI 6%, $40k income). Score 380-419
-        // is normally rejected, but excellent PTI (≤30%) + no DPD90 means the
-        // applicant has very low default probability. 55% enganche + 12-month
-        // term covers Voltika's day-one asset cost. Must run BEFORE the score<420 KO.
+        // ── FIX 2 (customer brief 2026-05-01, refined 2026-05-02): low score
+        // offset by excellent PTI. Real case Oscar Limón (score 409, PTI 6%,
+        // $40k income). Standard 50%/12 terms — same as every other
+        // conditional outcome. Must run BEFORE the score<420 KO.
         if (s >= 380 && s < 420 && pti <= 0.30 && !mora) {
             return {
                 status:                 'CONDICIONAL',
                 pti:                    pti,
                 enganche_min:           cfg.downPaymentMin,
-                enganche_requerido_min: 0.55,
+                enganche_requerido_min: 0.50,
                 plazo_max_meses:        12,
                 reasons:                ['SCORE_BAJO_PTI_EXCELENTE'],
                 circulo_source:         'score_bajo_pti_excelente'

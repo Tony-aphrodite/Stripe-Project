@@ -54,8 +54,8 @@ $tests = [
         'fix'      => 'FIX 1',
         'expect'   => [
             'status'                 => 'CONDICIONAL_ESTIMADO',
-            'enganche_requerido_min' => 0.40,
-            'plazo_max_meses'        => 18,
+            'enganche_requerido_min' => 0.50,
+            'plazo_max_meses'        => 12,
             'circulo_source'         => 'cdc_sin_score',
         ],
         'payload' => [
@@ -82,8 +82,8 @@ $tests = [
         'fix'      => 'FIX 1',
         'expect'   => [
             'status'                 => 'CONDICIONAL_ESTIMADO',
-            'enganche_requerido_min' => 0.40,
-            'plazo_max_meses'        => 18,
+            'enganche_requerido_min' => 0.50,
+            'plazo_max_meses'        => 12,
             'circulo_source'         => 'cdc_sin_score',
         ],
         'payload' => [
@@ -110,7 +110,7 @@ $tests = [
         'fix'      => 'FIX 2',
         'expect'   => [
             'status'                 => 'CONDICIONAL',
-            'enganche_requerido_min' => 0.55,
+            'enganche_requerido_min' => 0.50,
             'plazo_max_meses'        => 12,
             'circulo_source'         => 'score_bajo_pti_excelente',
         ],
