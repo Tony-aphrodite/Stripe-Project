@@ -230,7 +230,38 @@ window.AD_preaprobaciones = (function(){
     html += dataRow('Pago semanal', fmtMoney(row.pago_semanal));
     html += dataRow('Pago mensual', fmtMoney(row.pago_mensual));
     html += dataRow('Source', sourceLabel(row.circulo_source));
-    html += dataRow('Truora ID', row.truora_ok == 1 ? '<span style="color:#10b981;font-weight:700">✓ Verificado</span>' : '<span style="color:#dc2626">✗ No verificado</span>');
+
+    // Customer brief 2026-05-02: surface detailed Truora status. The old
+    // binary truora_ok ✓/✗ couldn't tell the admin apart these very
+    // different cases:
+    //   - never attempted (CDC-only path)
+    //   - attempted, customer abandoned mid-flow
+    //   - attempted, identity check failed (declined_reason populated)
+    //   - succeeded but our CURP cross-check rejected (curp_match=0)
+    //   - manual review queued (failure with non-recoverable reason)
+    html += dataRow('Truora ID', truoraStatusBadge(row));
+    if (row.truora_process_id) {
+        html += dataRow('Truora process', '<code style="font-size:11px;color:#6b7280">' + esc(row.truora_process_id) + '</code>');
+    }
+    if (row.truora_declined_reason) {
+        html += dataRow('Razón Truora', '<span style="color:#dc2626;font-weight:600">' + esc(row.truora_declined_reason) + '</span>');
+    }
+    if (row.manual_review_required == 1) {
+        html += dataRow('Revisión manual', '<span style="color:#f59e0b;font-weight:700">⚠ Requerida</span>'
+            + (row.manual_review_reason ? ' <span style="color:#6b7280">(' + esc(row.manual_review_reason) + ')</span>' : ''));
+    }
+    if (row.curp_match !== null && row.curp_match !== undefined) {
+        var curpLabel = (row.curp_match == 1)
+            ? '<span style="color:#10b981;font-weight:700">✓ Coincide</span>'
+            : '<span style="color:#dc2626;font-weight:700">✗ No coincide</span>';
+        html += dataRow('CURP match', curpLabel);
+    }
+    if (row.name_match !== null && row.name_match !== undefined) {
+        var nameLabel = (row.name_match == 1)
+            ? '<span style="color:#10b981;font-weight:700">✓ Coincide</span>'
+            : '<span style="color:#f59e0b;font-weight:700">⚠ Diferente</span>';
+        html += dataRow('Nombre match', nameLabel);
+    }
     html += '</div>';
 
     html += '</div>'; // end grid
@@ -326,6 +357,54 @@ window.AD_preaprobaciones = (function(){
     if (s === 'real') return '<span style="color:#10b981;font-weight:700">CDC real</span>';
     if (s === 'estimado') return '<span style="color:#d97706;font-weight:700">Score estimado</span>';
     return esc(s || '—');
+  }
+
+  // Customer brief 2026-05-02: detailed Truora outcome rendering. Six
+  // possible states surfaced from verificaciones_identidad + the legacy
+  // truora_ok bool:
+  //   1. Verified (truora_approved=1 AND curp_match=1)
+  //   2. Verified (legacy — truora_ok=1, no detail row available)
+  //   3. CURP mismatch (truora_approved=0, curp_match=0) → user-recoverable
+  //   4. Failed (truora_approved=0, declined_reason set)
+  //   5. In progress (truora_status=in_progress / pending)
+  //   6. Never attempted (no row in verificaciones_identidad)
+  function truoraStatusBadge(row) {
+    var approved = row.truora_approved;
+    var status   = (row.truora_status || '').toLowerCase();
+    var legacyOk = (row.truora_ok == 1);
+
+    // Verified path — either via approval flag or legacy bool.
+    if (approved == 1 && row.curp_match == 1) {
+      return '<span style="color:#10b981;font-weight:700">✓ Verificado</span>'
+           + (row.truora_updated_at ? ' <span style="color:#6b7280;font-size:11px">' + esc(String(row.truora_updated_at).slice(0,16).replace('T',' ')) + '</span>' : '');
+    }
+    if (legacyOk && !row.truora_process_id) {
+      return '<span style="color:#10b981;font-weight:700">✓ Verificado</span>'
+           + ' <span style="color:#6b7280;font-size:11px">(legacy)</span>';
+    }
+
+    // CURP mismatch — user-recoverable
+    if (approved == 0 && row.curp_match == 0) {
+      return '<span style="color:#dc2626;font-weight:700">✗ CURP no coincide</span>';
+    }
+
+    // In-progress states
+    if (status === 'in_progress' || status === 'pending') {
+      return '<span style="color:#f59e0b;font-weight:700">⏳ En proceso</span>';
+    }
+
+    // Failed with reason
+    if (approved == 0) {
+      return '<span style="color:#dc2626;font-weight:700">✗ Rechazado</span>';
+    }
+
+    // No verificaciones_identidad row → never attempted
+    if (!row.truora_process_id && !legacyOk) {
+      return '<span style="color:#9ca3af;font-weight:600">— No iniciado</span>';
+    }
+
+    // Fallback
+    return '<span style="color:#dc2626">✗ No verificado</span>';
   }
 
   return { render: render };

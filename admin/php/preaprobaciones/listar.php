@@ -73,14 +73,17 @@ $limit       = min(200, max(20, (int)($_GET['limit'] ?? 50)));
 $offset      = ($page - 1) * $limit;
 
 // By default exclude archived rows. Pass ?seguimiento=archivado to view them.
+// Customer brief 2026-05-02: prefix every column with `p.` so the WHERE
+// clause stays unambiguous after the LEFT JOIN to verificaciones_identidad
+// — without prefixes MySQL throws "ambiguous column" on shared names.
 $where  = ['1=1'];
 $params = [];
-if ($seguimiento === '') { $where[] = "(seguimiento IS NULL OR seguimiento != 'archivado')"; }
-if ($status      !== '') { $where[] = 'status = ?';         $params[] = $status; }
-if ($seguimiento !== '') { $where[] = 'seguimiento = ?';    $params[] = $seguimiento; }
-if ($source      !== '') { $where[] = 'circulo_source = ?'; $params[] = $source; }
+if ($seguimiento === '') { $where[] = "(p.seguimiento IS NULL OR p.seguimiento != 'archivado')"; }
+if ($status      !== '') { $where[] = 'p.status = ?';         $params[] = $status; }
+if ($seguimiento !== '') { $where[] = 'p.seguimiento = ?';    $params[] = $seguimiento; }
+if ($source      !== '') { $where[] = 'p.circulo_source = ?'; $params[] = $source; }
 if ($search      !== '') {
-    $where[] = '(LOWER(COALESCE(email,\'\')) LIKE ? OR LOWER(COALESCE(nombre,\'\')) LIKE ? OR LOWER(COALESCE(apellido_paterno,\'\')) LIKE ? OR COALESCE(telefono,\'\') LIKE ?)';
+    $where[] = '(LOWER(COALESCE(p.email,\'\')) LIKE ? OR LOWER(COALESCE(p.nombre,\'\')) LIKE ? OR LOWER(COALESCE(p.apellido_paterno,\'\')) LIKE ? OR COALESCE(p.telefono,\'\') LIKE ?)';
     $like = '%' . strtolower($search) . '%';
     $params[] = $like; $params[] = $like; $params[] = $like; $params[] = '%' . $search . '%';
 }
@@ -98,22 +101,54 @@ try {
         SUM(seguimiento = 'nuevo')       AS pendiente_seguimiento
         FROM preaprobaciones")->fetch(PDO::FETCH_ASSOC) ?: [];
 
-    $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM preaprobaciones WHERE $whereSql");
+    // The WHERE clause now uses `p.` prefixes (post-JOIN), so the count
+    // query needs the same alias to satisfy MySQL.
+    $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM preaprobaciones p WHERE $whereSql");
     $cntStmt->execute($params);
     $totalFiltrado = (int)$cntStmt->fetchColumn();
 
+    // Customer brief 2026-05-02: surface DETAILED Truora status (not just
+    // OK / not OK). The truora_ok flag is binary and can't tell the admin
+    // apart these very different cases:
+    //   - applicant never reached Truora (CDC-only path)
+    //   - Truora attempted, identity check failed (declined_reason populated)
+    //   - Truora succeeded but CURP mismatch detected by our cross-check
+    //   - Truora pending (in progress, customer hasn't completed selfie yet)
+    //   - Manual review queued (failure with non-recoverable reason)
+    //
+    // We LEFT JOIN verificaciones_identidad on telefono OR email so the
+    // dashboard can render a rich badge with the actual Truora outcome
+    // and the declined reason if one exists. NULL means no Truora attempt
+    // was ever made for this applicant.
     $stmt = $pdo->prepare("
-        SELECT id, nombre, apellido_paterno, apellido_materno, email, telefono,
-               fecha_nacimiento, cp, ciudad, estado,
-               modelo, precio_contado, ingreso_mensual,
-               pago_semanal, pago_mensual, pti_total,
-               score, synth_score, circulo_source,
-               enganche_pct, plazo_meses, status,
-               enganche_requerido, plazo_max,
-               truora_ok, seguimiento, notas_admin, freg
-        FROM preaprobaciones
+        SELECT p.id, p.nombre, p.apellido_paterno, p.apellido_materno, p.email, p.telefono,
+               p.fecha_nacimiento, p.cp, p.ciudad, p.estado,
+               p.modelo, p.precio_contado, p.ingreso_mensual,
+               p.pago_semanal, p.pago_mensual, p.pti_total,
+               p.score, p.synth_score, p.circulo_source,
+               p.enganche_pct, p.plazo_meses, p.status,
+               p.enganche_requerido, p.plazo_max,
+               p.truora_ok, p.seguimiento, p.notas_admin, p.freg,
+               vi.truora_process_id,
+               vi.truora_status,
+               vi.truora_failure_status,
+               vi.truora_declined_reason,
+               vi.curp_match,
+               vi.name_match,
+               vi.approved          AS truora_approved,
+               vi.manual_review_required,
+               vi.manual_review_reason,
+               vi.truora_updated_at
+        FROM preaprobaciones p
+        LEFT JOIN verificaciones_identidad vi
+               ON vi.id = (
+                   SELECT vi2.id FROM verificaciones_identidad vi2
+                    WHERE (vi2.telefono <> '' AND vi2.telefono = p.telefono)
+                       OR (vi2.email    <> '' AND vi2.email    = p.email)
+                    ORDER BY vi2.id DESC LIMIT 1
+               )
         WHERE $whereSql
-        ORDER BY freg DESC
+        ORDER BY p.freg DESC
         LIMIT $limit OFFSET $offset
     ");
     $stmt->execute($params);
