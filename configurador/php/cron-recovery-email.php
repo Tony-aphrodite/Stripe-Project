@@ -52,6 +52,34 @@ if (!$isCli) {
 }
 $dryRun = !empty($_GET['dry']) || !empty($_SERVER['argv'][1]) && $_SERVER['argv'][1] === '--dry';
 
+// ── One-time cleanup of pre-fix legacy rows (customer brief 2026-05-01) ────
+// Rows from before today's MSI/OXXO fixes have wrong amounts (David's MSI
+// $9,989 instead of full price, Oscar's OXXO 4 rows for one purchase).
+// Sending recovery emails to those rows would expose the historical bugs
+// to real customers. The flag below blanket-marks every row that EXISTED
+// before this code was deployed as "already emailed" so they're skipped.
+//   ?action=skip-legacy → mark all current pendiente rows as sent
+//   (one-time admin action; harmless to call again — UPDATE is idempotent)
+if (($_GET['action'] ?? '') === 'skip-legacy') {
+    try {
+        $pdoSkip = getDB();
+        $upd = $pdoSkip->prepare("UPDATE transacciones
+            SET recovery_email_sent_at = NOW()
+            WHERE pago_estado = 'pendiente'
+              AND recovery_email_sent_at IS NULL");
+        $upd->execute();
+        $marked = $upd->rowCount();
+        echo "Legacy skip: marked $marked pending row(s) as 'recovery email already sent'.\n";
+        echo "These rows will NOT receive recovery emails on the next cron tick.\n";
+        echo "Going forward, only NEW pending rows (created after this point)\n";
+        echo "will be eligible for the abandoned-cart recovery flow.\n";
+        exit;
+    } catch (Throwable $e) {
+        echo "skip-legacy error: " . $e->getMessage() . "\n";
+        exit;
+    }
+}
+
 echo "================================================================\n";
 echo "  Voltika abandoned-cart recovery (cron)\n";
 echo "  Mode: " . ($dryRun ? 'DRY-RUN' : 'EXECUTE') . "\n";
