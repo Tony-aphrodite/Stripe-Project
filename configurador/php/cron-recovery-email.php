@@ -28,6 +28,11 @@
 
 declare(strict_types=1);
 
+// Tell create-payment-intent.php to load functions only — do NOT run its
+// HTTP-request flow (which would die with "Request invalido" since this
+// is a GET cron call without a JSON body).
+define('VOLTIKA_PI_HELPERS_ONLY', true);
+
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/create-payment-intent.php';
 

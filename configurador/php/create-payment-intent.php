@@ -436,6 +436,16 @@ if (!file_exists($stripePhpPath)) {
 }
 require_once $stripePhpPath;
 
+// ── Helpers-only mode (customer brief 2026-05-01) ──────────────────────────
+// Other scripts (cron-recovery-email.php) require_once this file just to
+// reuse _voltikaSendIncompletePaymentEmail() etc. We must not execute the
+// HTTP-request flow below in that case (it tries to read php://input and
+// would emit "Request invalido" to the cron caller). The caller signals
+// helpers-only by defining VOLTIKA_PI_HELPERS_ONLY before the require_once.
+if (defined('VOLTIKA_PI_HELPERS_ONLY') && VOLTIKA_PI_HELPERS_ONLY) {
+    return;
+}
+
 if (!STRIPE_SECRET_KEY || STRIPE_SECRET_KEY === 'sk_test_PLACEHOLDER') {
     http_response_code(500);
     echo json_encode(['error' => 'STRIPE_SECRET_KEY no configurada. Edita el archivo .env']);
