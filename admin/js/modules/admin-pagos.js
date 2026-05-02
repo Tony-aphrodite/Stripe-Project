@@ -9,7 +9,8 @@ window.AD_pagos = (function(){
     ADApp.api('pagos/listar.php?' + $.param(filtro)).done(paint);
   }
   function paint(r){
-    var ro=r.resumen_ordenes||{}, rc=r.resumen_credito||{};
+    var ro=r.resumen_ordenes||{}, rc=r.resumen_credito||{}, rm=r.resumen_mes_actual||{};
+    var fa=r.filtros_aplicados||{};
     var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">Pagos y Órdenes</div></div>';
     html += '<div class="ad-kpis">';
     html += '<div class="ad-kpi"><div class="label">Total órdenes</div><div class="value blue">'+(ro.total_ordenes||0)+'</div></div>';
@@ -17,10 +18,44 @@ window.AD_pagos = (function(){
     html += '<div class="ad-kpi"><div class="label">Créditos activos</div><div class="value blue">'+(rc.total_creditos||0)+'</div></div>';
     html += '<div class="ad-kpi"><div class="label">Monto financiado</div><div class="value blue">'+ADApp.money(rc.total_credito_monto)+'</div></div>';
     html += '</div>';
-    // Filters
-    html += '<div class="ad-filters">'+
-      '<select class="ad-select" id="adPTipo"><option value="">Todos</option><option value="contado">Contado</option><option value="msi">MSI</option><option value="credito">Crédito</option></select>'+
-      '<button class="ad-btn sm ghost" id="adPFilter">Filtrar</button></div>';
+
+    // ── Current-month payment summary card (customer brief 2026-05-02) ─
+    // Surfaces real Stripe-successful collections minus refunds for the
+    // current calendar month. Click to auto-fill the date range filter
+    // with this month's window so the table mirrors the summary.
+    var nombreMes = (function(){
+      var d = new Date();
+      var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      return meses[d.getMonth()] + ' ' + d.getFullYear();
+    })();
+    html += '<div id="adPMesCard" class="ad-card" style="margin:12px 0 16px;padding:18px 20px;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:#fff;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;box-shadow:0 4px 14px rgba(5,150,105,.25);" title="Click para filtrar la tabla a este rango">';
+    html += '<div>';
+    html += '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.7px;opacity:.85;font-weight:700;">Pagos cobrados — '+esc(nombreMes)+'</div>';
+    html += '<div style="font-size:32px;font-weight:900;line-height:1.2;margin-top:4px;">'+ADApp.money(rm.neto||0)+'</div>';
+    html += '<div style="font-size:11.5px;opacity:.9;margin-top:4px;">'+(rm.desde||'')+' → '+(rm.hasta||'')+' · neto (cobrado − reembolsado)</div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:18px;font-size:12px;">';
+    html += '<div style="text-align:right;"><div style="opacity:.85;">Cobrados</div><div style="font-weight:800;font-size:15px;">'+(rm.pagados_count||0)+' · '+ADApp.money(rm.pagados_monto||0)+'</div></div>';
+    html += '<div style="text-align:right;"><div style="opacity:.85;">Reembolsados</div><div style="font-weight:800;font-size:15px;">'+(rm.reembolsados_count||0)+' · '+ADApp.money(rm.reembolsados_monto||0)+'</div></div>';
+    html += '<div style="text-align:right;"><div style="opacity:.85;">No cobrados</div><div style="font-weight:800;font-size:15px;">'+(rm.fallidos_count||0)+'</div></div>';
+    html += '</div>';
+    html += '</div>';
+
+    // Filters — type + date range (customer brief 2026-05-02)
+    html += '<div class="ad-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">'+
+      '<select class="ad-select" id="adPTipo" title="Tipo de pago">'+
+        '<option value="">Todos</option>'+
+        '<option value="contado"'+(fa.tipo==='contado'?' selected':'')+'>Contado</option>'+
+        '<option value="msi"'+(fa.tipo==='msi'?' selected':'')+'>MSI</option>'+
+        '<option value="credito"'+(fa.tipo==='credito'?' selected':'')+'>Crédito</option>'+
+      '</select>'+
+      '<label style="font-size:12px;color:var(--ad-dim);">Desde</label>'+
+      '<input type="date" class="ad-input" id="adPDesde" value="'+esc(fa.desde||'')+'" style="font-size:12px;padding:5px 8px;">'+
+      '<label style="font-size:12px;color:var(--ad-dim);">Hasta</label>'+
+      '<input type="date" class="ad-input" id="adPHasta" value="'+esc(fa.hasta||'')+'" style="font-size:12px;padding:5px 8px;">'+
+      '<button class="ad-btn sm ghost" id="adPFilter">Filtrar</button>'+
+      '<button class="ad-btn sm ghost" id="adPClear" title="Limpiar filtros">Limpiar</button>'+
+    '</div>';
     // Table
     html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
       '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Tipo</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th>'+
@@ -40,10 +75,41 @@ window.AD_pagos = (function(){
     });
     html += '</tbody></table></div></div>';
     ADApp.render(html);
-    $('#adPFilter').on('click',function(){ filtro.tipo=$('#adPTipo').val(); load(); });
+
+    // Filter actions (customer brief 2026-05-02: tipo + date range)
+    $('#adPFilter').on('click', function(){
+      filtro.tipo  = $('#adPTipo').val()  || '';
+      filtro.desde = $('#adPDesde').val() || '';
+      filtro.hasta = $('#adPHasta').val() || '';
+      load();
+    });
+    $('#adPClear').on('click', function(){
+      filtro = {};
+      load();
+    });
+
+    // Click the green "current month" KPI card → auto-fill date range
+    // with this month's start → today and reload the table so it
+    // matches the summary numbers.
+    $('#adPMesCard').on('click', function(){
+      var d = new Date();
+      var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+      var monthStart = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-01';
+      var today      = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+      filtro.desde = monthStart;
+      filtro.hasta = today;
+      filtro.tipo  = filtro.tipo || '';
+      load();
+    });
+
     $('.adVerPago').on('click',function(){
       showDetalle($(this).data('id'), $(this).data('pi'), $(this).data('fuente'));
     });
+  }
+
+  // HTML escape used by the new filter inputs that echo back saved values.
+  function esc(s){
+    return jQuery('<div/>').text(s == null ? '' : String(s)).html();
   }
 
   function showDetalle(pedidoId, stripePi, fuente){

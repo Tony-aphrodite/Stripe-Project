@@ -11,6 +11,20 @@ $page  = max(1, (int)($_GET['page'] ?? 1));
 $limit = 50;
 $offset = ($page - 1) * $limit;
 
+// Customer brief 2026-05-02:
+//   1. Add date-range filter (desde/hasta) so admins can scope the
+//      payments view to any window — defaults to all-time when omitted.
+//   2. Always compute a "current month" net summary (Stripe-successful
+//      minus refunds and failed) to show as a prominent KPI.
+//
+// Both are read-only additions to the response; existing fields are
+// untouched so older clients remain compatible.
+$desde = trim((string)($_GET['desde'] ?? ''));
+$hasta = trim((string)($_GET['hasta'] ?? ''));
+// Validate to YYYY-MM-DD; if invalid, ignore (preserve old behavior).
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $desde)) $desde = '';
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $hasta)) $hasta = '';
+
 // Detect actual schema for subscripciones_credito (supports both legacy and portal variants)
 $subCols = [];
 try { $subCols = $pdo->query("SHOW COLUMNS FROM subscripciones_credito")->fetchAll(PDO::FETCH_COLUMN); } catch (Throwable $e) {}
@@ -43,11 +57,18 @@ try {
     } else {
         $sql = "SELECT 'orden' as fuente, t.id, t.pedido as pedido_num, t.nombre, t.email, t.telefono,
             t.modelo, t.color, t.tpago as tipo_pago, t.total as monto, t.stripe_pi,
-            COALESCE(m.pago_estado,'pendiente') as pago_estado, t.freg
+            COALESCE(t.pago_estado, m.pago_estado, 'pendiente') as pago_estado, t.freg
             FROM transacciones t
             LEFT JOIN inventario_motos m ON m.stripe_pi=t.stripe_pi";
+        $where  = [];
         $params = [];
-        if (!empty($tipo)) { $sql .= " WHERE t.tpago=?"; $params[] = $tipo; }
+        if (!empty($tipo))  { $where[] = "t.tpago=?";        $params[] = $tipo; }
+        // Date range filter — inclusive on both ends. Customer brief
+        // 2026-05-02: scope the table to any "from–to" window picked in
+        // the UI. We compare against the order's freg (when it was placed).
+        if ($desde !== '') { $where[] = "t.freg >= ?";       $params[] = $desde . ' 00:00:00'; }
+        if ($hasta !== '') { $where[] = "t.freg <= ?";       $params[] = $hasta . ' 23:59:59'; }
+        if (!empty($where)) $sql .= " WHERE " . implode(' AND ', $where);
         $sql .= " ORDER BY t.freg DESC LIMIT $limit OFFSET $offset";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -58,14 +79,72 @@ try {
     $rows = [];
 }
 
-// Summary — orders
+// Summary — orders (respects the same date/tipo filters so KPIs match
+// what the table is showing).
 $summary = ['total_ordenes' => 0, 'total_ingresos' => 0];
 try {
-    $summary = $pdo->query("SELECT
+    $sumWhere  = [];
+    $sumParams = [];
+    if (!empty($tipo))  { $sumWhere[] = "tpago=?";   $sumParams[] = $tipo; }
+    if ($desde !== '') { $sumWhere[] = "freg >= ?"; $sumParams[] = $desde . ' 00:00:00'; }
+    if ($hasta !== '') { $sumWhere[] = "freg <= ?"; $sumParams[] = $hasta . ' 23:59:59'; }
+    $sumWhereSql = $sumWhere ? (" WHERE " . implode(' AND ', $sumWhere)) : "";
+    $sumStmt = $pdo->prepare("SELECT
         COUNT(*) as total_ordenes,
         COALESCE(SUM(total),0) as total_ingresos
-        FROM transacciones")->fetch(PDO::FETCH_ASSOC) ?: $summary;
+        FROM transacciones $sumWhereSql");
+    $sumStmt->execute($sumParams);
+    $summary = $sumStmt->fetch(PDO::FETCH_ASSOC) ?: $summary;
 } catch (Throwable $e) { error_log('pagos/listar summary: ' . $e->getMessage()); }
+
+// ── Current-month NET summary (customer brief 2026-05-02) ──────────────
+// "Real Stripe payments successfully made minus failed/not-successful
+//  payments AND minus refunds." Computed from transacciones.pago_estado
+// (kept in sync by stripe-webhook.php → 'pagada' on succeeded, 'reembolsado'
+// on charge.refunded). Independent of the table's date filter — always
+// reports current calendar month (1st → today inclusive).
+$mesActual = ['desde' => date('Y-m-01'), 'hasta' => date('Y-m-d')];
+$resumenMes = [
+    'desde'              => $mesActual['desde'],
+    'hasta'              => $mesActual['hasta'],
+    'pagados_count'      => 0,
+    'pagados_monto'      => 0,
+    'reembolsados_count' => 0,
+    'reembolsados_monto' => 0,
+    'fallidos_count'     => 0,
+    'fallidos_monto'     => 0,
+    'neto'               => 0,
+];
+try {
+    // Cohort: orders created this calendar month with a stripe_pi (real
+    // Stripe attempts only — exclude phantom/orphan rows).
+    $stmtMes = $pdo->prepare("SELECT
+        SUM(CASE WHEN pago_estado = 'pagada'         THEN 1 ELSE 0 END) AS pagados_count,
+        SUM(CASE WHEN pago_estado = 'pagada'         THEN total ELSE 0 END) AS pagados_monto,
+        SUM(CASE WHEN pago_estado = 'reembolsado'    THEN 1 ELSE 0 END) AS reembolsados_count,
+        SUM(CASE WHEN pago_estado = 'reembolsado'    THEN total ELSE 0 END) AS reembolsados_monto,
+        SUM(CASE WHEN pago_estado IN ('error','fallido','orfano') OR pago_estado IS NULL OR pago_estado = ''
+                 THEN 1 ELSE 0 END) AS fallidos_count,
+        SUM(CASE WHEN pago_estado IN ('error','fallido','orfano') OR pago_estado IS NULL OR pago_estado = ''
+                 THEN total ELSE 0 END) AS fallidos_monto
+        FROM transacciones
+        WHERE freg >= ? AND freg <= ?
+          AND stripe_pi IS NOT NULL
+          AND stripe_pi <> ''");
+    $stmtMes->execute([$mesActual['desde'] . ' 00:00:00', $mesActual['hasta'] . ' 23:59:59']);
+    $r = $stmtMes->fetch(PDO::FETCH_ASSOC);
+    if ($r) {
+        $resumenMes['pagados_count']      = (int)$r['pagados_count'];
+        $resumenMes['pagados_monto']      = (float)$r['pagados_monto'];
+        $resumenMes['reembolsados_count'] = (int)$r['reembolsados_count'];
+        $resumenMes['reembolsados_monto'] = (float)$r['reembolsados_monto'];
+        $resumenMes['fallidos_count']     = (int)$r['fallidos_count'];
+        $resumenMes['fallidos_monto']     = (float)$r['fallidos_monto'];
+        // Neto = exitosos - reembolsados. Failed/pending are simply
+        // EXCLUDED (not subtracted) since they were never collected.
+        $resumenMes['neto']               = $resumenMes['pagados_monto'] - $resumenMes['reembolsados_monto'];
+    }
+} catch (Throwable $e) { error_log('pagos/listar resumen mes: ' . $e->getMessage()); }
 
 // Summary — credit
 $creditSummary = ['total_creditos' => 0, 'total_credito_monto' => 0];
@@ -85,5 +164,11 @@ adminJsonOut([
     'pagos' => $rows,
     'resumen_ordenes' => $summary,
     'resumen_credito' => $creditSummary,
+    'resumen_mes_actual' => $resumenMes,   // customer brief 2026-05-02
+    'filtros_aplicados'  => [
+        'tipo'  => $tipo,
+        'desde' => $desde,
+        'hasta' => $hasta,
+    ],
     'page' => $page
 ]);
