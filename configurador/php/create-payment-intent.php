@@ -759,15 +759,23 @@ try {
 
     $intent = \Stripe\PaymentIntent::create($intentData);
 
-    // ── Track this attempt as a 'pendiente' transaccion + send recovery email.
+    // ── Track this attempt as a 'pendiente' transaccion ─────────────────────
     //   Customer brief 2026-04-30: visibility on approved-but-not-paid leads.
-    //   Customer brief 2026-05-01: email language must match the actual
-    //   purchase type — credit/enganche, MSI, or contado.
+    //
+    // Customer brief 2026-05-01 URGENT: the immediate recovery-email send
+    // was firing the moment a customer reached the payment screen, before
+    // they had a chance to actually pay. Customers who completed checkout
+    // 5 seconds later then received a "completa tu pago" email when they
+    // had already paid — confusing and damaging to reputation.
+    //
+    // Fix: insert the pending row (so admin still sees the lead) but DO
+    // NOT send the recovery email here. A separate cron-driven script
+    // (php/cron-recovery-email.php) is responsible for sending the email
+    // ONLY for rows that have remained 'pendiente' for >30 minutes — by
+    // then the chance of a successful late payment is low and the row is
+    // genuinely an abandoned cart.
     _voltikaInsertPendingTransaccion($intent->id, $customer, $amount, $method, $installments ? $msiMeses : 0);
-    if (!empty($customer['email'])) {
-        $custNom = trim(($customer['nombre'] ?? '') . ' ' . ($customer['apellidos'] ?? ''));
-        _voltikaSendIncompletePaymentEmail($customer['email'], $custNom, $customer, $amount, $purchaseTipo, $installments ? $msiMeses : 0);
-    }
+    // Email send intentionally REMOVED here — handled by cron-recovery-email.php.
 
     $response = ['clientSecret' => $intent->client_secret, 'paymentIntentId' => $intent->id];
 
