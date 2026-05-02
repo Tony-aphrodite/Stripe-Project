@@ -133,17 +133,45 @@ if ($person_found === false) {
         'reasons'    => ['IDENTIDAD_NO_ENCONTRADA_EN_CDC'],
         'mensaje'    => 'La persona no aparece en el Buró de Crédito. No es posible otorgar crédito a identidades que no se pueden verificar.',
     ];
-} elseif ($score === null) {
-    // POLICY C (customer brief 2026-04-26): Option B's blanket NO_VIABLE
-    // for null-score applicants killed conversions. Voltika's true risk
-    // exposure is small when enganche is high enough — Voltika collects
-    // upfront and retains repossession rights on the asset. Combined with
-    // mandatory Truora identity verification (INE + biometric + RENAPO)
-    // downstream, fraud risk is contained.
+}
+// ── FIX 1 (customer brief 2026-05-01): CDC responded but no FICO score ────
+// CDC found the persona (person_found=true) but couldn't issue a FICO
+// score — typically a thin-file, low-demographic-confidence case (CDC
+// reasons E0/G1/J0). Real cases observed: Gabriela Luviano (Texcoco),
+// Ulises Oro (Tampico). The previous Policy C lumped these together with
+// "CDC unreachable" and forced a 50% enganche which killed conversion on
+// otherwise viable PTI profiles.
+//
+// New rule: PTI-only evaluation with CONSERVATIVE caps (40% enganche min,
+// 18-month max plazo) — distinct from the standard fallback because we
+// have positive identity confirmation from CDC, just no scoring signal.
+// circulo_source='cdc_sin_score' tags these for 30-day review.
+elseif ($score === null && $person_found === true) {
+    $minEng    = 0.40;
+    $maxPlazo  = 18;
+    $result = [
+        'status'                 => 'CONDICIONAL_ESTIMADO',
+        'pti_total'              => round($pti_total, 4),
+        'enganche_min'           => $minEng,
+        'enganche_requerido_min' => $minEng,
+        'plazo_max_meses'        => $maxPlazo,
+        'reasons'                => ['CDC_RESPONDIO_SIN_SCORE'],
+        'mensaje'                => 'Aprobación condicional especial: el Buró confirmó tu identidad pero no pudo emitir un score. Aprobamos con un enganche mínimo del ' . round($minEng * 100) . '% y un plazo de hasta ' . $maxPlazo . ' meses.',
+        'person_found'           => $person_found,
+        'circulo_source'         => 'cdc_sin_score',
+    ];
+}
+elseif ($score === null) {
+    // POLICY C (customer brief 2026-04-26): CDC unreachable / not consulted.
+    // Voltika's risk exposure is small when enganche is high enough —
+    // Voltika collects upfront and retains repossession rights on the
+    // asset. Combined with mandatory Truora identity verification, fraud
+    // risk is contained.
     //
     // Threshold: 50% enganche + 12-month max plazo. Anything below the
-    // threshold still NO_VIABLE, but we tell the user EXACTLY what to do
-    // (raise enganche to 50%) rather than leaving them at a dead end.
+    // threshold still NO_VIABLE, but we tell the user EXACTLY what to do.
+    // NOTE: this branch now ONLY fires when person_found is null/false —
+    // the CDC-responded-without-score case is handled by FIX 1 above.
     $highEngancheThreshold = 0.50;
     $highEngPlazoMax       = 12;
     if ($enganche_pct >= $highEngancheThreshold) {
@@ -174,8 +202,29 @@ if ($person_found === false) {
     }
 } else {
     // Con datos completos de Círculo
+
+    // ── FIX 2 (customer brief 2026-05-01): low score offset by excellent PTI ─
+    // Score 380-419 normally hits the absolute KO at line below, but real
+    // case Oscar Limón (score 409, PTI 6%, $40,001 monthly income) showed
+    // this is too rigid: a customer who only commits 6% of income has a
+    // very low default probability regardless of CDC's thin-file score.
+    // The 55% enganche covers the asset cost on day 1, eliminating loss
+    // risk for this profile. circulo_source='score_bajo_pti_excelente'
+    // tags these for 30-day review. Must run BEFORE the score<420 KO.
+    if ($score >= 380 && $score < 420 && $pti_total <= 0.30 && !$mora_severa) {
+        $result = [
+            'status'                 => 'CONDICIONAL',
+            'pti_total'              => round($pti_total, 4),
+            'enganche_min'           => $eng_min,
+            'enganche_requerido_min' => 0.55,
+            'plazo_max_meses'        => 12,
+            'reasons'                => ['SCORE_BAJO_PTI_EXCELENTE'],
+            'mensaje'                => 'Aprobación condicional: tu capacidad de pago es excelente (PTI ' . round($pti_total * 100, 1) . '%). Requerimos 55% de enganche con plazo de 12 meses.',
+            'circulo_source'         => 'score_bajo_pti_excelente',
+        ];
+    }
     // 1. KO reales
-    if ($score < $V3['KO']['scoreMin']) {
+    elseif ($score < $V3['KO']['scoreMin']) {
         // Customer brief 2026-04-26 v2: REJECTED is REJECTED. Removed the
         // 60%-enganche escape from earlier Policy C — low score now goes
         // straight to NO_VIABLE and the user is routed to alternative
@@ -231,7 +280,14 @@ $log = [
     'score'                => $score,
     'dpd90_flag'           => $dpd90_flag,
     'dpd_max'              => $dpd_max,
-    'circulo_source'       => ($score !== null) ? 'real' : 'estimado',
+    // Customer brief 2026-05-01: result-driven circulo_source so the
+    // audit table can distinguish:
+    //   'real'                       — normal scored evaluation
+    //   'cdc_sin_score'              — Fix 1: CDC found persona, no score
+    //   'score_bajo_pti_excelente'   — Fix 2: low score + excellent PTI
+    //   'estimado'                   — no CDC response (fallback)
+    'circulo_source'       => $result['circulo_source']
+                             ?? (($score !== null) ? 'real' : 'estimado'),
     'enganche_pct'         => $enganche_pct,
     'plazo_meses'          => $plazo_meses,
     'status'               => $result['status'],
