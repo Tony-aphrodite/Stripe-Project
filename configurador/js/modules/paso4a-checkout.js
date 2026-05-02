@@ -243,13 +243,12 @@ var Paso4A = {
         html += '</div>';
 
         // Right: 9 MSI
-        // \u2500\u2500 MSI temporarily DISABLED (customer brief 2026-05-01) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-        // The card was being debited only one month's payment instead of
-        // the full motorcycle price. Bug fix is shipping but the option
-        // stays hidden from the public storefront until a verified live
-        // test confirms the fix end-to-end. Set MSI_ENABLED=true to
-        // re-expose the button.
-        var MSI_ENABLED = false;
+        // \u2500\u2500 MSI re-enabled (customer brief 2026-05-02) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        // Bug fix (full motorcycle amount \u2192 Stripe instead of one
+        // month's installment) deployed 2026-05-01. Customer asked the
+        // 9-MSI checkout button be exposed so they can run a live
+        // verification purchase. Flip back to false on regression.
+        var MSI_ENABLED = true;
         if (modelo.tieneMSI && MSI_ENABLED) {
             html += '<div style="flex:1;min-width:0;border:1.5px solid var(--vk-border);border-radius:10px;padding:12px;display:flex;flex-direction:column;">';
             html += '<div style="font-weight:800;font-size:13px;text-align:center;margin-bottom:8px;line-height:1.3;">9 MSI<br>sin intereses</div>';

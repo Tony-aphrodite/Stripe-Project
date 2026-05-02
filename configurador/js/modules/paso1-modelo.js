@@ -4,14 +4,13 @@
    Desktop (1024px+): hero configurator — model tabs + large image + payment panel
    ========================================================================== */
 
-// ── MSI globally disabled (customer brief 2026-05-01) ──────────────────────
-// MSI was charging only 1 month's payment instead of the full motorcycle
-// price (paso4a-checkout.js bug). The fix is in code but the MSI tabs +
-// CTA buttons stay hidden everywhere until a verified live test confirms
-// the full-amount Stripe charge + 9-installment split. Toggle this flag
-// to true on a single line to re-expose MSI in all entry points (hero
-// tabs on desktop, card tabs on mobile, model-card CTAs).
-var MSI_ENABLED = false;
+// ── MSI re-enabled for live verification (customer brief 2026-05-02) ──────
+// MSI bug fix (full motorcycle amount → Stripe, not just one month) was
+// deployed on 2026-05-01. The button stayed hidden until the customer
+// could verify the fix end-to-end. Customer wants the MSI tab + CTAs
+// visible again so they can run a live test purchase. Flip back to
+// false here if a regression is observed.
+var MSI_ENABLED = true;
 
 var Paso1 = {
 
