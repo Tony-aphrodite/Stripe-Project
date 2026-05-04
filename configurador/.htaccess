@@ -5,8 +5,19 @@
 # rechazó la conexión" inside the iframe (2026-04-29 incident). Redirect
 # at the server layer so the browser is on the matching origin BEFORE any
 # iframe loads, preventing state loss inside the SPA.
+#
+# 2026-05-04: Stripe webhook delivery was failing with HTTP 301 (114 retries
+# since 2026-04-30; would auto-disable on 2026-05-09). Stripe sets the
+# webhook URL once in the dashboard and does NOT follow redirects. The
+# original endpoint was registered as `www.voltika.mx/configurador/php/
+# stripe-webhook.php`, which our redirect was bouncing to the non-www host
+# — Stripe saw 301 and gave up. Skip the redirect for this exact path so
+# server-to-server callbacks (Stripe, future webhooks) hit the script
+# directly regardless of how the URL was configured upstream.
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # Allow webhooks to bypass the www→non-www redirect.
+    RewriteCond %{REQUEST_URI} !^/configurador/php/stripe-webhook\.php$ [NC]
     RewriteCond %{HTTP_HOST} ^www\.voltika\.mx$ [NC]
     RewriteRule ^(.*)$ https://voltika.mx/configurador/$1 [L,R=301]
 </IfModule>

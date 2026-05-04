@@ -506,11 +506,17 @@ window.AD_ventas = (function(){
       var iconBtnStyle = 'padding:5px 7px;font-size:13px;line-height:1;width:100%;box-sizing:border-box;'
                        + 'text-decoration:none;display:inline-flex;align-items:center;justify-content:center;';
       var _tp = (r.tipo||r.tpago||'').toLowerCase();
-      // Customer brief 2026-05-01: contract preview must also show for
-      // credit/enganche orders. Previously only contado/msi/etc. — credit
-      // applicants ended up with no way to verify their signed contract
-      // from the admin dashboard. Includes a green badge when the
-      // contract has actually been signed (firmas_contratos row exists).
+      // Customer report 2026-05-04: tapping the icons on mobile dashboard
+      // opened nothing. Root cause: the same-origin admin host
+      // (voltika.mx/admin/) loaded a `target=_blank` link to
+      // ../configurador/php/... — Safari blocks new-tab spawn from
+      // dynamically-rendered HTML in some configurations, and even when it
+      // opens, the silent "No encontrado" 404 (when admin session cookie
+      // didn't transfer or PDF wasn't generated yet) just shows blank text.
+      // Adding `debug=1` makes failures self-explanatory; the existing
+      // success path is unchanged. Force absolute path with leading slash
+      // so browser routing matches regardless of how the admin SPA is
+      // hosted (subpath vs. root).
       var contractTypes = ['contado','unico','msi','spei','oxxo','tarjeta','enganche','credito'];
       if (contractTypes.indexOf(_tp) >= 0 && r.pedido) {
         var isSigned = !!r.firma_id;
@@ -521,7 +527,7 @@ window.AD_ventas = (function(){
         btnArr.push('<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
           'style="'+btnStyle+'" '+
           'title="'+btnTitle.replace(/"/g, '&quot;')+'" '+
-          'href="../configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1">'+
+          'href="/configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1&debug=1">'+
           ICON_DOC + (isSigned ? '<span style="margin-left:3px;font-size:10px;">✓</span>' : '') + '</a>');
       }
       if (r.moto_id || r.pedido) {
@@ -529,7 +535,7 @@ window.AD_ventas = (function(){
         btnArr.push('<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
           'style="'+iconBtnStyle+';background:#fffbeb;border-color:#f59e0b;color:#92400e;" '+
           'title="Descargar Dossier de Defensa (ZIP — evidencias para Stripe/PROFECO)" '+
-          'href="../configurador/php/descargar-dossier.php?'+dParams+'&format=zip">'+ICON_SHIELD+'</a>');
+          'href="/configurador/php/descargar-dossier.php?'+dParams+'&format=zip">'+ICON_SHIELD+'</a>');
       }
 
       // ── Layout (request 2026-04-29):
