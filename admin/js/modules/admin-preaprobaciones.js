@@ -181,90 +181,176 @@ window.AD_preaprobaciones = (function(){
     if (!row) return;
     var fullName = [row.nombre, row.apellido_paterno, row.apellido_materno].filter(Boolean).join(' ') || 'Sin nombre';
 
-    // Status color theme
-    var statusColors = {
-      PREAPROBADO: { bg: '#10b981', text: '#fff', light: '#d1fae5', dark: '#065f46' },
-      CONDICIONAL: { bg: '#d97706', text: '#fff', light: '#fef3c7', dark: '#78350f' },
-      NO_VIABLE:   { bg: '#dc2626', text: '#fff', light: '#fee2e2', dark: '#991b1b' }
-    };
-    var color = statusColors[row.status] || statusColors.NO_VIABLE;
+    // Customer brief 2026-05-04 (mockup redesign): Pantalla de Revisión
+    // Manual must surface the credit-decision evidence so the admin can
+    // approve / decline at a glance without bouncing to the buró tab.
+    // Sections:
+    //   1. Risk-coloured header banner with Plazo Máximo / PTI / Score
+    //   2. Indicadores Críticos (PLD, DPD90, Vencido, Razones de score)
+    //   3. Resumen Buró (totals + counters)
+    //   4. Datos Personales
+    //   5. Crédito Solicitado + Truora status
+    //   6. Recomendación del sistema (auto-generated narrative)
+    //   7. Four action buttons (Aprobar / Contado / 9 MSI / Rechazar)
+    //      with smart enable/disable based on risk signals
+
+    // ── Risk classification ────────────────────────────────────────────
+    // Three buckets drive header colour + recommendation copy + button
+    // state:
+    //   safe:    no DPD90, PTI < 35%, status PREAPROBADO/CONDICIONAL
+    //   warn:    PTI 35-50% OR thin file with no morosidad
+    //   danger:  DPD90 active OR PTI > 50% OR status NO_VIABLE
+    var pti        = Number(row.pti_total || 0);
+    var ptiPct     = Math.round(pti * 100);
+    var hasDPD90   = (row.dpd90_flag == 1) || (row.buro_dpd90_flag == 1);
+    var dpdMax     = Number(row.dpd_max || row.buro_dpd_max || 0);
+    var status     = String(row.status || '').toUpperCase();
+    var scoreNum   = Number(row.score || row.synth_score || 0);
+    var risk = 'safe';
+    if (status === 'NO_VIABLE' || hasDPD90 || pti > 0.50) risk = 'danger';
+    else if (status === 'CONDICIONAL' || pti > 0.35) risk = 'warn';
+
+    var theme = ({
+      safe:   { hbg:'#e8f5e8', htext:'#1a6b1a', haccent:'#1a6b1a', headerLabel:'PLAZO MÁXIMO', headerLabelColor:'#1a4b1a' },
+      warn:   { hbg:'#fff4d6', htext:'#7a5800', haccent:'#c89a3a', headerLabel:'PLAZO MÁXIMO', headerLabelColor:'#5a4000' },
+      danger: { hbg:'#fce8e8', htext:'#5a1a1a', haccent:'#8b1a1a', headerLabel:'PLAZO MÁXIMO', headerLabelColor:'#8b3a3a' }
+    })[risk];
 
     var html = '';
-    // ── Header banner ─────────────────────────────────────────────────────
-    html += '<div style="background:linear-gradient(135deg,'+color.bg+',#0ea5e9);color:#fff;padding:24px 28px;border-radius:12px 12px 0 0;margin:-20px -20px 0 -20px">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">';
-    html += '<div><div style="font-size:13px;opacity:0.85;margin-bottom:4px">SOLICITUD #'+row.id+'</div>';
-    html += '<div style="font-size:24px;font-weight:800;line-height:1.2">'+esc(fullName)+'</div>';
-    html += '<div style="font-size:13px;opacity:0.85;margin-top:6px">'+esc(row.email||'sin email')+(row.telefono?' · '+esc(row.telefono):'')+'</div></div>';
-    html += '<div style="background:#fff;color:'+color.bg+';padding:8px 16px;border-radius:6px;font-weight:800;font-size:14px;letter-spacing:0.5px">'+esc(row.status)+'</div>';
+
+    // ── 1. Risk header banner ─────────────────────────────────────────
+    html += '<div style="background:'+theme.hbg+';color:'+theme.htext+';padding:24px 20px;text-align:center;margin:-20px -20px 0 -20px;border-radius:12px 12px 0 0;">';
+    if (risk === 'danger') {
+      var bandera = countBanderasRojas(row);
+      html += '<div style="background:#8b1a1a;color:#fff;padding:8px 12px;margin:-12px -8px 14px;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:.5px;">'
+            + '🚫 NO RECOMENDADO — '+bandera+' banderas rojas activas'
+            + '</div>';
+    }
+    html += '<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:'+theme.headerLabelColor+';">'+theme.headerLabel+'</div>';
+    html += '<div style="font-size:28px;font-weight:800;margin:6px 0;">'+(row.plazo_max ? row.plazo_max+' meses' : '— meses')+'</div>';
+    html += '<div style="display:flex;justify-content:space-around;margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,0,0,.08);">';
+    html += '<div><div style="font-size:20px;font-weight:800;color:'+theme.haccent+';">'+ptiPct+'%</div>'
+          + '<div style="font-size:10px;letter-spacing:.5px;color:'+theme.headerLabelColor+';">PTI</div></div>';
+    var scoreDisplay = scoreNum ? scoreNum : '—';
+    var scoreEst = (row.synth_score && !row.score) ? ' (est.)' : '';
+    html += '<div><div style="font-size:20px;font-weight:800;color:'+theme.haccent+';">'+scoreDisplay+scoreEst+'</div>'
+          + '<div style="font-size:10px;letter-spacing:.5px;color:'+theme.headerLabelColor+';">SCORE</div></div>';
     html += '</div></div>';
 
-    // ── Decision summary cards ─────────────────────────────────────────────
-    html += '<div style="background:'+color.light+';color:'+color.dark+';padding:18px 28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin:0 -20px 20px -20px">';
-    html += summaryCard('Enganche requerido', row.enganche_requerido ? Math.round(row.enganche_requerido*100)+'%' : '—');
-    html += summaryCard('Plazo máximo', (row.plazo_max||'—')+' meses');
-    html += summaryCard('PTI', fmtPct(row.pti_total));
-    html += summaryCard('Score', (row.score || row.synth_score || '—') + (row.synth_score && !row.score ? ' (est.)' : ''));
+    // Identity strip
+    html += '<div style="background:#fafafa;padding:10px 16px;font-size:12px;color:#666;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:0 -20px;">';
+    html += '<div><strong style="color:#333">'+esc(fullName)+'</strong> · #'+row.id+'</div>';
+    html += '<div>Status: <strong style="color:'+theme.haccent+'">'+esc(row.status||'—')+'</strong></div>';
     html += '</div>';
 
-    // ── Two-column body ──────────────────────────────────────────────────
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0 8px">';
-
-    // Persona
-    html += '<div>';
-    html += sectionTitle('👤', 'Datos personales');
-    html += dataRow('Email', row.email || '—');
-    html += dataRow('Teléfono', row.telefono || '—');
-    html += dataRow('Fecha nac.', row.fecha_nacimiento || '—');
-    html += dataRow('CP', row.cp || '—');
-    html += dataRow('Ciudad', row.ciudad || '—');
-    html += dataRow('Estado', row.estado || '—');
+    // ── 2. Indicadores Críticos ───────────────────────────────────────
+    html += '<div style="padding:18px 8px 6px;">';
+    html += '<div style="font-size:11px;letter-spacing:1.2px;color:#666;text-transform:uppercase;margin-bottom:12px;font-weight:700;">⚠️ Indicadores Críticos</div>';
+    // PLD Check — we don't capture PLD hits in the DB yet. CDC API DOES
+    // return PLD info but it's not parsed/stored. Until that's wired,
+    // show the conservative "—" so admin doesn't think a missing check
+    // means "passed".
+    html += alertRow('PLD Check', '— No verificado en este sistema', 'neutral');
+    // DPD90 actual
+    if (hasDPD90) {
+      html += alertRow('DPD90 actual', '✗ '+(row.buro_num_cuentas||row.dpd_max||'?')+' cuentas con mora activa', 'bad');
+    } else {
+      html += alertRow('DPD90 actual', '✓ Ninguna cuenta activa con mora', 'good');
+    }
+    // Vencido / Aprobado — we don't store these totals yet
+    html += alertRow('Vencido / Aprobado', '— Datos detallados no disponibles', 'neutral');
+    // Razones de score — encoded in preaprobacion-v3 reasons field; not
+    // surfaced to listar.php yet. Approximate from status: thin file
+    // markers (E0/G1/J0/T5) for safe-with-no-score, severe markers for
+    // danger.
+    var razones = inferScoreReasons(row, risk);
+    html += alertRowCustom('Razones de score', razones, risk === 'danger' ? 'bad' : 'good');
     html += '</div>';
 
-    // Crédito
-    html += '<div>';
-    html += sectionTitle('🏍', 'Crédito solicitado');
-    html += dataRow('Modelo', row.modelo || '—');
-    html += dataRow('Precio moto', fmtMoney(row.precio_contado));
-    html += dataRow('Ingreso mensual', fmtMoney(row.ingreso_mensual));
-    html += dataRow('Pago semanal', fmtMoney(row.pago_semanal));
-    html += dataRow('Pago mensual', fmtMoney(row.pago_mensual));
+    // ── 3. Resumen Buró ───────────────────────────────────────────────
+    html += '<div style="padding:18px 8px;border-top:1px solid #eee;">';
+    html += '<div style="font-size:11px;letter-spacing:1.2px;color:#666;text-transform:uppercase;margin-bottom:12px;font-weight:700;">📊 Resumen Buró</div>';
+    html += dataRow('Aprobado total',          '<span style="color:#999">—</span>');
+    html += dataRow('Vencido total',           '<span style="color:#999">—</span>');
+    html += dataRow('Pago mensual requerido',  fmtMoney(row.buro_pago_mensual || row.pago_mensual_buro));
+    var cuentasTxt = (row.buro_num_cuentas != null ? row.buro_num_cuentas : '—') + ' / ' + (row.dpd_max || row.buro_dpd_max || '0');
+    html += dataRow('Cuentas activas / DPD90 histórico', cuentasTxt);
+    html += dataRow('Crédito más antiguo',     '<span style="color:#999">—</span>');
+    html += dataRow('Consultas últimos 6 meses','<span style="color:#999">—</span>');
+    if (row.buro_folio) {
+      html += dataRow('Folio CDC', '<code style="font-size:11px;color:#666">'+esc(row.buro_folio)+'</code>');
+    }
+    html += '</div>';
+
+    // ── 4. Datos Personales ──────────────────────────────────────────
+    html += '<div style="padding:18px 8px;border-top:1px solid #eee;">';
+    html += '<div style="font-size:11px;letter-spacing:1.2px;color:#666;text-transform:uppercase;margin-bottom:12px;font-weight:700;">👤 Datos Personales</div>';
+    html += dataRow('Email',     row.email || '—');
+    html += dataRow('Teléfono',  row.telefono || '—');
+    var ageStr = '';
+    if (row.fecha_nacimiento) {
+      var byear = parseInt(String(row.fecha_nacimiento).slice(0,4),10);
+      if (byear) {
+        var age = new Date().getFullYear() - byear;
+        ageStr = ' ('+age+' años)';
+      }
+    }
+    html += dataRow('Nacimiento', (row.fecha_nacimiento || '—') + ageStr);
+    html += dataRow('Ciudad',     [row.ciudad, row.estado].filter(Boolean).join(', ') || '—');
+    if (row.cp) html += dataRow('CP', row.cp);
+    html += '</div>';
+
+    // ── 5. Crédito Solicitado + Truora ───────────────────────────────
+    html += '<div style="padding:18px 8px;border-top:1px solid #eee;">';
+    html += '<div style="font-size:11px;letter-spacing:1.2px;color:#666;text-transform:uppercase;margin-bottom:12px;font-weight:700;">🛵 Crédito Solicitado</div>';
+    html += dataRow('Modelo',           (row.modelo||'—') + (row.precio_contado ? ' — '+fmtMoney(row.precio_contado) : ''));
+    html += dataRow('Ingreso mensual',  fmtMoney(row.ingreso_mensual));
+    html += dataRow('Pago Voltika mensual', fmtMoney(row.pago_mensual));
+    html += dataRow('PTI total (CDC + Voltika)', '<span style="color:'+theme.haccent+';font-weight:700">'+fmtPct(row.pti_total)+'</span>');
     html += dataRow('Source', sourceLabel(row.circulo_source));
-
-    // Customer brief 2026-05-02: surface detailed Truora status. The old
-    // binary truora_ok ✓/✗ couldn't tell the admin apart these very
-    // different cases:
-    //   - never attempted (CDC-only path)
-    //   - attempted, customer abandoned mid-flow
-    //   - attempted, identity check failed (declined_reason populated)
-    //   - succeeded but our CURP cross-check rejected (curp_match=0)
-    //   - manual review queued (failure with non-recoverable reason)
     html += dataRow('Truora ID', truoraStatusBadge(row));
-    if (row.truora_process_id) {
-        html += dataRow('Truora process', '<code style="font-size:11px;color:#6b7280">' + esc(row.truora_process_id) + '</code>');
-    }
     if (row.truora_declined_reason) {
-        html += dataRow('Razón Truora', '<span style="color:#dc2626;font-weight:600">' + esc(row.truora_declined_reason) + '</span>');
-    }
-    if (row.manual_review_required == 1) {
-        html += dataRow('Revisión manual', '<span style="color:#f59e0b;font-weight:700">⚠ Requerida</span>'
-            + (row.manual_review_reason ? ' <span style="color:#6b7280">(' + esc(row.manual_review_reason) + ')</span>' : ''));
+      html += dataRow('Razón Truora', '<span style="color:#dc2626;font-weight:600">' + esc(row.truora_declined_reason) + '</span>');
     }
     if (row.curp_match !== null && row.curp_match !== undefined) {
-        var curpLabel = (row.curp_match == 1)
-            ? '<span style="color:#10b981;font-weight:700">✓ Coincide</span>'
-            : '<span style="color:#dc2626;font-weight:700">✗ No coincide</span>';
-        html += dataRow('CURP match', curpLabel);
-    }
-    if (row.name_match !== null && row.name_match !== undefined) {
-        var nameLabel = (row.name_match == 1)
-            ? '<span style="color:#10b981;font-weight:700">✓ Coincide</span>'
-            : '<span style="color:#f59e0b;font-weight:700">⚠ Diferente</span>';
-        html += dataRow('Nombre match', nameLabel);
+      var curpLabel = (row.curp_match == 1)
+        ? '<span style="color:#10b981;font-weight:700">✓ Coincide</span>'
+        : '<span style="color:#dc2626;font-weight:700">✗ No coincide</span>';
+      html += dataRow('CURP match', curpLabel);
     }
     html += '</div>';
 
-    html += '</div>'; // end grid
+    // ── 6. Recomendación del sistema ─────────────────────────────────
+    var rec = buildRecomendacion(row, risk, hasDPD90, ptiPct, scoreNum);
+    var recBg = risk === 'danger' ? '#fce8e8' : (risk === 'warn' ? '#fff4d6' : '#f8f4e8');
+    var recBorder = risk === 'danger' ? '#8b1a1a' : (risk === 'warn' ? '#c89a3a' : '#c89a3a');
+    var recTitleColor = risk === 'danger' ? '#5a1a1a' : '#5a3a00';
+    html += '<div style="background:'+recBg+';border-left:3px solid '+recBorder+';padding:12px 14px;margin:16px 8px;border-radius:4px;font-size:13px;line-height:1.5;">';
+    html += '<strong style="color:'+recTitleColor+';">⚠ Recomendación del sistema:</strong> '+rec.summary;
+    if (rec.bullets && rec.bullets.length) {
+      html += '<ul style="margin:8px 0 0 18px;padding:0;font-size:12px;">';
+      rec.bullets.forEach(function(b){
+        html += '<li style="margin:4px 0;"><strong>'+esc(b.label)+'</strong>'+(b.detail?': '+esc(b.detail):'')+'</li>';
+      });
+      html += '</ul>';
+    }
+    if (rec.action) {
+      html += '<div style="margin-top:8px;font-weight:700;color:'+recTitleColor+';">Acción sugerida: '+esc(rec.action)+'</div>';
+    }
+    html += '</div>';
+
+    // ── 7. Decision action buttons ───────────────────────────────────
+    // Smart disable: when DPD90 active or status NO_VIABLE the safe
+    // approve options grey out. Admin can still override but the visual
+    // signal mirrors the recommendation.
+    var canApprove = !hasDPD90 && status !== 'NO_VIABLE' && pti < 0.50;
+    var canMSI     = canApprove;  // same rules — MSI requires healthy file
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 8px;background:#fafafa;border-radius:8px;margin:8px;">';
+    html += decisionBtn('apDecApprove', '✓ Aprobar Plazos',  '#1a6b1a', canApprove);
+    html += decisionBtn('apDecContado', '$ Ofrecer Contado', '#1a4b7a', true);
+    html += decisionBtn('apDecMSI',     '9 MSI Sin Intereses','#7a4a1a', canMSI);
+    html += decisionBtn('apDecReject',  '✗ Rechazar',         '#8b1a1a', true);
+    html += '</div>';
 
     // ── Seguimiento section ──────────────────────────────────────────────
     html += '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:20px;margin:24px 8px 8px 8px">';
@@ -341,6 +427,48 @@ window.AD_preaprobaciones = (function(){
         .fail(function(xhr){ alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido')); });
     });
     $('#apEditClose').on('click', function(){ ADApp.closeModal(); });
+
+    // ── Decision actions (mockup 2026-05-04) ────────────────────────────
+    // Each button is a one-click decision that updates seguimiento (and
+    // status when relevant) so the seguimiento radios + notas reflect the
+    // admin's verdict without forcing them into the granular Save flow.
+    function applyDecision(payload, label){
+      if (!confirm('¿Confirmar decisión: '+label+'?\n\nCliente: '+fullName)) return;
+      ADApp.api('preaprobaciones/actualizar.php', Object.assign({ id: row.id }, payload))
+        .done(function(r){
+          if (r && r.ok !== false) { ADApp.closeModal(); load(); }
+          else alert('Error: '+((r && r.error) || 'desconocido'));
+        })
+        .fail(function(xhr){ alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido')); });
+    }
+    $('#apDecApprove').on('click', function(){
+      if ($(this).is(':disabled')) return;
+      applyDecision({
+        seguimiento: 'aprobado',
+        notas_admin: appendNote(row.notas_admin, 'Aprobar plazos: '+(row.enganche_requerido?Math.round(row.enganche_requerido*100)+'%/':'')+(row.plazo_max||'?')+' meses')
+      }, 'Aprobar plazos');
+    });
+    $('#apDecContado').on('click', function(){
+      applyDecision({
+        seguimiento: 'ofrecer_contado',
+        notas_admin: appendNote(row.notas_admin, 'Ofrecer contado únicamente')
+      }, 'Ofrecer contado');
+    });
+    $('#apDecMSI').on('click', function(){
+      if ($(this).is(':disabled')) return;
+      applyDecision({
+        seguimiento: 'ofrecer_msi',
+        notas_admin: appendNote(row.notas_admin, 'Ofrecer 9 MSI sin intereses')
+      }, '9 MSI sin intereses');
+    });
+    $('#apDecReject').on('click', function(){
+      if (!confirm('¿Rechazar esta solicitud?\n\nCliente: '+fullName+'\n\nEl status quedará como NO_VIABLE.')) return;
+      applyDecision({
+        status: 'NO_VIABLE',
+        seguimiento: 'rechazado',
+        notas_admin: appendNote(row.notas_admin, 'Rechazado en revisión manual')
+      }, 'Rechazar');
+    });
 
     $('#apEditArchive').on('click', function(){
       if (!confirm('¿Archivar esta solicitud? (Se oculta del listado pero queda en BD)')) return;
@@ -425,6 +553,128 @@ window.AD_preaprobaciones = (function(){
   function summaryCard(label, value) {
     return '<div style="text-align:center"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;opacity:0.7;margin-bottom:4px">'+esc(label)+'</div>'
          + '<div style="font-size:20px;font-weight:800">'+esc(value)+'</div></div>';
+  }
+
+  // Mockup helper: coloured alert row for the Indicadores Críticos
+  // section. variant=good→green, bad→red, warn→amber, neutral→grey.
+  function alertRow(label, value, variant) {
+    var styles = {
+      good:    { bg:'#e8f5e8', tx:'#1a6b1a' },
+      bad:     { bg:'#fde8e8', tx:'#8b1a1a' },
+      warn:    { bg:'#fff4d6', tx:'#7a5800' },
+      neutral: { bg:'#f3f4f6', tx:'#6b7280' }
+    };
+    var s = styles[variant] || styles.neutral;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin:6px 0;border-radius:8px;font-size:13px;background:'+s.bg+';color:'+s.tx+';">'
+         + '<span>'+esc(label)+'</span><strong style="text-align:right;">'+value+'</strong></div>';
+  }
+
+  // alertRow variant where the value is already pre-rendered HTML (e.g.
+  // a row of code badges) — bypasses the strong-wrap.
+  function alertRowCustom(label, valueHtml, variant) {
+    var styles = {
+      good:    { bg:'#e8f5e8', tx:'#1a6b1a' },
+      bad:     { bg:'#fde8e8', tx:'#8b1a1a' },
+      warn:    { bg:'#fff4d6', tx:'#7a5800' },
+      neutral: { bg:'#f3f4f6', tx:'#6b7280' }
+    };
+    var s = styles[variant] || styles.neutral;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin:6px 0;border-radius:8px;font-size:13px;background:'+s.bg+';color:'+s.tx+';">'
+         + '<span>'+esc(label)+'</span><span>'+valueHtml+'</span></div>';
+  }
+
+  function decisionBtn(id, label, color, enabled) {
+    var bg = enabled ? color : '#cbd5e1';
+    var cursor = enabled ? 'pointer' : 'not-allowed';
+    var op = enabled ? '1' : '0.6';
+    return '<button id="'+id+'"' + (enabled?'':' disabled')
+         + ' style="padding:14px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:'+cursor+';color:#fff;background:'+bg+';opacity:'+op+';transition:opacity 0.2s;">'
+         + esc(label) + '</button>';
+  }
+
+  // Heuristic mapping from preaprobacion-v3.php's reasons[] to the score-
+  // code badges shown in the mockup. We don't currently store the raw
+  // CDC score-reason codes, so this is an approximation:
+  //   - thin file / no morosidad: E0 G1 J0 T5 (informational, neutral)
+  //   - severe morosidad: D8 P1 M5 T5 (red)
+  //   - sin score: NS (no score)
+  function inferScoreReasons(row, risk) {
+    var codes = [];
+    if (risk === 'danger' && (row.dpd90_flag == 1 || row.buro_dpd90_flag == 1)) {
+      codes = [['D8','bad'],['P1','bad'],['M5','bad'],['T5','warn']];
+    } else if (row.circulo_source === 'cdc_sin_score' || row.circulo_source === 'estimado') {
+      codes = [['NS','neutral'],['THIN','warn']];
+    } else if (Number(row.score||0) > 0 && Number(row.score) < 600) {
+      codes = [['E0','neutral'],['G1','neutral'],['J0','neutral'],['T5','warn']];
+    } else {
+      codes = [['—','neutral']];
+    }
+    var styleByVariant = {
+      neutral: 'background:#fff;border:1px solid #b5c5d8;color:#1a4b7a;',
+      bad:     'background:#fde8e8;border:1px solid #f5b5b5;color:#8b1a1a;',
+      warn:    'background:#fff4d6;border:1px solid #f0d68a;color:#7a5800;'
+    };
+    var html = '<span style="display:inline-flex;gap:6px;flex-wrap:wrap;">';
+    codes.forEach(function(c){
+      html += '<span style="padding:3px 8px;border-radius:4px;font-size:11px;font-family:monospace;font-weight:600;'+(styleByVariant[c[1]]||styleByVariant.neutral)+'">'+esc(c[0])+'</span>';
+    });
+    html += '</span>';
+    return html;
+  }
+
+  // Number of red flags driving the "NO RECOMENDADO" banner.
+  function countBanderasRojas(row) {
+    var n = 0;
+    if (row.dpd90_flag == 1 || row.buro_dpd90_flag == 1) n++;
+    if (Number(row.pti_total||0) > 0.5) n++;
+    if (Number(row.score||0) > 0 && Number(row.score) < 500) n++;
+    if (row.dpd_max && Number(row.dpd_max) >= 90) n++;
+    return Math.max(1, n);
+  }
+
+  // Build the system recommendation panel. Returns an object with
+  // { summary, bullets[], action } so the renderer can paint a
+  // consistent box across safe/warn/danger cases.
+  function buildRecomendacion(row, risk, hasDPD90, ptiPct, scoreNum) {
+    var bullets = [];
+    if (hasDPD90) {
+      bullets.push({ label: 'Cuentas con DPD90 activo', detail: 'está fallando en pagos hoy' });
+    }
+    if (ptiPct >= 80) {
+      bullets.push({ label: 'PTI '+ptiPct+'%', detail: 'gasta casi todo su ingreso en deudas' });
+    } else if (ptiPct >= 50) {
+      bullets.push({ label: 'PTI '+ptiPct+'%', detail: 'sobreutilización crítica' });
+    }
+    if (scoreNum > 0 && scoreNum < 500) {
+      bullets.push({ label: 'Score '+scoreNum, detail: 'morosidad significativa en historial' });
+    }
+
+    if (risk === 'danger') {
+      return {
+        summary: 'Cliente sobreendeudado o con morosidad activa. Razones detectadas:',
+        bullets: bullets.length ? bullets : [{ label: 'Status NO_VIABLE', detail: 'el sistema marcó esta solicitud como no aprobable' }],
+        action: 'Rechazar plazos. Ofrecer pago contado únicamente (no MSI con tarjeta — su tarjeta probablemente está saturada).'
+      };
+    }
+    if (risk === 'warn') {
+      return {
+        summary: 'Solicitud condicional. Aprobar con enganche aumentado y/o plazo reducido.',
+        bullets: bullets,
+        action: 'Aprobar con '+(row.enganche_requerido?Math.round(row.enganche_requerido*100)+'% enganche':'enganche aumentado')+' y plazo máximo de '+(row.plazo_max||'12')+' meses.'
+      };
+    }
+    // safe case
+    var safeMsg = 'Aprobar plazos con '+(row.enganche_requerido?Math.round(row.enganche_requerido*100)+'% enganche':'enganche estándar')+' / '+(row.plazo_max||12)+' meses.';
+    if (scoreNum > 0 && scoreNum < 600) safeMsg += ' Score bajo se explica por archivo delgado (E0, G1, J0), no por morosidad. Sin DPD90 actual ni histórico. PTI total sano.';
+    return { summary: safeMsg, bullets: [], action: '' };
+  }
+
+  // Append a timestamped audit line to existing notas without losing
+  // anything. Returns the new full notas string for the API call.
+  function appendNote(existing, line) {
+    var ts = new Date().toISOString().slice(0,16).replace('T',' ');
+    var prefix = existing ? (existing+'\n') : '';
+    return prefix + '['+ts+'] '+line;
   }
   function sectionTitle(icon, txt) {
     return '<div style="font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e5e7eb;padding-bottom:8px;margin-bottom:12px">'+icon+' '+esc(txt)+'</div>';

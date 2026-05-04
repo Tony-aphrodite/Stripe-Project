@@ -120,14 +120,22 @@ try {
     // dashboard can render a rich badge with the actual Truora outcome
     // and the declined reason if one exists. NULL means no Truora attempt
     // was ever made for this applicant.
+    // Customer brief 2026-05-04: surface detailed buró data for the
+    // manual-review screen redesign. JOIN consultas_buro on the same
+    // (telefono OR email) heuristic we already use for verificaciones_
+    // identidad, plus a fallback match on (nombre + cp) so legacy CDC
+    // queries (which were stored before we captured telefono/email
+    // consistently) also surface their pago_mensual / dpd / num_cuentas
+    // values. Most-recent row wins (ORDER BY id DESC LIMIT 1).
     $stmt = $pdo->prepare("
         SELECT p.id, p.nombre, p.apellido_paterno, p.apellido_materno, p.email, p.telefono,
                p.fecha_nacimiento, p.cp, p.ciudad, p.estado,
                p.modelo, p.precio_contado, p.ingreso_mensual,
-               p.pago_semanal, p.pago_mensual, p.pti_total,
+               p.pago_semanal, p.pago_mensual, p.pago_mensual_buro, p.pti_total,
                p.score, p.synth_score, p.circulo_source,
                p.enganche_pct, p.plazo_meses, p.status,
                p.enganche_requerido, p.plazo_max,
+               p.dpd90_flag, p.dpd_max,
                p.truora_ok, p.seguimiento, p.notas_admin, p.freg,
                vi.truora_process_id,
                vi.truora_status,
@@ -138,7 +146,14 @@ try {
                vi.approved          AS truora_approved,
                vi.manual_review_required,
                vi.manual_review_reason,
-               vi.truora_updated_at
+               vi.truora_updated_at,
+               cb.score             AS buro_score,
+               cb.pago_mensual      AS buro_pago_mensual,
+               cb.dpd90_flag        AS buro_dpd90_flag,
+               cb.dpd_max           AS buro_dpd_max,
+               cb.num_cuentas       AS buro_num_cuentas,
+               cb.folio_consulta    AS buro_folio,
+               cb.freg              AS buro_freg
         FROM preaprobaciones p
         LEFT JOIN verificaciones_identidad vi
                ON vi.id = (
@@ -146,6 +161,14 @@ try {
                     WHERE (vi2.telefono <> '' AND vi2.telefono = p.telefono)
                        OR (vi2.email    <> '' AND vi2.email    = p.email)
                     ORDER BY vi2.id DESC LIMIT 1
+               )
+        LEFT JOIN consultas_buro cb
+               ON cb.id = (
+                   SELECT cb2.id FROM consultas_buro cb2
+                    WHERE (cb2.nombre = p.nombre
+                           AND cb2.apellido_paterno = p.apellido_paterno
+                           AND COALESCE(cb2.cp,'') = COALESCE(p.cp,''))
+                    ORDER BY cb2.id DESC LIMIT 1
                )
         WHERE $whereSql
         ORDER BY p.freg DESC
