@@ -276,6 +276,64 @@ html,body{
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   DESKTOP HORIZONTAL SCROLL — customer brief 2026-05-04
+   PC dashboards couldn't be scrolled horizontally: .ad-table-wrap had
+   overflow:hidden and the table was forced into width:100% via inline
+   styles, so content squished into ugly multi-line wraps with no way to
+   see full client names, emails, or stripe IDs. Fix: enable horizontal
+   scroll on desktop AND give the table a sensible min-width so columns
+   size to readable content widths instead of being divided across 100%.
+   The mobile rules below (≤768px) are unchanged.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 769px) {
+  /* Inner overflow-x:auto wrapper inside .ad-table-wrap actually fires
+     when the table grows past its width. The outer wrap stays
+     overflow:hidden (rounded corner clipping) — its child div scrolls. */
+  .ad-table-wrap > div {
+    overflow-x:auto;
+    /* Subtle scrollbar so admin sees scroll is available */
+    scrollbar-width:thin;
+  }
+  /* Ventas table: 11 columns. Override the inline table-layout:fixed
+     and allow columns to size to content. min-width keeps the table
+     wide enough that columns are readable even on a 1280px monitor. */
+  .ad-table--ventas{
+    table-layout:auto !important;
+    min-width:1500px;
+    width:auto !important;
+  }
+  .ad-table--ventas td,
+  .ad-table--ventas th{
+    word-break:normal !important;
+    overflow-wrap:normal !important;
+    white-space:nowrap;
+  }
+  /* Cliente / Modelo / Punto columns may carry genuinely long content
+     (full names, addresses) — let them wrap to two lines, capped, so
+     they don't push the table absurdly wide. */
+  .ad-table--ventas td:nth-child(2),
+  .ad-table--ventas td:nth-child(3),
+  .ad-table--ventas td:nth-child(8){
+    white-space:normal;
+    max-width:240px;
+  }
+  /* Pagos table (admin-pagos.js) — 8 cols, slimmer min-width. Targets
+     any .ad-table that ISN'T the ventas modifier. Email + nombre can
+     still wrap if needed. */
+  .ad-table-wrap .ad-table:not(.ad-table--ventas){
+    min-width:1100px;
+  }
+  .ad-table-wrap .ad-table:not(.ad-table--ventas) td,
+  .ad-table-wrap .ad-table:not(.ad-table--ventas) th{
+    white-space:nowrap;
+  }
+  .ad-table-wrap .ad-table:not(.ad-table--ventas) td:nth-child(2){
+    white-space:normal;
+    max-width:220px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    BADGES / PILLS
    ══════════════════════════════════════════════════════════════════════════ */
 .ad-badge{

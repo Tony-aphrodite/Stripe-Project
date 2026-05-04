@@ -330,28 +330,17 @@ window.AD_ventas = (function(){
       return;
     }
 
-    // Customer brief 2026-04-28: avoid horizontal scroll on the ventas
-    // table (action buttons were cut off the right side). Fixed table
-    // layout + colgroup distributes the 11 columns within 100% width and
-    // CSS wraps long text instead of growing the table. The
-    // overflow-x:auto wrapper is kept as a safety net for very small
-    // screens but the column widths are tuned so it shouldn't trigger
-    // on a normal desktop viewport.
+    // Customer brief 2026-05-04: enable horizontal scroll on PC. The
+    // previous "fit-to-100% with table-layout:fixed" approach (2026-04-28)
+    // squished content into multi-line wraps with no way to see full
+    // client names / emails / IDs on a 1280px monitor. We now let the
+    // table size to content (min-width:1500px set in CSS for desktop)
+    // and the wrapper's inner overflow-x:auto handles the horizontal
+    // scroll. Mobile media query (admin.css ≤768px) still uses the
+    // min-width:1100px rule so phones keep their existing horizontal
+    // scroll behavior. Inline width:100% removed so the CSS rule wins.
     var html = '<div class="ad-table-wrap"><div style="overflow-x:auto;">'+
-      '<table class="ad-table ad-table--ventas" style="table-layout:fixed;width:100%;">'+
-      '<colgroup>'+
-        '<col style="width:9%">'+   // Pedido
-        '<col style="width:13%">'+  // Cliente (-1)
-        '<col style="width:6%">'+   // Modelo  (-1)
-        '<col style="width:6%">'+   // Color   (-1)
-        '<col style="width:7%">'+   // Tipo
-        '<col style="width:8%">'+   // Monto
-        '<col style="width:10%">'+  // Estatus de Pago (-1)
-        '<col style="width:9%">'+   // Punto
-        '<col style="width:7%">'+   // Fecha
-        '<col style="width:9%">'+   // Moto asignada
-        '<col style="width:16%">'+  // Accion (+4 — 4 buttons after dossier addition)
-      '</colgroup>'+
+      '<table class="ad-table ad-table--ventas">'+
       '<thead><tr>'+
       '<th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Color</th>'+
       '<th>Tipo</th><th>Monto</th><th>Estatus de Pago</th><th>Punto</th><th>Fecha</th><th>Moto asignada</th><th>Accion</th>'+
