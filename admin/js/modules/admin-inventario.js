@@ -117,7 +117,14 @@ window.AD_inventario = (function(){
 
       html += '<div style="margin-bottom:20px;">';
       html += '<div style="font-weight:700;font-size:15px;color:var(--ad-navy);margin-bottom:6px;padding-left:4px;">'+mod+' <span style="font-weight:400;color:var(--ad-dim);font-size:13px;">('+groups[mod].length+')</span>'+brkHtml+'</div>';
-      html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>VIN</th><th>Color</th><th>Estado</th><th>Punto</th><th>Días</th><th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
+      // Customer brief 2026-05-04: surface Año Modelo + Núm. Motor on the
+      // CEDIS list so the operator can spot wrong-year imports / motor-VIN
+      // mismatches at a glance, without opening the detail card.
+      // wrap in overflow-x scroll so 9 columns don't get clipped on
+      // narrower monitors (consistent with .ad-table-wrap > div CSS rule).
+      html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table" style="min-width:1200px;"><thead><tr>'+
+        '<th>VIN</th><th>Año</th><th>Núm. Motor</th><th>Color</th><th>Estado</th><th>Punto</th><th>Días</th><th>Cliente</th><th>Pago</th><th></th>'+
+        '</tr></thead><tbody>';
       groups[mod].forEach(function(m){
         var diasCell = '—';
         if(m.dias_en_punto !== null && m.dias_en_punto !== undefined){
@@ -126,8 +133,16 @@ window.AD_inventario = (function(){
           diasCell = '<span style="font-weight:700;color:'+dpC+';">'+dp+'d</span>';
         }
         var lockBadge = parseInt(m.bloqueado_venta) ? ' <span class="ad-badge red" style="font-size:10px;">BLOQUEADA</span>' : '';
+        // Núm. Motor in monospace so digits line up — operators scan
+        // visually for typos when matching against the physical engine
+        // sticker. Truncate visually with title tooltip if it's long.
+        var motorCell = m.num_motor
+          ? '<code style="font-size:11px;font-family:ui-monospace,Menlo,monospace;background:var(--ad-surface-2);padding:2px 6px;border-radius:3px;" title="'+m.num_motor+'">'+m.num_motor+'</code>'
+          : '<span style="color:#9ca3af;">—</span>';
         html += '<tr>'+
           '<td>'+(m.vin_display||m.vin||'—')+lockBadge+'</td>'+
+          '<td style="text-align:center;">'+(m.anio_modelo||'<span style="color:#9ca3af;">—</span>')+'</td>'+
+          '<td>'+motorCell+'</td>'+
           '<td>'+m.color+'</td>'+
           '<td>'+ADApp.badgeEstado(m.estado)+'</td>'+
           '<td>'+(m.punto_voltika_nombre||'—')+'</td>'+
@@ -137,7 +152,7 @@ window.AD_inventario = (function(){
           '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
         '</tr>';
       });
-      html += '</tbody></table></div></div>';
+      html += '</tbody></table></div></div></div>';
     });
     // Pagination
     if(r.pages>1){
@@ -329,8 +344,11 @@ window.AD_inventario = (function(){
       html += '<div class="ad-card" style="color:var(--ad-dim);font-size:13px;">— sin motos en esta categoría —</div>';
       return html + '</div>';
     }
-    html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr>'+
-      '<th>VIN</th><th>Modelo</th><th>Color</th><th>Estado</th>'+
+    // Customer brief 2026-05-04: Año + Núm. Motor visible at the list
+    // level (was previously only in the detail card). Wrapped in
+    // overflow-x scroll so the extra columns don't clip the action button.
+    html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table" style="min-width:1200px;"><thead><tr>'+
+      '<th>VIN</th><th>Modelo</th><th>Año</th><th>Núm. Motor</th><th>Color</th><th>Estado</th>'+
       (showAging ? '<th>Días en punto</th>' : '')+
       '<th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
     list.forEach(function(m){
@@ -340,9 +358,14 @@ window.AD_inventario = (function(){
         var c = d <= 30 ? '#059669' : d <= 60 ? '#d97706' : '#dc2626';
         agingCell = '<td><span style="font-weight:700;color:'+c+';">'+d+'d</span></td>';
       }
+      var motorCell = m.num_motor
+        ? '<code style="font-size:11px;font-family:ui-monospace,Menlo,monospace;background:var(--ad-surface-2);padding:2px 6px;border-radius:3px;" title="'+esc(m.num_motor)+'">'+esc(m.num_motor)+'</code>'
+        : '<span style="color:#9ca3af;">—</span>';
       html += '<tr>'+
         '<td><code style="font-size:11px;">'+esc(m.vin_display||m.vin||'—')+'</code></td>'+
         '<td>'+esc(m.modelo||'')+'</td>'+
+        '<td style="text-align:center;">'+(m.anio_modelo||'<span style="color:#9ca3af;">—</span>')+'</td>'+
+        '<td>'+motorCell+'</td>'+
         '<td>'+esc(m.color||'')+'</td>'+
         '<td>'+ADApp.badgeEstado(m.estado||'')+'</td>'+
         agingCell+
@@ -351,7 +374,9 @@ window.AD_inventario = (function(){
         '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
       '</tr>';
     });
-    html += '</tbody></table></div></div>';
+    // Extra </div> closes the overflow-x wrapper added for the new
+    // Año + Núm. Motor columns (customer brief 2026-05-04).
+    html += '</tbody></table></div></div></div>';
     return html;
   }
 

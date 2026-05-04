@@ -50,10 +50,24 @@ if (!hash_equals($expected, $sig)) {
     exit;
 }
 
-// ── Load preaprobacion data ────────────────────────────────────────────────
+// ── Load preaprobacion data + CURP from consultas_buro ─────────────────────
+// CURP is needed by paso-credito-identidad/truora-token. It's stored on
+// consultas_buro (the original CDC query persisted it) but NOT on
+// preaprobaciones, so we JOIN by the same heuristic listar.php uses
+// (nombre + apellido_paterno + cp).
 try {
     $pdo = getDB();
-    $stmt = $pdo->prepare("SELECT * FROM preaprobaciones WHERE id = ? LIMIT 1");
+    $stmt = $pdo->prepare("
+        SELECT p.*, cb.curp AS cdc_curp, cb.score AS cdc_score
+        FROM preaprobaciones p
+        LEFT JOIN consultas_buro cb ON cb.id = (
+            SELECT cb2.id FROM consultas_buro cb2
+            WHERE (cb2.nombre = p.nombre
+                   AND cb2.apellido_paterno = p.apellido_paterno
+                   AND COALESCE(cb2.cp,'') = COALESCE(p.cp,''))
+            ORDER BY cb2.id DESC LIMIT 1
+        )
+        WHERE p.id = ? LIMIT 1");
     $stmt->execute([$id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
@@ -67,37 +81,57 @@ try {
     exit;
 }
 
-// ── Build state object the SPA expects ─────────────────────────────────────
-// We seed the same sessionStorage keys the configurador uses internally so
-// the user lands at the credit-identity step with everything pre-filled.
-// Only fields that actually existed during the original CDC submission —
-// no fabrication, no defaults.
+// ── Build state in the EXACT format configurador.js expects ────────────────
+// Customer report 2026-05-04: clicking "Continuar verificación" landed the
+// user back at the modelo step (paso 1) — i.e. the SPA never restored our
+// seeded state. Root cause: we wrote to sessionStorage key 'voltika_state'
+// but the SPA's persistence layer (configurador.js _PERSIST_KEY) reads
+// 'vk_configurador_state_v1' and unwraps a {ts, state:{...}} envelope.
+// On top of that, the restore filter strips ANY key starting with '_',
+// so our '_skipCDC' / '_recoveredFromAdmin' fields were silently dropped.
+//
+// Fix: write to the right key, wrap with the right envelope, set
+// pasoActual='credito-identidad' so the SPA jumps straight to Truora,
+// and only use plain (non-underscore) field names for everything we
+// need to survive restore.
 $state = [
-    'modeloSeleccionado'  => mapModeloIdFromName($row['modelo'] ?? ''),
-    'metodoPago'          => 'credito',
-    'nombre'              => $row['nombre']           ?? '',
-    'apellidoPaterno'     => $row['apellido_paterno'] ?? '',
-    'apellidoMaterno'     => $row['apellido_materno'] ?? '',
-    'email'               => $row['email']            ?? '',
-    'telefono'            => $row['telefono']         ?? '',
-    'fechaNacimiento'     => $row['fecha_nacimiento'] ?? '',
-    'codigoPostal'        => $row['cp']               ?? '',
-    'ciudad'              => $row['ciudad']           ?? '',
-    'estado'              => $row['estado']           ?? '',
-    '_recoveredFromAdmin' => true,
-    '_recoveredPreapId'   => (int)$row['id'],
-    '_skipCDC'            => true,    // do not re-evaluate, we already have a result
-    'creditoAprobado'     => true,
+    'modeloSeleccionado' => mapModeloIdFromName($row['modelo'] ?? ''),
+    'metodoPago'         => 'credito',
+    'nombre'             => $row['nombre']           ?? '',
+    'apellidoPaterno'    => $row['apellido_paterno'] ?? '',
+    'apellidoMaterno'    => $row['apellido_materno'] ?? '',
+    'email'              => $row['email']            ?? '',
+    'telefono'           => $row['telefono']         ?? '',
+    'curp'               => $row['cdc_curp']         ?? '',  // for Truora cross-check
+    'fechaNacimiento'    => $row['fecha_nacimiento'] ?? '',
+    'codigoPostal'       => $row['cp']               ?? '',
+    'cp'                 => $row['cp']               ?? '',  // SPA uses both names
+    'ciudad'             => $row['ciudad']           ?? '',
+    'estado'             => $row['estado']           ?? '',
+    'creditoAprobado'    => true,
+    'recoveredFromAdmin' => true,                    // non-underscore so it persists
+    'recoveredPreapId'   => (int)$row['id'],
     'modoCondicional'    => in_array($row['status'] ?? '', ['CONDICIONAL', 'CONDICIONAL_ESTIMADO'], true),
+    // pasoActual is read by _installStatePersistence() — when present the
+    // SPA calls irAPaso(pasoActual) ~50 ms after init, which is exactly
+    // the jump-to-Truora behavior we want.
+    'pasoActual'         => 'credito-identidad',
 ];
 if ($row['enganche_requerido'] ?? null) {
-    $state['enganchePctMin']    = (float)$row['enganche_requerido'];
+    $state['enganchePctMin']     = (float)$row['enganche_requerido'];
     $state['enganchePorcentaje'] = max((float)$row['enganche_requerido'], 0.30);
 }
 if ($row['plazo_max'] ?? null) {
     $state['plazoMesesMax'] = (int)$row['plazo_max'];
     $state['plazoMeses']    = (int)$row['plazo_max'];
 }
+
+// Envelope the SPA expects: { ts: <ms>, state: {...} }. Without ts the
+// restore TTL check (Date.now() - parsed.ts < 2h) immediately rejects.
+$envelope = [
+    'ts'    => round(microtime(true) * 1000),
+    'state' => $state,
+];
 
 /**
  * Best-effort map of the model name stored on the preaprobacion row to the
@@ -143,19 +177,21 @@ p{font-size:14px;color:#555;margin:0 0 6px;}
 </div>
 <script>
 (function(){
-  var STATE = <?= json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+  // Envelope must match exactly what configurador.js _installStatePersistence
+  // expects: { ts: <ms-epoch>, state: {...} }. Wrong key or shape and the
+  // SPA silently boots into the modelo screen instead of credito-identidad.
+  var ENVELOPE = <?= json_encode($envelope, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
   try {
-    // The SPA reads its persisted state from sessionStorage under the key
-    // 'voltika_state'. Seed it with the recovered fields so when the SPA
-    // boots it picks up where the customer left off.
-    sessionStorage.setItem('voltika_state', JSON.stringify(STATE));
+    sessionStorage.setItem('vk_configurador_state_v1', JSON.stringify(ENVELOPE));
+    // Also seed a recovery flag (separate key) for any module that wants
+    // to opt-in to "I came in via the admin recovery link" behavior.
     sessionStorage.setItem('voltika_recovered', '1');
   } catch (e) {}
-  // Bounce to the SPA. The SPA reads the ?paso= hint and jumps straight
-  // to the Truora identity step.
+  // The SPA's restore flow reads pasoActual from the envelope and calls
+  // irAPaso(pasoActual) ~50 ms after init — no need for a ?paso= hint.
   setTimeout(function(){
-    window.location.href = '/configurador/?paso=credito-identidad&recovered=1';
-  }, 800);
+    window.location.href = '/configurador/?recovered=1';
+  }, 600);
 })();
 </script>
 </body></html>

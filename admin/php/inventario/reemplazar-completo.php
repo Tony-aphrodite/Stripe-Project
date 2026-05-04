@@ -423,18 +423,28 @@ function normalizeInvColor2(string $raw): string {
 /**
  * Date parser that accepts strtotime-friendly strings AND Excel serial
  * numbers (which the existing parseDate() in importar.php silently
- * dropped). Excel epoch is 1900-01-01 with the leap-year bug, so day 60
- * is the missing 1900-02-29 — we subtract 2 days from any serial > 60
- * to get the Unix timestamp (= subtract 1 for epoch off-by-one + 1 for
- * the missing leap day).
+ * dropped).
+ *
+ * Excel serial reference:
+ *   1   = 1900-01-01
+ *   60  = the fake 1900-02-29 (does not exist in real calendar)
+ *   61  = real 1900-03-01
+ *   25569 = real 1970-01-01 (UNIX epoch, in Excel serial)
+ *
+ * Bug fix 2026-05-04: previous version subtracted 1 from $days "to skip
+ * the fake leap day" AND THEN subtracted 25569. That was a double-
+ * correction — 25569 already factors in the fake Feb 29 (it's the
+ * Excel-side serial of 1970-01-01, which itself counts the fake day).
+ * The result was every Excel-serial date came out one day too early.
+ * Customer report: "all dates are 1 day delay". Fix: don't decrement
+ * $days; the (serial - 25569) * 86400 formula is correct on its own.
  */
 function parseDateLoose(string $val): ?string {
     $val = trim($val);
     if ($val === '' || $val === '0') return null;
     if (ctype_digit($val) && (int)$val >= 1000 && (int)$val < 100000) {
         $days = (int)$val;
-        if ($days >= 60) $days -= 1;            // skip the fake 1900-02-29
-        $ts = ($days - 25569) * 86400;          // 25569 = 1970-01-01 in serial
+        $ts = ($days - 25569) * 86400;
         if ($ts > 0) return gmdate('Y-m-d', $ts);
     }
     $ts = strtotime($val);
