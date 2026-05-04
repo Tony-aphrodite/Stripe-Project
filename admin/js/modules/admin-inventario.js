@@ -37,9 +37,12 @@ window.AD_inventario = (function(){
   function paint(r){
     var html = _backBtn+'<div class="ad-toolbar"><div class="ad-h1">CEDIS</div>';
     if(ADApp.isAdmin()){
-      html += '<div style="display:flex;gap:6px">'+
+      html += '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
         '<button class="ad-btn primary" id="adNewMoto">+ Nueva moto</button>'+
         '<button class="ad-btn ghost" id="adImportExcel">Importar Excel</button>'+
+        '<button class="ad-btn" id="adReplaceExcel" style="background:#dc2626;color:#fff;border-color:#dc2626" '+
+          'title="DESTRUCTIVO: borra TODO el inventario actual y lo reemplaza con el archivo">'+
+          '⚠ Reemplazar inventario</button>'+
         '</div>';
     }
     html += '</div>';
@@ -156,6 +159,7 @@ window.AD_inventario = (function(){
     $('.adPage').on('click',function(){ filters.page=$(this).data('p'); load(); });
     $('#adNewMoto').on('click', showNewForm);
     $('#adImportExcel').on('click', showImportForm);
+    $('#adReplaceExcel').on('click', showReplaceForm);
     $('#adKpiPagosPendientes').on('click', function(){
       ADApp.go('ventas');
       // Set the Ventas activeTab to 'pago_pendiente' after nav
@@ -999,6 +1003,170 @@ window.AD_inventario = (function(){
       }).fail(function(){
         $('#adImportResult').html('<div style="padding:12px;border-radius:8px;background:#FFEBEE;color:#C62828;">Error de conexion</div>').show();
         $btn.html('Importar').prop('disabled', false);
+      });
+    });
+  }
+
+  // ── DESTRUCTIVE: Replace entire inventory from xlsx ───────────────────
+  // Customer brief 2026-05-04: customer wants the whole inventory wiped
+  // and replaced with the contents of a new xlsx ("the other file has an
+  // error, this file is ok"). This UI gates the action behind:
+  //   1. Preview step (server returns counts + warnings, no writes)
+  //   2. Acknowledged checkbox confirming "I understand transacciones
+  //      will lose their moto_id link"
+  //   3. Type-to-confirm: must type exactly "ELIMINAR INVENTARIO"
+  // Only when all three are satisfied does the Ejecutar button enable.
+  function showReplaceForm(){
+    ADApp.modal(
+      '<div class="ad-h2" style="color:#dc2626;display:flex;align-items:center;gap:8px;">'+
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'+
+        'Reemplazar inventario completo</div>'+
+      '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:#991b1b;line-height:1.5;">'+
+        '<strong>⚠ ACCIÓN DESTRUCTIVA</strong><br>'+
+        'Esta operación <strong>borrará TODO</strong> el inventario actual y lo reemplazará con las filas del archivo xlsx. '+
+        'Las transacciones que tengan <code>moto_id</code> asignado <strong>perderán el vínculo</strong> a su moto.<br><br>'+
+        '<strong>Antes de continuar verifica que descargaste el backup completo</strong> en '+
+        '<code>db-backup.php</code> y lo guardaste en tu computadora local.'+
+      '</div>'+
+      '<input type="file" id="adReplaceFile" accept=".csv,.xlsx,.txt" class="ad-input" style="margin-bottom:12px">'+
+      '<div id="adReplacePreview" style="display:none;margin-bottom:12px;font-size:13px;"></div>'+
+      '<div id="adReplaceConfirm" style="display:none;margin:14px 0;padding:14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;">'+
+        '<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;line-height:1.4;margin-bottom:10px;">'+
+          '<input type="checkbox" id="adReplaceAck" style="margin-top:2px;flex-shrink:0;">'+
+          '<span>Entiendo que esta acción es <strong>irreversible sin restaurar el backup</strong> y que las transacciones con moto_id apuntando a las filas borradas perderán el vínculo.</span>'+
+        '</label>'+
+        '<label style="font-size:12px;color:#78350f;display:block;margin-bottom:4px;font-weight:600;">'+
+          'Para confirmar, escribe exactamente: <code style="background:#fff;padding:1px 6px;border-radius:3px;">ELIMINAR INVENTARIO</code>'+
+        '</label>'+
+        '<input type="text" id="adReplaceConfirmText" class="ad-input" autocomplete="off" '+
+          'placeholder="ELIMINAR INVENTARIO" style="font-family:ui-monospace,monospace;width:100%;">'+
+      '</div>'+
+      '<div id="adReplaceResult" style="display:none;margin-bottom:12px;"></div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<button class="ad-btn ghost" id="adReplaceCancel" style="flex:1;">Cancelar</button>'+
+        '<button class="ad-btn ghost" id="adReplacePreviewBtn" disabled style="flex:1;">Vista previa</button>'+
+        '<button class="ad-btn" id="adReplaceExecBtn" disabled '+
+          'style="flex:1;background:#dc2626;color:#fff;border-color:#dc2626;">Ejecutar reemplazo</button>'+
+      '</div>'
+    );
+
+    // Enable preview as soon as a file is chosen
+    $('#adReplaceFile').on('change', function(){
+      var file = this.files[0];
+      $('#adReplacePreviewBtn').prop('disabled', !file);
+      $('#adReplacePreview').hide().empty();
+      $('#adReplaceConfirm').hide();
+      $('#adReplaceExecBtn').prop('disabled', true);
+      $('#adReplaceResult').hide().empty();
+    });
+
+    $('#adReplaceCancel').on('click', function(){ ADApp.closeModal(); });
+
+    // Preview — calls reemplazar-completo.php with action=preview
+    $('#adReplacePreviewBtn').on('click', function(){
+      var file = $('#adReplaceFile')[0].files[0];
+      if (!file) return;
+      var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Analizando...');
+      var fd = new FormData();
+      fd.append('archivo', file);
+      fd.append('action', 'preview');
+      $.ajax({
+        url: 'php/inventario/reemplazar-completo.php',
+        method: 'POST', data: fd, processData: false, contentType: false,
+        xhrFields:{withCredentials:true}, dataType:'json'
+      }).done(function(r){
+        if (!r.ok) {
+          $('#adReplacePreview').html('<div style="background:#fee2e2;color:#991b1b;padding:10px;border-radius:6px;">'+(r.error||'Error')+'</div>').show();
+          $btn.html('Vista previa').prop('disabled', false);
+          return;
+        }
+        var c = r.current_db || {}, f = r.file || {};
+        var html = '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;">'+
+          '<strong style="font-size:14px;color:#1e40af;">📊 Análisis del cambio</strong>'+
+          '<table style="width:100%;margin-top:10px;font-size:13px;">'+
+          '<tr><td style="color:#64748b;padding:3px 0;">Filas en DB actual</td><td style="text-align:right;font-weight:700;">'+c.total+'</td></tr>'+
+          '<tr><td style="color:#64748b;padding:3px 0;">— con cliente asignado</td><td style="text-align:right;color:'+(c.con_cliente>0?'#dc2626':'#64748b')+';font-weight:600;">'+c.con_cliente+'</td></tr>'+
+          '<tr><td style="color:#64748b;padding:3px 0;">— en punto de entrega</td><td style="text-align:right;color:'+(c.en_punto>0?'#dc2626':'#64748b')+';font-weight:600;">'+c.en_punto+'</td></tr>'+
+          '<tr><td style="color:#64748b;padding:3px 0;">— entregadas</td><td style="text-align:right;color:'+(c.entregadas>0?'#dc2626':'#64748b')+';font-weight:600;">'+c.entregadas+'</td></tr>'+
+          '<tr><td style="color:#64748b;padding:3px 0;">Transacciones con moto_id</td><td style="text-align:right;color:'+((r.transacciones_con_moto_id||0)>0?'#dc2626':'#10b981')+';font-weight:700;">'+(r.transacciones_con_moto_id||0)+(r.transacciones_con_moto_id>0?' ⚠':' ✓')+'</td></tr>'+
+          '<tr><td colspan="2" style="border-top:1px solid #cbd5e1;padding-top:6px;"></td></tr>'+
+          '<tr><td style="color:#64748b;padding:3px 0;">Filas en archivo</td><td style="text-align:right;font-weight:700;">'+f.total_filas+'</td></tr>'+
+          '<tr><td style="color:#64748b;padding:3px 0;">— sin VIN (descartadas)</td><td style="text-align:right;color:#92400e;">'+f.sin_vin+'</td></tr>'+
+          '<tr><td style="color:#64748b;padding:3px 0;">— a insertar</td><td style="text-align:right;font-weight:800;color:#10b981;">'+f.a_insertar+'</td></tr>'+
+          '<tr><td style="color:#64748b;padding:3px 0;">— VINs únicos</td><td style="text-align:right;font-weight:700;">'+f.vins_unicos+'</td></tr>'+
+          '</table>';
+        if (r.warnings && r.warnings.length) {
+          html += '<div style="margin-top:10px;font-size:12px;line-height:1.5;">';
+          r.warnings.forEach(function(w){
+            var isWarn = w.indexOf('⚠')===0;
+            html += '<div style="color:'+(isWarn?'#dc2626':'#64748b')+';margin:2px 0;">'+w+'</div>';
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+        $('#adReplacePreview').html(html).show();
+        $('#adReplaceConfirm').show();
+        $btn.html('Vista previa').prop('disabled', false);
+      }).fail(function(x){
+        $('#adReplacePreview').html('<div style="background:#fee2e2;color:#991b1b;padding:10px;border-radius:6px;">'+((x.responseJSON&&x.responseJSON.error)||'Error de conexión')+'</div>').show();
+        $btn.html('Vista previa').prop('disabled', false);
+      });
+    });
+
+    // Type-to-confirm gate: enable Ejecutar only when checkbox is on AND
+    // the typed text is exactly "ELIMINAR INVENTARIO".
+    function refreshExecBtn(){
+      var ok = $('#adReplaceAck').is(':checked')
+            && $('#adReplaceConfirmText').val().trim() === 'ELIMINAR INVENTARIO'
+            && $('#adReplaceFile')[0].files[0];
+      $('#adReplaceExecBtn').prop('disabled', !ok);
+    }
+    $(document).on('change.replInv', '#adReplaceAck', refreshExecBtn);
+    $(document).on('input.replInv',  '#adReplaceConfirmText', refreshExecBtn);
+
+    // Final execution
+    $('#adReplaceExecBtn').on('click', function(){
+      if (!confirm('¿Última confirmación? Esta acción NO se puede deshacer sin restaurar el backup.\n\nProcederá a borrar TODO el inventario y reemplazarlo.')) return;
+      var file = $('#adReplaceFile')[0].files[0];
+      var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Reemplazando...');
+      var fd = new FormData();
+      fd.append('archivo', file);
+      fd.append('action', 'execute');
+      fd.append('confirm', 'ELIMINAR INVENTARIO');
+      fd.append('acknowledged', '1');
+      $.ajax({
+        url: 'php/inventario/reemplazar-completo.php',
+        method: 'POST', data: fd, processData: false, contentType: false,
+        xhrFields:{withCredentials:true}, dataType:'json',
+        timeout: 120000
+      }).done(function(r){
+        // Detach the document-level handlers so they don't fire on the
+        // next modal open.
+        $(document).off('change.replInv input.replInv');
+        if (r.ok) {
+          var html = '<div style="background:#dcfce7;border:1px solid #86efac;color:#14532d;padding:14px;border-radius:8px;">'+
+            '<strong style="font-size:15px;">✓ Reemplazo completado</strong>'+
+            '<table style="width:100%;margin-top:8px;font-size:13px;">'+
+            '<tr><td>Filas borradas</td><td style="text-align:right;font-weight:700;">'+r.eliminados+'</td></tr>'+
+            '<tr><td>Filas insertadas</td><td style="text-align:right;font-weight:700;color:#15803d;">'+r.insertados+'</td></tr>'+
+            '<tr><td>Errores</td><td style="text-align:right;font-weight:700;color:'+(r.errores>0?'#dc2626':'#15803d')+';">'+r.errores+'</td></tr>'+
+            '<tr><td>Transacciones huérfanas</td><td style="text-align:right;color:'+(r.transacciones_huerfanas>0?'#dc2626':'#15803d')+';">'+r.transacciones_huerfanas+'</td></tr>'+
+            '</table>'+
+            (r.errores_detalle && r.errores_detalle.length
+              ? '<div style="margin-top:8px;font-size:11px;color:#991b1b;">'+r.errores_detalle.join('<br>')+'</div>'
+              : '')+
+            '</div>';
+          $('#adReplaceResult').html(html).show();
+          $btn.html('Cerrar').prop('disabled', false).off('click').on('click', function(){
+            ADApp.closeModal(); load();
+          });
+        } else {
+          $('#adReplaceResult').html('<div style="background:#fee2e2;color:#991b1b;padding:12px;border-radius:6px;">'+(r.error||'Error')+'</div>').show();
+          $btn.html('Ejecutar reemplazo').prop('disabled', false);
+        }
+      }).fail(function(x){
+        $('#adReplaceResult').html('<div style="background:#fee2e2;color:#991b1b;padding:12px;border-radius:6px;">'+((x.responseJSON&&x.responseJSON.error)||'Error de conexión / timeout')+'</div>').show();
+        $btn.html('Ejecutar reemplazo').prop('disabled', false);
       });
     });
   }
