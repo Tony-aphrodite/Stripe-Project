@@ -289,19 +289,24 @@ window.AD_ventas = (function(){
       $('#vtLastUpdate').html('Actualizado: ' + timeStr + ' (' + elapsed + 's)');
       if(!r.ok){ $('#vtTable').html('<div class="ad-card">Error al cargar</div>'); if(cb) cb(); return; }
 
-      // KPIs
-      var pendingPunto = (r.rows||[]).filter(function(o){ return o.punto_id==='centro-cercano'; }).length;
-      var orfanos = r.orfanos || (r.rows||[]).filter(function(o){ return o.source; }).length;
-      var phantom = r.phantom || (r.rows||[]).filter(function(o){ return o.datos_incompletos; }).length;
+      // KPIs — money summary FIRST (customer brief 2026-05-04: "the total
+      // amount of sales is not clear in the dashboard"). The big money
+      // banner above the count KPIs gives the admin the answer to the
+      // first question they ask every morning ("how much did we sell?")
+      // without having to drill into Pagos. Numbers come from listar.php's
+      // r.resumen aggregation, which sums ALL transacciones (not the
+      // 100-row LIMIT used for the table) so the totals are accurate.
+      var resumen = r.resumen || {};
       $('#vtKpis').html(
+        renderResumenMoney(resumen) +
         kpi('Total ordenes', r.total, 'blue')+
         kpi('Moto asignada', r.asignadas, 'green')+
         kpi('Sin asignar', r.sin_asignar, r.sin_asignar > 0 ? 'red' : 'green')+
         kpi('Ventas con Pago', r.con_pago||0, 'green')+
         kpi('Ventas sin Pago', r.sin_pago||0, (r.sin_pago||0) > 0 ? 'red' : 'green')+
-        kpi('Punto pendiente', pendingPunto, pendingPunto > 0 ? 'yellow' : 'green')+
-        kpi('Huérfanos/errores', orfanos, orfanos > 0 ? 'red' : 'green')+
-        kpi('Datos incompletos', phantom, phantom > 0 ? 'red' : 'green')
+        kpi('Punto pendiente', (r.rows||[]).filter(function(o){ return o.punto_id==='centro-cercano'; }).length, 'yellow')+
+        kpi('Huérfanos/errores', r.orfanos||0, (r.orfanos||0) > 0 ? 'red' : 'green')+
+        kpi('Datos incompletos', r.phantom||0, (r.phantom||0) > 0 ? 'red' : 'green')
       );
       var rows = r.rows || [];
       _lastRows = rows;
@@ -366,16 +371,15 @@ window.AD_ventas = (function(){
         puntoHtml = '<span class="ad-badge gray">'+r.punto_id+'</span>';
       }
 
-      var tipoBadge = 'blue';
-      if(r.tipo === 'credito-orfano') tipoBadge = 'yellow';
-      if(r.tipo === 'error-captura') tipoBadge = 'red';
-      // Display label: normalize legacy 'unico' → 'contado'. Stripe sends
-      // its raw payment-method description ("Tarjeta de débito o crédito")
-      // which is too long for the TIPO column — shorten it (customer
-      // brief 2026-04-28: long badge overflowed into the MONTO column).
-      var tipoDisplay = r.tipo || '-';
-      if (tipoDisplay === 'unico') tipoDisplay = 'contado';
-      else if (/tarjeta de [dc]/i.test(tipoDisplay)) tipoDisplay = 'tarjeta';
+      // Tipo badge — distinct color per purchase type (customer brief
+      // 2026-05-04). Replaces the old single-blue badge that made MSI,
+      // Contado, Crédito and Enganche all look identical at a glance.
+      // tipoTheme() handles the legacy mappings (unico→contado, "tarjeta
+      // de débito o crédito" → tarjeta) and supplies the bg color.
+      var tipoTh = tipoTheme(r.tipo);
+      var tipoBadgeHtml = '<span style="background:'+tipoTh.bg+';color:#fff;padding:3px 8px;border-radius:10px;'+
+        'font-size:10.5px;font-weight:800;letter-spacing:.4px;white-space:nowrap;display:inline-block;">'+
+        tipoTh.label+'</span>';
       var alertaHtml = r.alerta
         ? '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">'+esc(r.alerta)+'</div>'
         : '';
@@ -396,12 +400,32 @@ window.AD_ventas = (function(){
       // Highlight the whole row so phantoms stand out from clean orders.
       var rowStyle = r.datos_incompletos ? ' style="background:#FFF5F5;"' : '';
 
+      // Inline signed-contract indicator under the tipo badge (customer
+      // brief 2026-05-04: "we need to check ... the signed contract of
+      // each operation"). Only shown for tipos that issue a contract —
+      // contado/MSI/credit family. The contract icon button in the
+      // Acciones column lets admin OPEN the PDF; this label tells admin
+      // at a glance whether it's been SIGNED or not, no clicks needed.
+      var firmaInline = '';
+      var _tpForFirma = String(r.tipo || '').toLowerCase().trim();
+      var firmaTipos = ['contado','unico','msi','spei','oxxo','tarjeta','enganche','credito'];
+      if (firmaTipos.indexOf(_tpForFirma) >= 0 || /tarjeta de [dc]/i.test(_tpForFirma)) {
+        if (r.firma_id) {
+          var firmaWhen = r.firma_freg ? String(r.firma_freg).substring(0,10) : '';
+          firmaInline = '<div style="font-size:10px;font-weight:700;color:#15803d;margin-top:3px;white-space:nowrap;" '+
+                        'title="Contrato firmado el '+firmaWhen+'">✓ Firmado'+(firmaWhen?' '+firmaWhen:'')+'</div>';
+        } else {
+          firmaInline = '<div style="font-size:10px;font-weight:700;color:#b45309;margin-top:3px;white-space:nowrap;" '+
+                        'title="El cliente aún no ha firmado el contrato">⏳ Sin firma</div>';
+        }
+      }
+
       html += '<tr data-row-id="'+r.id+'"'+rowStyle+'>'+
         '<td><strong>'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'</strong>'+extrasHtml+alertaHtml+'</td>'+
         '<td>'+(r.nombre ? esc(r.nombre) : '<span style="color:#C62828;font-style:italic;">— sin nombre —</span>')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
         '<td>'+(r.modelo ? esc(r.modelo) : '<span style="color:#C62828;font-style:italic;">— sin modelo —</span>')+'</td>'+
         '<td>'+(r.color || '<span class="ad-dim">—</span>')+'</td>'+
-        '<td><span class="ad-badge '+tipoBadge+'">'+tipoDisplay+'</span></td>'+
+        '<td>'+tipoBadgeHtml+firmaInline+'</td>'+
         '<td>'+ADApp.money(r.monto)+'</td>'+
         '<td>'+pagoEstadoBadge(r.pago_estado, r.tipo)+'</td>'+
         '<td>'+puntoHtml+'</td>'+
@@ -788,6 +812,85 @@ window.AD_ventas = (function(){
 
   function kpi(label, value, color){
     return '<div class="ad-kpi"><div class="label">'+label+'</div><div class="value '+color+'">'+value+'</div></div>';
+  }
+
+  // Money summary banner — big "vendido" total + by-type breakdown.
+  // Customer brief 2026-05-04: total sales must be visible at a glance.
+  // Render is idempotent: if r.resumen is missing (older backend) we
+  // still produce a placeholder so the layout doesn't shift.
+  function renderResumenMoney(r){
+    r = r || {};
+    var fmtMoney = function(n){
+      var v = Number(n) || 0;
+      return '$' + v.toLocaleString('es-MX', {minimumFractionDigits:0, maximumFractionDigits:0});
+    };
+    // Big banner: total + this-month + refunded. Three cards, full width.
+    var html = '';
+    html += '<div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:6px;">';
+    // Total vendido (lifetime)
+    html += '<div style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:14px 16px;border-radius:10px;box-shadow:0 2px 6px rgba(16,185,129,0.3);">'
+         +    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.9;">💰 Total vendido</div>'
+         +    '<div style="font-size:22px;font-weight:800;margin-top:4px;">'+fmtMoney(r.vendido_total)+'</div>'
+         +    '<div style="font-size:11px;opacity:.85;margin-top:2px;">acumulado · todos los pedidos pagados</div>'
+         + '</div>';
+    // Mes actual
+    html += '<div style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;padding:14px 16px;border-radius:10px;box-shadow:0 2px 6px rgba(14,165,233,0.3);">'
+         +    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.9;">📅 Mes actual</div>'
+         +    '<div style="font-size:22px;font-weight:800;margin-top:4px;">'+fmtMoney(r.vendido_mes_actual)+'</div>'
+         +    '<div style="font-size:11px;opacity:.85;margin-top:2px;">cobrado este mes calendario</div>'
+         + '</div>';
+    // Reembolsado (red)
+    html += '<div style="background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b;padding:14px 16px;border-radius:10px;border:1px solid #fecaca;">'
+         +    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.85;">↩ Reembolsado</div>'
+         +    '<div style="font-size:22px;font-weight:800;margin-top:4px;">'+fmtMoney(r.reembolsado)+'</div>'
+         +    '<div style="font-size:11px;opacity:.85;margin-top:2px;">restado del neto</div>'
+         + '</div>';
+    html += '</div>';
+    // Breakdown by tipo: Contado / MSI / Crédito / Pendiente
+    html += '<div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:8px;">';
+    [
+      {l:'Contado',  v:r.contado,    bg:'#ecfdf5', tx:'#065f46', dot:'#10b981'},
+      {l:'MSI',      v:r.msi,        bg:'#f5f3ff', tx:'#5b21b6', dot:'#8b5cf6'},
+      {l:'Crédito',  v:r.credito,    bg:'#eff6ff', tx:'#1e40af', dot:'#3b82f6'},
+      {l:'Pendiente',v:r.pendiente,  bg:'#fffbeb', tx:'#92400e', dot:'#f59e0b'}
+    ].forEach(function(c){
+      html += '<div style="background:'+c.bg+';color:'+c.tx+';padding:10px 12px;border-radius:8px;border:1px solid rgba(0,0,0,.04);">'
+           +    '<div style="font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;">'
+           +      '<span style="width:8px;height:8px;border-radius:50%;background:'+c.dot+';display:inline-block;"></span>'+c.l
+           +    '</div>'
+           +    '<div style="font-size:16px;font-weight:800;margin-top:2px;">'+fmtMoney(c.v)+'</div>'
+           + '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  // Tipo badge color theme — distinct color per purchase type so admin
+  // can spot MSI vs Contado vs Crédito at a glance (customer brief
+  // 2026-05-04: "we need to know the type of purchase in each one").
+  // Returns { bgClass, label } for a given raw tpago value.
+  function tipoTheme(rawTipo){
+    var t = String(rawTipo || '').toLowerCase().trim();
+    if (t === 'unico') t = 'contado';
+    if (/tarjeta de [dc]/i.test(t)) t = 'tarjeta';
+    // Map → distinct visual identity. We use inline styles instead of the
+    // existing ad-badge color set because the count of distinct types
+    // exceeds the available named badge colors, and consistent contrast
+    // is critical here — admins glance at this column to triage.
+    var themes = {
+      contado:         { bg:'#10b981', label:'CONTADO'    },
+      tarjeta:         { bg:'#10b981', label:'CONTADO'    },
+      msi:             { bg:'#8b5cf6', label:'MSI'        },
+      credito:         { bg:'#3b82f6', label:'CRÉDITO'    },
+      enganche:        { bg:'#06b6d4', label:'ENGANCHE'   },
+      parcial:         { bg:'#06b6d4', label:'PARCIAL'    },
+      'credito-orfano':{ bg:'#f59e0b', label:'CRÉD. HUÉRF.' },
+      spei:            { bg:'#0891b2', label:'SPEI'       },
+      oxxo:            { bg:'#dc2626', label:'OXXO'       },
+      'error-captura': { bg:'#dc2626', label:'ERROR'      }
+    };
+    var th = themes[t] || { bg:'#6b7280', label:(rawTipo||'—').toUpperCase() };
+    return th;
   }
 
   function pagoEstadoBadge(estado, tipo){

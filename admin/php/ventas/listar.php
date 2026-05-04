@@ -572,6 +572,65 @@ $sinPago    = count(array_filter($rows, fn($r) => in_array($r['pago_estado'] ?? 
 $reembolsadas = count(array_filter($rows, fn($r) => ($r['pago_estado'] ?? '') === 'reembolsado'));
 $phantom    = count(array_filter($rows, fn($r) => !empty($r['datos_incompletos'])));
 
+// ── Money totals (customer brief 2026-05-04) ────────────────────────────
+// The previous KPIs were all counts (orders, refunds, errors). Customer
+// reported "Total amount of sales is not clear in the dashboard" — so we
+// now compute MXN totals server-side. Two reasons we don't sum from $rows:
+//   1. The SELECT above is LIMIT 100 — sums would underrepresent for
+//      busy windows.
+//   2. We want totals broken down by purchase type (MSI / Contado /
+//      Crédito / Enganche) so each can render as its own KPI badge.
+// All sums exclude refunded rows from positive totals (refunded gets its
+// own line). Only stripe_pi-having rows count, so synthetic/admin-promoted
+// 'pendiente' rows from enviar-a-ventas.php don't inflate "vendido".
+$resumen = [
+    'vendido_total'     => 0.0,   // sum of pagada (any tpago)
+    'vendido_mes_actual'=> 0.0,   // sum of pagada in current calendar month
+    'msi'               => 0.0,
+    'contado'           => 0.0,
+    'credito'           => 0.0,   // only enganche actually charged via Stripe
+    'reembolsado'       => 0.0,
+    'pendiente'         => 0.0,   // pending = links sent / awaiting payment
+];
+try {
+    // Total + by-type aggregation. We classify tpago into four buckets
+    // because the raw column has many values ("Tarjeta de débito o
+    // crédito", "tarjeta", "unico", "msi", "credito", "enganche", etc.)
+    // and the dashboard only needs the four customer-facing categories.
+    $aggSql = "SELECT
+            CASE
+                WHEN LOWER(TRIM(t.tpago)) LIKE '%msi%' THEN 'msi'
+                WHEN LOWER(TRIM(t.tpago)) IN ('credito','credito-orfano','enganche','parcial') THEN 'credito'
+                ELSE 'contado'
+            END AS bucket,
+            t.pago_estado,
+            SUM(COALESCE(t.total, t.precio, 0)) AS suma,
+            SUM(CASE WHEN DATE_FORMAT(t.freg, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+                     THEN COALESCE(t.total, t.precio, 0) ELSE 0 END) AS suma_mes
+        FROM transacciones t
+        WHERE t.stripe_pi IS NOT NULL
+          AND t.stripe_pi <> ''
+          AND t.stripe_pi NOT LIKE 'manual-%'
+        GROUP BY bucket, t.pago_estado";
+    foreach ($pdo->query($aggSql) as $a) {
+        $bucket = $a['bucket'];
+        $estado = strtolower((string)($a['pago_estado'] ?? ''));
+        $suma   = (float)$a['suma'];
+        $sumaMes= (float)$a['suma_mes'];
+        if ($estado === 'pagada') {
+            $resumen['vendido_total']      += $suma;
+            $resumen['vendido_mes_actual'] += $sumaMes;
+            if (isset($resumen[$bucket])) $resumen[$bucket] += $suma;
+        } elseif ($estado === 'reembolsado') {
+            $resumen['reembolsado'] += $suma;
+        } elseif (in_array($estado, ['pendiente', 'parcial'], true)) {
+            $resumen['pendiente'] += $suma;
+        }
+    }
+} catch (Throwable $e) {
+    error_log('ventas/listar resumen: ' . $e->getMessage());
+}
+
 adminJsonOut([
     'ok'    => true,
     'rows'  => $rows,
@@ -583,5 +642,6 @@ adminJsonOut([
     'sin_pago'     => $sinPago,
     'reembolsadas' => $reembolsadas,
     'phantom'      => $phantom,
+    'resumen'      => $resumen,
     'generated_at' => date('c'),
 ]);
