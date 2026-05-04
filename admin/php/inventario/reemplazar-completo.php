@@ -236,20 +236,28 @@ $inserted = 0;
 $errors   = [];
 $samples  = [];   // first 10 rows that succeeded — for the audit log
 
+// ── DDL first, BEFORE the transaction ──────────────────────────────────
+// MySQL implicitly commits any open transaction the moment a DDL
+// statement (ALTER, CREATE, DROP, TRUNCATE, …) runs. The previous
+// version put these ALTERs inside the try{} after beginTransaction(),
+// which caused the eventual commit() to throw "There is no active
+// transaction" because the very first ALTER had already silently
+// committed the transaction — the DELETE+INSERT then ran outside any
+// transaction (auto-committing each statement individually) and the
+// final commit() blew up. Run them up front, idempotently.
+foreach ([
+    "ALTER TABLE inventario_motos ADD COLUMN num_factura VARCHAR(50) NULL",
+    "ALTER TABLE inventario_motos ADD COLUMN posicion_inventario VARCHAR(20) NULL",
+    "ALTER TABLE inventario_motos ADD COLUMN fecha_entrada_almacen DATE NULL",
+    "ALTER TABLE inventario_motos ADD COLUMN fecha_salida_almacen DATE NULL",
+    "ALTER TABLE inventario_motos ADD COLUMN num_motor VARCHAR(50) NULL",
+] as $alter) {
+    try { $pdo->exec($alter); } catch (PDOException $ignore) {}
+}
+
 $pdo->beginTransaction();
 try {
     $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
-
-    // Ensure schema columns exist (defensive — same as importar.php)
-    foreach ([
-        "ALTER TABLE inventario_motos ADD COLUMN num_factura VARCHAR(50) NULL",
-        "ALTER TABLE inventario_motos ADD COLUMN posicion_inventario VARCHAR(20) NULL",
-        "ALTER TABLE inventario_motos ADD COLUMN fecha_entrada_almacen DATE NULL",
-        "ALTER TABLE inventario_motos ADD COLUMN fecha_salida_almacen DATE NULL",
-        "ALTER TABLE inventario_motos ADD COLUMN num_motor VARCHAR(50) NULL",
-    ] as $alter) {
-        try { $pdo->exec($alter); } catch (PDOException $ignore) {}
-    }
 
     // Wipe — full deletion. NOTE: we do NOT truncate (TRUNCATE resets
     // AUTO_INCREMENT and breaks any external system that cached old IDs).
@@ -321,13 +329,32 @@ try {
     $pdo->commit();
     $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
 } catch (Throwable $e) {
-    if ($pdo->inTransaction()) $pdo->rollBack();
+    $rolledBack = false;
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+        $rolledBack = true;
+    }
     try { $pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (Throwable $e2) {}
     error_log('reemplazar-completo fatal: ' . $e->getMessage());
+
+    // Always report the live count so admin knows whether data was
+    // actually written despite the error. If the swap committed
+    // statement-by-statement (DDL implicit commit case), the new rows
+    // are already there even though we report "error".
+    $liveCount = 0;
+    try {
+        $liveCount = (int)$pdo->query("SELECT COUNT(*) FROM inventario_motos")->fetchColumn();
+    } catch (Throwable $e3) {}
+
     adminJsonOut([
-        'ok'      => false,
-        'error'   => 'rollback ejecutado: ' . $e->getMessage(),
-        'errores' => $errors,
+        'ok'                => false,
+        'error'             => ($rolledBack ? 'rollback ejecutado: ' : 'sin transacción activa: ') . $e->getMessage(),
+        'rollback_real'     => $rolledBack,
+        'inventario_actual' => $liveCount,
+        'nota'              => $rolledBack
+            ? 'La transacción fue revertida — la DB sigue como antes.'
+            : 'La transacción NO se revirtió (probablemente DDL implicit-commit). Verifica el conteo: ' . $liveCount . ' filas.',
+        'errores'           => $errors,
     ], 500);
 }
 
