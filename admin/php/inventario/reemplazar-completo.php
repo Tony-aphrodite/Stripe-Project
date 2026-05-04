@@ -32,6 +32,28 @@
  *                                         → actually does the swap
  */
 
+// ── Diagnostic envelope ─────────────────────────────────────────────────
+// Production has display_errors=Off, so a PHP fatal traditionally returns
+// a 500 with an empty body. The admin UI then shows "HTTP 500 — sin
+// respuesta" and we have no way to know what actually went wrong without
+// shell access to the error log. Register a shutdown handler that catches
+// any fatal/parse error and returns it as JSON so the UI can display the
+// real cause.
+register_shutdown_function(function() {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode([
+            'ok'    => false,
+            'error' => 'php_fatal: ' . $err['message'],
+            'file'  => basename($err['file'] ?? ''),
+            'line'  => $err['line'] ?? 0,
+        ]);
+    }
+});
 require_once __DIR__ . '/../bootstrap.php';
 $adminId = adminRequireAuth(['admin']);
 
