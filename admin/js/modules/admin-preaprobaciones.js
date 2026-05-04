@@ -26,14 +26,22 @@ window.AD_preaprobaciones = (function(){
 
   function segBadge(s){
     var themes = {
-      nuevo:      { bg:'#fef3c7', tx:'#78350f', dot:'#f59e0b', lbl:'Nuevo' },
-      contactado: { bg:'#dbeafe', tx:'#1e40af', dot:'#3b82f6', lbl:'Contactado' },
-      vendido:    { bg:'#d1fae5', tx:'#065f46', dot:'#10b981', lbl:'Vendido' },
-      descartado: { bg:'#f3f4f6', tx:'#6b7280', dot:'#9ca3af', lbl:'Descartado' }
+      nuevo:           { bg:'#fef3c7', tx:'#78350f', dot:'#f59e0b', lbl:'Nuevo' },
+      contactado:      { bg:'#dbeafe', tx:'#1e40af', dot:'#3b82f6', lbl:'Contactado' },
+      vendido:         { bg:'#d1fae5', tx:'#065f46', dot:'#10b981', lbl:'Vendido' },
+      descartado:      { bg:'#f3f4f6', tx:'#6b7280', dot:'#9ca3af', lbl:'Descartado' },
+      // New seguimiento values from the manual-review redesign 2026-05-04
+      aprobado:        { bg:'#d1fae5', tx:'#065f46', dot:'#10b981', lbl:'Aprobado' },
+      ofrecer_contado: { bg:'#dbeafe', tx:'#1e40af', dot:'#1a4b7a', lbl:'Ofrecer contado' },
+      ofrecer_msi:     { bg:'#fed7aa', tx:'#7a4a1a', dot:'#7a4a1a', lbl:'Ofrecer MSI' },
+      rechazado:       { bg:'#fee2e2', tx:'#991b1b', dot:'#dc2626', lbl:'Rechazado' },
+      enviado_a_ventas:{ bg:'#e0f2fe', tx:'#075985', dot:'#0891b2', lbl:'A Ventas' },
+      truora_enviado:  { bg:'#ede9fe', tx:'#5b21b6', dot:'#8b5cf6', lbl:'Truora enviado' },
+      archivado:       { bg:'#f3f4f6', tx:'#6b7280', dot:'#9ca3af', lbl:'Archivado' }
     };
     var theme = themes[s] || themes.nuevo;
-    return '<span style="background:'+theme.bg+';color:'+theme.tx+';padding:3px 10px 3px 8px;border-radius:12px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px">'
-         + '<span style="width:7px;height:7px;border-radius:50%;background:'+theme.dot+';display:inline-block"></span>'
+    return '<span style="background:'+theme.bg+';color:'+theme.tx+';padding:3px 10px 3px 8px;border-radius:12px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">'
+         + '<span style="width:7px;height:7px;border-radius:50%;background:'+theme.dot+';display:inline-block;flex-shrink:0;"></span>'
          + esc(theme.lbl)+'</span>';
   }
 
@@ -88,10 +96,16 @@ window.AD_preaprobaciones = (function(){
     html += '<button class="apBulkDelete" style="padding:6px 14px;background:#dc2626;color:#fff;border:none;border-radius:4px;font-weight:600;cursor:pointer">🗑 Eliminar permanente</button>';
     html += '</div></div>';
 
-    // Tabla
-    html += '<div class="ad-table-wrap"><table class="ad-table"><thead><tr>';
+    // Tabla — wrap in overflow-x scroll div so wide content (12 columns)
+    // doesn't get clipped on a 1280-1440px monitor where the right-edge
+    // columns (Seguimiento + Ver/Editar) were being cut off (customer
+    // brief 2026-05-04 screenshot). The CSS rule
+    // `.ad-table-wrap > div { overflow-x:auto }` only fires when this
+    // inner div exists; previously the table was a direct child of
+    // .ad-table-wrap so the rule never matched.
+    html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table" style="min-width:1280px;"><thead><tr>';
     html += '<th style="width:30px"><input type="checkbox" id="apCheckAll"></th>';
-    html += '<th>Fecha</th><th>Cliente</th><th>Email / Teléfono</th><th>Modelo</th><th>Status</th><th>Score</th><th>Source</th><th>Eng req</th><th>Plazo</th><th>Seguimiento</th><th></th>';
+    html += '<th>Fecha</th><th>Cliente</th><th>Email / Teléfono</th><th>Modelo</th><th>Status</th><th>Score</th><th>Source</th><th>Eng req</th><th>Plazo</th><th>Seguimiento</th><th>Acción</th>';
     html += '</tr></thead><tbody>';
 
     if (!r.rows || !r.rows.length) {
@@ -117,7 +131,7 @@ window.AD_preaprobaciones = (function(){
       html += '<td><button class="ad-btn sm ghost apEdit" data-id="'+row.id+'">Ver / Editar</button></td>';
       html += '</tr>';
     });
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
 
     // Paginación
     if (r.pages > 1) {
