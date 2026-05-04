@@ -389,50 +389,58 @@ function parseDateLoose(string $val): ?string {
 }
 
 function parseXlsxFull(string $path) {
+    if (!class_exists('ZipArchive')) {
+        // PHP-zip extension not installed — surface that clearly so
+        // admin sees the real reason instead of a generic parse fail.
+        throw new RuntimeException('ZipArchive (php-zip) no está disponible — instalar php-zip');
+    }
     $zip = new ZipArchive();
     if ($zip->open($path) !== true) return false;
 
+    // Shared strings — same conservative pattern as importar.php's
+    // parseXlsxSimple (known to work in production). Children-by-name
+    // traversal works against the default namespace; xpath does not
+    // unless namespace is registered, which is fragile across PHP /
+    // libxml versions on Plesk shared hosting.
     $strings = [];
     $ssXml = $zip->getFromName('xl/sharedStrings.xml');
     if ($ssXml) {
-        $ss = new SimpleXMLElement($ssXml);
-        foreach ($ss->si as $si) {
-            // Concatenate all <t> elements (including those nested inside
-            // <r> rich-text runs) so styled cells aren't silently dropped.
-            $text = '';
-            foreach ($si->xpath('.//*[local-name()="t"]') as $t) {
-                $text .= (string)$t;
+        $ss = @simplexml_load_string($ssXml);
+        if ($ss !== false) {
+            foreach ($ss->si as $si) {
+                $strings[] = (string)$si->t ?: (string)$si;
             }
-            $strings[] = $text !== '' ? $text : (string)$si->t;
         }
     }
 
     $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
     if (!$sheetXml) { $zip->close(); return false; }
 
-    $sheet = new SimpleXMLElement($sheetXml);
+    $sheet = @simplexml_load_string($sheetXml);
+    if ($sheet === false) { $zip->close(); return false; }
+
     $rows = [];
     foreach ($sheet->sheetData->row as $row) {
-        // Position cells by their column letter (r="A5") rather than
-        // sequential order — Excel skips empty cells, so a naïve
-        // append-in-order misaligns columns when any row has gaps.
-        $cells = [];
+        // Position cells by column letter so empty-cell skips don't
+        // misalign columns. The xlsx the customer sent has 17 columns
+        // and rows with blank cells in the middle (Estatus de venta,
+        // No de Orden, etc.).
+        $cells  = [];
         $maxIdx = -1;
         foreach ($row->c as $c) {
             $ref = (string)$c['r'];
             $col = preg_replace('/\d/', '', $ref);
             $idx = colLetterToIndex($col);
             $val = (string)$c->v;
-            if ((string)$c['t'] === 's' && isset($strings[(int)$val])) {
+            $type = (string)$c['t'];
+            if ($type === 's' && $val !== '' && isset($strings[(int)$val])) {
                 $val = $strings[(int)$val];
-            } elseif ((string)$c['t'] === 'inlineStr') {
-                $val = '';
-                foreach ($c->is->xpath('.//*[local-name()="t"]') as $t) $val .= (string)$t;
+            } elseif ($type === 'inlineStr' && isset($c->is)) {
+                $val = (string)$c->is->t;
             }
             $cells[$idx] = $val;
             if ($idx > $maxIdx) $maxIdx = $idx;
         }
-        // Fill gaps with empty strings so downstream indexing is stable.
         $linear = [];
         for ($i = 0; $i <= $maxIdx; $i++) $linear[] = $cells[$i] ?? '';
         $rows[] = $linear;

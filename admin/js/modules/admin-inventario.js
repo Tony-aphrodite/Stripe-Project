@@ -1108,7 +1108,22 @@ window.AD_inventario = (function(){
         $('#adReplaceConfirm').show();
         $btn.html('Vista previa').prop('disabled', false);
       }).fail(function(x){
-        $('#adReplacePreview').html('<div style="background:#fee2e2;color:#991b1b;padding:10px;border-radius:6px;">'+((x.responseJSON&&x.responseJSON.error)||'Error de conexión')+'</div>').show();
+        // Surface as much diagnostic info as possible — when the endpoint
+        // returns HTML (PHP fatal) or 404, jQuery's responseJSON is null
+        // and the user just sees "Error de conexión" with no clue why.
+        // Show HTTP status + first chunk of response so the admin can
+        // tell at a glance whether it's a 404 (file not uploaded), 403
+        // (auth), or 500 (PHP error).
+        var msg = '<strong>HTTP ' + (x.status || '?') + '</strong>';
+        if (x.responseJSON && x.responseJSON.error) {
+          msg += ' — ' + x.responseJSON.error;
+        } else if (x.responseText) {
+          var snippet = String(x.responseText).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0, 300);
+          msg += '<br><small style="font-family:monospace;font-size:11px;color:#7f1d1d;">' + snippet + '</small>';
+        } else {
+          msg += ' — sin respuesta del servidor (¿archivo PHP no subido?)';
+        }
+        $('#adReplacePreview').html('<div style="background:#fee2e2;color:#991b1b;padding:10px;border-radius:6px;font-size:13px;">'+msg+'</div>').show();
         $btn.html('Vista previa').prop('disabled', false);
       });
     });
