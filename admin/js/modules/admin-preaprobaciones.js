@@ -419,7 +419,7 @@ window.AD_preaprobaciones = (function(){
     html += '</div>';
     html += '<div style="display:flex;gap:10px">';
     html += '<button id="apEditClose" style="padding:10px 22px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:6px;font-weight:600;cursor:pointer">Cerrar</button>';
-    html += '<button id="apEditSave" style="padding:10px 22px;background:'+color.bg+';color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer">💾 Guardar cambios</button>';
+    html += '<button id="apEditSave" style="padding:10px 22px;background:'+theme.haccent+';color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer">💾 Guardar cambios</button>';
     html += '</div></div>';
 
     ADApp.modal(html);
