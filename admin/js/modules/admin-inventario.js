@@ -1088,7 +1088,7 @@ window.AD_inventario = (function(){
           '<tr><td style="color:#64748b;padding:3px 0;">— con cliente asignado</td><td style="text-align:right;color:'+(c.con_cliente>0?'#dc2626':'#64748b')+';font-weight:600;">'+c.con_cliente+'</td></tr>'+
           '<tr><td style="color:#64748b;padding:3px 0;">— en punto de entrega</td><td style="text-align:right;color:'+(c.en_punto>0?'#dc2626':'#64748b')+';font-weight:600;">'+c.en_punto+'</td></tr>'+
           '<tr><td style="color:#64748b;padding:3px 0;">— entregadas</td><td style="text-align:right;color:'+(c.entregadas>0?'#dc2626':'#64748b')+';font-weight:600;">'+c.entregadas+'</td></tr>'+
-          '<tr><td style="color:#64748b;padding:3px 0;">Transacciones con moto_id</td><td style="text-align:right;color:'+((r.transacciones_con_moto_id||0)>0?'#dc2626':'#10b981')+';font-weight:700;">'+(r.transacciones_con_moto_id||0)+(r.transacciones_con_moto_id>0?' ⚠':' ✓')+'</td></tr>'+
+          '<tr><td style="color:#64748b;padding:3px 0;">Motos vinculadas a pedido</td><td style="text-align:right;color:'+((r.motos_vinculadas_a_pedido||0)>0?'#dc2626':'#10b981')+';font-weight:700;">'+(r.motos_vinculadas_a_pedido||0)+(r.motos_vinculadas_a_pedido>0?' ⚠':' ✓')+'</td></tr>'+
           '<tr><td colspan="2" style="border-top:1px solid #cbd5e1;padding-top:6px;"></td></tr>'+
           '<tr><td style="color:#64748b;padding:3px 0;">Filas en archivo</td><td style="text-align:right;font-weight:700;">'+f.total_filas+'</td></tr>'+
           '<tr><td style="color:#64748b;padding:3px 0;">— sin VIN (descartadas)</td><td style="text-align:right;color:#92400e;">'+f.sin_vin+'</td></tr>'+
@@ -1165,7 +1165,7 @@ window.AD_inventario = (function(){
             '<tr><td>Filas borradas</td><td style="text-align:right;font-weight:700;">'+r.eliminados+'</td></tr>'+
             '<tr><td>Filas insertadas</td><td style="text-align:right;font-weight:700;color:#15803d;">'+r.insertados+'</td></tr>'+
             '<tr><td>Errores</td><td style="text-align:right;font-weight:700;color:'+(r.errores>0?'#dc2626':'#15803d')+';">'+r.errores+'</td></tr>'+
-            '<tr><td>Transacciones huérfanas</td><td style="text-align:right;color:'+(r.transacciones_huerfanas>0?'#dc2626':'#15803d')+';">'+r.transacciones_huerfanas+'</td></tr>'+
+            '<tr><td>Pedidos a reasignar moto</td><td style="text-align:right;color:'+(r.pedidos_a_reasignar>0?'#dc2626':'#15803d')+';">'+r.pedidos_a_reasignar+'</td></tr>'+
             '</table>'+
             (r.errores_detalle && r.errores_detalle.length
               ? '<div style="margin-top:8px;font-size:11px;color:#991b1b;">'+r.errores_detalle.join('<br>')+'</div>'

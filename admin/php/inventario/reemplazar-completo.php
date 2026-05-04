@@ -150,7 +150,7 @@ $pdo = getDB();
 
 // Live snapshot of what we're about to delete — counts of "linked" rows
 // so the preview tells the admin exactly how many active orders / puntos
-// will lose their moto_id reference. These counts are advisory only;
+// will lose their moto reference. These counts are advisory only;
 // Option C goes ahead regardless of the link state.
 $snap = $pdo->query("SELECT
     COUNT(*) AS total,
@@ -162,13 +162,18 @@ $snap = $pdo->query("SELECT
     SUM(CASE WHEN estado = 'recibida' THEN 1 ELSE 0 END) AS recibidas
     FROM inventario_motos")->fetch(PDO::FETCH_ASSOC);
 
-// Cross-table impact: how many transacciones rows currently point at
-// inventario_motos. After DELETE these rows still exist but moto_id
-// becomes a dangling FK (the column is preserved as a soft-pointer; no
-// hard FK constraint exists in this schema, so the DELETE itself
-// succeeds, but the dashboard's "Moto asignada" lookup will go blank
-// for those orders).
-$txn_linked = (int)$pdo->query("SELECT COUNT(*) FROM transacciones WHERE moto_id IS NOT NULL")->fetchColumn();
+// Cross-table impact: in this schema transacciones does NOT have a
+// moto_id column — the link is purely computed via the JOIN
+// inventario_motos.pedido_num = CONCAT('VK-', transacciones.pedido).
+// So when we DELETE FROM inventario_motos no FK breaks on transacciones;
+// the only effect is that orders previously matched to a moto via that
+// pedido_num go back to "Sin asignar" until reassigned manually. The
+// orders themselves stay completely intact.
+//
+// Count how many motos in the current DB carry a pedido_num — that's
+// the upper bound of orders that will "lose their moto" after the wipe.
+$txn_linked = (int)$pdo->query("SELECT COUNT(*) FROM inventario_motos
+    WHERE pedido_num IS NOT NULL AND pedido_num <> '' AND activo = 1")->fetchColumn();
 
 if ($action === 'preview') {
     adminJsonOut([
@@ -183,7 +188,7 @@ if ($action === 'preview') {
             'asignadas'    => (int)$snap['asignadas'],
             'recibidas'    => (int)$snap['recibidas'],
         ],
-        'transacciones_con_moto_id' => $txn_linked,
+        'motos_vinculadas_a_pedido' => $txn_linked,
         'file' => [
             'archivo'       => $file['name'],
             'total_filas'   => $file_total,
@@ -193,13 +198,13 @@ if ($action === 'preview') {
         ],
         'warnings' => [
             $txn_linked > 0
-                ? "⚠ {$txn_linked} transacciones tienen moto_id asignado — perderán el vínculo."
-                : "Sin transacciones vinculadas — DELETE seguro.",
+                ? "⚠ {$txn_linked} motos están vinculadas a un pedido (pedido_num) — esas órdenes pasarán a 'Sin asignar' después del reemplazo."
+                : "Sin motos vinculadas a un pedido — reemplazo limpio.",
             (int)$snap['en_punto'] > 0
                 ? "⚠ {$snap['en_punto']} motos están asignadas a un punto de entrega."
                 : "Sin motos en punto.",
             (int)$snap['entregadas'] > 0
-                ? "⚠ {$snap['entregadas']} motos están entregadas (cliente ya las recibió)."
+                ? "⚠ {$snap['entregadas']} motos están entregadas (cliente ya las recibió). Sus checklists/envíos/dossiers seguirán existiendo pero su moto_id quedará huérfano."
                 : "Sin motos entregadas en DB.",
         ],
         'next_step' => 'Para ejecutar: action=execute, confirm=ELIMINAR INVENTARIO, acknowledged=1',
@@ -331,7 +336,7 @@ adminLog('inventario_reemplazo_completo', [
     'eliminados'      => $deleted,
     'insertados'      => $inserted,
     'errores'         => count($errors),
-    'transacciones_afectadas' => $txn_linked,
+    'motos_que_estaban_vinculadas' => $txn_linked,
     'samples'         => $samples,
 ]);
 
@@ -343,7 +348,7 @@ adminJsonOut([
     'insertados'               => $inserted,
     'errores'                  => count($errors),
     'errores_detalle'          => array_slice($errors, 0, 10),
-    'transacciones_huerfanas'  => $txn_linked,
+    'pedidos_a_reasignar'      => $txn_linked,
     'mensaje'                  => "Reemplazo completado. {$deleted} filas borradas, {$inserted} nuevas. Verifica el dashboard antes de cerrar sesión.",
 ]);
 
