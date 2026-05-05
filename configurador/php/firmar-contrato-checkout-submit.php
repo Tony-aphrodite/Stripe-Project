@@ -169,7 +169,15 @@ try {
                 'firma_sha256'       => $hash,
                 'firma_freg'         => date('Y-m-d H:i:s'),
             ];
-            $pdfPath = @contratoContadoGenerate($contractData);
+            // contratoContadoGenerate() returns ['ok'=>bool, 'path'=>string, 'error'=>string].
+            // Earlier rev mistakenly treated the array as a path string, so
+            // file_exists() got an array and the PDF path was never persisted.
+            $genResult = @contratoContadoGenerate($contractData);
+            if (is_array($genResult) && !empty($genResult['ok']) && !empty($genResult['path'])) {
+                $pdfPath = (string)$genResult['path'];
+            } else if (is_array($genResult) && !empty($genResult['error'])) {
+                error_log('firmar-checkout-submit contratoContadoGenerate: ' . $genResult['error']);
+            }
         }
     }
     if ($pdfPath && file_exists($pdfPath)) {
