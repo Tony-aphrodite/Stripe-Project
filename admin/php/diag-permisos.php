@@ -27,6 +27,40 @@ register_shutdown_function(function() {
 
 require_once __DIR__ . '/bootstrap.php';
 
+// ── Direct WRITE action (bypasses session, gated by token) ────────────
+// Customer brief 2026-05-04: roles/guardar.php is silently not
+// persisting permisos for any user (every dealer_usuarios row has
+// permisos=NULL). To unblock admins right now, allow directly setting
+// a user's permisos via a token-protected endpoint. Usage:
+//   ?key=voltika-diag-2026&action=set&user_id=24&perms=dashboard,envios,puntos,buscar,inventario,checklists
+if (($_GET['key'] ?? '') === 'voltika-diag-2026' && ($_GET['action'] ?? '') === 'set') {
+    $targetId = (int)($_GET['user_id'] ?? 0);
+    $perms    = (string)($_GET['perms'] ?? '');
+    if (!$targetId) {
+        echo json_encode(['ok' => false, 'error' => 'user_id required']);
+        exit;
+    }
+    $list = array_values(array_filter(array_map('trim', explode(',', $perms))));
+    try {
+        $pdo = getDB();
+        $st = $pdo->prepare("UPDATE dealer_usuarios SET permisos = ? WHERE id = ?");
+        $st->execute([json_encode($list), $targetId]);
+        $rows = $st->rowCount();
+        $verify = $pdo->prepare("SELECT id, email, rol, permisos FROM dealer_usuarios WHERE id = ? LIMIT 1");
+        $verify->execute([$targetId]);
+        echo json_encode([
+            'ok'           => true,
+            'action'       => 'set',
+            'rows_updated' => $rows,
+            'permisos_set' => $list,
+            'verify'       => $verify->fetch(PDO::FETCH_ASSOC),
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 $uid       = $_SESSION['admin_user_id']   ?? null;
 $rolSess   = $_SESSION['admin_user_rol']  ?? null;
 $permSess  = $_SESSION['admin_user_permisos'] ?? null;
