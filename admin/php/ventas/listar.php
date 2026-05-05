@@ -144,18 +144,16 @@ try {
         LEFT JOIN inventario_motos m
                ON m.id = (
                    -- Customer brief 2026-05-04 round 5: orders showing
-                   -- "Sin asignar" in the dashboard despite CEDIS
-                   -- showing the moto as assigned. Root cause: a
-                   -- single match on CONCAT('VK-', t.pedido) is too
-                   -- strict — pedido fields come in two flavors:
-                   --   • numeric / short ("9") → "VK-9"
-                   --   • already-prefixed ("VK-9")
-                   -- We try the prefixed form first; fall back to
-                   -- pedido_corto. Stripe-pi was considered but skipped
-                   -- here because the inventario_motos.stripe_pi column
-                   -- isn't part of the importar.php base schema and may
-                   -- not exist on every install — referencing a missing
-                   -- column makes the whole SELECT throw 500.
+                   -- Sin-asignar in the dashboard despite CEDIS showing
+                   -- the moto as assigned. Root cause: a single match
+                   -- on CONCAT(VK-, t.pedido) is too strict; pedido
+                   -- fields come in two flavors (numeric short, or
+                   -- already-prefixed). We try the prefixed form first
+                   -- and fall back to pedido_corto.
+                   -- NOTE: this whole query is inside a PHP double-
+                   -- quoted string, so SQL comments here must NOT
+                   -- contain double-quote characters — they would close
+                   -- the PHP string and cause a parse error.
                    SELECT m2.id FROM inventario_motos m2
                     WHERE m2.activo = 1
                       AND m2.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
