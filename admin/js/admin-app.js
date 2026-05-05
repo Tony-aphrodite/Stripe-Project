@@ -68,9 +68,88 @@ window.ADApp = (function(){
   }
   function showApp() {
     $sidebar.show();
-    var rolLabel = {admin:'ADMIN',cedis:'CEDIS',operador:'OPERADOR',dealer:'DEALER'}[state.user.rol] || state.user.rol;
+    var rolLabel = {admin:'ADMIN',cedis:'CEDIS',operador:'OPERADOR',dealer:'DEALER',logistica:'LOGISTICA',cobranza:'COBRANZA',documentos:'DOCUMENTOS'}[state.user.rol] || state.user.rol;
     $('#adUser').html('<div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(3,159,225,.2);display:flex;align-items:center;justify-content:center;"><img src="../configurador/img/asesor_icon.jpg" style="width:22px;height:22px;border-radius:50%;object-fit:cover;"></div><div><div style="color:rgba(255,255,255,.85);font-weight:600;font-size:13px;">' + state.user.nombre + '</div><div style="font-size:10px;letter-spacing:.5px;color:rgba(255,255,255,.4);text-transform:uppercase;">' + rolLabel + '</div></div></div>');
-    go('dashboard');
+    filterSidebarByPermisos();
+    go(firstAllowedRoute());
+  }
+
+  // ── Per-user sidebar filtering (customer brief 2026-05-04 round 7) ──
+  // Hide the menu buttons whose data-route is not in the user's
+  // permisos array. Admin role bypasses this — sees everything.
+  // Several data-route values don't have a 1:1 match in the permisos
+  // checkbox list; the routeToPerm map below resolves those (e.g.
+  // "preaprobaciones" → "ventas", "puntosperf" → "reportes").
+  function filterSidebarByPermisos(){
+    var perms = (state.user && Array.isArray(state.user.permisos)) ? state.user.permisos : [];
+    var isA   = isAdmin();
+
+    // Map of data-route → permission key. Routes pointing to a value
+    // not in the checkbox list are mapped to the closest permission so
+    // they share visibility with the parent feature.
+    var routeToPerm = {
+      dashboard:       'dashboard',
+      ventas:          'ventas',
+      preaprobaciones: 'ventas',          // credit applications live with ventas
+      inventario:      'inventario',
+      envios:          'envios',
+      pagos:           'pagos',
+      cobranza:        'cobranza',
+      puntos:          'puntos',
+      referidos:       'puntos',          // referidos is a sub-feature of puntos
+      checklists:      'checklists',
+      modelos:         'modelos',
+      precios:         'precios',
+      documentos:      'documentos',
+      entregas:        'documentos',      // delivery times live with documentos
+      roles:           'roles',
+      notificaciones:  'reportes',        // notifications live with analytics
+      gestores:        'documentos',      // license-plate managers
+      analytics:       'analytics',
+      alertas:         'alertas',
+      reportes:        'reportes',
+      puntosperf:      'reportes',        // point performance is reportes
+      buro:            'buro',
+      buscar:          'buscar'
+    };
+
+    // Hide / show each top-level button + sub-button by permission.
+    $('.ad-nav button[data-route]').each(function(){
+      var $b    = $(this);
+      var route = $b.attr('data-route');
+      var perm  = routeToPerm[route] || route;
+      var allowed = isA || perms.indexOf(perm) >= 0;
+      $b.toggle(allowed);
+    });
+
+    // Collapse / hide group containers (Administración, Análisis) when
+    // they have no visible children — otherwise the chevron sits there
+    // pointing at an empty submenu.
+    $('.ad-nav-group').each(function(){
+      var $g = $(this);
+      var visibleChildren = $g.find('.ad-nav-sub button:visible').length;
+      $g.toggle(visibleChildren > 0);
+    });
+
+    // Hide the "Buscar" button at the bottom too if not permitted.
+    if (!isA && perms.indexOf('buscar') < 0) {
+      $('.ad-nav button[data-route="buscar"]').hide();
+    }
+  }
+
+  // Pick the first route the user is allowed to see — used as the
+  // landing page after login. Admin always lands on dashboard;
+  // restricted users land on whatever their first permitted module is.
+  function firstAllowedRoute(){
+    if (isAdmin()) return 'dashboard';
+    var perms = (state.user && Array.isArray(state.user.permisos)) ? state.user.permisos : [];
+    var preferred = ['dashboard','ventas','inventario','envios','pagos','cobranza','puntos','checklists','documentos','reportes','analytics','buro','buscar'];
+    for (var i = 0; i < preferred.length; i++) {
+      if (perms.indexOf(preferred[i]) >= 0) return preferred[i];
+    }
+    // No permisos at all — land on dashboard anyway (will hit 403, but
+    // that surfaces the misconfiguration instead of hiding it).
+    return 'dashboard';
   }
   function badgeEstado(est) {
     var map = {

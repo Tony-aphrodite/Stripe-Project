@@ -27,5 +27,11 @@ if (!empty($u['permisos'])) {
 $_SESSION['admin_user_permisos'] = $_perm;
 adminLog('login', ['email' => $email]);
 adminJsonOut(['ok' => true, 'usuario' => [
-    'id' => $u['id'], 'nombre' => $u['nombre'], 'rol' => $u['rol'], 'punto_nombre' => $u['punto_nombre']
+    'id'           => $u['id'],
+    'nombre'       => $u['nombre'],
+    'rol'          => $u['rol'],
+    'punto_nombre' => $u['punto_nombre'],
+    // Frontend uses this to filter the sidebar (customer brief
+    // 2026-05-04 round 7): "make only the allowed modules visible".
+    'permisos'     => $_perm,
 ]]);
