@@ -4,6 +4,29 @@
  * Returns orders from transacciones + subscripciones_credito
  * with info about whether a bike is assigned or not.
  */
+
+// ── Diagnostic shutdown handler ────────────────────────────────────────
+// Production has display_errors=Off, so a PHP fatal returns 500 with an
+// empty body and we can't tell what broke. Capture any fatal/parse
+// error and surface it as JSON so the dashboard's network panel shows
+// the actual cause (Unknown column, undefined function, memory limit,
+// etc.). Cheap to keep on permanently — only fires on errors.
+register_shutdown_function(function() {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode([
+            'ok'    => false,
+            'error' => 'php_fatal: ' . $err['message'],
+            'file'  => basename($err['file'] ?? ''),
+            'line'  => $err['line'] ?? 0,
+        ]);
+    }
+});
+
 require_once __DIR__ . '/../bootstrap.php';
 adminRequireAuth(['admin','cedis','operador']);
 
