@@ -835,7 +835,7 @@ window.AD_ventas = (function(){
       moto_id: motoId,
       replace_previous_moto_id: window._vtReassignFrom || null
     }).done(function(r){
-      window._vtReassignFrom = null;   // clear regardless of outcome
+      window._vtReassignFrom = null;
       if(r.ok){
         ADApp.closeModal();
         loadData();
@@ -845,7 +845,40 @@ window.AD_ventas = (function(){
       }
     }).fail(function(x){
       window._vtReassignFrom = null;
-      $('#vtMotosMsg').css('color','#b91c1c').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
+      // Customer brief 2026-05-04 round 5: when the dashboard JOIN
+      // disagrees with the asignar guard, the admin sees "Sin asignar"
+      // in Ventas but the backend rejects with order_already_assigned.
+      // Detect that specific error and offer a one-click recovery —
+      // release the conflicting moto and immediately assign the new one
+      // by re-submitting with replace_previous_moto_id set.
+      var resp = x.responseJSON || {};
+      if (resp.error_code === 'order_already_assigned' && resp.conflict_moto_id) {
+        var confirmMsg = 'Esta orden ya tiene asignada la moto VIN: ' + (resp.conflict_vin || '?')
+                       + ' (registro inventario #' + resp.conflict_moto_id + ').\n\n'
+                       + '¿Liberar la moto actual y asignar la nueva en una sola operación?\n\n'
+                       + 'La moto actual volverá al inventario disponible.';
+        if (confirm(confirmMsg)) {
+          $btn.html('<span class="ad-spin"></span> Liberando + asignando...');
+          ADApp.api('ventas/asignar-moto.php', {
+            transaccion_id: transId,
+            moto_id: motoId,
+            replace_previous_moto_id: resp.conflict_moto_id
+          }).done(function(r2){
+            if (r2 && r2.ok) {
+              ADApp.closeModal();
+              loadData();
+            } else {
+              $('#vtMotosMsg').css('color','#b91c1c').text((r2 && r2.error) || 'Error en la liberación');
+              $btn.prop('disabled', false).text('Confirmar moto');
+            }
+          }).fail(function(xx){
+            $('#vtMotosMsg').css('color','#b91c1c').text((xx.responseJSON && xx.responseJSON.error) || 'Error de conexión en la liberación');
+            $btn.prop('disabled', false).text('Confirmar moto');
+          });
+          return;
+        }
+      }
+      $('#vtMotosMsg').css('color','#b91c1c').text(resp.error || 'Error de conexión');
       $btn.prop('disabled', false).text('Confirmar moto');
     });
   }

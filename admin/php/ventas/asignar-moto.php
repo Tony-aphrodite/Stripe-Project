@@ -95,9 +95,17 @@ if ($prevMotoId > 0) {
 }
 
 // ── Check order doesn't already have a bike assigned ────────────────────
+// Customer brief 2026-05-04 round 5: when the Ventas dashboard's JOIN
+// (matched on `pedido_num = CONCAT('VK-', t.pedido)`) fails because
+// pedido vs pedido_corto formats drift, the row shows "Sin asignar"
+// even though the bike IS linked. Admin clicks Asignar, this guard
+// fires, and the user is stuck. The error response now carries the
+// conflicting moto_id so the frontend can offer a one-click
+// "release & reassign" workflow without forcing the admin into the
+// database.
 $pedidoCheck = 'VK-' . $order['pedido'];
 $existingMoto = $pdo->prepare("
-    SELECT id, vin_display FROM inventario_motos
+    SELECT id, vin_display, vin, pedido_num FROM inventario_motos
     WHERE pedido_num = ? AND activo = 1
     LIMIT 1
 ");
@@ -105,7 +113,12 @@ $existingMoto->execute([$pedidoCheck]);
 $alreadyAssigned = $existingMoto->fetch(PDO::FETCH_ASSOC);
 if ($alreadyAssigned) {
     adminJsonOut([
-        'error' => 'Esta orden ya tiene una moto asignada (VIN: ' . ($alreadyAssigned['vin_display'] ?? '?') . '). Desasígnala primero antes de asignar otra.'
+        'error'              => 'Esta orden ya tiene una moto asignada (VIN: ' . ($alreadyAssigned['vin_display'] ?? '?') . ').',
+        'error_code'         => 'order_already_assigned',
+        'conflict_moto_id'   => (int)$alreadyAssigned['id'],
+        'conflict_vin'       => $alreadyAssigned['vin_display'] ?? $alreadyAssigned['vin'] ?? '',
+        'conflict_pedido_num'=> $alreadyAssigned['pedido_num'] ?? '',
+        'hint'               => 'Reintenta con replace_previous_moto_id=' . (int)$alreadyAssigned['id'] . ' para liberar la moto actual y asignar la nueva en una sola operación.',
     ], 409);
 }
 

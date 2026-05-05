@@ -121,7 +121,22 @@ try {
         LEFT JOIN inventario_motos m
                ON m.id = (
                    SELECT m2.id FROM inventario_motos m2
-                   WHERE m2.pedido_num = CONCAT('VK-', t.pedido)
+                   WHERE (
+                       -- Customer brief 2026-05-04 round 5: orders showing
+                       -- "Sin asignar" in the dashboard despite CEDIS
+                       -- showing the moto as assigned. Root cause: a
+                       -- single match on CONCAT('VK-', t.pedido) is too
+                       -- strict — pedido fields come in three flavors:
+                       --   • numeric short ("9")            → "VK-9"
+                       --   • date-prefixed ("2605-0009")    → "VK-2605-0009"
+                       --   • already-prefixed ("VK-9")
+                       -- We match against any of those by also comparing
+                       -- to t.pedido_corto and to t.pedido directly.
+                       m2.pedido_num = CONCAT('VK-', t.pedido)
+                       OR (t.pedido_corto IS NOT NULL AND t.pedido_corto <> '' AND m2.pedido_num = t.pedido_corto)
+                       OR (t.pedido       IS NOT NULL AND t.pedido       <> '' AND m2.pedido_num = t.pedido)
+                       OR (m2.stripe_pi   IS NOT NULL AND m2.stripe_pi   <> '' AND m2.stripe_pi   = t.stripe_pi)
+                   )
                      AND m2.activo = 1
                      AND m2.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
                    ORDER BY m2.fmod DESC

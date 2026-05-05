@@ -390,10 +390,45 @@ window.AD_preaprobaciones = (function(){
     html += '</div>';
 
     // ── 5. Crédito Solicitado + Truora ───────────────────────────────
+    // Customer brief 2026-05-04 round 5: "How do we know what credit
+    // they requested?" — the modal previously surfaced the system's
+    // computed recommendation (enganche_requerido / plazo_max) without
+    // distinguishing it from what the applicant actually asked for at
+    // submission time (enganche_pct / plazo_meses). Now both are shown
+    // as separate rows so the reviewer can spot when the system tightened
+    // (or relaxed) the customer's request.
     html += '<div style="padding:18px 8px;border-top:1px solid #eee;">';
-    html += '<div style="font-size:11px;letter-spacing:1.2px;color:#666;text-transform:uppercase;margin-bottom:12px;font-weight:700;">🛵 Crédito Solicitado</div>';
+    html += '<div style="font-size:11px;letter-spacing:1.2px;color:#666;text-transform:uppercase;margin-bottom:12px;font-weight:700;">🛵 Crédito Solicitado por el Cliente</div>';
     html += dataRow('Modelo',           (row.modelo||'—') + (row.precio_contado ? ' — '+fmtMoney(row.precio_contado) : ''));
     html += dataRow('Ingreso mensual',  fmtMoney(row.ingreso_mensual));
+    // Customer's chosen enganche % and plazo at the moment of applying.
+    // Distinct from enganche_requerido (system minimum) and plazo_max
+    // (system ceiling). Shown side-by-side with the system numbers so
+    // the reviewer can immediately see the gap.
+    var clientePctRaw = Number(row.enganche_pct || 0);
+    var clientePct    = clientePctRaw > 1 ? clientePctRaw : Math.round(clientePctRaw * 100);
+    var sistemaPct    = row.enganche_requerido != null ? Math.round(Number(row.enganche_requerido) * 100) : null;
+    var clientePlazo  = row.plazo_meses != null ? Number(row.plazo_meses) : null;
+    var sistemaPlazo  = row.plazo_max    != null ? Number(row.plazo_max)    : null;
+    var precioC       = Number(row.precio_contado || 0);
+
+    var solicEng = clientePctRaw > 0
+      ? '<span style="font-weight:700;color:#0369a1;">' + clientePct + '%</span>'
+        + (precioC > 0 ? ' <span style="color:#666">('+fmtMoney(precioC * (clientePct/100))+')</span>' : '')
+        + (sistemaPct != null && sistemaPct !== clientePct
+            ? ' <span style="color:#9ca3af;font-size:11px;"> · sistema requiere '+sistemaPct+'%</span>'
+            : '')
+      : '<span style="color:#9ca3af">—</span>';
+    html += dataRow('Enganche solicitado', solicEng);
+
+    var solicPlazo = clientePlazo
+      ? '<span style="font-weight:700;color:#0369a1;">' + clientePlazo + ' meses</span>'
+        + (sistemaPlazo && sistemaPlazo !== clientePlazo
+            ? ' <span style="color:#9ca3af;font-size:11px;"> · sistema máx '+sistemaPlazo+'</span>'
+            : '')
+      : '<span style="color:#9ca3af">—</span>';
+    html += dataRow('Plazo solicitado', solicPlazo);
+
     html += dataRow('Pago Voltika mensual', fmtMoney(row.pago_mensual));
     html += dataRow('PTI total (CDC + Voltika)', '<span style="color:'+theme.haccent+';font-weight:700">'+fmtPct(row.pti_total)+'</span>');
     html += dataRow('Source', sourceLabel(row.circulo_source));
@@ -441,8 +476,21 @@ window.AD_preaprobaciones = (function(){
     var precioContado  = Number(row.precio_contado) || 0;
     var canOverride    = !pldBlock && (status === 'PREAPROBADO' || status === 'CONDICIONAL') && precioContado > 0;
     if (canOverride) {
+      // Three-line comparison header so the reviewer always sees:
+      //   • What the customer asked for
+      //   • What the system suggested
+      //   • What they're about to send (slider current value)
+      var clientePctHdr = clientePctRaw > 0 ? clientePct + '%' : '—';
+      var clientePlzHdr = clientePlazo ? clientePlazo + 'm' : '—';
+      var sistemaPctHdr = sysEnganchePct + '%';
+      var sistemaPlzHdr = sysPlazo + 'm';
       html += '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px;margin:16px 8px;">'
-           +    '<div style="font-size:11px;letter-spacing:1.2px;color:#0369a1;text-transform:uppercase;margin-bottom:12px;font-weight:700;">⚙ Ajuste manual de la oferta (opcional)</div>'
+           +    '<div style="font-size:11px;letter-spacing:1.2px;color:#0369a1;text-transform:uppercase;margin-bottom:8px;font-weight:700;">⚙ Ajuste manual de la oferta (opcional)</div>'
+           +    '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;margin-bottom:12px;padding:8px 10px;background:#fff;border-radius:6px;">'
+           +      '<div><span style="color:#64748b">Cliente solicitó:</span> <strong style="color:#0369a1;">'+clientePctHdr+' / '+clientePlzHdr+'</strong></div>'
+           +      '<div><span style="color:#64748b">Sistema sugiere:</span> <strong style="color:#7a4a1a;">'+sistemaPctHdr+' / '+sistemaPlzHdr+'</strong></div>'
+           +      '<div><span style="color:#64748b">Vas a enviar:</span> <strong id="apOvSummary" style="color:#10b981;">'+sistemaPctHdr+' / '+sistemaPlzHdr+'</strong></div>'
+           +    '</div>'
            +    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">'
            +      '<div>'
            +        '<label style="font-size:12px;color:#475569;display:flex;justify-content:space-between;align-items:center;">'
@@ -640,6 +688,10 @@ window.AD_preaprobaciones = (function(){
       $('#apOvFinanciado').text(fmtMoney(financ));
       $('#apOvMensual').text(fmtMoney(mensual));
       $('#apOvSemanal').text(fmtMoney(semanal));
+      // Sync the "Vas a enviar" line in the comparison header so the
+      // reviewer always sees the slider's current value as a single
+      // glanceable summary.
+      $('#apOvSummary').text(engPct + '% / ' + plazoM + 'm');
     }
     $('#apOvEnganche').on('input change', recomputeOverridePayment);
     $('#apOvPlazo').on('change', recomputeOverridePayment);
