@@ -405,6 +405,20 @@
                         if (resumePaso && RESUME_BLACKLIST[resumePaso]) {
                             resumePaso = RESUME_BLACKLIST[resumePaso];
                         }
+                        // Customer brief 2026-05-04 round 6: when the
+                        // checkout-time signing page sends the customer
+                        // back here with ?firmado=ok, force-resume into
+                        // facturación regardless of whatever paso the
+                        // SPA was on before redirecting away. This
+                        // guarantees the order moves forward to the
+                        // success screen instead of looping back to OTP.
+                        try {
+                            var qsResume = new URLSearchParams(window.location.search);
+                            if (qsResume.get('firmado') === 'ok') {
+                                resumePaso = 'facturacion';
+                                self.state._firmadoOk = true;
+                            }
+                        } catch (e) {}
                         if (resumePaso && resumePaso !== 1) {
                             // Resume after a tick so other modules are ready.
                             setTimeout(function() { try { self.irAPaso(resumePaso); } catch (e) {} }, 50);

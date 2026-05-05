@@ -647,32 +647,22 @@ var Paso4A = {
             }),
             success: function(res) {
                 self.app.state._otpValidated = true;
-                // Note: we no longer mutate state.contratoUrl with regen=1
-                // here. Customer brief 2026-04-30: contract is not
-                // surfaced on the success screen at all — it appears in
-                // /clientes/ portal only after delivery completes. The
-                // OTP audit recorded by verificar-otp.php (above) is
-                // still picked up by descargar-contrato.php's regen path
-                // when the portal serves the PDF later.
-                if (res && (res.ok || res.valido)) {
-                    $('#vk-post-otp-success').show();
-                    $('#vk-post-otp-error').hide();
-                    $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
-                    setTimeout(function() { self.app.irAPaso('facturacion'); }, 800);
-                } else {
-                    // Pass through — show green directly
-                    $('#vk-post-otp-success').show();
-                    $('#vk-post-otp-error').hide();
-                    $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
-                    setTimeout(function() { self.app.irAPaso('facturacion'); }, 800);
-                }
+                // After OTP succeeds, branch on whether a digital signature
+                // is required. For non-credit orders confirmar-orden.php
+                // returns firma_url; redirecting there is mandatory by law
+                // (customer brief 2026-05-04 round 6) so the customer
+                // signs the contract before reaching the success screen.
+                $('#vk-post-otp-success').show();
+                $('#vk-post-otp-error').hide();
+                $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
+                self._advanceAfterOtp();
             },
             error: function() {
                 // Testing fallback: accept any 6-digit code
                 $('#vk-post-otp-success').show();
                 $('#vk-post-otp-error').hide();
                 $('.vk-pago-otp-box').prop('disabled', true).css('background', '#E8F5E9');
-                setTimeout(function() { self.app.irAPaso('facturacion'); }, 800);
+                self._advanceAfterOtp();
             }
         });
     },
@@ -885,6 +875,12 @@ var Paso4A = {
                 if (response.contrato_url)  self.app.state.contratoUrl   = response.contrato_url;
                 if (response.contrato_token) self.app.state.contratoToken = response.contrato_token;
                 if (response.pedido)         self.app.state.pedidoNum     = response.pedido;
+                // Customer brief 2026-05-04 round 6: legal requirement that
+                // every paid order carry a digital signature. Stash the
+                // mandatory signing URL on state so the post-OTP step can
+                // redirect there before completing the flow.
+                if (response.firma_url)      self.app.state._firmaUrl     = response.firma_url;
+                if (response.requiere_firma) self.app.state._requiereFirma = true;
             }
         }).fail(function(x, status) {
             if (attempt < 3 && status !== 'abort') {
@@ -938,6 +934,27 @@ var Paso4A = {
             $active.find('.vk-pay-btn__spinner').hide();
             $other.prop('disabled', false).css('opacity', '1');
         }
+    },
+
+    /**
+     * Decide where to go once the post-payment OTP step completes.
+     * If the order needs a digital signature (non-credit paths), do a
+     * full-page redirect to the canvas-signing flow — that page sends
+     * the customer back to /configurador/?firmado=ok when done. Credit
+     * orders skip straight to the facturación step (their signature
+     * was already captured during the credit pagaré flow).
+     */
+    _advanceAfterOtp: function() {
+        var self = this;
+        var firmaUrl = self.app.state._firmaUrl || '';
+        var needsFirma = !!self.app.state._requiereFirma && firmaUrl !== '';
+        setTimeout(function() {
+            if (needsFirma) {
+                window.location.href = firmaUrl;
+                return;
+            }
+            self.app.irAPaso('facturacion');
+        }, 800);
     },
 
     _showPostPaymentOTP: function() {

@@ -1439,6 +1439,34 @@ if ($seguroQualitasInt === 1) {
     ]);
 }
 
+// ── Mandatory checkout-time signing (customer brief 2026-05-04 round 6) ─
+// "If it's payed has to be with contract signed it's by LAW." Build a
+// firma_url for non-credit orders so the SPA can redirect the customer
+// to the canvas-signing page right after OTP. Credit-flow orders are
+// already signed via configurador's pagaré flow earlier.
+$firmaUrl = null;
+if (!$esCredito && !empty($paymentIntentId)) {
+    try {
+        $pdoFU = getDB();
+        $tStmt = $pdoFU->prepare("SELECT id FROM transacciones WHERE stripe_pi = ? ORDER BY id DESC LIMIT 1");
+        $tStmt->execute([$paymentIntentId]);
+        $txFU  = $tStmt->fetch(PDO::FETCH_ASSOC);
+        if ($txFU) {
+            $secFU    = defined('VOLTIKA_RECOVER_SECRET')
+                ? VOLTIKA_RECOVER_SECRET
+                : (getenv('VOLTIKA_RECOVER_SECRET') ?: 'voltika_recover_2026_default');
+            $expFU    = time() + (7 * 24 * 3600);
+            $payloadFU= $txFU['id'] . '.' . $expFU . '.firma';
+            $sigFU    = hash_hmac('sha256', $payloadFU, $secFU);
+            $tokenFU  = $payloadFU . '.' . $sigFU;
+            $baseFU   = defined('VOLTIKA_BASE_URL') ? rtrim(VOLTIKA_BASE_URL, '/') : 'https://www.voltika.mx';
+            $firmaUrl = $baseFU . '/configurador/firmar-contrato-checkout.php?t=' . urlencode($tokenFU);
+        }
+    } catch (Throwable $e) {
+        error_log('confirmar-orden firma_url build: ' . $e->getMessage());
+    }
+}
+
 echo json_encode([
     'status'        => $dbSaveOk ? 'ok' : 'ok_warn',
     'pedido'        => $pedidoNum,
@@ -1447,6 +1475,8 @@ echo json_encode([
     'db_warning'    => $dbSaveOk ? null : 'La orden quedó registrada en recuperación. Contactar soporte con número de pedido.',
     'contrato_url'  => $contratoUrl   ?? null,
     'contrato_token'=> $contratoToken ?? null,
+    'firma_url'     => $firmaUrl,
+    'requiere_firma'=> !$esCredito && $firmaUrl !== null,
 ]);
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -265,8 +265,14 @@ $nombre = trim((string)($tx['nombre'] ?? ''));
     }).then(function(r){ return r.json(); }).then(function(j){
       if (j && j.ok) {
         result.className = 'ok';
-        result.textContent = '✓ Firma guardada. Recibirás el contrato firmado por correo.';
-        setTimeout(function(){ window.location.href = '/configurador/firmar-contrato-checkout.php?t=' + encodeURIComponent(<?= json_encode($token) ?>); }, 1500);
+        result.textContent = '✓ Firma guardada. Te llevamos al paso final...';
+        // Customer brief 2026-05-04 round 6: after signing, send the
+        // customer back into the configurador so the SPA continues to
+        // the facturación / éxito step. ?firmado=ok is the resume hint
+        // configurador.js looks for to jump straight to facturación.
+        setTimeout(function(){
+          window.location.href = '/configurador/?firmado=ok&pedido=' + encodeURIComponent(<?= json_encode($pedido) ?>);
+        }, 1200);
       } else {
         result.className = 'err';
         result.textContent = (j && j.error) || 'No se pudo guardar la firma.';
