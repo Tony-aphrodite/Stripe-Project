@@ -125,27 +125,30 @@ window.ADApp = (function(){
     };
 
     // Hide / show each top-level button + sub-button by permission.
+    // Tag with data-perm-allowed so the group-visibility step below can
+    // count permitted children INDEPENDENTLY of jQuery's :visible check
+    // (the .ad-nav-sub container is collapsed by CSS until the admin
+    // clicks the toggle, so :visible would falsely report 0 children
+    // for groups whose submenu hasn't been opened yet — which hid the
+    // ADMINISTRACIÓN + ANÁLISIS groups for the admin user too).
     $('.ad-nav button[data-route]').each(function(){
       var $b    = $(this);
       var route = $b.attr('data-route');
       var perm  = routeToPerm[route] || route;
       var allowed = isA || perms.indexOf(perm) >= 0;
       $b.toggle(allowed);
+      $b.attr('data-perm-allowed', allowed ? '1' : '0');
     });
 
-    // Collapse / hide group containers (Administración, Análisis) when
-    // they have no visible children — otherwise the chevron sits there
-    // pointing at an empty submenu.
+    // Show a group if AT LEAST ONE of its sub-buttons is permitted —
+    // regardless of whether the submenu is currently expanded or
+    // collapsed. Counting `[data-perm-allowed="1"]` survives the CSS
+    // collapse state.
     $('.ad-nav-group').each(function(){
       var $g = $(this);
-      var visibleChildren = $g.find('.ad-nav-sub button:visible').length;
-      $g.toggle(visibleChildren > 0);
+      var allowedCount = $g.find('.ad-nav-sub button[data-perm-allowed="1"]').length;
+      $g.toggle(allowedCount > 0);
     });
-
-    // Hide the "Buscar" button at the bottom too if not permitted.
-    if (!isA && perms.indexOf('buscar') < 0) {
-      $('.ad-nav button[data-route="buscar"]').hide();
-    }
   }
 
   // Pick the first route the user is allowed to see — used as the

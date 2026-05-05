@@ -70,7 +70,7 @@ window.AD_pagos = (function(){
         '<td>'+(p.pedido_num||p.id)+'</td>'+
         '<td>'+p.nombre+'</td>'+
         '<td>'+p.modelo+' '+p.color+'</td>'+
-        '<td><span class="ad-badge blue">'+p.tipo_pago+'</span></td>'+
+        '<td>'+tipoBadgeHtml(p.tipo_pago)+'</td>'+
         '<td>'+ADApp.money(p.monto)+'</td>'+
         '<td>'+ADApp.badgeEstado(p.pago_estado||'—')+'</td>'+
         '<td>'+(p.freg||'').substring(0,10)+'</td>'+
@@ -115,6 +115,32 @@ window.AD_pagos = (function(){
   // HTML escape used by the new filter inputs that echo back saved values.
   function esc(s){
     return jQuery('<div/>').text(s == null ? '' : String(s)).html();
+  }
+
+  // Distinct-colour TIPO badge — same palette already used in
+  // admin-ventas.js (customer brief 2026-05-04: applied here too so
+  // contado/MSI/Crédito/OXXO are visually distinguishable instead of
+  // all rendering as the same blue pill).
+  function tipoBadgeHtml(rawTipo){
+    var t = String(rawTipo || '').toLowerCase().trim();
+    if (t === 'unico') t = 'contado';
+    if (/tarjeta de [dc]/i.test(t)) t = 'tarjeta';
+    var themes = {
+      contado:         { bg:'#10b981', label:'CONTADO'    },
+      tarjeta:         { bg:'#10b981', label:'CONTADO'    },
+      msi:             { bg:'#8b5cf6', label:'MSI'        },
+      credito:         { bg:'#3b82f6', label:'CRÉDITO'    },
+      enganche:        { bg:'#06b6d4', label:'ENGANCHE'   },
+      parcial:         { bg:'#06b6d4', label:'PARCIAL'    },
+      'credito-orfano':{ bg:'#f59e0b', label:'CRÉD. HUÉRF.' },
+      spei:            { bg:'#0891b2', label:'SPEI'       },
+      oxxo:            { bg:'#dc2626', label:'OXXO'       },
+      'error-captura': { bg:'#dc2626', label:'ERROR'      }
+    };
+    var th = themes[t] || { bg:'#6b7280', label:(rawTipo||'—').toUpperCase() };
+    return '<span style="background:'+th.bg+';color:#fff;padding:3px 8px;border-radius:10px;'
+         + 'font-size:10.5px;font-weight:800;letter-spacing:.4px;white-space:nowrap;display:inline-block;">'
+         + esc(th.label) + '</span>';
   }
 
   function showDetalle(pedidoId, stripePi, fuente){
