@@ -681,16 +681,33 @@ window.AD_preaprobaciones = (function(){
       var plazoM  = Number($plazo.val()) || sysPlazo;
       var enganche= precioContado * (engPct / 100);
       var financ  = precioContado - enganche;
-      var mensual = plazoM > 0 ? (financ / plazoM) : 0;
-      var semanal = mensual / 4.33;  // average weeks per month
+      // Customer brief 2026-05-04 round 8: weekly/monthly figures must
+      // match the canonical Excel calculation (saldos insolutos, 60%
+      // anual + 16% IVA, 52 pagos/año). Earlier rev divided naïvely
+      // without interest, producing numbers half the correct amount.
+      // Formula mirrors VkCalculadora.calcular (configurador/js/modules/
+      // calculadora-credito.js) so admin and customer side stay
+      // aligned. Constants pinned to productos.js credito config.
+      var tasaAnual    = 0.60;
+      var pagosPorAno  = 52;
+      var iva          = 0.16;
+      var rPeriodoSinIVA = tasaAnual / pagosPorAno;
+      var rPeriodoConIVA = rPeriodoSinIVA * (1 + iva);
+      var numPagos       = Math.round(plazoM * (pagosPorAno / 12));
+      var semanal = 0;
+      if (financ > 0 && numPagos > 0) {
+        if (rPeriodoConIVA === 0) {
+          semanal = financ / numPagos;
+        } else {
+          semanal = financ * rPeriodoConIVA / (1 - Math.pow(1 + rPeriodoConIVA, -numPagos));
+        }
+      }
+      var mensual = semanal * (pagosPorAno / 12); // ≈ semanal * 4.3333
       $('#apOvEngangePct').text(engPct + '%');
       $('#apOvEngancheMonto').text(fmtMoney(enganche));
       $('#apOvFinanciado').text(fmtMoney(financ));
-      $('#apOvMensual').text(fmtMoney(mensual));
-      $('#apOvSemanal').text(fmtMoney(semanal));
-      // Sync the "Vas a enviar" line in the comparison header so the
-      // reviewer always sees the slider's current value as a single
-      // glanceable summary.
+      $('#apOvMensual').text(fmtMoney(Math.round(mensual)));
+      $('#apOvSemanal').text(fmtMoney(Math.round(semanal)));
       $('#apOvSummary').text(engPct + '% / ' + plazoM + 'm');
     }
     $('#apOvEnganche').on('input change', recomputeOverridePayment);

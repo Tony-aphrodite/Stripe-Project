@@ -493,6 +493,25 @@ window.AD_inventario = (function(){
       html += fRow('Precio venta', m.precio_venta ? '<span style="font-weight:700;">'+ADApp.money(m.precio_venta)+'</span>' : '—');
       html += '</div>';
 
+      // Customer brief 2026-05-04 round 8: contract download direct from
+      // the moto detail card. logistica/cedis users with `inventario`
+      // permission can now check the signed contract for the order
+      // assigned to this bike without bouncing through Ventas (which
+      // they may not have permission to see).
+      if (m.pedido_num) {
+        var pedidoOnly = String(m.pedido_num).replace(/^VK-/, '');
+        var contratoUrl = '/configurador/php/descargar-contrato.php?pedido='
+                        + encodeURIComponent(pedidoOnly) + '&inline=1&debug=1';
+        html += '<div style="margin:10px 0 14px;">'
+              +   '<a href="'+contratoUrl+'" target="_blank" rel="noopener" '
+              +      'class="ad-btn sm" '
+              +      'style="background:#fff;color:#039fe1;border:1px solid #039fe1;padding:8px 14px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;">'
+              +      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
+              +      'Ver contrato del pedido '+esc(m.pedido_num)
+              +   '</a>'
+              + '</div>';
+      }
+
       // ── Fechas ──
       secIx = 0;
       html += secHead('Fechas','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>');
@@ -544,7 +563,7 @@ window.AD_inventario = (function(){
 
       // ── Bloqueo de venta ──
       var isBloqueada = parseInt(m.bloqueado_venta) === 1;
-      if(ADApp.canWrite()){
+      if(ADApp.canWrite('inventario')){
         html += secHead('Bloqueo de venta','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>');
         if(isBloqueada){
           html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-radius:8px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);margin-bottom:12px;">';
@@ -563,7 +582,7 @@ window.AD_inventario = (function(){
       }
 
       // ── Venta al público ──
-      if(ADApp.canWrite() && m.punto_voltika_id && m.tipo_asignacion === 'consignacion'){
+      if(ADApp.canWrite('inventario') && m.punto_voltika_id && m.tipo_asignacion === 'consignacion'){
         var isVentaPublico = parseInt(m.venta_publico) === 1;
         html += secHead('Venta al p\u00fablico','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>');
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:8px;background:'+(isVentaPublico?'rgba(5,150,105,.06)':'rgba(107,114,128,.06)')+';border:1px solid '+(isVentaPublico?'rgba(5,150,105,.15)':'rgba(107,114,128,.15)')+';margin-bottom:12px;">';
@@ -579,7 +598,7 @@ window.AD_inventario = (function(){
 
       // ── Acciones ──
       var origenOk = r.checklist_origen && r.checklist_origen.completado;
-      if(ADApp.canWrite()){
+      if(ADApp.canWrite('inventario')){
         html += secHead('Acciones','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>');
         if(!origenOk){
           html += '<div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:8px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);color:#b91c1c;font-size:12px;margin-bottom:12px;">';

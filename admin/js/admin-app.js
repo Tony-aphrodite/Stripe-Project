@@ -59,9 +59,20 @@ window.ADApp = (function(){
       else AD_login.render();
     }).fail(function() { AD_login.render(); });
   }
-  function canWrite() {
+  function canWrite(module) {
+    // Customer brief 2026-05-04 round 8: module-scoped write check.
+    // Old behaviour (no arg) is kept identical — admin + cedis can
+    // always write. With an arg ("inventario", "envios", etc.) the
+    // function ALSO grants write when the current user's permisos
+    // array includes that module — letting logistica/cobranza/etc.
+    // perform the actions their checkboxes promised.
     var r = state.user ? state.user.rol : '';
-    return r === 'admin' || r === 'cedis';
+    if (r === 'admin' || r === 'cedis') return true;
+    if (module && state.user && Array.isArray(state.user.permisos)
+        && state.user.permisos.indexOf(module) >= 0) {
+      return true;
+    }
+    return false;
   }
   function isAdmin() {
     return state.user && state.user.rol === 'admin';
