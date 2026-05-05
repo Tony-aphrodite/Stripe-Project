@@ -260,39 +260,81 @@ window.AD_preaprobaciones = (function(){
     // ── 2. Indicadores Críticos ───────────────────────────────────────
     html += '<div style="padding:18px 8px 6px;">';
     html += '<div style="font-size:11px;letter-spacing:1.2px;color:#666;text-transform:uppercase;margin-bottom:12px;font-weight:700;">⚠️ Indicadores Críticos</div>';
-    // PLD Check — we don't capture PLD hits in the DB yet. CDC API DOES
-    // return PLD info but it's not parsed/stored. Until that's wired,
-    // show the conservative "—" so admin doesn't think a missing check
-    // means "passed".
-    html += alertRow('PLD Check', '— No verificado en este sistema', 'neutral');
+
+    // PLD Check — now sourced from CDC raw response (customer brief 2026-05-04)
+    if (row.buro_pld_match == 1) {
+      html += alertRow('PLD Check', '✗ Coincidencia detectada — revisar', 'bad');
+    } else if (row.buro_folio) {
+      // We have a CDC query for this applicant; if pld_match is 0/null,
+      // CDC didn't flag PLD. (Old rows have null — show conservative "—".)
+      html += alertRow('PLD Check', row.buro_pld_match === 0 || row.buro_pld_match === '0'
+        ? '✓ Sin coincidencias'
+        : '— Sin verificar', row.buro_pld_match === 0 || row.buro_pld_match === '0' ? 'good' : 'neutral');
+    } else {
+      html += alertRow('PLD Check', '— No verificado (sin consulta CDC)', 'neutral');
+    }
+
     // DPD90 actual
     if (hasDPD90) {
-      html += alertRow('DPD90 actual', '✗ '+(row.buro_num_cuentas||row.dpd_max||'?')+' cuentas con mora activa', 'bad');
+      var nDpd = row.buro_cuentas_dpd90_hist || row.buro_num_cuentas || row.dpd_max || '?';
+      html += alertRow('DPD90 actual', '✗ '+nDpd+' cuentas con mora activa', 'bad');
     } else {
       html += alertRow('DPD90 actual', '✓ Ninguna cuenta activa con mora', 'good');
     }
-    // Vencido / Aprobado — we don't store these totals yet
-    html += alertRow('Vencido / Aprobado', '— Datos detallados no disponibles', 'neutral');
-    // Razones de score — encoded in preaprobacion-v3 reasons field; not
-    // surfaced to listar.php yet. Approximate from status: thin file
-    // markers (E0/G1/J0/T5) for safe-with-no-score, severe markers for
-    // danger.
-    var razones = inferScoreReasons(row, risk);
+
+    // Vencido / Aprobado — now from real CDC data when available
+    if (row.buro_aprobado_total != null && Number(row.buro_aprobado_total) > 0) {
+      var aprob = Number(row.buro_aprobado_total) || 0;
+      var venc  = Number(row.buro_vencido_total) || 0;
+      var pct   = aprob > 0 ? Math.round((venc / aprob) * 100) : 0;
+      var variant = pct >= 30 ? 'bad' : (pct >= 10 ? 'warn' : 'good');
+      var label = '$' + venc.toLocaleString('es-MX') + ' / $' + aprob.toLocaleString('es-MX') + ' (' + pct + '%)';
+      html += alertRow('Vencido / Aprobado', label, variant);
+    } else {
+      html += alertRow('Vencido / Aprobado', '— Datos no disponibles', 'neutral');
+    }
+
+    // Razones de score — real CDC codes when available, else the inferred ones
+    var razones = renderScoreReasonBadges(row, risk);
     html += alertRowCustom('Razones de score', razones, risk === 'danger' ? 'bad' : 'good');
     html += '</div>';
 
     // ── 3. Resumen Buró ───────────────────────────────────────────────
     html += '<div style="padding:18px 8px;border-top:1px solid #eee;">';
     html += '<div style="font-size:11px;letter-spacing:1.2px;color:#666;text-transform:uppercase;margin-bottom:12px;font-weight:700;">📊 Resumen Buró</div>';
-    html += dataRow('Aprobado total',          '<span style="color:#999">—</span>');
-    html += dataRow('Vencido total',           '<span style="color:#999">—</span>');
-    html += dataRow('Pago mensual requerido',  fmtMoney(row.buro_pago_mensual || row.pago_mensual_buro));
-    var cuentasTxt = (row.buro_num_cuentas != null ? row.buro_num_cuentas : '—') + ' / ' + (row.dpd_max || row.buro_dpd_max || '0');
-    html += dataRow('Cuentas activas / DPD90 histórico', cuentasTxt);
-    html += dataRow('Crédito más antiguo',     '<span style="color:#999">—</span>');
-    html += dataRow('Consultas últimos 6 meses','<span style="color:#999">—</span>');
+
+    // All rows now use real CDC data when present, "—" only as fallback.
+    html += dataRow('Aprobado total',
+      row.buro_aprobado_total != null ? fmtMoney(row.buro_aprobado_total) : '<span style="color:#999">—</span>');
+
+    var vencidoStr = '<span style="color:#999">—</span>';
+    if (row.buro_vencido_total != null) {
+      var vT = Number(row.buro_vencido_total) || 0;
+      var aT = Number(row.buro_aprobado_total) || 0;
+      var vPct = aT > 0 ? Math.round((vT / aT) * 100) : 0;
+      vencidoStr = fmtMoney(vT) + (aT > 0 ? ' <span style="color:'+(vPct>=30?'#dc2626':'#666')+';">('+vPct+'%)</span>' : '');
+    }
+    html += dataRow('Vencido total', vencidoStr);
+
+    html += dataRow('Pago mensual requerido', fmtMoney(row.buro_pago_mensual || row.pago_mensual_buro));
+
+    var ca = row.buro_cuentas_activas != null ? row.buro_cuentas_activas : (row.buro_num_cuentas || '—');
+    var ch = row.buro_cuentas_dpd90_hist != null ? row.buro_cuentas_dpd90_hist : (row.dpd_max || row.buro_dpd_max || '0');
+    html += dataRow('Cuentas activas / DPD90 histórico', ca + ' / ' + ch);
+
+    html += dataRow('Crédito más antiguo',
+      row.buro_credito_mas_antiguo_meses != null
+        ? row.buro_credito_mas_antiguo_meses + ' meses'
+        : '<span style="color:#999">—</span>');
+
+    html += dataRow('Consultas últimos 6 meses',
+      row.buro_consultas_6m != null
+        ? row.buro_consultas_6m + (Number(row.buro_consultas_6m) >= 6 ? ' <span style="color:#dc2626;">⚠</span>' : '')
+        : '<span style="color:#999">—</span>');
+
     if (row.buro_folio) {
-      html += dataRow('Folio CDC', '<code style="font-size:11px;color:#666">'+esc(row.buro_folio)+'</code>');
+      var freg = row.buro_freg ? ' <span style="color:#9ca3af;font-size:11px;">('+String(row.buro_freg).slice(0,16)+')</span>' : '';
+      html += dataRow('Folio CDC', '<code style="font-size:11px;color:#666">'+esc(row.buro_folio)+'</code>'+freg);
     }
     html += '</div>';
 
@@ -604,6 +646,41 @@ window.AD_preaprobaciones = (function(){
     return '<button id="'+id+'"' + (enabled?'':' disabled')
          + ' style="padding:14px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:'+cursor+';color:#fff;background:'+bg+';opacity:'+op+';transition:opacity 0.2s;">'
          + esc(label) + '</button>';
+  }
+
+  // Render score-reason badges. Uses the real CDC codes from
+  // consultas_buro.score_reasons if present (customer brief 2026-05-04
+  // — "the query information [should be visible]"). Falls back to the
+  // heuristic `inferScoreReasons` for old rows that ran before raw
+  // capture was added.
+  function renderScoreReasonBadges(row, risk) {
+    var raw = row.buro_score_reasons || '';
+    if (raw && typeof raw === 'string') {
+      var codes = raw.split(/[,\s]+/).filter(Boolean);
+      if (codes.length) {
+        var styleByVariant = {
+          neutral: 'background:#fff;border:1px solid #b5c5d8;color:#1a4b7a;',
+          bad:     'background:#fde8e8;border:1px solid #f5b5b5;color:#8b1a1a;',
+          warn:    'background:#fff4d6;border:1px solid #f0d68a;color:#7a5800;'
+        };
+        // Heuristic: codes starting with D/M/P/U/R/Y indicate delinquency
+        // and render as bad; T-prefix indicates time-related markers
+        // (warn); everything else neutral. This mirrors CDC's general
+        // family-letter taxonomy without needing a full code table.
+        var html = '<span style="display:inline-flex;gap:6px;flex-wrap:wrap;">';
+        codes.forEach(function(c){
+          var first = c.charAt(0).toUpperCase();
+          var v = (first === 'D' || first === 'M' || first === 'P' || first === 'U' || first === 'R' || first === 'Y')
+            ? 'bad'
+            : (first === 'T' ? 'warn' : 'neutral');
+          html += '<span style="padding:3px 8px;border-radius:4px;font-size:11px;font-family:monospace;font-weight:600;'
+                + styleByVariant[v] + '">' + esc(c) + '</span>';
+        });
+        html += '</span>';
+        return html;
+      }
+    }
+    return inferScoreReasons(row, risk);
   }
 
   // Heuristic mapping from preaprobacion-v3.php's reasons[] to the score-

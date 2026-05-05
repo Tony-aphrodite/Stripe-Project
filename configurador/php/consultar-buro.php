@@ -515,6 +515,26 @@ try {
     // Idempotent column additions for NIP-CIEC compliance (Phase A)
     ensureConsultasBuroColumns($pdo);
 
+    // Customer brief 2026-05-04: dashboard manual-review screen needs the
+    // detailed CDC breakdown (aprobado/vencido totals, consultas 6m, oldest
+    // credit, score reasons). Add columns idempotently and persist the
+    // full raw JSON so a future schema change can re-parse without
+    // re-querying CDC (each query is a paid call to Círculo de Crédito).
+    foreach ([
+        'aprobado_total'             => 'DECIMAL(14,2) NULL',
+        'vencido_total'              => 'DECIMAL(14,2) NULL',
+        'cuentas_activas'            => 'INT NULL',
+        'cuentas_dpd90_historico'    => 'INT NULL',
+        'consultas_6m'               => 'INT NULL',
+        'credito_mas_antiguo_meses'  => 'INT NULL',
+        'pld_match'                  => 'TINYINT(1) NULL',
+        'score_reasons'              => 'VARCHAR(80) NULL',
+        'raw_response'               => 'LONGTEXT NULL',
+    ] as $col => $def) {
+        try { $pdo->exec("ALTER TABLE consultas_buro ADD COLUMN `$col` $def"); }
+        catch (PDOException $e) {}
+    }
+
     $stmt = $pdo->prepare("
         INSERT INTO consultas_buro
             (nombre, apellido_paterno, apellido_materno, fecha_nacimiento, cp,
@@ -522,8 +542,12 @@ try {
              rfc, curp, calle_numero, colonia, municipio, ciudad, estado,
              tipo_consulta, fecha_aprobacion_consulta, hora_aprobacion_consulta,
              fecha_consulta, hora_consulta, usuario_api,
-             ingreso_nip_ciec, respuesta_leyenda, aceptacion_tyc)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ingreso_nip_ciec, respuesta_leyenda, aceptacion_tyc,
+             aprobado_total, vencido_total, cuentas_activas, cuentas_dpd90_historico,
+             consultas_6m, credito_mas_antiguo_meses, pld_match, score_reasons,
+             raw_response)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $primerNombre, $apellidoPaterno, $apellidoMaterno, $fechaNacimiento, $cp,
@@ -535,6 +559,21 @@ try {
         $tipoConsulta, $fechaAprobacionConsulta, $horaAprobacionConsulta,
         $fechaConsulta, $horaConsulta, CDC_FOLIO,
         $ingresoNipCiec, $respuestaLeyenda, $aceptacionTyc,
+        $result['aprobado_total']            ?? null,
+        $result['vencido_total']             ?? null,
+        $result['cuentas_activas']           ?? null,
+        $result['cuentas_dpd90_historico']   ?? null,
+        $result['consultas_6m']              ?? null,
+        $result['credito_mas_antiguo_meses'] ?? null,
+        ($result['pld_match'] ?? 0) ? 1 : 0,
+        is_array($result['score_reasons'] ?? null)
+            ? substr(implode(',', $result['score_reasons']), 0, 80)
+            : null,
+        // Raw response capped at 500KB to protect against pathological
+        // CDC payloads (real responses are ~30-80 KB).
+        is_array($response ?? null)
+            ? substr(json_encode($response, JSON_UNESCAPED_UNICODE), 0, 524288)
+            : null,
     ]);
 } catch (PDOException $e) {
     error_log('Voltika consultas_buro DB error: ' . $e->getMessage());
@@ -692,69 +731,156 @@ function cdcEstadoEnum(string $raw): string {
 
 function extractPreaprobacionData(array $response): array {
 
-    // 1. Score de crédito
+    // 1. Score de crédito + razones
+    // Customer brief 2026-05-04: surface the score reason codes (E0/G1/J0/D8/M5/T5/etc.)
+    // so the admin's manual-review screen can show exactly why CDC scored
+    // the applicant the way it did.
     $score = null;
+    $scoreReasons = [];
     if (!empty($response['scores'])) {
         foreach ($response['scores'] as $s) {
             $score = intval($s['valor'] ?? 0);
-            break; // Tomar el primer (principal) score
+            // CDC packs reason codes either as a "razones" array of objects
+            // {codigo: "E0"} or as a flat "razonesScore" string list. Try
+            // both shapes; ignore missing.
+            if (!empty($s['razones']) && is_array($s['razones'])) {
+                foreach ($s['razones'] as $r) {
+                    $code = is_array($r) ? ($r['codigo'] ?? $r['code'] ?? '') : $r;
+                    if ($code) $scoreReasons[] = $code;
+                }
+            }
+            foreach (['razonesScore', 'razones_score', 'reason_codes'] as $alt) {
+                if (!empty($s[$alt])) {
+                    $list = is_string($s[$alt]) ? preg_split('/[,\s]+/', $s[$alt]) : (array)$s[$alt];
+                    foreach ($list as $c) if ($c) $scoreReasons[] = (string)$c;
+                }
+            }
+            break; // first (principal) score only
         }
     }
+    $scoreReasons = array_values(array_unique(array_filter($scoreReasons)));
 
-    // 2. Pago mensual total en buró (suma de cuentas abiertas)
-    $pagoMensualBuro = 0;
-    $cuentas = $response['cuentas'] ?? [];
+    // 2. Cuentas: aggregate everything we'll need on the dashboard.
+    $cuentas         = $response['cuentas'] ?? [];
+    $pagoMensualBuro = 0.0;
+    $aprobadoTotal   = 0.0;     // sum of credit limits across all accounts
+    $vencidoTotal    = 0.0;     // sum of overdue balances
+    $cuentasActivas  = 0;       // open accounts
+    $cuentasDPD90Hist= 0;       // accounts with historical DPD90+
+    $oldestApertura  = null;    // earliest fechaAperturaCuenta
+    $dpd90Flag       = false;
+    $dpdMax          = 0;
+
     foreach ($cuentas as $cuenta) {
-        // Solo cuentas abiertas
-        if (!empty($cuenta['fechaCierreCuenta'])) continue;
-        $pagoMensualBuro += floatval($cuenta['montoPagar'] ?? 0);
-    }
+        $isAbierta = empty($cuenta['fechaCierreCuenta']);
+        if ($isAbierta) {
+            $cuentasActivas++;
+            $pagoMensualBuro += floatval($cuenta['montoPagar'] ?? 0);
+        }
 
-    // 3. DPD 90+ flag y Max DPD
-    $dpd90Flag = false;
-    $dpdMax    = 0;
+        // CDC field names vary across responses — fall through several
+        // common variants without exploding when one is missing.
+        $aprobadoTotal += floatval(
+            $cuenta['creditoMaximo']
+            ?? $cuenta['montoCreditoMaximo']
+            ?? $cuenta['limiteCredito']
+            ?? 0
+        );
+        $vencidoTotal += floatval(
+            $cuenta['saldoVencido']
+            ?? $cuenta['montoVencido']
+            ?? $cuenta['saldoActualVencido']
+            ?? 0
+        );
 
-    foreach ($cuentas as $cuenta) {
-        // peorAtraso en días
+        // Track the earliest open-date so we can compute "crédito más
+        // antiguo" in months for the dashboard.
+        $apertura = $cuenta['fechaAperturaCuenta'] ?? $cuenta['fechaApertura'] ?? null;
+        if ($apertura) {
+            $ts = strtotime((string)$apertura);
+            if ($ts && ($oldestApertura === null || $ts < $oldestApertura)) {
+                $oldestApertura = $ts;
+            }
+        }
+
+        // peorAtraso (worst delinquency) drives dpd_max.
         $peorAtraso = intval($cuenta['peorAtraso'] ?? 0);
-        if ($peorAtraso > $dpdMax) {
-            $dpdMax = $peorAtraso;
-        }
+        if ($peorAtraso > $dpdMax) $dpdMax = $peorAtraso;
 
-        // Parsear historicoPagos (24 meses)
-        // 1=al corriente, 2=30DPD, 3=60DPD, 4=90DPD, 5=120DPD, etc.
+        // historicoPagos: 24-character string, 1=al corriente, 2=30DPD,
+        // 3=60DPD, 4=90DPD, 5=120DPD; severe codes U/R/Y indicate write-off.
         $historico = $cuenta['historicoPagos'] ?? '';
+        $hadDPD90  = false;
         for ($i = 0; $i < strlen($historico); $i++) {
             $ch = $historico[$i];
             if (is_numeric($ch) && intval($ch) > 1) {
                 $dpdDays = (intval($ch) - 1) * 30;
-                if ($dpdDays > $dpdMax) {
-                    $dpdMax = $dpdDays;
-                }
+                if ($dpdDays > $dpdMax) $dpdMax = $dpdDays;
+                if ($dpdDays >= 90)    $hadDPD90 = true;
             }
-            // Códigos de mora severa
             if (in_array($ch, ['U', 'R', 'Y'])) {
                 $dpd90Flag = true;
+                $hadDPD90  = true;
             }
         }
-
-        // Contadores DPD directos
         if (isset($cuenta['DPD']) && ($cuenta['DPD']['dpd90'] ?? 0) > 0) {
             $dpd90Flag = true;
+            $hadDPD90  = true;
+        }
+        if ($hadDPD90) $cuentasDPD90Hist++;
+    }
+
+    if ($dpdMax >= 90) $dpd90Flag = true;
+
+    // 3. Consultas (inquiries) últimos 6 meses
+    $consultas6m = 0;
+    $cutoff6m = strtotime('-6 months');
+    foreach (['consultas', 'consultasRealizadas', 'inquiries'] as $key) {
+        if (!empty($response[$key]) && is_array($response[$key])) {
+            foreach ($response[$key] as $cons) {
+                $f = $cons['fechaConsulta'] ?? $cons['fecha'] ?? null;
+                if ($f && strtotime((string)$f) >= $cutoff6m) $consultas6m++;
+            }
+            if ($consultas6m > 0) break;
         }
     }
 
-    if ($dpdMax >= 90) {
-        $dpd90Flag = true;
+    // 4. PLD / AML hits — CDC sometimes tags hawk alerts or "prevenciones"
+    // when the CURP matches OFAC/PLD watchlists. Default 0 (no match).
+    $pldMatch = 0;
+    foreach (['hawkAlerts', 'alertas', 'prevenciones'] as $key) {
+        if (!empty($response[$key]) && is_array($response[$key])) {
+            foreach ($response[$key] as $a) {
+                $tipo = is_array($a) ? strtolower((string)($a['tipo'] ?? $a['type'] ?? $a['categoria'] ?? '')) : '';
+                if (strpos($tipo, 'pld') !== false || strpos($tipo, 'aml') !== false || strpos($tipo, 'lavado') !== false) {
+                    $pldMatch = 1;
+                    break 2;
+                }
+            }
+        }
+    }
+
+    // 5. Crédito más antiguo (in months)
+    $creditoMasAntiguoMeses = null;
+    if ($oldestApertura) {
+        $creditoMasAntiguoMeses = (int)floor((time() - $oldestApertura) / (30 * 86400));
     }
 
     return [
-        'success'           => true,
-        'score'             => $score,
-        'pago_mensual_buro' => round($pagoMensualBuro, 2),
-        'dpd90_flag'        => $dpd90Flag,
-        'dpd_max'           => $dpdMax,
-        'num_cuentas'       => count($cuentas),
-        'folioConsulta'     => $response['folioConsulta'] ?? null,
+        'success'                    => true,
+        'score'                      => $score,
+        'score_reasons'              => $scoreReasons,           // array of codes
+        'pago_mensual_buro'          => round($pagoMensualBuro, 2),
+        'aprobado_total'             => round($aprobadoTotal, 2),
+        'vencido_total'              => round($vencidoTotal, 2),
+        'cuentas_activas'            => $cuentasActivas,
+        'cuentas_dpd90_historico'    => $cuentasDPD90Hist,
+        'consultas_6m'               => $consultas6m,
+        'credito_mas_antiguo_meses'  => $creditoMasAntiguoMeses,
+        'pld_match'                  => $pldMatch,
+        'dpd90_flag'                 => $dpd90Flag,
+        'dpd_max'                    => $dpdMax,
+        'num_cuentas'                => count($cuentas),
+        'folioConsulta'              => $response['folioConsulta'] ?? null,
     ];
 }

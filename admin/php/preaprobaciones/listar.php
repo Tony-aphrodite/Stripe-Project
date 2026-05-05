@@ -63,6 +63,36 @@ try {
     adminJsonOut(['ok' => false, 'error' => 'init: ' . $e->getMessage()], 500);
 }
 
+// ── Ensure consultas_buro extended columns exist (customer brief 2026-05-04)
+// The dashboard manual-review screen pulls aprobado_total / vencido_total /
+// consultas_6m / etc. from the JOIN below. consultar-buro.php adds these
+// columns on next CDC query, but listar.php may run BEFORE that — and the
+// SELECT would fail with "Unknown column". Add them here too, idempotent
+// per ALTER. Safe: NULL-able new columns can't break existing rows.
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS consultas_buro (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(200), apellido_paterno VARCHAR(100), apellido_materno VARCHAR(100),
+        fecha_nacimiento VARCHAR(20), cp VARCHAR(10),
+        score INT, pago_mensual DECIMAL(12,2), dpd90_flag TINYINT(1),
+        dpd_max INT, num_cuentas INT, folio_consulta VARCHAR(100),
+        freg DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    foreach ([
+        'aprobado_total'             => 'DECIMAL(14,2) NULL',
+        'vencido_total'              => 'DECIMAL(14,2) NULL',
+        'cuentas_activas'            => 'INT NULL',
+        'cuentas_dpd90_historico'    => 'INT NULL',
+        'consultas_6m'               => 'INT NULL',
+        'credito_mas_antiguo_meses'  => 'INT NULL',
+        'pld_match'                  => 'TINYINT(1) NULL',
+        'score_reasons'              => 'VARCHAR(80) NULL',
+    ] as $col => $def) {
+        try { $pdo->exec("ALTER TABLE consultas_buro ADD COLUMN `$col` $def"); }
+        catch (Throwable $e) {}
+    }
+} catch (Throwable $e) {}
+
 // ── Filters ───────────────────────────────────────────────────────────────
 $status      = trim($_GET['status']      ?? '');
 $seguimiento = trim($_GET['seguimiento'] ?? '');
@@ -153,7 +183,15 @@ try {
                cb.dpd_max           AS buro_dpd_max,
                cb.num_cuentas       AS buro_num_cuentas,
                cb.folio_consulta    AS buro_folio,
-               cb.freg              AS buro_freg
+               cb.freg              AS buro_freg,
+               cb.aprobado_total            AS buro_aprobado_total,
+               cb.vencido_total             AS buro_vencido_total,
+               cb.cuentas_activas           AS buro_cuentas_activas,
+               cb.cuentas_dpd90_historico   AS buro_cuentas_dpd90_hist,
+               cb.consultas_6m              AS buro_consultas_6m,
+               cb.credito_mas_antiguo_meses AS buro_credito_mas_antiguo_meses,
+               cb.pld_match                 AS buro_pld_match,
+               cb.score_reasons             AS buro_score_reasons
         FROM preaprobaciones p
         LEFT JOIN verificaciones_identidad vi
                ON vi.id = (
