@@ -31,19 +31,47 @@ $uid       = $_SESSION['admin_user_id']   ?? null;
 $rolSess   = $_SESSION['admin_user_rol']  ?? null;
 $permSess  = $_SESSION['admin_user_permisos'] ?? null;
 
+// Allow looking up a user by email or id WITHOUT being logged in, so
+// we can diagnose any user from any browser. Pass ?email=daniel@... or
+// ?user_id=N along with key=voltika-diag-2026 to bypass session.
+$lookupUid = null;
+if (($_GET['key'] ?? '') === 'voltika-diag-2026') {
+    if (!empty($_GET['user_id']))   $lookupUid = (int)$_GET['user_id'];
+    if (!empty($_GET['email']) && !$lookupUid) {
+        try {
+            $st = getDB()->prepare("SELECT id FROM dealer_usuarios WHERE email = ? LIMIT 1");
+            $st->execute([$_GET['email']]);
+            $lookupUid = (int)($st->fetchColumn() ?: 0);
+        } catch (Throwable $e) {}
+    }
+}
+$effectiveUid = $lookupUid ?: $uid;
+
 // What's in the DB right now?
 $dbRow = null;
 $columnsExist = [];
+$allUsers = [];
 try {
     $pdo = getDB();
     $cols = $pdo->query("SHOW COLUMNS FROM dealer_usuarios")->fetchAll(PDO::FETCH_COLUMN);
     foreach (['permisos','rol','activo','email'] as $c) {
         $columnsExist[$c] = in_array($c, $cols, true);
     }
-    if ($uid) {
-        $st = $pdo->prepare("SELECT id, email, rol, activo, permisos FROM dealer_usuarios WHERE id = ? LIMIT 1");
-        $st->execute([$uid]);
+    if ($effectiveUid) {
+        $st = $pdo->prepare("SELECT id, email, nombre, rol, activo, permisos FROM dealer_usuarios WHERE id = ? LIMIT 1");
+        $st->execute([$effectiveUid]);
         $dbRow = $st->fetch(PDO::FETCH_ASSOC);
+    }
+    // If diagnostics key is provided, also list all users so admin
+    // can spot the right user_id quickly.
+    if (($_GET['key'] ?? '') === 'voltika-diag-2026') {
+        $allUsers = $pdo->query("SELECT id, email, nombre, rol, activo,
+            CASE WHEN permisos IS NULL OR permisos = '' THEN 'EMPTY'
+                 WHEN permisos = '[]'                    THEN 'EMPTY-ARRAY'
+                 ELSE 'OK'
+            END AS permisos_status,
+            permisos
+            FROM dealer_usuarios ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (Throwable $e) {
     echo json_encode(['ok'=>false, 'stage'=>'db', 'error'=>$e->getMessage()]);
@@ -79,12 +107,14 @@ echo json_encode([
         'admin_user_rol'      => $rolSess,
         'admin_user_permisos' => $permSess,
     ],
+    'lookup_uid_used' => $effectiveUid,
     'db' => [
-        'columns_exist'  => $columnsExist,
-        'row'            => $dbRow,
+        'columns_exist'    => $columnsExist,
+        'row'              => $dbRow,
         'permisos_decoded' => $permDecoded,
     ],
-    'adminLoadUserPermisos_result' => $uid ? adminLoadUserPermisos($uid) : null,
+    'all_users' => $allUsers,
+    'adminLoadUserPermisos_result' => $effectiveUid ? adminLoadUserPermisos((int)$effectiveUid) : null,
     'path_detection_test' => $pathDetections,
     'php_version' => PHP_VERSION,
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
