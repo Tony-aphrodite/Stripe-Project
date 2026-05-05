@@ -27,6 +27,38 @@ register_shutdown_function(function() {
 
 require_once __DIR__ . '/bootstrap.php';
 
+// ── Direct password reset (token-gated, no session needed) ───────────
+// Bypasses admin auth so the dev can fix a locked-out user's password
+// when the admin themselves can't log in. Usage:
+//   ?key=voltika-diag-2026&action=resetpw&user_id=24&password=NUEVO_PASS
+if (($_GET['key'] ?? '') === 'voltika-diag-2026' && ($_GET['action'] ?? '') === 'resetpw') {
+    $targetId = (int)($_GET['user_id'] ?? 0);
+    $newPass  = (string)($_GET['password'] ?? '');
+    if (!$targetId || strlen($newPass) < 6) {
+        echo json_encode(['ok'=>false, 'error'=>'user_id y password (>=6 chars) requeridos']);
+        exit;
+    }
+    try {
+        $pdo  = getDB();
+        $hash = password_hash($newPass, PASSWORD_DEFAULT);
+        $st   = $pdo->prepare("UPDATE dealer_usuarios SET password_hash = ? WHERE id = ?");
+        $st->execute([$hash, $targetId]);
+        $rows = $st->rowCount();
+        $verify = $pdo->prepare("SELECT id, email, nombre, rol, activo FROM dealer_usuarios WHERE id = ? LIMIT 1");
+        $verify->execute([$targetId]);
+        echo json_encode([
+            'ok'           => true,
+            'action'       => 'resetpw',
+            'rows_updated' => $rows,
+            'verify'       => $verify->fetch(PDO::FETCH_ASSOC),
+            'note'         => 'Password reset. User can now log in with the new password.',
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $e) {
+        echo json_encode(['ok'=>false, 'error'=>$e->getMessage()]);
+    }
+    exit;
+}
+
 // ── Direct WRITE action (bypasses session, gated by token) ────────────
 // Customer brief 2026-05-04: roles/guardar.php is silently not
 // persisting permisos for any user (every dealer_usuarios row has
