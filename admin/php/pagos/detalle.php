@@ -171,6 +171,50 @@ if ($local) {
     }
 
     $out['orden'] = $orden;
+
+    // Customer brief 2026-05-04 round 9: surface signature + OTP audit
+    // info on the purchase detail card. Boss reported "we can't check
+    // the signature" and "contado operation cannot check the OTP
+    // verification information". Both pieces of evidence already exist
+    // (firmas_contratos for digital signatures, transacciones.contrato_otp_*
+    // for the post-payment phone confirmation) but were never returned
+    // to the dashboard. Add them here without touching any other field.
+    try {
+        $pdoX = getDB();
+        // Signature: match firmas_contratos by telefono OR email — same
+        // identifiers the credit/contado signing flow uses.
+        $fs = $pdoX->prepare("SELECT id, freg, ip, user_agent, firma_sha256, firma_base64, pdf_file
+                              FROM firmas_contratos
+                              WHERE (telefono <> '' AND telefono = ?)
+                                 OR (email    <> '' AND email    = ?)
+                              ORDER BY id DESC LIMIT 1");
+        $fs->execute([$local['telefono'] ?? '', $local['email'] ?? '']);
+        $fsRow = $fs->fetch(PDO::FETCH_ASSOC);
+        if ($fsRow) {
+            $out['firma'] = [
+                'id'           => (int)$fsRow['id'],
+                'freg'         => $fsRow['freg']         ?? null,
+                'ip'           => $fsRow['ip']           ?? null,
+                'user_agent'   => $fsRow['user_agent']   ?? null,
+                'sha256'       => $fsRow['firma_sha256'] ?? null,
+                'firma_base64' => $fsRow['firma_base64'] ?? null,
+                'pdf_file'     => $fsRow['pdf_file']     ?? null,
+            ];
+        } else {
+            $out['firma'] = null;
+        }
+
+        // Post-payment OTP audit lives directly on transacciones.
+        $out['otp'] = [
+            'validated'      => isset($local['contrato_otp_validated']) ? (int)$local['contrato_otp_validated'] === 1 : null,
+            'validated_at'   => $local['contrato_otp_validated_at']   ?? null,
+            'phone_masked'   => $local['contrato_otp_phone_masked']   ?? null,
+            'send_count'     => isset($local['contrato_otp_send_count']) ? (int)$local['contrato_otp_send_count'] : null,
+            'ip'             => $local['contrato_otp_ip']             ?? null,
+        ];
+    } catch (Throwable $e) {
+        error_log('pagos/detalle firma+otp: ' . $e->getMessage());
+    }
 }
 
 $out['stripe'] = $stripe;

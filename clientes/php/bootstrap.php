@@ -327,6 +327,38 @@ function portalFindClienteByPhone(string $tel): ?array {
         $stmt->execute([$last10]);
         $sub = $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    // Customer brief 2026-05-04 round 9: contado / MSI customers were
+    // failing portal login because their phone is in `transacciones`
+    // but never landed in `clientes` or `subscripciones_credito` (the
+    // existing 2 fallbacks only cover credit-flow customers). Fall
+    // through one more time against transacciones so any paying
+    // customer can authenticate. Same shape as the subscripciones
+    // hydration below (auto-create clientes row from the lookup).
+    if (!$sub) {
+        $stmt = $pdo->prepare("SELECT id, telefono, email, nombre FROM transacciones WHERE telefono = ? AND nombre IS NOT NULL AND nombre <> '' ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$tel]);
+        $tx = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$tx && strlen($tel) >= 10) {
+            $last10 = substr($tel, -10);
+            $stmt = $pdo->prepare("SELECT id, telefono, email, nombre FROM transacciones WHERE RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''), 10) = ? AND nombre IS NOT NULL AND nombre <> '' ORDER BY id DESC LIMIT 1");
+            $stmt->execute([$last10]);
+            $tx = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        if ($tx) {
+            // Auto-create the clientes row so subsequent logins hit the
+            // fast path and OTP / orders link correctly.
+            $stmt = $pdo->prepare("INSERT INTO clientes (telefono, email, nombre) VALUES (?, ?, ?)");
+            $stmt->execute([$tel, $tx['email'] ?? null, $tx['nombre']]);
+            $cid = (int)$pdo->lastInsertId();
+            return [
+                'id'       => $cid,
+                'telefono' => $tel,
+                'email'    => $tx['email'] ?? null,
+                'nombre'   => $tx['nombre'],
+            ];
+        }
+    }
     if (!$sub) return null;
 
     // Upsert minimal cliente row — try to find the name from inventario_motos or transacciones

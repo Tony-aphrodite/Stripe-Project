@@ -175,6 +175,61 @@ window.AD_pagos = (function(){
         html += '</div>';
       }
 
+      // ── Firma digital section (customer brief 2026-05-04 round 9) ──
+      // Boss reported "we can't check the signature in the purchase".
+      // detalle.php now returns firmas_contratos data when available.
+      // Render the actual signature drawing + audit trail (date, IP,
+      // sha256, signed PDF link) so the boss can verify legal evidence
+      // without bouncing to other tools.
+      if (r.firma) {
+        var fr = r.firma;
+        html += sectionHeader('Firma del cliente',
+          '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5L12 8l9 9.5"/><path d="M3 21h18"/></svg>');
+        html += '<div style="margin-bottom:16px;">';
+        if (fr.firma_base64) {
+          // Direct render of the canvas drawing the customer made.
+          var imgSrc = fr.firma_base64.indexOf('data:') === 0
+                     ? fr.firma_base64
+                     : 'data:image/png;base64,' + fr.firma_base64;
+          html += '<div style="background:#fff;border:1px dashed #cbd5e1;border-radius:8px;padding:12px;margin-bottom:10px;text-align:center;">'
+                +   '<img src="'+imgSrc+'" alt="Firma" style="max-width:100%;max-height:160px;display:inline-block;">'
+                + '</div>';
+        }
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">';
+        html += fieldRow('Firmado', fr.freg || '—', 0);
+        html += fieldRow('IP', fr.ip || '—', 1);
+        html += fieldRow('SHA-256', fr.sha256
+          ? '<code style="font-size:10px;background:var(--ad-surface-2);padding:2px 6px;border-radius:4px;">'+fr.sha256.substring(0,16)+'…</code>'
+          : '—', 2);
+        html += fieldRow('User-Agent', fr.user_agent
+          ? '<small style="color:var(--ad-dim);">'+fr.user_agent.substring(0,60)+(fr.user_agent.length>60?'…':'')+'</small>'
+          : '—', 3);
+        html += '</div>';
+        html += '</div>';
+      } else if (o.tipo_pago && ['contado','msi','spei','oxxo','tarjeta','unico','enganche','credito'].indexOf(String(o.tipo_pago).toLowerCase()) >= 0) {
+        // Order should have been signed but no firmas_contratos row found.
+        html += '<div style="background:#fef3c7;border:1px solid #fde68a;color:#78350f;padding:12px 14px;border-radius:8px;margin-bottom:16px;font-size:13px;">'
+              + '⚠ <strong>Sin firma digital en archivo.</strong> Esta orden no tiene un registro en firmas_contratos. Usa "Enviar firma" en la pantalla de Ventas para solicitarla.'
+              + '</div>';
+      }
+
+      // ── OTP audit (post-payment phone confirmation) ────────────────
+      if (r.otp && (r.otp.validated !== null || r.otp.send_count !== null)) {
+        var otp = r.otp;
+        html += sectionHeader('Verificación OTP',
+          '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M7 12h.01M12 12h.01M17 12h.01"/></svg>');
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:16px;">';
+        var otpEstado = otp.validated === true
+          ? '<span style="display:inline-flex;align-items:center;gap:4px;color:#15803d;font-weight:700;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Validado</span>'
+          : '<span style="color:#b45309;font-weight:700;">⏳ Pendiente</span>';
+        html += fieldRow('Estado OTP',     otpEstado, 0);
+        html += fieldRow('Validado el',    otp.validated_at || '—', 1);
+        html += fieldRow('Teléfono',       otp.phone_masked || '—', 2);
+        html += fieldRow('Intentos envío', otp.send_count != null ? otp.send_count : '—', 3);
+        html += fieldRow('IP',             otp.ip || '—', 4);
+        html += '</div>';
+      }
+
       // ── Stripe info section ──
       // Require s.id so a defensive `{}` (from a future caller) doesn't paint
       // the whole section with undefined values. Real Stripe responses always
