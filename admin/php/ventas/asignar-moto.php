@@ -14,6 +14,13 @@ $body = adminJsonIn();
 
 $transId = (int)($body['transaccion_id'] ?? 0);
 $motoId  = (int)($body['moto_id'] ?? 0);
+// Customer brief 2026-05-04 ("where can we reassign a moto"): when the
+// caller sends replace_previous_moto_id, release that moto BEFORE the
+// duplicate-assignment guard fires. The frontend's showReasignar()
+// shows a confirm dialog and forwards the previously-linked moto's id
+// in this field; without it the existing 409 "Esta orden ya tiene una
+// moto asignada" guard kicks in and reassignment is impossible.
+$prevMotoId = (int)($body['replace_previous_moto_id'] ?? 0);
 
 if (!$transId || !$motoId) {
     adminJsonOut(['error' => 'transaccion_id y moto_id son requeridos'], 400);
@@ -60,6 +67,31 @@ if (!$pagoOk) {
         $msg .= ' El pago fue rechazado o cancelado — esta orden no puede recibir una moto.';
     }
     adminJsonOut(['error' => $msg], 403);
+}
+
+// ── Reassignment: release the previously-linked moto first ─────────────
+// When replace_previous_moto_id is provided we treat this as a swap:
+// clear the customer/pedido fields off the OLD moto so the duplicate-
+// assignment guard below doesn't reject the new assignment.
+if ($prevMotoId > 0) {
+    $rel = $pdo->prepare("
+        UPDATE inventario_motos
+           SET cliente_nombre   = NULL,
+               cliente_email    = NULL,
+               cliente_telefono = NULL,
+               pedido_num       = NULL,
+               stripe_pi        = NULL,
+               pago_estado      = NULL,
+               tipo_asignacion  = NULL,
+               punto_voltika_id = NULL,
+               fmod             = NOW()
+         WHERE id = ? AND activo = 1");
+    $rel->execute([$prevMotoId]);
+    adminLog('moto_reasignacion_release', [
+        'moto_id_liberada' => $prevMotoId,
+        'transaccion_id'   => $transId,
+        'admin_id'         => $adminId,
+    ]);
 }
 
 // ── Check order doesn't already have a bike assigned ────────────────────

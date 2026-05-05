@@ -492,6 +492,16 @@ window.AD_ventas = (function(){
         var vinShort = vinFull.length > 10 ? vinFull.slice(-8) : vinFull;
         motoCell = '<span class="ad-badge green" title="'+esc(vinFull)+'" style="font-family:ui-monospace,Menlo,monospace;">'+esc(vinShort)+'</span>';
         btnArr.push('<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>');
+        // Reassignment (customer brief 2026-05-04 "where can we reassign
+        // a moto"). When a moto is already linked we now show a yellow
+        // "Cambiar" button that re-opens the assignment picker. Confirmed
+        // before swapping so admin doesn't accidentally lose the existing
+        // VIN→pedido link mid-pipeline.
+        if (ADApp.canWrite()) {
+          btnArr.push('<button class="ad-btn sm" style="'+btnStyleBase+';background:#fef3c7;color:#78350f;border:1px solid #f59e0b;" '+
+                      'title="Reemplazar la moto asignada por otra del inventario (libera la actual)" '+
+                      'onclick="AD_ventas.showReasignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\''+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'\','+r.moto_id+',\''+esc(vinFull)+'\')">↻ Cambiar</button>');
+        }
       } else {
         motoCell = '<span class="ad-badge red">Sin asignar</span>'+stockInfo;
         if(ADApp.canWrite()){
@@ -782,10 +792,16 @@ window.AD_ventas = (function(){
 
   function doAsignar(transId, motoId){
     var $btn = $('#vtMotosSave').prop('disabled', true).html('<span class="ad-spin"></span> Guardando...');
+    // Carry the previous moto id (if any) so the backend can release it
+    // atomically when this is a re-assignment. _reassignFrom is set by
+    // showReasignar() right before opening the picker; otherwise it's
+    // null and the call behaves exactly like before.
     ADApp.api('ventas/asignar-moto.php', {
       transaccion_id: transId,
-      moto_id: motoId
+      moto_id: motoId,
+      replace_previous_moto_id: window._vtReassignFrom || null
     }).done(function(r){
+      window._vtReassignFrom = null;   // clear regardless of outcome
       if(r.ok){
         ADApp.closeModal();
         loadData();
@@ -794,9 +810,29 @@ window.AD_ventas = (function(){
         $btn.prop('disabled', false).text('Confirmar moto');
       }
     }).fail(function(x){
+      window._vtReassignFrom = null;
       $('#vtMotosMsg').css('color','#b91c1c').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
       $btn.prop('disabled', false).text('Confirmar moto');
     });
+  }
+
+  // Reassign an already-linked moto to a different VIN (customer brief
+  // 2026-05-04: "where can we reassign a moto"). Confirms with the
+  // admin first since the previous moto is freed back into inventory
+  // and any in-flight checklist/envío rows for the OLD moto stay
+  // pointing at it (orphaned, but recoverable). Then opens the same
+  // picker as showAsignar — backend handles the swap atomically.
+  function showReasignar(transId, modelo, color, pedido, currentMotoId, currentVin){
+    var msg = '¿Cambiar la moto asignada a esta orden?\n\n'
+            + 'Pedido: '+pedido+'\n'
+            + 'Moto actual: '+(currentVin || '#'+currentMotoId)+'\n\n'
+            + 'La moto actual volverá al inventario disponible y podrás '
+            + 'elegir una distinta del mismo modelo/color. '
+            + 'Los checklists y envíos existentes se quedarán enlazados '
+            + 'a la moto anterior — revisa antes de cambiar.';
+    if (!confirm(msg)) return;
+    window._vtReassignFrom = currentMotoId;  // doAsignar reads this
+    showAsignar(transId, modelo, color, pedido);
   }
 
   function kpi(label, value, color){
@@ -2108,5 +2144,5 @@ window.AD_ventas = (function(){
     });
   }
 
-  return { render:render, showAsignar:showAsignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink, syncStripe:syncStripe };
+  return { render:render, showAsignar:showAsignar, showReasignar:showReasignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink, syncStripe:syncStripe };
 })();
