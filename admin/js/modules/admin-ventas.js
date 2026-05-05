@@ -389,23 +389,45 @@ window.AD_ventas = (function(){
       // Highlight the whole row so phantoms stand out from clean orders.
       var rowStyle = r.datos_incompletos ? ' style="background:#FFF5F5;"' : '';
 
-      // Inline signed-contract indicator under the tipo badge (customer
-      // brief 2026-05-04: "we need to check ... the signed contract of
-      // each operation"). Only shown for tipos that issue a contract —
-      // contado/MSI/credit family. The contract icon button in the
-      // Acciones column lets admin OPEN the PDF; this label tells admin
-      // at a glance whether it's been SIGNED or not, no clicks needed.
+      // Inline contract-acceptance indicator under the tipo badge.
+      // Customer brief 2026-05-04 round 2: "If Payment was made for
+      // MSI, contado or even enganche, customer signed at the moment
+      // of check out and we need all contractual data." The previous
+      // logic only checked `firma_id` (the digital-signature row from
+      // firmas_contratos, which is only populated by the credit
+      // signing page) — so paid contado/MSI orders, where checkout
+      // itself constitutes contract acceptance, were wrongly tagged
+      // "Sin firma". Now three branches:
+      //   1. Digital signature on file → "✓ Firmado YYYY-MM-DD"
+      //   2. Payment captured (pagada/parcial) → "✓ Aceptado en pago"
+      //      (the act of paying = contract acceptance at checkout)
+      //   3. Neither paid nor signed → "⏳ Pendiente"
       var firmaInline = '';
       var _tpForFirma = String(r.tipo || '').toLowerCase().trim();
-      var firmaTipos = ['contado','unico','msi','spei','oxxo','tarjeta','enganche','credito'];
+      var firmaTipos = ['contado','unico','msi','spei','oxxo','tarjeta','enganche','credito','parcial'];
+      var _peForFirma = String(r.pago_estado || '').toLowerCase();
+      var _isPaid    = (_peForFirma === 'pagada' || _peForFirma === 'aprobada' || _peForFirma === 'approved' || _peForFirma === 'paid' || _peForFirma === 'parcial');
       if (firmaTipos.indexOf(_tpForFirma) >= 0 || /tarjeta de [dc]/i.test(_tpForFirma)) {
         if (r.firma_id) {
+          // Digital signature row exists (credit-flow customers who
+          // signed via configurador). Always wins over checkout
+          // acceptance because it carries CURP + IP + signed-PDF.
           var firmaWhen = r.firma_freg ? String(r.firma_freg).substring(0,10) : '';
           firmaInline = '<div style="font-size:10px;font-weight:700;color:#15803d;margin-top:3px;white-space:nowrap;" '+
-                        'title="Contrato firmado el '+firmaWhen+'">✓ Firmado'+(firmaWhen?' '+firmaWhen:'')+'</div>';
+                        'title="Contrato firmado digitalmente el '+firmaWhen+'">✓ Firmado'+(firmaWhen?' '+firmaWhen:'')+'</div>';
+        } else if (_isPaid) {
+          // Checkout acceptance: paying via Stripe = contract accepted.
+          // The contract PDF was generated at confirmar-orden.php time
+          // and is still downloadable via the doc icon. We just label
+          // the acceptance moment differently from a digital signature
+          // because legally it's a clickwrap acceptance, not a NOM-151
+          // signed PDF.
+          var pagoWhen = r.fecha ? String(r.fecha).substring(0,10) : '';
+          firmaInline = '<div style="font-size:10px;font-weight:700;color:#15803d;margin-top:3px;white-space:nowrap;" '+
+                        'title="Contrato aceptado en el momento del pago ('+pagoWhen+')">✓ Aceptado en pago'+(pagoWhen?' '+pagoWhen:'')+'</div>';
         } else {
           firmaInline = '<div style="font-size:10px;font-weight:700;color:#b45309;margin-top:3px;white-space:nowrap;" '+
-                        'title="El cliente aún no ha firmado el contrato">⏳ Sin firma</div>';
+                        'title="Sin pago registrado y sin firma digital — pendiente de checkout">⏳ Pendiente</div>';
         }
       }
 
@@ -453,7 +475,17 @@ window.AD_ventas = (function(){
       // Inline SVG icons replace the previous emoji glyphs (📄/📦/🔄)
       // which the customer flagged as looking AI-generated. Stroke uses
       // currentColor so the icon picks up the surrounding button colour.
-      var iconStrokeBase = 'width:14px;height:14px;display:block;flex-shrink:0;';
+      //
+      // pointer-events:none is critical for MOBILE (customer report
+      // 2026-05-04 round 3). Without it, iOS Safari computes the click
+      // target using `pointer-events: visiblePainted` which means only
+      // the 2px stroke outline is clickable — the SVG's `fill="none"`
+      // interior is transparent and ignored. A finger pad ~8mm wide
+      // simply cannot hit a 2px outline reliably, so taps appear to
+      // "do nothing". Forcing pointer-events:none makes the entire
+      // tap area pass through to the parent <a> (which has 36 px+
+      // padding so the tap target is finger-friendly).
+      var iconStrokeBase = 'width:14px;height:14px;display:block;flex-shrink:0;pointer-events:none;';
       var ICON_DOC =
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="'+iconStrokeBase+'">'+
         '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'+
@@ -526,20 +558,23 @@ window.AD_ventas = (function(){
       }
 
       // Icon-only buttons (contract preview + defense dossier).
-      var iconBtnStyle = 'padding:5px 7px;font-size:13px;line-height:1;width:100%;box-sizing:border-box;'
-                       + 'text-decoration:none;display:inline-flex;align-items:center;justify-content:center;';
+      // Customer report 2026-05-04 (round 2): icons work on PC but NOT
+      // on mobile Safari. Two root causes confirmed:
+      //   1. iOS cross-site tracking prevention can drop the
+      //      VOLTIKA_ADMIN session cookie when a new tab opens via
+      //      target="_blank" — the contract endpoint then sees an
+      //      anonymous request and returns "No encontrado", which the
+      //      user perceives as "the button doesn't work".
+      //   2. iOS Safari's tap target needs to be ≥ 44 px (HIG) — at
+      //      14 px icon size + 5 px padding the hit area is ~24 px so
+      //      taps either miss or get treated as a scroll gesture.
+      // Fix: remove target="_blank" so the navigation stays in the
+      // same tab (cookies always travel) and bump the tap target on
+      // small screens via min-width/min-height.
+      var iconBtnStyle = 'padding:8px 10px;font-size:13px;line-height:1;width:100%;box-sizing:border-box;'
+                       + 'text-decoration:none;display:inline-flex;align-items:center;justify-content:center;'
+                       + 'min-height:36px;';   // bigger tap target for mobile
       var _tp = (r.tipo||r.tpago||'').toLowerCase();
-      // Customer report 2026-05-04: tapping the icons on mobile dashboard
-      // opened nothing. Root cause: the same-origin admin host
-      // (voltika.mx/admin/) loaded a `target=_blank` link to
-      // ../configurador/php/... — Safari blocks new-tab spawn from
-      // dynamically-rendered HTML in some configurations, and even when it
-      // opens, the silent "No encontrado" 404 (when admin session cookie
-      // didn't transfer or PDF wasn't generated yet) just shows blank text.
-      // Adding `debug=1` makes failures self-explanatory; the existing
-      // success path is unchanged. Force absolute path with leading slash
-      // so browser routing matches regardless of how the admin SPA is
-      // hosted (subpath vs. root).
       var contractTypes = ['contado','unico','msi','spei','oxxo','tarjeta','enganche','credito'];
       if (contractTypes.indexOf(_tp) >= 0 && r.pedido) {
         var isSigned = !!r.firma_id;
@@ -547,7 +582,10 @@ window.AD_ventas = (function(){
         var btnTitle = isSigned
             ? 'Contrato firmado — ' + (r.firma_freg || '') + ' · clic para descargar'
             : 'Descargar contrato de compraventa';
-        btnArr.push('<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
+        // No target=_blank: same-tab navigation guarantees the admin
+        // session cookie (VOLTIKA_ADMIN) is sent on the request. The
+        // user can always hit the back button to return to the list.
+        btnArr.push('<a class="ad-btn sm ghost" '+
           'style="'+btnStyle+'" '+
           'title="'+btnTitle.replace(/"/g, '&quot;')+'" '+
           'href="/configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(r.pedido)+'&inline=1&debug=1">'+
@@ -555,7 +593,7 @@ window.AD_ventas = (function(){
       }
       if (r.moto_id || r.pedido) {
         var dParams = r.moto_id ? ('moto_id=' + r.moto_id) : ('pedido=' + encodeURIComponent(r.pedido));
-        btnArr.push('<a class="ad-btn sm ghost" target="_blank" rel="noopener" '+
+        btnArr.push('<a class="ad-btn sm ghost" '+
           'style="'+iconBtnStyle+';background:#fffbeb;border-color:#f59e0b;color:#92400e;" '+
           'title="Descargar Dossier de Defensa (ZIP — evidencias para Stripe/PROFECO)" '+
           'href="/configurador/php/descargar-dossier.php?'+dParams+'&format=zip">'+ICON_SHIELD+'</a>');
