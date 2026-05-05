@@ -16,6 +16,15 @@ $_SESSION['admin_user_id']  = (int)$u['id'];
 $_SESSION['admin_user_rol'] = $u['rol'];
 $_SESSION['admin_user_nombre'] = $u['nombre'];
 $_SESSION['admin_punto_id'] = $u['punto_id'];
+// Customer brief 2026-05-04: seed per-user permisos into the session so
+// adminRequireAuth's module-permission fallback works without an extra
+// DB hit. JSON-decoded into an array of module names.
+$_perm = [];
+if (!empty($u['permisos'])) {
+    $_decoded = json_decode((string)$u['permisos'], true);
+    if (is_array($_decoded)) $_perm = array_values(array_filter(array_map('strval', $_decoded)));
+}
+$_SESSION['admin_user_permisos'] = $_perm;
 adminLog('login', ['email' => $email]);
 adminJsonOut(['ok' => true, 'usuario' => [
     'id' => $u['id'], 'nombre' => $u['nombre'], 'rol' => $u['rol'], 'punto_nombre' => $u['punto_nombre']

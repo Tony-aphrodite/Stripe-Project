@@ -38,11 +38,60 @@ function adminRequireAuth($roles = null) {
     }
     if ($roles) {
         $rol = $_SESSION['admin_user_rol'] ?? '';
-        if (!in_array($rol, (array)$roles)) {
-            adminJsonOut(['error' => 'Sin permisos para esta acción'], 403);
+        if (!in_array($rol, (array)$roles, true)) {
+            // Customer brief 2026-05-04: role-based gate alone breaks
+            // granular per-user permissions. The dashboard stores
+            // dealer_usuarios.permisos = ["dashboard","envios",...] but
+            // every endpoint only accepts a static role list, so a
+            // user with role=logistica + permisos=["envios","puntos"]
+            // gets 403 from EVERY endpoint they have permission for.
+            // Fix: when the role check fails, fall back to checking
+            // whether the script's enclosing module folder is in the
+            // user's permisos array. e.g. /admin/php/envios/listar.php
+            // → module "envios" → allowed if permisos contains "envios".
+            $script = $_SERVER['SCRIPT_FILENAME'] ?? '';
+            $module = '';
+            if (preg_match('#/admin/php/([^/]+)/[^/]+\.php$#', $script, $m)) {
+                $module = $m[1];
+            }
+            $permisos = adminLoadUserPermisos((int)$_SESSION['admin_user_id']);
+            if ($module === '' || !in_array($module, $permisos, true)) {
+                adminJsonOut([
+                    'error'  => 'Sin permisos para esta acción',
+                    'rol'    => $rol,
+                    'modulo' => $module ?: '(desconocido)',
+                ], 403);
+            }
+            // Module is in user's permisos — allow regardless of role.
         }
     }
     return (int)$_SESSION['admin_user_id'];
+}
+
+/**
+ * Load the per-user permisos array from DB on every call (NOT cached).
+ * Returns ["dashboard","envios","puntos",...] from dealer_usuarios.permisos.
+ *
+ * Uncached on purpose: when an admin edits a user's permissions via
+ * roles/guardar.php the change must take effect immediately without
+ * forcing the user to log out and back in. The query is one indexed
+ * read per protected endpoint hit, negligible cost.
+ */
+function adminLoadUserPermisos(int $userId): array {
+    $perm = [];
+    try {
+        $pdo = getDB();
+        $st = $pdo->prepare("SELECT permisos FROM dealer_usuarios WHERE id = ? LIMIT 1");
+        $st->execute([$userId]);
+        $raw = $st->fetchColumn();
+        if ($raw) {
+            $decoded = json_decode((string)$raw, true);
+            if (is_array($decoded)) $perm = array_values(array_filter(array_map('strval', $decoded)));
+        }
+    } catch (Throwable $e) {
+        error_log('adminLoadUserPermisos: ' . $e->getMessage());
+    }
+    return $perm;
 }
 function adminLog($accion, $detalle = []) {
     $pdo = getDB();
