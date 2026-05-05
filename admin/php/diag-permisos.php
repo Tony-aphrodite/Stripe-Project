@@ -27,6 +27,43 @@ register_shutdown_function(function() {
 
 require_once __DIR__ . '/bootstrap.php';
 
+// ── Verify a password against the stored hash (token-gated) ─────────
+// Confirms whether a given password matches what's currently in DB
+// for that user. Useful to diagnose "still 401 after reset" cases.
+//   ?key=voltika-diag-2026&action=verifypw&user_id=24&password=test
+if (($_GET['key'] ?? '') === 'voltika-diag-2026' && ($_GET['action'] ?? '') === 'verifypw') {
+    $targetId = (int)($_GET['user_id'] ?? 0);
+    $tryPass  = (string)($_GET['password'] ?? '');
+    if (!$targetId || $tryPass === '') {
+        echo json_encode(['ok'=>false, 'error'=>'user_id y password requeridos']);
+        exit;
+    }
+    try {
+        $pdo = getDB();
+        $st = $pdo->prepare("SELECT id, email, activo, password_hash FROM dealer_usuarios WHERE id = ? LIMIT 1");
+        $st->execute([$targetId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            echo json_encode(['ok'=>false, 'error'=>'user not found']);
+            exit;
+        }
+        $matches = password_verify($tryPass, (string)$row['password_hash']);
+        echo json_encode([
+            'ok'             => true,
+            'user_id'        => $targetId,
+            'email'          => $row['email'],
+            'activo'         => $row['activo'],
+            'password_match' => $matches,
+            'hash_present'   => !empty($row['password_hash']),
+            'hash_starts'    => substr((string)$row['password_hash'], 0, 7),
+            'note'           => $matches ? 'Password is correct — login should succeed.' : 'Password does NOT match the stored hash.',
+        ], JSON_PRETTY_PRINT);
+    } catch (Throwable $e) {
+        echo json_encode(['ok'=>false, 'error'=>$e->getMessage()]);
+    }
+    exit;
+}
+
 // ── Direct password reset (token-gated, no session needed) ───────────
 // Bypasses admin auth so the dev can fix a locked-out user's password
 // when the admin themselves can't log in. Usage:
