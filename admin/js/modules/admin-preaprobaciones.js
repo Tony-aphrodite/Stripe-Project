@@ -209,32 +209,45 @@ window.AD_preaprobaciones = (function(){
     //      with smart enable/disable based on risk signals
 
     // ── Risk classification ────────────────────────────────────────────
-    // Three buckets drive header colour + recommendation copy + button
-    // state:
-    //   safe:    no DPD90, PTI < 35%, status PREAPROBADO/CONDICIONAL
-    //   warn:    PTI 35-50% OR thin file with no morosidad
-    //   danger:  DPD90 active OR PTI > 50% OR status NO_VIABLE
+    // Four buckets drive header colour + recommendation copy + button
+    // state. PLD block is highest priority — when CDC/AML returns a hit
+    // we lock the screen down to the Rechazar button only (customer
+    // brief 2026-05-04: legal requirement, AML obligation).
+    //   pld_block: PLD match → only Rechazar enabled
+    //   safe:      no DPD90, PTI < 35%, status PREAPROBADO/CONDICIONAL
+    //   warn:      PTI 35-50% OR thin file with no morosidad
+    //   danger:    DPD90 active OR PTI > 50% OR status NO_VIABLE
     var pti        = Number(row.pti_total || 0);
     var ptiPct     = Math.round(pti * 100);
     var hasDPD90   = (row.dpd90_flag == 1) || (row.buro_dpd90_flag == 1);
     var dpdMax     = Number(row.dpd_max || row.buro_dpd_max || 0);
     var status     = String(row.status || '').toUpperCase();
     var scoreNum   = Number(row.score || row.synth_score || 0);
+    var pldBlock   = (row.buro_pld_match == 1) || (row.circulo_source === 'pld_match');
     var risk = 'safe';
-    if (status === 'NO_VIABLE' || hasDPD90 || pti > 0.50) risk = 'danger';
+    if (pldBlock) risk = 'pld_block';
+    else if (status === 'NO_VIABLE' || hasDPD90 || pti > 0.50) risk = 'danger';
     else if (status === 'CONDICIONAL' || pti > 0.35) risk = 'warn';
 
     var theme = ({
-      safe:   { hbg:'#e8f5e8', htext:'#1a6b1a', haccent:'#1a6b1a', headerLabel:'PLAZO MÁXIMO', headerLabelColor:'#1a4b1a' },
-      warn:   { hbg:'#fff4d6', htext:'#7a5800', haccent:'#c89a3a', headerLabel:'PLAZO MÁXIMO', headerLabelColor:'#5a4000' },
-      danger: { hbg:'#fce8e8', htext:'#5a1a1a', haccent:'#8b1a1a', headerLabel:'PLAZO MÁXIMO', headerLabelColor:'#8b3a3a' }
+      safe:      { hbg:'#e8f5e8', htext:'#1a6b1a', haccent:'#1a6b1a', headerLabel:'PLAZO MÁXIMO', headerLabelColor:'#1a4b1a' },
+      warn:      { hbg:'#fff4d6', htext:'#7a5800', haccent:'#c89a3a', headerLabel:'PLAZO MÁXIMO', headerLabelColor:'#5a4000' },
+      danger:    { hbg:'#fce8e8', htext:'#5a1a1a', haccent:'#8b1a1a', headerLabel:'PLAZO MÁXIMO', headerLabelColor:'#8b3a3a' },
+      pld_block: { hbg:'#7f1d1d', htext:'#fff',    haccent:'#fff',    headerLabel:'BLOQUEADO POR PLD', headerLabelColor:'#fee2e2' }
     })[risk];
 
     var html = '';
 
     // ── 1. Risk header banner ─────────────────────────────────────────
     html += '<div style="background:'+theme.hbg+';color:'+theme.htext+';padding:24px 20px;text-align:center;margin:-20px -20px 0 -20px;border-radius:12px 12px 0 0;">';
-    if (risk === 'danger') {
+    if (risk === 'pld_block') {
+      // Mandatory AML/PLD compliance block. SAT report flag must be
+      // raised when this banner shows — only Rechazar is allowed.
+      html += '<div style="background:#450a0a;color:#fff;padding:10px 12px;margin:-12px -8px 14px;border-radius:6px;font-size:13px;font-weight:800;letter-spacing:.5px;">'
+            + '🚫 BLOQUEADO — Match en lista PLD/AML'
+            + '<div style="font-size:11px;font-weight:600;margin-top:4px;opacity:.9;">Solo se permite RECHAZAR · Reporte SAT activado</div>'
+            + '</div>';
+    } else if (risk === 'danger') {
       var bandera = countBanderasRojas(row);
       html += '<div style="background:#8b1a1a;color:#fff;padding:8px 12px;margin:-12px -8px 14px;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:.5px;">'
             + '🚫 NO RECOMENDADO — '+bandera+' banderas rojas activas'
@@ -395,15 +408,76 @@ window.AD_preaprobaciones = (function(){
     }
     html += '</div>';
 
-    // ── 7. Decision action buttons ───────────────────────────────────
-    // Smart disable: when DPD90 active or status NO_VIABLE the safe
-    // approve options grey out. Admin can still override but the visual
-    // signal mirrors the recommendation.
-    var canApprove = !hasDPD90 && status !== 'NO_VIABLE' && pti < 0.50;
-    var canMSI     = canApprove;  // same rules — MSI requires healthy file
+    // ── 7. Manual override of enganche / plazo (NEW FEATURE 2026-05-04) ─
+    // Allow the reviewer to adjust the system-suggested terms before
+    // sending the offer to the customer. Only available when status is
+    // PREAPROBADO/CONDICIONAL AND not blocked by PLD. The reviewer can:
+    //   - Slide enganche between 25% and 80% (default = system suggestion)
+    //   - Pick plazo from [12, 18, 24, 36] (default = system suggestion)
+    //   - See live weekly/monthly payment recalculate
+    //   - Send a personalized 48-hour link that locks these values in
+    var sysEnganchePct = Math.round((Number(row.enganche_requerido) || 0.30) * 100);
+    var sysPlazo       = Number(row.plazo_max) || 12;
+    var precioContado  = Number(row.precio_contado) || 0;
+    var canOverride    = !pldBlock && (status === 'PREAPROBADO' || status === 'CONDICIONAL') && precioContado > 0;
+    if (canOverride) {
+      html += '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px;margin:16px 8px;">'
+           +    '<div style="font-size:11px;letter-spacing:1.2px;color:#0369a1;text-transform:uppercase;margin-bottom:12px;font-weight:700;">⚙ Ajuste manual de la oferta (opcional)</div>'
+           +    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">'
+           +      '<div>'
+           +        '<label style="font-size:12px;color:#475569;display:flex;justify-content:space-between;align-items:center;">'
+           +          '<span>Enganche</span>'
+           +          '<span><strong id="apOvEngangePct">'+sysEnganchePct+'%</strong> · <span id="apOvEngancheMonto" style="color:#0369a1;font-weight:700">'+fmtMoney(precioContado * sysEnganchePct/100)+'</span></span>'
+           +        '</label>'
+           +        '<input type="range" min="25" max="80" step="5" value="'+sysEnganchePct+'" id="apOvEnganche" style="width:100%;margin-top:8px;">'
+           +        '<div style="font-size:10px;color:#94a3b8;display:flex;justify-content:space-between;">'
+           +          '<span>25%</span><span>50%</span><span>80%</span>'
+           +        '</div>'
+           +      '</div>'
+           +      '<div>'
+           +        '<label style="font-size:12px;color:#475569;">Plazo (meses)</label>'
+           +        '<select id="apOvPlazo" style="width:100%;margin-top:8px;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;background:#fff;">'
+           +          [12,18,24,36].map(function(p){
+                       return '<option value="'+p+'"'+(p===sysPlazo?' selected':'')+'>'+p+' meses</option>';
+                     }).join('')
+           +        '</select>'
+           +        '<div style="font-size:11px;color:#94a3b8;margin-top:4px;">Sugerido por sistema: '+sysPlazo+' meses</div>'
+           +      '</div>'
+           +    '</div>'
+           +    '<div id="apOvLivePayment" style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;font-size:13px;display:flex;justify-content:space-around;text-align:center;margin-bottom:12px;">'
+           +      '<div><div style="color:#64748b;font-size:11px;">Monto financiado</div><div id="apOvFinanciado" style="font-weight:800;color:#0369a1;">—</div></div>'
+           +      '<div><div style="color:#64748b;font-size:11px;">Pago semanal</div><div id="apOvSemanal" style="font-weight:800;color:#0369a1;">—</div></div>'
+           +      '<div><div style="color:#64748b;font-size:11px;">Pago mensual</div><div id="apOvMensual" style="font-weight:800;color:#0369a1;">—</div></div>'
+           +    '</div>'
+           // Two buttons + a test toggle so the admin can preview the
+           // customer landing without sending a real email/SMS or
+           // mutating the preaprobaciones row. Testing flow:
+           //   1. Adjust sliders
+           //   2. Click "Probar (no enviar)" → new tab opens to recover-
+           //      aprobado.php with the chosen terms
+           //   3. Walk through the customer screens to verify
+           //   4. Once satisfied, click "Enviar oferta" for real.
+           +    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+           +      '<button id="apOvTestLink" style="padding:12px;background:#fff;color:#0369a1;border:1px solid #0ea5e9;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🧪 Probar (no enviar)</button>'
+           +      '<button id="apOvSendOffer" style="padding:12px;background:#0ea5e9;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📧 Enviar oferta (válida 48h)</button>'
+           +    '</div>'
+           +    '<div style="font-size:11px;color:#64748b;margin-top:6px;text-align:center;">'
+           +      '<strong>🧪 Probar:</strong> abre el link en pestaña nueva sin enviar email ni guardar override. '
+           +      '<strong>📧 Enviar:</strong> guarda los valores, expira en 48h, el cliente recibe email+SMS.'
+           +    '</div>'
+           + '</div>';
+    }
+
+    // ── 8. Decision action buttons ───────────────────────────────────
+    // Smart disable: PLD match locks everything except Rechazar; DPD90
+    // active or NO_VIABLE greys out approve+MSI options. Admin can
+    // still override the system but visual signal mirrors recommendation.
+    var canApprove = !pldBlock && !hasDPD90 && status !== 'NO_VIABLE' && pti < 0.50;
+    var canContado = !pldBlock;        // PLD blocks contado offers too
+    var canMSI     = canApprove;       // MSI requires healthy file + no PLD
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 8px;background:#fafafa;border-radius:8px;margin:8px;">';
     html += decisionBtn('apDecApprove', '✓ Aprobar Plazos',  '#1a6b1a', canApprove);
-    html += decisionBtn('apDecContado', '$ Ofrecer Contado', '#1a4b7a', true);
+    html += decisionBtn('apDecContado', '$ Ofrecer Contado', '#1a4b7a', canContado);
     html += decisionBtn('apDecMSI',     '9 MSI Sin Intereses','#7a4a1a', canMSI);
     html += decisionBtn('apDecReject',  '✗ Rechazar',         '#8b1a1a', true);
     html += '</div>';
@@ -522,9 +596,94 @@ window.AD_preaprobaciones = (function(){
       applyDecision({
         status: 'NO_VIABLE',
         seguimiento: 'rechazado',
-        notas_admin: appendNote(row.notas_admin, 'Rechazado en revisión manual')
+        notas_admin: appendNote(row.notas_admin, 'Rechazado en revisión manual'+(pldBlock?' (PLD MATCH)':''))
       }, 'Rechazar');
     });
+
+    // ── Manual override controls (NEW FEATURE 2026-05-04) ──────────────
+    // Live recompute weekly/monthly payment as the reviewer adjusts
+    // enganche % and plazo. Same formula the customer-facing flow uses
+    // (precio_contado × (1 - enganche_pct) over plazo_meses, no interest
+    // because Voltika absorbs financing cost).
+    function recomputeOverridePayment(){
+      var $eng = $('#apOvEnganche');
+      var $plazo = $('#apOvPlazo');
+      if (!$eng.length || !$plazo.length) return;
+      var engPct  = Number($eng.val()) || sysEnganchePct;
+      var plazoM  = Number($plazo.val()) || sysPlazo;
+      var enganche= precioContado * (engPct / 100);
+      var financ  = precioContado - enganche;
+      var mensual = plazoM > 0 ? (financ / plazoM) : 0;
+      var semanal = mensual / 4.33;  // average weeks per month
+      $('#apOvEngangePct').text(engPct + '%');
+      $('#apOvEngancheMonto').text(fmtMoney(enganche));
+      $('#apOvFinanciado').text(fmtMoney(financ));
+      $('#apOvMensual').text(fmtMoney(mensual));
+      $('#apOvSemanal').text(fmtMoney(semanal));
+    }
+    $('#apOvEnganche').on('input change', recomputeOverridePayment);
+    $('#apOvPlazo').on('change', recomputeOverridePayment);
+    if ($('#apOvEnganche').length) recomputeOverridePayment();
+
+    // Shared submit logic — calls the same endpoint with `preview=1` for
+    // the test button. In preview mode the backend skips DB write +
+    // email/SMS and just returns the signed URL.
+    function submitOferta(preview){
+      var engPct = Number($('#apOvEnganche').val()) || sysEnganchePct;
+      var plazoM = Number($('#apOvPlazo').val()) || sysPlazo;
+      if (!preview) {
+        var msg = '¿Enviar oferta personalizada al cliente?\n\n'
+                + 'Cliente: '+fullName+'\n'
+                + 'Modelo: '+(row.modelo||'—')+'\n'
+                + '─────────────────────\n'
+                + 'Enganche: '+engPct+'% ('+fmtMoney(precioContado*engPct/100)+')\n'
+                + 'Plazo: '+plazoM+' meses\n'
+                + 'Pago mensual: '+$('#apOvMensual').text()+'\n'
+                + '─────────────────────\n'
+                + 'Sistema sugería: '+sysEnganchePct+'% / '+sysPlazo+' meses\n\n'
+                + 'El enlace expira en 48h y los valores quedan bloqueados.';
+        if (!confirm(msg)) return;
+      }
+      var $sendBtn = $('#apOvSendOffer');
+      var $testBtn = $('#apOvTestLink');
+      var $busy    = preview ? $testBtn : $sendBtn;
+      $busy.prop('disabled', true).text(preview ? 'Generando...' : 'Enviando...');
+      ADApp.api('preaprobaciones/enviar-oferta-personalizada.php', {
+        id: row.id,
+        enganche_pct: engPct / 100,
+        plazo_meses:  plazoM,
+        original_enganche: sysEnganchePct / 100,
+        original_plazo:    sysPlazo,
+        preview: preview ? 1 : 0
+      }).done(function(r){
+        if (r && r.ok) {
+          if (preview) {
+            // Open the customer landing in a new tab so the admin can
+            // walk through it without leaving the modal. Also copy the
+            // URL to clipboard for convenience.
+            try { navigator.clipboard.writeText(r.link); } catch(e){}
+            window.open(r.link, '_blank', 'noopener');
+            $testBtn.prop('disabled', false).text('🧪 Probar (no enviar)');
+          } else {
+            var parts = [];
+            if (r.email_sent) parts.push('✓ Email enviado');
+            if (r.sms_sent)   parts.push('✓ SMS enviado');
+            alert('Oferta personalizada enviada.\n\n' + parts.join('\n') + '\n\nEnlace (válido 48h):\n' + (r.link || ''));
+            ADApp.closeModal(); load();
+          }
+        } else {
+          alert('Error: ' + ((r && r.error) || 'desconocido'));
+          $sendBtn.prop('disabled', false).text('📧 Enviar oferta (válida 48h)');
+          $testBtn.prop('disabled', false).text('🧪 Probar (no enviar)');
+        }
+      }).fail(function(xhr){
+        alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido'));
+        $sendBtn.prop('disabled', false).text('📧 Enviar oferta (válida 48h)');
+        $testBtn.prop('disabled', false).text('🧪 Probar (no enviar)');
+      });
+    }
+    $('#apOvSendOffer').on('click', function(){ submitOferta(false); });
+    $('#apOvTestLink').on('click',  function(){ submitOferta(true);  });
 
     $('#apEditArchive').on('click', function(){
       if (!confirm('¿Archivar esta solicitud? (Se oculta del listado pero queda en BD)')) return;
