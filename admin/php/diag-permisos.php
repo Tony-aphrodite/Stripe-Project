@@ -27,6 +27,39 @@ register_shutdown_function(function() {
 
 require_once __DIR__ . '/bootstrap.php';
 
+// ── Toggle/set activo flag (token-gated) ─────────────────────────────
+// When the diag earlier showed activo=0, login.php's
+// "WHERE email=? AND activo=1" filter silently rejects with
+// "Credenciales inválidas". Use this to reactivate without admin login.
+//   ?key=voltika-diag-2026&action=activate&user_id=24
+//   ?key=voltika-diag-2026&action=deactivate&user_id=24
+if (($_GET['key'] ?? '') === 'voltika-diag-2026' && in_array($_GET['action'] ?? '', ['activate','deactivate'], true)) {
+    $targetId = (int)($_GET['user_id'] ?? 0);
+    $newVal   = ($_GET['action'] === 'activate') ? 1 : 0;
+    if (!$targetId) {
+        echo json_encode(['ok'=>false, 'error'=>'user_id required']);
+        exit;
+    }
+    try {
+        $pdo = getDB();
+        $st = $pdo->prepare("UPDATE dealer_usuarios SET activo = ? WHERE id = ?");
+        $st->execute([$newVal, $targetId]);
+        $rows = $st->rowCount();
+        $verify = $pdo->prepare("SELECT id, email, nombre, rol, activo FROM dealer_usuarios WHERE id = ? LIMIT 1");
+        $verify->execute([$targetId]);
+        echo json_encode([
+            'ok'           => true,
+            'action'       => $_GET['action'],
+            'rows_updated' => $rows,
+            'new_activo'   => $newVal,
+            'verify'       => $verify->fetch(PDO::FETCH_ASSOC),
+        ], JSON_PRETTY_PRINT);
+    } catch (Throwable $e) {
+        echo json_encode(['ok'=>false, 'error'=>$e->getMessage()]);
+    }
+    exit;
+}
+
 // ── Verify a password against the stored hash (token-gated) ─────────
 // Confirms whether a given password matches what's currently in DB
 // for that user. Useful to diagnose "still 401 after reset" cases.
