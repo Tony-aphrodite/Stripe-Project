@@ -316,11 +316,31 @@ window.AD_preaprobaciones = (function(){
     html += '<div style="padding:18px 8px;border-top:1px solid #eee;">';
     html += '<div style="font-size:11px;letter-spacing:1.2px;color:#666;text-transform:uppercase;margin-bottom:12px;font-weight:700;">📊 Resumen Buró</div>';
 
-    // All rows now use real CDC data when present, "—" only as fallback.
-    html += dataRow('Aprobado total',
-      row.buro_aprobado_total != null ? fmtMoney(row.buro_aprobado_total) : '<span style="color:#999">—</span>');
+    // Rows that ran CDC BEFORE 2026-05-04 don't have the new
+    // aprobado_total / vencido_total / consultas_6m columns populated
+    // (we only started extracting them on that date). Show a clear
+    // warning so the admin knows the "—" is a data-capture gap, not
+    // a customer with truly empty CDC. Detection: if buro_folio
+    // exists (CDC was queried) but the new fields are all null, the
+    // row predates the enrichment.
+    var hasOldCdc = row.buro_folio && (
+      row.buro_aprobado_total == null && row.buro_vencido_total == null &&
+      row.buro_credito_mas_antiguo_meses == null && row.buro_consultas_6m == null
+    );
+    if (hasOldCdc) {
+      html += '<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 12px;border-radius:8px;font-size:12px;margin-bottom:12px;line-height:1.45;">'
+            + '<strong>ℹ Datos detallados no capturados</strong><br>'
+            + 'Esta solicitud se procesó antes del 2026-05-04. Solo se almacenó score / pago mensual / DPD. '
+            + 'Para ver Aprobado/Vencido/Consultas hay que volver a consultar CDC (genera costo).'
+            + '</div>';
+    }
 
-    var vencidoStr = '<span style="color:#999">—</span>';
+    var dashSpan = '<span style="color:#999">—</span>';
+
+    html += dataRow('Aprobado total',
+      row.buro_aprobado_total != null ? fmtMoney(row.buro_aprobado_total) : dashSpan);
+
+    var vencidoStr = dashSpan;
     if (row.buro_vencido_total != null) {
       var vT = Number(row.buro_vencido_total) || 0;
       var aT = Number(row.buro_aprobado_total) || 0;
@@ -331,19 +351,19 @@ window.AD_preaprobaciones = (function(){
 
     html += dataRow('Pago mensual requerido', fmtMoney(row.buro_pago_mensual || row.pago_mensual_buro));
 
-    var ca = row.buro_cuentas_activas != null ? row.buro_cuentas_activas : (row.buro_num_cuentas || '—');
-    var ch = row.buro_cuentas_dpd90_hist != null ? row.buro_cuentas_dpd90_hist : (row.dpd_max || row.buro_dpd_max || '0');
+    var ca = row.buro_cuentas_activas != null ? row.buro_cuentas_activas : (row.buro_num_cuentas != null ? row.buro_num_cuentas : '—');
+    var ch = row.buro_cuentas_dpd90_hist != null ? row.buro_cuentas_dpd90_hist : (row.dpd_max != null ? row.dpd_max : (row.buro_dpd_max != null ? row.buro_dpd_max : '0'));
     html += dataRow('Cuentas activas / DPD90 histórico', ca + ' / ' + ch);
 
     html += dataRow('Crédito más antiguo',
       row.buro_credito_mas_antiguo_meses != null
         ? row.buro_credito_mas_antiguo_meses + ' meses'
-        : '<span style="color:#999">—</span>');
+        : dashSpan);
 
     html += dataRow('Consultas últimos 6 meses',
       row.buro_consultas_6m != null
         ? row.buro_consultas_6m + (Number(row.buro_consultas_6m) >= 6 ? ' <span style="color:#dc2626;">⚠</span>' : '')
-        : '<span style="color:#999">—</span>');
+        : dashSpan);
 
     if (row.buro_folio) {
       var freg = row.buro_freg ? ' <span style="color:#9ca3af;font-size:11px;">('+String(row.buro_freg).slice(0,16)+')</span>' : '';

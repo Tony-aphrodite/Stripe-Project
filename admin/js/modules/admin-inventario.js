@@ -123,7 +123,7 @@ window.AD_inventario = (function(){
       // wrap in overflow-x scroll so 9 columns don't get clipped on
       // narrower monitors (consistent with .ad-table-wrap > div CSS rule).
       html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table" style="min-width:1200px;"><thead><tr>'+
-        '<th>VIN</th><th>Año</th><th>Núm. Motor</th><th>Color</th><th>Estado</th><th>Punto</th><th>Días</th><th>Cliente</th><th>Pago</th><th></th>'+
+        '<th>VIN</th><th>Año</th><th>Núm. Motor</th><th>Color</th><th>Estado</th><th>Punto</th><th>Días</th><th>Asignación</th><th>Pago</th><th></th>'+
         '</tr></thead><tbody>';
       groups[mod].forEach(function(m){
         var diasCell = '—';
@@ -133,13 +133,34 @@ window.AD_inventario = (function(){
           diasCell = '<span style="font-weight:700;color:'+dpC+';">'+dp+'d</span>';
         }
         var lockBadge = parseInt(m.bloqueado_venta) ? ' <span class="ad-badge red" style="font-size:10px;">BLOQUEADA</span>' : '';
-        // Núm. Motor in monospace so digits line up — operators scan
-        // visually for typos when matching against the physical engine
-        // sticker. Truncate visually with title tooltip if it's long.
         var motorCell = m.num_motor
           ? '<code style="font-size:11px;font-family:ui-monospace,Menlo,monospace;background:var(--ad-surface-2);padding:2px 6px;border-radius:3px;" title="'+m.num_motor+'">'+m.num_motor+'</code>'
           : '<span style="color:#9ca3af;">—</span>';
-        html += '<tr>'+
+
+        // Customer brief 2026-05-04 round 4: "when he assign a bike to a
+        // purchase, in the inventory shows like is not assigned."
+        // Root cause: CLIENTE column only showed nombre, no pedido_num,
+        // so the boss couldn't tell at a glance if a row was already
+        // linked to an order. Now the column merges client name +
+        // pedido_num and the entire row gets a subtle green tint when
+        // any assignment field is populated. A red "✓ ASIGNADA" badge
+        // makes it impossible to miss.
+        var asignada = !!(m.cliente_nombre || m.pedido_num || m.cliente_email);
+        var asignacionCell;
+        if (asignada) {
+          var pedidoBadge = m.pedido_num
+            ? '<span style="display:inline-block;background:#10b981;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;margin-right:4px;">'+esc(m.pedido_num)+'</span>'
+            : '';
+          var clienteName = m.cliente_nombre
+            ? '<span style="font-weight:600;color:#065f46;">'+esc(m.cliente_nombre)+'</span>'
+            : (m.cliente_email ? '<small>'+esc(m.cliente_email)+'</small>' : '<small style="color:#9ca3af">— sin nombre —</small>');
+          asignacionCell = pedidoBadge + clienteName;
+        } else {
+          asignacionCell = '<span style="color:#9ca3af;font-style:italic;">Sin asignar</span>';
+        }
+        var rowStyle = asignada ? ' style="background:#f0fdf4;"' : '';
+
+        html += '<tr'+rowStyle+'>'+
           '<td>'+(m.vin_display||m.vin||'—')+lockBadge+'</td>'+
           '<td style="text-align:center;">'+(m.anio_modelo||'<span style="color:#9ca3af;">—</span>')+'</td>'+
           '<td>'+motorCell+'</td>'+
@@ -147,7 +168,7 @@ window.AD_inventario = (function(){
           '<td>'+ADApp.badgeEstado(m.estado)+'</td>'+
           '<td>'+(m.punto_voltika_nombre||'—')+'</td>'+
           '<td>'+diasCell+'</td>'+
-          '<td>'+(m.cliente_nombre||'—')+'</td>'+
+          '<td>'+asignacionCell+'</td>'+
           '<td>'+ADApp.badgeEstado(m.pago_estado||'—')+'</td>'+
           '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
         '</tr>';
@@ -347,10 +368,12 @@ window.AD_inventario = (function(){
     // Customer brief 2026-05-04: Año + Núm. Motor visible at the list
     // level (was previously only in the detail card). Wrapped in
     // overflow-x scroll so the extra columns don't clip the action button.
+    // Round 4: replaced "Cliente" with "Asignación" (pedido_num + name)
+    // so assigned bikes are unmistakable on this view too.
     html += '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table" style="min-width:1200px;"><thead><tr>'+
       '<th>VIN</th><th>Modelo</th><th>Año</th><th>Núm. Motor</th><th>Color</th><th>Estado</th>'+
       (showAging ? '<th>Días en punto</th>' : '')+
-      '<th>Cliente</th><th>Pago</th><th></th></tr></thead><tbody>';
+      '<th>Asignación</th><th>Pago</th><th></th></tr></thead><tbody>';
     list.forEach(function(m){
       var agingCell = '';
       if (showAging) {
@@ -361,7 +384,21 @@ window.AD_inventario = (function(){
       var motorCell = m.num_motor
         ? '<code style="font-size:11px;font-family:ui-monospace,Menlo,monospace;background:var(--ad-surface-2);padding:2px 6px;border-radius:3px;" title="'+esc(m.num_motor)+'">'+esc(m.num_motor)+'</code>'
         : '<span style="color:#9ca3af;">—</span>';
-      html += '<tr>'+
+      var asignada = !!(m.cliente_nombre || m.pedido_num || m.cliente_email);
+      var asignacionCell;
+      if (asignada) {
+        var pedidoBadge = m.pedido_num
+          ? '<span style="display:inline-block;background:#10b981;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;margin-right:4px;">'+esc(m.pedido_num)+'</span>'
+          : '';
+        var clienteName = m.cliente_nombre
+          ? '<span style="font-weight:600;color:#065f46;">'+esc(m.cliente_nombre)+'</span>'
+          : (m.cliente_email ? '<small>'+esc(m.cliente_email)+'</small>' : '<small style="color:#9ca3af">— sin nombre —</small>');
+        asignacionCell = pedidoBadge + clienteName;
+      } else {
+        asignacionCell = '<span style="color:#9ca3af;font-style:italic;">Sin asignar</span>';
+      }
+      var rowStyle = asignada ? ' style="background:#f0fdf4;"' : '';
+      html += '<tr'+rowStyle+'>'+
         '<td><code style="font-size:11px;">'+esc(m.vin_display||m.vin||'—')+'</code></td>'+
         '<td>'+esc(m.modelo||'')+'</td>'+
         '<td style="text-align:center;">'+(m.anio_modelo||'<span style="color:#9ca3af;">—</span>')+'</td>'+
@@ -369,7 +406,7 @@ window.AD_inventario = (function(){
         '<td>'+esc(m.color||'')+'</td>'+
         '<td>'+ADApp.badgeEstado(m.estado||'')+'</td>'+
         agingCell+
-        '<td>'+esc(m.cliente_nombre||'—')+'</td>'+
+        '<td>'+asignacionCell+'</td>'+
         '<td>'+ADApp.badgeEstado(m.pago_estado||'—')+'</td>'+
         '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
       '</tr>';

@@ -1160,6 +1160,67 @@ if ($esCredito) {
     voltikaNotifyDelayed('portal_contado', $notifyData, 300);
 }
 
+// ── Post-payment digital signature (customer brief 2026-05-04 round 3) ─
+// Contado / MSI / SPEI / OXXO / tarjeta orders previously shipped without
+// a NOM-151 digital signature on file — checkout-only acceptance, which
+// the boss flagged as a legal compliance gap. We now generate an HMAC
+// signing link valid 7 days and email it right after the payment-
+// confirmation email. Credit orders are already signed via the
+// configurador credit flow before this point, so we skip them.
+if (!$esCredito && !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    try {
+        // Resolve the transaccion id from stripe_pi (the row was just
+        // upserted above; pull a fresh handle to avoid stale state).
+        $pdoF = getDB();
+        $tStmt = $pdoF->prepare("SELECT id, pedido, pedido_corto FROM transacciones WHERE stripe_pi = ? ORDER BY id DESC LIMIT 1");
+        $tStmt->execute([$paymentIntentId ?? '']);
+        $txF  = $tStmt->fetch(PDO::FETCH_ASSOC);
+        if ($txF) {
+            $secF    = defined('VOLTIKA_RECOVER_SECRET')
+                ? VOLTIKA_RECOVER_SECRET
+                : (getenv('VOLTIKA_RECOVER_SECRET') ?: 'voltika_recover_2026_default');
+            $expF    = time() + (7 * 24 * 3600);
+            $payloadF= $txF['id'] . '.' . $expF . '.firma';
+            $sigF    = hash_hmac('sha256', $payloadF, $secF);
+            $tokenF  = $payloadF . '.' . $sigF;
+            $baseF   = defined('VOLTIKA_BASE_URL') ? rtrim(VOLTIKA_BASE_URL, '/') : 'https://www.voltika.mx';
+            $linkF   = $baseF . '/configurador/firmar-contrato-checkout.php?t=' . urlencode($tokenF);
+
+            $pedF    = $txF['pedido_corto'] ?: ('VK-' . ($txF['pedido'] ?? ''));
+            $nameF   = htmlspecialchars($notifyData['nombre'] ?? 'Cliente Voltika');
+            $subjF   = 'Voltika — Falta tu firma del contrato ' . $pedF;
+            $htmlF   =
+                '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:auto;padding:24px;background:#fff;">' .
+                '<div style="text-align:center;background:#1a3a5c;padding:18px;border-radius:12px 12px 0 0;">' .
+                '<img src="' . $baseF . '/configurador/img/voltika_logo_h_white.svg" alt="Voltika" style="height:34px;">' .
+                '</div>' .
+                '<div style="background:#F8FAFC;padding:24px;border-radius:0 0 12px 12px;border:1px solid #E5E7EB;border-top:none;">' .
+                '<h1 style="font-size:22px;color:#1a3a5c;margin:0 0 12px;">Hola ' . $nameF . ',</h1>' .
+                '<p style="font-size:15px;color:#333;line-height:1.5;margin:0 0 14px;">' .
+                'Recibimos tu pago del pedido <strong>' . htmlspecialchars($pedF) . '</strong>. ' .
+                'Para cerrar el contrato y liberar la entrega de tu Voltika necesitamos tu firma digital.' .
+                '</p>' .
+                '<a href="' . htmlspecialchars($linkF) . '" style="display:block;text-align:center;padding:14px;background:#1a6b1a;color:#fff;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none;margin:16px 0;">Firmar contrato ahora</a>' .
+                '<p style="font-size:13px;color:#666;line-height:1.5;margin:16px 0 0;">' .
+                'Tarda menos de 1 minuto. Puedes firmar desde el celular o la computadora.' .
+                '</p>' .
+                '<p style="font-size:11px;color:#999;margin:16px 0 0;text-align:center;">El enlace es personal y expira en 7 días.</p>' .
+                '</div>' .
+                '</div>';
+            if (function_exists('sendMail')) {
+                @sendMail($email, $notifyData['nombre'] ?? '', $subjF, $htmlF);
+            }
+            // SMS reminder too (lighter — link only)
+            if (!empty($telefono) && function_exists('voltikaSendSMS')) {
+                @voltikaSendSMS($telefono,
+                    "Voltika: tu pago ya se registro. Falta tu firma para activar la entrega: " . $linkF);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('confirmar-orden firma link send: ' . $e->getMessage());
+    }
+}
+
 // ── Contrato de Compraventa al Contado (PDF + email + DB record) ────────
 // Customer brief 2026-04-28: every 100 %-payment purchase (contado / msi /
 // spei / oxxo) gets a personalised contract auto-generated server-side

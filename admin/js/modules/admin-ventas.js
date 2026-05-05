@@ -389,19 +389,18 @@ window.AD_ventas = (function(){
       // Highlight the whole row so phantoms stand out from clean orders.
       var rowStyle = r.datos_incompletos ? ' style="background:#FFF5F5;"' : '';
 
-      // Inline contract-acceptance indicator under the tipo badge.
-      // Customer brief 2026-05-04 round 2: "If Payment was made for
-      // MSI, contado or even enganche, customer signed at the moment
-      // of check out and we need all contractual data." The previous
-      // logic only checked `firma_id` (the digital-signature row from
-      // firmas_contratos, which is only populated by the credit
-      // signing page) — so paid contado/MSI orders, where checkout
-      // itself constitutes contract acceptance, were wrongly tagged
-      // "Sin firma". Now three branches:
-      //   1. Digital signature on file → "✓ Firmado YYYY-MM-DD"
-      //   2. Payment captured (pagada/parcial) → "✓ Aceptado en pago"
-      //      (the act of paying = contract acceptance at checkout)
-      //   3. Neither paid nor signed → "⏳ Pendiente"
+      // Inline contract-signature indicator under the tipo badge.
+      // Customer brief 2026-05-04 round 3: "in purchase done, there
+      // is no contract signed by the client." The previous version
+      // collapsed payment-acceptance ("Aceptado en pago") with
+      // digital signature, which masked the real legal gap — Contado
+      // /MSI flows generate an UNSIGNED PDF at checkout and never
+      // collect a NOM-151 signature. The boss needs the dashboard to
+      // surface that gap so admin can chase the missing signature.
+      // Three honest states now:
+      //   1. firma_id set            → ✓ Firmado YYYY-MM-DD (green)
+      //   2. paid but no signature   → ⚠ Pagado · Falta firma (amber, action needed)
+      //   3. unpaid + unsigned       → ⏳ Pendiente (dim)
       var firmaInline = '';
       var _tpForFirma = String(r.tipo || '').toLowerCase().trim();
       var firmaTipos = ['contado','unico','msi','spei','oxxo','tarjeta','enganche','credito','parcial'];
@@ -409,25 +408,22 @@ window.AD_ventas = (function(){
       var _isPaid    = (_peForFirma === 'pagada' || _peForFirma === 'aprobada' || _peForFirma === 'approved' || _peForFirma === 'paid' || _peForFirma === 'parcial');
       if (firmaTipos.indexOf(_tpForFirma) >= 0 || /tarjeta de [dc]/i.test(_tpForFirma)) {
         if (r.firma_id) {
-          // Digital signature row exists (credit-flow customers who
-          // signed via configurador). Always wins over checkout
-          // acceptance because it carries CURP + IP + signed-PDF.
           var firmaWhen = r.firma_freg ? String(r.firma_freg).substring(0,10) : '';
           firmaInline = '<div style="font-size:10px;font-weight:700;color:#15803d;margin-top:3px;white-space:nowrap;" '+
-                        'title="Contrato firmado digitalmente el '+firmaWhen+'">✓ Firmado'+(firmaWhen?' '+firmaWhen:'')+'</div>';
+                        'title="Contrato firmado digitalmente el '+firmaWhen+' — NOM-151 OK">✓ Firmado'+(firmaWhen?' '+firmaWhen:'')+'</div>';
         } else if (_isPaid) {
-          // Checkout acceptance: paying via Stripe = contract accepted.
-          // The contract PDF was generated at confirmar-orden.php time
-          // and is still downloadable via the doc icon. We just label
-          // the acceptance moment differently from a digital signature
-          // because legally it's a clickwrap acceptance, not a NOM-151
-          // signed PDF.
+          // Paid but no digital signature on file. Admin can click the
+          // amber label to send a signing link via email+SMS. The
+          // pseudo-button uses inline onclick so it lives inside the
+          // table row without needing per-row event delegation.
           var pagoWhen = r.fecha ? String(r.fecha).substring(0,10) : '';
-          firmaInline = '<div style="font-size:10px;font-weight:700;color:#15803d;margin-top:3px;white-space:nowrap;" '+
-                        'title="Contrato aceptado en el momento del pago ('+pagoWhen+')">✓ Aceptado en pago'+(pagoWhen?' '+pagoWhen:'')+'</div>';
+          firmaInline = '<div style="font-size:10px;font-weight:700;color:#b45309;margin-top:3px;white-space:nowrap;cursor:pointer;text-decoration:underline;text-underline-offset:2px;" '+
+                        'title="Pagado '+pagoWhen+' — sin firma. Clic para enviar enlace de firma al cliente." '+
+                        'onclick="event.stopPropagation();AD_ventas.enviarLinkFirma('+r.id+',this)">'+
+                        '⚠ Pagado · Falta firma →</div>';
         } else {
-          firmaInline = '<div style="font-size:10px;font-weight:700;color:#b45309;margin-top:3px;white-space:nowrap;" '+
-                        'title="Sin pago registrado y sin firma digital — pendiente de checkout">⏳ Pendiente</div>';
+          firmaInline = '<div style="font-size:10px;font-weight:700;color:#9ca3af;margin-top:3px;white-space:nowrap;" '+
+                        'title="Sin pago y sin firma — pendiente de checkout">⏳ Pendiente</div>';
         }
       }
 
@@ -851,6 +847,33 @@ window.AD_ventas = (function(){
       window._vtReassignFrom = null;
       $('#vtMotosMsg').css('color','#b91c1c').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
       $btn.prop('disabled', false).text('Confirmar moto');
+    });
+  }
+
+  // Send a digital-signing link to a paid customer who hasn't signed
+  // yet. Triggered from the "⚠ Pagado · Falta firma" inline button
+  // in the dashboard. POSTs to enviar-link-firma.php which generates
+  // an HMAC-signed 7-day URL and emails+texts the customer.
+  function enviarLinkFirma(txId, anchorEl){
+    if (!confirm('¿Enviar enlace de firma al cliente?\n\nRecibirá email + SMS con un link válido 7 días para firmar el contrato.')) return;
+    var $el = anchorEl ? $(anchorEl) : null;
+    var orig = $el ? $el.html() : null;
+    if ($el) $el.html('Enviando...').css('cursor','wait');
+    ADApp.api('ventas/enviar-link-firma.php', { transaccion_id: txId }).done(function(r){
+      if (r && r.ok) {
+        var parts = [];
+        if (r.email_sent) parts.push('✓ Email enviado');
+        if (r.sms_sent)   parts.push('✓ SMS enviado');
+        if (!parts.length) parts.push('⚠ Sin canal disponible — copia el enlace');
+        alert('Enlace de firma enviado.\n\n' + parts.join('\n') + '\n\nURL (válido 7 días):\n' + (r.link || ''));
+        loadData();
+      } else {
+        alert('Error: ' + ((r && r.error) || 'desconocido'));
+        if ($el && orig) $el.html(orig).css('cursor','pointer');
+      }
+    }).fail(function(x){
+      alert('Error: ' + (x.responseJSON && x.responseJSON.error || 'conexión'));
+      if ($el && orig) $el.html(orig).css('cursor','pointer');
     });
   }
 
@@ -2182,5 +2205,5 @@ window.AD_ventas = (function(){
     });
   }
 
-  return { render:render, showAsignar:showAsignar, showReasignar:showReasignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink, syncStripe:syncStripe };
+  return { render:render, showAsignar:showAsignar, showReasignar:showReasignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink, enviarLinkFirma:enviarLinkFirma, syncStripe:syncStripe };
 })();
