@@ -132,6 +132,75 @@ try {
     }
 } catch (Throwable $e) { $log[] = "subscripcion ERROR: " . $e->getMessage(); }
 
+// ── 3b. pagos_credito row (so mi-credito.html finds the credit) ─────
+// cliente-credito.php searches pagos_credito.pedido_num — without a row
+// here, mi-credito.html shows "No se encontró un crédito con ese
+// número de pedido". We seed a complete amortization schedule (weekly
+// rows in pagos_credito_historial) so the dashboard renders pagado vs
+// restante and the next-payment card.
+try {
+    $pcPedido = 'TEST-5500-CREDITO-1';
+    $stmt = $pdo->prepare("SELECT id FROM pagos_credito WHERE pedido_num = ? LIMIT 1");
+    $stmt->execute([$pcPedido]);
+    $existingPcId = (int)($stmt->fetchColumn() ?: 0);
+    if ($existingPcId) {
+        $log[] = "pagos_credito {$pcPedido}: existe (id={$existingPcId})";
+    } else {
+        $plan[] = "pagos_credito {$pcPedido}: Pesgo Plus, 36 semanas \$554/sem";
+        if ($run) {
+            // Tables may not exist on fresh installs — ensure them first.
+            try { $pdo->exec("CREATE TABLE IF NOT EXISTS pagos_credito (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                moto_id INT NULL, cliente_nombre VARCHAR(200), cliente_email VARCHAR(200),
+                cliente_telefono VARCHAR(30), pedido_num VARCHAR(50),
+                modelo VARCHAR(200), color VARCHAR(50),
+                precio_total DECIMAL(12,2), enganche DECIMAL(12,2), monto_financiado DECIMAL(12,2),
+                plazo_meses INT, pago_semanal DECIMAL(12,2), semanas_total INT,
+                monto_pagado DECIMAL(12,2) DEFAULT 0, monto_restante DECIMAL(12,2),
+                semanas_pagadas INT DEFAULT 0, proximo_pago DATE,
+                estado VARCHAR(20) DEFAULT 'activo',
+                freg DATETIME DEFAULT CURRENT_TIMESTAMP)"); } catch (Throwable $e) {}
+            try { $pdo->exec("CREATE TABLE IF NOT EXISTS pagos_credito_historial (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                credito_id INT, semana_num INT, monto DECIMAL(12,2),
+                estado VARCHAR(20) DEFAULT 'pendiente', metodo VARCHAR(40),
+                fecha_programada DATE, fecha_pago DATETIME NULL,
+                stripe_payment_intent VARCHAR(60) NULL,
+                freg DATETIME DEFAULT CURRENT_TIMESTAMP)"); } catch (Throwable $e) {}
+
+            $precio       = 48260;
+            $engPct       = 0.25;
+            $enganche     = $precio * $engPct;
+            $financiado   = $precio - $enganche;
+            $plazoMeses   = 36;
+            $semanas      = (int)round($plazoMeses * (52 / 12));
+            $pagoSemanal  = 554;
+            $proximoPago  = date('Y-m-d', strtotime('+7 days'));
+
+            $pdo->prepare("INSERT INTO pagos_credito
+                (cliente_nombre, cliente_email, cliente_telefono, pedido_num,
+                 modelo, color, precio_total, enganche, monto_financiado,
+                 plazo_meses, pago_semanal, semanas_total, monto_restante, proximo_pago)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+               ->execute([
+                   $TEST_NOMBRE, $TEST_EMAIL, $TEST_TEL, $pcPedido,
+                   'Pesgo plus', 'rojo', $precio, $enganche, $financiado,
+                   $plazoMeses, $pagoSemanal, $semanas, $financiado, $proximoPago,
+               ]);
+            $pcId = (int)$pdo->lastInsertId();
+
+            // Generate weekly schedule (pendiente by default).
+            $ins = $pdo->prepare("INSERT INTO pagos_credito_historial
+                (credito_id, semana_num, monto, estado, fecha_programada)
+                VALUES (?, ?, ?, 'pendiente', DATE_ADD(CURDATE(), INTERVAL ? DAY))");
+            for ($i = 1; $i <= $semanas; $i++) {
+                $ins->execute([$pcId, $i, $pagoSemanal, $i * 7]);
+            }
+            $log[] = "pagos_credito {$pcPedido}: creado (id={$pcId}, {$semanas} semanas)";
+        }
+    }
+} catch (Throwable $e) { $log[] = "pagos_credito ERROR: " . $e->getMessage(); }
+
 // ── 4. preaprobacion (PREAPROBADO state for Solicitudes flow) ────────
 try {
     $preap = $pdo->prepare("SELECT id FROM preaprobaciones
@@ -253,7 +322,7 @@ code{background:#202a36;padding:2px 6px;border-radius:4px}
   <h3>Cómo probar</h3>
   <ol style="line-height:1.8;padding-left:20px">
     <li>Configurador checkout: usa <code>5500000000</code> en el formulario, OTP <code>123456</code> (con bypass habilitado)</li>
-    <li>mi-credito.html: ingresa <code>TEST-5500-CONTADO-1</code> como pedido</li>
+    <li>mi-credito.html: ingresa <code>TEST-5500-CREDITO-1</code> como pedido</li>
     <li>Solicitudes admin: busca <code><?= htmlspecialchars($TEST_NOMBRE) ?></code></li>
     <li>Pagos admin: aparecerá la transacción <code>TEST-5500-CONTADO-1</code></li>
   </ol>
