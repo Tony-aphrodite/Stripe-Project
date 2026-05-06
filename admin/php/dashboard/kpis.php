@@ -33,7 +33,20 @@ $ventasHoy    = (int)$safeScalar("SELECT COUNT(*) FROM transacciones WHERE DATE(
 $ventasSemana = (int)$safeScalar("SELECT COUNT(*) FROM transacciones WHERE DATE(freg)>=?", [$weekStart]);
 
 // Collections
-$cobradoHoy = (float)$safeScalar("SELECT COALESCE(SUM(total),0) FROM transacciones WHERE DATE(freg)=?", [$today]);
+// Customer brief 2026-05-06: "Cobrado hoy" must count only Stripe-
+// verified payments. Previous query summed ALL transacciones rows
+// regardless of payment state, including pending, failed, and admin-
+// promoted synthetic rows (manual-* stripe_pi). Now require
+// pago_estado='pagada' AND a real Stripe PaymentIntent (pi_*).
+$cobradoHoy = (float)$safeScalar(
+    "SELECT COALESCE(SUM(total),0) FROM transacciones
+     WHERE DATE(freg) = ?
+       AND pago_estado = 'pagada'
+       AND stripe_pi IS NOT NULL
+       AND stripe_pi <> ''
+       AND stripe_pi LIKE 'pi\\_%' ESCAPE '\\\\'",
+    [$today]
+);
 
 // Portfolio
 $carteraOk      = (int)$safeScalar("SELECT COUNT(*) FROM subscripciones_credito WHERE {$subStatusCol} IN ('activa','active')");

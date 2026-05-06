@@ -90,6 +90,14 @@ try {
         $pdo->exec("ALTER TABLE transacciones ADD COLUMN pedido_corto VARCHAR(20) NULL");
         try { $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX idx_pedido_corto (pedido_corto)"); } catch (Throwable $e) {}
     }
+    // Customer brief 2026-05-06 — link every order back to its originating
+    // credit application so the Ventas Ver modal can show "Solicitud
+    // predecesora #N". Idempotent ALTER (column may already exist if
+    // enviar-a-ventas.php has been called previously).
+    if (!in_array('preaprobacion_id', $cols, true)) {
+        try { $pdo->exec("ALTER TABLE transacciones ADD COLUMN preaprobacion_id INT NULL"); } catch (Throwable $e) {}
+        try { $pdo->exec("ALTER TABLE transacciones ADD INDEX idx_preap (preaprobacion_id)"); } catch (Throwable $e) {}
+    }
     // `seguimiento` is used by the phantom-repair tool to archive rows.
     // If it doesn't exist yet, skip the archived-filter in the SELECT
     // below (otherwise the query errors out and the entire orders list
@@ -108,6 +116,7 @@ try {
                t.punto_id, t.punto_nombre, t.ciudad, t.estado, t.cp, t.folio_contrato,
                t.fecha_estimada_entrega,
                t.asesoria_placas, t.seguro_qualitas,
+               t.preaprobacion_id,
                COALESCE(t.last_reminder_at, NULL) AS last_reminder_at,
                COALESCE(t.reminders_sent_count, 0) AS reminders_sent_count
                $trackingSelect
@@ -256,6 +265,9 @@ try {
             // Contract-signing state (customer brief 2026-05-01).
             'firma_id'                  => $r['firma_id'] ? (int)$r['firma_id'] : null,
             'firma_freg'                => $r['firma_freg'] ?? null,
+            // Predecessor credit application (customer brief 2026-05-06).
+            'preaprobacion_id'          => isset($r['preaprobacion_id']) && $r['preaprobacion_id'] !== null
+                                            ? (int)$r['preaprobacion_id'] : null,
         ];
     }
 } catch (Throwable $e) {

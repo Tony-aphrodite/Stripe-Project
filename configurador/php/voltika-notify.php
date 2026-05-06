@@ -556,21 +556,26 @@ function voltikaResolvePedidoCorto(PDO $pdo, int $transaccionId): string {
         // Older MySQL lacks IF NOT EXISTS on ADD COLUMN; absorb and continue.
     }
 
-    // Compute next counter for current YYMM
-    try {
-        $dt = new DateTime($row['freg'] ?? 'now');
-    } catch (Throwable $e) {
-        $dt = new DateTime();
-    }
-    $yymm = $dt->format('ym');
+    // Customer brief 2026-05-06: switch to a single global sequential
+    // counter under fixed prefix `1826` (Voltika's permit number).
+    // Old per-month resets ("VK-2605-0001", "VK-2606-0001") meant pedido
+    // numbers REPEATED across months, which broke the "search VK-N"
+    // workflow. Now every order gets a unique VK-1826-NNNN that grows
+    // monotonically forever. Existing orders keep their old format —
+    // we only stamp NEW rows with the new pattern (the lookup + UNIQUE
+    // index already prevent collisions across either pattern).
+    $prefix = 'VK-1826-';
 
     for ($attempt = 0; $attempt < 5; $attempt++) {
+        // Find the highest NNNN under the new prefix. Existing
+        // VK-YYMM-NNNN rows are ignored for max() since the LIKE
+        // restricts to the new prefix only.
         $cnt = $pdo->prepare("SELECT MAX(CAST(SUBSTRING_INDEX(pedido_corto, '-', -1) AS UNSIGNED))
                                 FROM transacciones
                                WHERE pedido_corto LIKE ?");
-        $cnt->execute(["VK-$yymm-%"]);
+        $cnt->execute([$prefix . '%']);
         $next = ((int)$cnt->fetchColumn()) + 1 + $attempt;
-        $short = sprintf('VK-%s-%04d', $yymm, $next);
+        $short = sprintf('%s%04d', $prefix, $next);
         try {
             $pdo->prepare("UPDATE transacciones SET pedido_corto=? WHERE id=?")
                ->execute([$short, $transaccionId]);

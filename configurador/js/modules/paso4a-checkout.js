@@ -786,6 +786,17 @@ var Paso4A = {
     },
 
     _fullName: function(state) {
+        // Customer brief 2026-05-04 round 11: stop the
+        // "Nombre Apellido1 Apellido2 Apellido1 Apellido2" duplication.
+        // The hidden #vk-nombre field is set to the FULL concatenation
+        // earlier in the form, so state.nombre already contains the
+        // apellidos. When _fullName naively re-concatenated them again
+        // the API received the doubled string. Dedupe: if
+        // state.nombre already includes apellidoPaterno as a substring,
+        // skip the join and return state.nombre unchanged.
+        var n   = (state.nombre || '').trim();
+        var apP = (state.apellidoPaterno || '').trim();
+        if (apP && n.toLowerCase().indexOf(apP.toLowerCase()) !== -1) return n;
         var parts = [state.nombre || '', state.apellidoPaterno || '', state.apellidoMaterno || ''];
         return parts.filter(function(p){ return p; }).join(' ') || state.nombre || '';
     },
@@ -943,6 +954,12 @@ var Paso4A = {
      * the customer back to /configurador/?firmado=ok when done. Credit
      * orders skip straight to the facturación step (their signature
      * was already captured during the credit pagaré flow).
+     *
+     * Customer brief 2026-05-04 round 10: signing must happen INSIDE
+     * the configurador, not via redirect to a separate page (users
+     * found the post-purchase email link confusing). Render the canvas
+     * inline below the OTP success message; only when the signature
+     * submits successfully do we move on to facturación.
      */
     _advanceAfterOtp: function() {
         var self = this;
@@ -950,11 +967,162 @@ var Paso4A = {
         var needsFirma = !!self.app.state._requiereFirma && firmaUrl !== '';
         setTimeout(function() {
             if (needsFirma) {
-                window.location.href = firmaUrl;
+                self._showInlineSignature(firmaUrl);
                 return;
             }
             self.app.irAPaso('facturacion');
         }, 800);
+    },
+
+    /**
+     * Render a canvas-signature step in the same SPA screen, right
+     * below the OTP success block. Posts the captured firma_base64 to
+     * firmar-contrato-checkout-submit.php using the HMAC token embedded
+     * in firmaUrl. On success → irAPaso('facturacion') so the flow
+     * completes without ever leaving the configurador.
+     */
+    _showInlineSignature: function(firmaUrl){
+        var self = this;
+        // Extract the HMAC token from the URL once — the submit endpoint
+        // expects the same token that the standalone signing page uses.
+        var token = '';
+        try {
+            var qs = firmaUrl.split('?')[1] || '';
+            var parts = qs.split('&');
+            for (var i = 0; i < parts.length; i++) {
+                var kv = parts[i].split('=');
+                if (kv[0] === 't') { token = decodeURIComponent(kv[1] || ''); break; }
+            }
+        } catch (e) {}
+
+        // Hide the OTP block (already validated) and inject the signing
+        // UI in its place. We re-use #vk-post-otp-success container so
+        // we don't have to add new DOM nodes to the SPA template.
+        var $host = $('#vk-post-otp-success').parent().length
+                  ? $('#vk-post-otp-success').parent()
+                  : $('body');
+        var html = ''
+          + '<div id="vk-firma-checkout" style="margin-top:14px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;max-width:560px;margin-left:auto;margin-right:auto;">'
+          +   '<div style="font-weight:800;color:#1a3a5c;font-size:16px;margin-bottom:6px;">Firma tu contrato</div>'
+          +   '<div style="color:#475569;font-size:13px;margin-bottom:12px;">Ya recibimos tu pago. Sólo falta tu firma para cerrar el contrato.</div>'
+          +   '<div style="border:2px dashed #cbd5e1;border-radius:8px;background:#f8fafc;height:160px;position:relative;overflow:hidden;">'
+          +     '<canvas id="vk-firma-canvas-inline" style="display:block;width:100%;height:100%;cursor:crosshair;touch-action:none;"></canvas>'
+          +     '<div id="vk-firma-hint-inline" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#cbd5e1;font-size:13px;pointer-events:none;">Firma aquí ↗</div>'
+          +   '</div>'
+          +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">'
+          +     '<button type="button" id="vk-firma-clear-inline" style="background:none;border:none;color:#039fe1;font-size:13px;font-weight:600;cursor:pointer;padding:0;">↺ Borrar y firmar de nuevo</button>'
+          +   '</div>'
+          +   '<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;line-height:1.4;margin-top:14px;background:#fef3c7;border:1px solid #fde68a;color:#78350f;padding:12px;border-radius:8px;">'
+          +     '<input type="checkbox" id="vk-firma-accept-inline" style="margin-top:2px;flex-shrink:0;">'
+          +     '<span>Acepto los términos del contrato Voltika para mi pedido. Mi firma constituye consentimiento expreso conforme a NOM-151 y LFPC.</span>'
+          +   '</label>'
+          +   '<button type="button" id="vk-firma-submit-inline" disabled style="display:block;width:100%;padding:14px;margin-top:14px;background:#cbd5e1;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:not-allowed;">Firmar y continuar</button>'
+          +   '<div id="vk-firma-result-inline" style="margin-top:10px;text-align:center;font-size:13px;"></div>'
+          + '</div>';
+        $host.append(html);
+
+        // ── Canvas wiring (mirrors firmar-contrato-checkout.php's logic)
+        var canvas = document.getElementById('vk-firma-canvas-inline');
+        var hint   = document.getElementById('vk-firma-hint-inline');
+        var clear  = document.getElementById('vk-firma-clear-inline');
+        var accept = document.getElementById('vk-firma-accept-inline');
+        var submit = document.getElementById('vk-firma-submit-inline');
+        var result = document.getElementById('vk-firma-result-inline');
+        var hasInk = false;
+
+        function fit(){
+            var rect = canvas.getBoundingClientRect();
+            var dpr = window.devicePixelRatio || 1;
+            canvas.width  = Math.floor(rect.width  * dpr);
+            canvas.height = Math.floor(rect.height * dpr);
+            var ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            ctx.lineWidth   = 2.5;
+            ctx.lineCap     = 'round';
+            ctx.lineJoin    = 'round';
+            ctx.strokeStyle = '#0f172a';
+        }
+        fit();
+        // Refit on rotation / window resize.
+        window.addEventListener('resize', fit);
+
+        var drawing = false, lastX = 0, lastY = 0;
+        function pos(e){
+            var rect = canvas.getBoundingClientRect();
+            var t = e.touches ? e.touches[0] : e;
+            return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+        }
+        function start(e){
+            e.preventDefault();
+            drawing = true;
+            var p = pos(e);
+            lastX = p.x; lastY = p.y;
+            if (!hasInk) { hasInk = true; hint.style.display = 'none'; refreshSubmit(); }
+        }
+        function move(e){
+            if (!drawing) return;
+            e.preventDefault();
+            var p = pos(e);
+            var ctx = canvas.getContext('2d');
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+            lastX = p.x; lastY = p.y;
+        }
+        function end(e){ if (e && e.preventDefault) e.preventDefault(); drawing = false; }
+
+        canvas.addEventListener('mousedown',  start);
+        canvas.addEventListener('mousemove',  move);
+        canvas.addEventListener('mouseup',    end);
+        canvas.addEventListener('mouseleave', end);
+        canvas.addEventListener('touchstart', start, {passive:false});
+        canvas.addEventListener('touchmove',  move,  {passive:false});
+        canvas.addEventListener('touchend',   end,   {passive:false});
+
+        clear.addEventListener('click', function(){
+            var ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hasInk = false;
+            hint.style.display = '';
+            refreshSubmit();
+        });
+
+        function refreshSubmit(){
+            var enabled = hasInk && accept.checked;
+            submit.disabled = !enabled;
+            submit.style.background = enabled ? '#1a6b1a' : '#cbd5e1';
+            submit.style.cursor     = enabled ? 'pointer' : 'not-allowed';
+        }
+        accept.addEventListener('change', refreshSubmit);
+
+        submit.addEventListener('click', function(){
+            if (submit.disabled) return;
+            submit.disabled = true; submit.textContent = 'Guardando firma...';
+            result.style.color = ''; result.textContent = '';
+            var dataUrl = canvas.toDataURL('image/png');
+            $.ajax({
+                url: '/configurador/php/firmar-contrato-checkout-submit.php',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ token: token, firma_base64: dataUrl }),
+                dataType: 'json'
+            }).done(function(j){
+                if (j && j.ok) {
+                    result.style.color = '#15803d';
+                    result.textContent = '✓ Firma guardada. Continuamos…';
+                    setTimeout(function(){ self.app.irAPaso('facturacion'); }, 800);
+                } else {
+                    result.style.color = '#b91c1c';
+                    result.textContent = (j && j.error) || 'No se pudo guardar la firma.';
+                    submit.disabled = false; submit.textContent = 'Firmar y continuar';
+                }
+            }).fail(function(xhr){
+                result.style.color = '#b91c1c';
+                result.textContent = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de conexión.';
+                submit.disabled = false; submit.textContent = 'Firmar y continuar';
+            });
+        });
     },
 
     _showPostPaymentOTP: function() {

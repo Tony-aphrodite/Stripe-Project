@@ -144,10 +144,34 @@ try {
     $link = $base . '/configurador/recover-aprobado.php?t=' . urlencode($token);
 
     // ── Compute payment numbers for the email body ─────────────────────
+    // Customer brief 2026-05-06: previous version sent naïve
+    // financiado / plazoMeses (no interest), which mismatched the
+    // configurador's VkCalculadora.calcular and produced offers the
+    // collections (cobranza) system couldn't reconcile. Use the same
+    // PMT formula as configurador/js/modules/calculadora-credito.js
+    // and configurador/js/data/productos.js (tasaAnual=0.60, 52 weekly
+    // pagos, IVA=0.16 on the period rate).
     $enganche   = $precio * $engPct;
     $financiado = $precio - $enganche;
-    $mensual    = $plazoM > 0 ? $financiado / $plazoM : 0;
-    $semanal    = $mensual / 4.33;
+
+    $tasaAnual            = 0.60;
+    $pagosPorAno          = 52;
+    $iva                  = 0.16;
+    $tasaPeriodoSinIVA    = $tasaAnual / $pagosPorAno;
+    $tasaPeriodoConIVA    = $tasaPeriodoSinIVA * (1 + $iva);
+    $numeroPagos          = (int) round($plazoM * ($pagosPorAno / 12));
+
+    $semanal = 0.0;
+    if ($numeroPagos > 0 && $financiado > 0) {
+        if ($tasaPeriodoConIVA <= 0) {
+            $semanal = $financiado / $numeroPagos;
+        } else {
+            $r = $tasaPeriodoConIVA;
+            $n = $numeroPagos;
+            $semanal = $financiado * $r / (1 - pow(1 + $r, -$n));
+        }
+    }
+    $mensual = $semanal * (52 / 12); // 4.3333…
 
     // ── Preview short-circuit ──────────────────────────────────────────
     // Return the link only — no email/SMS, no audit log entry, no

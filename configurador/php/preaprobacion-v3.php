@@ -161,44 +161,37 @@ elseif ($score === null && $person_found === true) {
     ];
 }
 elseif ($score === null) {
-    // POLICY C (customer brief 2026-04-26): CDC unreachable / not consulted.
-    // Voltika's risk exposure is small when enganche is high enough —
-    // Voltika collects upfront and retains repossession rights on the
-    // asset. Combined with mandatory Truora identity verification, fraud
-    // risk is contained.
+    // POLICY C (customer brief 2026-05-06 update — Guillermo Solis Sansores
+    // case #47): CDC did not respond at all (source='estimated'). The
+    // previous policy split this branch into "high-enganche → CONDICIONAL"
+    // vs "low-enganche → NO_VIABLE", which produced the wrong message
+    // ("Cliente sobreendeudado o con morosidad activa") for clean
+    // applicants whose only failing was a CDC outage. Real customers
+    // (PTI 7%, no DPD90, 0 active accounts) were rejected when they
+    // should have been routed to a CONDITIONAL review.
     //
-    // Threshold: 50% enganche + 12-month max plazo. Anything below the
-    // threshold still NO_VIABLE, but we tell the user EXACTLY what to do.
-    // NOTE: this branch now ONLY fires when person_found is null/false —
-    // the CDC-responded-without-score case is handled by FIX 1 above.
-    $highEngancheThreshold = 0.50;
-    $highEngPlazoMax       = 12;
-    if ($enganche_pct >= $highEngancheThreshold) {
-        $result = [
-            'status'                 => 'CONDICIONAL_ESTIMADO',
-            'pti_total'              => round($pti_total, 4),
-            'enganche_min'           => $highEngancheThreshold,
-            'enganche_requerido_min' => $highEngancheThreshold,
-            'plazo_max_meses'        => $highEngPlazoMax,
-            'reasons'                => ['SIN_SCORE_APROBADO_POR_ENGANCHE_ALTO'],
-            'mensaje'                => 'Aprobación condicional: por cumplir con un enganche elevado tu solicitud avanza. La verificación de identidad es obligatoria.',
-            'person_found'           => $person_found,
-        ];
-    } else {
-        $mensaje = 'No obtuvimos tu historial crediticio. Para continuar, sube tu enganche al ' . round($highEngancheThreshold * 100) . '% — esto reduce el riesgo y permite avanzar sin score.';
-        if ($person_found === true) {
-            $mensaje .= ' También puedes contactar a un asesor: ventas@voltika.com.mx';
-        }
-        $result = [
-            'status'                       => 'NO_VIABLE',
-            'pti_total'                    => round($pti_total, 4),
-            'reasons'                      => ['SIN_SCORE_RECOMIENDA_AUMENTAR_ENGANCHE'],
-            'mensaje'                      => $mensaje,
-            'enganche_min_para_continuar'  => $highEngancheThreshold,
-            'plazo_max_para_continuar'     => $highEngPlazoMax,
-            'person_found'                 => $person_found,
-        ];
-    }
+    // New rule: when CDC is unreachable, ALWAYS return CONDICIONAL_ESTIMADO
+    // with conservative terms (50% enganche min, 12-month max plazo). The
+    // admin reviewer sees a yellow banner instructing them to approve with
+    // conservative conditions or retry the CDC consultation. NO_VIABLE is
+    // reserved for genuine credit-risk rejections, not connectivity issues.
+    //
+    // NOTE: this branch ONLY fires when person_found is null/false — the
+    // CDC-responded-without-score case is handled by FIX 1 above.
+    $minEng   = 0.50;
+    $maxPlazo = 12;
+    $result = [
+        'status'                 => 'CONDICIONAL_ESTIMADO',
+        'pti_total'              => round($pti_total, 4),
+        'enganche_min'           => $minEng,
+        'enganche_requerido_min' => $minEng,
+        'plazo_max_meses'        => $maxPlazo,
+        'reasons'                => ['CDC_NO_DISPONIBLE_REVISION_CONSERVADORA'],
+        'mensaje'                => 'No se pudo consultar Círculo de Crédito. Aprobación condicional con un enganche del ' . round($minEng * 100) . '% y plazo de ' . $maxPlazo . ' meses.',
+        'admin_recomendacion'    => 'No se pudo consultar Círculo de Crédito. Aprobar con condiciones conservadoras o reintentar consulta.',
+        'person_found'           => $person_found,
+        'circulo_source'         => 'estimado',
+    ];
 } else {
     // Con datos completos de Círculo
 

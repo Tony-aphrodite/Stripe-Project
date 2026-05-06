@@ -3,6 +3,21 @@ window.AD_ventas = (function(){
   var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
 
   function render(){
+    // Customer brief 2026-05-06: Dashboard KPI cards stash a hint on
+    // window._adFilterHint when navigating here, so the matching tab
+    // can pre-activate. Map known hints → existing tab keys.
+    try {
+      var hint = window._adFilterHint || '';
+      var hintMap = {
+        today:           'todas',
+        week:            'todas',
+        pago_pendiente:  'pago_pendiente',
+        placas_pendientes: 'extras',
+        seguro_pendientes: 'extras'
+      };
+      if (hint && hintMap[hint]) _activeTab = hintMap[hint];
+      window._adFilterHint = '';
+    } catch (e) {}
     ADApp.render(
       _backBtn+
       '<div class="ad-toolbar">'+
@@ -165,6 +180,26 @@ window.AD_ventas = (function(){
     }).fail(function(x){
       $('#vtPhantomContent').html('<div class="ad-banner warn">'+((x.responseJSON && x.responseJSON.error) || 'Error de conexión')+'</div>');
     });
+  }
+
+  // Customer brief 2026-05-06: legacy transacciones rows have nombre
+  // stored as "Nombre Apellido1 Apellido2 Apellido1 Apellido2" because
+  // the configurador's hidden #vk-nombre field was being concatenated
+  // twice. Detect and trim the trailing duplicate apellidos at display
+  // time so the dashboard reads correctly without a DB migration.
+  // Pattern: if the last 2 (or 3) words equal the previous 2 (or 3),
+  // drop the trailing copy. Safe for non-doubled names — returns
+  // unchanged.
+  function dedupeName(name){
+    if (!name) return name;
+    var p = String(name).trim().split(/\s+/);
+    if (p.length < 4) return name;
+    for (var n = 2; n <= 3 && n*2 <= p.length; n++) {
+      var tail = p.slice(-n).join(' ').toLowerCase();
+      var prev = p.slice(-n*2, -n).join(' ').toLowerCase();
+      if (tail === prev) return p.slice(0, -n).join(' ');
+    }
+    return name;
   }
 
   function numFmtLocal(n){
@@ -349,13 +384,26 @@ window.AD_ventas = (function(){
     rows.forEach(function(r){
       var asignada = r.moto_id ? true : false;
       var isPendingPunto = r.punto_id === 'centro-cercano';
+      // Customer brief 2026-05-06: when no point is assigned, render
+      // an inline "Asignar punto" button RIGHT inside the Punto column
+      // (before the badge) so the admin doesn't have to scroll across
+      // to the Acción column. Same for Moto column below.
       var puntoHtml = '';
-      if(isPendingPunto){
-        puntoHtml = '<span class="ad-badge yellow">Pendiente asignar</span>';
+      var canAssignPunto = ADApp.canWrite('ventas') || ADApp.canWrite('inventario');
+      if(isPendingPunto || !r.punto_id){
+        // No point assigned — show inline Asignar button if user can.
+        var btnLabel = isPendingPunto ? 'Pendiente asignar' : 'Sin punto';
+        var btnBg    = isPendingPunto ? '#fef3c7' : '#fee2e2';
+        var btnTx    = isPendingPunto ? '#78350f' : '#991b1b';
+        if (canAssignPunto) {
+          puntoHtml = '<button class="ad-btn sm" style="padding:4px 10px;font-size:11px;background:'+btnBg+';color:'+btnTx+';border:1px solid '+btnTx+';border-radius:6px;font-weight:700;cursor:pointer;white-space:nowrap;" '+
+                      'title="Asignar punto de entrega" '+
+                      'onclick="event.stopPropagation();AD_ventas.openAsignarPuntoOrden('+JSON.stringify({id:r.id, pedido:r.pedido_corto||('VK-'+(r.pedido||r.id)), modelo:r.modelo, color:r.color}).replace(/"/g,'&quot;')+')">📍 Asignar punto</button>';
+        } else {
+          puntoHtml = '<span class="ad-badge '+(isPendingPunto?'yellow':'red')+'">'+btnLabel+'</span>';
+        }
       } else if(r.punto_nombre){
         puntoHtml = '<span class="ad-badge green" style="font-size:11px;">'+r.punto_nombre+'</span>';
-      } else if(!r.punto_id){
-        puntoHtml = '<span class="ad-badge red">Sin punto</span>';
       } else {
         puntoHtml = '<span class="ad-badge gray">'+r.punto_id+'</span>';
       }
@@ -373,9 +421,16 @@ window.AD_ventas = (function(){
         ? '<div style="font-size:11px;color:#b91c1c;margin-top:2px;">'+esc(r.alerta)+'</div>'
         : '';
 
-      var extrasHtml = '';
-      if(r.asesoria_placas) extrasHtml += '<span title="Solicitó asesoría para placas" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#FFF3E0;color:#E65100;border:1px solid #FFE0B2;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">PLACAS</span>';
-      if(r.seguro_qualitas) extrasHtml += '<span title="Solicitó seguro (Quálitas)" style="display:inline-block;margin-left:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">SEGURO</span>';
+      // Customer brief 2026-05-04: PLACAS / SEGURO chips were rendering
+      // INLINE next to the pedido number, which on long pedido_corto
+      // values pushed the row's column wider than the rest. Move them
+      // onto a new line BELOW the pedido number — same content, just
+      // wrapped in a block so they sit under the bold pedido.
+      var extrasInline = '';   // for datos_incompletos / alertas (legacy inline)
+      var extrasBelow  = '';   // for placas / seguro (new line)
+      if(r.asesoria_placas) extrasBelow += '<span title="Solicitó asesoría para placas" style="display:inline-block;margin-right:4px;padding:2px 8px;background:#FFF3E0;color:#E65100;border:1px solid #FFE0B2;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">PLACAS</span>';
+      if(r.seguro_qualitas) extrasBelow += '<span title="Solicitó seguro (Quálitas)" style="display:inline-block;margin-right:4px;padding:2px 8px;background:#E3F2FD;color:#0277BD;border:1px solid #90CAF9;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;">SEGURO</span>';
+      var extrasHtml = extrasInline;
 
       // Phantom order badge — rows where nombre/modelo are empty. Customer
       // report 2026-04-23 flagged blank cells in Cliente/Modelo columns
@@ -427,9 +482,24 @@ window.AD_ventas = (function(){
         }
       }
 
+      // PLACAS / SEGURO chips render BELOW the pedido number (customer
+      // brief 2026-05-04). Wrap them in a flex line so multiple chips
+      // stay on the same row but break to a new line when there are
+      // more than fit.
+      var extrasBelowHtml = extrasBelow
+        ? '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:2px;">'+extrasBelow+'</div>'
+        : '';
+      // Customer brief 2026-05-06: customer wants email visible in the
+      // customer cell. Show it as a small grey line under nombre+phone.
+      // Also dedupe trailing duplicate apellidos legacy rows show as
+      // "Nombre Apellido1 Apellido2 Apellido1 Apellido2".
+      var clienteName  = r.nombre ? esc(dedupeName(r.nombre))
+                                  : '<span style="color:#C62828;font-style:italic;">— sin nombre —</span>';
+      var clienteTel   = r.telefono ? '<br><small class="ad-dim">'+esc(r.telefono)+'</small>' : '';
+      var clienteEmail = r.email    ? '<br><small style="color:#64748b;">'+esc(r.email)+'</small>' : '';
       html += '<tr data-row-id="'+r.id+'"'+rowStyle+'>'+
-        '<td><strong>'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'</strong>'+extrasHtml+alertaHtml+'</td>'+
-        '<td>'+(r.nombre ? esc(r.nombre) : '<span style="color:#C62828;font-style:italic;">— sin nombre —</span>')+'<br><small class="ad-dim">'+(r.telefono||'')+'</small></td>'+
+        '<td><strong>'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'</strong>'+extrasHtml+alertaHtml+extrasBelowHtml+'</td>'+
+        '<td>'+clienteName+clienteTel+clienteEmail+'</td>'+
         '<td>'+(r.modelo ? esc(r.modelo) : '<span style="color:#C62828;font-style:italic;">— sin modelo —</span>')+'</td>'+
         '<td>'+(r.color || '<span class="ad-dim">—</span>')+'</td>'+
         '<td>'+tipoBadgeHtml+firmaInline+'</td>'+
@@ -502,6 +572,15 @@ window.AD_ventas = (function(){
         '<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>'+
         '</svg>';
 
+      // Customer brief 2026-05-06: every paid order must expose a
+      // "Documentos" button that lists the type-specific evidence
+      // package (signed contract, Stripe receipt, Truora docs for
+      // credit, etc.). Pushed into btnArr so the layout grid groups
+      // it with the other action buttons.
+      var documentosBtn = '<button class="ad-btn sm" style="'+btnStyleBase+';background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;" '+
+        'title="Ver y descargar documentos del pedido (contrato firmado, recibo Stripe, Truora, etc.)" '+
+        'onclick="event.stopPropagation();AD_ventas.showDocumentos('+r.id+')">📁 Documentos</button>';
+
       if(isOrphan){
         var isVksc = r.source === 'subscripciones_credito';
         var needsEdit = isVksc && (!r.modelo || r.modelo==='-' || !r.color || r.color==='-');
@@ -517,9 +596,12 @@ window.AD_ventas = (function(){
         btnArr.push('<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>');
       } else if(asignada){
         var vinFull  = (r.moto_vin||'****');
-        var vinShort = vinFull.length > 10 ? vinFull.slice(-8) : vinFull;
-        motoCell = '<span class="ad-badge green" title="'+esc(vinFull)+'" style="font-family:ui-monospace,Menlo,monospace;">'+esc(vinShort)+'</span>';
+        // Customer brief 2026-05-06: full VIN must be visible, not the
+        // last-8-chars excerpt. Boss couldn't tell different VINs apart
+        // when only the suffix was shown.
+        motoCell = '<span class="ad-badge green" title="'+esc(vinFull)+'" style="font-family:ui-monospace,Menlo,monospace;font-size:10px;white-space:nowrap;">'+esc(vinFull)+'</span>';
         btnArr.push('<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>');
+        btnArr.push(documentosBtn);
         // Reassignment (customer brief 2026-05-04 "where can we reassign
         // a moto"). When a moto is already linked we now show a yellow
         // "Cambiar" button that re-opens the assignment picker. Confirmed
@@ -604,15 +686,16 @@ window.AD_ventas = (function(){
       var n = btnArr.length;
       if (actionsLayout === 'stacked_pago_pendiente') {
         // Special pago-pendiente layout: "Enviar link" full-width on top,
-        // then Sinc + Ver + (icons) below in a 2-col grid.
+        // then Ver + (icons) below in a 2-col grid.
+        // Customer brief 2026-05-06: removed the Sinc button — status is
+        // now refreshed automatically by the global "Actualizar" button
+        // at the top of the page. The standalone per-row sync was
+        // redundant and confusing.
         var iconRow = '';
         // Pull the dossier/contrato icons out of btnArr so we can place
-        // them next to Sinc/Ver in the bottom row.
+        // them next to Ver in the bottom row.
         var iconBtns = btnArr.filter(function(b){ return b.indexOf('descargar-contrato') !== -1 || b.indexOf('descargar-dossier') !== -1; });
         var bottomBtns = [
-          '<button class="ad-btn sm" style="'+btnStyleBase+';background:#0ea5e9;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:4px;" '+
-            'title="Verificar estado real con Stripe" '+
-            'onclick="AD_ventas.syncStripe('+r.id+', this)">'+ICON_REFRESH+' Sinc</button>',
           '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" '+
             'onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>'
         ].concat(iconBtns);
@@ -1111,6 +1194,17 @@ window.AD_ventas = (function(){
       ? '<span style="font-weight:700;color:#0e8f55;">'+String(r.fecha_estimada_entrega).substring(0,10)+'</span>'
       : '<span style="color:#b91c1c;font-size:12px;">Sin definir — asigna punto para capturarla</span>';
     html += fRow('ETA entrega', etaTxt);
+    // Customer brief 2026-05-06 — show the originating credit application
+    // when this order was promoted from preaprobaciones (manual review or
+    // automatic flow). Click goes to the preaprobaciones module pre-filtered
+    // by id so the reviewer can audit the approval that generated this sale.
+    if (r.preaprobacion_id) {
+      var preapHtml = '<a href="javascript:void(0)" '
+                    + 'onclick="window._adFilterHint=\'id:'+r.preaprobacion_id+'\';ADApp.go(\'preaprobaciones\')" '
+                    + 'style="color:var(--ad-primary);font-weight:700;text-decoration:none;">'
+                    + 'Solicitud #'+r.preaprobacion_id+' →</a>';
+      html += fRow('Solicitud predecesora', preapHtml);
+    }
     html += '</div>';
 
     // ── Section: Detalle del crédito (only for enganche/credito) ──
@@ -1239,6 +1333,38 @@ window.AD_ventas = (function(){
     }
     html += '</div>';
 
+    // Customer brief 2026-05-06 (F17): Asignar / Desasignar buttons inline
+    // in the Estatus de moto section. Asignar opens the same picker used
+    // by the Acción column; Desasignar releases the unit back to CEDIS
+    // inventory (cliente_*, pedido_num, stripe_pi cleared on
+    // inventario_motos so it shows up as "disponible" again).
+    var motoEstLow = (r.moto_estado||'').toLowerCase();
+    var canDesasignar = !!r.moto_id && motoEstLow !== 'entregada';
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;">';
+    if (r.moto_id) {
+      html += '<button class="ad-btn sm ghost adReasignarMotoBtn" '
+           +    'data-tx="'+r.id+'" '
+           +    'data-modelo="'+esc(r.modelo||'')+'" '
+           +    'data-color="'+esc(r.color||'')+'" '
+           +    'data-pedido="'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'" '
+           +    'data-moto-id="'+r.moto_id+'" '
+           +    'data-vin="'+esc(r.moto_vin||'')+'">↻ Cambiar moto</button>';
+      if (canDesasignar) {
+        html += '<button class="ad-btn sm ghost adDesasignarMotoBtn" '
+             +    'data-tx="'+r.id+'" '
+             +    'data-moto-id="'+r.moto_id+'" '
+             +    'data-vin="'+esc(r.moto_vin||'')+'" '
+             +    'style="color:#b91c1c;border-color:#fecaca;">Desasignar</button>';
+      }
+    } else {
+      html += '<button class="ad-btn sm primary adAsignarMotoBtn" '
+           +    'data-tx="'+r.id+'" '
+           +    'data-modelo="'+esc(r.modelo||'')+'" '
+           +    'data-color="'+esc(r.color||'')+'" '
+           +    'data-pedido="'+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'">Asignar moto</button>';
+    }
+    html += '</div>';
+
     // ── Section: Servicios adicionales ──
     secIx = 0;
     html += secHead('Servicios adicionales','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>');
@@ -1259,10 +1385,57 @@ window.AD_ventas = (function(){
       openAsignarPuntoOrden(r);
     });
 
+    // Wire F17 — inline Asignar / Cambiar / Desasignar moto buttons.
+    // The same showAsignar / showReasignar functions used by the Acción
+    // column are called here so the picker, confirm-dialog and 409
+    // recovery flow are identical. Desasignar hits the new
+    // desasignar-moto.php endpoint and refreshes the table on success.
+    $('.adAsignarMotoBtn').off('click').on('click', function(){
+      var $b = $(this);
+      ADApp.closeModal();
+      showAsignar($b.data('tx'), $b.data('modelo'), $b.data('color'), $b.data('pedido'));
+    });
+    $('.adReasignarMotoBtn').off('click').on('click', function(){
+      var $b = $(this);
+      ADApp.closeModal();
+      showReasignar($b.data('tx'), $b.data('modelo'), $b.data('color'), $b.data('pedido'), $b.data('moto-id'), $b.data('vin'));
+    });
+    $('.adDesasignarMotoBtn').off('click').on('click', function(){
+      var $b = $(this);
+      var vin = $b.data('vin') || '#'+$b.data('moto-id');
+      desasignarMoto($b.data('tx'), $b.data('moto-id'), vin);
+    });
+
     // Wire "Buscar pago en Stripe" (orders without stripe_pi)
     $('.vtBuscarStripe').off('click').on('click', function(){
       var tid = $(this).data('tid');
       buscarStripePi(tid);
+    });
+  }
+
+  // Customer brief 2026-05-06 (F17): release a moto from an order so
+  // it returns to CEDIS inventory as "disponible". The backend clears
+  // the customer/pedido fields on inventario_motos so the JOIN in
+  // listar.php and the CEDIS panel both reflect the change.
+  function desasignarMoto(transId, motoId, vinLabel){
+    var msg = '¿Desasignar la moto de esta orden?\n\n'
+            + 'VIN: '+vinLabel+'\n\n'
+            + 'La unidad volverá al inventario CEDIS como disponible. '
+            + 'La orden quedará sin moto asignada y podrás asignar otra '
+            + 'cuando lo necesites.';
+    if (!confirm(msg)) return;
+    ADApp.api('ventas/desasignar-moto.php', {
+      transaccion_id: transId,
+      moto_id: motoId
+    }).done(function(r){
+      if (r && r.ok) {
+        ADApp.closeModal();
+        loadData();
+      } else {
+        alert('Error: ' + ((r && r.error) || 'desconocido'));
+      }
+    }).fail(function(x){
+      alert('Error: ' + ((x.responseJSON && x.responseJSON.error) || 'conexión'));
     });
   }
 
@@ -1802,19 +1975,44 @@ window.AD_ventas = (function(){
   var _activeTab = 'todas';
 
   function renderTabs(rows){
-    var counts = {todas:rows.length, completadas:0, en_proceso:0, pendientes:0, pago_pendiente:0, errores:0, extras:0};
+    // Customer brief 2026-05-06: required filter set:
+    //   A) Todas, B) Completado (paid + signed),
+    //   C) Contado / MSI / Crédito (by tipo),
+    //   D) Moto asignada, E) Moto pendiente, F) Pago pendiente.
+    // Added alongside the existing En proceso / Pendientes / Errores
+    // / Con extras tabs so dashboards built on the legacy keys keep
+    // working — no removal, only additions.
+    var counts = {
+      todas:rows.length, completadas:0, en_proceso:0, pendientes:0,
+      pago_pendiente:0, errores:0, extras:0,
+      contado:0, msi:0, credito:0,
+      moto_asignada:0, moto_pendiente:0
+    };
     rows.forEach(function(r){
       var cat = categorizePago(r);
       counts[cat]++;
       if(isPagoPendiente(r)) counts.pago_pendiente++;
       if(r.asesoria_placas || r.seguro_qualitas) counts.extras++;
+      var tp = String(r.tipo||'').toLowerCase();
+      if (tp === 'unico' || tp === 'contado' || tp === 'tarjeta' || /tarjeta de [dc]/i.test(tp)) counts.contado++;
+      else if (tp === 'msi') counts.msi++;
+      else if (tp === 'credito' || tp === 'enganche' || tp === 'parcial') counts.credito++;
+      var pe = String(r.pago_estado||'').toLowerCase();
+      var paidish = (pe === 'pagada' || pe === 'parcial');
+      if (paidish && r.moto_id) counts.moto_asignada++;
+      if (paidish && !r.moto_id) counts.moto_pendiente++;
     });
     var tabs = [
       {key:'todas',          label:'Todas'},
       {key:'completadas',    label:'Completadas'},
+      {key:'contado',        label:'Contado'},
+      {key:'msi',            label:'MSI'},
+      {key:'credito',        label:'Crédito'},
+      {key:'moto_asignada',  label:'Moto asignada'},
+      {key:'moto_pendiente', label:'Moto pendiente'},
+      {key:'pago_pendiente', label:'Pago pendiente'},
       {key:'en_proceso',     label:'En proceso'},
       {key:'pendientes',     label:'Pendientes'},
-      {key:'pago_pendiente', label:'Pago pendiente'},
       {key:'errores',        label:'Errores'},
       {key:'extras',         label:'Con extras'}
     ];
@@ -1863,6 +2061,27 @@ window.AD_ventas = (function(){
     if(_activeTab === 'todas') return rows;
     if(_activeTab === 'extras') return rows.filter(function(r){ return r.asesoria_placas || r.seguro_qualitas; });
     if(_activeTab === 'pago_pendiente') return rows.filter(isPagoPendiente);
+    // Customer brief 2026-05-06: new filter buckets that overlap with
+    // the legacy categorizePago axis. They use different criteria
+    // (tipo de pago, asignación de moto), so they bypass the
+    // categorizePago switch and run their own predicate.
+    if(_activeTab === 'contado') return rows.filter(function(r){
+      var tp = String(r.tipo||'').toLowerCase();
+      return tp === 'unico' || tp === 'contado' || tp === 'tarjeta' || /tarjeta de [dc]/i.test(tp);
+    });
+    if(_activeTab === 'msi')     return rows.filter(function(r){ return String(r.tipo||'').toLowerCase() === 'msi'; });
+    if(_activeTab === 'credito') return rows.filter(function(r){
+      var tp = String(r.tipo||'').toLowerCase();
+      return tp === 'credito' || tp === 'enganche' || tp === 'parcial';
+    });
+    if(_activeTab === 'moto_asignada') return rows.filter(function(r){
+      var pe = String(r.pago_estado||'').toLowerCase();
+      return (pe === 'pagada' || pe === 'parcial') && !!r.moto_id;
+    });
+    if(_activeTab === 'moto_pendiente') return rows.filter(function(r){
+      var pe = String(r.pago_estado||'').toLowerCase();
+      return (pe === 'pagada' || pe === 'parcial') && !r.moto_id;
+    });
     return rows.filter(function(r){ return categorizePago(r) === _activeTab; });
   }
 
@@ -1870,6 +2089,104 @@ window.AD_ventas = (function(){
     return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
   }
   function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : ''; }
+
+  // Customer brief 2026-05-06 group E9: per-order Documentos modal.
+  // Lists every document Voltika is required to keep on file for the
+  // sale, with download links. Different document set per purchase
+  // type — MSI/Contado get the cash-sale package; credit gets the
+  // full Truora + CDC + pagaré bundle.
+  function showDocumentos(rowId){
+    var rows = _lastRows || [];
+    var r = (rows || []).find(function(x){ return x.id == rowId; });
+    if (!r) { alert('Fila no encontrada'); return; }
+
+    var pedido       = r.pedido || '';
+    var pedidoCorto  = r.pedido_corto || ('VK-' + (r.pedido || r.id));
+    var motoId       = r.moto_id || null;
+    var stripePi     = r.stripe_pi || '';
+    var tipo         = String(r.tipo || '').toLowerCase();
+    var isCredito    = ['credito','enganche','parcial','credito-orfano'].indexOf(tipo) >= 0;
+    var fullName     = dedupeName(r.nombre || '');
+
+    var html = '';
+    html += '<div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding-bottom:16px;border-bottom:2px solid var(--ad-border);">';
+    html += '<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#4f46e5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
+    html += '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+    html += '</div>';
+    html += '<div><div style="font-size:18px;font-weight:800;color:var(--ad-navy);">Documentos del pedido</div>';
+    html += '<div style="font-size:12px;color:var(--ad-dim);">'+esc(pedidoCorto)+' · '+esc(fullName||'—')+'</div></div>';
+    html += '</div>';
+
+    var rows_ = [];
+    // Always-available: signed contract PDF (descargar-contrato.php).
+    if (pedido) {
+      rows_.push({
+        title: isCredito ? 'Contrato de financiamiento (firmado)' : 'Contrato de compraventa (firmado)',
+        desc:  'Contrato con datos del cliente, sello de tiempo y firma electrónica.',
+        url:   '/configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(pedido)+'&inline=1&debug=1',
+        icon:  '📄',
+        bg:    '#dbeafe', tx: '#1e40af'
+      });
+    }
+    // Stripe receipt — only useful when there's a real PI.
+    if (stripePi && stripePi.indexOf('pi_') === 0) {
+      rows_.push({
+        title: 'Recibo de Stripe',
+        desc:  'Confirmación de pago oficial enviado al cliente.',
+        url:   'https://dashboard.stripe.com/payments/' + encodeURIComponent(stripePi),
+        icon:  '💳',
+        bg:    '#dcfce7', tx: '#15803d'
+      });
+    }
+    // Defense Dossier (Stripe-dispute evidence pack) — needs moto_id or pedido.
+    if (motoId || pedido) {
+      var dParams = motoId ? ('moto_id='+motoId) : ('pedido='+encodeURIComponent(pedido));
+      rows_.push({
+        title: 'Dossier de Defensa (ZIP)',
+        desc:  'Paquete completo de evidencias (chargeback / PROFECO).',
+        url:   '/configurador/php/descargar-dossier.php?'+dParams+'&format=zip',
+        icon:  '🛡',
+        bg:    '#fffbeb', tx: '#92400e'
+      });
+    }
+    // Credit-only docs.
+    if (isCredito) {
+      rows_.push({
+        title: 'Reporte CDC + Truora',
+        desc:  'Resultado de Círculo de Crédito + verificación Truora (INE, selfie, CURP cross-check).',
+        url:   '/admin/php/preaprobaciones/listar.php?search='+encodeURIComponent(r.telefono||r.email||''),
+        icon:  '🆔',
+        bg:    '#ede9fe', tx: '#5b21b6'
+      });
+    }
+
+    if (!rows_.length) {
+      html += '<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:14px 16px;border-radius:10px;font-size:13px;">'
+            + '⚠ No hay documentos disponibles para este pedido (falta pedido y stripe_pi).'
+            + '</div>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+      rows_.forEach(function(d){
+        html += '<a href="'+d.url+'" target="_blank" rel="noopener" '
+             +    'style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:'+d.bg+';border:1px solid '+d.tx+'40;border-radius:10px;text-decoration:none;color:'+d.tx+';transition:transform .12s;" '
+             +    'onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">'
+             +    '<div style="font-size:24px;">'+d.icon+'</div>'
+             +    '<div style="flex:1;">'
+             +      '<div style="font-weight:700;font-size:14px;">'+esc(d.title)+'</div>'
+             +      '<div style="font-size:12px;opacity:.85;">'+esc(d.desc)+'</div>'
+             +    '</div>'
+             +    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>'
+             + '</a>';
+      });
+      html += '</div>';
+    }
+
+    html += '<div style="margin-top:18px;text-align:right;">'
+         +    '<button class="ad-btn ghost" onclick="ADApp.closeModal()">Cerrar</button>'
+         + '</div>';
+
+    ADApp.modal(html);
+  }
 
   // Recuperar — promueve una orden huérfana (transacciones_errores) o
   // reconstruye desde Stripe PI a la tabla `transacciones`.
@@ -2238,5 +2555,5 @@ window.AD_ventas = (function(){
     });
   }
 
-  return { render:render, showAsignar:showAsignar, showReasignar:showReasignar, doAsignar:doAsignar, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink, enviarLinkFirma:enviarLinkFirma, syncStripe:syncStripe };
+  return { render:render, showAsignar:showAsignar, showReasignar:showReasignar, doAsignar:doAsignar, desasignarMoto:desasignarMoto, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink, enviarLinkFirma:enviarLinkFirma, syncStripe:syncStripe, openAsignarPuntoOrden:openAsignarPuntoOrden, showDocumentos:showDocumentos };
 })();

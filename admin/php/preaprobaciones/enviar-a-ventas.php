@@ -85,6 +85,11 @@ try {
     try {
         $pdo->exec("ALTER TABLE transacciones ADD UNIQUE INDEX uniq_stripe_pi (stripe_pi)");
     } catch (Throwable $e) {}
+    // Customer brief 2026-05-06 — every transacción created from a
+    // preaprobacion must carry the predecessor id so the Ventas Ver
+    // modal can show the originating request. Idempotent ALTER.
+    try { $pdo->exec("ALTER TABLE transacciones ADD COLUMN preaprobacion_id INT NULL"); } catch (Throwable $e) {}
+    try { $pdo->exec("ALTER TABLE transacciones ADD INDEX idx_preap (preaprobacion_id)"); } catch (Throwable $e) {}
     // Use a synthetic stripe_pi placeholder so the UNIQUE constraint is
     // honored. Real Stripe PI takes its place when the customer actually
     // pays via the link (create-payment-intent.php replaces this row).
@@ -93,8 +98,8 @@ try {
     $insStmt = $pdo->prepare("INSERT IGNORE INTO transacciones
             (nombre, email, telefono, modelo, color, ciudad, estado, cp,
              tpago, precio, total, freg, stripe_pi, msi_meses, pago_estado, environment,
-             notas_admin)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, 0, 'pendiente', ?, ?)");
+             notas_admin, preaprobacion_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, 0, 'pendiente', ?, ?, ?)");
     $insStmt->execute([
         $nombre,
         $email,
@@ -110,6 +115,7 @@ try {
         $synthPi,
         defined('APP_ENV') ? APP_ENV : 'test',
         'Promovido manualmente desde Preaprobacion #' . $id,
+        $id,                         // preaprobacion_id
     ]);
     $newTxnId = (int)$pdo->lastInsertId();
 

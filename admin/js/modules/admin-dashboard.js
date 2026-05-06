@@ -23,26 +23,35 @@ window.AD_dashboard = (function(){
   }
 
   function paint(k){
+    // Customer brief 2026-05-06: every KPI card must be clickable and
+    // navigate to the corresponding screen. Each card declares a
+    // route (and optional filter hint stashed on window so the target
+    // module can pre-apply it).
     var kpis = [
-      {label:'Ventas hoy', value:k.ventas_hoy, cls:'green'},
-      {label:'Ventas semana', value:k.ventas_semana, cls:'green'},
-      {label:'Cobrado hoy', value:ADApp.money(k.cobrado_hoy), cls:'green'},
-      {label:'Ingresos esperados esta semana', value:ADApp.money(k.flujo_esperado), cls:'blue'},
-      {label:'Cartera al corriente', value:k.cartera_corriente, cls:'green'},
-      {label:'Cartera vencida', value:k.cartera_vencida, cls:k.cartera_vencida>0?'red':'green'},
-      {label:'Inventario disponible', value:k.inventario_disponible, cls:'blue'},
-      {label:'Apartadas por pago', value:k.unidades_apartadas, cls:'yellow'},
-      {label:'Pendientes de envío', value:k.en_transito, cls:'yellow'},
-      {label:'Pendientes de entrega a clientes', value:k.pendientes_entrega_clientes, cls:'yellow'},
-      {label:'Placas pendientes', value:k.placas_pendientes||0, cls:(k.placas_pendientes||0)>0?'yellow':'green'},
-      {label:'Seguros pendientes', value:k.seguro_pendientes||0, cls:(k.seguro_pendientes||0)>0?'yellow':'green'},
+      {label:'Ventas hoy',                     value:k.ventas_hoy,                  cls:'green',  route:'ventas',     filter:'today'},
+      {label:'Ventas semana',                  value:k.ventas_semana,               cls:'green',  route:'ventas',     filter:'week'},
+      {label:'Cobrado hoy',                    value:ADApp.money(k.cobrado_hoy),    cls:'green',  route:'pagos',      filter:'today_paid'},
+      {label:'Ingresos esperados esta semana', value:ADApp.money(k.flujo_esperado), cls:'blue',   route:'pagos',      filter:'week_expected'},
+      {label:'Cartera al corriente',           value:k.cartera_corriente,           cls:'green',  route:'cobranza',   filter:'corriente'},
+      {label:'Cartera vencida',                value:k.cartera_vencida,             cls:k.cartera_vencida>0?'red':'green', route:'cobranza', filter:'vencida'},
+      {label:'Inventario disponible',          value:k.inventario_disponible,       cls:'blue',   route:'inventario', filter:'disponible'},
+      {label:'Apartadas por pago',             value:k.unidades_apartadas,          cls:'yellow', route:'ventas',     filter:'pago_pendiente'},
+      {label:'Pendientes de envío',            value:k.en_transito,                 cls:'yellow', route:'envios',     filter:'pendiente'},
+      {label:'Pendientes de entrega a clientes', value:k.pendientes_entrega_clientes, cls:'yellow', route:'entregas',  filter:'pendiente'},
+      {label:'Placas pendientes',              value:k.placas_pendientes||0,        cls:(k.placas_pendientes||0)>0?'yellow':'green', route:'ventas', filter:'placas_pendientes'},
+      {label:'Seguros pendientes',             value:k.seguro_pendientes||0,        cls:(k.seguro_pendientes||0)>0?'yellow':'green', route:'ventas', filter:'seguro_pendientes'},
     ];
-    // Environment badge hidden in customer-facing dashboard — configurable via
-    // the APP_ENV .env var. Re-enable below if you want a visible indicator.
     var envBadge = '';
     var html = '<div class="ad-h1">Dashboard '+envBadge+'</div><div class="ad-kpis">';
     kpis.forEach(function(kpi){
-      html += '<div class="ad-kpi"><div class="label">'+kpi.label+'</div><div class="value '+kpi.cls+'">'+kpi.value+'</div></div>';
+      // Make the whole KPI card a clickable button. Stash the filter
+      // hint on window so the target module reads it on first render.
+      var clickAttr = 'onclick="window._adFilterHint='+JSON.stringify(kpi.filter || '')+
+                      ';ADApp.go(\''+(kpi.route||'dashboard')+'\')" '+
+                      'style="cursor:pointer;transition:transform .12s, box-shadow .12s;" '+
+                      'onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 18px rgba(12,35,64,.12)\'" '+
+                      'onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'\'"';
+      html += '<div class="ad-kpi" '+clickAttr+'><div class="label">'+kpi.label+'</div><div class="value '+kpi.cls+'">'+kpi.value+'</div></div>';
     });
     html += '</div>';
 

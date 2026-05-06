@@ -153,6 +153,36 @@ if (!$fechaEstimada && function_exists('skydropxCotizar')) {
     } catch (Throwable $e) { error_log('skydropx cotizar: ' . $e->getMessage()); }
 }
 
+// Customer brief 2026-05-06 group H: only ONE active shipping order per
+// VIN. When reassigning a moto to a different point, prior shipping
+// rows for the same moto get superseded and must be marked as
+// "Completado no exitoso" so the Envíos panel doesn't list them as
+// duplicates. The new shipment is the single source of truth.
+try {
+    $chk = $pdo->prepare("SELECT id FROM envios WHERE moto_id = ?
+                          AND estado IN ('lista_para_enviar','en_transito','enviado')");
+    $chk->execute([$motoId]);
+    $oldIds = array_map('intval', array_column($chk->fetchAll(PDO::FETCH_ASSOC), 'id'));
+    if ($oldIds) {
+        $placeholders = implode(',', array_fill(0, count($oldIds), '?'));
+        $upd = $pdo->prepare("UPDATE envios SET estado='completado_no_exitoso', fmod=NOW()
+                               WHERE id IN ($placeholders)");
+        $upd->execute($oldIds);
+        adminLog('envio_supersede', ['moto_id' => $motoId, 'replaced' => $oldIds]);
+    }
+} catch (Throwable $e) {
+    // If `fmod` doesn't exist on envios, retry without it.
+    try {
+        if ($oldIds ?? false) {
+            $placeholders = implode(',', array_fill(0, count($oldIds), '?'));
+            $pdo->prepare("UPDATE envios SET estado='completado_no_exitoso' WHERE id IN ($placeholders)")
+               ->execute($oldIds);
+        }
+    } catch (Throwable $e2) {
+        error_log('envios supersede: ' . $e2->getMessage());
+    }
+}
+
 // Create envio
 $ins = $pdo->prepare("INSERT INTO envios
     (moto_id, punto_destino_id, estado, envio_tipo, fecha_estimada_llegada, enviado_por, notas, tracking_number, carrier)

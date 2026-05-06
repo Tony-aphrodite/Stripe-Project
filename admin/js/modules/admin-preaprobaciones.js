@@ -224,10 +224,23 @@ window.AD_preaprobaciones = (function(){
     var status     = String(row.status || '').toUpperCase();
     var scoreNum   = Number(row.score || row.synth_score || 0);
     var pldBlock   = (row.buro_pld_match == 1) || (row.circulo_source === 'pld_match');
+    // Customer brief 2026-05-06 — Truora rejection is now a hard gate on
+    // credit approval, just like CDC score. truora_status='failure'/'rejected'
+    // (failed Truora review) blocks Aprobar/9 MSI; pending/in_progress lets
+    // the admin see the warning but doesn't block until Truora has a verdict.
+    var truoraStatus = String(row.truora_status || '').toLowerCase();
+    var truoraRejected = (truoraStatus === 'failure' || truoraStatus === 'rejected' || truoraStatus === 'denied');
     var risk = 'safe';
     if (pldBlock) risk = 'pld_block';
-    else if (status === 'NO_VIABLE' || hasDPD90 || pti > 0.50) risk = 'danger';
-    else if (status === 'CONDICIONAL' || pti > 0.35) risk = 'warn';
+    else if (truoraRejected || status === 'NO_VIABLE' || hasDPD90 || pti > 0.50) risk = 'danger';
+    else if (status === 'CONDICIONAL' || status === 'CONDICIONAL_ESTIMADO' || pti > 0.35) risk = 'warn';
+
+    // CDC unreachable case (estimado source, no PLD): force yellow banner
+    // and override the danger classification so the admin sees the right
+    // recommendation ("Aprobar con condiciones conservadoras o reintentar
+    // consulta") instead of a NO_VIABLE-style red flag.
+    var cdcUnreachable = (row.circulo_source === 'estimado' && !pldBlock && !truoraRejected && !hasDPD90);
+    if (cdcUnreachable && risk === 'danger') risk = 'warn';
 
     var theme = ({
       safe:      { hbg:'#e8f5e8', htext:'#1a6b1a', haccent:'#1a6b1a', headerLabel:'PLAZO MÁXIMO', headerLabelColor:'#1a4b1a' },
@@ -538,11 +551,15 @@ window.AD_preaprobaciones = (function(){
 
     // ── 8. Decision action buttons ───────────────────────────────────
     // Smart disable: PLD match locks everything except Rechazar; DPD90
-    // active or NO_VIABLE greys out approve+MSI options. Admin can
-    // still override the system but visual signal mirrors recommendation.
-    var canApprove = !pldBlock && !hasDPD90 && status !== 'NO_VIABLE' && pti < 0.50;
+    // active, NO_VIABLE, or Truora rejected greys out approve+MSI options.
+    // Customer brief 2026-05-06 (Carlos Ricardo Sanchez case): Truora
+    // rejection is a HARD prerequisite — credit cannot be approved if
+    // identity verification failed. Mirrors the bureau-score gate.
+    // Admin can still offer contado/9MSI (those don't depend on credit
+    // approval) but plazos require Truora green.
+    var canApprove = !pldBlock && !hasDPD90 && !truoraRejected && status !== 'NO_VIABLE' && pti < 0.50;
     var canContado = !pldBlock;        // PLD blocks contado offers too
-    var canMSI     = canApprove;       // MSI requires healthy file + no PLD
+    var canMSI     = canApprove;       // MSI requires healthy file + no PLD + Truora ok
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 8px;background:#fafafa;border-radius:8px;margin:8px;">';
     html += decisionBtn('apDecApprove', '✓ Aprobar Plazos',  '#1a6b1a', canApprove);
     html += decisionBtn('apDecContado', '$ Ofrecer Contado', '#1a4b7a', canContado);
@@ -986,6 +1003,28 @@ window.AD_preaprobaciones = (function(){
     }
     if (scoreNum > 0 && scoreNum < 500) {
       bullets.push({ label: 'Score '+scoreNum, detail: 'morosidad significativa en historial' });
+    }
+
+    // Customer brief 2026-05-06 — Truora rejection: explicit hard block.
+    var truoraStatus = String(row.truora_status || '').toLowerCase();
+    var truoraRejected = (truoraStatus === 'failure' || truoraStatus === 'rejected' || truoraStatus === 'denied');
+    if (truoraRejected) {
+      return {
+        summary: 'Verificación de identidad rechazada por Truora. No se puede aprobar el crédito.',
+        bullets: [{ label: 'Truora '+truoraStatus, detail: 'la identidad del solicitante no fue verificada — la aprobación de crédito requiere verificación exitosa' }],
+        action: 'Rechazar la solicitud o pedir al cliente que reintente la verificación. No proceder con aprobación de crédito mientras Truora siga en estado rechazado.'
+      };
+    }
+
+    // Customer brief 2026-05-06 — CDC unreachable (source='estimado'):
+    // the algorithm fell back to PTI-only. Treat as conservative
+    // CONDITIONAL — admin should approve with high enganche or retry CDC.
+    if (row.circulo_source === 'estimado') {
+      return {
+        summary: 'No se pudo consultar Círculo de Crédito.',
+        bullets: [{ label: 'CDC sin respuesta', detail: 'el algoritmo cayó al fallback PTI-only, no hay score real' }],
+        action: 'Aprobar con condiciones conservadoras (50% enganche, 12 meses) o reintentar consulta.'
+      };
     }
 
     if (risk === 'danger') {
