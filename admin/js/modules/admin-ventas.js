@@ -1173,7 +1173,7 @@ window.AD_ventas = (function(){
     secIx = 0;
     html += secHead('Cliente','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>');
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;">';
-    html += fRow('Nombre', r.nombre||'—');
+    html += fRow('Nombre', dedupeName(r.nombre||'—'));
     html += fRow('Email', r.email ? '<a href="mailto:'+r.email+'" style="color:var(--ad-primary);text-decoration:none;">'+r.email+'</a>' : '—');
     html += fRow('Teléfono', r.telefono||'—');
     html += '</div>';

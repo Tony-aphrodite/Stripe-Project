@@ -211,7 +211,33 @@ window.ADApp = (function(){
     }).always(function() { $b.prop('disabled', false).text('Cambiar contraseña'); });
   }
 
+  // Customer brief 2026-05-06 (B6): legacy data has names like
+  // "Alan Aldape Loarca Aldape Loarca" because the configurador used to
+  // concat (nombre + apellido_paterno + apellido_materno) on top of a
+  // nombre that already contained the apellidos. dedupeName collapses
+  // any trailing repeat — runs iteratively so 4× or 3× repeats also
+  // collapse, and tries n=1 too so single-token doublings ("Prueba
+  // Prueba Prueba") get cleaned up. Used by admin-ventas, admin-pagos,
+  // and any other module that prints a customer name.
+  function dedupeName(name){
+    if (!name) return name;
+    var cur = String(name).trim().replace(/\s+/g, ' ');
+    var prev;
+    do {
+      prev = cur;
+      var p = cur.split(' ');
+      if (p.length < 2) break;
+      var maxN = Math.floor(p.length / 2);
+      for (var n = maxN; n >= 1; n--) {
+        var tail = p.slice(-n).join(' ').toLowerCase();
+        var mid  = p.slice(-n*2, -n).join(' ').toLowerCase();
+        if (tail === mid) { cur = p.slice(0, -n).join(' '); break; }
+      }
+    } while (prev !== cur);
+    return cur;
+  }
+
   return { start:start, api:api, render:render, go:go, modal:modal, closeModal:closeModal,
            state:state, showApp:showApp, badgeEstado:badgeEstado, money:money,
-           canWrite:canWrite, isAdmin:isAdmin };
+           canWrite:canWrite, isAdmin:isAdmin, dedupeName:dedupeName };
 })();

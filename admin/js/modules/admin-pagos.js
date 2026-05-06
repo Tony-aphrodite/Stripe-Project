@@ -68,7 +68,7 @@ window.AD_pagos = (function(){
     (r.pagos||[]).forEach(function(p){
       html += '<tr>'+
         '<td>'+(p.pedido_num||p.id)+'</td>'+
-        '<td>'+p.nombre+'</td>'+
+        '<td>'+ADApp.dedupeName(p.nombre||'')+'</td>'+
         '<td>'+p.modelo+' '+p.color+'</td>'+
         '<td>'+tipoBadgeHtml(p.tipo_pago)+'</td>'+
         '<td>'+ADApp.money(p.monto)+'</td>'+
@@ -172,7 +172,7 @@ window.AD_pagos = (function(){
       html += sectionHeader('Información de la orden', '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>');
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:24px;">';
       html += fieldRow('Pedido', o.pedido ? 'VK-'+o.pedido : o.id||'—', 0);
-      html += fieldRow('Cliente', o.nombre||'—', 1);
+      html += fieldRow('Cliente', ADApp.dedupeName(o.nombre||'—'), 1);
       html += fieldRow('Email', o.email||'—', 2);
       html += fieldRow('Teléfono', o.telefono||'—', 3);
       // Separate Modelo / Color rows so legacy rows with multi-word modelo
