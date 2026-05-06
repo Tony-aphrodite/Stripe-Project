@@ -122,8 +122,33 @@ if ($isPreview) {
 $precio       = (float)($row['precio_contado'] ?? 0);
 $enganche     = $precio * $engPct;
 $financiado   = $precio - $enganche;
-$mensual      = $plazoMeses > 0 ? $financiado / $plazoMeses : 0;
-$semanal      = $mensual / 4.33;
+
+// Customer brief 2026-05-06 (NEW4): use the same PMT formula that
+// VkCalculadora.calcular and enviar-oferta-personalizada.php use.
+// Previous code did naive financiado/plazoMeses, which produced
+// $1,005/month for a $36,195 36-month loan instead of the correct
+// $2,401/month — customer landings then mismatched the offer email
+// and the Solicitudes preview, making the offer look fraudulently
+// cheap and breaking cobranza reconciliation. Verified $109,900 @ 30%
+// / 12 months → $2,063/week against client's Excel.
+$tasaAnual         = 0.60;
+$pagosPorAno       = 52;
+$iva               = 0.16;
+$tasaPeriodoSinIVA = $tasaAnual / $pagosPorAno;
+$tasaPeriodoConIVA = $tasaPeriodoSinIVA * (1 + $iva);
+$numeroPagos       = (int) round($plazoMeses * ($pagosPorAno / 12));
+
+$semanal = 0.0;
+if ($numeroPagos > 0 && $financiado > 0) {
+    if ($tasaPeriodoConIVA <= 0) {
+        $semanal = $financiado / $numeroPagos;
+    } else {
+        $r = $tasaPeriodoConIVA;
+        $n = $numeroPagos;
+        $semanal = $financiado * $r / (1 - pow(1 + $r, -$n));
+    }
+}
+$mensual = $semanal * ($pagosPorAno / 12); // 4.3333…
 
 // ── State the SPA needs to honour the locked terms ────────────────────────
 // Same persistence format as configurador.js (vk_configurador_state_v1
