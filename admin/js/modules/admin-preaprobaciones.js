@@ -277,10 +277,15 @@ window.AD_preaprobaciones = (function(){
           + '<div style="font-size:10px;letter-spacing:.5px;color:'+theme.headerLabelColor+';">SCORE</div></div>';
     html += '</div></div>';
 
-    // Identity strip
+    // Identity strip — when CDC was unreachable we override the stored
+    // NO_VIABLE label with a "CONDICIONAL (CDC sin respuesta)" pill so
+    // the admin doesn't see contradictory cues (yellow banner above
+    // saying "approve with conservative terms" while the strip still
+    // shouts NO_VIABLE in red).
     html += '<div style="background:#fafafa;padding:10px 16px;font-size:12px;color:#666;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:0 -20px;">';
     html += '<div><strong style="color:#333">'+esc(fullName)+'</strong> · #'+row.id+'</div>';
-    html += '<div>Status: <strong style="color:'+theme.haccent+'">'+esc(row.status||'—')+'</strong></div>';
+    var statusLabel = cdcUnreachable ? 'CONDICIONAL (CDC sin respuesta)' : (row.status || '—');
+    html += '<div>Status: <strong style="color:'+theme.haccent+'">'+esc(statusLabel)+'</strong></div>';
     html += '</div>';
 
     // ── 2. Indicadores Críticos ───────────────────────────────────────
@@ -557,7 +562,17 @@ window.AD_preaprobaciones = (function(){
     // identity verification failed. Mirrors the bureau-score gate.
     // Admin can still offer contado/9MSI (those don't depend on credit
     // approval) but plazos require Truora green.
-    var canApprove = !pldBlock && !hasDPD90 && !truoraRejected && status !== 'NO_VIABLE' && pti < 0.50;
+    //
+    // Customer brief 2026-05-06 NEW1 (Guillermo Solis Sansores #47):
+    // when CDC is unreachable (circulo_source='estimado'), treat the case
+    // as CONDITIONAL — Aprobar Plazos must be enabled regardless of the
+    // stored NO_VIABLE status, because the rejection was caused by a CDC
+    // outage, not by the applicant's credit profile. The recomendation
+    // panel above (yellow banner) already routes the admin toward
+    // conservative terms (50% enganche, 12 meses); the buttons must
+    // match that recommendation rather than the stale DB status.
+    var statusBlocks = (status === 'NO_VIABLE') && !cdcUnreachable;
+    var canApprove = !pldBlock && !hasDPD90 && !truoraRejected && !statusBlocks && pti < 0.50;
     var canContado = !pldBlock;        // PLD blocks contado offers too
     var canMSI     = canApprove;       // MSI requires healthy file + no PLD + Truora ok
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 8px;background:#fafafa;border-radius:8px;margin:8px;">';
