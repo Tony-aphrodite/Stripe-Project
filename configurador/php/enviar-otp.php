@@ -55,6 +55,47 @@ if (strlen($telefono) < 10) {
     exit;
 }
 
+// ── Test-mode bypass (customer brief 2026-05-06) ─────────────────────────────
+// Whitelisted test phones get a fixed OTP code without calling SMSMasivos.
+// Two layers of protection so this can never accidentally fire in prod:
+//   1. Phone must be in the explicit whitelist below, AND
+//   2. EITHER APP_ENV !== 'production' OR env(VOLTIKA_OTP_TEST_MODE)='1'
+// Production deployments without the test-mode env var ignore this branch
+// entirely and fall through to the real SMSMasivos pipeline. The fixed
+// code (123456) is stored in $_SESSION just like a real one so
+// verificar-otp.php's existing comparison logic accepts it unchanged.
+$TEST_PHONES = [
+    '5500000000', '5500000001', '5500000002',
+    '5500000003', '5500000004', '5500000005',
+];
+$TEST_OTP_CODE = '123456';
+$isTestPhone = in_array($telefono, $TEST_PHONES, true);
+$envAllowsTest = (defined('APP_ENV') ? APP_ENV : 'test') !== 'production'
+              || getenv('VOLTIKA_OTP_TEST_MODE') === '1';
+if ($isTestPhone && $envAllowsTest) {
+    session_start();
+    $_SESSION['otp_code']        = $TEST_OTP_CODE;
+    $_SESSION['otp_phone']       = $telefono;
+    $_SESSION['otp_expires']     = time() + 600;
+    $_SESSION['otp_send_count']  = (int)($_SESSION['otp_send_count'] ?? 0) + 1;
+    // Also write the file backup so verificar-otp.php's fallback path
+    // (which reads /otp_temp/<sha256>.json) accepts the fixed code.
+    $dir = __DIR__ . '/otp_temp';
+    if (!is_dir($dir)) @mkdir($dir, 0777, true);
+    @file_put_contents(
+        $dir . '/' . hash('sha256', $telefono) . '.json',
+        json_encode(['codigo' => $TEST_OTP_CODE, 'expira' => time() + 600, 'telefono' => $telefono]),
+        LOCK_EX
+    );
+    echo json_encode([
+        'status'    => 'sent',
+        'message'   => 'Modo test activo — usa el código fijo.',
+        'test_mode' => true,
+        'testCode'  => $TEST_OTP_CODE,
+    ]);
+    exit;
+}
+
 // ── Start session and reuse existing code if still valid ─────────────────────
 session_start();
 $existingCode  = $_SESSION['otp_code']    ?? null;
