@@ -614,13 +614,13 @@ window.AD_ventas = (function(){
         }
       } else {
         motoCell = '<span class="ad-badge red">Sin asignar</span>'+stockInfo;
+        var peLow = (r.pago_estado||'').toLowerCase();
+        var tpLow = (r.tipo||r.tpago||'').toLowerCase();
+        var isCreditFamLow = ['credito','credito-orfano','enganche','parcial'].indexOf(tpLow) >= 0;
+        var orderIsPaid = (peLow === 'pagada' || peLow === 'aprobada' || peLow === 'approved' || peLow === 'paid')
+                       || (isCreditFamLow && peLow === 'parcial');
         if(ADApp.canWrite()){
-          var pe = (r.pago_estado||'').toLowerCase();
-          var tp = (r.tipo||r.tpago||'').toLowerCase();
-          var isCreditFam = ['credito','credito-orfano','enganche','parcial'].indexOf(tp) >= 0;
-          var canAssign = (pe === 'pagada' || pe === 'aprobada' || pe === 'approved' || pe === 'paid')
-                       || (isCreditFam && pe === 'parcial');
-          if (canAssign) {
+          if (orderIsPaid) {
             btnArr.push('<button class="ad-btn primary" style="'+btnStyleBase+'" '+
                         'onclick="AD_ventas.showAsignar('+r.id+',\''+esc(r.modelo)+'\',\''+esc(r.color)+'\',\''+(r.pedido_corto||'VK-'+(r.pedido||r.id))+'\')">Asignar</button>');
           } else if (r.stripe_pi) {
@@ -632,6 +632,15 @@ window.AD_ventas = (function(){
         }
         if (actionsLayout !== 'stacked_pago_pendiente') {
           btnArr.push('<button class="ad-btn sm ghost" style="'+btnStyleBase+'" onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>');
+        }
+        // Customer brief 2026-05-06 (E9): Documentos must be reachable for
+        // every paid order, regardless of whether a moto is currently
+        // assigned. Without this branch, desasignar/cambiar-moto removes
+        // the order from the asignada path and the Documentos button
+        // disappears even though the contract / receipt / dossier are
+        // still attached to the order.
+        if (orderIsPaid && actionsLayout !== 'stacked_pago_pendiente') {
+          btnArr.push(documentosBtn);
         }
       }
 
