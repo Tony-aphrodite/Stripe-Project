@@ -392,6 +392,25 @@ try {
 // ── 10. actas_entrega (delivery acta for documentos) ────────────────
 try {
     if ($cid) {
+        // Ensure the table exists — older installs may not have it.
+        // documentos/lista.php queries actas_entrega.cliente_id + freg, so
+        // those are the minimum columns needed.
+        if ($run) {
+            try {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS actas_entrega (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    cliente_id INT NULL,
+                    moto_id INT NULL,
+                    transaccion_id INT NULL,
+                    firma_data_url MEDIUMTEXT NULL,
+                    ip VARCHAR(64) NULL,
+                    user_agent VARCHAR(255) NULL,
+                    freg DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_cliente (cliente_id),
+                    INDEX idx_moto (moto_id)
+                )");
+            } catch (Throwable $e) {}
+        }
         $stmt = $pdo->prepare("SELECT id FROM actas_entrega WHERE cliente_id = ? ORDER BY id DESC LIMIT 1");
         $stmt->execute([$cid]);
         if ($stmt->fetchColumn()) {
@@ -409,7 +428,7 @@ try {
                     $ph = implode(',', array_fill(0, count($f), '?'));
                     $pdo->prepare("INSERT INTO actas_entrega (".implode(',', $f).") VALUES ($ph)")->execute($v);
                     $log[] = "actas_entrega: creado";
-                } catch (Throwable $e) { $log[] = "actas_entrega (table missing): " . $e->getMessage(); }
+                } catch (Throwable $e) { $log[] = "actas_entrega INSERT: " . $e->getMessage(); }
             }
         }
     }
