@@ -43,15 +43,22 @@ window.AD_dashboard = (function(){
     ];
     var envBadge = '';
     var html = '<div class="ad-h1">Dashboard '+envBadge+'</div><div class="ad-kpis">';
-    kpis.forEach(function(kpi){
-      // Make the whole KPI card a clickable button. Stash the filter
-      // hint on window so the target module reads it on first render.
-      var clickAttr = 'onclick="window._adFilterHint='+JSON.stringify(kpi.filter || '')+
-                      ';ADApp.go(\''+(kpi.route||'dashboard')+'\')" '+
-                      'style="cursor:pointer;transition:transform .12s, box-shadow .12s;" '+
-                      'onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 18px rgba(12,35,64,.12)\'" '+
-                      'onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'\'"';
-      html += '<div class="ad-kpi" '+clickAttr+'><div class="label">'+kpi.label+'</div><div class="value '+kpi.cls+'">'+kpi.value+'</div></div>';
+    kpis.forEach(function(kpi, idx){
+      // Make the whole KPI card a clickable button. Use data-* attributes
+      // (not inline onclick with JSON.stringify — that injected double
+      // quotes into a double-quoted HTML attribute and broke parsing on
+      // every card with a "Uncaught SyntaxError: Unexpected end of input").
+      // A delegated jQuery handler below reads the data attributes and
+      // routes/sets the filter hint.
+      html += '<div class="ad-kpi adKpiCard" '
+           +    'data-route="'+(kpi.route||'dashboard')+'" '
+           +    'data-filter="'+(kpi.filter||'').replace(/"/g,'&quot;')+'" '
+           +    'style="cursor:pointer;transition:transform .12s, box-shadow .12s;" '
+           +    'onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 18px rgba(12,35,64,.12)\'" '
+           +    'onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'\'">'
+           +    '<div class="label">'+kpi.label+'</div>'
+           +    '<div class="value '+kpi.cls+'">'+kpi.value+'</div>'
+           +  '</div>';
     });
     html += '</div>';
 
@@ -82,6 +89,14 @@ window.AD_dashboard = (function(){
     });
     html += '</div>';
     ADApp.render(html);
+
+    // KPI card click handler — uses data-route + data-filter set in render.
+    // jQuery delegation off the document so it survives re-renders.
+    $(document).off('click.adKpi').on('click.adKpi', '.adKpiCard', function(){
+      var $c = $(this);
+      window._adFilterHint = $c.data('filter') || '';
+      ADApp.go($c.data('route') || 'dashboard');
+    });
   }
 
   return { render:render };
