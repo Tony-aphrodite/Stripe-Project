@@ -13,9 +13,24 @@ window.VK_documentos = (function(){
   // and must always be downloadable).
   var DOCS_PAYMENT_TYPES = ['recibo', 'comprobantes', 'comprobante_contado'];
 
-  function isProximamente(tipo) {
+  // Customer brief 2026-05-07 (item 14): "be sure all documents are
+  // locked until can be loaded after from 'Documentos' screen in
+  // dashboard". The original soft-launch toggle locked every non-
+  // payment doc globally, even after an admin uploaded a real PDF
+  // from the admin Documentos screen. Now isProximamente accepts the
+  // doc itself and returns false if the admin has flagged it
+  // available — that way admin upload UNLOCKS it for the specific
+  // customer, while the rest stay locked. Admin can also block again
+  // by setting disponible=false (or removing the row).
+  function isProximamente(tipo, doc) {
     if (!DOCS_PROXIMAMENTE_MODE) return false;
-    return DOCS_PAYMENT_TYPES.indexOf(tipo) === -1;
+    // Payment-related docs are always available regardless of mode.
+    if (DOCS_PAYMENT_TYPES.indexOf(tipo) !== -1) return false;
+    // If admin uploaded a document for this specific cliente+tipo
+    // (doc.disponible flipped to true), bypass the lock so the
+    // customer can download it.
+    if (doc && doc.disponible) return false;
+    return true;
   }
 
   // ── Document metadata for CREDIT customers ──────────────────────
@@ -126,7 +141,7 @@ window.VK_documentos = (function(){
 
   function badgeFor(doc){
     var t = doc.tipo;
-    if (isProximamente(t)) return '<span class="vk-doc-badge gray">Próximamente</span>';
+    if (isProximamente(t, doc)) return '<span class="vk-doc-badge gray">Próximamente</span>';
     if(t==='contrato')     return doc.disponible ? '<span class="vk-doc-badge green">Firmado digitalmente</span>' : '<span class="vk-doc-badge gray">Pendiente</span>';
     if(t==='acta_entrega') return doc.disponible ? '<span class="vk-doc-badge green">Confirmada</span>'           : '<span class="vk-doc-badge gray">Pendiente</span>';
     if(t==='manual')       return doc.disponible ? '<span class="vk-doc-badge green">Disponible</span>'           : '<span class="vk-doc-badge gray">Pendiente</span>';
@@ -197,7 +212,9 @@ window.VK_documentos = (function(){
     for(var i=0;i<keys.length;i++){
       var k = keys[i];
       var d = docs[k];
-      var prox = isProximamente(k);
+      // Pass the doc object so admin-uploaded files (d.available=true)
+      // bypass the global PROXIMAMENTE lock per customer.
+      var prox = isProximamente(k, d);
       var isAvail = !prox && (d.available || entregado);
       var badge = prox ? 'PRÓXIMAMENTE' : (isAvail ? 'DISPONIBLE' : d.badge);
       var badgeCol = prox ? 'gray' : (isAvail ? 'green' : d.badgeColor);
@@ -254,7 +271,7 @@ window.VK_documentos = (function(){
     $('[data-tipo]').on('click', function(){ _openDoc($(this).data('tipo')); });
     $('#vkDownloadAll').on('click',function(){
       var avail = keys.filter(function(k){
-        if (isProximamente(k)) return false;
+        if (isProximamente(k, DOC_META_CONTADO[k])) return false;
         return DOC_META_CONTADO[k].available || entregado;
       });
       avail.forEach(_openDoc);
@@ -287,9 +304,11 @@ window.VK_documentos = (function(){
 
     var meta = DOC_META_CREDITO.carta_factura;
 
-    // During proximamente mode, force the highlighted carta_factura into the
-    // locked state regardless of its real availability — payment-only override.
-    if (carta && isProximamente('carta_factura')) {
+    // During proximamente mode, force the highlighted carta_factura into
+    // the locked state when the admin has not yet uploaded one. The
+    // updated isProximamente respects carta.disponible so admin upload
+    // bypasses the lock for that specific customer.
+    if (carta && isProximamente('carta_factura', carta)) {
       carta.disponible = false;
     }
 
@@ -314,7 +333,7 @@ window.VK_documentos = (function(){
             '</div>'+
           '</div>';
       } else {
-        var isProx = isProximamente('carta_factura');
+        var isProx = isProximamente('carta_factura', carta);
         var lockedBadgeLabel = isProx ? 'PRÓXIMAMENTE' : 'NO DISPONIBLE';
         cartaHtml =
           '<div class="vk-doc-highlight locked">'+
@@ -343,9 +362,10 @@ window.VK_documentos = (function(){
 
     var otrosHtml = otros.map(function(d){
       var dm = DOC_META_CREDITO[d.tipo]||{};
-      // proximamente mode forces non-payment docs into the locked variant
-      // even if the backend marked them disponible.
-      var disp = d.disponible && !isProximamente(d.tipo);
+      // proximamente mode forces non-payment docs into the locked
+      // variant unless the admin uploaded a real PDF (d.disponible)
+      // — passing `d` lets isProximamente unlock the row per customer.
+      var disp = d.disponible && !isProximamente(d.tipo, d);
       return '<div class="vk-doc-row'+(disp?'':' locked')+'">'+
         '<div class="vk-doc-row-icon">'+(dm.icon||'')+'</div>'+
         '<div class="vk-doc-row-body">'+
@@ -374,7 +394,11 @@ window.VK_documentos = (function(){
           '<div class="vk-h2" style="margin:0 0 4px">¿Dudas sobre tus documentos?</div>'+
           '<div class="vk-muted">Nuestro equipo esta aqui para ayudarte.</div>'+
         '</div>'+
-        '<button class="vk-doc-help-btn" onclick="VKApp.go(\'ayuda\')">CONTACTAR SOPORTE &rsaquo;</button>'+
+        // Customer brief 2026-05-07 (item 7): the support button used
+        // to navigate to the in-app Ayuda screen, but the customer
+        // wants it to land directly on the WhatsApp chatbot so
+        // operators can resolve documentation questions in real time.
+        '<a class="vk-doc-help-btn" href="https://api.whatsapp.com/send?phone=5215513416370" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:inline-block;">CONTACTAR SOPORTE &rsaquo;</a>'+
       '</div>'
     );
 
@@ -385,7 +409,7 @@ window.VK_documentos = (function(){
       window.open('php/documentos/descargar.php?tipo='+encodeURIComponent(t)+ext,'_blank');
     });
     $('#vkDownloadAll').on('click',function(){
-      var avail = docs.filter(function(d){return d.disponible && !isProximamente(d.tipo);});
+      var avail = docs.filter(function(d){return d.disponible && !isProximamente(d.tipo, d);});
       avail.forEach(function(d){
         var sc = VKApp.state.activeCompra;
         var ext = (sc && sc.tipo && sc.id) ? '&compra_tipo='+encodeURIComponent(sc.tipo)+'&compra_id='+encodeURIComponent(sc.id) : '';

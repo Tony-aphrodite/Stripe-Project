@@ -250,6 +250,14 @@ button{font-family:inherit}
 }
 .vk-card-dark-label{font-size:14px;font-weight:600;opacity:.85;margin-bottom:4px}
 .vk-card-dark-amount{font-size:42px;font-weight:800;color:#fff;margin:4px 0 6px}
+/* Customer brief 2026-05-07: when the account is past due, the
+   amount renders in bold red so the cobranza-critical state is
+   visually undeniable inside the otherwise dark blue card. */
+.vk-card-dark-amount--overdue{
+  color:#ff3b30;
+  font-weight:900;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+}
 .vk-card-dark-fecha{font-size:13px;color:rgba(255,255,255,.8);margin-bottom:14px}
 .vk-card-dark-fecha strong{color:#fff;font-weight:700}
 .vk-btn-pay{
@@ -291,7 +299,28 @@ button{font-family:inherit}
   position:relative;
 }
 .vk-prepay-opt:hover{border-color:var(--vk-primary);background:var(--vk-primary-soft)}
-.vk-prepay-opt.popular{border-color:var(--vk-primary);background:var(--vk-primary-soft)}
+/* Customer brief 2026-05-07 (item 3): the .popular class used to
+   permanently highlight the 2-semanas card with the same colors as a
+   genuine selection, so any subsequent click made it look like 2 cards
+   were selected at once. The POPULAR label is purely a marketing tag
+   now — only the actual user selection (.selected) gets the strong
+   border + background treatment. The hover state still gives a subtle
+   preview so the card remains discoverable. */
+.vk-prepay-opt.popular{border-color:var(--vk-border)}
+.vk-prepay-opt.popular:hover{border-color:var(--vk-primary);background:var(--vk-primary-soft)}
+.vk-prepay-opt.selected{
+  border-color:var(--vk-primary);
+  background:var(--vk-primary-soft);
+  border-width:2px;
+  box-shadow:0 0 0 3px rgba(3,159,225,.15);
+}
+.vk-prepay-opt.selected::after{
+  content:'✓';
+  position:absolute;top:6px;right:8px;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--vk-primary);color:#fff;
+  font-size:11px;font-weight:900;line-height:18px;text-align:center;
+}
 .vk-prepay-badge{
   position:absolute;top:-9px;left:50%;transform:translateX(-50%);
   background:var(--vk-primary);color:#fff;
@@ -449,7 +478,12 @@ button{font-family:inherit}
 
 /* Estado badges */
 .vk-estado-badge{
-  display:inline-block;
+  /* Customer brief 2026-05-07 (item 12): switched from inline-block
+     to inline-flex so the yellow warning SVG inside the .vencido
+     variant aligns vertically with the text and the gap between the
+     icon and label is consistent across browsers. */
+  display:inline-flex;
+  align-items:center;
   font-size:10px;font-weight:700;
   padding:2px 8px;border-radius:999px;
   margin-top:2px;

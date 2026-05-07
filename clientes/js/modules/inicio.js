@@ -55,7 +55,7 @@ window.VK_inicio = (function(){
     // Class-based handler (wired below). Inline onclick failed silently for
     // some clients — using jQuery + e.preventDefault is more robust and gives
     // us a visible toast on the (extremely unlikely) case VKApp.go isn't ready.
-    html += '<button class="vk-btn primary vkVerTodasCompras" type="button" style="font-size:12px;padding:7px 14px;">Ver todas</button>';
+    html += '<button class="vk-btn primary vkVerTodasCompras" type="button" style="font-size:12px;padding:7px 14px;">Ver mis compras</button>';
     html += '</div>';
     return html;
   }
@@ -265,6 +265,26 @@ window.VK_inicio = (function(){
     var monto2 = montoNum*2;
     var monto4 = montoNum*4;
 
+    // Customer brief 2026-05-07: when there are overdue cycles, the
+    // main payment card must shout "Paga de Inmediato" with the
+    // accumulated past-due amount (e.g. 2 weeks past due of $554 →
+    // $1,108) in bold red, and the date label switches from "Vence:"
+    // to "Vencido desde el …". The amount paid via PAGAR also
+    // settles the full overdue total, not just one week.
+    var venc = e.vencido || {};
+    var isOverdue = (Number(venc.count) || 0) > 0;
+    var overdueAmount = Number(venc.monto || 0);
+    var overdueAmountStr = overdueAmount ? '$'+overdueAmount.toLocaleString('es-MX') : '';
+    var overdueDesdeES = formatFechaES(venc.desde || fecha);
+
+    // What the dark card actually shows depends on isOverdue.
+    var titleText  = isOverdue ? 'Paga de Inmediato' : 'Paga esta semana';
+    var amountText = isOverdue ? overdueAmountStr   : monto;
+    var amountCls  = isOverdue ? 'vk-card-dark-amount vk-card-dark-amount--overdue' : 'vk-card-dark-amount';
+    var fechaLabel = isOverdue ? 'Vencido desde el ' : 'Vence: ';
+    var fechaShown = isOverdue ? overdueDesdeES     : fechaES;
+    var btnText    = isOverdue ? ('PAGAR '+overdueAmountStr) : ('PAGAR '+monto);
+
     VKApp.render(
       renderComprasAdicionales()+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
@@ -277,10 +297,10 @@ window.VK_inicio = (function(){
 
       // --- Main payment card (dark blue) ---
       '<div class="vk-card vk-card-dark">'+
-        '<div class="vk-card-dark-label">Paga esta semana</div>'+
-        '<div class="vk-card-dark-amount">'+monto+'</div>'+
-        '<div class="vk-card-dark-fecha">Vence: <strong>'+fechaES+'</strong></div>'+
-        '<button id="vkPayNow" class="vk-btn-pay">PAGAR '+monto+'</button>'+
+        '<div class="vk-card-dark-label">'+titleText+'</div>'+
+        '<div class="'+amountCls+'">'+amountText+'</div>'+
+        '<div class="vk-card-dark-fecha">'+fechaLabel+'<strong>'+fechaShown+'</strong></div>'+
+        '<button id="vkPayNow" class="vk-btn-pay">'+btnText+'</button>'+
         '<div class="vk-trust-line">Pago 100% seguro &bull; Te toma menos de 1 minuto</div>'+
         '<div class="vk-trust-sub">Si pagas ahora, no se volvera a cobrar automaticamente.<br>Tu tarjeta domiciliada solo se usa si no realizas el pago a tiempo.</div>'+
       '</div>'+
@@ -322,27 +342,39 @@ window.VK_inicio = (function(){
       // ── Section 2 (customer brief): backup-card explainer + change card ──
       // Mounted as a placeholder; populated by a follow-up API call so render
       // doesn't have to wait for Stripe.
+      // Customer brief 2026-05-07 (item 4): the backup card section
+      // header used to show only the "TARJETA DE RESPALDO" label with
+      // no clear CTA. Now we surface a bold "Cambiar tu tarjeta"
+      // subtitle directly below the title — this is the only allowed
+      // action (cards can be replaced but never eliminated).
       '<div class="vk-card" id="vkBackupCard">'+
         '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">'+
           '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#039fe1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'+
           '<div style="font-size:12.5px;font-weight:700;letter-spacing:.4px;color:#039fe1;text-transform:uppercase;">¿Para qué sirve tu tarjeta guardada?</div>'+
         '</div>'+
         '<div style="font-size:13px;color:#555;line-height:1.55;">Tu tarjeta es un <strong>respaldo automático</strong> — solo se usa si no realizas tu pago antes del vencimiento. Si ya pagaste por OXXO, SPEI o tarjeta manualmente, el cargo automático no se realiza. <strong>Tu pago nunca se duplica.</strong></div>'+
-        '<div style="font-size:11.5px;font-weight:700;color:#888;letter-spacing:.5px;margin:14px 0 8px;text-transform:uppercase;">Tarjeta de respaldo</div>'+
-        '<div id="vkBackupCardBody"><div class="vk-muted" style="text-align:center;padding:14px 0;font-size:12px;"><span class="vk-spin"></span> Cargando…</div></div>'+
+        '<div style="margin:16px 0 4px;">'+
+          '<div style="font-size:13px;font-weight:700;color:#1a3a5c;letter-spacing:.3px;text-transform:uppercase;">Tarjeta de Respaldo</div>'+
+          '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-top:4px;">Cambiar tu tarjeta</div>'+
+        '</div>'+
+        '<div id="vkBackupCardBody" style="margin-top:8px;"><div class="vk-muted" style="text-align:center;padding:14px 0;font-size:12px;"><span class="vk-spin"></span> Cargando…</div></div>'+
       '</div>'+
 
       // ── Section 3 (customer brief): branded payment-method buttons ──
       '<div class="vk-card">'+
         '<div class="vk-h2">Paga tu semana o tu adelanto como quieras</div>'+
+        // Customer brief 2026-05-07: previous inline SVGs were
+        // hand-drawn approximations and the customer flagged them as
+        // "looking fake". Replaced with the real brand assets shipped
+        // under /configurador/img/ (oxxo_logo.png, logo_spei.png) and
+        // /configurador/img/tarjetas/ (visa.svg, mastercard.svg,
+        // amex.svg). Each <img> uses height for vertical alignment +
+        // alt text for accessibility/SEO.
         '<div class="vk-pay-action" data-method="tarjeta">'+
           '<div class="vk-pay-action-icons">'+
-            // Visa
-            '<svg viewBox="0 0 64 24" width="34" height="14"><rect width="64" height="24" rx="3" fill="#1a1f71"/><text x="32" y="17" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-weight="900" font-size="13" font-style="italic" letter-spacing="1">VISA</text></svg>'+
-            // Mastercard
-            '<svg viewBox="0 0 32 24" width="22" height="14"><circle cx="12" cy="12" r="9" fill="#eb001b"/><circle cx="20" cy="12" r="9" fill="#f79e1b"/><path d="M16 5.5a9 9 0 010 13 9 9 0 010-13z" fill="#ff5f00"/></svg>'+
-            // Amex
-            '<svg viewBox="0 0 64 24" width="30" height="14"><rect width="64" height="24" rx="3" fill="#2e77bb"/><text x="32" y="16" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-weight="900" font-size="9">AMEX</text></svg>'+
+            '<img src="/configurador/img/tarjetas/visa.svg" alt="Visa" style="height:14px;width:auto;">'+
+            '<img src="/configurador/img/tarjetas/mastercard.svg" alt="Mastercard" style="height:18px;width:auto;">'+
+            '<img src="/configurador/img/tarjetas/amex.svg" alt="American Express" style="height:18px;width:auto;">'+
           '</div>'+
           '<div class="vk-pay-action-body">'+
             '<div class="vk-pay-action-title">Tarjeta</div>'+
@@ -352,8 +384,7 @@ window.VK_inicio = (function(){
         '</div>'+
         '<div class="vk-pay-action" data-method="oxxo">'+
           '<div class="vk-pay-action-icons">'+
-            // OXXO logo
-            '<svg viewBox="0 0 80 32" width="46" height="20"><rect width="80" height="32" rx="4" fill="#e30613"/><text x="40" y="22" text-anchor="middle" fill="#fff" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="16" letter-spacing="-0.5">OXXO</text></svg>'+
+            '<img src="/configurador/img/oxxo_logo.png" alt="OXXO" style="height:22px;width:auto;">'+
           '</div>'+
           '<div class="vk-pay-action-body">'+
             '<div class="vk-pay-action-title">OXXO</div>'+
@@ -363,8 +394,7 @@ window.VK_inicio = (function(){
         '</div>'+
         '<div class="vk-pay-action" data-method="spei">'+
           '<div class="vk-pay-action-icons">'+
-            // SPEI logo (Banxico style, simplified)
-            '<svg viewBox="0 0 80 32" width="46" height="20"><rect width="80" height="32" rx="4" fill="#0072bc"/><text x="40" y="22" text-anchor="middle" fill="#fff" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="16" letter-spacing="0.5">SPEI</text></svg>'+
+            '<img src="/configurador/img/logo_spei.png" alt="SPEI" style="height:22px;width:auto;">'+
           '</div>'+
           '<div class="vk-pay-action-body">'+
             '<div class="vk-pay-action-title">SPEI</div>'+
@@ -384,7 +414,67 @@ window.VK_inicio = (function(){
     );
 
     wireVerTodas();
-    $('#vkPayNow').on('click', function(){ pay('semanal'); });
+
+    // Customer brief 2026-05-07 (item 3, 3.1): the prepay options
+    // were "selecting" by triggering an immediate charge — there was
+    // no single-selection visual state, so users saw both the always-
+    // highlighted POPULAR card and their last click as "selected at
+    // the same time". Now the prepay options work like radio buttons:
+    // click → toggle .selected (deselects others), and ALL the
+    // payment buttons (vkPayNow + Tarjeta/OXXO/SPEI rows) update
+    // their visible amount to match. Payment is only triggered when
+    // the user actually clicks a payment method.
+    //
+    // selectedPrepay = null  → default weekly amount (or overdue total)
+    // selectedPrepay = { tipo, semanas, monto } → user picked an option
+    var selectedPrepay = null;
+
+    function effectiveAmount() {
+      if (selectedPrepay) return Number(selectedPrepay.monto || 0);
+      // No prepay selected — fall back to overdue (if any) or normal weekly.
+      return isOverdue ? overdueAmount : montoNum;
+    }
+    function effectiveAmountStr() {
+      var n = effectiveAmount();
+      return n ? '$' + n.toLocaleString('es-MX') : '';
+    }
+    function refreshPayButtonsCopy() {
+      var amt = effectiveAmountStr();
+      // Main dark-card PAGAR button — keeps "PAGAR " prefix.
+      $('#vkPayNow').text('PAGAR ' + amt);
+      // Tarjeta / OXXO / SPEI rows — replace the .vk-pay-action-sub
+      // text only when a prepay is actively selected, so the rows
+      // still show their normal descriptive copy in the default
+      // (no-prepay) state. Customer brief 3.1: "the payment
+      // reference amount has to automatically indicate the new
+      // prepay amount" when a prepay is selected.
+      $('.vk-pay-action').each(function(){
+        var $row = $(this);
+        var $sub = $row.find('.vk-pay-action-sub');
+        var orig = $sub.data('orig');
+        if (orig === undefined) {
+          orig = $sub.text();
+          $sub.data('orig', orig);
+        }
+        if (selectedPrepay) {
+          $sub.html('<strong style="color:#039fe1;">Pagar adelanto: ' + amt + '</strong>');
+        } else {
+          $sub.text(orig);
+        }
+      });
+    }
+
+    $('#vkPayNow').on('click', function(){
+      if (selectedPrepay) {
+        if (selectedPrepay.tipo === 'custom' || selectedPrepay.tipo === 'adelanto') {
+          pay('adelanto', selectedPrepay.semanas || 4);
+        } else {
+          pay(selectedPrepay.tipo);
+        }
+      } else {
+        pay('semanal');
+      }
+    });
 
     // Deep-link from cobranza notifications (?action=pay) — auto-open the
     // primary payment button once the inicio finishes rendering.
@@ -393,27 +483,58 @@ window.VK_inicio = (function(){
       setTimeout(function(){ $('#vkPayNow').trigger('click'); }, 450);
     }
     $('.vk-prepay-opt').on('click', function(){
-      var tipo = $(this).data('tipo');
-      if(tipo === 'custom'){
+      var $card = $(this);
+      var tipo = $card.data('tipo');
+      var monto = 0;
+      var semanas = 0;
+      if (tipo === 'custom') {
         var sem = prompt('¿Cuantas semanas deseas adelantar?','4');
-        if(!sem || isNaN(sem) || sem < 1) return;
-        pay('adelanto', parseInt(sem));
-      } else if(tipo === 'adelanto'){
-        pay('adelanto', parseInt($(this).data('semanas'))||4);
+        if (!sem || isNaN(sem) || sem < 1) return;
+        semanas = parseInt(sem);
+        monto = montoNum * semanas;
+      } else if (tipo === 'adelanto') {
+        semanas = parseInt($card.data('semanas')) || 4;
+        monto = montoNum * semanas;
+      } else if (tipo === 'dos_semanas') {
+        semanas = 2;
+        monto = montoNum * 2;
       } else {
-        pay(tipo);
+        // semanal
+        semanas = 1;
+        monto = montoNum;
       }
+      // Toggle: click again to deselect.
+      var wasSelected = $card.hasClass('selected');
+      $('.vk-prepay-opt').removeClass('selected');
+      if (wasSelected) {
+        selectedPrepay = null;
+      } else {
+        $card.addClass('selected');
+        selectedPrepay = { tipo: tipo, semanas: semanas, monto: monto };
+      }
+      refreshPayButtonsCopy();
+      return; // do NOT auto-pay anymore — user picks a payment method next.
     });
 
     // ── Branded payment-method buttons (customer brief 2026-04-19) ─────────
-    // Each button starts the corresponding manual payment flow. Falls back to
-    // the existing pay() function with the right tipo so the rest of the
-    // pipeline (Stripe call → success toast → reload) is reused as-is.
+    // Customer brief 2026-05-07 (3.1): when a prepay is selected, the
+    // method buttons must charge the selected prepay amount instead of
+    // the default weekly amount. We translate the selection into the
+    // tipo/semanas args expected by payWithX() — 'adelanto' with the
+    // weeks count for prepay, 'semanal' for the default path.
     $('.vk-pay-action').on('click', function(){
       var method = $(this).data('method');
-      if (method === 'tarjeta') payWithTarjeta('semanal');
-      else if (method === 'oxxo') payWithOxxo('semanal');
-      else if (method === 'spei') payWithSpei('semanal');
+      var tipo, semanas;
+      if (selectedPrepay) {
+        tipo = (selectedPrepay.tipo === 'semanal') ? 'semanal' : 'adelanto';
+        semanas = selectedPrepay.semanas || 1;
+      } else {
+        tipo = 'semanal';
+        semanas = 1;
+      }
+      if (method === 'tarjeta') payWithTarjeta(tipo, semanas);
+      else if (method === 'oxxo') payWithOxxo(tipo, semanas);
+      else if (method === 'spei') payWithSpei(tipo, semanas);
     });
 
     // ── Backup-card section (customer brief 2026-04-19) ────────────────────
@@ -460,17 +581,29 @@ window.VK_inicio = (function(){
     });
   }
 
+  // Customer brief 2026-05-07: backup-card brand badge in the Tarjeta
+  // domiciliada section now uses the real brand SVGs from
+  // /configurador/img/tarjetas/, matching the payment-action icons
+  // above. Unknown brands fall back to a neutral grey badge.
   function backupCardBrandSvg(brand){
     var b = (brand||'').toLowerCase();
     if (b === 'visa')
-      return '<svg viewBox="0 0 64 24" width="56" height="22"><rect width="64" height="24" rx="3" fill="#1a1f71"/><text x="32" y="17" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-weight="900" font-size="13" font-style="italic" letter-spacing="1">VISA</text></svg>';
+      return '<img src="/configurador/img/tarjetas/visa.svg" alt="Visa" style="height:22px;width:auto;">';
     if (b === 'mastercard')
-      return '<svg viewBox="0 0 64 32" width="56" height="28"><rect width="64" height="32" rx="3" fill="#fff"/><circle cx="26" cy="16" r="11" fill="#eb001b"/><circle cx="38" cy="16" r="11" fill="#f79e1b"/><path d="M32 7.5a11 11 0 010 17 11 11 0 010-17z" fill="#ff5f00"/></svg>';
+      return '<img src="/configurador/img/tarjetas/mastercard.svg" alt="Mastercard" style="height:28px;width:auto;">';
     if (b === 'amex' || b === 'american_express')
-      return '<svg viewBox="0 0 64 24" width="56" height="22"><rect width="64" height="24" rx="3" fill="#2e77bb"/><text x="32" y="16" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-weight="900" font-size="9">AMEX</text></svg>';
+      return '<img src="/configurador/img/tarjetas/amex.svg" alt="American Express" style="height:28px;width:auto;">';
     return '<svg viewBox="0 0 64 24" width="56" height="22"><rect width="64" height="24" rx="3" fill="#666"/><text x="32" y="16" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-weight="700" font-size="9">'+(brand||'CARD').toUpperCase()+'</text></svg>';
   }
 
+  // Customer brief 2026-05-07 (item 4): the backup card row must
+  // ALWAYS be present and only allow replacement (Cambiar). The
+  // previous "no card" state used a yellow Agregar-tarjeta CTA that
+  // implied the user could leave the section blank; the customer
+  // wants this method of payment to be mandatory once a credit
+  // subscription exists. The two states still differ visually so the
+  // operator can tell them apart at a glance, but BOTH end in the
+  // same "Cambiar" action — never delete, never blank.
   function loadBackupCard(){
     VKApp.api('pagos/metodo-pago.php').done(function(r){
       var $body = $('#vkBackupCardBody');
@@ -490,16 +623,22 @@ window.VK_inicio = (function(){
           '</div>'
         );
       } else {
+        // No card on file (edge case — usually populated by the
+        // configurador SetupIntent at credit signup). Surface this as
+        // an informational state so the customer knows a backup card
+        // is required, but the action is still framed as "Cambiar"
+        // (replace the implicit empty state) — never as "Agregar"
+        // since elimination is not allowed by policy.
         $body.html(
           '<div style="padding:12px 14px;background:#fffbeb;border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">'+
-            '<div style="flex:1;min-width:160px;font-size:13px;color:#7a4f08;">Aún no tienes tarjeta de respaldo registrada.</div>'+
-            '<button class="vk-btn primary sm" id="vkCambiarTarjeta" style="padding:6px 14px;font-size:12px;">Agregar tarjeta</button>'+
+            '<div style="flex:1;min-width:160px;font-size:13px;color:#7a4f08;">Tu tarjeta de respaldo aún no está registrada. Es obligatoria para tu plan de crédito.</div>'+
+            '<button class="vk-btn primary sm" id="vkCambiarTarjeta" style="padding:6px 14px;font-size:12px;">Cambiar</button>'+
           '</div>'
         );
       }
       $('#vkCambiarTarjeta').on('click', function(){
         var $btn = $(this);
-        var originalLabel = $btn.text();   // remember "Cambiar" or "Agregar tarjeta"
+        var originalLabel = $btn.text();   // remember "Cambiar"
         $btn.prop('disabled', true).html('<span class="vk-spin"></span>');
         VKApp.api('pagos/cambiar-tarjeta.php', {}).done(function(res){
           if (res && res.url) { window.location.href = res.url; }
@@ -576,7 +715,7 @@ window.VK_inicio = (function(){
         '<div style="background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:20px 18px 24px;max-height:92vh;overflow-y:auto;box-shadow:0 -6px 24px rgba(0,0,0,.2);">'+
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'+
             '<div style="display:flex;align-items:center;gap:10px;">'+
-              '<svg viewBox="0 0 80 32" width="44" height="18"><rect width="80" height="32" rx="4" fill="#0072bc"/><text x="40" y="22" text-anchor="middle" fill="#fff" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="16" letter-spacing="0.5">SPEI</text></svg>'+
+              '<img src="/configurador/img/logo_spei.png" alt="SPEI" style="height:22px;width:auto;">'+
               '<div style="font-size:16px;font-weight:700;color:#1a3a5c;">Transferencia SPEI</div>'+
             '</div>'+
             '<button id="vkSpeiClose" type="button" aria-label="Cerrar" style="background:none;border:0;font-size:22px;line-height:1;color:#64748b;cursor:pointer;padding:4px 8px;">&times;</button>'+
@@ -679,7 +818,7 @@ window.VK_inicio = (function(){
         '<div style="background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:20px 18px 24px;max-height:92vh;overflow-y:auto;box-shadow:0 -6px 24px rgba(0,0,0,.2);">'+
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'+
             '<div style="display:flex;align-items:center;gap:10px;">'+
-              '<svg viewBox="0 0 80 32" width="46" height="20"><rect width="80" height="32" rx="4" fill="#e30613"/><text x="40" y="22" text-anchor="middle" fill="#fff" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="16" letter-spacing="-0.5">OXXO</text></svg>'+
+              '<img src="/configurador/img/oxxo_logo.png" alt="OXXO" style="height:22px;width:auto;">'+
               '<div style="font-size:16px;font-weight:700;color:#1a3a5c;">Pago en OXXO</div>'+
             '</div>'+
             '<button id="vkOxxoClose" type="button" aria-label="Cerrar" style="background:none;border:0;font-size:22px;line-height:1;color:#64748b;cursor:pointer;padding:4px 8px;">&times;</button>'+

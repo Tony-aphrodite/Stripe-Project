@@ -19,7 +19,17 @@ window.VK_pagos = (function(){
 
   function estadoBadge(s){
     if(s==='paid_manual'||s==='paid_auto') return '<span class="vk-estado-badge pagado">Pagado</span>';
-    if(s==='overdue') return '<span class="vk-estado-badge vencido">Vencido</span>';
+    // Customer brief 2026-05-07 (item 12): the Vencido badge now ships
+    // with a yellow warning triangle right next to the label so past-
+    // due cycles are visually undeniable in the payments history.
+    // The SVG inherits its yellow color from inline style; alt-text
+    // ensures screen readers announce the warning state.
+    if(s==='overdue') return '<span class="vk-estado-badge vencido">'
+      +'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;flex-shrink:0;" aria-label="Pago vencido">'
+      +'<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" fill="#fef3c7"/>'
+      +'<line x1="12" y1="9" x2="12" y2="13"/>'
+      +'<line x1="12" y1="17" x2="12.01" y2="17"/>'
+      +'</svg>Vencido</span>';
     if(s==='skipped') return '<span class="vk-estado-badge omitido">Omitido</span>';
     return '<span class="vk-estado-badge pendiente">Pendiente</span>';
   }
@@ -52,6 +62,17 @@ window.VK_pagos = (function(){
     var restantes = h.pagos_restantes||0;
     var total = (prog.total||h.total_ciclos||0);
     var pct = total ? Math.round((realizados/total)*100) : 0;
+
+    // Customer brief 2026-05-07 (item 13): when the account has past
+    // due cycles, the bottom banner switches from the friendly green
+    // "Tu próximo pago vence el …" to a red warning that surfaces the
+    // earliest overdue date and explicit collections language. Uses
+    // the `vencido` aggregate already exposed by estado.php (count,
+    // monto, desde) so the calculation is consistent with Inicio's
+    // "Paga de Inmediato" treatment.
+    var venc = e.vencido || {};
+    var hasOverdue = (Number(venc.count) || 0) > 0;
+    var overdueDesde = venc.desde || '';
 
     // Motivational text
     var motivacion = '';
@@ -127,12 +148,25 @@ window.VK_pagos = (function(){
       '</div>'+
 
       // --- Bottom next payment banner ---
-      (fechaProx
-        ? '<div class="vk-next-pay-banner">'+
-            '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#22c55e" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>'+
-            '<span>Tu próximo pago vence el <strong>'+formatFechaLarga(fechaProx)+'</strong>.</span>'+
+      // Customer brief 2026-05-07 (item 13): two visual states.
+      // (a) Past due → red warning banner with ⚠ triangle + saldo-vencido copy
+      // (b) On track → original green check banner with próximo-pago copy
+      (hasOverdue
+        ? '<div class="vk-next-pay-banner overdue" style="background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #ef4444;color:#991b1b;align-items:flex-start;">'+
+            '<svg viewBox="0 0 24 24" width="22" height="22" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;">'+
+              '<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>'+
+              '<line x1="12" y1="9" x2="12" y2="13"/>'+
+              '<line x1="12" y1="17" x2="12.01" y2="17"/>'+
+            '</svg>'+
+            '<span style="line-height:1.5;"><strong>Saldo vencido desde:</strong> '+formatFechaLarga(overdueDesde||fechaProx)+'.<br>'+
+            'Realiza tu pago para evitar sobrecargos y modificaciones en tu historial de crédito.</span>'+
           '</div>'
-        : '')
+        : (fechaProx
+          ? '<div class="vk-next-pay-banner">'+
+              '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#22c55e" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>'+
+              '<span>Tu próximo pago vence el <strong>'+formatFechaLarga(fechaProx)+'</strong>.</span>'+
+            '</div>'
+          : ''))
     );
 
     // Descargar link

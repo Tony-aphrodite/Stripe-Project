@@ -150,7 +150,9 @@ window.VK_cuenta = (function(){
       // --- WhatsApp help ---
       '<div class="vk-wa-help">'+
         '<div class="vk-wa-text"><strong>¿Necesitas ayuda?</strong><br>Nuestro equipo está listo para apoyarte.</div>'+
-        '<a class="vk-wa-btn" href="https://api.whatsapp.com/send?phone=5214421198928" target="_blank"> Chatear por WhatsApp</a>'+
+        // Customer brief 2026-05-07 (item 8): unified WhatsApp chatbot
+        // number across the portal — was the old 442-119-8928 line.
+        '<a class="vk-wa-btn" href="https://api.whatsapp.com/send?phone=5215513416370" target="_blank" rel="noopener noreferrer"> Chatear por WhatsApp</a>'+
       '</div>'
     );
 

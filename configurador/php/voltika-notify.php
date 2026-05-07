@@ -736,7 +736,11 @@ function voltikaBuildPuntoAsignadoTemplate(): array {
           . "Sigue cada paso en tiempo real:\n👉 voltika.mx/clientes/\n\n"
           . "¿Alguna duda? Estamos aquí:\n📧 ventas@voltika.mx\n🕐 Lun a Vie 9:00 - 18:00 hrs";
 
-    $sms = 'VOLTIKA: {nombre}, tu {modelo} ya tiene punto de entrega: {punto}. Entrega antes del {fecha_estimada}. Portal: voltika.mx/clientes/';
+    // Customer brief 2026-05-07 (item 9.1): exact in-app + SMS copy
+    // requested by the customer — direct address with full punto info
+    // (name, address, contact + phone). The previous marketing-style
+    // line was replaced with the customer-facing short form.
+    $sms = 'Tu punto Voltika autorizado para entregar tu moto es en {punto}, {direccion_punto}. Llegada estimada: {fecha_estimada}. Portal: voltika.mx/clientes/';
 
     return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
 }
@@ -799,7 +803,8 @@ function voltikaBuildMotoEnviadaTemplate(): array {
           . "Sigue tu moto en tiempo real:\n👉 voltika.mx/clientes/\n\n"
           . "¿Alguna duda? Estamos aquí:\n📧 ventas@voltika.mx\n🕐 Lun a Vie 9:00 - 18:00 hrs";
 
-    $sms = 'VOLTIKA: {nombre}, tu {modelo} va en camino a {punto} — {ciudad}. Llegada estimada: {fecha_llegada_punto}.';
+    // Customer brief 2026-05-07 (item 9.2): exact wording requested.
+    $sms = 'Tu Voltika ya va en camino al punto de entrega ({punto}, {ciudad}) y estimamos llegue el {fecha_llegada_punto}.';
 
     return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
 }
@@ -860,7 +865,8 @@ function voltikaBuildMotoRecibidaTemplate(): array {
           . "Sigue tu pedido aquí:\n👉 voltika.mx/clientes/\n\n"
           . "¿Alguna duda? 📧 ventas@voltika.mx";
 
-    $sms = 'VOLTIKA: {nombre}, tu {modelo} llegó a {punto}. En ensamble y revisión. Te avisamos cuando esté lista.';
+    // Customer brief 2026-05-07 (item 9.3): exact wording requested.
+    $sms = 'Tu Voltika ya llegó al punto de entrega ({punto}) y está en preparación. En cuanto esté lista te avisamos.';
 
     return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
 }
@@ -985,7 +991,8 @@ function voltikaBuildMotoListaEntregaTemplate(): array {
           . "¿No puedes ir antes del {fecha_limite}?\n📧 ventas@voltika.mx\n\n"
           . "¡Bienvenido a la familia VOLTIKA!";
 
-    $sms = 'VOLTIKA: {nombre}, tu {modelo} está lista para entrega en {punto}. La entrega es gratis — no pagues nada extra. Descarga permiso en voltika.mx/clientes/ (24h). Lleva INE.';
+    // Customer brief 2026-05-07 (item 9.4): exact wording requested.
+    $sms = 'Tu Voltika está Lista para que la recojas en el punto {punto} ({direccion_punto}). Lleva tu INE. Portal: voltika.mx/clientes/';
 
     return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
 }
@@ -1098,7 +1105,9 @@ function voltikaBuildActaFirmadaTemplate(): array {
           . "━━━━━━━━━━━━━━━━━━━━\n\n"
           . "¡Disfruta tu VOLTIKA! ⚡\n\n"
           . "¿Dudas?\n📧 ventas@voltika.mx";
-    $sms = 'VOLTIKA: {nombre}, tu {modelo} es oficialmente tuya. Descarga tu acta en voltika.mx/clientes/. Permiso: coloca atrás de la moto. 30 días para placas.';
+    // Customer brief 2026-05-07 (item 9.5): unified delivery-complete copy
+    // — sent after acta firmada + OTP validado + Truora "same person" check.
+    $sms = 'Voltika entregada. Tu {modelo} ya es oficialmente tuya. Descarga tu acta en voltika.mx/clientes/. Permiso: 30 días para placas.';
     return ['subject' => $subject, 'body' => $body, 'sms' => $sms, 'email_html' => $emailHtml];
 }
 

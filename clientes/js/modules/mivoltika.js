@@ -81,7 +81,11 @@ window.VK_mivoltika = (function(){
     // Help
     html += '<div class="vk-card" style="padding:16px;text-align:center">';
     html += '<div style="font-size:13px;color:#555;margin-bottom:8px">¿Necesitas ayuda con tu Voltika?</div>';
-    html += '<a class="vk-btn-sm-green" href="https://wa.me/525500000000" target="_blank" style="text-decoration:none;display:inline-block">WhatsApp Soporte</a>';
+    // Customer brief 2026-05-07 (items 7+8): unified WhatsApp chatbot
+    // number — this card had been pointing at the placeholder test
+    // number 5500000000 from QA seeding which would never reach
+    // anyone in production. Switched to the canonical support number.
+    html += '<a class="vk-btn-sm-green" href="https://api.whatsapp.com/send?phone=5215513416370" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:inline-block">WhatsApp Soporte</a>';
     html += '</div>';
 
     VKApp.render(html);

@@ -114,7 +114,7 @@ window.VK_miscompras = (function(){
     h += '<div style="margin-top:8px;">'+estadoBadge+'</div>';
     h += '<div class="vk-compra-actions" style="margin-top:12px;display:flex;gap:6px;">';
     if (!isActive) {
-      h += '<button class="vk-btn primary vk-compra-setactive" data-idx="'+idx+'" style="flex:1;padding:8px;font-size:12px;">Hacer activa</button>';
+      h += '<button class="vk-btn primary vk-compra-setactive" data-idx="'+idx+'" style="flex:1;padding:8px;font-size:12px;">Seleccionar</button>';
     }
     h += '<button class="vk-btn ghost vk-compra-detail" data-idx="'+idx+'" style="flex:1;padding:8px;font-size:12px;">Ver detalles</button>';
     h += '</div>';
@@ -174,7 +174,7 @@ window.VK_miscompras = (function(){
     }
 
     html += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">';
-    html += '<button class="vk-btn primary" id="vkMCMakeActive" style="flex:1;min-width:140px;">Hacer activa</button>';
+    html += '<button class="vk-btn primary" id="vkMCMakeActive" style="flex:1;min-width:140px;">Seleccionar</button>';
     html += '<button class="vk-btn ghost" id="vkMCGoEntrega" style="flex:1;min-width:140px;">Ver entrega</button>';
     if (c.tipo === 'credito') {
       html += '<button class="vk-btn ghost" id="vkMCGoPagos" style="flex:1;min-width:140px;">Ver pagos</button>';

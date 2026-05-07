@@ -322,6 +322,36 @@ if ($tipoPortal === 'credito') {
         'total' => $info['total_ciclos'],
         'restantes' => max(0, $info['total_ciclos'] - $info['ciclos_pagados']),
     ];
+
+    // Customer brief 2026-05-07: when the account has past-due cycles,
+    // the home screen must show "Paga de Inmediato" + the SUM of overdue
+    // amounts in bold red, instead of the normal "Paga esta semana"
+    // single-week view. Aggregate every unpaid cycle whose
+    // fecha_vencimiento has already passed so the frontend can render
+    // the right copy without having to walk the full payment history.
+    $response['vencido'] = ['count' => 0, 'monto' => 0.0, 'desde' => null];
+    if ($sub && !empty($sub['id'])) {
+        try {
+            $vStmt = $pdo->prepare(
+                "SELECT COUNT(*) AS cnt,
+                        COALESCE(SUM(monto), 0) AS suma,
+                        MIN(fecha_vencimiento) AS primero
+                   FROM ciclos_pago
+                  WHERE subscripcion_id = ?
+                    AND estado IN ('pending', 'overdue', 'failed')
+                    AND fecha_vencimiento <= CURDATE()"
+            );
+            $vStmt->execute([(int)$sub['id']]);
+            $vRow = $vStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $response['vencido'] = [
+                'count'  => (int)($vRow['cnt'] ?? 0),
+                'monto'  => (float)($vRow['suma'] ?? 0),
+                'desde'  => $vRow['primero'] ?? null,
+            ];
+        } catch (Throwable $e) {
+            error_log('estado vencido aggregate: ' . $e->getMessage());
+        }
+    }
 } else {
     // Contado / MSI / SPEI / OXXO — single-payment portal home (customer
     // brief 2026-04-19). Surface enough fields so the home can render the
