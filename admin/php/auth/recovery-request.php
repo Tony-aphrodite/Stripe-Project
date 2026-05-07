@@ -36,7 +36,7 @@ $cuerpo = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;"><tr><td align="center" style="padding:24px 12px;">
 <table width="500" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:500px;width:100%;">
 <tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:24px;text-align:center;">
-<img src="https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg" alt="Voltika" style="height:36px;">
+<img src="https://www.voltika.mx/configurador/img/logo_w.png" alt="Voltika" width="108" style="height:36px;width:auto;border:0;outline:0;">
 </td></tr>
 <tr><td style="padding:28px;text-align:center;">
 <h2 style="margin:0 0 8px;color:#1a3a5c;">Recuperar contraseña</h2>

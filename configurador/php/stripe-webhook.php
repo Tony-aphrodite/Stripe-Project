@@ -385,7 +385,7 @@ function sendConfirmationEmail($order, $methodLabel) {
 
 <!-- Header -->
 <tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:28px;text-align:center;">
-<img src="https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg" alt="Voltika" style="height:44px;width:auto;display:block;margin:0 auto;">
+<img src="https://www.voltika.mx/configurador/img/logo_w.png" alt="Voltika" width="132" style="height:44px;width:auto;border:0;outline:0;width:auto;display:block;margin:0 auto;">
 <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.8);">Movilidad el&eacute;ctrica inteligente</p>
 </td></tr>
 

@@ -120,7 +120,7 @@ foreach ($creditos as $c) {
 
 <!-- Header -->
 <tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:24px 28px;text-align:center;">
-<img src="https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg" alt="Voltika" style="height:36px;width:auto;display:block;margin:0 auto;">
+<img src="https://www.voltika.mx/configurador/img/logo_w.png" alt="Voltika" width="108" style="height:36px;width:auto;border:0;outline:0;width:auto;display:block;margin:0 auto;">
 <p style="margin:6px 0 0;font-size:12px;color:rgba(255,255,255,.8);">Movilidad eléctrica inteligente</p>
 </td></tr>
 

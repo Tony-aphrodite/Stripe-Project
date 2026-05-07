@@ -40,7 +40,7 @@ if (!defined('NOTIF_DRY_RUN')) define('NOTIF_DRY_RUN', false);
 if (!defined('NOTIF_BCC_ADMIN')) define('NOTIF_BCC_ADMIN', 'redes@voltika.com.mx');
 
 // Voltika branding
-if (!defined('VOLTIKA_LOGO_URL'))    define('VOLTIKA_LOGO_URL',    'https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg');
+if (!defined('VOLTIKA_LOGO_URL'))    define('VOLTIKA_LOGO_URL',    'https://www.voltika.mx/configurador/img/logo_w.png');
 if (!defined('VOLTIKA_FOOTER_LOGO')) define('VOLTIKA_FOOTER_LOGO', 'https://www.voltika.mx/configurador/img/goelectric.svg');
 if (!defined('VOLTIKA_SUPPORT_WA'))  define('VOLTIKA_SUPPORT_WA',  '+52 55 1341 6370');
 if (!defined('VOLTIKA_SUPPORT_EMAIL')) define('VOLTIKA_SUPPORT_EMAIL', 'redes@voltika.mx');

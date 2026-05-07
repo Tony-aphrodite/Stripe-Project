@@ -65,15 +65,26 @@ if (!function_exists('voltikaEmailHeader')) {
     function voltikaEmailHeader(string $hero = '', string $heroSub = ''): string {
         $heroHtml = '';
         if ($hero !== '') {
-            $heroHtml .= '<div style="font-size:17px;font-weight:700;color:#fff;margin-top:14px;line-height:1.3;">' . $hero . '</div>';
+            $heroHtml .= '<div style="font-size:17px;font-weight:700;color:#ffffff;margin-top:14px;line-height:1.3;">' . $hero . '</div>';
         }
         if ($heroSub !== '') {
-            $heroHtml .= '<div style="font-size:13px;color:rgba(255,255,255,0.85);margin-top:4px;">' . $heroSub . '</div>';
+            $heroHtml .= '<div style="font-size:13px;color:#ffffff;margin-top:4px;">' . $heroSub . '</div>';
         }
-        return '<tr><td style="background:linear-gradient(135deg,#1a3a5c 0%,#0d6aa0 50%,#039fe1 100%);padding:30px 28px;text-align:center;">'
-             .   '<img src="https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg"'
-             .     ' alt="Voltika" style="height:44px;width:auto;display:block;margin:0 auto;">'
-             .   '<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.8);letter-spacing:.2px;">Movilidad eléctrica inteligente</p>'
+        // Customer brief 2026-05-07: header was rendering blank (no logo,
+        // invisible white text) in iOS Mail / Outlook / some Gmail
+        // setups because:
+        //   1. SVG logos are NOT supported by Outlook/iOS Mail/many
+        //      mobile clients — switched to logo_w.png (white PNG).
+        //   2. CSS gradients are stripped by Outlook → fallback to a
+        //      solid bgcolor attribute + background-color so the dark
+        //      navy is rendered no matter what. The gradient stays as
+        //      a progressive enhancement for clients that support it.
+        //   3. rgba() colors collapse on some clients — switched to
+        //      solid #ffffff and rely on the dark background.
+        return '<tr><td bgcolor="#1a3a5c" style="background-color:#1a3a5c;background:linear-gradient(135deg,#1a3a5c 0%,#0d6aa0 50%,#039fe1 100%);padding:30px 28px;text-align:center;">'
+             .   '<img src="https://www.voltika.mx/configurador/img/logo_w.png"'
+             .     ' alt="Voltika" width="140" style="height:44px;width:auto;display:block;margin:0 auto;border:0;outline:0;">'
+             .   '<p style="margin:6px 0 0;font-size:13px;color:#ffffff;letter-spacing:.2px;">Movilidad eléctrica inteligente</p>'
              .   $heroHtml
              . '</td></tr>';
     }
@@ -85,10 +96,13 @@ if (!function_exists('voltikaEmailFooter')) {
      * consistently so the branding is matched to the header.
      */
     function voltikaEmailFooter(): string {
-        return '<tr><td style="background:#1a3a5c;padding:22px 28px;text-align:center;">'
-             .   '<img src="https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg"'
-             .     ' alt="Voltika" style="height:22px;width:auto;display:block;margin:0 auto 6px;opacity:.95;">'
-             .   '<div style="font-size:11px;color:rgba(255,255,255,0.65);margin-top:4px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
+        // Customer brief 2026-05-07: same SVG-to-PNG + bgcolor attribute
+        // hardening as the header so the footer logo + legal line render
+        // in every email client.
+        return '<tr><td bgcolor="#1a3a5c" style="background-color:#1a3a5c;background:#1a3a5c;padding:22px 28px;text-align:center;">'
+             .   '<img src="https://www.voltika.mx/configurador/img/logo_w.png"'
+             .     ' alt="Voltika" width="80" style="height:22px;width:auto;display:block;margin:0 auto 6px;border:0;outline:0;">'
+             .   '<div style="font-size:11px;color:#ffffff;margin-top:4px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
              . '</td></tr>';
     }
 }
@@ -1027,7 +1041,17 @@ function voltikaBuildOtpEntregaTemplate(): array {
           . '</td></tr>'
           . '<tr><td style="padding:6px 28px;">'
           . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">🔑 Tu código de 6 dígitos</div>'
-          . '<div style="background:linear-gradient(135deg,#1a3a5c,#039fe1);color:#fff;text-align:center;padding:24px;border-radius:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:38px;font-weight:800;letter-spacing:8px;margin:8px 0;">{otp}</div>'
+          // Customer brief 2026-05-07: OTP code was rendering as
+          // invisible white-on-white in clients that strip linear
+          // gradients (iOS Mail dark mode, Outlook). Use a solid
+          // bgcolor + background-color so the navy background is
+          // guaranteed; the gradient stays as progressive enhancement.
+          // The number itself is also wrapped in a table cell with an
+          // explicit bgcolor for maximum compatibility.
+          . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:8px 0;border-collapse:separate;border-radius:10px;overflow:hidden;">'
+          . '<tr><td bgcolor="#1a3a5c" align="center" style="background-color:#1a3a5c;background:linear-gradient(135deg,#1a3a5c,#039fe1);color:#ffffff;text-align:center;padding:24px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:38px;font-weight:800;letter-spacing:8px;border-radius:10px;">'
+          . '<span style="color:#ffffff;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:38px;font-weight:800;letter-spacing:8px;">{otp}</span>'
+          . '</td></tr></table>'
           . '<p style="font-size:12.5px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:10px 12px;border-radius:4px;margin:10px 0 0;line-height:1.6;">⏱️ <strong>Expira en 10 minutos.</strong><br>⚠️ No lo compartas con nadie más que el asesor del punto.</p>'
           . '</td></tr>'
           . '<tr><td style="padding:14px 28px;">'

@@ -154,7 +154,7 @@ if ($accion === 'enviar_otp') {
     if (!empty($moto['cliente_email'])) {
         $emailBody = '<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;">
 <div style="max-width:480px;margin:0 auto;padding:24px;">
-<img src="https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg"
+<img src="https://www.voltika.mx/configurador/img/logo_w.png" width="120"
      style="height:36px;background:#1a3a5c;padding:8px 16px;border-radius:8px;margin-bottom:20px;">
 <h2 style="color:#1a3a5c;">Código de confirmación de entrega</h2>
 <p>Hola <strong>' . htmlspecialchars($moto['cliente_nombre']) . '</strong>,</p>
@@ -254,7 +254,7 @@ if ($accion === 'verificar') {
         $body = '<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f5f7fa;">
 <div style="max-width:520px;margin:0 auto;padding:24px;">
 <div style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:24px;border-radius:12px 12px 0 0;text-align:center;">
-<img src="https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg" style="height:36px;">
+<img src="https://www.voltika.mx/configurador/img/logo_w.png" width="120" style="height:36px;">
 </div>
 <div style="background:#fff;padding:28px;border-radius:0 0 12px 12px;box-shadow:0 4px 20px rgba(0,0,0,.1);">
 <h2 style="color:#1a3a5c;margin:0 0 12px;">¡Tu Voltika fue entregada! 🎉</h2>

@@ -762,7 +762,7 @@ $cuerpo = '<!DOCTYPE html>
 
 <!-- Header -->
 <tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:28px;text-align:center;">
-<img src="https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg" alt="Voltika" style="height:44px;width:auto;display:block;margin:0 auto;">
+<img src="https://www.voltika.mx/configurador/img/logo_w.png" alt="Voltika" width="132" style="height:44px;width:auto;border:0;outline:0;width:auto;display:block;margin:0 auto;">
 <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.8);">Movilidad eléctrica inteligente</p>
 </td></tr>
 
@@ -908,7 +908,7 @@ if ($esCredito) {
 <table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:620px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
 
 <tr><td style="background:linear-gradient(135deg,#1a3a5c,#039fe1);padding:28px;text-align:center;">
-<img src="https://www.voltika.mx/configurador/img/voltika_logo_h_white.svg" alt="Voltika" style="height:44px;width:auto;display:block;margin:0 auto;">
+<img src="https://www.voltika.mx/configurador/img/logo_w.png" alt="Voltika" width="132" style="height:44px;width:auto;border:0;outline:0;width:auto;display:block;margin:0 auto;">
 <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.8);">Movilidad eléctrica inteligente</p>
 </td></tr>
 
@@ -1192,7 +1192,7 @@ if (!$esCredito && !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) 
             $htmlF   =
                 '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:auto;padding:24px;background:#fff;">' .
                 '<div style="text-align:center;background:#1a3a5c;padding:18px;border-radius:12px 12px 0 0;">' .
-                '<img src="' . $baseF . '/configurador/img/voltika_logo_h_white.svg" alt="Voltika" style="height:34px;">' .
+                '<img src="' . $baseF . '/configurador/img/logo_w.png" alt="Voltika" width="102" style="height:34px;width:auto;border:0;outline:0;">' .
                 '</div>' .
                 '<div style="background:#F8FAFC;padding:24px;border-radius:0 0 12px 12px;border:1px solid #E5E7EB;border-top:none;">' .
                 '<h1 style="font-size:22px;color:#1a3a5c;margin:0 0 12px;">Hola ' . $nameF . ',</h1>' .
