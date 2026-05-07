@@ -33,8 +33,25 @@ window.AD_login = (function(){
     ADApp.api('auth/login.php',{email:email,password:pass}).done(function(r){
       if(r.ok){ ADApp.state.user=r.usuario; ADApp.showApp(); }
     }).fail(function(x){
-      var msg=(x.responseJSON&&x.responseJSON.error)||'Error de acceso';
-      $('#adLoginError').text(msg).show();
+      var resp = x.responseJSON || {};
+      var msg = resp.error || 'Error de acceso';
+      // Customer brief 2026-05-07: when the credentials are valid but
+      // the role belongs to Puntos Voltika (dealer/punto), the backend
+      // returns 403 + redirect=/configurador/dealer-panel.html. Show
+      // a clear message and a button so the operator lands on the
+      // right tool without having to remember the URL.
+      if (resp.redirect) {
+        $('#adLoginError').html(
+          msg + '<br><a href="' + resp.redirect + '" '+
+          'style="display:inline-block;margin-top:10px;padding:8px 18px;background:#039fe1;color:#fff;border-radius:6px;text-decoration:none;font-weight:700;">'+
+          'Ir al Panel de Puntos &rsaquo;</a>'
+        ).show();
+        // Auto-redirect after 3 s so even if the operator doesn\'t click
+        // they end up where they should be.
+        setTimeout(function(){ window.location.href = resp.redirect; }, 3000);
+      } else {
+        $('#adLoginError').text(msg).show();
+      }
     }).always(function(){ $b.prop('disabled',false).text('Ingresar'); });
   }
 
