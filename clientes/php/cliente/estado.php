@@ -301,11 +301,33 @@ $response = [
 
 if ($tipoPortal === 'credito') {
     $response['state'] = $info['state'];
+
+    // Customer brief 2026-05-07: Mi Voltika page used to render
+    // "Pendiente" for Serie/VIN whenever subscripciones_credito.serie
+    // was empty — a common state since the subscription row is created
+    // before the moto is physically assigned. Fall back to the linked
+    // inventario_motos.vin (matched by cliente phone/email) so the
+    // customer sees their actual VIN as soon as it's available.
+    $serieFromSub = $sub['serie'] ?? null;
+    if (!$serieFromSub) {
+        try {
+            $vinStmt = $pdo->prepare(
+                "SELECT vin_display, vin FROM inventario_motos
+                  WHERE (cliente_id = ? OR cliente_telefono = ? OR cliente_email = ?)
+                    AND activo = 1
+                  ORDER BY id DESC LIMIT 1"
+            );
+            $vinStmt->execute([$cid, $cliente['telefono'] ?? '', $cliente['email'] ?? '']);
+            $vinRow = $vinStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $serieFromSub = $vinRow['vin_display'] ?? $vinRow['vin'] ?? null;
+        } catch (Throwable $e) { /* table missing — leave null */ }
+    }
+
     $response['subscripcion'] = $sub ? [
         'id' => (int)$sub['id'],
         'modelo' => $sub['modelo'] ?? null,
         'color' => $sub['color'] ?? null,
-        'serie' => $sub['serie'] ?? null,
+        'serie' => $serieFromSub,
         'monto_semanal' => (float)($sub['monto_semanal'] ?? 0),
         'plazo_meses' => (int)($sub['plazo_meses'] ?? 0),
         'fecha_entrega' => $sub['fecha_entrega'] ?? null,
