@@ -132,6 +132,45 @@ try {
     }
 } catch (Throwable $e) { $log[] = "subscripcion ERROR: " . $e->getMessage(); }
 
+// ── 2b. transaccion CRÉDITO (so the Documentos modal Crédito branch
+//        has data to render the 7-row credit-specific document list) ─
+// The CONTADO test row (#13) covers MSI/Contado modal cases, but
+// nothing seeded so far has tpago='credito'. Without one, the Ventas
+// Crédito filter shows 0 and the customer can't visually verify the
+// new Crédito-specific Documentos rows (INE/PASSPORT, CURP+CDC,
+// Capacidad, Resumen). Adding a paid CREDITO row keeps the modal
+// reachable from a normal Ventas → Ver → Documentos click path.
+try {
+    $pcred = 'TEST-5500-CREDITO-2';
+    $stmt = $pdo->prepare("SELECT id FROM transacciones WHERE pedido = ? LIMIT 1");
+    $stmt->execute([$pcred]);
+    $existingTxCredId = (int)($stmt->fetchColumn() ?: 0);
+    if ($existingTxCredId) {
+        $log[] = "transaccion {$pcred}: existe (id={$existingTxCredId})";
+    } else {
+        $plan[] = "transaccion {$pcred}: CREDITO Pesgo plus rojo \$48,260 enganche \$12,065 parcial";
+        if ($run) {
+            $tCols = tableCols($pdo, 'transacciones', $colsCache);
+            $f = ['pedido','nombre','email','telefono','modelo','color','total','tpago','pago_estado'];
+            // Credit orders carry pago_estado='parcial' (only enganche
+            // captured so far) so the dashboard counts them in the
+            // Crédito card without showing as fully paid.
+            $v = [$pcred, $TEST_NOMBRE, $TEST_EMAIL, $TEST_TEL, 'Pesgo plus', 'rojo', 48260, 'credito', 'parcial'];
+            if (isset($tCols['stripe_pi']))     { $f[]='stripe_pi';     $v[]='pi_TEST_5500_CREDITO_2'; }
+            if (isset($tCols['ciudad']))        { $f[]='ciudad';        $v[]='Ciudad de México'; }
+            if (isset($tCols['estado']))        { $f[]='estado';        $v[]='Distrito Federal'; }
+            if (isset($tCols['cp']))            { $f[]='cp';            $v[]='11700'; }
+            if (isset($tCols['punto_nombre']))  { $f[]='punto_nombre';  $v[]='Voltika Center'; }
+            if (isset($tCols['pedido_corto']))  { $f[]='pedido_corto';  $v[]='VK-1826-CRTEST'; }
+            if (isset($tCols['environment']))   { $f[]='environment';   $v[]=defined('APP_ENV') ? APP_ENV : 'test'; }
+            if (isset($tCols['notas_admin']))   { $f[]='notas_admin';   $v[]='[TEST] Crédito seed para 5500000000'; }
+            $ph = implode(',', array_fill(0, count($f), '?'));
+            $pdo->prepare("INSERT INTO transacciones (".implode(',', $f).") VALUES ($ph)")->execute($v);
+            $log[] = "transaccion {$pcred}: creada (id=" . $pdo->lastInsertId() . ")";
+        }
+    }
+} catch (Throwable $e) { $log[] = "transaccion CREDITO ERROR: " . $e->getMessage(); }
+
 // ── 3b. pagos_credito row (so mi-credito.html finds the credit) ─────
 // cliente-credito.php searches pagos_credito.pedido_num — without a row
 // here, mi-credito.html shows "No se encontró un crédito con ese
