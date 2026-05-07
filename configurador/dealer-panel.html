@@ -295,8 +295,16 @@ const PASO_IDX = Object.fromEntries(PASOS_TRACKER.map((p, i) => [p.key, i]));
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+  // Customer report 2026-05-07: dealer panel rendering empty dashboard
+  // even though "Test Dealer" was shown post-login. Root cause: fetch()
+  // did not pass credentials, so the PHP session cookie set by
+  // admin-login.php wasn't being forwarded on subsequent calls (same
+  // origin but some browsers / Plesk configs need it explicit). Adding
+  // credentials:'same-origin' to every fetch so the session cookie
+  // travels with each request.
   fetch('php/admin-login.php', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ action: 'check' })
   })
@@ -336,6 +344,7 @@ async function doLogin(e) {
   try {
     const r = await fetch('php/admin-login.php', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         action:   'login',
@@ -364,6 +373,7 @@ async function doLogin(e) {
 async function doLogout() {
   await fetch('php/admin-login.php', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ action: 'logout' })
   });
@@ -377,7 +387,7 @@ async function doLogout() {
 // ═══════════════════════════════════════════════════════════════════════════════
 async function loadDashboard() {
   try {
-    const r = await fetch('php/admin-dashboard.php');
+    const r = await fetch('php/admin-dashboard.php', { credentials: 'same-origin' });
     if (r.status === 401) { doLogout(); return; }
     dashData = await r.json();
 
@@ -681,7 +691,7 @@ async function openDocHub(motoId) {
   openModal('modal-docs');
 
   try {
-    const r = await fetch('php/admin-documentos.php?moto_id=' + motoId);
+    const r = await fetch('php/admin-documentos.php?moto_id=' + motoId, { credentials: 'same-origin' });
     const d = await r.json();
 
     if (!d.ok) {
@@ -915,6 +925,7 @@ async function sendFaceCompare() {
 
   try {
     const r = await fetch('php/admin-face-compare.php', {
+      credentials: 'same-origin',
       method: 'POST',
       body: formData
     });
@@ -1022,6 +1033,7 @@ async function ejecutarAccion() {
 
   try {
     const r = await fetch('php/admin-moto-accion.php', {
+      credentials: 'same-origin',
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -1080,7 +1092,7 @@ async function openChecklist(motoId) {
   body.innerHTML = '<p>Cargando checklist...</p>';
   openModal('modal-checklist');
 
-  const r = await fetch('php/admin-checklist.php?moto_id=' + motoId);
+  const r = await fetch('php/admin-checklist.php?moto_id=' + motoId, { credentials: 'same-origin' });
   const d = await r.json();
   const existing = d.checklist || {};
 
@@ -1149,6 +1161,7 @@ async function saveChecklist(completar) {
   const notas = document.getElementById('cl-notas')?.value || '';
 
   const r = await fetch('php/admin-checklist.php', {
+      credentials: 'same-origin',
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ moto_id: currentChecklistMotoId, items, notas, completar })
@@ -1224,6 +1237,7 @@ async function processQR(codigo) {
 
   try {
     const r = await fetch('php/admin-qr-verify.php', {
+      credentials: 'same-origin',
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ tipo: qrTipo, codigo })

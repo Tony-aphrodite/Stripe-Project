@@ -111,7 +111,7 @@ let allTx = [];
 let currentMotoId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-  fetch('php/admin-login.php', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'check'}) })
+  fetch('php/admin-login.php', {credentials:'same-origin', method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'check'}) })
   .then(r => r.json())
   .then(d => {
     if (d.ok && ['admin','cedis'].includes(d.dealer.rol)) { dealer = d.dealer; loadInventario(); }
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function doLogout() {
-  await fetch('php/admin-login.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});
+  await fetch('php/admin-login.php', {credentials:'same-origin',method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});
   window.location.href = 'dealer-panel.html';
 }
 
@@ -138,7 +138,7 @@ async function loadInventario() {
   const el = document.getElementById('cedis-content');
   el.innerHTML = '<div style="text-align:center;padding:30px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
   try {
-    const r = await fetch('php/admin-cedis.php');
+    const r = await fetch('php/admin-cedis.php', { credentials: 'same-origin' });
     const d = await r.json();
     allMotos = d.motos || [];
     renderInventario();
@@ -234,7 +234,7 @@ async function loadPuntos() {
   const el = document.getElementById('cedis-content');
   el.innerHTML = '<div style="text-align:center;padding:30px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
   try {
-    const r = await fetch('php/admin-cedis.php?vista=puntos');
+    const r = await fetch('php/admin-cedis.php?vista=puntos', { credentials: 'same-origin' });
     const d = await r.json();
     allPuntos = d.puntos || [];
     let html = '<h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">Puntos Voltika</h3>';
@@ -265,7 +265,7 @@ async function openPuntoDetalle(dealerId, puntoNombre) {
   puntoEstadoFiltro = '';
 
   try {
-    const r = await fetch('php/admin-cedis.php?vista=punto_inventario&dealer_id=' + dealerId);
+    const r = await fetch('php/admin-cedis.php?vista=punto_inventario&dealer_id=' + dealerId, { credentials: 'same-origin' });
     const d = await r.json();
     puntoMotosAll = d.motos || [];
     const stats   = d.stats  || {};
@@ -417,7 +417,7 @@ async function loadPagos() {
   const el = document.getElementById('cedis-content');
   el.innerHTML = '<div style="text-align:center;padding:30px;"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
   try {
-    const r = await fetch('php/admin-cedis.php?vista=transacciones_pendientes');
+    const r = await fetch('php/admin-cedis.php?vista=transacciones_pendientes', { credentials: 'same-origin' });
     const d = await r.json();
     allTx = d.transacciones || [];
     let html = '<h3 style="font-size:15px;font-weight:800;color:var(--vka-blue-dark);margin-bottom:12px;">Transacciones sin moto asignada</h3>';
@@ -542,7 +542,7 @@ async function importExcel(motos) {
   if (!motos) motos = window._pendingImportMotos;
   if (!motos || !motos.length) { showToast('No hay motos para importar', 'warning'); return; }
   try {
-    const r = await fetch('php/admin-cedis.php', {
+    const r = await fetch('php/admin-cedis.php', {credentials:'same-origin',
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ accion: 'import_excel', motos })
     });
@@ -605,7 +605,7 @@ async function abrirMover(motoId) {
   if (moto && !moto.checklist_bloqueado) {
     // Doble verificación en servidor por si los datos en memoria están desactualizados
     try {
-      const cr = await fetch('php/admin-checklist-origen.php?moto_id=' + motoId);
+      const cr = await fetch('php/admin-checklist-origen.php?moto_id=' + motoId, { credentials: 'same-origin' });
       const cd = await cr.json();
       if (!cd.checklist || !cd.checklist.completado || !cd.checklist.bloqueado) {
         showChecklistRequerido(motoId, moto);
@@ -622,7 +622,7 @@ async function abrirMover(motoId) {
   body.innerHTML = '<div class="loader dark" style="width:24px;height:24px;border-width:3px;"></div>';
 
   try {
-    const r = await fetch('php/admin-cedis.php?vista=puntos');
+    const r = await fetch('php/admin-cedis.php?vista=puntos', { credentials: 'same-origin' });
     const d = await r.json();
     let html = '<p style="font-size:13px;margin-bottom:12px;">Seleccionar Punto Voltika destino:</p>';
     (d.puntos || []).forEach(p => {
@@ -665,7 +665,7 @@ async function confirmarMover() {
   const fechaRecogida = document.getElementById('mover-fecha-recogida').value || null;
 
   try {
-    const r = await fetch('php/admin-cedis.php', {
+    const r = await fetch('php/admin-cedis.php', {credentials:'same-origin',
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         accion: 'mover_punto',
@@ -691,7 +691,7 @@ async function abrirAsignar(motoId) {
   body.innerHTML = '<div class="loader dark" style="width:24px;height:24px;border-width:3px;"></div>';
 
   try {
-    const r = await fetch('php/admin-cedis.php?vista=transacciones_pendientes');
+    const r = await fetch('php/admin-cedis.php?vista=transacciones_pendientes', { credentials: 'same-origin' });
     const d = await r.json();
     let html = '<p style="font-size:13px;margin-bottom:12px;">Seleccionar transacción:</p>';
     if (!(d.transacciones||[]).length) { html += '<p style="color:var(--vka-grey);">No hay transacciones pendientes</p>'; }
@@ -728,7 +728,7 @@ async function confirmarAsignar() {
   }
 
   try {
-    const r = await fetch('php/admin-cedis.php', {
+    const r = await fetch('php/admin-cedis.php', {credentials:'same-origin',
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
@@ -743,7 +743,7 @@ async function confirmarAsignar() {
 async function verificarPago(motoId) {
   showToast('Verificando con Stripe...', '');
   try {
-    const r = await fetch('php/admin-verificar-pago.php?moto_id=' + motoId);
+    const r = await fetch('php/admin-verificar-pago.php?moto_id=' + motoId, { credentials: 'same-origin' });
     const d = await r.json();
     if (d.ok) {
       const p = d.pago;

@@ -530,7 +530,7 @@ const ESTADOS_BADGE = {
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  fetch('php/admin-login.php', {
+  fetch('php/admin-login.php', {credentials:'same-origin',
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({action:'check'})
   })
@@ -552,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function doLogout() {
-  await fetch('php/admin-login.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});
+  await fetch('php/admin-login.php', {credentials:'same-origin',method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});
   window.location.href = 'dealer-panel.html';
 }
 
@@ -563,7 +563,7 @@ async function loadInventario() {
   document.getElementById('inv-table-wrap').innerHTML =
     '<div class="empty-inv"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
   try {
-    const r = await fetch('php/admin-inventario.php');
+    const r = await fetch('php/admin-inventario.php', { credentials: 'same-origin' });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error);
     allMotos = d.motos || [];
@@ -865,7 +865,7 @@ async function submitMoto(e) {
   if (isEdit) payload.moto_id = parseInt(motoId);
 
   try {
-    const r = await fetch('php/admin-inventario.php', {
+    const r = await fetch('php/admin-inventario.php', {credentials:'same-origin',
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
@@ -975,7 +975,7 @@ function renderVentasTable(ventas) {
 // ═══════════════════════════════════════════════════════════════════════════════
 async function loadReferidos() {
   try {
-    const r = await fetch('php/admin-referidos.php');
+    const r = await fetch('php/admin-referidos.php', { credentials: 'same-origin' });
     const d = await r.json();
     renderReferidos(d.referidos || []);
   } catch {
@@ -1042,7 +1042,7 @@ async function guardarReferido() {
   const nombre = document.getElementById('ref-nombre').value.trim();
   if (!nombre) { showToast('Nombre requerido', 'warning'); return; }
   try {
-    const r = await fetch('php/admin-referidos.php', {
+    const r = await fetch('php/admin-referidos.php', {credentials:'same-origin',
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ accion:'agregar', nombre, email: document.getElementById('ref-email').value.trim(), telefono: document.getElementById('ref-tel').value.trim() })
     });
@@ -1216,7 +1216,7 @@ let allPuntos = [];
 async function loadPuntos() {
   document.getElementById('puntos-wrap').innerHTML = '<div class="empty-inv"><div class="loader dark" style="width:28px;height:28px;border-width:3px;"></div></div>';
   try {
-    const r = await fetch('php/admin-puntos.php');
+    const r = await fetch('php/admin-puntos.php', { credentials: 'same-origin' });
     const d = await r.json();
     allPuntos = d.puntos || [];
     renderPuntos(allPuntos);
@@ -1324,7 +1324,7 @@ async function guardarPunto() {
     : { accion: 'agregar', nombre, punto_nombre: puntoNombre, punto_id: puntoId, email, rol };
 
   try {
-    const r = await fetch('php/admin-puntos.php', {
+    const r = await fetch('php/admin-puntos.php', {credentials:'same-origin',
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
@@ -1346,7 +1346,7 @@ async function guardarPunto() {
 async function eliminarPunto(id) {
   if (!confirm('¿Desactivar este punto? Las motos asignadas no se eliminarán.')) return;
   try {
-    const r = await fetch('php/admin-puntos.php', {
+    const r = await fetch('php/admin-puntos.php', {credentials:'same-origin',
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ accion: 'eliminar', id })
     });
@@ -1429,7 +1429,7 @@ function renderEntrantes() {
 async function confirmarRecepcionDirecto(motoId) {
   if (!confirm('¿Confirmar la recepción de esta moto en tu punto?')) return;
   try {
-    const r = await fetch('php/admin-moto-accion.php', {
+    const r = await fetch('php/admin-moto-accion.php', {credentials:'same-origin',
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ moto_id: motoId, accion: 'confirmar_recepcion' })
     });
@@ -1462,7 +1462,7 @@ async function openModalEnviarPunto() {
   sel.innerHTML = '<option value="">Cargando puntos...</option>';
 
   try {
-    const r = await fetch('php/admin-puntos.php');
+    const r = await fetch('php/admin-puntos.php', { credentials: 'same-origin' });
     const d = await r.json();
     const puntos = (d.puntos || []).filter(p => p.rol === 'dealer');
     if (!puntos.length) {
@@ -1498,7 +1498,7 @@ async function enviarAPunto() {
   btn.textContent = 'Enviando...';
 
   try {
-    const r = await fetch('php/admin-moto-accion.php', {
+    const r = await fetch('php/admin-moto-accion.php', {credentials:'same-origin',
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         moto_id: currentDetalleId,
