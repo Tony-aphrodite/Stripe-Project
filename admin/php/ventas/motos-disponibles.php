@@ -18,10 +18,19 @@ $where  = [
 ];
 $params = [];
 
-// Include CEDIS stock + optional punto consignación stock
+// Include CEDIS stock + optional punto stock at the order's destination.
+// Customer brief 2026-05-07: previous filter only included motos still
+// at CEDIS or 'consignacion' stock at the same punto. When the order
+// already had a punto assigned but the moto lived at that punto under
+// any other tipo_asignacion (e.g. 'entrega_con_orden' from a prior
+// move that lost its pedido_num link), the modal returned zero results
+// and the operator could not finish the assignment. Now any unassigned
+// moto at the destination punto is selectable, regardless of
+// tipo_asignacion. The pedido_num/cliente_email guards above still
+// keep us from picking a moto that's tied to a different order.
 $puntoId = (int)($_GET['punto_id'] ?? 0);
 if ($puntoId > 0) {
-    $where[] = "((m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0) OR (m.punto_voltika_id = ? AND m.tipo_asignacion = 'consignacion'))";
+    $where[] = "((m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0) OR m.punto_voltika_id = ?)";
     $params[] = $puntoId;
 } else {
     $where[] = "(m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0)";

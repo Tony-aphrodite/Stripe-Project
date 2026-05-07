@@ -11,6 +11,25 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/catalog-normalize.php';
 
+/**
+ * Customer brief 2026-05-07: every assignment path writes
+ * inventario_motos.pedido_num as 'VK-' . t.pedido. If t.pedido already
+ * carried a leading "VK-" (some legacy/seed rows do, e.g. when
+ * pedido_corto leaked back into pedido), the result was double-
+ * prefixed ("VK-VK-12345") and the Ventas dashboard JOIN never
+ * matched — Ventas Ver showed "Sin moto asignada" while CEDIS
+ * displayed the moto correctly. Normalize once here so every caller
+ * (asignar-punto, asignar-moto, admin-cedis asignar_pago) emits a
+ * single canonical "VK-XXXX" form. Defined in master-bootstrap so
+ * both /admin/ and /configurador/admin-cedis.php paths can reuse it.
+ */
+if (!function_exists('voltikaNormalizePedidoNum')) {
+    function voltikaNormalizePedidoNum(string $rawPedido): string {
+        $clean = preg_replace('/^(VK-)+/i', '', trim($rawPedido));
+        return 'VK-' . $clean;
+    }
+}
+
 function voltikaEnsureSchema(): void {
     static $done = false;
     if ($done) return;

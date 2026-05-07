@@ -796,12 +796,25 @@ window.AD_ventas = (function(){
       '<div id="vtMotos">Buscando motos disponibles...</div>'
     );
 
+    // Customer brief 2026-05-07: pass punto_id from the order so the
+    // backend can include motos already at the destination punto
+    // (operator might have sent the unit there before linking it to a
+    // specific order). Without this filter the modal only listed CEDIS
+    // stock and the operator could not complete the assignment.
+    var rowForPunto = (_lastRows || []).find(function(x){ return x.id == transId; }) || {};
+    var puntoIdQS = '';
+    if (rowForPunto.moto_punto_id) {
+      puntoIdQS = '&punto_id=' + encodeURIComponent(rowForPunto.moto_punto_id);
+    } else if (rowForPunto.punto_id && rowForPunto.punto_id !== 'centro-cercano' && /^\d+$/.test(String(rowForPunto.punto_id))) {
+      puntoIdQS = '&punto_id=' + encodeURIComponent(rowForPunto.punto_id);
+    }
+
     // First try exact model+color, then fallback to same model only (never show other models)
-    var url = 'ventas/motos-disponibles.php?modelo='+encodeURIComponent(modelo)+'&color='+encodeURIComponent(color);
+    var url = 'ventas/motos-disponibles.php?modelo='+encodeURIComponent(modelo)+'&color='+encodeURIComponent(color)+puntoIdQS;
     ADApp.api(url).done(function(r){
       if(!r.ok || !r.motos.length){
         // Fallback: same model, any color — never show different models
-        var urlModelo = 'ventas/motos-disponibles.php?modelo='+encodeURIComponent(modelo);
+        var urlModelo = 'ventas/motos-disponibles.php?modelo='+encodeURIComponent(modelo)+puntoIdQS;
         ADApp.api(urlModelo).done(function(r2){
           renderMotos(r2.motos||[], transId, pedido, true, modelo);
         });

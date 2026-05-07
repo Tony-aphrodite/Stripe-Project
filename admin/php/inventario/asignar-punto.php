@@ -77,8 +77,10 @@ if ($tipo === 'venta') {
         adminJsonOut(['error' => 'Esta moto ya está asignada a otra orden (pedido: ' . ($moto['pedido_num'] ?: 'N/A') . ')'], 409);
     }
 
-    // Link order data to bike
-    $pedidoNum = 'VK-' . $order['pedido'];
+    // Link order data to bike. Use the shared normalizer so a pedido
+    // that already starts with "VK-" doesn't end up double-prefixed
+    // ("VK-VK-12345"), which broke the Ventas Ver-modal JOIN.
+    $pedidoNum = voltikaNormalizePedidoNum((string)$order['pedido']);
     $tpago = strtolower(trim($order['tpago'] ?? ''));
     $pagoEstado = in_array($tpago, ['credito', 'enganche', 'parcial'], true)
         ? 'parcial'

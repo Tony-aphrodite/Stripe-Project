@@ -325,7 +325,18 @@ if ($accion === 'asignar_pago') {
             if ($txData['nombre'])    { $sets[] = "cliente_nombre = ?"; $vals[] = $txData['nombre']; }
             if ($txData['email'])     { $sets[] = "cliente_email = ?"; $vals[] = $txData['email']; }
             if ($txData['telefono']) { $sets[] = "cliente_telefono = ?"; $vals[] = $txData['telefono']; }
-            if ($txData['pedido'])   { $sets[] = "pedido_num = ?"; $vals[] = 'VK-' . $txData['pedido']; }
+            // Customer brief 2026-05-07: use the shared normalizer so a
+            // pedido that already starts with "VK-" doesn't get
+            // double-prefixed ("VK-VK-12345"). Without this the JOIN in
+            // admin/ventas/listar.php failed and the dashboard rendered
+            // "Sin moto asignada" while CEDIS showed the link.
+            if ($txData['pedido']) {
+                if (!function_exists('voltikaNormalizePedidoNum')) {
+                    require_once __DIR__ . '/master-bootstrap.php';
+                }
+                $sets[] = "pedido_num = ?";
+                $vals[] = voltikaNormalizePedidoNum((string)$txData['pedido']);
+            }
         }
     }
 

@@ -169,6 +169,9 @@ try {
                       AND (
                           m2.pedido_num = CONCAT('VK-', t.pedido)
                           OR m2.pedido_num = t.pedido_corto
+                          OR m2.pedido_num = t.pedido
+                          OR m2.pedido_num = CONCAT('VK-VK-', t.pedido)
+                          OR (t.pedido LIKE 'VK-%' AND m2.pedido_num = t.pedido)
                       )
                     ORDER BY m2.fmod DESC
                     LIMIT 1
