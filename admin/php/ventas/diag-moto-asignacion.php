@@ -44,8 +44,13 @@ $pdo = getDB();
 $run = !empty($_GET['run']);
 $ordenFilter = trim((string)($_GET['orden'] ?? ''));
 
-// ── Check A — duplicated VK-VK- prefixes ─────────────────────────────
+// ── Check A — duplicated VK-VK- prefixes + orphan "VK-" rows ─────────
+// The orphan "VK-" rows are critical: they block every assignment
+// because the duplicate-pedido_num guard returns "Esta moto ya está
+// asignada a otra orden (pedido: VK-)". The clean for them is to
+// blank out the field entirely (the moto goes back to free stock).
 $dupRows = [];
+$orphanRows = [];
 try {
     $stmt = $pdo->query("SELECT id, vin_display, vin, pedido_num, cliente_nombre
                            FROM inventario_motos
@@ -54,11 +59,22 @@ try {
                           ORDER BY id DESC LIMIT 50");
     $dupRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) { $dupErr = $e->getMessage(); }
+try {
+    $stmt = $pdo->query("SELECT id, vin_display, vin, pedido_num, cliente_nombre,
+                                cliente_email, cliente_telefono
+                           FROM inventario_motos
+                          WHERE TRIM(pedido_num) IN ('VK-', 'VK-VK-', 'VK-VK')
+                            AND activo = 1
+                          ORDER BY id DESC LIMIT 50");
+    $orphanRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) { $orphanErr = $e->getMessage(); }
 
 $fixed = [];
+$orphanFixed = [];
 if ($run && $dupRows) {
     foreach ($dupRows as $r) {
         $clean = voltikaNormalizePedidoNum((string)$r['pedido_num']);
+        if ($clean === '') continue; // handled by the orphan branch below
         try {
             $pdo->prepare("UPDATE inventario_motos SET pedido_num = ?, fmod = NOW() WHERE id = ?")
                ->execute([$clean, (int)$r['id']]);
@@ -67,6 +83,31 @@ if ($run && $dupRows) {
                 'moto_id' => (int)$r['id'], 'before' => $r['pedido_num'], 'after' => $clean,
             ]);
         } catch (Throwable $e) { error_log('normalize: ' . $e->getMessage()); }
+    }
+}
+if ($run && $orphanRows) {
+    foreach ($orphanRows as $r) {
+        // Wipe pedido_num + customer fields so the moto goes back to free
+        // stock — the original linkage was broken (no real pedido), so the
+        // moto can be assigned again to a real order.
+        try {
+            $pdo->prepare(
+                "UPDATE inventario_motos SET
+                    pedido_num       = NULL,
+                    cliente_nombre   = NULL,
+                    cliente_email    = NULL,
+                    cliente_telefono = NULL,
+                    stripe_pi        = NULL,
+                    pago_estado      = NULL,
+                    fmod             = NOW()
+                 WHERE id = ?"
+            )->execute([(int)$r['id']]);
+            $orphanFixed[] = ['id' => $r['id'], 'vin' => $r['vin_display'] ?? $r['vin']];
+            adminLog('moto_pedido_orphan_cleared', [
+                'moto_id' => (int)$r['id'],
+                'vin'     => $r['vin_display'] ?? $r['vin'],
+            ]);
+        } catch (Throwable $e) { error_log('orphan clear: ' . $e->getMessage()); }
     }
 }
 
@@ -193,6 +234,10 @@ th{color:#9aa7b7;font-weight:700;font-size:11px;letter-spacing:.5px;text-transfo
 
 <!-- Summary cards -->
 <div class="sum">
+  <div class="summ-card <?= count($orphanRows) > 0 ? 'bad' : '' ?>">
+    <div class="n"><?= count($orphanRows) ?></div>
+    <div class="l">⚠ Motos con "VK-" huérfano</div>
+  </div>
   <div class="summ-card <?= count($dupRows) > 0 ? 'bad' : '' ?>">
     <div class="n"><?= count($dupRows) ?></div>
     <div class="l">Filas con VK-VK- duplicado</div>
@@ -202,11 +247,7 @@ th{color:#9aa7b7;font-weight:700;font-size:11px;letter-spacing:.5px;text-transfo
     <div class="l">Órdenes con JOIN solo via fix</div>
   </div>
   <div class="summ-card">
-    <div class="n"><?= count($helperResults) ?></div>
-    <div class="l">Helper test cases</div>
-  </div>
-  <div class="summ-card">
-    <div class="n"><?= $run ? count($fixed) : '—' ?></div>
+    <div class="n"><?= $run ? (count($fixed) + count($orphanFixed)) : '—' ?></div>
     <div class="l">Filas reparadas (run=1)</div>
   </div>
 </div>
@@ -214,11 +255,42 @@ th{color:#9aa7b7;font-weight:700;font-size:11px;letter-spacing:.5px;text-transfo
 <!-- Run buttons -->
 <div class="box">
   <a class="btn" href="?">Re-cargar diagnóstico</a>
-  <?php if (count($dupRows) > 0 && !$run): ?>
-    <a class="btn warn" href="?run=1" onclick="return confirm('Se normalizarán <?= count($dupRows) ?> filas con prefijo duplicado. ¿Continuar?')">Reparar prefijos duplicados (run=1)</a>
+  <?php if ((count($dupRows) > 0 || count($orphanRows) > 0) && !$run):
+    $totalToFix = count($dupRows) + count($orphanRows);
+  ?>
+    <a class="btn warn" href="?run=1" onclick="return confirm('Se repararán <?= $totalToFix ?> filas (<?= count($dupRows) ?> duplicadas + <?= count($orphanRows) ?> huérfanas). Las huérfanas vuelven al stock libre. ¿Continuar?')">Reparar todas (run=1)</a>
   <?php endif; ?>
   <?php if ($run): ?>
-    <span class="tag ok">✓ Reparación ejecutada</span>
+    <span class="tag ok">✓ Reparación ejecutada — <?= count($fixed) ?> normalizadas + <?= count($orphanFixed) ?> liberadas</span>
+  <?php endif; ?>
+</div>
+
+<!-- A0) Orphan "VK-" rows — root cause of "ya está asignada" blocker -->
+<h2>A0) ⚠ Motos con pedido_num huérfano ("VK-" sin cuerpo)</h2>
+<div class="box">
+  <?php if (count($orphanRows) === 0): ?>
+    <span class="tag ok">✓ Sin motos con pedido_num huérfano — el bloqueador "Esta moto ya está asignada (pedido: VK-)" no debería disparar.</span>
+  <?php else: ?>
+    <p style="margin:0 0 10px;color:#ff8c8c"><strong>⚠ CRÍTICO:</strong> <?= count($orphanRows) ?> moto(s) con pedido_num="VK-" sin cuerpo. Estas filas son la causa del error "Esta moto ya está asignada a otra orden (pedido: VK-)" al intentar asignar OTRA moto a un pedido. Hay que limpiarlas (libera la moto al stock).</p>
+    <table>
+      <thead><tr><th>moto_id</th><th>VIN</th><th>pedido_num</th><th>cliente</th><th>email</th><th>tel</th></tr></thead>
+      <tbody>
+      <?php foreach ($orphanRows as $r): ?>
+        <tr>
+          <td><?= htmlspecialchars($r['id']) ?></td>
+          <td><code><?= htmlspecialchars($r['vin_display'] ?? $r['vin']) ?></code></td>
+          <td><span class="tag bad"><?= htmlspecialchars($r['pedido_num']) ?></span></td>
+          <td><?= htmlspecialchars($r['cliente_nombre'] ?? '—') ?></td>
+          <td style="font-size:11px"><?= htmlspecialchars($r['cliente_email'] ?? '—') ?></td>
+          <td style="font-size:11px"><?= htmlspecialchars($r['cliente_telefono'] ?? '—') ?></td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+    <p style="margin:14px 0 0;color:#9aa7b7;font-size:12px">Acción de la limpieza: vaciar pedido_num + datos de cliente. La moto vuelve a quedar libre y disponible para asignación real.</p>
+    <?php if ($run && $orphanFixed): ?>
+      <p style="margin:14px 0 0;color:#22d37a">✓ Limpiadas <?= count($orphanFixed) ?> motos huérfanas en este run.</p>
+    <?php endif; ?>
   <?php endif; ?>
 </div>
 

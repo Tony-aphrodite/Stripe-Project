@@ -205,7 +205,12 @@ if ($estadoMoto && !in_array($estadoMoto, $estadosLibres, true)) {
 // "VK-VK-" prefix when t.pedido already carried "VK-" (mostly legacy
 // rows). Without this the dashboard JOIN failed and Ventas displayed
 // "Sin moto asignada" while CEDIS / inventario rendered the link.
+// Reject when the order has no pedido — writing a bare "VK-" would
+// poison the duplicate-pedido_num guard for every subsequent moto.
 $pedidoNum = voltikaNormalizePedidoNum((string)$order['pedido']);
+if ($pedidoNum === '') {
+    adminJsonOut(['error' => 'La orden no tiene pedido válido — no se puede vincular la moto.'], 400);
+}
 
 // Credit-family orders only have enganche paid at this point → mark 'parcial'.
 // Every other tpago (contado, unico, msi, spei, oxxo, ...) is a fully settled

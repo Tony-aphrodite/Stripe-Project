@@ -26,6 +26,15 @@ require_once __DIR__ . '/lib/catalog-normalize.php';
 if (!function_exists('voltikaNormalizePedidoNum')) {
     function voltikaNormalizePedidoNum(string $rawPedido): string {
         $clean = preg_replace('/^(VK-)+/i', '', trim($rawPedido));
+        // Customer brief 2026-05-07 follow-up: when the input was empty
+        // or just "VK-" with no body, the helper used to return "VK-"
+        // (prefix only). That orphaned value sat on inventario_motos
+        // rows and caused every subsequent assignment to fail with
+        // "Esta moto ya está asignada a otra orden (pedido: VK-)" —
+        // because the duplicate-pedido_num guard hit on the literal
+        // "VK-" string. Treat empty body as no pedido at all and let
+        // the caller handle it (don't write the row).
+        if ($clean === '') return '';
         return 'VK-' . $clean;
     }
 }

@@ -329,13 +329,18 @@ if ($accion === 'asignar_pago') {
             // pedido that already starts with "VK-" doesn't get
             // double-prefixed ("VK-VK-12345"). Without this the JOIN in
             // admin/ventas/listar.php failed and the dashboard rendered
-            // "Sin moto asignada" while CEDIS showed the link.
+            // "Sin moto asignada" while CEDIS showed the link. Skip
+            // the write entirely if the helper returns empty (orphan
+            // input) so we never poison the row with a bare "VK-".
             if ($txData['pedido']) {
                 if (!function_exists('voltikaNormalizePedidoNum')) {
                     require_once __DIR__ . '/master-bootstrap.php';
                 }
-                $sets[] = "pedido_num = ?";
-                $vals[] = voltikaNormalizePedidoNum((string)$txData['pedido']);
+                $normalized = voltikaNormalizePedidoNum((string)$txData['pedido']);
+                if ($normalized !== '') {
+                    $sets[] = "pedido_num = ?";
+                    $vals[] = $normalized;
+                }
             }
         }
     }

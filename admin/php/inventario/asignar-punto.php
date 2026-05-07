@@ -80,7 +80,13 @@ if ($tipo === 'venta') {
     // Link order data to bike. Use the shared normalizer so a pedido
     // that already starts with "VK-" doesn't end up double-prefixed
     // ("VK-VK-12345"), which broke the Ventas Ver-modal JOIN.
+    // Reject the operation if the order has no pedido — without one
+    // we'd write a useless "VK-" placeholder that then blocks every
+    // subsequent assignment (customer report 2026-05-07).
     $pedidoNum = voltikaNormalizePedidoNum((string)$order['pedido']);
+    if ($pedidoNum === '') {
+        adminJsonOut(['error' => 'La orden no tiene pedido válido — no se puede vincular la moto.'], 400);
+    }
     $tpago = strtolower(trim($order['tpago'] ?? ''));
     $pagoEstado = in_array($tpago, ['credito', 'enganche', 'parcial'], true)
         ? 'parcial'
