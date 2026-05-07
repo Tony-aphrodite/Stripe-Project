@@ -2170,11 +2170,16 @@ window.AD_ventas = (function(){
 
     var rows_ = [];
     // Always-available: signed contract PDF (descargar-contrato.php).
+    // Customer brief 2026-05-07: regen=1 forces a fresh PDF render so
+    // cached PDFs from before today's contract-template fix (Fecha de
+    // pago / Punto autorizado / Fecha estimada de entrega) get
+    // regenerated with the correct fields. Without regen=1 the static
+    // path served the pre-fix PDF showing "Por definir" + blank dates.
     if (pedido) {
       rows_.push({
         title: isCredito ? 'Contrato de financiamiento (firmado)' : 'Contrato de compraventa (firmado)',
         desc:  'Contrato con datos del cliente, sello de tiempo y firma electrónica.',
-        url:   '/configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(pedido)+'&inline=1&debug=1',
+        url:   '/configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(pedido)+'&inline=1&regen=1&debug=1',
         icon:  '📄',
         bg:    '#dbeafe', tx: '#1e40af'
       });

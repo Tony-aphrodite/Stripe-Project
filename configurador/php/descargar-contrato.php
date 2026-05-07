@@ -158,7 +158,21 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
                     'payment_method'          => (strpos($tpagoNorm, 'msi') !== false ? 'msi' : (strpos($tpagoNorm, 'tarjeta') !== false ? 'contado' : $tpagoNorm)),
                     'payment_reference'       => $tx['stripe_pi'] ?: $tx['pedido'],
                     'payment_date'            => date('d/m/Y H:i', strtotime($tx['freg'] ?? 'now')),
-                    'estimated_delivery_date' => date('d/m/Y', strtotime('+10 days', strtotime($tx['freg'] ?? 'now'))),
+                    // Customer brief 2026-05-07: regen path was always
+                    // computing ETA as freg+10 days even when the order
+                    // already had a real fecha_estimada_entrega from the
+                    // Asignar punto flow; and it never passed delivery_point
+                    // so the contract template always rendered "Por definir".
+                    // Now we pull both straight from transacciones so the
+                    // PDF reflects the actual logistics commitment.
+                    'estimated_delivery_date' => !empty($tx['fecha_estimada_entrega'])
+                        ? date('d/m/Y', strtotime((string)$tx['fecha_estimada_entrega']))
+                        : date('d/m/Y', strtotime('+10 days', strtotime($tx['freg'] ?? 'now'))),
+                    'delivery_point'          => trim((string)($tx['punto_nombre'] ?? '')) === ''
+                        ? ''
+                        : trim((string)$tx['punto_nombre']) . (
+                            !empty($tx['ciudad']) ? ' · ' . trim((string)$tx['ciudad']) : ''
+                        ),
                     'acceptance_timestamp'    => $tx['contrato_aceptado_at'] ?: ($tx['freg'] ?? gmdate('Y-m-d H:i:s')),
                     'acceptance_ip'           => $tx['contrato_aceptado_ip'] ?? '',
                     'acceptance_user_agent'   => $tx['contrato_aceptado_ua'] ?? '',
