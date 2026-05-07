@@ -34,7 +34,16 @@ if (!$cliente) {
     }
 }
 
-$codigo = portalGenOTP();
+// Customer brief 2026-05-07 ("No puedo entrar"): test phones get the
+// FIXED OTP 123456 instead of a random code. Without this, the
+// whitelisted numbers got a randomly-generated testCode that had to be
+// read from the JSON response — too brittle for customers running
+// through the portal in their browser. Now the test code matches the
+// /configurador/ bypass (also 123456) so customers can use the same
+// code across the full flow.
+$FIXED_TEST_OTP = '123456';
+$isTestNumber = in_array($tel, $TEST_NUMBERS, true);
+$codigo = $isTestNumber ? $FIXED_TEST_OTP : portalGenOTP();
 
 // Persist OTP in DB (not session) — survives any cookie/proxy issues
 $pdo = getDB();
@@ -69,9 +78,11 @@ portalLog('login_request', [
 ]);
 
 $out = ['ok' => true, 'status' => 'sent'];
-// Always expose testCode for known test numbers, or when SMS fails
-$isTestNumber = in_array($tel, $TEST_NUMBERS, true);
+// Always expose testCode for known test numbers (fixed 123456) or when
+// SMS fails. The fixed code lets customers/QA log in without reading
+// the response JSON.
 if (!$r['ok'] || $isTestNumber) {
     $out['testCode'] = $codigo;
+    if ($isTestNumber) $out['test_mode'] = true;
 }
 portalJsonOut($out);

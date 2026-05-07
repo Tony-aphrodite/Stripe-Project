@@ -297,13 +297,23 @@ function _contratoContadoBuildPdf(array $d): FPDF {
         ['Modalidad seleccionada', contratoContadoMethodLabel((string)($d['payment_method'] ?? ''))],
         ['Procesador / Medio',     contratoContadoProcessor((string)($d['payment_method'] ?? ''))],
         ['Referencia de pago',     (string)($d['payment_reference'] ?? '')],
-        ['Fecha de pago',          (string)($d['payment_date']      ?? '')],
+        // Customer brief 2026-05-07: the contract used to leave Fecha de
+        // pago empty if the caller didn't provide it (firmar-contrato-
+        // checkout-submit.php was missing this field). Now we fall back
+        // to the contract date so the cell is never blank.
+        ['Fecha de pago',          (string)($d['payment_date'] ?? '') !== '' ? (string)$d['payment_date'] : (string)($d['contract_date'] ?? date('d/m/Y'))],
     ]);
 
+    // Customer brief 2026-05-07: contract was rendering "Por definir" as
+    // a hardcoded value even when the order already had a punto + ETA
+    // assigned. The contract must reflect the actual delivery point and
+    // estimated date when known so the customer sees the correct
+    // commitment. Fall back to the legacy placeholder only when no
+    // punto has been picked yet.
     _ccPdfH3($pdf, 'Punto de entrega');
     _ccPdfTable($pdf, [
-        ['Punto autorizado',           'Por definir'],
-        ['Fecha estimada de entrega',  (string)($d['estimated_delivery_date'] ?? '')],
+        ['Punto autorizado',           (string)($d['delivery_point'] ?? '') !== '' ? (string)$d['delivery_point'] : 'Por definir'],
+        ['Fecha estimada de entrega',  (string)($d['estimated_delivery_date'] ?? '') !== '' ? (string)$d['estimated_delivery_date'] : 'Por definir'],
     ]);
 
     _ccPdfPara($pdf, 'EL COMPRADOR reconoce y acepta que el PUNTO DE ENTREGA AUTORIZADO será asignado por VOLTIKA con posterioridad a la firma del presente Contrato y notificado a EL COMPRADOR mediante los medios de contacto registrados, formando parte integral del presente Contrato.');

@@ -332,9 +332,39 @@ window.AD_ventas = (function(){
       // r.resumen aggregation, which sums ALL transacciones (not the
       // 100-row LIMIT used for the table) so the totals are accurate.
       var resumen = r.resumen || {};
+
+      // Customer brief 2026-05-07 (Group B follow-up): "The top cards
+      // must display order indicators broken down by order type. Each
+      // independent card must show the order count for a specific
+      // type (MSI, Contado, Crédito)". Filter tabs alone weren't
+      // enough — operators want at-a-glance counts on the dashboard
+      // without clicking through tabs first. Each card is wired to
+      // switch the matching filter tab on click so they double as
+      // shortcuts.
+      var byTipo = { contado: 0, msi: 0, credito: 0 };
+      (r.rows || []).forEach(function(o){
+        var tp = String(o.tipo || '').toLowerCase();
+        if (tp === 'unico' || tp === 'contado' || tp === 'tarjeta' || /tarjeta de [dc]/i.test(tp)) byTipo.contado++;
+        else if (tp === 'msi') byTipo.msi++;
+        else if (tp === 'credito' || tp === 'credito-orfano' || tp === 'enganche' || tp === 'parcial') byTipo.credito++;
+      });
+      // Build clickable variant of kpi() — uses the same .ad-kpi class
+      // so existing CSS still applies; click handler wired below.
+      function kpiClickable(label, value, cls, tabKey){
+        return '<div class="ad-kpi adVtKpiTipo" data-tab="'+tabKey+'" '
+             + 'style="cursor:pointer;transition:transform .12s,box-shadow .12s;" '
+             + 'onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 18px rgba(12,35,64,.12)\'" '
+             + 'onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'\'">'
+             + '<div class="label">'+label+'</div>'
+             + '<div class="value '+cls+'">'+value+'</div></div>';
+      }
+
       $('#vtKpis').html(
         renderResumenMoney(resumen) +
         kpi('Total ordenes', r.total, 'blue')+
+        kpiClickable('Contado', byTipo.contado, 'green',  'contado')+
+        kpiClickable('MSI',     byTipo.msi,     'blue',   'msi')+
+        kpiClickable('Crédito', byTipo.credito, 'yellow', 'credito')+
         kpi('Moto asignada', r.asignadas, 'green')+
         kpi('Sin asignar', r.sin_asignar, r.sin_asignar > 0 ? 'red' : 'green')+
         kpi('Ventas con Pago', r.con_pago||0, 'green')+
@@ -343,6 +373,18 @@ window.AD_ventas = (function(){
         kpi('Huérfanos/errores', r.orfanos||0, (r.orfanos||0) > 0 ? 'red' : 'green')+
         kpi('Datos incompletos', r.phantom||0, (r.phantom||0) > 0 ? 'red' : 'green')
       );
+
+      // Wire tipo cards → switch filter tab. Re-using _activeTab and
+      // renderTable keeps the click in sync with the .vtTab click path.
+      $('#vtKpis .adVtKpiTipo').off('click').on('click', function(){
+        _activeTab = $(this).data('tab');
+        renderTable(_lastRows);
+        // Scroll the table into view so the operator immediately sees
+        // the filtered list (KPIs sit above the tabs/table).
+        var $t = $('#vtTable'); if ($t.length) {
+          $('html,body').animate({ scrollTop: $t.offset().top - 80 }, 200);
+        }
+      });
       var rows = r.rows || [];
       _lastRows = rows;
       renderTable(rows);
@@ -2158,14 +2200,51 @@ window.AD_ventas = (function(){
         bg:    '#fffbeb', tx: '#92400e'
       });
     }
-    // Credit-only docs.
+    // Credit-only docs — customer brief 2026-05-07 (Group C):
+    // for Crédito orders the documentos window MUST split out each
+    // attachment as its own row so the admin can download them
+    // individually:
+    //   1. Identidad (INE/PASSPORT) — submitted via Truora
+    //   2. CURP + CDC + Truora "same OK" verification
+    //   3. Capacidad crediticia (CDC capacity report)
+    //   4. Resumen de transacción (full transaction summary)
+    // The original "Reporte CDC + Truora" combo card bundled all of
+    // these into a single click-through to preaprobaciones, which
+    // forced the admin to dig through the bureau page to reach each
+    // artifact. Now each document is one click. The URLs all point at
+    // the existing preaprobaciones detail panel filtered by phone/
+    // email — that's where Truora exposes the attachments — but each
+    // row has a #tab anchor so the panel can scroll to the right
+    // section. (preaprobaciones page reads `?search=` already.)
     if (isCredito) {
+      var preapBase = '/admin/php/preaprobaciones/listar.php?search='+encodeURIComponent(r.telefono||r.email||'');
       rows_.push({
-        title: 'Reporte CDC + Truora',
-        desc:  'Resultado de Círculo de Crédito + verificación Truora (INE, selfie, CURP cross-check).',
-        url:   '/admin/php/preaprobaciones/listar.php?search='+encodeURIComponent(r.telefono||r.email||''),
+        title: 'Identidad (INE / PASSPORT)',
+        desc:  'Documento oficial submitido vía Truora al solicitar el crédito.',
+        url:   preapBase + '#truora-identidad',
+        icon:  '🪪',
+        bg:    '#fef3c7', tx: '#92400e'
+      });
+      rows_.push({
+        title: 'CURP + Validación CDC/Truora',
+        desc:  'CURP del cliente con acuse de validación de Círculo de Crédito y verificación "same OK" de Truora.',
+        url:   preapBase + '#truora-curp',
         icon:  '🆔',
+        bg:    '#e0e7ff', tx: '#3730a3'
+      });
+      rows_.push({
+        title: 'Reporte de Capacidad Crediticia',
+        desc:  'Score CDC, PTI, DPD90, deuda existente y capacidad de pago calculada.',
+        url:   preapBase + '#cdc-capacidad',
+        icon:  '📊',
         bg:    '#ede9fe', tx: '#5b21b6'
+      });
+      rows_.push({
+        title: 'Resumen de Transacción',
+        desc:  'Detalle completo: enganche, plazo, pago semanal/mensual, tasa, modelo.',
+        url:   '/admin/php/ventas/listar.php?id='+encodeURIComponent(r.id||'')+'#resumen',
+        icon:  '📋',
+        bg:    '#f0fdf4', tx: '#166534'
       });
     }
 

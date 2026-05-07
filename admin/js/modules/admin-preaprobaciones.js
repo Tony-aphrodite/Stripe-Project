@@ -555,26 +555,35 @@ window.AD_preaprobaciones = (function(){
     }
 
     // ── 8. Decision action buttons ───────────────────────────────────
-    // Smart disable: PLD match locks everything except Rechazar; DPD90
-    // active, NO_VIABLE, or Truora rejected greys out approve+MSI options.
-    // Customer brief 2026-05-06 (Carlos Ricardo Sanchez case): Truora
-    // rejection is a HARD prerequisite — credit cannot be approved if
-    // identity verification failed. Mirrors the bureau-score gate.
-    // Admin can still offer contado/9MSI (those don't depend on credit
-    // approval) but plazos require Truora green.
+    // Hard blocks (NO override possible from this UI):
+    //   - PLD match    — AML/SAT compliance, only Rechazar allowed
+    //   - Truora rejected — identity verification failed (Carlos Ricardo
+    //                       Sanchez case, customer brief 2026-05-06 NEW3)
+    //   - DPD90 active  — applicant is currently delinquent on another
+    //                     account, hard credit block
+    //   - PTI > 50%     — pago-to-income ratio over half, hard block
     //
-    // Customer brief 2026-05-06 NEW1 (Guillermo Solis Sansores #47):
-    // when CDC is unreachable (circulo_source='estimado'), treat the case
-    // as CONDITIONAL — Aprobar Plazos must be enabled regardless of the
-    // stored NO_VIABLE status, because the rejection was caused by a CDC
-    // outage, not by the applicant's credit profile. The recomendation
-    // panel above (yellow banner) already routes the admin toward
-    // conservative terms (50% enganche, 12 meses); the buttons must
-    // match that recommendation rather than the stale DB status.
-    var statusBlocks = (status === 'NO_VIABLE') && !cdcUnreachable;
-    var canApprove = !pldBlock && !hasDPD90 && !truoraRejected && !statusBlocks && pti < 0.50;
-    var canContado = !pldBlock;        // PLD blocks contado offers too
-    var canMSI     = canApprove;       // MSI requires healthy file + no PLD + Truora ok
+    // Soft blocks (admin can override via confirmation dialog):
+    //   - Status NO_VIABLE due to low CDC score, low score+high PTI
+    //     guardrail, etc. — system recommends rejection but admin has
+    //     business judgement (repeat customer, additional collateral,
+    //     known referral, etc.) that justifies overriding the algorithm.
+    //
+    // Customer brief 2026-05-07 (follow-up to NEW1): "Still the issue to
+    // approve when the score is lower. We need this buttons available."
+    // Yesterday's fix only enabled the buttons for cdcUnreachable; the
+    // general low-score case (Score 373, Score 380-419 with high PTI,
+    // etc.) still needed manual-approval support. Now Aprobar Plazos +
+    // 9 MSI are clickable for any non-hard-blocked case; the click
+    // handler asks for explicit confirmation when the system status is
+    // NO_VIABLE so the admin acknowledges they're overriding.
+    var hardBlocked = pldBlock || hasDPD90 || truoraRejected || pti >= 0.50;
+    var canApprove  = !hardBlocked;
+    var canContado  = !pldBlock;       // PLD blocks contado offers too
+    var canMSI      = !hardBlocked;    // MSI requires healthy file + no PLD + Truora ok
+    // Track whether the admin will need to confirm an override; the
+    // click handler reads this flag.
+    var needsOverrideConfirm = (status === 'NO_VIABLE') && !cdcUnreachable && !hardBlocked;
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 8px;background:#fafafa;border-radius:8px;margin:8px;">';
     html += decisionBtn('apDecApprove', '✓ Aprobar Plazos',  '#1a6b1a', canApprove);
     html += decisionBtn('apDecContado', '$ Ofrecer Contado', '#1a4b7a', canContado);
@@ -671,11 +680,29 @@ window.AD_preaprobaciones = (function(){
         })
         .fail(function(xhr){ alert('Error: ' + (xhr.responseJSON && xhr.responseJSON.error || 'desconocido')); });
     }
+    // Customer brief 2026-05-07: when admin overrides a NO_VIABLE
+    // recommendation, require an explicit confirmation so the override
+    // is intentional + auditable. The note recorded reflects that this
+    // was a manual override against the algorithm's advice.
+    function confirmOverrideIfNeeded(actionLabel) {
+      if (!needsOverrideConfirm) return true;
+      var reasons = [];
+      if (scoreNum && scoreNum < 420) reasons.push('Score ' + scoreNum + ' (sistema considera bajo)');
+      if (ptiPct >= 35)               reasons.push('PTI ' + ptiPct + '%');
+      if (!reasons.length)            reasons.push('Status NO_VIABLE');
+      return confirm(
+        'El sistema recomienda RECHAZAR esta solicitud:\n\n  · ' + reasons.join('\n  · ') +
+        '\n\n¿Estás seguro que deseas ' + actionLabel + ' como override del sistema?\n' +
+        'La nota quedará marcada como override manual del revisor.'
+      );
+    }
     $('#apDecApprove').on('click', function(){
       if ($(this).is(':disabled')) return;
+      if (!confirmOverrideIfNeeded('APROBAR PLAZOS')) return;
+      var notePrefix = needsOverrideConfirm ? '⚠ OVERRIDE manual: ' : '';
       applyDecision({
         seguimiento: 'aprobado',
-        notas_admin: appendNote(row.notas_admin, 'Aprobar plazos: '+(row.enganche_requerido?Math.round(row.enganche_requerido*100)+'%/':'')+(row.plazo_max||'?')+' meses')
+        notas_admin: appendNote(row.notas_admin, notePrefix + 'Aprobar plazos: '+(row.enganche_requerido?Math.round(row.enganche_requerido*100)+'%/':'')+(row.plazo_max||'?')+' meses')
       }, 'Aprobar plazos');
     });
     $('#apDecContado').on('click', function(){
@@ -686,9 +713,11 @@ window.AD_preaprobaciones = (function(){
     });
     $('#apDecMSI').on('click', function(){
       if ($(this).is(':disabled')) return;
+      if (!confirmOverrideIfNeeded('OFRECER 9 MSI')) return;
+      var notePrefix = needsOverrideConfirm ? '⚠ OVERRIDE manual: ' : '';
       applyDecision({
         seguimiento: 'ofrecer_msi',
-        notas_admin: appendNote(row.notas_admin, 'Ofrecer 9 MSI sin intereses')
+        notas_admin: appendNote(row.notas_admin, notePrefix + 'Ofrecer 9 MSI sin intereses')
       }, '9 MSI sin intereses');
     });
     $('#apDecReject').on('click', function(){

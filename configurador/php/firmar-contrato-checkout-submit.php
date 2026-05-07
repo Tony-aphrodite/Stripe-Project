@@ -149,6 +149,31 @@ try {
     if (file_exists(__DIR__ . '/contrato-contado.php')) {
         require_once __DIR__ . '/contrato-contado.php';
         if (function_exists('contratoContadoGenerate')) {
+            // Customer brief 2026-05-07: contract was being generated
+            // without payment_date / estimated_delivery_date / delivery_point
+            // when the customer signed via the inline checkout flow.
+            // confirmar-orden.php and descargar-contrato.php already pass
+            // these — we now match that contract so the PDF doesn't show
+            // empty Fecha de pago + "Por definir" delivery point on
+            // signed contracts.
+            $paymentDate = !empty($tx['freg'])
+                ? date('d/m/Y H:i', strtotime((string)$tx['freg']))
+                : date('d/m/Y H:i');
+            $estimatedDelivery = '';
+            if (!empty($tx['fecha_estimada_entrega'])) {
+                $estimatedDelivery = date('d/m/Y', strtotime((string)$tx['fecha_estimada_entrega']));
+            } else {
+                // Conservative default: 10 business days from order placement.
+                $base = !empty($tx['freg']) ? strtotime((string)$tx['freg']) : time();
+                $estimatedDelivery = date('d/m/Y', strtotime('+10 days', $base));
+            }
+            $deliveryPoint = trim((string)($tx['punto_nombre'] ?? ''));
+            // Decorate punto with city if both available, matching the
+            // admin Ventas detail panel display ("Voltika Center · CDMX").
+            if ($deliveryPoint !== '' && !empty($tx['ciudad'])) {
+                $deliveryPoint .= ' · ' . trim((string)$tx['ciudad']);
+            }
+
             $contractData = [
                 'pedido'             => $tx['pedido'] ?? '',
                 'folio'              => $tx['folio_contrato'] ?: ($tx['pedido'] ?? ''),
@@ -165,6 +190,9 @@ try {
                 'total_amount'       => (float)($tx['total'] ?: $tx['precio'] ?? 0),
                 'payment_method'     => strtolower($tx['tpago'] ?? 'contado'),
                 'payment_reference'  => $tx['stripe_pi'] ?: ($tx['pedido'] ?? ''),
+                'payment_date'       => $paymentDate,
+                'estimated_delivery_date' => $estimatedDelivery,
+                'delivery_point'     => $deliveryPoint,
                 'firma_base64'       => 'data:image/png;base64,' . $rawBase64,
                 'firma_sha256'       => $hash,
                 'firma_freg'         => date('Y-m-d H:i:s'),

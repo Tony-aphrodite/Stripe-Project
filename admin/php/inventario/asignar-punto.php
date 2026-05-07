@@ -117,6 +117,34 @@ if (!$fechaEstimada) {
     }
 }
 
+// ── Supersede prior active envíos for this moto ─────────────────────────
+// Customer brief 2026-05-07 (follow-up to H20-22): "we need when you set
+// a shipping of a moto, you cant set another shipping with the same
+// moto". Same rule as admin/php/envios/crear.php — only ONE active
+// shipping per VIN at a time. Without this guard, every reassignment
+// from CEDIS (this endpoint, separate from crear.php) created another
+// row leaving the previous one open, producing duplicates in Envíos.
+try {
+    $chk = $pdo->prepare("SELECT id FROM envios WHERE moto_id = ?
+                          AND estado IN ('lista_para_enviar','en_transito','enviado')");
+    $chk->execute([$motoId]);
+    $oldIds = array_map('intval', array_column($chk->fetchAll(PDO::FETCH_ASSOC), 'id'));
+    if ($oldIds) {
+        $placeholders = implode(',', array_fill(0, count($oldIds), '?'));
+        try {
+            $pdo->prepare("UPDATE envios SET estado='completado_no_exitoso', fmod=NOW()
+                            WHERE id IN ($placeholders)")->execute($oldIds);
+        } catch (Throwable $e) {
+            // Older envios schemas without fmod — fall back without it.
+            $pdo->prepare("UPDATE envios SET estado='completado_no_exitoso'
+                            WHERE id IN ($placeholders)")->execute($oldIds);
+        }
+        adminLog('envio_supersede_asignar_punto', ['moto_id' => $motoId, 'replaced' => $oldIds]);
+    }
+} catch (Throwable $e) {
+    error_log('asignar-punto supersede envios: ' . $e->getMessage());
+}
+
 // ── Create envio record ──────────────────────────────────────────────────
 $ins = $pdo->prepare("INSERT INTO envios (moto_id, punto_destino_id, estado, fecha_estimada_llegada, enviado_por, notas)
     VALUES (?,?,'lista_para_enviar',?,?,?)");
