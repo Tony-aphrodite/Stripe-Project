@@ -387,6 +387,11 @@ foreach ([
     // moto_id, vin
     [$moto2, 'GCTESTVIN0000002'],
     [$moto3, 'GCTESTVIN0000003'],
+    // moto 4: para Bug 4.1 (Ensamble) — sin recepción la moto queda en
+    // "Pendiente de asignación" y el checklist de ensamble no aparece.
+    // Con recepción + sin cliente, va a "Disponible para venta" donde
+    // el botón de Ensamble está accesible.
+    [$moto4, 'GCTESTVIN0000004'],
 ] as $pair) {
     [$mid, $vin] = $pair;
     if (!$mid || !$run) continue;
