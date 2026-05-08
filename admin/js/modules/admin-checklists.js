@@ -288,8 +288,13 @@ window.AD_checklists = (function(){
 
       var html = '<div class="ad-h2">'+(m.vin_display||m.vin)+' — '+m.modelo+' '+m.color+'</div>';
 
-      // 3 checklist cards
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">';
+      // 3 checklist cards — responsive grid
+      // Style fix 2026-05-09: en viewports angostos las 3 columnas se
+      // truncaban (Entrega quedaba parcialmente fuera del modal) cuando el
+      // operador abría el panel desde un dispositivo móvil. auto-fit +
+      // minmax permite que las tarjetas bajen a 2 o 1 columna cuando no
+      // entran en 3 — sin afectar el desktop layout.
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px;">';
 
       // Origen
       html += clCard('Origen', r.origen, 'origen', motoId, function(c){
