@@ -195,16 +195,73 @@ try {
     $pdf->SetFont('Arial', '', 8);
     $pdf->Cell(90, 4, $enc('Firmado mediante Cincel — NOM-151'), 0, 1);
 
-    // Persist to disk
-    $dir = __DIR__ . '/../../../configurador/php/uploads/actas';
-    if (!is_dir($dir)) @mkdir($dir, 0775, true);
+    // Persist to disk. Walk a list of candidate dirs in order — first one
+    // that's actually writable wins. We need this because shared hosts often
+    // restrict write access on /configurador/php/uploads/ subfolders that
+    // don't already exist. The PDF only needs to live somewhere we can read
+    // it later for the Cincel multipart upload — Cincel doesn't fetch by URL.
     $filename = 'acta_cliente_' . $motoId . '_' . date('Ymd_His') . '.pdf';
-    $pdfPath  = $dir . '/' . $filename;
-    $pdf->Output('F', $pdfPath);
+    $candidateDirs = [
+        // 1. Match the same convention used by guardar-firma.php (admin path).
+        __DIR__ . '/../../../configurador/php/uploads/actas',
+        __DIR__ . '/../../../configurador_prueba_test/php/uploads/actas',
+        // 2. clientes-local uploads (we know clientes/ is writable since the
+        //    portal already drops files there — see firmar-acta.php).
+        __DIR__ . '/../../../configurador/php/uploads/firmas',
+        // 3. Always-writable fallback: PHP temp dir.
+        sys_get_temp_dir() . '/voltika_actas',
+    ];
+    $pdfPath = null;
+    $usedDir = null;
+    $writeAttempts = [];
+    foreach ($candidateDirs as $dir) {
+        $err = null;
+        if (!is_dir($dir)) {
+            // Try to create. If parent isn't writable, this just returns false.
+            $made = @mkdir($dir, 0775, true);
+            if (!$made) {
+                $err = 'mkdir failed';
+                $writeAttempts[] = "$dir → $err";
+                continue;
+            }
+        }
+        if (!is_writable($dir)) {
+            $writeAttempts[] = "$dir → not writable";
+            continue;
+        }
+        $tryPath = $dir . '/' . $filename;
+        try {
+            $pdf->Output('F', $tryPath);
+            if (file_exists($tryPath) && filesize($tryPath) > 0) {
+                $pdfPath = $tryPath;
+                $usedDir = $dir;
+                break;
+            }
+            $writeAttempts[] = "$dir → output failed";
+        } catch (Throwable $e) {
+            $writeAttempts[] = "$dir → " . $e->getMessage();
+        }
+    }
+    if (!$pdfPath) {
+        portalJsonOut([
+            'error'    => 'No se pudo escribir el PDF en ninguna ruta de almacenamiento',
+            'attempts' => $writeAttempts,
+        ], 500);
+    }
+    error_log('cincel-firma-acta saved PDF to: ' . $pdfPath);
 
+    // Compose a public URL only if the file is under a web-served folder.
+    // The temp dir is NOT web-accessible — in that case we leave $pdfUrl null
+    // and the customer portal preview link will be omitted (Cincel still
+    // signs the document fine).
     $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
     $host   = $_SERVER['HTTP_HOST'] ?? 'voltika.mx';
-    $pdfUrl = $scheme . '://' . $host . '/configurador/php/uploads/actas/' . $filename;
+    if (strpos($usedDir, '/configurador/php/uploads/') !== false) {
+        $relative = substr($usedDir, strpos($usedDir, '/configurador/'));
+        $pdfUrl   = $scheme . '://' . $host . $relative . '/' . $filename;
+    } else {
+        $pdfUrl = null;
+    }
 } catch (Throwable $e) {
     error_log('cincel-firma-acta inline PDF: ' . $e->getMessage());
     portalJsonOut(['error' => 'Error generando el PDF del acta: ' . $e->getMessage()], 500);
