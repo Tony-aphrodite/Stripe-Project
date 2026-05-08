@@ -198,12 +198,33 @@ function ensureTx(PDO $pdo, array $colsCache, string $pedido, string $nombre, st
     return $newId;
 }
 
-// Crea (o reusa) una moto.
+// Crea (o reusa) una moto. Si ya existe pero su estado actual está vacío
+// (caso típico cuando un seed previo intentó usar un valor ENUM inválido
+// como 'checklist_ok' o 'asignada'), corrige al estado deseado mediante
+// UPDATE — siempre que el nuevo valor SÍ sea aceptado por el ENUM.
 function ensureMoto(PDO $pdo, array $colsCache, string $vin, string $modelo, string $color, string $estado, ?int $puntoId, ?int $cid, string $pedidoNum, ?string $clienteNombre, ?string $clienteEmail, ?string $clienteTel, string $numMotor, bool $run, array &$log): int {
-    $st = $pdo->prepare("SELECT id FROM inventario_motos WHERE vin=? LIMIT 1");
+    $st = $pdo->prepare("SELECT id, estado FROM inventario_motos WHERE vin=? LIMIT 1");
     $st->execute([$vin]);
-    $id = (int)($st->fetchColumn() ?: 0);
-    if ($id) { $log[] = "✓ moto $vin existe ($id, estado=" . $pdo->query("SELECT estado FROM inventario_motos WHERE id=$id")->fetchColumn() . ")"; return $id; }
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    $id = $row ? (int)$row['id'] : 0;
+    if ($id) {
+        $currentEstado = (string)($row['estado'] ?? '');
+        // Re-apply estado if it's empty (failed prior insert) AND we're in run mode.
+        if ($run && $currentEstado === '' && $estado !== '') {
+            try {
+                $upd = $pdo->prepare("UPDATE inventario_motos SET estado=? WHERE id=?");
+                $upd->execute([$estado, $id]);
+                // Re-read to confirm the new value stuck.
+                $newEstado = (string)$pdo->query("SELECT estado FROM inventario_motos WHERE id=$id")->fetchColumn();
+                $log[] = "✓ moto $vin existe ($id) — estado vacío corregido a '$newEstado'";
+            } catch (Throwable $e) {
+                $log[] = "✗ moto $vin estado update: " . $e->getMessage();
+            }
+        } else {
+            $log[] = "✓ moto $vin existe ($id, estado=$currentEstado)";
+        }
+        return $id;
+    }
     if (!$run) { $log[] = "→ moto $vin se creará (estado=$estado)"; return 0; }
     $imCols = cols($pdo, 'inventario_motos', $colsCache);
     $f = ['vin','modelo','color','estado','activo','num_motor'];
@@ -232,10 +253,13 @@ function ensureMoto(PDO $pdo, array $colsCache, string $vin, string $modelo, str
 $tx1     = ensureTx($pdo, $colsCache, 'GCTEST-1', $NOMBRE, $EMAIL, $TEL, 'M03', 'negro', 9975, $PUNTO_NOMBRE, $run, $log);
 $moto1   = ensureMoto($pdo, $colsCache, 'GCTESTVIN0000001', 'M03', 'negro', 'entregada', $puntoId, $cid, 'VK-GCTEST-1', $NOMBRE, $EMAIL, $TEL, 'GCMOTOR0000001', $run, $log);
 
-// Moto 2: CHECKLIST_OK (esperando firma cliente) — para Bug 5.7 (Cincel ACTA)
-//         Estado: el PoS terminó el checklist; el cliente debe firmar el ACTA en su portal.
+// Moto 2: para Bug 5.7 (Cincel ACTA)
+//   `inventario_motos.estado` es un ENUM que NO acepta 'checklist_ok'
+//   (MySQL silenciosamente lo convierte a ''). Usamos 'lista_para_entrega'
+//   (valor válido) y dejamos que `checklist_entrega_v2.vin_coincide=1`
+//   sembrado más abajo dispare estado_ui='checklist_ok' en estado.php.
 $tx2     = ensureTx($pdo, $colsCache, 'GCTEST-2', $NOMBRE, $EMAIL, $TEL, 'M05', 'gris', 14500, $PUNTO_NOMBRE, $run, $log);
-$moto2   = ensureMoto($pdo, $colsCache, 'GCTESTVIN0000002', 'M05', 'gris', 'checklist_ok', $puntoId, $cid, 'VK-GCTEST-2', $NOMBRE, $EMAIL, $TEL, 'GCMOTOR0000002', $run, $log);
+$moto2   = ensureMoto($pdo, $colsCache, 'GCTESTVIN0000002', 'M05', 'gris', 'lista_para_entrega', $puntoId, $cid, 'VK-GCTEST-2', $NOMBRE, $EMAIL, $TEL, 'GCMOTOR0000002', $run, $log);
 
 // Moto 3: LISTA_PARA_ENTREGA — para Bugs 5.1, 5.2, 5.3, 5.4, 5.6 (PoS empieza la entrega)
 $tx3     = ensureTx($pdo, $colsCache, 'GCTEST-3', $NOMBRE, $EMAIL, $TEL, 'Pesgo plus', 'rojo', 48260, $PUNTO_NOMBRE, $run, $log);
@@ -247,8 +271,11 @@ $moto4   = ensureMoto($pdo, $colsCache, 'GCTESTVIN0000004', 'Ukko-S', 'verde', '
 // Moto 5: ENVIADA + envio activo — para Bugs 3.1, 3.2, 3.3 (Recepción)
 $moto5   = ensureMoto($pdo, $colsCache, 'GCTESTVIN0000005', 'M05', 'azul', 'por_llegar', $puntoId, null, '', null, null, null, 'GCMOTOR0000005', $run, $log);
 
-// Moto 6: ASIGNADA SIN ENVIO — para Bug 3.4 (PENDIENTE DE ASIGNACIÓN)
-$moto6   = ensureMoto($pdo, $colsCache, 'GCTESTVIN0000006', 'M03', 'plata', 'asignada', $puntoId, null, '', null, null, null, 'GCMOTOR0000006', $run, $log);
+// Moto 6: SIN ENVIO — para Bug 3.4 (PENDIENTE DE ASIGNACIÓN). Igual que
+// moto 2, 'asignada' no es un ENUM válido. Usamos 'por_llegar' (válido) y
+// confiamos en el filtro de envios-pendientes.php (estado='por_llegar' AND
+// NO active envio) para identificar motos pendientes.
+$moto6   = ensureMoto($pdo, $colsCache, 'GCTESTVIN0000006', 'M03', 'plata', 'por_llegar', $puntoId, null, '', null, null, null, 'GCMOTOR0000006', $run, $log);
 
 // Moto 7: POR_LLEGAR + en envío "lista_para_enviar" — para Bugs 1.1, 1.2, 2.1, 2.2
 //         (el admin abrirá el Checklist de Origen y el modal "Marcar enviada")

@@ -53,7 +53,7 @@ try {
         ) co ON co.moto_id = m.id
         WHERE m.activo = 1
           AND m.punto_voltika_id = ?
-          AND m.estado IN ('asignada', 'pendiente_asignacion')
+          AND m.estado IN ('asignada', 'pendiente_asignacion', 'por_llegar')
           AND NOT EXISTS (
                 SELECT 1 FROM envios e2
                 WHERE e2.moto_id = m.id
