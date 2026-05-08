@@ -159,8 +159,12 @@ if (!$fechaEstimada && function_exists('skydropxCotizar')) {
 // "Completado no exitoso" so the Envíos panel doesn't list them as
 // duplicates. The new shipment is the single source of truth.
 try {
+    // Bug fix 2026-05-09: incluir 'enviada' (typo — el ENUM real es
+    // 'enviada' no 'enviado'). Sin esto, los envíos ya marcados como
+    // 'enviada' no se superseden cuando se reasigna la moto, dejando
+    // duplicados activos en el panel.
     $chk = $pdo->prepare("SELECT id FROM envios WHERE moto_id = ?
-                          AND estado IN ('lista_para_enviar','en_transito','enviado')");
+                          AND estado IN ('lista_para_enviar','en_transito','enviado','enviada')");
     $chk->execute([$motoId]);
     $oldIds = array_map('intval', array_column($chk->fetchAll(PDO::FETCH_ASSOC), 'id'));
     if ($oldIds) {

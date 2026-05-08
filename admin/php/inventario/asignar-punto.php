@@ -133,8 +133,14 @@ if (!$fechaEstimada) {
 // from CEDIS (this endpoint, separate from crear.php) created another
 // row leaving the previous one open, producing duplicates in Envíos.
 try {
+    // Bug fix 2026-05-09: la lista de estados activos faltaba 'enviada'
+    // (el ENUM real usa 'enviada', no 'enviado'). Sin esto, las
+    // reasignaciones después de "Marcar como enviada" dejaban el envío
+    // anterior abierto y aparecía duplicado en el panel admin de la moto.
+    // Reportado por cliente 2026-05-09 (3 envíos S2R NEZA / Voltika Center
+    // / S2R NEZA persistentes en la misma moto).
     $chk = $pdo->prepare("SELECT id FROM envios WHERE moto_id = ?
-                          AND estado IN ('lista_para_enviar','en_transito','enviado')");
+                          AND estado IN ('lista_para_enviar','en_transito','enviado','enviada')");
     $chk->execute([$motoId]);
     $oldIds = array_map('intval', array_column($chk->fetchAll(PDO::FETCH_ASSOC), 'id'));
     if ($oldIds) {

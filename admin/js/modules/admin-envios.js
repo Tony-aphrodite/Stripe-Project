@@ -63,6 +63,21 @@ window.AD_envios = (function(){
                 'data-eta="'+(e.fecha_estimada_llegada||'')+'" data-pedido="'+esc(e.pedido_num||'Inventario')+'" '+
                 'style="width:100%;">Enviar</button>';
 
+      // Bug 2026-05-09 (cliente report): un envío activo que ya no es
+      // relevante (porque la moto se reasignó a otro punto, o se duplicó
+      // por error) no podía editarse ni eliminarse desde el panel. Se
+      // agrega "Cerrar" que llama a eliminar.php (soft-close
+      // estado='completado_no_exitoso'). Solo aparece para estados
+      // activos — ya cerrados/completados no necesitan acción.
+      var isActiveEstado = ['lista_para_enviar','enviada','enviado','en_transito']
+        .indexOf(String(e.estado||'').toLowerCase()) !== -1;
+      if (isActiveEstado) {
+        html += '<button class="ad-btn sm ghost adEnvCerrar" data-id="'+e.id+'" '+
+                'data-vin="'+esc(e.vin_display||e.vin||'')+'" '+
+                'data-pedido="'+esc(e.pedido_num||'Inventario')+'" '+
+                'style="width:100%;color:#b91c1c;border-color:#b91c1c;">Cerrar</button>';
+      }
+
       html += '</div></td></tr>';
     });
 
@@ -76,6 +91,47 @@ window.AD_envios = (function(){
     $('.adEditTracking').on('click', function(){
       showEditTracking($(this).data('id'), $(this).data('tracking'), $(this).data('carrier'),
         $(this).data('notas'), $(this).data('eta'));
+    });
+    $('.adEnvCerrar').on('click', function(){
+      showCerrarEnvio($(this).data('id'), $(this).data('vin'), $(this).data('pedido'));
+    });
+  }
+
+  // Soft-close confirmation modal — pide motivo para auditoría.
+  function showCerrarEnvio(envioId, vinLabel, pedidoLabel){
+    var html = '<div class="ad-h2">Cerrar envío</div>'+
+      '<div class="ad-dim" style="font-size:12.5px;margin-bottom:12px;line-height:1.55;">'+
+        'Vas a cerrar el envío <strong>'+esc(pedidoLabel||'Inventario')+'</strong>'+
+        (vinLabel ? ' (VIN <code>'+esc(vinLabel)+'</code>)' : '')+'.'+
+        '<br>Esto marca el registro como <strong>completado no exitoso</strong> sin borrarlo del historial.'+
+        '<br>Útil cuando la moto se reasignó a otro punto o el envío quedó duplicado.'+
+      '</div>'+
+      '<label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px;">Motivo (opcional, máx 250):</label>'+
+      '<textarea id="adEnvCerrarMotivo" class="ad-input" rows="2" placeholder="Ej: moto reasignada al Punto X / envío duplicado / error de captura"></textarea>'+
+      '<div id="adEnvCerrarMsg" style="font-size:12px;margin-top:8px;"></div>'+
+      '<div style="display:flex;gap:8px;margin-top:12px;">'+
+        '<button class="ad-btn ghost" id="adEnvCerrarCancel" style="flex:1;">Cancelar</button>'+
+        '<button class="ad-btn primary" id="adEnvCerrarOk" style="flex:1;background:#b91c1c;border-color:#b91c1c;">Cerrar envío</button>'+
+      '</div>';
+    ADApp.modal(html);
+    $('#adEnvCerrarCancel').on('click', function(){ ADApp.closeModal(); });
+    $('#adEnvCerrarOk').on('click', function(){
+      var motivo = ($('#adEnvCerrarMotivo').val()||'').trim();
+      var $b = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Cerrando...');
+      ADApp.api('envios/eliminar.php', { envio_id: envioId, motivo: motivo })
+        .done(function(r){
+          if (r.ok) {
+            ADApp.closeModal();
+            render();
+          } else {
+            $b.prop('disabled', false).text('Cerrar envío');
+            $('#adEnvCerrarMsg').css('color','#b91c1c').text(r.error || 'Error al cerrar');
+          }
+        })
+        .fail(function(x){
+          $b.prop('disabled', false).text('Cerrar envío');
+          $('#adEnvCerrarMsg').css('color','#b91c1c').text((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
+        });
     });
   }
 

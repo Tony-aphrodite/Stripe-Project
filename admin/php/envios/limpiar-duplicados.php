@@ -43,7 +43,7 @@ try {
           FROM envios
          WHERE moto_id IS NOT NULL
            AND moto_id > 0
-           AND estado IN ('lista_para_enviar','en_transito','enviado')
+           AND estado IN ('lista_para_enviar','en_transito','enviado','enviada')
          GROUP BY moto_id
         HAVING cnt > 1
          ORDER BY moto_id
@@ -97,7 +97,7 @@ try {
                 SET estado = 'completado_no_exitoso',
                     fmod   = NOW()
               WHERE id IN ($placeholders)
-                AND estado IN ('lista_para_enviar','en_transito','enviado')"
+                AND estado IN ('lista_para_enviar','en_transito','enviado','enviada')"
         );
         $upd->execute($closeIds);
         $closed += $upd->rowCount();
