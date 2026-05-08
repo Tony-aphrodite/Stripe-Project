@@ -151,24 +151,39 @@ try {
 // ── 3. dealer_usuarios (PoS login) ─────────────────────────────────────
 $dealerId = 0;
 try {
-    $st = $pdo->prepare("SELECT id FROM dealer_usuarios WHERE email=? LIMIT 1");
+    $st = $pdo->prepare("SELECT id, rol FROM dealer_usuarios WHERE email=? LIMIT 1");
     $st->execute([$DEALER_EMAIL]);
-    $dealerId = (int)($st->fetchColumn() ?: 0);
-    if ($dealerId) { $log[] = "✓ dealer existe (id=$dealerId)"; }
-    else {
-        $plan[] = "dealer_usuarios: $DEALER_EMAIL / $DEALER_PASS";
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    $dealerId = $row ? (int)$row['id'] : 0;
+    if ($dealerId) {
+        // Si fue sembrado con rol='punto' (rechazado por
+        // puntosvoltika/php/auth/login.php), corregimos a 'dealer'.
+        if (($row['rol'] ?? '') !== 'dealer' && ($row['rol'] ?? '') !== 'admin') {
+            if ($run) {
+                $pdo->prepare("UPDATE dealer_usuarios SET rol='dealer' WHERE id=?")->execute([$dealerId]);
+                $log[] = "✓ dealer existe (id=$dealerId) — rol corregido a 'dealer'";
+            } else {
+                $log[] = "→ dealer (id=$dealerId) requiere corregir rol a 'dealer'";
+            }
+        } else {
+            $log[] = "✓ dealer existe (id=$dealerId, rol=" . ($row['rol'] ?? '?') . ")";
+        }
+    } else {
+        $plan[] = "dealer_usuarios: $DEALER_EMAIL / $DEALER_PASS (rol=dealer)";
         if ($run) {
             $pwHash = password_hash($DEALER_PASS, PASSWORD_DEFAULT);
             $duCols = cols($pdo, 'dealer_usuarios', $colsCache);
             $f = ['nombre','email','password_hash','rol','activo'];
-            $v = [$DEALER_NAME, $DEALER_EMAIL, $pwHash, 'punto', 1];
+            // 'dealer' es el rol que puntosvoltika/php/auth/login.php
+            // acepta (rol IN ('dealer','admin')). 'punto' es rechazado.
+            $v = [$DEALER_NAME, $DEALER_EMAIL, $pwHash, 'dealer', 1];
             if (isset($duCols['punto_id']))   { $f[]='punto_id';   $v[]=$puntoId; }
             if (isset($duCols['punto_nombre'])) { $f[]='punto_nombre'; $v[]=$PUNTO_NOMBRE; }
             $ph = implode(',', array_fill(0, count($f), '?'));
             $pdo->prepare("INSERT INTO dealer_usuarios (".implode(',', $f).") VALUES ($ph)")
                ->execute($v);
             $dealerId = (int)$pdo->lastInsertId();
-            $log[] = "✓ dealer creado (id=$dealerId)";
+            $log[] = "✓ dealer creado (id=$dealerId, rol=dealer)";
         }
     }
 } catch (Throwable $e) { $log[] = "✗ dealer: " . $e->getMessage(); }
