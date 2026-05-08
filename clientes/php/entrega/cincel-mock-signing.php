@@ -15,6 +15,12 @@
  */
 require_once __DIR__ . '/../bootstrap.php';
 
+// Override the default JSON content-type that bootstrap.php sets — this is
+// an HTML page, not an API response. Without this, the browser shows the
+// raw HTML source instead of rendering it.
+header_remove('Content-Type');
+header('Content-Type: text/html; charset=UTF-8');
+
 $cid    = portalRequireAuth();
 $motoId = (int)($_GET['moto_id'] ?? 0);
 
