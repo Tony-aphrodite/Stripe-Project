@@ -380,6 +380,40 @@ if ($moto2 && $run) {
     } catch (Throwable $e) { $log[] = "✗ entregas moto=$moto2: " . $e->getMessage(); }
 }
 
+// ── 5d. recepcion_punto para motos 2 y 3 — necesario para que aparezcan en
+//        "Entregar al cliente" (puntosvoltika/php/inventario/listar.php
+//        agrupa en `inventario_entrega` solo motos con recepción + cliente).
+foreach ([
+    // moto_id, vin
+    [$moto2, 'GCTESTVIN0000002'],
+    [$moto3, 'GCTESTVIN0000003'],
+] as $pair) {
+    [$mid, $vin] = $pair;
+    if (!$mid || !$run) continue;
+    try {
+        $st = $pdo->prepare("SELECT id FROM recepcion_punto WHERE moto_id=? LIMIT 1");
+        $st->execute([$mid]);
+        if ($st->fetchColumn()) {
+            $log[] = "✓ recepcion_punto moto=$mid ya existe";
+            continue;
+        }
+        $rpCols = cols($pdo, 'recepcion_punto', $colsCache);
+        $f = ['moto_id', 'punto_id', 'vin_escaneado', 'vin_coincide'];
+        $v = [$mid, $puntoId, $vin, 1];
+        if (isset($rpCols['recibido_por']))          { $f[]='recibido_por';          $v[]=$dealerId ?: 1; }
+        if (isset($rpCols['estado_fisico_ok']))      { $f[]='estado_fisico_ok';      $v[]=1; }
+        if (isset($rpCols['sin_danos']))             { $f[]='sin_danos';             $v[]=1; }
+        if (isset($rpCols['componentes_completos']))  { $f[]='componentes_completos'; $v[]=1; }
+        if (isset($rpCols['bateria_ok']))            { $f[]='bateria_ok';            $v[]=1; }
+        if (isset($rpCols['fotos']))                 { $f[]='fotos';                 $v[]='[]'; }
+        if (isset($rpCols['notas']))                 { $f[]='notas';                 $v[]='[GC-TEST] seed reception'; }
+        if (isset($rpCols['completado']))            { $f[]='completado';            $v[]=1; }
+        $ph = implode(',', array_fill(0, count($f), '?'));
+        $pdo->prepare("INSERT INTO recepcion_punto (".implode(',', $f).") VALUES ($ph)")->execute($v);
+        $log[] = "✓ recepcion_punto moto=$mid sembrado (vin=$vin)";
+    } catch (Throwable $e) { $log[] = "✗ recepcion_punto moto=$mid: " . $e->getMessage(); }
+}
+
 // ── 6. checklist_origen para moto 5 (origen completado en CEDIS — Bug 3.2 verifier) ──
 if ($moto5 && $run) {
     try {
