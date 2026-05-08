@@ -11,7 +11,10 @@ if (strlen($tel) < 10) {
 // Whitelisted test numbers bypass the clientes lookup — they auto-upsert a
 // synthetic account so QA/staging can exercise the full portal flow without
 // seeding a real customer. testCode is always surfaced below for these.
-$TEST_NUMBERS = ['5500000000', '0000000000', '5511112222', '5555555555'];
+// 5500000099 added 2026-05-08 for the General Corrections (16 bugs) test
+// run — see tests/general-corrections/seed-test-data.php. Existing test
+// numbers retain their fixed OTP behaviour unchanged.
+$TEST_NUMBERS = ['5500000000', '0000000000', '5511112222', '5555555555', '5500000099'];
 
 $cliente = portalFindClienteByPhone($tel);
 if (!$cliente) {
