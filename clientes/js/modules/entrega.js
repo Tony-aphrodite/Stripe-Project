@@ -275,11 +275,27 @@ window.VK_entrega = (function(){
 
     $('#vkIniciarFirmaBtn').on('click', function(){
       var $b = $(this).prop('disabled', true).text('Preparando documento…');
+      // Helper — extract the most useful debug message from a server JSON
+      // response so the toast always tells the user/dev WHY it failed
+      // instead of a generic "Error".
+      function pickError(r) {
+        if (!r) return 'Sin respuesta del servidor';
+        var msg = r.error || 'Error desconocido';
+        if (r.detail) msg += ' · ' + r.detail;
+        if (r.attempts && Array.isArray(r.attempts) && r.attempts.length) {
+          var first = r.attempts[0] || {};
+          msg += ' · HTTP ' + (first.http || '?') + ' en ' + (first.endpoint || '?');
+        }
+        return msg;
+      }
       VKApp.api('entrega/cincel-firma-acta.php', { moto_id: data.moto_id })
         .done(function(r){
           if (!r || !r.ok) {
             $b.prop('disabled', false).text('Iniciar firma con Cincel');
-            VKApp.toast((r && r.error) || 'No se pudo iniciar la firma. Intenta de nuevo.');
+            // Log the full payload to the console so devtools shows the
+            // attempts[] array even when the toast itself is too short.
+            if (window.console) console.error('[cincel-firma-acta]', r);
+            VKApp.toast(pickError(r));
             return;
           }
           // Already signed — just refresh.
@@ -293,7 +309,8 @@ window.VK_entrega = (function(){
         })
         .fail(function(x){
           $b.prop('disabled', false).text('Iniciar firma con Cincel');
-          VKApp.toast((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
+          if (window.console) console.error('[cincel-firma-acta] fail', x.responseJSON || x);
+          VKApp.toast(pickError(x.responseJSON));
         });
     });
   }
