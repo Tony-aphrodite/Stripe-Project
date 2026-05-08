@@ -278,6 +278,40 @@ if (!defined('CINCEL_API_URL') || !defined('CINCEL_EMAIL') || !defined('CINCEL_P
 }
 $cincelUrl = rtrim(CINCEL_API_URL, '/');
 
+// TEST MODE: si la auth con Cincel falla, podemos simular el flujo para
+// poder verificar que el resto del pipeline (PDF, webhook, UI, polling)
+// funciona correctamente — útil mientras se resuelven las credenciales
+// reales de Cincel. Activar con ?cincel_mock=1 en la URL del POST O con
+// un flag CINCEL_TEST_MODE en config.php.
+$mockMode = !empty($_GET['cincel_mock'])
+         || (defined('CINCEL_TEST_MODE') && CINCEL_TEST_MODE);
+if ($mockMode) {
+    // Generar IDs simulados — el webhook no los recibirá pero podemos
+    // marcarlos como "firmados" manualmente para verificar el resto.
+    $fakeDocId      = 'MOCK-ACTA-' . $motoId . '-' . time();
+    $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+    $host   = $_SERVER['HTTP_HOST'] ?? 'voltika.mx';
+    $fakeSigningUrl = $scheme . '://' . $host . '/clientes/php/entrega/cincel-mock-signing.php?moto_id=' . $motoId;
+
+    $pdo->prepare("UPDATE inventario_motos
+        SET cincel_acta_document_id = ?,
+            cincel_acta_signing_url = ?,
+            cincel_acta_status      = 'pending',
+            cincel_acta_pdf_url     = ?
+        WHERE id = ?")
+        ->execute([$fakeDocId, $fakeSigningUrl, $pdfUrl, $motoId]);
+
+    portalLog('cincel_acta_mock', ['cliente_id' => $cid, 'detalle' => 'moto=' . $motoId]);
+    portalJsonOut([
+        'ok'                 => true,
+        'mock_mode'          => true,
+        'cincel_document_id' => $fakeDocId,
+        'signing_url'        => $fakeSigningUrl,
+        'pdf_url'            => $pdfUrl,
+        'message'            => 'MODO TEST: Cincel real está omitido. Abre signing_url y haz clic en "Simular firma" para completar el flujo.',
+    ]);
+}
+
 // Cincel exposes two auth endpoints in the wild — /auth/login (older v3
 // docs) and /auth/tokens (used by admin/php/checklists/guardar-firma.php).
 // Try the same one admin uses first, fall back to /auth/login. The token

@@ -50,49 +50,79 @@ if (!$fpdfFound) {
     echo '<p style="color:#dc2626;">❌ FPDF no encontrado en ninguna ruta — descargar e instalar antes de probar Bug 5.7.</p>';
 }
 
-// ── 3. Cincel auth test ─────────────────────────────────────────────────
-echo '<h2>3. Test de autenticación Cincel — ambos endpoints</h2>';
+// ── 3. Cincel auth test — barre TODAS las combinaciones URL × endpoint ──
+//      hasta encontrar la que devuelva 200 + token. La primera que funcione
+//      es la que debe usarse en cincel-firma-acta.php.
+echo '<h2>3. Test exhaustivo de autenticación Cincel</h2>';
 if (!defined('CINCEL_API_URL') || !defined('CINCEL_EMAIL') || !defined('CINCEL_PASSWORD')) {
     echo '<p style="color:#dc2626;">❌ Configuración incompleta — saltando.</p>';
 } else {
+    // Probamos varios prefijos comunes de Cincel + ambos endpoints conocidos.
+    // El "ganador" es el primer (URL,endpoint) que devuelve 200 + token.
     $base = rtrim(CINCEL_API_URL, '/');
-    $endpoints = ['/auth/tokens', '/auth/login'];
+    // Strip cualquier sufijo /vN para poder probar todas las variantes.
+    $rootBase = preg_replace('#/v\d+/?$#', '', $base);
+    $bases = array_unique([
+        $base,                         // configurado actualmente
+        $rootBase,                     // sin /vN
+        $rootBase . '/v1',
+        $rootBase . '/v2',
+        $rootBase . '/v3',
+    ]);
+    $endpoints = ['/auth/tokens', '/auth/login', '/sessions', '/oauth/token'];
+
+    echo '<p style="font-size:13px;color:#64748b;">Probando '. count($bases) .' bases × '. count($endpoints) .' endpoints = '. (count($bases)*count($endpoints)) .' combinaciones. Tarda ~10 segundos.</p>';
+
     $winner = null;
-    foreach ($endpoints as $path) {
-        $url = $base . $path;
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-            CURLOPT_POSTFIELDS => json_encode(['email' => CINCEL_EMAIL, 'password' => CINCEL_PASSWORD]),
-            CURLOPT_TIMEOUT => 15,
-        ]);
-        $raw = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $err = curl_error($ch);
-        curl_close($ch);
-        $resp = json_decode($raw, true);
-        $token = is_array($resp) ? ($resp['access_token'] ?? $resp['token'] ?? null) : null;
+    echo '<table><tr><th style="padding:6px 10px;background:#f1f5f9;text-align:left;">URL completa</th><th style="padding:6px 10px;background:#f1f5f9;">HTTP</th><th style="padding:6px 10px;background:#f1f5f9;">Token?</th><th style="padding:6px 10px;background:#f1f5f9;text-align:left;">Response preview</th></tr>';
+    foreach ($bases as $b) {
+        foreach ($endpoints as $path) {
+            $url = $b . $path;
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                CURLOPT_POSTFIELDS => json_encode(['email' => CINCEL_EMAIL, 'password' => CINCEL_PASSWORD]),
+                CURLOPT_TIMEOUT => 6,
+            ]);
+            $raw  = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err  = curl_error($ch);
+            curl_close($ch);
+            $resp = json_decode($raw, true);
+            $token = is_array($resp) ? ($resp['access_token'] ?? $resp['token'] ?? null) : null;
 
-        echo '<h4 style="margin-top:18px;">' . htmlspecialchars($path) . '</h4>';
-        echo '<table>';
-        echo row('URL',          $url);
-        echo row('HTTP code',    (string)$code);
-        echo row('curl error',   $err ?: 'ninguno');
-        echo row('Token (access_token o token)',
-                 $token ? 'SÍ (' . substr((string)$token, 0, 16) . '…)' : 'NO',
-                 !$token && $raw ? 'response: ' . substr($raw, 0, 200) : '');
-        echo '</table>';
+            $color = $token ? '#16a34a' : ($code === 200 ? '#92400e' : '#dc2626');
+            echo '<tr>'
+               . '<td style="padding:5px 10px;border:1px solid #e2e8f0;font-family:monospace;font-size:12px;">' . htmlspecialchars($url) . '</td>'
+               . '<td style="padding:5px 10px;border:1px solid #e2e8f0;color:'.$color.';font-weight:700;">' . htmlspecialchars((string)$code) . '</td>'
+               . '<td style="padding:5px 10px;border:1px solid #e2e8f0;">' . ($token ? '✅' : ($err ? '⚠ ' . htmlspecialchars($err) : '—')) . '</td>'
+               . '<td style="padding:5px 10px;border:1px solid #e2e8f0;font-size:11px;color:#64748b;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' . htmlspecialchars(substr((string)$raw, 0, 120)) . '</td>'
+               . '</tr>';
 
-        if ($token && !$winner) $winner = $path;
+            if ($token && !$winner) $winner = ['url' => $url, 'base' => $b, 'path' => $path];
+        }
     }
+    echo '</table>';
 
     if ($winner) {
-        echo '<p style="color:#16a34a;font-size:15px;font-weight:700;">✅ Endpoint funcional: <code>' . $winner . '</code></p>';
-        echo '<p>El código de cincel-firma-acta.php ya intenta /auth/tokens primero — si la versión más reciente está subida al servidor, el portal cliente debería funcionar.</p>';
+        echo '<div style="background:#ecfdf5;border:2px solid #10b981;padding:14px;border-radius:8px;margin-top:14px;">';
+        echo '<p style="font-size:16px;font-weight:700;color:#065f46;margin:0;">✅ Endpoint funcional encontrado:</p>';
+        echo '<p style="font-family:monospace;font-size:14px;margin:6px 0;"><strong>URL:</strong> ' . htmlspecialchars($winner['url']) . '</p>';
+        echo '<p style="font-family:monospace;font-size:14px;margin:6px 0;"><strong>Base:</strong> ' . htmlspecialchars($winner['base']) . '</p>';
+        echo '<p style="font-family:monospace;font-size:14px;margin:6px 0;"><strong>Path:</strong> ' . htmlspecialchars($winner['path']) . '</p>';
+        echo '<p style="margin-top:10px;color:#065f46;">→ Actualiza <code>configurador/php/config.php</code> con <code>CINCEL_API_URL = "' . htmlspecialchars($winner['base']) . '"</code> si difiere del actual, y asegúrate de que <code>cincel-firma-acta.php</code> intente este path.</p>';
+        echo '</div>';
     } else {
-        echo '<p style="color:#dc2626;">❌ Ningún endpoint devolvió token — credenciales rechazadas o API URL incorrecta.</p>';
+        echo '<div style="background:#fef2f2;border:2px solid #dc2626;padding:14px;border-radius:8px;margin-top:14px;">';
+        echo '<p style="font-size:16px;font-weight:700;color:#991b1b;margin:0;">❌ Ninguna combinación devolvió token.</p>';
+        echo '<p style="margin-top:6px;">Causas posibles:</p>';
+        echo '<ul style="margin:6px 0;">';
+        echo '<li>Credenciales <code>' . htmlspecialchars(CINCEL_EMAIL) . '</code> ya no son válidas (rotadas o expiradas).</li>';
+        echo '<li>El servidor no tiene acceso outbound a <code>api.cincel.digital</code> (firewall del hosting).</li>';
+        echo '<li>Cincel cambió su URL base. Consultar dashboard Cincel para nueva API URL.</li>';
+        echo '</ul></div>';
     }
 }
 
