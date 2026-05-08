@@ -51,35 +51,48 @@ if (!$fpdfFound) {
 }
 
 // ── 3. Cincel auth test ─────────────────────────────────────────────────
-echo '<h2>3. Test de autenticación Cincel</h2>';
+echo '<h2>3. Test de autenticación Cincel — ambos endpoints</h2>';
 if (!defined('CINCEL_API_URL') || !defined('CINCEL_EMAIL') || !defined('CINCEL_PASSWORD')) {
     echo '<p style="color:#dc2626;">❌ Configuración incompleta — saltando.</p>';
 } else {
-    $url = rtrim(CINCEL_API_URL, '/') . '/auth/login';
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS => json_encode(['email' => CINCEL_EMAIL, 'password' => CINCEL_PASSWORD]),
-        CURLOPT_TIMEOUT => 15,
-    ]);
-    $raw = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err = curl_error($ch);
-    curl_close($ch);
-    $resp = json_decode($raw, true);
-    echo '<table>';
-    echo row('URL',       $url);
-    echo row('HTTP code', (string)$code);
-    echo row('curl error', $err ?: 'ninguno');
-    echo row('Token recibido', !empty($resp['token']) ? 'SÍ ('.substr($resp['token'], 0, 16).'…)' : 'NO',
-          empty($resp['token']) && $raw ? 'response: ' . substr($raw, 0, 200) : '');
-    echo '</table>';
-    if (!empty($resp['token'])) {
-        echo '<p style="color:#16a34a;">✅ Cincel responde correctamente — el endpoint cincel-firma-acta.php debería funcionar.</p>';
+    $base = rtrim(CINCEL_API_URL, '/');
+    $endpoints = ['/auth/tokens', '/auth/login'];
+    $winner = null;
+    foreach ($endpoints as $path) {
+        $url = $base . $path;
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_POSTFIELDS => json_encode(['email' => CINCEL_EMAIL, 'password' => CINCEL_PASSWORD]),
+            CURLOPT_TIMEOUT => 15,
+        ]);
+        $raw = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+        $resp = json_decode($raw, true);
+        $token = is_array($resp) ? ($resp['access_token'] ?? $resp['token'] ?? null) : null;
+
+        echo '<h4 style="margin-top:18px;">' . htmlspecialchars($path) . '</h4>';
+        echo '<table>';
+        echo row('URL',          $url);
+        echo row('HTTP code',    (string)$code);
+        echo row('curl error',   $err ?: 'ninguno');
+        echo row('Token (access_token o token)',
+                 $token ? 'SÍ (' . substr((string)$token, 0, 16) . '…)' : 'NO',
+                 !$token && $raw ? 'response: ' . substr($raw, 0, 200) : '');
+        echo '</table>';
+
+        if ($token && !$winner) $winner = $path;
+    }
+
+    if ($winner) {
+        echo '<p style="color:#16a34a;font-size:15px;font-weight:700;">✅ Endpoint funcional: <code>' . $winner . '</code></p>';
+        echo '<p>El código de cincel-firma-acta.php ya intenta /auth/tokens primero — si la versión más reciente está subida al servidor, el portal cliente debería funcionar.</p>';
     } else {
-        echo '<p style="color:#dc2626;">❌ Cincel no devolvió token — revisar credenciales o URL.</p>';
+        echo '<p style="color:#dc2626;">❌ Ningún endpoint devolvió token — credenciales rechazadas o API URL incorrecta.</p>';
     }
 }
 
