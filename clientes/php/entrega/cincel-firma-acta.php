@@ -73,67 +73,145 @@ if (!empty($ex['cincel_acta_document_id']) && !empty($ex['cincel_acta_signing_ur
     ]);
 }
 
-// ── 2. Generate the ACTA PDF — call our own POST acta-pdf.php endpoint ──
-$generatorScript = __DIR__ . '/acta-pdf.php';
-$pdfUrl = null; $pdfPath = null;
-if (file_exists($generatorScript)) {
-    // Inline include with mocked POST/json so we don't need cURL+session.
-    // Buffer output and parse the JSON. This is a process-internal call
-    // and stays inside the same authenticated request.
-    $_ORIG_METHOD = $_SERVER['REQUEST_METHOD'];
-    $_ORIG_INPUT  = null;
-    $_SERVER['REQUEST_METHOD'] = 'POST';
-
-    // Stub php://input for portalJsonIn() inside acta-pdf.php
-    if (!function_exists('voltikaActaPdfStubInput')) {
-        function voltikaActaPdfStubInput($json){
-            $GLOBALS['__voltika_acta_pdf_stub_input'] = $json;
-        }
+// ── 2. Generate the ACTA PDF inline (no internal cURL — Plesk/shared
+//      hosting often blocks self-loopback HTTP, which timed out the previous
+//      implementation). The same FPDF logic from acta-pdf.php is inlined
+//      here. acta-pdf.php stays available for the preview/download path.
+$pdfUrl  = null;
+$pdfPath = null;
+try {
+    // Punto info — for delivery address
+    $punto = null;
+    if (!empty($moto['punto_voltika_id'])) {
+        $pq = $pdo->prepare("SELECT nombre, ciudad, estado, direccion FROM puntos_voltika WHERE id=?");
+        $pq->execute([(int)$moto['punto_voltika_id']]);
+        $punto = $pq->fetch(PDO::FETCH_ASSOC) ?: null;
     }
-    $stubFile = sys_get_temp_dir() . '/voltika_acta_pdf_input_' . uniqid('', true) . '.json';
-    file_put_contents($stubFile, json_encode(['moto_id' => $motoId]));
 
-    // The bootstrap's portalJsonIn() reads from php://input, which we can't
-    // override portably. Easier path: call the script via cURL using the
-    // same session cookie so portalRequireAuth() passes.
+    // Locate FPDF (reuses admin's vendored copy)
+    $fpdfPaths = [
+        __DIR__ . '/../../../admin/php/lib/fpdf.php',
+        __DIR__ . '/../../../admin_test/php/lib/fpdf.php',
+        __DIR__ . '/../../../configurador/php/vendor/fpdf/fpdf.php',
+        __DIR__ . '/../../../configurador/php/vendor/setasign/fpdf/fpdf.php',
+    ];
+    $fpdfFound = false;
+    foreach ($fpdfPaths as $fp) {
+        if (file_exists($fp)) { require_once $fp; $fpdfFound = true; break; }
+    }
+    if (!$fpdfFound) {
+        portalJsonOut(['error' => 'FPDF no disponible en el servidor'], 500);
+    }
+
+    $enc = function($s) { return iconv('UTF-8', 'ISO-8859-1//TRANSLIT//IGNORE', (string)$s); };
+
+    $pdf = new FPDF('P', 'mm', 'Letter');
+    $pdf->SetAutoPageBreak(true, 15);
+    $pdf->SetTitle($enc('Acta de Entrega - Voltika'));
+    $pdf->SetAuthor('Voltika - MTECH GEARS, S.A. DE C.V.');
+    $pdf->AddPage();
+
+    $folio = 'ACT-' . $motoId . '-' . date('Ymd-His');
+    $fechaEntrega = date('d/m/Y H:i');
+
+    // Brand bar
+    $pdf->SetFillColor(26, 58, 92);
+    $pdf->Rect(0, 0, 215.9, 11, 'F');
+    $pdf->SetTextColor(255);
+    $pdf->SetFont('Arial', 'B', 11);
+    $pdf->SetXY(15, 3);
+    $pdf->Cell(0, 5, $enc('VOLTIKA · ACTA DE ENTREGA DE MOTOCICLETA ELÉCTRICA'), 0, 0, 'L');
+    $pdf->SetTextColor(0);
+    $pdf->SetY(16);
+
+    // Subtitle + folio
+    $pdf->SetFont('Arial', '', 8);
+    $pdf->Cell(95, 4, $enc('FOLIO: ' . $folio), 0, 0);
+    $pdf->Cell(95, 4, $enc('FECHA Y HORA: ' . $fechaEntrega), 0, 1, 'R');
+    $pdf->Ln(2);
+
+    $pdf->SetFont('Arial', 'B', 13);
+    $pdf->Cell(0, 7, $enc('ACTA DE ENTREGA DE VEHÍCULO'), 0, 1, 'C');
+    $pdf->SetFont('Arial', '', 8.5);
+    $pdf->Cell(0, 4, $enc('MTECH GEARS, S.A. DE C.V. — Voltika'), 0, 1, 'C');
+    $pdf->Ln(3);
+
+    $nombreCompleto = trim(($moto['cliente_nombre'] ?? ''));
+    $puntoNombre    = $punto['nombre'] ?? '';
+    $puntoCiudad    = $punto['ciudad'] ?? ($moto['ciudad'] ?? 'México');
+
+    // Opening declaration
+    $pdf->SetFont('Arial', '', 9);
+    $pdf->MultiCell(0, 4.5, $enc('En este acto, EL CLIENTE declara haber recibido la motocicleta eléctrica descrita en el presente documento, en condiciones óptimas de funcionamiento, completa y conforme a lo contratado.'), 0, 'J');
+    $pdf->Ln(3);
+
+    // Datos
+    $pdf->SetFont('Arial', 'B', 10);
+    $pdf->Cell(0, 5, $enc('DATOS DE LA OPERACIÓN'), 0, 1);
+    $pdf->SetFont('Arial', '', 9);
+    $rows = [
+        ['Cliente',         $nombreCompleto],
+        ['Modelo',          $moto['modelo']  ?? '—'],
+        ['Color',           $moto['color']   ?? '—'],
+        ['VIN / NIV',       $moto['vin_display'] ?? $moto['vin'] ?? '—'],
+        ['Pedido / folio',  $moto['pedido_num']  ?? '—'],
+        ['Fecha y hora',    $fechaEntrega],
+        ['Punto de entrega', $puntoNombre . ($puntoCiudad ? ' — ' . $puntoCiudad : '')],
+    ];
+    foreach ($rows as $r) {
+        $pdf->SetFont('Arial', 'B', 9);
+        $pdf->Cell(60, 5, $enc($r[0] . ':'), 0);
+        $pdf->SetFont('Arial', '', 9);
+        $pdf->MultiCell(0, 5, $enc($r[1]), 0);
+    }
+    $pdf->Ln(3);
+
+    // Cláusulas
+    $pdf->SetFont('Arial', 'B', 10);
+    $pdf->Cell(0, 5, $enc('DECLARACIONES DEL CLIENTE'), 0, 1);
+    $pdf->SetFont('Arial', '', 9);
+    $decls = [
+        'El vehículo fue entregado en perfectas condiciones físicas y mecánicas, con todos sus componentes y accesorios completos según el checklist verificado por el personal Voltika.',
+        'A partir de este momento, el CLIENTE asume la responsabilidad total del uso, custodia y cuidado del vehículo.',
+        'EL CLIENTE recibió información sobre garantía, uso correcto y medidas de seguridad del vehículo eléctrico.',
+        'EL CLIENTE acreditó su identidad mediante INE original y el código OTP enviado a su teléfono registrado.',
+        'EL CLIENTE acepta el contenido de la presente acta y firma electrónicamente con validez NOM-151 a través del proveedor Cincel.',
+    ];
+    foreach ($decls as $i => $d) {
+        $pdf->SetFont('Arial', 'B', 9);
+        $pdf->Cell(7, 5, ($i + 1) . '.', 0);
+        $pdf->SetFont('Arial', '', 9);
+        $pdf->MultiCell(0, 4.8, $enc($d), 0, 'J');
+        $pdf->Ln(1);
+    }
+    $pdf->Ln(8);
+    $pdf->SetFont('Arial', '', 9);
+    $pdf->Cell(0, 5, $enc('Firma electrónica del cliente:'), 0, 1);
+    $pdf->Ln(15);
+    $pdf->Line(20, $pdf->GetY(), 110, $pdf->GetY());
+    $pdf->Ln(2);
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(90, 5, $enc($nombreCompleto), 0, 1);
+    $pdf->SetFont('Arial', '', 8);
+    $pdf->Cell(90, 4, $enc('Firmado mediante Cincel — NOM-151'), 0, 1);
+
+    // Persist to disk
+    $dir = __DIR__ . '/../../../configurador/php/uploads/actas';
+    if (!is_dir($dir)) @mkdir($dir, 0775, true);
+    $filename = 'acta_cliente_' . $motoId . '_' . date('Ymd_His') . '.pdf';
+    $pdfPath  = $dir . '/' . $filename;
+    $pdf->Output('F', $pdfPath);
+
     $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
     $host   = $_SERVER['HTTP_HOST'] ?? 'voltika.mx';
-    $sessionName = session_name();
-    $sessionId   = session_id();
-
-    $url = $scheme . '://' . $host . dirname($_SERVER['SCRIPT_NAME']) . '/acta-pdf.php';
-    $ch  = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'Cookie: ' . $sessionName . '=' . $sessionId,
-        ],
-        CURLOPT_POSTFIELDS => json_encode(['moto_id' => $motoId]),
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_SSL_VERIFYPEER => false,
-    ]);
-    $resp = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-    @unlink($stubFile);
-
-    $_SERVER['REQUEST_METHOD'] = $_ORIG_METHOD;
-
-    if ($err || $code >= 400) {
-        portalJsonOut(['error' => 'No se pudo generar el PDF del acta: ' . ($err ?: 'HTTP ' . $code)], 500);
-    }
-    $j = json_decode($resp, true);
-    if (!$j || empty($j['ok']) || empty($j['pdf_url']) || empty($j['pdf_path'])) {
-        portalJsonOut(['error' => 'Respuesta inválida del generador de PDF'], 500);
-    }
-    $pdfUrl  = $j['pdf_url'];
-    $pdfPath = __DIR__ . '/../../../' . $j['pdf_path'];
+    $pdfUrl = $scheme . '://' . $host . '/configurador/php/uploads/actas/' . $filename;
+} catch (Throwable $e) {
+    error_log('cincel-firma-acta inline PDF: ' . $e->getMessage());
+    portalJsonOut(['error' => 'Error generando el PDF del acta: ' . $e->getMessage()], 500);
 }
-if (!$pdfUrl || !$pdfPath || !file_exists($pdfPath)) {
-    portalJsonOut(['error' => 'PDF del acta no disponible'], 500);
+
+if (!$pdfPath || !file_exists($pdfPath)) {
+    portalJsonOut(['error' => 'PDF del acta no se pudo persistir'], 500);
 }
 
 // ── 3. Authenticate against Cincel ─────────────────────────────────────
