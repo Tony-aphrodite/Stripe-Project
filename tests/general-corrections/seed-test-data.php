@@ -282,6 +282,62 @@ ensureEnvio($pdo, $colsCache, $moto5, $puntoId, 'enviada',
 ensureEnvio($pdo, $colsCache, $moto7, $puntoId, 'lista_para_enviar',
     null, null, null, date('Y-m-d', strtotime('+5 days')), $run, $log);
 
+// ── 5b. checklist_entrega_v2 para moto 2 — necesario para que el portal
+//        cliente reporte estado_ui='checklist_ok' y aparezca el botón de
+//        firma con Cincel (Bug 5.7).
+//        Lógica de estado.php:
+//          if (checklist.vin_coincide) → estado_ui = 'checklist_ok'
+//        Por eso sembramos vin_coincide=1 + las 4 fases de "verificar".
+if ($moto2 && $run) {
+    try {
+        $st = $pdo->prepare("SELECT id FROM checklist_entrega_v2 WHERE moto_id=? LIMIT 1");
+        $st->execute([$moto2]);
+        if (!$st->fetchColumn()) {
+            $ceCols = cols($pdo, 'checklist_entrega_v2', $colsCache);
+            $f = ['moto_id'];
+            $v = [$moto2];
+            // Campo crítico para que estado_ui salga 'checklist_ok'
+            if (isset($ceCols['vin_coincide']))    { $f[]='vin_coincide';    $v[]=1; }
+            if (isset($ceCols['estado_fisico_ok'])){ $f[]='estado_fisico_ok'; $v[]=1; }
+            if (isset($ceCols['sin_danos']))       { $f[]='sin_danos';       $v[]=1; }
+            if (isset($ceCols['unidad_completa'])) { $f[]='unidad_completa'; $v[]=1; }
+            if (isset($ceCols['fase1_completada'])){ $f[]='fase1_completada'; $v[]=1; }
+            if (isset($ceCols['fase3_completada'])){ $f[]='fase3_completada'; $v[]=1; }
+            $ph = implode(',', array_fill(0, count($f), '?'));
+            $pdo->prepare("INSERT INTO checklist_entrega_v2 (".implode(',', $f).") VALUES ($ph)")->execute($v);
+            $log[] = "✓ checklist_entrega_v2 moto=$moto2 sembrado (vin_coincide=1)";
+        } else {
+            $log[] = "✓ checklist_entrega_v2 moto=$moto2 ya existe";
+        }
+    } catch (Throwable $e) { $log[] = "✗ checklist_entrega_v2 moto=$moto2: " . $e->getMessage(); }
+}
+
+// ── 5c. entregas para moto 2 — cubre el path de OTP/face que estado.php
+//        también consulta. Sin esta fila, la respuesta del endpoint no incluye
+//        los timestamps de los pasos previos (es informativo, no bloquea
+//        estado_ui='checklist_ok').
+if ($moto2 && $run) {
+    try {
+        $st = $pdo->prepare("SELECT id FROM entregas WHERE moto_id=? LIMIT 1");
+        $st->execute([$moto2]);
+        if (!$st->fetchColumn()) {
+            $entCols = cols($pdo, 'entregas', $colsCache);
+            $f = ['moto_id', 'estado'];
+            $v = [$moto2, 'confirmado']; // OTP ya verificado
+            if (isset($entCols['otp_verified']))   { $f[]='otp_verified';   $v[]=1; }
+            if (isset($entCols['cliente_nombre'])) { $f[]='cliente_nombre'; $v[]=$NOMBRE; }
+            if (isset($entCols['cliente_telefono'])) { $f[]='cliente_telefono'; $v[]=$TEL; }
+            if (isset($entCols['cliente_email']))   { $f[]='cliente_email';  $v[]=$EMAIL; }
+            if (isset($entCols['pedido_num']))     { $f[]='pedido_num';     $v[]='VK-GCTEST-2'; }
+            $ph = implode(',', array_fill(0, count($f), '?'));
+            $pdo->prepare("INSERT INTO entregas (".implode(',', $f).") VALUES ($ph)")->execute($v);
+            $log[] = "✓ entregas moto=$moto2 sembrado (estado=confirmado, otp_verified=1)";
+        } else {
+            $log[] = "✓ entregas moto=$moto2 ya existe";
+        }
+    } catch (Throwable $e) { $log[] = "✗ entregas moto=$moto2: " . $e->getMessage(); }
+}
+
 // ── 6. checklist_origen para moto 5 (origen completado en CEDIS — Bug 3.2 verifier) ──
 if ($moto5 && $run) {
     try {
