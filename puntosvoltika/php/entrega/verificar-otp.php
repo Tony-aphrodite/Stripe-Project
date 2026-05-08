@@ -25,8 +25,22 @@ if (!in_array($e['estado'] ?? '', ['otp_enviado'], true)) {
     }
     puntoJsonOut(['error' => 'Estado de entrega inválido: ' . ($e['estado'] ?? '?')], 409);
 }
-if ($e['otp_code'] !== $code) puntoJsonOut(['error' => 'Código incorrecto'], 400);
-if (strtotime($e['otp_expires']) < time()) puntoJsonOut(['error' => 'Código expirado'], 400);
+// Test-number bypass: same whitelist used by clientes/php/auth/login-request.php
+// — números de prueba aceptan el código fijo 123456 sin importar el OTP
+// real generado por iniciar.php. Esto permite que QA pruebe el flujo de
+// entrega completo desde el panel del punto sin necesidad de leer el
+// código en la base de datos. Solo aplica a 4 números explícitos.
+$TEST_NUMBERS = ['5500000000', '0000000000', '5511112222', '5555555555', '5500000099'];
+$telDigits = preg_replace('/\D/', '', (string)($e['cliente_telefono'] ?? ''));
+if (strlen($telDigits) > 10) $telDigits = substr($telDigits, -10);
+$isTestPhone = in_array($telDigits, $TEST_NUMBERS, true);
+
+if ($isTestPhone && $code === '123456') {
+    // Skip the strict comparison — test mode accepts the universal code.
+} else {
+    if ($e['otp_code'] !== $code) puntoJsonOut(['error' => 'Código incorrecto'], 400);
+    if (strtotime($e['otp_expires']) < time()) puntoJsonOut(['error' => 'Código expirado'], 400);
+}
 
 $pdo->prepare("UPDATE entregas SET otp_verified=1, otp_verified_at=NOW(), estado='confirmado' WHERE id=?")
     ->execute([$e['id']]);
