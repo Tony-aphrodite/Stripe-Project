@@ -278,21 +278,49 @@ if (!defined('CINCEL_API_URL') || !defined('CINCEL_EMAIL') || !defined('CINCEL_P
 }
 $cincelUrl = rtrim(CINCEL_API_URL, '/');
 
-$ch = curl_init("$cincelUrl/auth/login");
-curl_setopt_array($ch, [
-    CURLOPT_POST => true,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-    CURLOPT_POSTFIELDS => json_encode(['email' => CINCEL_EMAIL, 'password' => CINCEL_PASSWORD]),
-    CURLOPT_TIMEOUT => 15,
-]);
-$auth = json_decode(curl_exec($ch), true);
-$authCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-if ($authCode !== 200 || empty($auth['token'])) {
-    portalJsonOut(['error' => 'No se pudo autenticar con Cincel'], 500);
+// Cincel exposes two auth endpoints in the wild — /auth/login (older v3
+// docs) and /auth/tokens (used by admin/php/checklists/guardar-firma.php).
+// Try the same one admin uses first, fall back to /auth/login. The token
+// field also varies: 'access_token' on /auth/tokens, 'token' on /auth/login.
+$cincelToken = null;
+$authDebug = [];
+foreach (['/auth/tokens', '/auth/login'] as $authPath) {
+    $ch = curl_init($cincelUrl . $authPath);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS => json_encode(['email' => CINCEL_EMAIL, 'password' => CINCEL_PASSWORD]),
+        CURLOPT_TIMEOUT => 15,
+    ]);
+    $raw      = curl_exec($ch);
+    $authCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err      = curl_error($ch);
+    curl_close($ch);
+    $auth = json_decode($raw, true);
+
+    $authDebug[] = [
+        'endpoint' => $authPath,
+        'http'     => $authCode,
+        'curl_err' => $err ?: null,
+        // First 300 chars of the response so we can spot HTML error pages
+        // (CDN rate-limit, WAF) without dumping the entire body.
+        'body_preview' => $raw ? substr((string)$raw, 0, 300) : null,
+    ];
+
+    if ($authCode === 200) {
+        $cincelToken = $auth['access_token'] ?? $auth['token'] ?? null;
+        if ($cincelToken) break;
+    }
 }
-$cincelToken = $auth['token'];
+if (!$cincelToken) {
+    portalJsonOut([
+        'error'     => 'No se pudo autenticar con Cincel',
+        'detail'    => 'Ambos endpoints de auth fallaron. Revisa CINCEL_EMAIL / CINCEL_PASSWORD / CINCEL_API_URL.',
+        'attempts'  => $authDebug,
+        'api_url'   => $cincelUrl,
+    ], 500);
+}
 
 // ── 4. Create document in Cincel ───────────────────────────────────────
 $cfile = new CURLFile($pdfPath, 'application/pdf', 'acta_' . $motoId . '.pdf');
