@@ -16,8 +16,13 @@ $nuevoEstado = $d['estado'] ?? '';
 // the admin update fecha_estimada_llegada at the same time as flipping state.
 // Empty string = don't touch; valid YYYY-MM-DD = overwrite. We also normalize
 // fecha_envio the same way so operators can backdate a shipment if needed.
-$etaIn   = isset($d['fecha_estimada_llegada']) ? trim((string)$d['fecha_estimada_llegada']) : '';
-$fenvIn  = isset($d['fecha_envio'])            ? trim((string)$d['fecha_envio'])            : '';
+$etaIn      = isset($d['fecha_estimada_llegada']) ? trim((string)$d['fecha_estimada_llegada']) : '';
+$fenvIn     = isset($d['fecha_envio'])            ? trim((string)$d['fecha_envio'])            : '';
+// Bug 2.2 (customer brief 2026-05-08): exhibition / showroom shipments must
+// also accept Tracking + Carrier when the admin marks them as enviada.
+// Both are optional — empty string means "don't touch the existing column".
+$trackingIn = isset($d['tracking_number']) ? trim((string)$d['tracking_number']) : '';
+$carrierIn  = isset($d['carrier'])         ? trim((string)$d['carrier'])         : '';
 if (!$envioId || !in_array($nuevoEstado, ['enviada','recibida'])) {
     adminJsonOut(['error' => 'envio_id y estado válido requeridos'], 400);
 }
@@ -28,6 +33,18 @@ foreach ([['fecha_estimada_llegada', $etaIn], ['fecha_envio', $fenvIn]] as $pair
 }
 
 $pdo = getDB();
+
+// Bug 2.1 (customer brief 2026-05-08): "The arrival date must not be allowed
+// to be earlier than the shipment date." Compare both incoming values when
+// both are provided. We do this BEFORE any side effect so the request fails
+// cleanly without mutating envio/inventario state. Only fires when both
+// dates are present in this request — pure ETA-only edits are still allowed
+// (they get compared against the persisted fecha_envio further down).
+if ($etaIn !== '' && $fenvIn !== '' && $etaIn < $fenvIn) {
+    adminJsonOut([
+        'error' => 'La fecha estimada de llegada (' . $etaIn . ') no puede ser anterior a la fecha de envío (' . $fenvIn . ').'
+    ], 400);
+}
 $stmt = $pdo->prepare("SELECT e.*, m.cliente_id, m.cliente_nombre, m.cliente_telefono, m.cliente_email,
                               m.modelo, m.color, m.pedido_num,
                               pv.nombre AS punto_nombre, pv.ciudad AS punto_ciudad,
@@ -99,6 +116,11 @@ $notifyData = [
 ];
 
 $updates = ['estado' => $nuevoEstado];
+// Bug 2.2 — apply tracking / carrier when provided. We don't validate
+// content (carrier names vary by region); empty strings are treated as
+// "don't change", just like for the dates.
+if ($trackingIn !== '') $updates['tracking_number'] = $trackingIn;
+if ($carrierIn  !== '') $updates['carrier']         = $carrierIn;
 // Apply ETA override (if any) BEFORE sending the notification so the email /
 // WhatsApp carry the updated arrival date.
 if ($etaIn !== '') {
@@ -114,6 +136,17 @@ if ($etaIn !== '') {
 if ($nuevoEstado === 'enviada') {
     // Admin may pass an explicit fecha_envio (backdate). Default to today.
     $updates['fecha_envio'] = $fenvIn !== '' ? $fenvIn : date('Y-m-d');
+    // Bug 2.1 second guard: when only ETA is being changed (or only fecha_envio
+    // defaulted to today), compare the resulting fecha_envio against the
+    // (existing-or-incoming) ETA so the constraint cannot be bypassed by
+    // submitting only one of the two fields.
+    $effectiveEta  = $etaIn  !== '' ? $etaIn  : ($envio['fecha_estimada_llegada'] ?? '');
+    $effectiveFenv = $updates['fecha_envio'];
+    if ($effectiveEta && $effectiveFenv && $effectiveEta < $effectiveFenv) {
+        adminJsonOut([
+            'error' => 'La fecha estimada de llegada (' . $effectiveEta . ') no puede ser anterior a la fecha de envío (' . $effectiveFenv . ').'
+        ], 400);
+    }
     $pdo->prepare("UPDATE inventario_motos SET estado='por_llegar' WHERE id=?")->execute([$envio['moto_id']]);
     if (function_exists('voltikaNotify') && ($envio['cliente_telefono'] || $envio['cliente_email'])) {
         try { voltikaNotify('moto_enviada', $notifyData); }

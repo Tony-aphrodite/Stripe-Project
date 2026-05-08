@@ -1,5 +1,57 @@
 window.PV_entrega = (function(){
   var ctx = {};
+
+  // Bug 5.1 (customer brief 2026-05-08): auto-save the wizard state every
+  // time the user advances. The server keeps the latest snapshot in
+  // entregas.step / step_data so a closed window or refresh doesn't blow
+  // away the operator's progress.
+  function autosave(step, data){
+    if (!ctx || !ctx.moto_id) return;
+    PVApp.api('entrega/guardar-paso.php', {
+      moto_id: ctx.moto_id,
+      step: step,
+      step_data: data || {}
+    }); // fire-and-forget — we don't block the UI on this
+  }
+
+  // Bug 5.1 — "Entrega no exitosa" button (added to every step). Asks
+  // the operator for a reason, hits marcar-no-exitosa.php, then resets.
+  function noExitosaBtnHtml(){
+    return '<button id="pvNoExitosa" class="ad-btn ghost" '+
+      'style="width:100%;margin-top:8px;border:1px dashed #c41e3a;color:#c41e3a;">'+
+      '✗ Entrega NO exitosa'+
+      '</button>';
+  }
+  function bindNoExitosa(){
+    $('#pvNoExitosa').off('click').on('click', function(){
+      PVApp.modal(
+        '<div class="ad-h2">Cerrar entrega como NO exitosa</div>'+
+        '<div class="ad-dim" style="font-size:12.5px;margin-bottom:10px;">Esta entrega quedará cerrada. Si más adelante el cliente regresa, podrás iniciar un nuevo proceso.</div>'+
+        '<label class="ad-label">Motivo (mínimo 5 caracteres)</label>'+
+        '<textarea id="pvNoExMotivo" class="ad-input" rows="3" placeholder="Ej: cliente no se presentó, INE vencido, problema con la moto, etc."></textarea>'+
+        '<div style="display:flex;gap:8px;margin-top:12px;">'+
+          '<button id="pvNoExCancel" class="ad-btn ghost" style="flex:1;">Cancelar</button>'+
+          '<button id="pvNoExConfirm" class="ad-btn primary" style="flex:1;background:#c41e3a;border-color:#c41e3a;">Confirmar cierre</button>'+
+        '</div>'
+      );
+      $('#pvNoExCancel').on('click', function(){ PVApp.closeModal(); });
+      $('#pvNoExConfirm').on('click', function(){
+        var motivo = ($('#pvNoExMotivo').val()||'').trim();
+        if (motivo.length < 5) { alert('Describe brevemente el motivo (mínimo 5 caracteres).'); return; }
+        var $b = $(this).prop('disabled', true).html('<span class="ad-spin"></span>');
+        PVApp.api('entrega/marcar-no-exitosa.php', { moto_id: ctx.moto_id, motivo: motivo })
+          .done(function(r){
+            if (r.ok) { PVApp.closeModal(); PVApp.toast('Entrega cerrada como NO exitosa'); render(); }
+            else { $b.prop('disabled', false).text('Confirmar cierre'); alert(r.error||'Error'); }
+          })
+          .fail(function(x){
+            $b.prop('disabled', false).text('Confirmar cierre');
+            alert((x.responseJSON&&x.responseJSON.error)||'Error');
+          });
+      });
+    });
+  }
+
   function render(){
     PVApp.render('<div class="ad-h1">Entregar al cliente</div><div><span class="ad-spin"></span></div>');
     PVApp.api('inventario/listar.php').done(function(r){
@@ -57,13 +109,16 @@ window.PV_entrega = (function(){
       '<div class="ad-h2">1. Enviar OTP al cliente</div>'+
       (ctx.pedido ? '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:8px;">'+ctx.pedido+'</div>' : '')+
       '<div class="ad-card">Cliente: <strong>'+ctx.cliente+'</strong><br>Tel: '+ctx.tel+'</div>'+
-      '<button id="pvS1" class="ad-btn primary" style="width:100%">Enviar código por SMS</button>'
+      '<button id="pvS1" class="ad-btn primary" style="width:100%">Enviar código por SMS</button>'+
+      noExitosaBtnHtml()
     );
+    bindNoExitosa();
     $('#pvS1').on('click', function(){
       var $b=$(this).prop('disabled',true).html('<span class="ad-spin"></span>');
       PVApp.api('entrega/iniciar.php',{moto_id:ctx.moto_id}).done(function(r){
         if(r.ok){
           ctx.testCode = r.test_code;
+          autosave('step1', { otp_enviado: true });
           // When no channel delivered the OTP (warning present + test_code
           // returned), surface it loudly so staff reads the code aloud
           // instead of silently letting the flow stall. Customer reported
@@ -84,15 +139,17 @@ window.PV_entrega = (function(){
       '<div>Pide al cliente que te muestre el código recibido por SMS.</div>'+
       '<div class="pv-otp-input">'+[0,1,2,3,4,5].map(function(i){return '<input maxlength="1" data-i="'+i+'" inputmode="numeric">';}).join('')+'</div>'+
       (ctx.testCode?'<div class="ad-card" style="color:var(--ad-warn)">Código de prueba: <b>'+ctx.testCode+'</b></div>':'')+
-      '<button id="pvS2" class="ad-btn primary" style="width:100%">Verificar</button>'
+      '<button id="pvS2" class="ad-btn primary" style="width:100%">Verificar</button>'+
+      noExitosaBtnHtml()
     );
+    bindNoExitosa();
     var $ins=$('.pv-otp-input input');
     $ins.on('input',function(){ this.value=this.value.replace(/\D/g,''); if(this.value)$ins.eq($(this).data('i')+1).focus(); });
     $ins.eq(0).focus();
     $('#pvS2').on('click', function(){
       var code=$ins.map(function(){return this.value;}).get().join('');
       PVApp.api('entrega/verificar-otp.php',{moto_id:ctx.moto_id,codigo:code}).done(function(r){
-        if(r.ok){ ctx.entrega_id=r.entrega_id; step3(); }
+        if(r.ok){ ctx.entrega_id=r.entrega_id; autosave('step2', { otp_verified: true }); step3(); }
       }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Código incorrecto'); });
     });
   }
@@ -101,53 +158,132 @@ window.PV_entrega = (function(){
   // will be compared against the Truora selfie taken when the client applied
   // for credit — same person must appear. Button stays disabled until both
   // files are picked so the operator can't skip the comparison.
+  //
+  // Bug 5.3 + 5.4 (customer brief 2026-05-08): the INE slot was a single
+  // file input WITHOUT `capture` so on the operator's device it only
+  // opened the file browser instead of the camera. Now each ID side has
+  // BOTH a camera button (capture=environment, hidden file input) AND a
+  // gallery button (no capture). And the back side gets its own slot —
+  // operators previously could only upload the front, but the briefing
+  // requires both sides. Backward compatibility: foto_ine is still sent
+  // (as the front), so the existing verificar-rostro.php contract holds;
+  // foto_ine_reverso is added as an OPTIONAL second photo.
   function step3(){
+    function dualInput(slot, label){
+      // slot: 'cliente' | 'ineFrente' | 'ineReverso'
+      // Two hidden file inputs (camera vs file) + visible buttons that
+      // trigger them. A small thumbnail confirms the picked file.
+      var camId  = 'pvF' + slot + 'Cam';
+      var fileId = 'pvF' + slot + 'File';
+      var camCap = (slot === 'cliente') ? 'user' : 'environment';
+      return ''+
+        '<input type="file" id="'+camId+'" accept="image/*" capture="'+camCap+'" '+
+          'data-slot="'+slot+'" class="pvIneInput" style="display:none;">'+
+        '<input type="file" id="'+fileId+'" accept="image/*" '+
+          'data-slot="'+slot+'" class="pvIneInput" style="display:none;">'+
+        '<div style="display:flex;gap:8px;margin-bottom:6px;">'+
+          '<button type="button" class="ad-btn primary pvOpenCam" data-target="'+camId+'" '+
+            'style="flex:1;">📷 Tomar foto</button>'+
+          '<button type="button" class="ad-btn ghost pvOpenFile" data-target="'+fileId+'" '+
+            'style="flex:1;">📁 Elegir archivo</button>'+
+        '</div>'+
+        '<div id="pvFThumb_'+slot+'" style="font-size:12px;color:#16a34a;margin-bottom:14px;display:none;">'+
+          '✓ Foto cargada'+
+        '</div>';
+    }
     PVApp.modal(
       steps(2)+
       '<div class="ad-h2">3. Foto del cliente e INE</div>'+
       '<div style="color:var(--ad-dim);font-size:12.5px;margin-bottom:14px;line-height:1.45;">'+
-        'Toma una <strong>foto del rostro del cliente</strong> y una <strong>foto de su INE</strong>.<br>'+
+        'Toma una <strong>foto del rostro del cliente</strong> y <strong>fotos de su INE (frente y reverso)</strong>.<br>'+
         'La foto del rostro se compara automáticamente con la selfie que tomó al solicitar su crédito — '+
         '<strong>debe ser la misma persona</strong> que compró la moto.'+
       '</div>'+
-      '<label class="ad-label" for="pvFCliente" style="display:block;font-weight:700;margin-bottom:4px;">📸 Foto rostro del cliente <span style="color:#dc2626">*</span></label>'+
+
+      '<label class="ad-label" style="display:block;font-weight:700;margin-bottom:4px;">📸 Foto rostro del cliente <span style="color:#dc2626">*</span></label>'+
       '<div style="font-size:11.5px;color:var(--ad-dim);margin-bottom:4px;">Rostro de frente, bien iluminado, sin lentes oscuros ni cubrebocas.</div>'+
-      '<input type="file" id="pvFCliente" accept="image/*" capture="user" class="ad-input" style="margin-bottom:14px">'+
-      '<label class="ad-label" for="pvFIne" style="display:block;font-weight:700;margin-bottom:4px;">🪪 Foto de la INE <span style="color:#dc2626">*</span></label>'+
-      '<div style="font-size:11.5px;color:var(--ad-dim);margin-bottom:4px;">Frente de la identificación, con la foto visible y legible.</div>'+
-      '<input type="file" id="pvFIne" accept="image/*" class="ad-input" style="margin-bottom:14px">'+
+      dualInput('cliente') +
+
+      '<label class="ad-label" style="display:block;font-weight:700;margin-bottom:4px;">🪪 INE — Frente <span style="color:#dc2626">*</span></label>'+
+      '<div style="font-size:11.5px;color:var(--ad-dim);margin-bottom:4px;">Lado frontal, con foto visible y legible.</div>'+
+      dualInput('ineFrente') +
+
+      '<label class="ad-label" style="display:block;font-weight:700;margin-bottom:4px;">🪪 INE — Reverso <span style="color:#dc2626">*</span></label>'+
+      '<div style="font-size:11.5px;color:var(--ad-dim);margin-bottom:4px;">Lado posterior con la dirección y firma.</div>'+
+      dualInput('ineReverso') +
+
       '<div id="pvS3Hint" style="font-size:12px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 10px;border-radius:4px;margin-bottom:10px;display:none;">'+
-        '⚠ Faltan fotos por seleccionar. Ambas son obligatorias antes de continuar.'+
+        '⚠ Faltan fotos por seleccionar.'+
       '</div>'+
-      '<button id="pvS3" class="ad-btn primary" style="width:100%" disabled>Verificar rostro</button>'
+      '<button id="pvS3" class="ad-btn primary" style="width:100%" disabled>Verificar rostro</button>'+
+      noExitosaBtnHtml()
     );
+    bindNoExitosa();
+
+    // Tracks the current File chosen per slot. Last-write-wins, so picking
+    // "Tomar foto" after "Elegir archivo" replaces it (and vice-versa).
+    var picked = { cliente: null, ineFrente: null, ineReverso: null };
+
+    // Each visible button triggers its hidden input — on mobile this gives
+    // the operator a clear choice between camera (capture attr) and file
+    // gallery (no capture attr).
+    $('.pvOpenCam, .pvOpenFile').on('click', function(){
+      var t = $(this).data('target');
+      if (t) document.getElementById(t).click();
+    });
+
+    $('.pvIneInput').on('change', function(){
+      var slot = $(this).data('slot');
+      var f = this.files && this.files[0];
+      if (f) {
+        picked[slot] = f;
+        $('#pvFThumb_'+slot).text('✓ Foto cargada (' + Math.round(f.size/1024) + ' KB)').show();
+      }
+      refreshStep3Btn();
+    });
 
     function refreshStep3Btn(){
-      var hasCli = $('#pvFCliente').prop('files').length > 0;
-      var hasIne = $('#pvFIne').prop('files').length > 0;
-      var ready  = hasCli && hasIne;
+      var ready = picked.cliente && picked.ineFrente && picked.ineReverso;
       $('#pvS3').prop('disabled', !ready);
-      $('#pvS3Hint').toggle(!ready);
+      var missing = [];
+      if (!picked.cliente)    missing.push('rostro');
+      if (!picked.ineFrente)  missing.push('INE frente');
+      if (!picked.ineReverso) missing.push('INE reverso');
+      if (missing.length) {
+        $('#pvS3Hint').text('⚠ Faltan: ' + missing.join(', ')).show();
+      } else {
+        $('#pvS3Hint').hide();
+      }
     }
-    $('#pvFCliente, #pvFIne').on('change', refreshStep3Btn);
     refreshStep3Btn();
 
     $('#pvS3').on('click', function(){
-      // Double-check in case the user disabled validation via devtools
-      if ($('#pvFCliente').prop('files').length === 0 || $('#pvFIne').prop('files').length === 0) {
-        $('#pvS3Hint').show();
+      if (!picked.cliente || !picked.ineFrente || !picked.ineReverso) {
+        refreshStep3Btn();
         return;
       }
       var $b=$(this).prop('disabled',true).html('<span class="ad-spin"></span>');
-      readFiles(['pvFCliente','pvFIne'], function(files){
+      // Read all 3 files as base64 in parallel.
+      var slots = ['cliente','ineFrente','ineReverso'];
+      var out = {}; var pending = slots.length;
+      slots.forEach(function(s){
+        var rdr = new FileReader();
+        rdr.onload = function(){ out[s] = rdr.result; if(--pending === 0) submit(out); };
+        rdr.readAsDataURL(picked[s]);
+      });
+
+      function submit(files){
         PVApp.api('entrega/verificar-rostro.php',{
           entrega_id: ctx.entrega_id, moto_id: ctx.moto_id,
-          foto_cliente: files.pvFCliente, foto_ine: files.pvFIne
+          foto_cliente: files.cliente,
+          foto_ine: files.ineFrente,           // backward-compat: front goes to existing field
+          foto_ine_reverso: files.ineReverso   // new: back side
         }).done(function(r){
           if(!r.ok) return;
+          autosave('step3', { face_match: r.match === true });
           handleFaceResult(r);
         }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); $b.prop('disabled',false).text('Verificar rostro'); });
-      });
+      }
     });
   }
   // Decide how to proceed after the face-check endpoint responds.
@@ -198,85 +334,171 @@ window.PV_entrega = (function(){
     $('#pvFaceManualOk').on('click', step4);
     $('#pvFaceManualCancel').on('click', function(){ PVApp.closeModal(); render(); });
   }
-  // Step 4: Moto checklist + photos.
-  // Customer brief 2026-04-24: each photo slot needs a descriptive title
-  // (frente / lateral / trasera). Button is blocked until all 4 checkboxes
-  // are ticked AND all 3 photos are selected — no more half-filled submissions.
+  // Step 4: Full delivery checklist (Bug 5.6 — customer brief 2026-05-08).
+  //
+  // Replaces the legacy reduced version (4 checkboxes + 3 photos) with the
+  // full 5-phase checklist matching the admin panel:
+  //   F1 — Identidad
+  //   F2 — Pago
+  //   F3 — Unidad (legacy fields, kept)
+  //   F4 — OTP (auto-filled from previous step, info-only)
+  //   F5 — Acta (signed by the customer in their portal — info-only here)
+  //
+  // The 3 photo slots are preserved for backward compatibility with the
+  // existing fotos_entrega rows. The submit endpoint is the same
+  // entrega/checklist.php which now accepts all phase fields.
+  var STEP4_PHASES = [
+    { key:'fase1', title:'F1 — Identidad', sections:[
+      { title:'Identificación del cliente', fields:[
+        {key:'ine_presentada',         label:'INE presentada'},
+        {key:'nombre_coincide',        label:'Nombre coincide con la orden'},
+        {key:'foto_coincide',          label:'Foto de INE coincide con el cliente'},
+        {key:'datos_confirmados',      label:'Datos personales confirmados'},
+        {key:'ultimos4_telefono',      label:'Últimos 4 dígitos del teléfono verificados'},
+        {key:'modelo_confirmado',      label:'Modelo de moto confirmado'},
+        {key:'forma_pago_confirmada',  label:'Forma de pago confirmada'}
+      ]}
+    ]},
+    { key:'fase2', title:'F2 — Pago', sections:[
+      { title:'Confirmación de pagos', fields:[
+        {key:'pago_confirmado',        label:'Pago confirmado en sistema'},
+        {key:'enganche_validado',      label:'Enganche validado'},
+        {key:'metodo_pago_registrado', label:'Método de pago registrado'},
+        {key:'domiciliacion_confirmada', label:'Domiciliación confirmada'}
+      ]}
+    ]},
+    { key:'fase3', title:'F3 — Unidad', sections:[
+      { title:'Estado de la unidad', fields:[
+        {key:'vin_coincide',      label:'VIN coincide con la orden'},
+        {key:'unidad_ensamblada', label:'Unidad ensamblada (checklist ensamble completo)'},
+        {key:'estado_fisico_ok',  label:'Estado físico correcto'},
+        {key:'sin_danos',         label:'Sin daños visibles'},
+        {key:'unidad_completa',   label:'Unidad completa (accesorios, llaves, manual)'}
+      ]}
+    ]}
+  ];
+
   function step4(){
-    PVApp.modal(
-      steps(3)+
-      '<div class="ad-h2">4. Checklist de la moto</div>'+
-      '<div style="color:var(--ad-dim);font-size:12.5px;margin-bottom:12px;line-height:1.45;">'+
-        'Verifica el estado de la moto y captura las <strong>3 fotos obligatorias</strong>. Todo debe estar completo antes de continuar.'+
-      '</div>'+
+    var data = {};
+    STEP4_PHASES.forEach(function(p){ p.sections.forEach(function(s){ s.fields.forEach(function(f){ data[f.key] = 0; }); }); });
+    var activeKey = 'fase1';
 
-      '<div style="margin-bottom:14px;">'+
-        '<label class="pv-check"><input type="checkbox" id="pvM1"> VIN coincide con lo esperado</label>'+
-        '<label class="pv-check"><input type="checkbox" id="pvM2"> Estado físico OK</label>'+
-        '<label class="pv-check"><input type="checkbox" id="pvM3"> Sin daños</label>'+
-        '<label class="pv-check"><input type="checkbox" id="pvM4"> Unidad completa</label>'+
-      '</div>'+
+    function totalDone(){
+      var n = 0;
+      STEP4_PHASES.forEach(function(p){ p.sections.forEach(function(s){ s.fields.forEach(function(f){ if (data[f.key]) n++; }); }); });
+      return n;
+    }
+    function totalCount(){
+      var n = 0;
+      STEP4_PHASES.forEach(function(p){ p.sections.forEach(function(s){ n += s.fields.length; }); });
+      return n;
+    }
 
-      '<div style="font-weight:700;font-size:13px;color:var(--ad-navy,#1a3a5c);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid var(--ad-primary,#039fe1);padding-bottom:4px;">Fotos de la moto</div>'+
+    function paint(){
+      var done = totalDone(), total = totalCount();
+      var pct  = total ? Math.round(done/total*100) : 0;
 
-      // 3 photo slots with visible descriptive labels (not placeholders —
-      // <input type=file> placeholders are invisible in all browsers).
-      '<label class="ad-label" for="pvFoto1" style="display:block;font-weight:700;margin-bottom:3px;">📷 Foto 1: Moto de frente <span style="color:#dc2626">*</span></label>'+
-      '<input type="file" id="pvFoto1" accept="image/*" capture="environment" class="ad-input" style="margin-bottom:12px">'+
+      var html = steps(3) +
+        '<div class="ad-h2">4. Checklist de Entrega</div>' +
+        '<div style="color:var(--ad-dim);font-size:12.5px;margin-bottom:10px;">Completa las 3 fases. Las fases F4 (OTP) y F5 (Acta firmada por el cliente) se completan automáticamente.</div>' +
+        '<div style="background:#e5e7eb;border-radius:999px;height:8px;overflow:hidden;margin-bottom:4px;"><div style="background:#22c55e;height:100%;width:'+pct+'%;transition:width .3s;"></div></div>' +
+        '<div style="font-size:12px;color:#64748b;margin-bottom:12px;">'+done+' / '+total+' items ('+pct+'%)</div>';
 
-      '<label class="ad-label" for="pvFoto2" style="display:block;font-weight:700;margin-bottom:3px;">📷 Foto 2: Lateral (costado) <span style="color:#dc2626">*</span></label>'+
-      '<input type="file" id="pvFoto2" accept="image/*" capture="environment" class="ad-input" style="margin-bottom:12px">'+
+      // Phase tabs
+      html += '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">';
+      STEP4_PHASES.forEach(function(p){
+        var bg = p.key === activeKey ? '#039fe1' : '#f1f5f9';
+        var fg = p.key === activeKey ? '#fff' : '#334155';
+        html += '<button class="pvS4Tab" data-fase="'+p.key+'" style="padding:7px 12px;border:0;border-radius:6px;cursor:pointer;background:'+bg+';color:'+fg+';font-size:12.5px;font-weight:600;">'+p.title+'</button>';
+      });
+      // Info-only F4 + F5 chips
+      html += '<span style="padding:7px 12px;background:#dcfce7;color:#166534;border-radius:6px;font-size:12px;font-weight:600;" title="Completado al verificar OTP en el paso 2">F4 — OTP ✓</span>';
+      html += '<span style="padding:7px 12px;background:#fef3c7;color:#92400e;border-radius:6px;font-size:12px;font-weight:600;" title="Se completa cuando el cliente firma en su portal">F5 — Acta ⏳</span>';
+      html += '</div>';
 
-      '<label class="ad-label" for="pvFoto3" style="display:block;font-weight:700;margin-bottom:3px;">📷 Foto 3: Trasera <span style="color:#dc2626">*</span></label>'+
-      '<input type="file" id="pvFoto3" accept="image/*" capture="environment" class="ad-input" style="margin-bottom:14px">'+
+      // Active phase content
+      var ph = STEP4_PHASES.filter(function(p){ return p.key === activeKey; })[0];
+      ph.sections.forEach(function(sec){
+        html += '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:10px;">';
+        html += '<div style="font-weight:700;font-size:13.5px;color:#0f172a;margin-bottom:8px;">'+sec.title+'</div>';
+        sec.fields.forEach(function(f){
+          var checked = data[f.key] ? 'checked' : '';
+          html += '<label class="pv-check"><input type="checkbox" class="pvS4Chk" data-key="'+f.key+'" '+checked+'> '+f.label+'</label>';
+        });
+        html += '</div>';
+      });
 
-      '<div id="pvS4Hint" style="font-size:12px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 10px;border-radius:4px;margin-bottom:10px;display:none;">'+
-        '⚠ Faltan elementos por completar.'+
-      '</div>'+
-      '<button id="pvS4" class="ad-btn primary" style="width:100%" disabled>Guardar checklist</button>'
-    );
+      // Photos (legacy slots — kept for backward compat with fotos_entrega)
+      if (activeKey === 'fase3') {
+        html += '<div style="font-weight:700;font-size:13px;color:var(--ad-navy,#1a3a5c);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid var(--ad-primary,#039fe1);padding-bottom:4px;">Fotos de la moto</div>'+
+          '<label class="ad-label" for="pvFoto1" style="display:block;font-weight:700;margin-bottom:3px;">📷 Foto 1: Moto de frente <span style="color:#dc2626">*</span></label>'+
+          '<input type="file" id="pvFoto1" accept="image/*" capture="environment" class="ad-input" style="margin-bottom:12px">'+
+          '<label class="ad-label" for="pvFoto2" style="display:block;font-weight:700;margin-bottom:3px;">📷 Foto 2: Lateral (costado) <span style="color:#dc2626">*</span></label>'+
+          '<input type="file" id="pvFoto2" accept="image/*" capture="environment" class="ad-input" style="margin-bottom:12px">'+
+          '<label class="ad-label" for="pvFoto3" style="display:block;font-weight:700;margin-bottom:3px;">📷 Foto 3: Trasera <span style="color:#dc2626">*</span></label>'+
+          '<input type="file" id="pvFoto3" accept="image/*" capture="environment" class="ad-input" style="margin-bottom:14px">';
+      }
 
-    function refreshStep4Btn(){
-      var chkCount = $('#pvM1,#pvM2,#pvM3,#pvM4').filter(':checked').length;
+      html += '<div id="pvS4Hint" style="font-size:12px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 10px;border-radius:4px;margin-bottom:10px;display:none;">⚠ Faltan elementos por completar.</div>'+
+        '<button id="pvS4" class="ad-btn primary" style="width:100%" disabled>Guardar checklist y enviar al cliente</button>'+
+        noExitosaBtnHtml();
+
+      PVApp.modal(html);
+      bindNoExitosa();
+      bind();
+    }
+
+    function bind(){
+      $('.pvS4Tab').on('click', function(){
+        // Persist current checkbox state before re-rendering, otherwise it's lost.
+        $('.pvS4Chk').each(function(){ data[$(this).data('key')] = $(this).is(':checked') ? 1 : 0; });
+        activeKey = $(this).data('fase');
+        paint();
+      });
+      $('.pvS4Chk').on('change', function(){
+        data[$(this).data('key')] = $(this).is(':checked') ? 1 : 0;
+        refreshBtn();
+      });
+      $('#pvFoto1, #pvFoto2, #pvFoto3').on('change', refreshBtn);
+      refreshBtn();
+      $('#pvS4').on('click', submit);
+    }
+
+    function refreshBtn(){
+      // Persist current visible checkbox state (other tabs already in `data`).
+      $('.pvS4Chk').each(function(){ data[$(this).data('key')] = $(this).is(':checked') ? 1 : 0; });
+      var done = totalDone(), total = totalCount();
       var photoCount = ['pvFoto1','pvFoto2','pvFoto3']
-        .filter(function(id){ return $('#'+id).prop('files').length > 0; }).length;
+        .filter(function(id){ return $('#'+id).prop('files') && $('#'+id).prop('files').length > 0; }).length;
       var missing = [];
-      if (chkCount < 4)   missing.push((4-chkCount)+' verificación(es)');
+      if (done < total) missing.push((total-done)+' verificación(es)');
       if (photoCount < 3) missing.push((3-photoCount)+' foto(s)');
       var ready = missing.length === 0;
       $('#pvS4').prop('disabled', !ready);
-      if (ready) {
-        $('#pvS4Hint').hide();
-      } else {
-        $('#pvS4Hint').text('⚠ Faltan: ' + missing.join(' + ') + ' antes de guardar el checklist.').show();
-      }
+      if (ready) $('#pvS4Hint').hide();
+      else       $('#pvS4Hint').text('⚠ Faltan: ' + missing.join(' + ')).show();
     }
-    $('#pvM1,#pvM2,#pvM3,#pvM4').on('change', refreshStep4Btn);
-    $('#pvFoto1,#pvFoto2,#pvFoto3').on('change', refreshStep4Btn);
-    refreshStep4Btn();
 
-    $('#pvS4').on('click', function(){
-      // Defensive re-check in case validation was bypassed
-      var chkCount = $('#pvM1,#pvM2,#pvM3,#pvM4').filter(':checked').length;
-      var photoCount = ['pvFoto1','pvFoto2','pvFoto3']
-        .filter(function(id){ return $('#'+id).prop('files').length > 0; }).length;
-      if (chkCount < 4 || photoCount < 3) {
-        refreshStep4Btn();
-        return;
-      }
-      var $b=$(this).prop('disabled',true).html('<span class="ad-spin"></span>');
+    function submit(){
+      // Capture latest checkbox state (covers tabs the user didn't revisit).
+      $('.pvS4Chk').each(function(){ data[$(this).data('key')] = $(this).is(':checked') ? 1 : 0; });
+      var $b=$('#pvS4').prop('disabled',true).html('<span class="ad-spin"></span>');
       readFiles(['pvFoto1','pvFoto2','pvFoto3'], function(files){
-        PVApp.api('entrega/checklist.php',{
+        var payload = Object.assign({}, data, {
           moto_id: ctx.moto_id,
-          vin_coincide: $('#pvM1').is(':checked')?1:0,
-          estado_fisico_ok: $('#pvM2').is(':checked')?1:0,
-          sin_danos: $('#pvM3').is(':checked')?1:0,
-          unidad_completa: $('#pvM4').is(':checked')?1:0,
           fotos_moto: [files.pvFoto1, files.pvFoto2, files.pvFoto3].filter(Boolean)
-        }).done(function(r){ if(r.ok) step5(); })
-          .fail(function(){ $b.prop('disabled',false).text('Guardar checklist'); });
+        });
+        PVApp.api('entrega/checklist.php', payload).done(function(r){
+          if(r.ok) { autosave('step4', { checklist_done: true, progreso: r.progreso || null }); step5(); }
+          else { $b.prop('disabled',false).text('Guardar checklist'); alert(r.error||'Error'); }
+        }).fail(function(x){
+          $b.prop('disabled',false).text('Guardar checklist');
+          alert((x.responseJSON&&x.responseJSON.error)||'Error');
+        });
       });
-    });
+    }
+
+    paint();
   }
   // Step 5: Wait for ACTA + finalize.
   //
@@ -288,19 +510,22 @@ window.PV_entrega = (function(){
   // was silently failing on the portal side.
   var _step5Poll = null;
   function step5(){
+    autosave('step5', { waiting_signature: true });
     PVApp.modal(
       steps(4)+
       '<div class="ad-h2">5. Firma del ACTA DE ENTREGA</div>'+
       '<div class="ad-card" style="color:var(--ad-warn)">'+
-        'Pide al cliente que ingrese al portal <strong>voltika.mx/clientes</strong> desde su celular, revise el acta y la firme.'+
+        'Pide al cliente que ingrese al portal <strong>voltika.mx/clientes</strong> desde su celular, revise el acta y la firme con <strong>Cincel</strong>.'+
       '</div>'+
       '<div id="pvS5Status" class="ad-card" style="font-size:13px;">'+
         '<span class="ad-spin" style="vertical-align:middle"></span> '+
         '<span id="pvS5StatusText">Esperando la firma del cliente...</span>'+
       '</div>'+
       '<button id="pvS5" class="ad-btn primary" disabled '+
-        'style="width:100%;opacity:.5;cursor:not-allowed;">Finalizar entrega</button>'
+        'style="width:100%;opacity:.5;cursor:not-allowed;">Finalizar entrega</button>'+
+      noExitosaBtnHtml()
     );
+    bindNoExitosa();
 
     function stopPolling(){
       if(_step5Poll){ clearInterval(_step5Poll); _step5Poll = null; }

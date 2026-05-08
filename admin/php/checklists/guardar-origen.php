@@ -13,8 +13,19 @@ if (!$motoId) adminJsonOut(['error' => 'moto_id requerido'], 400);
 
 $pdo = getDB();
 
-// Verify moto exists
-$stmt = $pdo->prepare("SELECT id, vin, vin_display, modelo, color, anio_modelo, bloqueado_venta, bloqueado_motivo FROM inventario_motos WHERE id=?");
+// Bug 1.2 (customer brief 2026-05-08): Origin Checklist PDF must include
+// the user signature, the start time, and the submission time. We persist
+// these on the checklist_origen row itself so the PDF generator can read
+// them. Idempotent column add — no-op if columns exist.
+try { $pdo->exec("ALTER TABLE checklist_origen ADD COLUMN fecha_inicio DATETIME NULL"); } catch (Throwable $e) {}
+try { $pdo->exec("ALTER TABLE checklist_origen ADD COLUMN fecha_completado DATETIME NULL"); } catch (Throwable $e) {}
+try { $pdo->exec("ALTER TABLE checklist_origen ADD COLUMN dealer_nombre_snapshot VARCHAR(150) NULL"); } catch (Throwable $e) {}
+
+// Verify moto exists. num_motor (oficial) is loaded so we can validate the
+// user-typed engine number against the unit's official number — customer
+// brief 2026-05-08 (Bug 1.1): "must validate engine number matches actual
+// engine number of the physical unit".
+$stmt = $pdo->prepare("SELECT id, vin, vin_display, modelo, color, anio_modelo, num_motor, bloqueado_venta, bloqueado_motivo FROM inventario_motos WHERE id=?");
 $stmt->execute([$motoId]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$moto) adminJsonOut(['error' => 'Moto no encontrada'], 404);
@@ -103,6 +114,25 @@ if ($vals['completado']) {
     if (trim((string)$vals['num_motor']) === '') {
         adminJsonOut(['error' => 'Falta el Número de motor en Identificación de unidad.'], 400);
     }
+    // Bug 1.1 (customer brief 2026-05-08): validate the typed engine number
+    // matches the unit's official num_motor in inventario_motos. We compare
+    // case-insensitively after stripping spaces/dashes to forgive minor
+    // typing differences while still catching wrong units.
+    //
+    // Backward-compatibility: when the moto has NO oficial num_motor on file
+    // (legacy imports, manual placeholders, test records), we skip the
+    // strict comparison so previously-working flows are not blocked. The
+    // user's typed value is still saved — admin can audit later. This
+    // strictly opens NEW protection for motos that DO have num_motor on
+    // record without breaking any existing completion path.
+    $oficial = strtoupper(preg_replace('/[\s\-]/', '', (string)($moto['num_motor'] ?? '')));
+    $tipoO   = strtoupper(preg_replace('/[\s\-]/', '', (string)$vals['num_motor']));
+    if ($oficial !== '' && $oficial !== $tipoO) {
+        adminJsonOut([
+            'error' => 'El número de motor capturado no coincide con el de la unidad oficial. Verifica que estés trabajando con la moto correcta.',
+            'num_motor_oficial_hint' => substr($oficial, 0, 3) . '***' . substr($oficial, -3),
+        ], 400);
+    }
     // Verify at least 1 photo per category (reads current DB state since
     // photos are uploaded separately via subir-foto.php and persisted
     // before this save call)
@@ -129,6 +159,16 @@ if ($vals['completado']) {
     }
 }
 
+// Resolve the human name of the dealer/admin filling out the checklist —
+// stored as a snapshot so the PDF still shows who did it even after a
+// future password reset / rename.
+$dealerNombre = '';
+try {
+    $du = $pdo->prepare("SELECT nombre FROM dealer_usuarios WHERE id=? LIMIT 1");
+    $du->execute([(int)$uid]);
+    $dealerNombre = (string)($du->fetchColumn() ?: '');
+} catch (Throwable $e) { error_log('guardar-origen dealer name: ' . $e->getMessage()); }
+
 if ($prev) {
     // Update existing
     $sets = []; $params = [];
@@ -140,8 +180,17 @@ if ($prev) {
     $params[] = $prev['id'];
     $pdo->prepare("UPDATE checklist_origen SET " . implode(',', $sets) . " WHERE id=?")->execute($params);
     $checkId = $prev['id'];
+    // Bug 1.2: keep dealer_nombre_snapshot in sync if missing — don't
+    // overwrite if a previous user signed off and is being viewed by
+    // someone else.
+    try {
+        $pdo->prepare("UPDATE checklist_origen SET dealer_nombre_snapshot = COALESCE(NULLIF(dealer_nombre_snapshot, ''), ?) WHERE id=?")
+           ->execute([$dealerNombre, $checkId]);
+    } catch (Throwable $e) { error_log('guardar-origen update name: ' . $e->getMessage()); }
 } else {
-    // Insert new
+    // Insert new — also sets fecha_inicio and dealer_nombre_snapshot.
+    $vals['fecha_inicio']           = date('Y-m-d H:i:s');
+    $vals['dealer_nombre_snapshot'] = $dealerNombre;
     $cols = array_keys($vals);
     $placeholders = implode(',', array_fill(0, count($cols), '?'));
     $pdo->prepare("INSERT INTO checklist_origen (" . implode(',', $cols) . ") VALUES ($placeholders)")
@@ -153,7 +202,16 @@ if ($prev) {
 if ($vals['completado']) {
     $hashData = json_encode($vals) . $checkId . date('c');
     $hash = hash('sha256', $hashData);
-    $pdo->prepare("UPDATE checklist_origen SET hash_registro=? WHERE id=?")->execute([$hash, $checkId]);
+    // Bug 1.2: stamp fecha_completado at submission time. Done as a
+    // separate UPDATE (alongside the hash) so partial schemas without
+    // the new column still update the hash.
+    try {
+        $pdo->prepare("UPDATE checklist_origen SET hash_registro=?, fecha_completado=NOW() WHERE id=?")
+            ->execute([$hash, $checkId]);
+    } catch (Throwable $e) {
+        // Fallback if fecha_completado not present — preserve original behavior.
+        $pdo->prepare("UPDATE checklist_origen SET hash_registro=? WHERE id=?")->execute([$hash, $checkId]);
+    }
 
     $pdo->prepare("UPDATE inventario_motos SET
             estado='recibida',

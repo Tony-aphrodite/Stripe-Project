@@ -60,7 +60,17 @@ if (!is_dir($uploadsDir)) @mkdir($uploadsDir, 0755, true);
 
 $savedPaths = [];
 $localPaths = [];
-foreach (['foto_cliente' => 'cliente', 'foto_ine' => 'identificacion'] as $key => $tipo) {
+// Bug 5.4 (customer brief 2026-05-08): accept the optional INE back-side as
+// a third photo. Stored under the 'identificacion_reverso' tipo so the front
+// vs back can be told apart in fotos_entrega. Backward-compat: when the
+// caller doesn't send foto_ine_reverso (older clients, admin panel, tests),
+// we just skip that slot — no required-field check is added so existing
+// flows still complete.
+foreach ([
+    'foto_cliente'      => 'cliente',
+    'foto_ine'          => 'identificacion',
+    'foto_ine_reverso'  => 'identificacion_reverso',
+] as $key => $tipo) {
     if (!empty($d[$key])) {
         $b64 = preg_replace('#^data:image/\w+;base64,#', '', $d[$key]);
         $bin = base64_decode($b64);

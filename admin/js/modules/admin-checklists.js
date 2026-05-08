@@ -368,7 +368,42 @@ window.AD_checklists = (function(){
   }
 
   // ── Checklist de Origen Form ─────────────────────────────────────────────
+  // Bug 1.2 (customer brief 2026-05-08): "Progress must be auto-saved while
+  // the checklist is being filled out." We run a 30s silent autosave while
+  // the modal is open and stop the timer when it closes. The save reuses
+  // saveOrigen()'s payload shape with a flag (`__silent`) to suppress the
+  // user-facing "Borrador guardado" alert.
+  var _origenAutosave = null;
+  function startOrigenAutosave(motoId){
+    if (_origenAutosave) clearInterval(_origenAutosave);
+    _origenAutosave = setInterval(function(){
+      // If the modal closed (no clCheck visible) or the checklist locked
+      // (id #clComplete missing), stop polling.
+      if ($('.clCheck').length === 0 || $('#clComplete').length === 0) {
+        stopOrigenAutosave();
+        return;
+      }
+      var payload = { moto_id: motoId, __silent: 1 };
+      $('.clCheck').each(function(){ payload[$(this).data('key')] = $(this).is(':checked') ? 1 : 0; });
+      payload.config_baterias = $('#clConfigBat').val();
+      payload.num_motor       = ($('#clNumMotor').val() || '').trim();
+      payload.num_sellos      = parseInt($('#clNumSellos').val()) || 0;
+      payload.notas           = $('#clNotas').val();
+      payload.completado      = 0;
+      // Fire-and-forget; failures are logged silently — operator still has
+      // the manual "Guardar borrador" button if anything goes wrong.
+      ADApp.api('checklists/guardar-origen.php', payload).fail(function(x){
+        if (window.console) console.warn('[origen autosave]', (x.responseJSON && x.responseJSON.error) || x.statusText);
+      });
+    }, 30000); // 30 s
+  }
+  function stopOrigenAutosave(){
+    if (_origenAutosave) { clearInterval(_origenAutosave); _origenAutosave = null; }
+  }
+
   function openOrigenForm(motoId, existing, moto){
+    // Stop any leftover autosave from a previous open session.
+    stopOrigenAutosave();
     var data = existing || {};
     var m    = moto || {};
     var isLocked = data.completado == 1;
@@ -549,9 +584,14 @@ window.AD_checklists = (function(){
     });
 
     $('#clBackToMoto').on('click', function(){
+      stopOrigenAutosave();
       ADApp.closeModal();
       showMotoChecklists(motoId);
     });
+
+    // Bug 1.2 — start the 30s silent autosave timer. Only when the
+    // checklist is editable (locked checklists won't accept writes anyway).
+    if (!isLocked) startOrigenAutosave(motoId);
 
     // Reabrir force-completed checklist
     $('#clReabrirOrigen').on('click', function(){

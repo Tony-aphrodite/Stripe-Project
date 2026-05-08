@@ -3,19 +3,65 @@ window.PV_recepcion = (function(){
     PVApp.render('<div class="ad-h1">Recepción de motos</div><div><span class="ad-spin"></span></div>');
     PVApp.api('recepcion/envios-pendientes.php').done(paint);
   }
+  // Bug 3.1 (customer brief 2026-05-08): the raw enum values
+  // ('lista_para_enviar', 'enviada') are not human-friendly. Translate to
+  // a label + color so the operator instantly understands the status.
+  // Bug 3.4: also handle the synthetic 'pendiente_asignacion' state from
+  // envios-pendientes.php for motos that CEDIS hasn't shipped yet.
+  function statusBadge(estado){
+    var map = {
+      'pendiente_asignacion': { label:'Pendiente de asignación', cls:'gray', help:'CEDIS aún no inicia el envío.' },
+      'lista_para_enviar':    { label:'Por enviar',              cls:'blue', help:'CEDIS ya creó el envío. Aún no sale.' },
+      'enviada':              { label:'En tránsito',             cls:'yellow', help:'La moto va camino al punto.' },
+      'en_transito':          { label:'En tránsito',             cls:'yellow', help:'La moto va camino al punto.' }
+    };
+    var s = map[estado] || { label: estado || 'Sin estado', cls:'gray', help:'' };
+    return '<span class="ad-badge '+s.cls+'" title="'+(s.help||'')+'">'+s.label+'</span>';
+  }
+
+  function fmtDate(d){
+    if(!d) return '—';
+    // Accept 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS' — chop the time off for display.
+    return String(d).slice(0,10);
+  }
+
   function paint(r){
     var html = '<div class="ad-h1">Recepción de motos</div>';
     html += '<div style="color:var(--ad-dim);margin-bottom:14px">Motos enviadas desde CEDIS esperando recepción</div>';
     if((r.envios||[]).length===0) html += '<div class="ad-card">No hay envíos pendientes</div>';
     (r.envios||[]).forEach(function(e){
+      var origenOk = e.origen_certificado == 1 || e.origen_certificado === '1' || e.origen_certificado === true;
+      var origenBadge = origenOk
+        ? '<span class="ad-badge green" title="Checklist de Origen completado en CEDIS">Origen certificado ✓</span>'
+        : '<span class="ad-badge gray" title="Checklist de Origen aún no certificado">Origen pendiente</span>';
+
+      // Bug 3.2 (customer brief 2026-05-08): show shipment metadata.
+      var infoRows = '';
+      if (e.tracking_number) infoRows += '<div>Tracking: <code>'+e.tracking_number+'</code></div>';
+      if (e.carrier)         infoRows += '<div>Paquetería: <strong>'+e.carrier+'</strong></div>';
+      if (e.fecha_envio)     infoRows += '<div>Enviada: <strong>'+fmtDate(e.fecha_envio)+'</strong></div>';
+      if (e.fecha_estimada_llegada) infoRows += '<div>ETA: <strong>'+fmtDate(e.fecha_estimada_llegada)+'</strong></div>';
+
+      var pending = e.estado === 'pendiente_asignacion';
+      // For pending_asignacion rows there is no envio_id so the "Recibir"
+      // button must be disabled — they're listed for visibility only.
+      var btn = pending
+        ? '<button class="ad-btn ghost sm" disabled title="Aún no hay envío creado por CEDIS" style="margin-top:8px;opacity:.6;">Esperando envío de CEDIS</button>'
+        : '<button class="ad-btn primary sm pvReceive" data-env="'+e.id+'" data-moto="'+e.moto_id+'" data-vin="'+e.vin+'" style="margin-top:8px">'+
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg> Recibir moto'+
+          '</button>';
+
       html += '<div class="ad-card">'+
         (e.pedido_num ? '<div style="font-size:12px;font-weight:700;color:var(--ad-primary,#039fe1);margin-bottom:4px;">'+e.pedido_num+'</div>' : '')+
-        '<div style="font-weight:700">'+e.modelo+' · '+e.color+'</div>'+
-        '<div style="font-size:12px;color:var(--ad-dim)">VIN esperado: '+(e.vin_display||e.vin)+'</div>'+
+        '<div style="font-weight:700">'+(e.modelo||'')+' · '+(e.color||'')+'</div>'+
+        '<div style="font-size:12px;color:var(--ad-dim)">VIN esperado: '+(e.vin_display||e.vin||'—')+'</div>'+
         (e.cliente_nombre ? '<div style="font-size:12px;margin-top:4px;">Cliente: <strong>'+e.cliente_nombre+'</strong></div>' : '')+
-        '<div style="font-size:11px;margin-top:4px;"><span class="ad-badge '+(e.estado==='enviada'?'yellow':'blue')+'">'+e.estado+'</span>'+
-        (e.fecha_estimada_llegada ? ' <span style="font-size:11px;color:var(--ad-dim)">· ETA: '+e.fecha_estimada_llegada+'</span>' : '')+'</div>'+
-        '<button class="ad-btn primary sm pvReceive" data-env="'+e.id+'" data-moto="'+e.moto_id+'" data-vin="'+e.vin+'" style="margin-top:8px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg> Recibir moto</button>'+
+        '<div style="font-size:11px;margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">'+
+          statusBadge(e.estado)+
+          ' '+origenBadge+
+        '</div>'+
+        (infoRows ? '<div style="font-size:11.5px;color:var(--ad-dim);margin-top:6px;line-height:1.5;">'+infoRows+'</div>' : '')+
+        btn+
       '</div>';
     });
     PVApp.render(html);
@@ -24,25 +70,90 @@ window.PV_recepcion = (function(){
     });
   }
   function showReceiveForm(envioId, motoId, vinEsperado){
+    // Bug 3.3 (customer brief 2026-05-08): the reception checklist must be
+    // explicit and capture seal info + 3 photos + observations + dates.
+    // Photo inputs use 2-button pattern (camera + file) so the operator on
+    // mobile gets a clear choice. All NEW fields are OPTIONAL on save —
+    // we never block the legacy reception flow.
+    function dualPhoto(slot, label){
+      // slot: 'sello' | 'vin_label' | 'unidad'
+      var camId  = 'pvR' + slot + 'Cam';
+      var fileId = 'pvR' + slot + 'File';
+      return '<label class="ad-label" style="display:block;font-weight:700;margin-top:10px;">'+label+'</label>'+
+        '<input type="file" id="'+camId+'" accept="image/*" capture="environment" data-slot="'+slot+'" class="pvRPhoto" style="display:none;">'+
+        '<input type="file" id="'+fileId+'" accept="image/*" data-slot="'+slot+'" class="pvRPhoto" style="display:none;">'+
+        '<div style="display:flex;gap:8px;">'+
+          '<button type="button" class="ad-btn primary sm pvRPhotoOpen" data-target="'+camId+'" style="flex:1;">📷 Foto</button>'+
+          '<button type="button" class="ad-btn ghost sm pvRPhotoOpen" data-target="'+fileId+'" style="flex:1;">📁 Archivo</button>'+
+        '</div>'+
+        '<div id="pvRThumb_'+slot+'" style="font-size:12px;color:#16a34a;margin-top:4px;display:none;">✓ Foto cargada</div>';
+    }
+
     PVApp.modal(
       '<div class="ad-h2"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg> Recibir moto</div>'+
       '<div style="color:var(--ad-dim);font-size:12px;margin-bottom:10px">VIN esperado: <code>'+vinEsperado+'</code></div>'+
+
       '<label class="ad-label">Escanear o escribir VIN</label>'+
-      '<div style="display:flex;gap:6px;margin-bottom:14px;">'+
+      '<div style="display:flex;gap:6px;margin-bottom:10px;">'+
         '<input id="pvRVin" class="ad-input" placeholder="VIN escaneado" style="flex:1;">'+
         '<button class="ad-btn sm primary" id="pvScanBtn" type="button" style="white-space:nowrap;">Escanear</button>'+
       '</div>'+
-      '<div class="ad-h2">Checklist</div>'+
-      '<label class="pv-check"><input type="checkbox" id="pvC1"> Estado físico OK</label>'+
+
+      // NEW: VIN escrito en la caja de cartón (puede diferir del VIN del chasis)
+      '<label class="ad-label">VIN impreso en la caja</label>'+
+      '<input id="pvRVinCaja" class="ad-input" placeholder="VIN en la caja" style="margin-bottom:10px;">'+
+
+      // NEW: número de sello + integridad
+      '<label class="ad-label">Número de sello aplicado</label>'+
+      '<input id="pvRSelloNum" class="ad-input" placeholder="Número del sello" style="margin-bottom:10px;">'+
+
+      '<div class="ad-h2" style="margin-top:6px;">Verificaciones</div>'+
+      '<label class="pv-check"><input type="checkbox" id="pvCSello"> Sello aplicado y SIN violar</label>'+
+      '<label class="pv-check"><input type="checkbox" id="pvC1"> Estado físico OK (sin daños ni golpes)</label>'+
       '<label class="pv-check"><input type="checkbox" id="pvC2"> Sin daños visibles</label>'+
       '<label class="pv-check"><input type="checkbox" id="pvC3"> Componentes completos</label>'+
       '<label class="pv-check"><input type="checkbox" id="pvC4"> Batería OK</label>'+
+
+      '<div class="ad-h2" style="margin-top:6px;">Fotos requeridas</div>'+
+      dualPhoto('sello',     '🔒 Foto del sello aplicado') +
+      dualPhoto('vin_label', '🏷️ Foto de la etiqueta VIN') +
+      dualPhoto('unidad',    '📷 Foto de la unidad recibida') +
+
+      '<label class="ad-label" style="margin-top:10px;">Observaciones</label>'+
+      '<textarea id="pvRObs" class="ad-input" placeholder="Detalles adicionales sobre la recepción"></textarea>'+
+
+      '<label class="ad-label">Fecha de recepción</label>'+
+      '<input id="pvRFecha" type="date" class="ad-input" value="'+(new Date().toISOString().slice(0,10))+'" style="margin-bottom:10px;">'+
+
+      '<label class="ad-label">Recibido por</label>'+
+      '<input id="pvRUser" class="ad-input" value="'+ ((PVApp.state && PVApp.state.user && PVApp.state.user.nombre) || '') +'" placeholder="Tu nombre" style="margin-bottom:14px;">'+
+
+      // Legacy "Notas" preserved as a separate quick-jot field for back-compat.
       '<label class="ad-label">Notas</label>'+
       '<textarea id="pvRNotas" class="ad-input"></textarea>'+
+
       '<button id="pvRSave" class="ad-btn primary" style="width:100%;margin-top:14px">Confirmar recepción</button>'
     );
 
     $('#pvScanBtn').on('click', function(){ openVinScanner(vinEsperado); });
+
+    // Photo button hooks — one per (slot,kind).
+    var photos = { sello:null, vin_label:null, unidad:null };
+    $('.pvRPhotoOpen').on('click', function(){
+      var t = $(this).data('target');
+      if (t) document.getElementById(t).click();
+    });
+    $('.pvRPhoto').on('change', function(){
+      var slot = $(this).data('slot');
+      var f = this.files && this.files[0];
+      if (!f) return;
+      var rdr = new FileReader();
+      rdr.onload = function(){
+        photos[slot] = rdr.result;
+        $('#pvRThumb_'+slot).text('✓ Foto cargada (' + Math.round(f.size/1024) + ' KB)').show();
+      };
+      rdr.readAsDataURL(f);
+    });
 
     $('#pvRSave').on('click', function(){
       var data = {
@@ -52,6 +163,16 @@ window.PV_recepcion = (function(){
         sin_danos: $('#pvC2').is(':checked')?1:0,
         componentes_completos: $('#pvC3').is(':checked')?1:0,
         bateria_ok: $('#pvC4').is(':checked')?1:0,
+        // NEW (Bug 3.3) — server treats all of these as optional.
+        vin_caja: $('#pvRVinCaja').val().trim(),
+        sello_numero: $('#pvRSelloNum').val().trim(),
+        sello_intacto: $('#pvCSello').is(':checked')?1:0,
+        foto_sello: photos.sello,
+        foto_vin_label: photos.vin_label,
+        foto_unidad: photos.unidad,
+        observaciones: $('#pvRObs').val(),
+        fecha_recepcion: $('#pvRFecha').val() || null,
+        recibido_por_nombre: $('#pvRUser').val().trim(),
         notas: $('#pvRNotas').val()
       };
       PVApp.api('recepcion/recibir.php', data).done(function(r){

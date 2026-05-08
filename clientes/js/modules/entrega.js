@@ -178,24 +178,24 @@ window.VK_entrega = (function(){
       html += '<div class="vk-banner ok">ACTA firmada el '+(data.acta_fecha||'')+'. El personal finalizará la entrega ahora.</div>';
     }
 
-    if (st === 'entregada' && !data.recepcion_confirmada) {
-      html += '<div class="vk-card hl">'+
-        '<div class="vk-h2">¡Tu moto ya fue entregada!</div>'+
-        '<div class="vk-muted">Confirma la recepción para cerrar el proceso.</div>'+
-        '<button id="vkConfirmarRecep" class="vk-btn primary" style="margin-top:10px">Confirmar recepción</button>'+
-        '<button id="vkIncidencia" class="vk-btn ghost" style="margin-top:6px">Reportar incidencia</button>'+
-      '</div>';
-    }
-
-    if (st === 'entregada' && data.recepcion_confirmada) {
+    // Bug 5.8 (customer brief 2026-05-08): the "Confirmar recepción" button
+    // is removed. The delivery is finalized — and reflected here — by the
+    // PoS staff calling finalizar.php after the customer's signature. The
+    // welcome banner now shows immediately when estado='entregada',
+    // regardless of whether recepcion_confirmada was ever set. The legacy
+    // confirmar-recepcion.php endpoint stays available for backward compat
+    // and incident reporting (internal use only) but is no longer surfaced
+    // in the customer portal UI.
+    if (st === 'entregada') {
       html += '<div class="vk-banner ok" style="font-size:15px">¡Bienvenido a la familia Voltika! Tu moto fue recibida correctamente.</div>';
     }
 
     VKApp.render(html);
 
     $('#vkVerActa').on('click', openActa);
-    $('#vkConfirmarRecep').on('click', function(){ confirmarRecepcion(false); });
-    $('#vkIncidencia').on('click', function(){ confirmarRecepcion(true); });
+    // Confirmar recepción / Reportar incidencia handlers intentionally not
+    // bound here anymore — buttons no longer rendered. confirmarRecepcion
+    // is preserved below for external callers that may still poke it.
   }
 
   // Renders the full ACTA DE ENTREGA text — shared by both the inline form
@@ -236,13 +236,20 @@ window.VK_entrega = (function(){
     $('#vkActaBackdrop,#vkActaModalClose,#vkActaModalCerrar').on('click', close);
   }
 
+  // Bug 5.7 (customer brief 2026-05-08, CRITICAL): the ACTA is now signed
+  // through the Cincel signature system instead of the legacy
+  // checkbox-+-typed-name shortcut. Pattern:
+  //   1. Show a confirmation card so the customer sees Modelo / Color / VIN
+  //      and can read the ACTA via the modal.
+  //   2. POST entrega/cincel-firma-acta.php → returns signing_url.
+  //   3. Embed the signing_url in an iframe (option A from briefing).
+  //   4. Poll entrega/cincel-acta-status.php every 4 s; when `signed=true`
+  //      lands (Cincel webhook fired), close the iframe and re-render.
+  //
+  // The legacy entrega/firmar-acta.php endpoint stays available so existing
+  // automated tests keep working — it's just not invoked from the UI.
+  var _cincelActaPoll = null;
   function openActa(){
-    var c = VKApp.state.cliente || {};
-    var nombre = [(c.nombre||''), (c.apellido_paterno||''), (c.apellido_materno||'')].join(' ').trim();
-
-    // Short summary card — so the customer always sees WHAT they're signing
-    // for even before opening the full ACTA. Important for fraud prevention:
-    // shows Modelo / Color / VIN prominently.
     var motoInfo =
       '<div class="vk-card" style="border-left:4px solid #039fe1;">'+
         '<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Vehículo a recibir</div>'+
@@ -250,51 +257,100 @@ window.VK_entrega = (function(){
         '<div style="font-size:12px;color:#4b5563;font-family:monospace;margin-top:2px;">VIN: '+(data.vin||data.vin_display||'—')+'</div>'+
       '</div>';
 
-    var actaHtml =
+    var introHtml =
       '<div class="vk-h1">Firma del ACTA DE ENTREGA</div>'+
-      '<div class="vk-muted" style="margin-bottom:12px;">Lee y firma el acta para completar la entrega.</div>'+
+      '<div class="vk-muted" style="margin-bottom:12px;">Vas a firmar electrónicamente con validez NOM-151 a través de <strong>Cincel</strong>. Toma menos de un minuto.</div>'+
       motoInfo+
-      '<label class="vk-label" style="margin-top:16px">Escribe tu nombre completo para firmar</label>'+
-      '<input id="vkFirmaNombre" class="vk-input" placeholder="Nombre y apellidos" value="'+String(nombre).replace(/"/g,'&quot;')+'">'+
-      '<label class="vk-check" style="margin-top:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">'+
-        '<input type="checkbox" id="vkFirmaAcepto"> '+
-        '<span>He leído y acepto el <a href="#" id="vkVerActaLink" style="color:#039fe1;text-decoration:underline;font-weight:700;">ACTA DE ENTREGA</a></span>'+
-      '</label>'+
-      '<button id="vkFirmarBtn" class="vk-btn primary" style="width:100%;margin-top:14px" disabled>Firmar ACTA</button>'+
+      '<button id="vkVerActaLinkBtn" class="vk-btn ghost" style="width:100%;margin-top:10px">📄 Ver el contenido del acta</button>'+
+      '<button id="vkIniciarFirmaBtn" class="vk-btn primary" style="width:100%;margin-top:10px">Iniciar firma con Cincel</button>'+
       '<button id="vkCancelarActa" class="vk-btn ghost" style="width:100%;margin-top:6px">Cancelar</button>';
 
-    VKApp.render(actaHtml);
+    VKApp.render(introHtml);
 
-    function updateBtn(){
-      var nameOk  = !!$('#vkFirmaNombre').val().trim();
-      var checkOk = $('#vkFirmaAcepto').is(':checked');
-      $('#vkFirmarBtn').prop('disabled', !(nameOk && checkOk));
-    }
-    $('#vkFirmaAcepto').on('change', updateBtn);
-    $('#vkFirmaNombre').on('input', updateBtn);
+    var c = VKApp.state.cliente || {};
+    var nombre = [(c.nombre||''), (c.apellido_paterno||''), (c.apellido_materno||'')].join(' ').trim();
 
-    // Clicking the "ACTA DE ENTREGA" text in the checkbox opens the modal
-    // without flipping the checkbox (preventDefault + stopPropagation).
-    $('#vkVerActaLink').on('click', function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      showActaModal($('#vkFirmaNombre').val().trim());
-    });
-
+    $('#vkVerActaLinkBtn').on('click', function(){ showActaModal(nombre); });
     $('#vkCancelarActa').on('click', render);
-    $('#vkFirmarBtn').on('click', function(){
-      var $b = $(this).prop('disabled', true).text('Firmando...');
-      VKApp.api('entrega/firmar-acta.php', {
-        moto_id: data.moto_id,
-        firma_nombre: $('#vkFirmaNombre').val().trim(),
-      }).done(function(r){
-        if (r.ok) { VKApp.toast('ACTA firmada'); render(); }
-        else { $b.prop('disabled', false).text('Firmar ACTA'); VKApp.toast(r.error||'Error'); }
-      }).fail(function(x){
-        $b.prop('disabled', false).text('Firmar ACTA');
-        VKApp.toast((x.responseJSON&&x.responseJSON.error)||'Error al firmar');
-      });
+
+    $('#vkIniciarFirmaBtn').on('click', function(){
+      var $b = $(this).prop('disabled', true).text('Preparando documento…');
+      VKApp.api('entrega/cincel-firma-acta.php', { moto_id: data.moto_id })
+        .done(function(r){
+          if (!r || !r.ok) {
+            $b.prop('disabled', false).text('Iniciar firma con Cincel');
+            VKApp.toast((r && r.error) || 'No se pudo iniciar la firma. Intenta de nuevo.');
+            return;
+          }
+          // Already signed — just refresh.
+          if (r.already_signed) { VKApp.toast('ACTA ya firmada.'); render(); return; }
+          if (!r.signing_url) {
+            $b.prop('disabled', false).text('Iniciar firma con Cincel');
+            VKApp.toast('Cincel no devolvió URL de firma.');
+            return;
+          }
+          showCincelIframe(r.signing_url);
+        })
+        .fail(function(x){
+          $b.prop('disabled', false).text('Iniciar firma con Cincel');
+          VKApp.toast((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
+        });
     });
+  }
+
+  // Embeds the Cincel signing UI in a full-screen iframe and polls the
+  // status endpoint until the webhook flips cliente_acta_firmada=1.
+  function showCincelIframe(signingUrl){
+    var html = ''+
+      '<div class="vk-h1" style="margin-bottom:8px;">Firma con Cincel</div>'+
+      '<div class="vk-muted" style="margin-bottom:8px;">Completa los pasos en el formulario de Cincel. Esta página se actualizará automáticamente cuando termines.</div>'+
+      '<div id="vkCincelStatus" class="vk-banner" style="margin-bottom:8px;">'+
+        '<span class="vk-spin" style="display:inline-block;vertical-align:middle;width:12px;height:12px;border:2px solid #039fe1;border-top-color:transparent;border-radius:50%;animation:vkspin 0.8s linear infinite;"></span>'+
+        ' Esperando confirmación de Cincel…'+
+      '</div>'+
+      '<div style="position:relative;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;">'+
+        '<iframe id="vkCincelFrame" src="'+signingUrl+'" '+
+          'allow="camera; microphone; geolocation" '+
+          'style="width:100%;height:75vh;min-height:520px;border:0;display:block;"></iframe>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;margin-top:10px;">'+
+        '<button id="vkCincelOpenNew" class="vk-btn ghost" style="flex:1;">Abrir en pestaña nueva</button>'+
+        '<button id="vkCincelCancel" class="vk-btn ghost" style="flex:1;">Cancelar</button>'+
+      '</div>';
+    VKApp.render(html);
+
+    $('#vkCincelOpenNew').on('click', function(){
+      // Some browsers (older Safari) block iframe permissions for camera
+      // capture; this gives the customer a clean fallback.
+      window.open(signingUrl, '_blank', 'noopener');
+    });
+    $('#vkCincelCancel').on('click', function(){
+      stopActaPoll();
+      render();
+    });
+
+    // Begin polling. Customer brief 2026-05-08: signing should land within
+    // ~30 s of the customer hitting "Firmar" on Cincel. Poll every 4 s,
+    // give up after 10 min so the page doesn't hammer the API forever.
+    var tries = 0;
+    var maxTries = 150; // 10 min
+    stopActaPoll();
+    _cincelActaPoll = setInterval(function(){
+      tries++;
+      if (tries > maxTries) { stopActaPoll(); return; }
+      VKApp.api('entrega/cincel-acta-status.php?moto_id=' + encodeURIComponent(data.moto_id), null, 'GET')
+        .done(function(r){
+          if (r && r.signed) {
+            stopActaPoll();
+            VKApp.toast('¡ACTA firmada correctamente!');
+            render();
+          }
+        });
+    }, 4000);
+  }
+
+  function stopActaPoll(){
+    if (_cincelActaPoll) { clearInterval(_cincelActaPoll); _cincelActaPoll = null; }
   }
 
   function confirmarRecepcion(incidencia){

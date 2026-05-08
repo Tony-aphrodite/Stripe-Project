@@ -156,6 +156,23 @@ header('Content-Type: text/html; charset=UTF-8');
   <div><strong>Año modelo:</strong> <?= htmlspecialchars($moto['anio_modelo'] ?? $cl['anio_modelo'] ?? '—') ?></div>
   <div><strong>Config. baterías:</strong> <?= htmlspecialchars($cl['config_baterias'] ?? '1') ?></div>
   <div><strong>Núm. sellos:</strong> <?= htmlspecialchars((string)($cl['num_sellos'] ?? 0)) ?></div>
+  <?php
+    // Bug 1.2 (customer brief 2026-05-08): PDF must show who filled out the
+    // checklist (signature) plus start + submission times.
+    $autor = $cl['dealer_nombre_snapshot'] ?? '';
+    if (!$autor && !empty($cl['dealer_id'])) {
+        try {
+            $du = $pdo->prepare("SELECT nombre FROM dealer_usuarios WHERE id=? LIMIT 1");
+            $du->execute([(int)$cl['dealer_id']]);
+            $autor = (string)($du->fetchColumn() ?: '');
+        } catch (Throwable $e) {}
+    }
+    $fInicio = $cl['fecha_inicio']      ?? null;
+    $fCompl  = $cl['fecha_completado']  ?? null;
+  ?>
+  <div><strong>Realizado por:</strong> <?= htmlspecialchars($autor ?: '—') ?></div>
+  <div><strong>Inicio:</strong> <?= $fInicio ? htmlspecialchars(date('d/m/Y H:i', strtotime($fInicio))) : '—' ?></div>
+  <div><strong>Envío:</strong> <?= $fCompl ? htmlspecialchars(date('d/m/Y H:i', strtotime($fCompl))) : '—' ?></div>
   <?php endif; ?>
 </div>
 

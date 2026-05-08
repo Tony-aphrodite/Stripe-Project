@@ -1808,7 +1808,18 @@ function voltikaNotify(string $tipo, array $data): array {
 
     // Email — template can provide `email_html` for rich markup, otherwise
     // the default plain-text wrapper is used.
-    if (!empty($data['email']) && function_exists('sendMail')) {
+    //
+    // Bug 5.2 (customer brief 2026-05-08): OTP for delivery must reach the
+    // customer's phone (SMS / WhatsApp), NOT email. Customers reported they
+    // were receiving the code only by email and couldn't act on it at the
+    // point of sale. We skip the email channel exclusively for the OTP
+    // template — every other notification keeps its existing email path
+    // untouched, so no other flow is affected.
+    $emailSkipTipos = ['otp_entrega'];
+    if (in_array($tipo, $emailSkipTipos, true)) {
+        $summary['channels']['email'] = false;
+        $summary['email_skipped_reason'] = 'otp_phone_only';
+    } elseif (!empty($data['email']) && function_exists('sendMail')) {
         $html = '';
         if (!empty($tpl['email_html'])) {
             $html = voltikaNotifyInterpolate($tpl['email_html'], $data);

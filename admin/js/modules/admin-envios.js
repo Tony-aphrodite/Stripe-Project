@@ -374,6 +374,15 @@ window.AD_envios = (function(){
       '<input type="date" class="ad-input" id="adEnvFechaEnvio" value="'+today+'" style="margin-bottom:10px;">'+
       '<label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px;">ETA (fecha estimada de llegada al punto):</label>'+
       '<input type="date" class="ad-input" id="adEnvFechaEta" min="'+today+'" value="'+etaVal+'" style="margin-bottom:14px;">'+
+      // Bug 2.2 (customer brief 2026-05-08): tracking + carrier must be
+      // requestable for ALL shipment types — including exhibition / showroom —
+      // at this "marcar como enviada" step. Both fields stay optional so
+      // existing flows that already set them at envio creation aren't forced
+      // to retype.
+      '<label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px;">Número de tracking <span style="font-weight:400;color:#94a3b8;">(opcional)</span>:</label>'+
+      '<input class="ad-input" id="adEnvUpdTracking" placeholder="Ej: 1234567890" style="margin-bottom:10px;">'+
+      '<label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px;">Paquetería / Carrier <span style="font-weight:400;color:#94a3b8;">(opcional)</span>:</label>'+
+      '<input class="ad-input" id="adEnvUpdCarrier" placeholder="Ej: Estafeta, DHL, FedEx, propio" style="margin-bottom:14px;">'+
       (!currentEta
         ? '<div style="background:#FFF3E0;border:1px solid #FFE0B2;padding:8px 10px;border-radius:6px;color:#E65100;font-size:12px;margin-bottom:14px;">Este envío no tenía ETA guardada. Define una fecha para que el cliente la vea en su notificación.</div>'
         : '')+
@@ -384,17 +393,36 @@ window.AD_envios = (function(){
       '</div>';
     ADApp.modal(html);
 
+    // Bug 2.1 (customer brief 2026-05-08): keep ETA's `min` synced to the
+    // currently-selected fecha_envio so the calendar UI prevents picking
+    // an earlier ETA. Server-side guard in cambiar-estado.php is the
+    // authoritative check; this is purely UX so the user sees the rule.
+    $('#adEnvFechaEnvio').on('change', function(){
+      var fenv = ($(this).val()||'').trim();
+      if (fenv) $('#adEnvFechaEta').attr('min', fenv);
+    });
+
     $('#adEnvCancel').on('click', function(){ ADApp.closeModal(); });
     $('#adEnvConfirm').on('click', function(){
       var eta  = ($('#adEnvFechaEta').val()||'').trim();
       var fenv = ($('#adEnvFechaEnvio').val()||'').trim();
       if (!eta) { $('#adEnvMsg').css('color','#b91c1c').text('Selecciona la fecha estimada de llegada'); return; }
+      // Client-side guard mirrors the server one — friendlier feedback than
+      // waiting for the round trip.
+      if (fenv && eta < fenv) {
+        $('#adEnvMsg').css('color','#b91c1c').text('La fecha de llegada no puede ser anterior a la fecha de envío.');
+        return;
+      }
       var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Guardando...');
       ADApp.api('envios/cambiar-estado.php', {
         envio_id: envioId,
         estado: 'enviada',
         fecha_estimada_llegada: eta,
-        fecha_envio: fenv || null
+        fecha_envio: fenv || null,
+        // Bug 2.2 — pass tracking + carrier when present. Server treats
+        // empty strings as "leave unchanged".
+        tracking_number: ($('#adEnvUpdTracking').val()||'').trim(),
+        carrier:         ($('#adEnvUpdCarrier').val()||'').trim()
       }).done(function(r2){
         if (r2.ok){
           ADApp.closeModal();

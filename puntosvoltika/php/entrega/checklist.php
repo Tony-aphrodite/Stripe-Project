@@ -1,7 +1,23 @@
 <?php
 /**
- * POST — Guardar checklist de entrega (fase3 + fotos moto)
- * Body: { moto_id, vin_coincide, estado_fisico_ok, sin_danos, unidad_completa, fotos_moto:[base64] }
+ * POST — Guardar checklist de entrega
+ *
+ * Bug 5.6 (customer brief 2026-05-08): the Point of Sale checklist must be
+ * the FULL checklist (5 phases), matching the admin version, NOT the old
+ * reduced 4-checkbox+3-photo version.
+ *
+ * Backward-compatible body (legacy callers — admin testing harness, etc.,
+ * still send only fase3 fields and they keep working):
+ *   moto_id,
+ *   // Fase 1 — Identidad
+ *   ine_presentada, nombre_coincide, foto_coincide, datos_confirmados,
+ *   ultimos4_telefono, modelo_confirmado, forma_pago_confirmada,
+ *   // Fase 2 — Pago
+ *   pago_confirmado, enganche_validado, metodo_pago_registrado, domiciliacion_confirmada,
+ *   // Fase 3 — Unidad (legacy fields, kept)
+ *   vin_coincide, estado_fisico_ok, sin_danos, unidad_completa, unidad_ensamblada,
+ *   // Photos
+ *   fotos_moto:[base64]
  */
 require_once __DIR__ . '/../bootstrap.php';
 $ctx = puntoRequireAuth();
@@ -12,10 +28,7 @@ if (!$motoId) puntoJsonOut(['error' => 'moto_id requerido'], 400);
 
 $pdo = getDB();
 
-// Step-order guard — per dashboards_diagrams.pdf (Delivery process step 5),
-// the delivery checklist can only be filled AFTER step 3 (OTP verified) and
-// step 4 (user verification / face check). Both must be recorded in the
-// entregas / checklist_entrega_v2 tables.
+// Step-order guards (unchanged) — OTP + face must already be verified.
 $guard = $pdo->prepare("SELECT otp_verified FROM entregas WHERE moto_id=? ORDER BY freg DESC LIMIT 1");
 $guard->execute([$motoId]);
 $otpOk = (int)($guard->fetchColumn() ?: 0);
@@ -28,6 +41,39 @@ $faceOk = (int)($guard->fetchColumn() ?: 0);
 if (!$faceOk) {
     puntoJsonOut(['error' => 'Verificación facial pendiente — no se puede llenar el checklist'], 409);
 }
+
+// Idempotent column migration — checklist_entrega_v2 may not yet have all
+// the fase1/fase2 columns we need. Add them silently when missing so old
+// installs gracefully upgrade. Uses the same try/catch pattern as the rest
+// of the codebase.
+$entregaCols = [
+    // Fase 1 — Identidad
+    'ine_presentada'         => "TINYINT(1) NULL DEFAULT 0",
+    'nombre_coincide'        => "TINYINT(1) NULL DEFAULT 0",
+    'foto_coincide'          => "TINYINT(1) NULL DEFAULT 0",
+    'datos_confirmados'      => "TINYINT(1) NULL DEFAULT 0",
+    'ultimos4_telefono'      => "TINYINT(1) NULL DEFAULT 0",
+    'modelo_confirmado'      => "TINYINT(1) NULL DEFAULT 0",
+    'forma_pago_confirmada'  => "TINYINT(1) NULL DEFAULT 0",
+    // Fase 2 — Pago
+    'pago_confirmado'        => "TINYINT(1) NULL DEFAULT 0",
+    'enganche_validado'      => "TINYINT(1) NULL DEFAULT 0",
+    'metodo_pago_registrado' => "TINYINT(1) NULL DEFAULT 0",
+    'domiciliacion_confirmada' => "TINYINT(1) NULL DEFAULT 0",
+    // Fase 3 — Unidad (extra)
+    'unidad_ensamblada'      => "TINYINT(1) NULL DEFAULT 0",
+    'fase2_completada'       => "TINYINT(1) NULL DEFAULT 0",
+    'fase2_fecha'            => "DATETIME NULL",
+];
+try {
+    $existing = $pdo->query("SHOW COLUMNS FROM checklist_entrega_v2")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($entregaCols as $col => $def) {
+        if (!in_array($col, $existing, true)) {
+            try { $pdo->exec("ALTER TABLE checklist_entrega_v2 ADD COLUMN $col $def"); }
+            catch (Throwable $e) { error_log("checklist_entrega_v2 add $col: " . $e->getMessage()); }
+        }
+    }
+} catch (Throwable $e) { error_log('checklist_entrega_v2 migrate: ' . $e->getMessage()); }
 
 // Save moto photos
 $uploadsDir = __DIR__ . '/../../../configurador/php/uploads/entregas';
@@ -52,18 +98,109 @@ if (!empty($d['fotos_moto']) && is_array($d['fotos_moto'])) {
     }
 }
 
-// Update checklist_entrega_v2 fase3 (unit)
-$pdo->prepare("INSERT INTO checklist_entrega_v2 (moto_id, dealer_id, vin_coincide, estado_fisico_ok, sin_danos, unidad_completa, fase3_completada, fase3_fecha)
-    VALUES (?,?,?,?,?,?,1,NOW())
-    ON DUPLICATE KEY UPDATE vin_coincide=VALUES(vin_coincide), estado_fisico_ok=VALUES(estado_fisico_ok),
-        sin_danos=VALUES(sin_danos), unidad_completa=VALUES(unidad_completa), fase3_completada=1, fase3_fecha=NOW()")
-    ->execute([
-        $motoId, $ctx['user_id'],
-        (int)($d['vin_coincide'] ?? 0),
-        (int)($d['estado_fisico_ok'] ?? 0),
-        (int)($d['sin_danos'] ?? 0),
-        (int)($d['unidad_completa'] ?? 0)
-    ]);
+// Helper — accept legacy 0|1 ints OR booleans OR missing (treats missing as 0).
+$bit = function($k) use ($d) { return !empty($d[$k]) ? 1 : 0; };
 
-puntoLog('entrega_checklist', ['moto_id' => $motoId]);
-puntoJsonOut(['ok' => true]);
+// Compose all field values up front. Legacy payloads (only fase3 fields)
+// produce 0 for the new fase1/fase2 fields — the row is upserted but the
+// fase{1,2}_completada flags only flip when ALL fields in that fase are set.
+$fields = [
+    // Fase 1
+    'ine_presentada'           => $bit('ine_presentada'),
+    'nombre_coincide'          => $bit('nombre_coincide'),
+    'foto_coincide'            => $bit('foto_coincide'),
+    'datos_confirmados'        => $bit('datos_confirmados'),
+    'ultimos4_telefono'        => $bit('ultimos4_telefono'),
+    'modelo_confirmado'        => $bit('modelo_confirmado'),
+    'forma_pago_confirmada'    => $bit('forma_pago_confirmada'),
+    // Fase 2
+    'pago_confirmado'          => $bit('pago_confirmado'),
+    'enganche_validado'        => $bit('enganche_validado'),
+    'metodo_pago_registrado'   => $bit('metodo_pago_registrado'),
+    'domiciliacion_confirmada' => $bit('domiciliacion_confirmada'),
+    // Fase 3 (legacy)
+    'vin_coincide'             => $bit('vin_coincide'),
+    'estado_fisico_ok'         => $bit('estado_fisico_ok'),
+    'sin_danos'                => $bit('sin_danos'),
+    'unidad_completa'          => $bit('unidad_completa'),
+    'unidad_ensamblada'        => $bit('unidad_ensamblada'),
+];
+
+// Determine fase completion — only flip the flag when EVERY field in the
+// fase is present, mirroring the admin's behavior.
+$fase1Keys = ['ine_presentada','nombre_coincide','foto_coincide','datos_confirmados',
+              'ultimos4_telefono','modelo_confirmado','forma_pago_confirmada'];
+$fase2Keys = ['pago_confirmado','enganche_validado','metodo_pago_registrado','domiciliacion_confirmada'];
+$fase3Keys = ['vin_coincide','estado_fisico_ok','sin_danos','unidad_completa'];
+
+$fase1Done = !in_array(0, array_map(fn($k) => $fields[$k], $fase1Keys), true);
+$fase2Done = !in_array(0, array_map(fn($k) => $fields[$k], $fase2Keys), true);
+$fase3Done = !in_array(0, array_map(fn($k) => $fields[$k], $fase3Keys), true);
+
+// We don't OVERWRITE existing fase{1,2,3}_completada=1 to 0 just because
+// this payload is partial — that would let a legacy caller accidentally
+// undo a previously-completed fase. We only *flip up*.
+$availableCols = [];
+try { $availableCols = $pdo->query("SHOW COLUMNS FROM checklist_entrega_v2")->fetchAll(PDO::FETCH_COLUMN); } catch (Throwable $e) {}
+
+$cols = ['moto_id','dealer_id'];
+$vals = [$motoId, $ctx['user_id']];
+foreach ($fields as $col => $val) {
+    if (!in_array($col, $availableCols, true)) continue;
+    $cols[] = $col;
+    $vals[] = $val;
+}
+// Compose ON DUPLICATE KEY UPDATE — only update fields present in this payload
+// AND avoid downgrading fase{1,2,3}_completada from 1 to 0.
+$updateSets = [];
+foreach ($fields as $col => $val) {
+    if (!in_array($col, $availableCols, true)) continue;
+    $updateSets[] = "$col=VALUES($col)";
+}
+if (in_array('fase3_completada', $availableCols, true)) {
+    $updateSets[] = $fase3Done ? 'fase3_completada=1' : 'fase3_completada=fase3_completada';
+    if (in_array('fase3_fecha', $availableCols, true) && $fase3Done) {
+        $updateSets[] = 'fase3_fecha=NOW()';
+    }
+}
+if (in_array('fase2_completada', $availableCols, true)) {
+    $updateSets[] = $fase2Done ? 'fase2_completada=1' : 'fase2_completada=fase2_completada';
+    if (in_array('fase2_fecha', $availableCols, true) && $fase2Done) {
+        $updateSets[] = 'fase2_fecha=NOW()';
+    }
+}
+// Always include into the INSERT side
+$cols[] = 'fase3_completada'; $vals[] = $fase3Done ? 1 : 0;
+$cols[] = 'fase3_fecha';      $vals[] = $fase3Done ? date('Y-m-d H:i:s') : null;
+if (in_array('fase2_completada', $availableCols, true)) {
+    $cols[] = 'fase2_completada'; $vals[] = $fase2Done ? 1 : 0;
+}
+if (in_array('fase2_fecha', $availableCols, true)) {
+    $cols[] = 'fase2_fecha'; $vals[] = $fase2Done ? date('Y-m-d H:i:s') : null;
+}
+
+// De-dup any double appends (defensive)
+$seen = []; $finalCols = []; $finalVals = [];
+foreach ($cols as $i => $c) {
+    if (isset($seen[$c])) continue;
+    $seen[$c] = true; $finalCols[] = $c; $finalVals[] = $vals[$i];
+}
+$ph = implode(',', array_fill(0, count($finalCols), '?'));
+$sql = "INSERT INTO checklist_entrega_v2 (" . implode(',', $finalCols) . ") VALUES ($ph)
+        ON DUPLICATE KEY UPDATE " . implode(', ', $updateSets);
+$pdo->prepare($sql)->execute($finalVals);
+
+puntoLog('entrega_checklist', [
+    'moto_id'    => $motoId,
+    'fase1_done' => $fase1Done,
+    'fase2_done' => $fase2Done,
+    'fase3_done' => $fase3Done,
+]);
+puntoJsonOut([
+    'ok' => true,
+    'progreso' => [
+        'fase1' => $fase1Done,
+        'fase2' => $fase2Done,
+        'fase3' => $fase3Done,
+    ],
+]);
