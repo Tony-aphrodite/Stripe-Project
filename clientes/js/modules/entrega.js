@@ -288,7 +288,12 @@ window.VK_entrega = (function(){
         }
         return msg;
       }
-      VKApp.api('entrega/cincel-firma-acta.php', { moto_id: data.moto_id })
+      // Forward `?cincel_mock=1` from the page URL to the backend so the
+       // operator can bypass real Cincel auth for testing without changing
+       // any config. The AJAX path doesn't include the URL's query string
+       // automatically — we have to read window.location and append it.
+       var mockSuffix = /[?&]cincel_mock=1\b/.test(window.location.search) ? '?cincel_mock=1' : '';
+       VKApp.api('entrega/cincel-firma-acta.php' + mockSuffix, { moto_id: data.moto_id })
         .done(function(r){
           if (!r || !r.ok) {
             $b.prop('disabled', false).text('Iniciar firma con Cincel');
