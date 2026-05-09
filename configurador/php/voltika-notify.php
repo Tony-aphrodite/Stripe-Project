@@ -54,42 +54,56 @@ function voltikaNotifyEnsureTable(): void {
 
 if (!function_exists('voltikaEmailLogoSrc')) {
     /**
-     * Customer brief 2026-05-09: the diag page showed broken-image alt
-     * placeholders ("V VOLTIKA") instead of the wordmark in every email
-     * variant — the absolute URL we were referencing
-     * (https://www.voltika.mx/configurador/img/logo_w.png) does not load
-     * in the iframe / mail client context. Possible causes are a www-vs-
-     * apex redirect mismatch (config.php defines two different defaults
-     * depending on which path runs first), the file missing from the
-     * /configurador/img/ folder on production, or the mail client
-     * blocking remote images by default.
+     * Customer brief 2026-05-09 (round 3): debug snapshot confirmed the
+     * base64 embed mechanism worked end-to-end — the PNG file at
+     * configurador/img/logo_w.png IS readable and IS being inlined as
+     * a data: URI — but the wordmark still rendered as tiny "V VOLTIKA"
+     * text on production. Inspection of the file showed the cause:
+     * the source PNG is 300×80 pixels but only 156 of its 24,000 pixels
+     * (0.7%) are non-transparent. The wordmark drawn inside the canvas
+     * is hairline-thin, so even at the increased 220×59 display size
+     * the visible glyphs are sub-readable.
      *
-     * Robust fix: embed the PNG inline as a data: URI. The file is only
-     * 672 bytes (≈900 bytes base64), so the email size cost is trivial,
-     * and the logo no longer depends on any external request.
+     * Fix: ship a generated VOLTIKA wordmark PNG embedded directly as a
+     * base64 constant in this file. The wordmark was rendered with
+     * DejaVu Sans Bold at 78pt onto a 600×160 transparent canvas
+     * (≈4× retina for the 220×59 display dimensions) so it stays sharp
+     * in every email client. The result is a heavyweight, readable
+     * wordmark that does not depend on the deployed PNG file or any
+     * external URL.
      *
-     * Compatibility: data: URIs render in iOS Mail, Apple Mail,
-     * Gmail web/iOS/Android, Yahoo, ProtonMail, Thunderbird. Outlook
-     * desktop / Outlook 365 web strip them — but the existing VML
-     * fallback in the header/footer already covers Outlook with a text
-     * wordmark. So every supported client now shows a logo.
+     * Resolution priority:
+     *   1. configurador/img/logo_w.png IF it's a real logo (≥2KB) —
+     *      lets the brand team replace the wordmark with a designer
+     *      logo later by simply uploading a new file.
+     *   2. Embedded base64 wordmark (always works, no I/O).
+     *   3. Absolute URL fallback (kept for paranoia, never reached in
+     *      practice now).
      *
-     * If the file can't be read (filesystem issue on a deployment), we
-     * fall through to the absolute URL, preserving the previous
-     * behaviour. Result is cached for the request so we read the PNG at
-     * most once per response.
+     * Compatibility: data: URIs render in iOS Mail, Apple Mail, Gmail
+     * web/iOS/Android, Yahoo, ProtonMail, Thunderbird. Outlook 365 /
+     * Outlook desktop strip data URIs — the existing VML fallback in
+     * voltikaEmailHeader/Footer covers Outlook with a text wordmark.
      */
     function voltikaEmailLogoSrc(): string {
         static $cached = null;
         if ($cached !== null) return $cached;
+
+        // 1. Honour a real logo PNG if the brand team uploads one.
         $localPath = __DIR__ . '/../img/logo_w.png';
-        if (is_readable($localPath)) {
+        if (is_readable($localPath) && filesize($localPath) >= 2048) {
             $bin = @file_get_contents($localPath);
             if ($bin !== false && $bin !== '') {
                 return $cached = 'data:image/png;base64,' . base64_encode($bin);
             }
         }
-        return $cached = 'https://www.voltika.mx/configurador/img/logo_w.png';
+
+        // 2. Embedded VOLTIKA wordmark — generated 2026-05-09 with
+        //    DejaVu Sans Bold 78pt, white on transparent, 600×160. Do
+        //    NOT reformat / linewrap this string — it's a single
+        //    base64-encoded PNG payload.
+        $b64 = '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';
+        return $cached = 'data:image/png;base64,' . $b64;
     }
 }
 
