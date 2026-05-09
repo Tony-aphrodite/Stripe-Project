@@ -52,6 +52,47 @@ function voltikaNotifyEnsureTable(): void {
 // inline HTML, so future design tweaks propagate everywhere.
 // ═════════════════════════════════════════════════════════════════════════
 
+if (!function_exists('voltikaEmailLogoSrc')) {
+    /**
+     * Customer brief 2026-05-09: the diag page showed broken-image alt
+     * placeholders ("V VOLTIKA") instead of the wordmark in every email
+     * variant — the absolute URL we were referencing
+     * (https://www.voltika.mx/configurador/img/logo_w.png) does not load
+     * in the iframe / mail client context. Possible causes are a www-vs-
+     * apex redirect mismatch (config.php defines two different defaults
+     * depending on which path runs first), the file missing from the
+     * /configurador/img/ folder on production, or the mail client
+     * blocking remote images by default.
+     *
+     * Robust fix: embed the PNG inline as a data: URI. The file is only
+     * 672 bytes (≈900 bytes base64), so the email size cost is trivial,
+     * and the logo no longer depends on any external request.
+     *
+     * Compatibility: data: URIs render in iOS Mail, Apple Mail,
+     * Gmail web/iOS/Android, Yahoo, ProtonMail, Thunderbird. Outlook
+     * desktop / Outlook 365 web strip them — but the existing VML
+     * fallback in the header/footer already covers Outlook with a text
+     * wordmark. So every supported client now shows a logo.
+     *
+     * If the file can't be read (filesystem issue on a deployment), we
+     * fall through to the absolute URL, preserving the previous
+     * behaviour. Result is cached for the request so we read the PNG at
+     * most once per response.
+     */
+    function voltikaEmailLogoSrc(): string {
+        static $cached = null;
+        if ($cached !== null) return $cached;
+        $localPath = __DIR__ . '/../img/logo_w.png';
+        if (is_readable($localPath)) {
+            $bin = @file_get_contents($localPath);
+            if ($bin !== false && $bin !== '') {
+                return $cached = 'data:image/png;base64,' . base64_encode($bin);
+            }
+        }
+        return $cached = 'https://www.voltika.mx/configurador/img/logo_w.png';
+    }
+}
+
 if (!function_exists('voltikaEmailHeader')) {
     /**
      * Gradient header with the real Voltika logo image + tagline + optional
@@ -89,9 +130,10 @@ if (!function_exists('voltikaEmailHeader')) {
         // wordmark fallback for clients that block images entirely so the
         // brand is always present. Also made the tagline bolder for the
         // same reason.
+        $logoSrc = voltikaEmailLogoSrc();
         return '<tr><td bgcolor="#1a3a5c" style="background-color:#1a3a5c;background:linear-gradient(135deg,#1a3a5c 0%,#0d6aa0 50%,#039fe1 100%);padding:32px 28px 28px;text-align:center;">'
              .   '<!--[if !mso]><!-->'
-             .   '<img src="https://www.voltika.mx/configurador/img/logo_w.png"'
+             .   '<img src="' . $logoSrc . '"'
              .     ' alt="VOLTIKA" width="220" height="59"'
              .     ' style="display:block;margin:0 auto;border:0;outline:0;max-width:220px;width:220px;height:59px;">'
              .   '<!--<![endif]-->'
@@ -119,9 +161,10 @@ if (!function_exists('voltikaEmailFooter')) {
         // looked empty above the legal line. Bumped to 140px wide
         // (≈37px tall, original aspect) and added an Outlook VML fallback
         // so it shows even when the image is blocked.
+        $logoSrc = voltikaEmailLogoSrc();
         return '<tr><td bgcolor="#1a3a5c" style="background-color:#1a3a5c;background:#1a3a5c;padding:24px 28px 22px;text-align:center;">'
              .   '<!--[if !mso]><!-->'
-             .   '<img src="https://www.voltika.mx/configurador/img/logo_w.png"'
+             .   '<img src="' . $logoSrc . '"'
              .     ' alt="VOLTIKA" width="140" height="37"'
              .     ' style="display:block;margin:0 auto 10px;border:0;outline:0;max-width:140px;width:140px;height:37px;">'
              .   '<!--<![endif]-->'
