@@ -101,6 +101,25 @@ if ($sendTo !== '' && function_exists('sendMail')) {
     }
 }
 
+// ── Debug snapshot of the deployed code path ──────────────────────────────
+// Customer reported the logo still rendered as broken alt text after the
+// base64 fix was uploaded. To pinpoint why, capture: (a) which
+// voltika-notify.php is actually loaded, (b) whether voltikaEmailLogoSrc()
+// exists in this build, (c) what it resolves to right now, (d) whether
+// the PNG file is reachable on this filesystem.
+$debug = [];
+$debug['notify_path']      = (new ReflectionFunction('voltikaNotifyTemplates'))->getFileName();
+$debug['notify_mtime']     = is_readable($debug['notify_path']) ? date('Y-m-d H:i:s', filemtime($debug['notify_path'])) : '(unreadable)';
+$debug['logo_helper']      = function_exists('voltikaEmailLogoSrc') ? 'defined ✓' : 'MISSING ✗ (old build)';
+$debug['logo_local_path']  = __DIR__ . '/../img/logo_w.png';
+$debug['logo_local_real']  = realpath($debug['logo_local_path']) ?: '(not found)';
+$debug['logo_readable']    = is_readable($debug['logo_local_path']) ? 'YES ✓' : 'NO ✗';
+$debug['logo_size_bytes']  = is_readable($debug['logo_local_path']) ? filesize($debug['logo_local_path']) : 0;
+$debug['logo_resolved']    = function_exists('voltikaEmailLogoSrc') ? voltikaEmailLogoSrc() : '(helper missing)';
+$debug['logo_kind']        = strpos((string)$debug['logo_resolved'], 'data:') === 0 ? 'INLINE base64 ✓' : 'REMOTE URL (fallback)';
+$debug['logo_resolved_preview'] = substr((string)$debug['logo_resolved'], 0, 90) . (strlen((string)$debug['logo_resolved']) > 90 ? '…' : '');
+$debug['php_opcache']      = function_exists('opcache_get_status') && opcache_get_status(false) ? 'enabled (may need flush)' : 'disabled';
+
 header('Content-Type: text/html; charset=utf-8');
 $qs = function (array $p) { return '?' . http_build_query(array_merge(['token' => 'voltika_diag_2026'], $p)); };
 ?><!DOCTYPE html>
@@ -129,6 +148,15 @@ $qs = function (array $p) { return '?' . http_build_query(array_merge(['token' =
   <p class="lead">Renderiza los 3 templates del flujo post-compra a crédito, con monto conocido y vacío, para verificar que la corrección del bug de <code>\$</code> y el fallback funcionan. Lee este archivo: <code>configurador/php/diag-confirmacion-render.php</code> — bórralo cuando termines.</p>
 
   <div class="warn">⚠️ Token de acceso visible en la URL — no compartas este enlace y borra el archivo después de verificar.</div>
+
+  <div class="card" style="margin-bottom:18px;">
+    <h3>🔎 Debug — deployed build snapshot</h3>
+    <div class="log" style="margin:0;border-radius:0;">
+<?php foreach ($debug as $k => $v): ?>
+<?= sprintf('%-25s %s', $k, htmlspecialchars((string)$v)) . PHP_EOL ?>
+<?php endforeach; ?>
+    </div>
+  </div>
 
   <form class="send-form" method="get">
     <input type="hidden" name="token" value="voltika_diag_2026">
