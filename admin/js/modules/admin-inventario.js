@@ -551,12 +551,27 @@ window.AD_inventario = (function(){
       html += '</div>';
 
       // ── Envíos ──
+      // Bug fix 2026-05-09 (cliente report): el panel de detalle mostraba
+      // los envíos del VIN en modo solo-lectura — cuando se reasignaba
+      // la moto a otro punto los envíos viejos quedaban visibles sin
+      // posibilidad de cerrarlos. Ahora cada envío activo muestra un
+      // botón "Cerrar" rojo que llama a envios/eliminar.php (soft-close
+      // estado='completado_no_exitoso'). El botón solo aparece cuando
+      // el operador tiene permiso de escritura sobre inventario.
       if(r.envios&&r.envios.length){
         html += secHead('Envíos','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>');
         r.envios.forEach(function(e){
-          html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--ad-surface-2);border-radius:8px;margin-bottom:6px;font-size:13px;">';
-          html += '<span style="font-weight:600;color:var(--ad-navy);">'+e.punto_nombre+'</span>';
-          html += '<span style="display:flex;align-items:center;gap:8px;">'+ADApp.badgeEstado(e.estado)+'<span style="font-size:11px;color:var(--ad-dim);">'+(e.fecha_envio||'sin fecha')+'</span></span>';
+          var canEdit = ADApp.canWrite('inventario');
+          var isActiveEstado = ['lista_para_enviar','enviada','enviado','en_transito']
+            .indexOf(String(e.estado||'').toLowerCase()) !== -1;
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--ad-surface-2);border-radius:8px;margin-bottom:6px;font-size:13px;flex-wrap:wrap;">';
+          html += '<span style="font-weight:600;color:var(--ad-navy);flex:1;min-width:0;">'+(e.punto_nombre||'—')+'</span>';
+          html += '<span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'+ADApp.badgeEstado(e.estado)+'<span style="font-size:11px;color:var(--ad-dim);">'+(e.fecha_envio||'sin fecha')+'</span></span>';
+          if (canEdit && isActiveEstado) {
+            html += '<button class="ad-btn sm ghost adInvEnvCerrar" data-id="'+e.id+'" '+
+                    'data-punto="'+(e.punto_nombre||'').replace(/"/g,'&quot;')+'" '+
+                    'style="color:#b91c1c;border-color:#b91c1c;padding:4px 10px;font-size:11.5px;flex-shrink:0;">Cerrar</button>';
+          }
           html += '</div>';
         });
       }
@@ -620,6 +635,30 @@ window.AD_inventario = (function(){
       $('#adAssign').on('click',function(){ if(!origenOk || isBloqueada) return; assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
       $('#adLockMoto').on('click',function(){ showLockModal(m.id); });
       $('#adUnlockMoto').on('click',function(){ unlockMoto(m.id); });
+      // Bug fix 2026-05-09: cerrar envíos individuales desde el detalle
+      // del inventario. Cada botón rojo "Cerrar" en la sección Envíos
+      // dispara un confirm + motivo opcional + POST a eliminar.php.
+      $('.adInvEnvCerrar').on('click', function(){
+        var envioId = $(this).data('id');
+        var puntoNombre = $(this).data('punto') || '';
+        var motivo = window.prompt(
+          'Cerrar envío a "' + puntoNombre + '"\n\n'
+          + 'Motivo (opcional, ej. "moto reasignada", "envío duplicado"):',
+          ''
+        );
+        if (motivo === null) return; // user clicked Cancel
+        ADApp.api('envios/eliminar.php', { envio_id: envioId, motivo: motivo })
+          .done(function(r){
+            if (r.ok) {
+              showDetail(m.id); // refresh modal so closed envío disappears from active section
+            } else {
+              alert(r.error || 'Error al cerrar el envío');
+            }
+          })
+          .fail(function(x){
+            alert((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
+          });
+      });
       $('#adToggleVentaPublico').on('click',function(){
         var $t = $(this);
         var val = parseInt($t.data('val'));
