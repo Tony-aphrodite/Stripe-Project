@@ -615,16 +615,54 @@ function sendPurchaseNotifications($order) {
         }
 
         // Weekly payment amount for credit orders (if we can resolve it).
+        // Customer brief 2026-05-09 (first real credit sale): the
+        // confirmation email rendered "$" with no figure because the
+        // original lookup mismatched on phone formatting (52 prefix vs 10
+        // digits) and on rows still in 'pendiente' state. Three resilience
+        // upgrades:
+        //   (a) Normalize phone to last 10 digits with LIKE so the lookup
+        //       matches "5215512345678", "+525512345678", and "5512345678"
+        //       all the same.
+        //   (b) Prefer 'activa' rows but fall through to 'pendiente' so a
+        //       valid amount still reaches the email even when the
+        //       autopago confirmation is racing the webhook.
+        //   (c) Last-resort compute from precio_contado / plazo_meses on
+        //       the same row when monto_semanal itself is null/zero.
         $montoSemanal = '';
         if ($esCredito) {
             try {
                 $pdo = getDB();
-                $ss = $pdo->prepare("SELECT monto_semanal FROM subscripciones_credito
-                    WHERE email = ? OR telefono = ? ORDER BY id DESC LIMIT 1");
-                $ss->execute([$order['email'] ?? '', $order['telefono'] ?? '']);
-                $ms = $ss->fetchColumn();
-                if ($ms) $montoSemanal = number_format((float)$ms, 2);
-            } catch (Throwable $e) {}
+                $emailKey = trim((string)($order['email'] ?? ''));
+                $telDigits = preg_replace('/\D/', '', (string)($order['telefono'] ?? ''));
+                $tel10 = $telDigits !== '' ? substr($telDigits, -10) : '';
+
+                $sql = "SELECT monto_semanal, precio_contado, plazo_meses
+                          FROM subscripciones_credito
+                         WHERE (
+                                  (? <> '' AND email = ?)
+                               OR (? <> '' AND telefono LIKE ?)
+                               )
+                         ORDER BY (estado = 'activa') DESC, id DESC
+                         LIMIT 1";
+                $ss = $pdo->prepare($sql);
+                $tel10Like = $tel10 !== '' ? '%' . $tel10 : '';
+                $ss->execute([$emailKey, $emailKey, $tel10, $tel10Like]);
+                $row = $ss->fetch(PDO::FETCH_ASSOC);
+                if ($row) {
+                    $ms = (float)($row['monto_semanal'] ?? 0);
+                    if ($ms <= 0) {
+                        $precio = (float)($row['precio_contado'] ?? 0);
+                        $meses  = (int)($row['plazo_meses'] ?? 0);
+                        if ($precio > 0 && $meses > 0) {
+                            $semanas = max(1, (int)round($meses * 4.33));
+                            $ms = $precio / $semanas;
+                        }
+                    }
+                    if ($ms > 0) $montoSemanal = number_format($ms, 2);
+                }
+            } catch (Throwable $e) {
+                webhookLog('monto_semanal lookup: ' . $e->getMessage());
+            }
         }
 
         $notifyData = [

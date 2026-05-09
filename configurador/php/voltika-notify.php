@@ -65,7 +65,7 @@ if (!function_exists('voltikaEmailHeader')) {
     function voltikaEmailHeader(string $hero = '', string $heroSub = ''): string {
         $heroHtml = '';
         if ($hero !== '') {
-            $heroHtml .= '<div style="font-size:17px;font-weight:700;color:#ffffff;margin-top:14px;line-height:1.3;">' . $hero . '</div>';
+            $heroHtml .= '<div style="font-size:18px;font-weight:700;color:#ffffff;margin-top:18px;line-height:1.3;">' . $hero . '</div>';
         }
         if ($heroSub !== '') {
             $heroHtml .= '<div style="font-size:13px;color:#ffffff;margin-top:4px;">' . $heroSub . '</div>';
@@ -81,10 +81,24 @@ if (!function_exists('voltikaEmailHeader')) {
         //      a progressive enhancement for clients that support it.
         //   3. rgba() colors collapse on some clients — switched to
         //      solid #ffffff and rely on the dark background.
-        return '<tr><td bgcolor="#1a3a5c" style="background-color:#1a3a5c;background:linear-gradient(135deg,#1a3a5c 0%,#0d6aa0 50%,#039fe1 100%);padding:30px 28px;text-align:center;">'
+        // Customer brief 2026-05-09 (first real credit sale): the wordmark
+        // came through too small to read on mobile mail clients — the source
+        // PNG is 300×80 but it was being scaled to 140×44 in HTML, leaving
+        // the actual letters at ~12px. Bumped the logo to 220px wide
+        // (≈59px tall, original aspect) and added an HTML-only "VOLTIKA"
+        // wordmark fallback for clients that block images entirely so the
+        // brand is always present. Also made the tagline bolder for the
+        // same reason.
+        return '<tr><td bgcolor="#1a3a5c" style="background-color:#1a3a5c;background:linear-gradient(135deg,#1a3a5c 0%,#0d6aa0 50%,#039fe1 100%);padding:32px 28px 28px;text-align:center;">'
+             .   '<!--[if !mso]><!-->'
              .   '<img src="https://www.voltika.mx/configurador/img/logo_w.png"'
-             .     ' alt="Voltika" width="140" style="height:44px;width:auto;display:block;margin:0 auto;border:0;outline:0;">'
-             .   '<p style="margin:6px 0 0;font-size:13px;color:#ffffff;letter-spacing:.2px;">Movilidad eléctrica inteligente</p>'
+             .     ' alt="VOLTIKA" width="220" height="59"'
+             .     ' style="display:block;margin:0 auto;border:0;outline:0;max-width:220px;width:220px;height:59px;">'
+             .   '<!--<![endif]-->'
+             .   '<!--[if mso]>'
+             .   '<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fillcolor="#1a3a5c" stroked="false" style="width:220px;height:59px;"><v:fill type="solid" color="#1a3a5c" /><v:textbox inset="0,0,0,0"><center style="font-family:Arial,sans-serif;font-size:30px;font-weight:800;color:#ffffff;letter-spacing:3px;">VOLTIKA</center></v:textbox></v:rect>'
+             .   '<![endif]-->'
+             .   '<div style="margin:10px 0 0;font-size:13px;color:#ffffff;letter-spacing:.4px;font-weight:500;">Movilidad eléctrica inteligente</div>'
              .   $heroHtml
              . '</td></tr>';
     }
@@ -99,10 +113,22 @@ if (!function_exists('voltikaEmailFooter')) {
         // Customer brief 2026-05-07: same SVG-to-PNG + bgcolor attribute
         // hardening as the header so the footer logo + legal line render
         // in every email client.
-        return '<tr><td bgcolor="#1a3a5c" style="background-color:#1a3a5c;background:#1a3a5c;padding:22px 28px;text-align:center;">'
+        // Customer brief 2026-05-09 (first real credit sale): footer logo
+        // was effectively invisible — width="80" + height:22px shrunk the
+        // wordmark below readability and the customer reported the footer
+        // looked empty above the legal line. Bumped to 140px wide
+        // (≈37px tall, original aspect) and added an Outlook VML fallback
+        // so it shows even when the image is blocked.
+        return '<tr><td bgcolor="#1a3a5c" style="background-color:#1a3a5c;background:#1a3a5c;padding:24px 28px 22px;text-align:center;">'
+             .   '<!--[if !mso]><!-->'
              .   '<img src="https://www.voltika.mx/configurador/img/logo_w.png"'
-             .     ' alt="Voltika" width="80" style="height:22px;width:auto;display:block;margin:0 auto 6px;border:0;outline:0;">'
-             .   '<div style="font-size:11px;color:#ffffff;margin-top:4px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
+             .     ' alt="VOLTIKA" width="140" height="37"'
+             .     ' style="display:block;margin:0 auto 10px;border:0;outline:0;max-width:140px;width:140px;height:37px;">'
+             .   '<!--<![endif]-->'
+             .   '<!--[if mso]>'
+             .   '<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fillcolor="#1a3a5c" stroked="false" style="width:140px;height:37px;margin:0 auto 10px;"><v:fill type="solid" color="#1a3a5c" /><v:textbox inset="0,0,0,0"><center style="font-family:Arial,sans-serif;font-size:18px;font-weight:800;color:#ffffff;letter-spacing:2px;">VOLTIKA</center></v:textbox></v:rect>'
+             .   '<![endif]-->'
+             .   '<div style="font-size:11px;color:#ffffff;margin-top:4px;letter-spacing:.2px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
              . '</td></tr>';
     }
 }
@@ -248,11 +274,19 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
     }
 
     // ── Pagos semanales section (credit only) ────────────────────────────
+    // Customer brief 2026-05-09: real-sale audit found two bugs in this block:
+    //   (1) `\${monto_semanal}` in a single-quoted PHP string leaks `\$` to
+    //       the rendered HTML (single quotes don't process the `\` escape;
+    //       only `\\` and `\'` are special). Fix: remove the `\`.
+    //   (2) When the subscripcion lookup fails, `{monto_semanal}` is replaced
+    //       with empty, leaving "Tu primer pago semanal de $ inicia…" — an
+    //       obvious break the customer flagged. Fix: render the amount line
+    //       only when it's known; otherwise drop the figure.
     $pagosHtml = '';
     if ($isCredit) {
         $pagosHtml = '<tr><td style="padding:14px 28px;">'
                    . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">💳 Tus pagos semanales</div>'
-                   . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu primer pago semanal de <strong>\${monto_semanal}</strong> inicia únicamente el día que recibas tu moto en mano.</p>'
+                   . '{pagos_semanales_intro}'
                    . '<p style="font-size:13.5px;color:#444;line-height:1.6;margin:0 0 10px;">No se genera ningún cargo antes de la entrega.</p>'
                    . '<p style="font-size:13px;color:#555;margin:10px 0 4px;">Puedes pagar con:</p>'
                    . '<div style="font-size:13px;color:#333;line-height:1.8;">🏪 Efectivo en cualquier OXXO<br>🏦 Transferencia SPEI<br>💳 Tarjeta en tu portal</div>'
@@ -353,7 +387,7 @@ function voltikaBuildCompraTemplate(bool $isCredit, bool $hasPunto): array {
     foreach ($waPasos as $i => $p) $waPasosText .= ($i+1) . "️⃣ " . $p . "\n";
 
     $waPortalExtra = $isCredit
-        ? "Desde hoy puedes ver tu pedido,\ntus pagos y tus documentos.\n\n💳 Tu primer pago semanal de\n\${monto_semanal} inicia el día\nque recibas tu moto.\nSin cargos antes de la entrega."
+        ? '{wa_pagos_intro}'
         : "Desde hoy puedes ver tu pedido\ny tus documentos en tiempo real.";
 
     $waFactura = $isCredit
@@ -432,12 +466,15 @@ function voltikaBuildPortalTemplate(bool $isCredit): array {
     }
 
     // Credit-only sections
+    // Customer brief 2026-05-09: same `\$` literal + missing-amount fix as
+    // voltikaBuildCompraTemplate above. Use the {portal_pago_intro} variable
+    // so the sentence stays clean when monto_semanal can't be resolved.
     $pagosHtml = '';
     $duplicadoHtml = '';
     if ($isCredit) {
         $pagosHtml = '<tr><td style="padding:14px 28px;">'
                    . '<div style="font-size:13px;font-weight:700;color:#039fe1;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">💳 Tu primer pago semanal</div>'
-                   . '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Tu primer pago de <strong>\${monto_semanal}</strong> inicia únicamente el día que recibas tu moto en mano.</p>'
+                   . '{portal_pago_intro}'
                    . '<p style="font-size:13px;color:#444;line-height:1.5;margin:0;">No se genera ningún cargo antes de la entrega.</p>'
                    . '</td></tr>';
         $duplicadoHtml = '<tr><td style="padding:14px 28px;">'
@@ -492,7 +529,7 @@ function voltikaBuildPortalTemplate(bool $isCredit): array {
               . "✅ Descargar tu permiso temporal\n   para circular — disponible el\n   día que recojas tu moto\n"
               . "✅ Ver tus cotizaciones de seguro\n   y placas si las solicitaste\n\n"
               . "💡 Si realizas un pago manual\n(OXXO, transferencia o adelanto)\ntu cargo automático no se duplica —\nel sistema lo detecta y cancela\nel cobro de esa semana.\n\n"
-              . "⚠️ Tu primer pago semanal de\n\${monto_semanal} inicia el día\nque recibas tu moto en mano.\nSin cargos antes de la entrega.\n\n"
+              . '{wa_portal_pago_intro}'
               . "📲 También te notificamos aquí\nen cada paso del proceso.\nNo necesitas llamar ni escribir\npara saber cómo va tu pedido.\n\n"
               . "¿Dudas? 📧 ventas@voltika.mx\n🕐 Lunes a Viernes 9:00 - 18:00 hrs";
     } else {
@@ -1782,6 +1819,34 @@ function voltikaNotify(string $tipo, array $data): array {
     // never go out with a blank order number.
     if (empty($data['pedido_corto']) && !empty($data['pedido'])) {
         $data['pedido_corto'] = 'VK-' . $data['pedido'];
+    }
+
+    // Customer brief 2026-05-09 (first real credit sale): the weekly-payment
+    // sentence renders broken when monto_semanal can't be resolved (empty
+    // subscripcion lookup, abandoned setup, mismatched email/phone). Build
+    // the intro paragraphs here so the credit templates can drop them in
+    // without leaking a stray "$" symbol when the figure is unknown.
+    $monto = isset($data['monto_semanal']) ? trim((string)$data['monto_semanal']) : '';
+    $hasMonto = ($monto !== '' && $monto !== '0' && $monto !== '0.00');
+    if (!isset($data['pagos_semanales_intro'])) {
+        $data['pagos_semanales_intro'] = $hasMonto
+            ? '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu primer pago semanal de <strong>$' . $monto . '</strong> inicia únicamente el día que recibas tu moto en mano.</p>'
+            : '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu primer pago semanal inicia únicamente el día que recibas tu moto en mano. Te confirmamos el monto exacto en tu portal antes de la entrega.</p>';
+    }
+    if (!isset($data['portal_pago_intro'])) {
+        $data['portal_pago_intro'] = $hasMonto
+            ? '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Tu primer pago de <strong>$' . $monto . '</strong> inicia únicamente el día que recibas tu moto en mano.</p>'
+            : '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Tu primer pago inicia únicamente el día que recibas tu moto en mano. Consulta el monto exacto en tu portal.</p>';
+    }
+    if (!isset($data['wa_pagos_intro'])) {
+        $data['wa_pagos_intro'] = $hasMonto
+            ? "Desde hoy puedes ver tu pedido,\ntus pagos y tus documentos.\n\n💳 Tu primer pago semanal de\n$" . $monto . " inicia el día\nque recibas tu moto.\nSin cargos antes de la entrega."
+            : "Desde hoy puedes ver tu pedido,\ntus pagos y tus documentos.\n\n💳 Tu primer pago semanal inicia\nel día que recibas tu moto.\nConsulta el monto exacto en tu portal.\nSin cargos antes de la entrega.";
+    }
+    if (!isset($data['wa_portal_pago_intro'])) {
+        $data['wa_portal_pago_intro'] = $hasMonto
+            ? "⚠️ Tu primer pago semanal de\n$" . $monto . " inicia el día\nque recibas tu moto en mano.\nSin cargos antes de la entrega.\n\n"
+            : "⚠️ Tu primer pago semanal inicia\nel día que recibas tu moto en mano.\nEl monto exacto se confirma\nen tu portal antes de la entrega.\nSin cargos antes de la entrega.\n\n";
     }
 
     $tpl       = $templates[$tipo];
