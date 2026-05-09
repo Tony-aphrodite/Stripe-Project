@@ -52,6 +52,78 @@ function voltikaNotifyEnsureTable(): void {
 // inline HTML, so future design tweaks propagate everywhere.
 // ═════════════════════════════════════════════════════════════════════════
 
+if (!function_exists('voltikaConvertLogoToWhite')) {
+    /**
+     * Convert a black / coloured logo PNG to a white-on-transparent PNG
+     * suitable for the dark navy email banner. Used the first time the
+     * brand team uploads a fresh voltika_logo_h.png — runs once, caches
+     * the result on disk so future emails just read the cache.
+     *
+     * Re-paints every opaque pixel to white, preserving the original
+     * alpha channel, then resamples to 800px wide and adds 20px of
+     * vertical padding so the V-shield doesn't kiss the banner edge.
+     */
+    function voltikaConvertLogoToWhite(string $srcPath, string $cachePath): string {
+        try {
+            $src = @imagecreatefrompng($srcPath);
+            if (!$src) return '';
+            $sw = imagesx($src);
+            $sh = imagesy($src);
+
+            // Resample to 800px wide (≈4× retina at 220px display).
+            $tw = 800;
+            $th = (int) round($tw * $sh / $sw);
+            $resized = imagecreatetruecolor($tw, $th);
+            imagealphablending($resized, false);
+            imagesavealpha($resized, true);
+            $transp = imagecolorallocatealpha($resized, 0, 0, 0, 127);
+            imagefill($resized, 0, 0, $transp);
+            imagecopyresampled($resized, $src, 0, 0, 0, 0, $tw, $th, $sw, $sh);
+            imagedestroy($src);
+
+            // Re-paint every non-fully-transparent pixel to white, keep alpha.
+            for ($y = 0; $y < $th; $y++) {
+                for ($x = 0; $x < $tw; $x++) {
+                    $rgba  = imagecolorat($resized, $x, $y);
+                    $alpha = ($rgba >> 24) & 0x7F;
+                    if ($alpha < 127) {
+                        $white = imagecolorallocatealpha($resized, 255, 255, 255, $alpha);
+                        imagesetpixel($resized, $x, $y, $white);
+                    }
+                }
+            }
+
+            // Add 20px vertical padding (no horizontal padding — the SVG
+            // is already wide enough).
+            $pad = 20;
+            $cw  = $tw;
+            $ch  = $th + 2 * $pad;
+            $canvas = imagecreatetruecolor($cw, $ch);
+            imagealphablending($canvas, false);
+            imagesavealpha($canvas, true);
+            $ct = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+            imagefill($canvas, 0, 0, $ct);
+            imagealphablending($canvas, true);
+            imagecopy($canvas, $resized, 0, $pad, 0, 0, $tw, $th);
+            imagedestroy($resized);
+
+            // Write cache for next request, then return the bytes for inlining.
+            ob_start();
+            imagepng($canvas, null, 9);
+            $bin = ob_get_clean();
+            imagedestroy($canvas);
+
+            // Best-effort cache write (non-fatal if cache dir isn't writable).
+            @file_put_contents($cachePath, $bin);
+
+            return $bin ?: '';
+        } catch (Throwable $e) {
+            error_log('voltikaConvertLogoToWhite: ' . $e->getMessage());
+            return '';
+        }
+    }
+}
+
 if (!function_exists('voltikaEmailLogoSrc')) {
     /**
      * Customer brief 2026-05-09 (round 4): the previous embed shipped a
@@ -82,10 +154,39 @@ if (!function_exists('voltikaEmailLogoSrc')) {
         static $cached = null;
         if ($cached !== null) return $cached;
 
-        // 1. Honour a real logo PNG if the brand team uploads one.
-        $localPath = __DIR__ . '/../img/logo_w.png';
-        if (is_readable($localPath) && filesize($localPath) >= 2048) {
-            $bin = @file_get_contents($localPath);
+        // Resolution order — first match wins. The brand team can swap
+        // the logo at any time by replacing one of these files; no PHP
+        // edits required.
+        //   (a) voltika_logo_h_white.png — preferred, ready to use
+        //   (b) voltika_logo_h.png       — auto-converted to white the
+        //                                  first time it's seen, then
+        //                                  cached as voltika_logo_h_white.png
+        //   (c) logo_w.png               — legacy slot
+        $imgDir   = __DIR__ . '/../img/';
+        $whitePng = $imgDir . 'voltika_logo_h_white.png';
+        $blackPng = $imgDir . 'voltika_logo_h.png';
+        $legacy   = $imgDir . 'logo_w.png';
+
+        // (a) Pre-converted white logo — use as-is.
+        if (is_readable($whitePng) && filesize($whitePng) >= 2048) {
+            $bin = @file_get_contents($whitePng);
+            if ($bin !== false && $bin !== '') {
+                return $cached = 'data:image/png;base64,' . base64_encode($bin);
+            }
+        }
+
+        // (b) Black/coloured logo — invert opaque pixels to white once
+        //     and persist the result so subsequent requests use the cache.
+        if (is_readable($blackPng) && filesize($blackPng) >= 2048 && function_exists('imagecreatefrompng')) {
+            $whiteBin = voltikaConvertLogoToWhite($blackPng, $whitePng);
+            if ($whiteBin !== '') {
+                return $cached = 'data:image/png;base64,' . base64_encode($whiteBin);
+            }
+        }
+
+        // (c) Legacy slot from earlier iterations.
+        if (is_readable($legacy) && filesize($legacy) >= 2048) {
+            $bin = @file_get_contents($legacy);
             if ($bin !== false && $bin !== '') {
                 return $cached = 'data:image/png;base64,' . base64_encode($bin);
             }
@@ -137,19 +238,19 @@ if (!function_exists('voltikaEmailHeader')) {
         // wordmark fallback for clients that block images entirely so the
         // brand is always present. Also made the tagline bolder for the
         // same reason.
-        // Brand logo aspect ratio is 6.06:1 (V-shield + voltika wordmark
-        // from voltika_logo_h_white.svg, viewBox 1575×260). Display at
-        // 260×43px which keeps the V-shield clearly readable on both
-        // mobile and desktop without dominating the banner.
+        // Brand logo aspect ratio is ~4.65:1 (voltika_logo_h_white.png
+        // with 20px vertical padding around the SVG content). Display at
+        // 240×52 to keep the V-shield clearly readable on mobile and
+        // give the wordmark a confident presence in the banner.
         $logoSrc = voltikaEmailLogoSrc();
         return '<tr><td bgcolor="#1a3a5c" style="background-color:#1a3a5c;background:linear-gradient(135deg,#1a3a5c 0%,#0d6aa0 50%,#039fe1 100%);padding:32px 28px 28px;text-align:center;">'
              .   '<!--[if !mso]><!-->'
              .   '<img src="' . $logoSrc . '"'
-             .     ' alt="VOLTIKA" width="260" height="43"'
-             .     ' style="display:block;margin:0 auto;border:0;outline:0;max-width:260px;width:260px;height:43px;">'
+             .     ' alt="VOLTIKA" width="240" height="52"'
+             .     ' style="display:block;margin:0 auto;border:0;outline:0;max-width:240px;width:240px;height:52px;">'
              .   '<!--<![endif]-->'
              .   '<!--[if mso]>'
-             .   '<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fillcolor="#1a3a5c" stroked="false" style="width:260px;height:43px;"><v:fill type="solid" color="#1a3a5c" /><v:textbox inset="0,0,0,0"><center style="font-family:Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:3px;">VOLTIKA</center></v:textbox></v:rect>'
+             .   '<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fillcolor="#1a3a5c" stroked="false" style="width:240px;height:52px;"><v:fill type="solid" color="#1a3a5c" /><v:textbox inset="0,0,0,0"><center style="font-family:Arial,sans-serif;font-size:28px;font-weight:800;color:#ffffff;letter-spacing:3px;">VOLTIKA</center></v:textbox></v:rect>'
              .   '<![endif]-->'
              .   '<div style="margin:12px 0 0;font-size:13px;color:#ffffff;letter-spacing:.4px;font-weight:500;">Movilidad eléctrica inteligente</div>'
              .   $heroHtml
@@ -172,16 +273,16 @@ if (!function_exists('voltikaEmailFooter')) {
         // looked empty above the legal line. Bumped to 140px wide
         // (≈37px tall, original aspect) and added an Outlook VML fallback
         // so it shows even when the image is blocked.
-        // Footer: smaller display (170×28px, same 6.06:1 brand ratio).
+        // Footer: smaller display (150×32, same 4.65:1 brand ratio).
         $logoSrc = voltikaEmailLogoSrc();
         return '<tr><td bgcolor="#1a3a5c" style="background-color:#1a3a5c;background:#1a3a5c;padding:24px 28px 22px;text-align:center;">'
              .   '<!--[if !mso]><!-->'
              .   '<img src="' . $logoSrc . '"'
-             .     ' alt="VOLTIKA" width="170" height="28"'
-             .     ' style="display:block;margin:0 auto 10px;border:0;outline:0;max-width:170px;width:170px;height:28px;">'
+             .     ' alt="VOLTIKA" width="150" height="32"'
+             .     ' style="display:block;margin:0 auto 10px;border:0;outline:0;max-width:150px;width:150px;height:32px;">'
              .   '<!--<![endif]-->'
              .   '<!--[if mso]>'
-             .   '<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fillcolor="#1a3a5c" stroked="false" style="width:170px;height:28px;margin:0 auto 10px;"><v:fill type="solid" color="#1a3a5c" /><v:textbox inset="0,0,0,0"><center style="font-family:Arial,sans-serif;font-size:14px;font-weight:800;color:#ffffff;letter-spacing:2px;">VOLTIKA</center></v:textbox></v:rect>'
+             .   '<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fillcolor="#1a3a5c" stroked="false" style="width:150px;height:32px;margin:0 auto 10px;"><v:fill type="solid" color="#1a3a5c" /><v:textbox inset="0,0,0,0"><center style="font-family:Arial,sans-serif;font-size:16px;font-weight:800;color:#ffffff;letter-spacing:2px;">VOLTIKA</center></v:textbox></v:rect>'
              .   '<![endif]-->'
              .   '<div style="font-size:11px;color:#ffffff;margin-top:4px;letter-spacing:.2px;">voltika.mx · Mtech Gears S.A. de C.V.</div>'
              . '</td></tr>';
