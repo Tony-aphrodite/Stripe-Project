@@ -1733,7 +1733,48 @@ function voltikaNotifyTemplates(): array {
     ];
 }
 
+/**
+ * Customer brief 2026-05-09 (first real credit sale): the weekly-payment
+ * sentence renders broken when monto_semanal can't be resolved (empty
+ * subscripcion lookup, abandoned setup, mismatched email/phone). Derive
+ * intro paragraphs from the resolved amount so the credit templates can
+ * drop them in via {pagos_semanales_intro} / {portal_pago_intro} /
+ * {wa_pagos_intro} / {wa_portal_pago_intro} without ever leaking a stray
+ * "$" symbol when the figure is unknown.
+ *
+ * Centralised here (instead of inside voltikaNotify()) so every consumer
+ * of voltikaNotifyInterpolate() — including the admin preview tool at
+ * /admin/php/preview-notificaciones.php which bypasses voltikaNotify() —
+ * gets the same derived placeholders.
+ */
+function voltikaNotifyDeriveMontoIntros(array $data): array {
+    $monto = isset($data['monto_semanal']) ? trim((string)$data['monto_semanal']) : '';
+    $hasMonto = ($monto !== '' && $monto !== '0' && $monto !== '0.00');
+    if (!isset($data['pagos_semanales_intro'])) {
+        $data['pagos_semanales_intro'] = $hasMonto
+            ? '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu primer pago semanal de <strong>$' . $monto . '</strong> inicia únicamente el día que recibas tu moto en mano.</p>'
+            : '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu primer pago semanal inicia únicamente el día que recibas tu moto en mano. Te confirmamos el monto exacto en tu portal antes de la entrega.</p>';
+    }
+    if (!isset($data['portal_pago_intro'])) {
+        $data['portal_pago_intro'] = $hasMonto
+            ? '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Tu primer pago de <strong>$' . $monto . '</strong> inicia únicamente el día que recibas tu moto en mano.</p>'
+            : '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Tu primer pago inicia únicamente el día que recibas tu moto en mano. Consulta el monto exacto en tu portal.</p>';
+    }
+    if (!isset($data['wa_pagos_intro'])) {
+        $data['wa_pagos_intro'] = $hasMonto
+            ? "Desde hoy puedes ver tu pedido,\ntus pagos y tus documentos.\n\n💳 Tu primer pago semanal de\n$" . $monto . " inicia el día\nque recibas tu moto.\nSin cargos antes de la entrega."
+            : "Desde hoy puedes ver tu pedido,\ntus pagos y tus documentos.\n\n💳 Tu primer pago semanal inicia\nel día que recibas tu moto.\nConsulta el monto exacto en tu portal.\nSin cargos antes de la entrega.";
+    }
+    if (!isset($data['wa_portal_pago_intro'])) {
+        $data['wa_portal_pago_intro'] = $hasMonto
+            ? "⚠️ Tu primer pago semanal de\n$" . $monto . " inicia el día\nque recibas tu moto en mano.\nSin cargos antes de la entrega.\n\n"
+            : "⚠️ Tu primer pago semanal inicia\nel día que recibas tu moto en mano.\nEl monto exacto se confirma\nen tu portal antes de la entrega.\nSin cargos antes de la entrega.\n\n";
+    }
+    return $data;
+}
+
 function voltikaNotifyInterpolate(string $tpl, array $data): string {
+    $data = voltikaNotifyDeriveMontoIntros($data);
     foreach ($data as $k => $v) {
         if (is_scalar($v) || $v === null) {
             $tpl = str_replace('{' . $k . '}', (string)$v, $tpl);
@@ -1819,34 +1860,6 @@ function voltikaNotify(string $tipo, array $data): array {
     // never go out with a blank order number.
     if (empty($data['pedido_corto']) && !empty($data['pedido'])) {
         $data['pedido_corto'] = 'VK-' . $data['pedido'];
-    }
-
-    // Customer brief 2026-05-09 (first real credit sale): the weekly-payment
-    // sentence renders broken when monto_semanal can't be resolved (empty
-    // subscripcion lookup, abandoned setup, mismatched email/phone). Build
-    // the intro paragraphs here so the credit templates can drop them in
-    // without leaking a stray "$" symbol when the figure is unknown.
-    $monto = isset($data['monto_semanal']) ? trim((string)$data['monto_semanal']) : '';
-    $hasMonto = ($monto !== '' && $monto !== '0' && $monto !== '0.00');
-    if (!isset($data['pagos_semanales_intro'])) {
-        $data['pagos_semanales_intro'] = $hasMonto
-            ? '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu primer pago semanal de <strong>$' . $monto . '</strong> inicia únicamente el día que recibas tu moto en mano.</p>'
-            : '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 10px;">Tu primer pago semanal inicia únicamente el día que recibas tu moto en mano. Te confirmamos el monto exacto en tu portal antes de la entrega.</p>';
-    }
-    if (!isset($data['portal_pago_intro'])) {
-        $data['portal_pago_intro'] = $hasMonto
-            ? '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Tu primer pago de <strong>$' . $monto . '</strong> inicia únicamente el día que recibas tu moto en mano.</p>'
-            : '<p style="font-size:13.5px;color:#333;line-height:1.6;margin:0 0 8px;">Tu primer pago inicia únicamente el día que recibas tu moto en mano. Consulta el monto exacto en tu portal.</p>';
-    }
-    if (!isset($data['wa_pagos_intro'])) {
-        $data['wa_pagos_intro'] = $hasMonto
-            ? "Desde hoy puedes ver tu pedido,\ntus pagos y tus documentos.\n\n💳 Tu primer pago semanal de\n$" . $monto . " inicia el día\nque recibas tu moto.\nSin cargos antes de la entrega."
-            : "Desde hoy puedes ver tu pedido,\ntus pagos y tus documentos.\n\n💳 Tu primer pago semanal inicia\nel día que recibas tu moto.\nConsulta el monto exacto en tu portal.\nSin cargos antes de la entrega.";
-    }
-    if (!isset($data['wa_portal_pago_intro'])) {
-        $data['wa_portal_pago_intro'] = $hasMonto
-            ? "⚠️ Tu primer pago semanal de\n$" . $monto . " inicia el día\nque recibas tu moto en mano.\nSin cargos antes de la entrega.\n\n"
-            : "⚠️ Tu primer pago semanal inicia\nel día que recibas tu moto en mano.\nEl monto exacto se confirma\nen tu portal antes de la entrega.\nSin cargos antes de la entrega.\n\n";
     }
 
     $tpl       = $templates[$tipo];
