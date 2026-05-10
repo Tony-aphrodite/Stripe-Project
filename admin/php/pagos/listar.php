@@ -118,9 +118,19 @@ $resumenMes = [
 try {
     // Cohort: orders created this calendar month with a stripe_pi (real
     // Stripe attempts only — exclude phantom/orphan rows).
+    // Customer brief 2026-05-09: credit orders sit at pago_estado='parcial'
+    // forever (loan keeps running) but the enganche was a real, successful
+    // Stripe payment. Count those rows under "pagados" alongside the
+    // straight 'pagada' rows — otherwise the month's net misses every
+    // credit sale's enganche. Non-credit 'parcial' rows (incomplete
+    // contado / MSI) do NOT count as paid.
     $stmtMes = $pdo->prepare("SELECT
-        SUM(CASE WHEN pago_estado = 'pagada'         THEN 1 ELSE 0 END) AS pagados_count,
-        SUM(CASE WHEN pago_estado = 'pagada'         THEN total ELSE 0 END) AS pagados_monto,
+        SUM(CASE WHEN pago_estado = 'pagada'
+                   OR (pago_estado = 'parcial' AND LOWER(TRIM(tpago)) IN ('credito','credito-orfano','enganche','parcial'))
+                 THEN 1 ELSE 0 END) AS pagados_count,
+        SUM(CASE WHEN pago_estado = 'pagada'
+                   OR (pago_estado = 'parcial' AND LOWER(TRIM(tpago)) IN ('credito','credito-orfano','enganche','parcial'))
+                 THEN total ELSE 0 END) AS pagados_monto,
         SUM(CASE WHEN pago_estado = 'reembolsado'    THEN 1 ELSE 0 END) AS reembolsados_count,
         SUM(CASE WHEN pago_estado = 'reembolsado'    THEN total ELSE 0 END) AS reembolsados_monto,
         SUM(CASE WHEN pago_estado IN ('error','fallido','orfano') OR pago_estado IS NULL OR pago_estado = ''

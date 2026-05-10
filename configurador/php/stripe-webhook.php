@@ -227,19 +227,32 @@ function handlePaymentSucceeded($paymentIntent) {
             webhookLog("pago_estado update error: " . $e->getMessage());
         }
 
-        // ── Send notification only if confirmar-orden.php didn't already ───
-        // notif_sent_at prevents the duplicate-email bug when both code paths
-        // run successfully (client AJAX + webhook arriving in parallel).
-        if (empty($order['notif_sent_at'])) {
+        // ── Atomic claim of the right to send notifications ─────────────
+        // Customer brief 2026-05-09 (Óscar's report — "same customer
+        // receives 2 different orders numbers and emails"): the previous
+        // pattern (read notif_sent_at; if NULL, send; then write the flag)
+        // had a TOCTOU race against confirmar-orden.php which fires from
+        // the Stripe redirect at the same moment as this webhook. Both
+        // paths could read NULL before either had written, and both would
+        // send — producing duplicate compra_confirmada + portal_plazos
+        // emails (one with VK-1826-0001 from confirmar-orden, one with
+        // the synthesised VK-1778302204-2d66242e from this webhook).
+        //
+        // Fix: claim the slot atomically with a conditional UPDATE.
+        // affected_rows == 1 only for the FIRST caller to flip the column
+        // from NULL → NOW(). Anyone else gets 0 and MUST NOT send.
+        $sendOk = false;
+        try {
+            $claim = $pdo->prepare("UPDATE transacciones SET notif_sent_at = NOW() WHERE id = ? AND notif_sent_at IS NULL");
+            $claim->execute([$order['id']]);
+            $sendOk = ($claim->rowCount() > 0);
+        } catch (PDOException $e) {
+            webhookLog("notif_sent_at claim error: " . $e->getMessage());
+        }
+        if ($sendOk) {
             sendPurchaseNotifications($order);
-            try {
-                $pdo->prepare("UPDATE transacciones SET notif_sent_at = NOW() WHERE id = ? AND notif_sent_at IS NULL")
-                    ->execute([$order['id']]);
-            } catch (PDOException $e) {
-                webhookLog("notif_sent_at flag error: " . $e->getMessage());
-            }
         } else {
-            webhookLog("Notification already sent by confirmar-orden.php at {$order['notif_sent_at']} — skip (webhook idempotent)");
+            webhookLog("Notification already claimed by confirmar-orden.php (or another webhook delivery) — skip (webhook idempotent)");
         }
 
     } catch (PDOException $e) {
@@ -665,8 +678,25 @@ function sendPurchaseNotifications($order) {
             }
         }
 
+        // Customer brief 2026-05-09: resolve the short customer-facing
+        // code (VK-YYMM-NNNN) the same way confirmar-orden.php does.
+        // Without this, voltikaNotify() falls through to the legacy
+        // `'VK-' . $pedido` synthesis, producing "VK-1778302204-2d66242e"
+        // — visibly different from the "VK-1826-0001" the customer sees
+        // in the confirmar-orden.php email. Defence in depth: even if
+        // the atomic claim above fails (DB error, missing stripe_pi),
+        // both paths now produce the same identifier in the email.
+        $pedidoCorto = '';
+        try {
+            if (function_exists('voltikaResolvePedidoCorto')) {
+                $pedidoCorto = voltikaResolvePedidoCorto($pdo, (int)$order['id']);
+            }
+        } catch (Throwable $e) { webhookLog('pedido_corto resolve: ' . $e->getMessage()); }
+        if (!$pedidoCorto) $pedidoCorto = 'VK-' . ($order['pedido'] ?? '');
+
         $notifyData = [
             'pedido'          => $order['pedido'] ?? '',
+            'pedido_corto'    => $pedidoCorto,
             'nombre'          => $order['nombre'] ?? '',
             'modelo'          => $order['modelo'] ?? '',
             'color'           => $order['color']  ?? '',

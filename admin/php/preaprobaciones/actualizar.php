@@ -1,7 +1,8 @@
 <?php
 /**
  * POST — Update credit-application follow-up + decision fields.
- * Body: { id, seguimiento?, notas_admin?, status? }
+ * Body: { id, seguimiento?, notas_admin?, status?,
+ *         enganche_pct_aprobado?, plazo_meses_aprobado? }
  *
  * Accepted seguimiento (extended 2026-05-04 for the manual-review screen
  * redesign — old values still valid, new values track the four explicit
@@ -16,6 +17,12 @@
  * Accepted status (optional — only set when admin explicitly rejects, so
  * the listing filter and KPIs reflect the override):
  *   PREAPROBADO | CONDICIONAL | NO_VIABLE
+ *
+ * Customer brief 2026-05-09 (Óscar's report): when admin clicks "Aprobar
+ * Plazos" the override slider values now ride along as
+ * enganche_pct_aprobado (int 25-80) and plazo_meses_aprobado (int 12/18/
+ * 24/36) so we can persist what the admin actually approved. Previously
+ * the audit note shipped with "?" because the values were never sent.
  */
 require_once __DIR__ . '/../bootstrap.php';
 $uid = adminRequireAuth(['admin','cedis','operador']);
@@ -25,6 +32,16 @@ $id    = (int)($in['id'] ?? 0);
 $seg   = trim((string)($in['seguimiento'] ?? ''));
 $nota  = trim((string)($in['notas_admin'] ?? ''));
 $status= trim((string)($in['status'] ?? ''));
+// Optional override values from the manual-decision UI. We accept null/
+// missing (older clients still work — they just won't update those
+// columns) and validate ranges so a bad post can't smuggle bogus terms
+// through to the credit-quote engine downstream.
+$engAprob   = array_key_exists('enganche_pct_aprobado', $in) && $in['enganche_pct_aprobado'] !== null
+              ? (int)$in['enganche_pct_aprobado'] : null;
+$plazoAprob = array_key_exists('plazo_meses_aprobado', $in) && $in['plazo_meses_aprobado'] !== null
+              ? (int)$in['plazo_meses_aprobado']  : null;
+if ($engAprob   !== null && ($engAprob   < 0 || $engAprob   > 100)) $engAprob   = null;
+if ($plazoAprob !== null && ($plazoAprob < 0 || $plazoAprob > 120)) $plazoAprob = null;
 
 if ($id <= 0) adminJsonOut(['error' => 'ID inválido'], 400);
 
@@ -80,13 +97,31 @@ try {
         }
     }
 
+    // Lazy-create the override columns on first use. Idempotent — a
+    // SHOW COLUMNS check guards each ADD so we don't error on second
+    // call. This mirrors the pattern other admin endpoints use for
+    // schema evolution against legacy DB instances.
+    if ($engAprob !== null || $plazoAprob !== null) {
+        try {
+            $cols = $pdo->query("SHOW COLUMNS FROM preaprobaciones")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('enganche_pct_aprobado', $cols, true)) {
+                $pdo->exec("ALTER TABLE preaprobaciones ADD COLUMN enganche_pct_aprobado TINYINT NULL");
+            }
+            if (!in_array('plazo_meses_aprobado', $cols, true)) {
+                $pdo->exec("ALTER TABLE preaprobaciones ADD COLUMN plazo_meses_aprobado TINYINT NULL");
+            }
+        } catch (Throwable $e) { error_log('actualizar override columns: ' . $e->getMessage()); }
+    }
+
     // Build the UPDATE dynamically so we only touch the columns the
     // caller actually asked us to change. notas_admin is always written
     // (the manual-review buttons append a timestamped audit line).
     $sets   = ['notas_admin = ?'];
     $params = [$nota];
-    if ($seg !== '')    { $sets[] = 'seguimiento = ?'; $params[] = $seg; }
-    if ($status !== '') { $sets[] = 'status = ?';      $params[] = $status; }
+    if ($seg !== '')         { $sets[] = 'seguimiento = ?';           $params[] = $seg; }
+    if ($status !== '')      { $sets[] = 'status = ?';                $params[] = $status; }
+    if ($engAprob !== null)  { $sets[] = 'enganche_pct_aprobado = ?'; $params[] = $engAprob; }
+    if ($plazoAprob !== null){ $sets[] = 'plazo_meses_aprobado = ?';  $params[] = $plazoAprob; }
     $params[] = $id;
     $pdo->prepare("UPDATE preaprobaciones SET " . implode(', ', $sets) . " WHERE id = ?")
         ->execute($params);

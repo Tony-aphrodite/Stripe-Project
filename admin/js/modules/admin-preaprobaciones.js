@@ -483,16 +483,30 @@ window.AD_preaprobaciones = (function(){
 
     // ── 7. Manual override of enganche / plazo (NEW FEATURE 2026-05-04) ─
     // Allow the reviewer to adjust the system-suggested terms before
-    // sending the offer to the customer. Only available when status is
-    // PREAPROBADO/CONDICIONAL AND not blocked by PLD. The reviewer can:
+    // sending the offer to the customer. The reviewer can:
     //   - Slide enganche between 25% and 80% (default = system suggestion)
     //   - Pick plazo from [12, 18, 24, 36] (default = system suggestion)
     //   - See live weekly/monthly payment recalculate
     //   - Send a personalized 48-hour link that locks these values in
+    //
+    // Customer brief 2026-05-09 (Óscar's report — "When we have a
+    // conditional we don't have the bar for enganche and plazo"): on
+    // NO_VIABLE cases the override UI was hidden entirely, but the
+    // admin still wanted to manually approve plazos (with explicit
+    // override) AND specify the months/enganche they're approving for
+    // — otherwise the audit note shipped as "Aprobar plazos: ? meses",
+    // losing the actual terms. Show the bar whenever the admin has at
+    // least the option to approve plazos (i.e. anything that isn't
+    // hard-blocked), so the soft-blocked NO_VIABLE flow gets the same
+    // term-picking UI as the standard PREAPROBADO/CONDICIONAL flow.
     var sysEnganchePct = Math.round((Number(row.enganche_requerido) || 0.30) * 100);
     var sysPlazo       = Number(row.plazo_max) || 12;
     var precioContado  = Number(row.precio_contado) || 0;
-    var canOverride    = !pldBlock && (status === 'PREAPROBADO' || status === 'CONDICIONAL') && precioContado > 0;
+    // hardBlocked is computed below in §8; mirror its exclusions here
+    // so the override bar disappears when no plazo path is reachable.
+    var hardBlockedForOverride = pldBlock || hasDPD90 || truoraRejected || pti >= 0.50;
+    var canOverride    = !hardBlockedForOverride && precioContado > 0
+                         && (status === 'PREAPROBADO' || status === 'CONDICIONAL' || status === 'NO_VIABLE');
     if (canOverride) {
       // Three-line comparison header so the reviewer always sees:
       //   • What the customer asked for
@@ -700,9 +714,23 @@ window.AD_preaprobaciones = (function(){
       if ($(this).is(':disabled')) return;
       if (!confirmOverrideIfNeeded('APROBAR PLAZOS')) return;
       var notePrefix = needsOverrideConfirm ? '⚠ OVERRIDE manual: ' : '';
+      // Customer brief 2026-05-09: prefer the override bar's current
+      // values when it's rendered (any non-hard-blocked status now
+      // shows the bar). Falls back to the system recommendation, then
+      // to '?' as a last-resort marker so the audit note never ships
+      // without a number — that ambiguity ("Aprobar plazos: ? meses")
+      // was the original symptom Óscar reported.
+      var $eng    = $('#apOvEnganche');
+      var $plazo  = $('#apOvPlazo');
+      var engPct  = $eng.length   ? Number($eng.val())   : (row.enganche_requerido ? Math.round(Number(row.enganche_requerido) * 100) : null);
+      var plazoM  = $plazo.length ? Number($plazo.val()) : (row.plazo_max || null);
+      var engStr  = engPct != null ? engPct + '%' : '?';
+      var plazoStr= plazoM != null ? plazoM + ' meses' : '? meses';
       applyDecision({
         seguimiento: 'aprobado',
-        notas_admin: appendNote(row.notas_admin, notePrefix + 'Aprobar plazos: '+(row.enganche_requerido?Math.round(row.enganche_requerido*100)+'%/':'')+(row.plazo_max||'?')+' meses')
+        enganche_pct_aprobado: engPct,
+        plazo_meses_aprobado:  plazoM,
+        notas_admin: appendNote(row.notas_admin, notePrefix + 'Aprobar plazos: ' + engStr + ' / ' + plazoStr)
       }, 'Aprobar plazos');
     });
     $('#apDecContado').on('click', function(){

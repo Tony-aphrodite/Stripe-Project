@@ -664,18 +664,34 @@ try {
           AND t.stripe_pi <> ''
           AND t.stripe_pi NOT LIKE 'manual-%'
         GROUP BY bucket, t.pago_estado";
+    // Customer brief 2026-05-09 (Óscar's report — "Crédito sale $0 pero
+    // ya se vendió una a crédito"): the previous branching counted any
+    // pago_estado='parcial' row as "Pendiente". That is correct for
+    // contado/MSI rows that genuinely never finished payment, but wrong
+    // for credit orders — stripe-webhook.php intentionally keeps credit
+    // rows at pago_estado='parcial' even after the enganche is charged
+    // via Stripe, because the loan isn't fully paid yet. With the old
+    // logic, every credit sale's enganche was buried inside Pendiente
+    // and the Crédito KPI stayed at $0.
+    //
+    // Fix: when bucket='credito' AND estado='parcial', treat the row as
+    // a completed sale. The SUM(COALESCE(total, precio, 0)) already
+    // returns the enganche amount (that's what Stripe captured + what
+    // confirmar-orden.php wrote into `total`), so the figures are
+    // accurate. Non-credit 'parcial' rows still flow into Pendiente.
     foreach ($pdo->query($aggSql) as $a) {
         $bucket = $a['bucket'];
         $estado = strtolower((string)($a['pago_estado'] ?? ''));
         $suma   = (float)$a['suma'];
         $sumaMes= (float)$a['suma_mes'];
-        if ($estado === 'pagada') {
+        $isCreditEnganchePaid = ($estado === 'parcial' && $bucket === 'credito');
+        if ($estado === 'pagada' || $isCreditEnganchePaid) {
             $resumen['vendido_total']      += $suma;
             $resumen['vendido_mes_actual'] += $sumaMes;
             if (isset($resumen[$bucket])) $resumen[$bucket] += $suma;
         } elseif ($estado === 'reembolsado') {
             $resumen['reembolsado'] += $suma;
-        } elseif (in_array($estado, ['pendiente', 'parcial'], true)) {
+        } elseif ($estado === 'pendiente' || ($estado === 'parcial' && $bucket !== 'credito')) {
             $resumen['pendiente'] += $suma;
         }
     }

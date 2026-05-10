@@ -1131,12 +1131,21 @@ $notifyData = [
 $tplKey = 'compra_confirmada_'
         . ($esCredito ? 'credito' : 'contado')
         . ($tienePunto ? '_punto' : '_sin_punto');
-voltikaNotify($tplKey, $notifyData);
-$emailSent = !empty($email);
 
-// Flag the row so stripe-webhook.php (which may arrive later for the same
-// PaymentIntent) knows notifications were already dispatched here, avoiding
-// duplicate emails/WhatsApps. The column is lazy-created on webhook side.
+// ── Atomic claim of the right to send notifications ────────────────
+// Customer brief 2026-05-09 (Óscar's report — duplicate portal_plazos
+// emails with mismatched order codes): this Stripe-redirect handler and
+// stripe-webhook.php both fire on the same payment, almost in parallel.
+// The previous flow ("send unconditionally, then write notif_sent_at")
+// raced against the webhook ("read notif_sent_at; if NULL, send"), and
+// when both saw NULL they both sent — causing TWO compra_confirmada and
+// TWO portal_plazos emails per credit purchase.
+//
+// Fix: claim the slot atomically with a conditional UPDATE *before*
+// sending. affected_rows == 1 only for the FIRST caller to flip the
+// column from NULL → NOW(); anyone else gets 0 and skips the send.
+// Both paths now race the database row, not each other's emails.
+$canSend = false;
 if (!empty($paymentIntentId)) {
     try {
         $pdo = getDB();
@@ -1144,20 +1153,38 @@ if (!empty($paymentIntentId)) {
         if (!in_array('notif_sent_at', $cols, true)) {
             $pdo->exec("ALTER TABLE transacciones ADD COLUMN notif_sent_at DATETIME NULL");
         }
-        $pdo->prepare("UPDATE transacciones SET notif_sent_at = NOW() WHERE stripe_pi = ? AND notif_sent_at IS NULL")
-            ->execute([$paymentIntentId]);
+        $claim = $pdo->prepare("UPDATE transacciones SET notif_sent_at = NOW() WHERE stripe_pi = ? AND notif_sent_at IS NULL");
+        $claim->execute([$paymentIntentId]);
+        $canSend = ($claim->rowCount() > 0);
     } catch (Throwable $e) {
-        error_log('confirmar-orden notif_sent_at update: ' . $e->getMessage());
+        error_log('confirmar-orden notif_sent_at claim: ' . $e->getMessage());
+        // If the claim itself errored we still send — better duplicate
+        // than missing on the very first real sale.
+        $canSend = true;
     }
+} else {
+    // No paymentIntentId means this isn't a Stripe-backed flow (rare —
+    // legacy paths). No webhook will race us, so just send.
+    $canSend = true;
 }
 
-// MSG 1B/1C/1D — delayed 5 minutes based on purchase type
-if ($esCredito) {
-    voltikaNotifyDelayed('portal_plazos', $notifyData, 300);
-} elseif ($pagoTipo === 'msi') {
-    voltikaNotifyDelayed('portal_msi', $notifyData, 300);
+$emailSent = false;
+if ($canSend) {
+    voltikaNotify($tplKey, $notifyData);
+    $emailSent = !empty($email);
+
+    // MSG 1B/1C/1D — delayed 5 minutes based on purchase type. Bundled
+    // inside the same claim block so the portal-access email is also
+    // deduped against the webhook.
+    if ($esCredito) {
+        voltikaNotifyDelayed('portal_plazos', $notifyData, 300);
+    } elseif ($pagoTipo === 'msi') {
+        voltikaNotifyDelayed('portal_msi', $notifyData, 300);
+    } else {
+        voltikaNotifyDelayed('portal_contado', $notifyData, 300);
+    }
 } else {
-    voltikaNotifyDelayed('portal_contado', $notifyData, 300);
+    error_log("confirmar-orden: notifications already claimed by webhook for PI=$paymentIntentId — skip");
 }
 
 // ── Post-payment digital signature (customer brief 2026-05-04 round 3) ─
