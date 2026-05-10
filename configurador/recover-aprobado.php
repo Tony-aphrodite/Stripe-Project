@@ -269,13 +269,14 @@ $nombreCompleto = trim(($row['nombre'] ?? '') . ' ' . ($row['apellido_paterno'] 
       <span class="term-label">Plazo</span>
       <span class="term-value"><?= $plazoMeses ?> meses</span>
     </div>
+    <?php /* Customer brief 2026-05-09: drop "Pago mensual" — Voltika
+            collects 52 weekly payments. The monthly figure was a
+            derived estimate that customers misread as "you'll be
+            charged monthly". Keep only Pago semanal across email,
+            SMS and this landing for consistency. */ ?>
     <div class="term-row">
       <span class="term-label">Pago semanal</span>
       <span class="term-value primary">$<?= number_format($semanal, 0, '.', ',') ?></span>
-    </div>
-    <div class="term-row">
-      <span class="term-label">Pago mensual</span>
-      <span class="term-value primary">$<?= number_format($mensual, 0, '.', ',') ?></span>
     </div>
   </div>
 

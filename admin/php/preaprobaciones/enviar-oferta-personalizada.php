@@ -207,11 +207,16 @@ try {
             '<div style="background:#fff;border-radius:10px;padding:16px;margin:14px 0;border:1px solid #E5E7EB;">' .
                 '<div style="font-size:13px;color:#888;">Modelo</div>' .
                 '<div style="font-size:18px;font-weight:800;color:#333;margin-bottom:10px;">' . $modeloHtml . '</div>' .
+                // Customer brief 2026-05-09: drop "Pago mensual" row from
+                // the customer-facing offer email. Voltika collects 52
+                // weekly payments; the monthly figure was a derived
+                // estimate that customers misread as "you'll be charged
+                // monthly". Keeping only Pago semanal removes ambiguity
+                // and matches the rest of the credit comms.
                 '<table style="width:100%;font-size:14px;border-collapse:collapse;">' .
                     '<tr><td style="padding:6px 0;color:#666;">Enganche</td><td style="text-align:right;font-weight:700;">$' . number_format($enganche,0,'.',',') . ' (' . round($engPct*100) . '%)</td></tr>' .
                     '<tr><td style="padding:6px 0;color:#666;">Plazo</td><td style="text-align:right;font-weight:700;">' . $plazoM . ' meses</td></tr>' .
                     '<tr><td style="padding:6px 0;color:#666;">Pago semanal</td><td style="text-align:right;font-weight:700;color:#039fe1;">$' . number_format($semanal,0,'.',',') . '</td></tr>' .
-                    '<tr><td style="padding:6px 0;color:#666;">Pago mensual</td><td style="text-align:right;font-weight:700;color:#039fe1;">$' . number_format($mensual,0,'.',',') . '</td></tr>' .
                 '</table>' .
             '</div>' .
             '<a href="' . htmlspecialchars($link) . '" style="display:block;text-align:center;padding:14px;background:#039fe1;color:#fff;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none;margin:16px 0;">Continuar con verificación de identidad</a>' .
@@ -230,7 +235,10 @@ try {
     // ── Send SMS ───────────────────────────────────────────────────────
     $smsSent = false;
     if ($tel !== '' && function_exists('voltikaSendSMS')) {
-        $smsBody = "Voltika: tu credito esta aprobado (" . round($engPct*100) . "% enganche / " . $plazoM . " meses, pago mensual $" . number_format($mensual,0,'.',',') . "). Continua aqui (48h): " . $link;
+        // Customer brief 2026-05-09: match the email — quote pago
+        // semanal (the actual collection cadence), not the derived
+        // monthly figure.
+        $smsBody = "Voltika: tu credito esta aprobado (" . round($engPct*100) . "% enganche / " . $plazoM . " meses, pago semanal $" . number_format($semanal,0,'.',',') . "). Continua aqui (48h): " . $link;
         try {
             $r = voltikaSendSMS($tel, $smsBody);
             $smsSent = !empty($r['ok']);

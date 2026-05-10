@@ -810,13 +810,18 @@ window.AD_preaprobaciones = (function(){
       var engPct = Number($('#apOvEnganche').val()) || sysEnganchePct;
       var plazoM = Number($('#apOvPlazo').val()) || sysPlazo;
       if (!preview) {
+        // Customer brief 2026-05-09: the customer offer email + landing
+        // now show ONLY pago semanal (pago mensual was dropped to avoid
+        // "you'll be charged monthly" misreads). Mirror that here so the
+        // admin's pre-send confirmation matches what the customer
+        // actually receives.
         var msg = '¿Enviar oferta personalizada al cliente?\n\n'
                 + 'Cliente: '+fullName+'\n'
                 + 'Modelo: '+(row.modelo||'—')+'\n'
                 + '─────────────────────\n'
                 + 'Enganche: '+engPct+'% ('+fmtMoney(precioContado*engPct/100)+')\n'
                 + 'Plazo: '+plazoM+' meses\n'
-                + 'Pago mensual: '+$('#apOvMensual').text()+'\n'
+                + 'Pago semanal: '+$('#apOvSemanal').text()+'\n'
                 + '─────────────────────\n'
                 + 'Sistema sugería: '+sysEnganchePct+'% / '+sysPlazo+' meses\n\n'
                 + 'El enlace expira en 48h y los valores quedan bloqueados.';
