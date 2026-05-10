@@ -1,11 +1,25 @@
 window.PV_inicio = (function(){
   function render(){
-    var p = PVApp.state.punto || {};
     PVApp.render('<div class="ad-h1">'+(PVApp.state.user.nombre||'')+'</div><div>Cargando...</div>');
+    // Customer brief 2026-05-09 (boss's report — "when he changes the
+    // referido code in the dashboard, this change isn't shown in the
+    // punto panel"): the punto SPA loaded PVApp.state.punto once at
+    // login (via auth/me.php in punto-app.js#start) and never refreshed
+    // it. Admin edits to puntos_voltika.codigo_venta /
+    // codigo_electronico hit the DB correctly but the punto user kept
+    // seeing the old code until they logged out + back in (or hit
+    // Ctrl+R hard refresh). Fix: re-fetch auth/me.php every time the
+    // user lands on Inicio (where the codes are displayed) and
+    // overwrite the cached state with whatever the server has now.
     $.when(
+      PVApp.api('auth/me.php'),
       PVApp.api('inventario/listar.php'),
       PVApp.api('recepcion/envios-pendientes.php')
-    ).done(function(inv, env){
+    ).done(function(me, inv, env){
+      if (me && me[0]) {
+        if (me[0].punto)   PVApp.state.punto = me[0].punto;
+        if (me[0].usuario) PVApp.state.user  = me[0].usuario;
+      }
       paint(inv[0], env[0]);
     });
   }
