@@ -2226,41 +2226,57 @@ window.AD_ventas = (function(){
     //   2. CURP + CDC + Truora "same OK" verification
     //   3. Capacidad crediticia (CDC capacity report)
     //   4. Resumen de transacción (full transaction summary)
-    // The original "Reporte CDC + Truora" combo card bundled all of
-    // these into a single click-through to preaprobaciones, which
-    // forced the admin to dig through the bureau page to reach each
-    // artifact. Now each document is one click. The URLs all point at
-    // the existing preaprobaciones detail panel filtered by phone/
-    // email — that's where Truora exposes the attachments — but each
-    // row has a #tab anchor so the panel can scroll to the right
-    // section. (preaprobaciones page reads `?search=` already.)
+    //
+    // Customer brief 2026-05-09 (Óscar — "When he tried to get the
+    // contract show this" + JSON-dump screenshot): the previous version
+    // pointed these rows at /admin/php/preaprobaciones/listar.php and
+    // /admin/php/ventas/listar.php with #anchors. Those paths are JSON
+    // API endpoints (return application/json for AJAX), NOT human-
+    // viewable pages. Opening them in a new tab gave the admin a wall
+    // of raw JSON instead of the document view. The #anchor never even
+    // got read — there's no client-side router consuming it.
+    //
+    // Fix: use the in-app SPA navigation (window.AD_preaprobaciones.go
+    // when available, falling back to ADApp.go(route)) and pre-fill
+    // the preaprobaciones search box with the customer's phone/email.
+    // The rows become buttons that switch routes in place. Same one-
+    // click ergonomics, but the result is the actual page the original
+    // comment intended to surface.
     if (isCredito) {
-      var preapBase = '/admin/php/preaprobaciones/listar.php?search='+encodeURIComponent(r.telefono||r.email||'');
+      var preapSearch = r.telefono || r.email || '';
       rows_.push({
         title: 'Identidad (INE / PASSPORT)',
         desc:  'Documento oficial submitido vía Truora al solicitar el crédito.',
-        url:   preapBase + '#truora-identidad',
+        route: 'preaprobaciones',
+        search: preapSearch,
+        focus:  'truora-identidad',
         icon:  '🪪',
         bg:    '#fef3c7', tx: '#92400e'
       });
       rows_.push({
         title: 'CURP + Validación CDC/Truora',
         desc:  'CURP del cliente con acuse de validación de Círculo de Crédito y verificación "same OK" de Truora.',
-        url:   preapBase + '#truora-curp',
+        route: 'preaprobaciones',
+        search: preapSearch,
+        focus:  'truora-curp',
         icon:  '🆔',
         bg:    '#e0e7ff', tx: '#3730a3'
       });
       rows_.push({
         title: 'Reporte de Capacidad Crediticia',
         desc:  'Score CDC, PTI, DPD90, deuda existente y capacidad de pago calculada.',
-        url:   preapBase + '#cdc-capacidad',
+        route: 'preaprobaciones',
+        search: preapSearch,
+        focus:  'cdc-capacidad',
         icon:  '📊',
         bg:    '#ede9fe', tx: '#5b21b6'
       });
       rows_.push({
         title: 'Resumen de Transacción',
-        desc:  'Detalle completo: enganche, plazo, pago semanal/mensual, tasa, modelo.',
-        url:   '/admin/php/ventas/listar.php?id='+encodeURIComponent(r.id||'')+'#resumen',
+        desc:  'Detalle completo: enganche, plazo, pago semanal, tasa, modelo.',
+        route: 'ventas',
+        search: r.pedido || preapSearch,
+        focus:  'resumen',
         icon:  '📋',
         bg:    '#f0fdf4', tx: '#166534'
       });
@@ -2272,17 +2288,35 @@ window.AD_ventas = (function(){
             + '</div>';
     } else {
       html += '<div style="display:flex;flex-direction:column;gap:10px;">';
-      rows_.forEach(function(d){
-        html += '<a href="'+d.url+'" target="_blank" rel="noopener" '
-             +    'style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:'+d.bg+';border:1px solid '+d.tx+'40;border-radius:10px;text-decoration:none;color:'+d.tx+';transition:transform .12s;" '
-             +    'onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">'
-             +    '<div style="font-size:24px;">'+d.icon+'</div>'
-             +    '<div style="flex:1;">'
-             +      '<div style="font-weight:700;font-size:14px;">'+esc(d.title)+'</div>'
-             +      '<div style="font-size:12px;opacity:.85;">'+esc(d.desc)+'</div>'
-             +    '</div>'
-             +    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>'
-             + '</a>';
+      rows_.forEach(function(d, idx){
+        // Two kinds of rows:
+        //   (a) Direct-URL rows (contract PDF, Stripe dashboard, dossier
+        //       ZIP) — keep as <a target="_blank"> so the browser fetches
+        //       and downloads the artifact.
+        //   (b) Route-based rows (preaprobaciones / ventas SPA pages) —
+        //       render as <a class="adDocRoute"> and let a click handler
+        //       run the in-app navigation. Plain <a href=…> would have
+        //       reloaded the page; with javascript:void(0) the handler
+        //       owns the action entirely.
+        var isRoute = !!d.route;
+        var commonStyle = 'display:flex;align-items:center;gap:14px;padding:14px 16px;background:'+d.bg+';border:1px solid '+d.tx+'40;border-radius:10px;text-decoration:none;color:'+d.tx+';transition:transform .12s;cursor:pointer;';
+        var hover = ' onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'"';
+        var body = '<div style="font-size:24px;">'+d.icon+'</div>'
+                 + '<div style="flex:1;">'
+                 +   '<div style="font-weight:700;font-size:14px;">'+esc(d.title)+'</div>'
+                 +   '<div style="font-size:12px;opacity:.85;">'+esc(d.desc)+'</div>'
+                 + '</div>'
+                 + '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
+        if (isRoute) {
+          html += '<a href="javascript:void(0)" class="adDocRoute" '
+               +    'data-route="'+esc(d.route)+'" '
+               +    'data-search="'+esc(d.search||'')+'" '
+               +    'data-focus="'+esc(d.focus||'')+'" '
+               +    'style="'+commonStyle+'"'+hover+'>'+body+'</a>';
+        } else {
+          html += '<a href="'+d.url+'" target="_blank" rel="noopener" '
+               +    'style="'+commonStyle+'"'+hover+'>'+body+'</a>';
+        }
       });
       html += '</div>';
     }
@@ -2292,6 +2326,35 @@ window.AD_ventas = (function(){
          + '</div>';
 
     ADApp.modal(html);
+
+    // Wire route-based rows: close this modal, switch route, prime the
+    // search box on the target module. The setTimeout gives the module
+    // a tick to render its UI before we touch the input field.
+    $('.adDocRoute').on('click', function(){
+      var route  = $(this).data('route');
+      var search = $(this).data('search') || '';
+      ADApp.closeModal();
+      ADApp.go(route);
+      setTimeout(function(){
+        if (route === 'preaprobaciones') {
+          $('#apFSearch').val(search);
+          // Trigger the existing search/filter pipeline if available
+          if (window.AD_preaprobaciones && typeof AD_preaprobaciones.search === 'function') {
+            AD_preaprobaciones.search(search);
+          } else {
+            $('#apFSearch').trigger('change').trigger('input');
+            $('.apFilterApply, #apFApply').trigger('click');
+          }
+        } else if (route === 'ventas') {
+          // The ventas module's search box id may vary by build; try the
+          // canonical ones and fall back to a generic class.
+          var $box = $('#vtFSearch, #vtSearch, .ad-search-input').first();
+          if ($box.length) {
+            $box.val(search).trigger('change').trigger('input');
+          }
+        }
+      }, 120);
+    });
   }
 
   // Recuperar — promueve una orden huérfana (transacciones_errores) o

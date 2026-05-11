@@ -1201,5 +1201,17 @@ window.AD_preaprobaciones = (function(){
     return '<span style="color:#9ca3af;font-weight:600">— Sin estado</span>';
   }
 
-  return { render: render };
+  // Customer brief 2026-05-09: external entry point used by the
+  // "Documentos del pedido" modal in admin-ventas.js. Lets the
+  // Identidad / CURP / Capacidad rows jump directly into this panel
+  // with the phone/email pre-filled — no JSON-API leak via listar.php.
+  function search(term){
+    filters.search = term || '';
+    filters.page = 1;
+    if (typeof load === 'function') load();
+    // After paint runs the input may have been re-rendered; sync it.
+    setTimeout(function(){ $('#apFSearch').val(filters.search); }, 200);
+  }
+
+  return { render: render, search: search };
 })();
