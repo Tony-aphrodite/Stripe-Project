@@ -9,12 +9,17 @@ $ctx = puntoRequireAuth();
 $pdo = getDB();
 $pid = $ctx['punto_id'];
 
-// All motos assigned to this point
+// All motos assigned to this point.
+// Customer brief 2026-05-09: filter out soft-deleted rows (activo=0)
+// so the punto's "Eliminar" action (inventario/eliminar.php) actually
+// hides the moto from this view. Admin retains a separate path to see /
+// restore deleted rows.
 $stmt = $pdo->prepare("SELECT m.*,
     (SELECT estado FROM envios WHERE moto_id=m.id ORDER BY freg DESC LIMIT 1) as envio_estado,
     (SELECT id FROM recepcion_punto WHERE moto_id=m.id ORDER BY freg DESC LIMIT 1) as recepcion_id
     FROM inventario_motos m
     WHERE m.punto_voltika_id=?
+      AND m.activo = 1
     ORDER BY m.fmod DESC");
 $stmt->execute([$pid]);
 $motos = $stmt->fetchAll(PDO::FETCH_ASSOC);

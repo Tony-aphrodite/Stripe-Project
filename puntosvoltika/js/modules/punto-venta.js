@@ -47,12 +47,25 @@ window.PV_venta = (function(){
     } else {
       disponibles.forEach(function(m){
         html += '<div class="ad-card" style="margin-bottom:8px;">';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">';
         html += '<div>';
         html += '<div style="font-weight:700">'+esc(m.modelo)+' · '+esc(m.color)+'</div>';
         html += '<div style="font-size:12px;color:var(--ad-dim)">VIN: <code>'+esc(m.vin_display||m.vin||'')+'</code></div>';
         html += '</div>';
+        html += '<div style="display:flex;gap:6px;align-items:center;">';
         html += '<button class="ad-btn primary sm pvSellDirect" data-id="'+m.id+'" data-modelo="'+esc(m.modelo||'')+'" data-color="'+esc(m.color||'')+'">Venta directa</button>';
+        // Customer brief 2026-05-09: mirror the "Eliminar" affordance
+        // from punto-inventario.js so duplicate / test rows can be
+        // cleaned up from this view too. Server endpoint re-validates
+        // the same safety gate (no cliente, no envío activo).
+        html += '<button class="ad-btn ghost sm pvDeleteDirect" data-id="'+m.id+'" '+
+                'data-vin="'+esc(m.vin_display||m.vin||'')+'" '+
+                'data-modelo="'+esc(m.modelo||'')+'" data-color="'+esc(m.color||'')+'" '+
+                'style="color:#b91c1c;border-color:#b91c1c;" '+
+                'title="Eliminar moto del inventario">'+
+                '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
+                '</button>';
+        html += '</div>';
         html += '</div>';
         html += '</div>';
       });
@@ -81,6 +94,60 @@ window.PV_venta = (function(){
         modelo:  $b.data('modelo'),
         color:   $b.data('color'),
       });
+    });
+    $('.pvDeleteDirect').on('click', function(){
+      var $b = $(this);
+      showDeleteDirectModal({
+        moto_id: $b.data('id'),
+        vin:     $b.data('vin'),
+        modelo:  $b.data('modelo'),
+        color:   $b.data('color'),
+      });
+    });
+  }
+
+  function showDeleteDirectModal(ctx){
+    PVApp.modal(
+      '<div class="ad-h2" style="color:#b91c1c;">Eliminar moto del inventario</div>'+
+      '<div style="color:var(--ad-dim);margin-bottom:14px;font-size:13px;line-height:1.55;">'+
+        'Vas a eliminar <strong>'+esc(ctx.modelo||'—')+' '+esc(ctx.color||'')+'</strong>'+
+        (ctx.vin ? ' (VIN <code>'+esc(ctx.vin)+'</code>)' : '')+' de tu inventario.<br><br>'+
+        'La moto queda como <strong>eliminada</strong> en la base de datos (no se borra de forma definitiva — admin puede restaurarla). '+
+        'Usa esto para entradas duplicadas, motos de prueba o motos regresadas a CEDIS.'+
+      '</div>'+
+      '<label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Motivo de eliminación *</label>'+
+      '<textarea id="pvDelDirMotivo" class="ad-input" placeholder="Ej. entrada duplicada · moto de prueba · regresada a CEDIS" '+
+      'style="width:100%;min-height:70px;margin-bottom:6px;"></textarea>'+
+      '<div id="pvDelDirMsg" style="font-size:12px;color:#b91c1c;min-height:16px;"></div>'+
+      '<div style="display:flex;gap:8px;margin-top:10px;">'+
+        '<button class="ad-btn ghost" id="pvDelDirCancel" style="flex:1;">Cancelar</button>'+
+        '<button class="ad-btn primary" id="pvDelDirOk" style="flex:1;background:#b91c1c;border-color:#b91c1c;">Eliminar</button>'+
+      '</div>'
+    );
+    $('#pvDelDirCancel').on('click', PVApp.closeModal);
+    $('#pvDelDirOk').on('click', function(){
+      var motivo = ($('#pvDelDirMotivo').val()||'').trim();
+      if (motivo.length < 4) {
+        $('#pvDelDirMsg').text('Escribe un motivo (mínimo 4 caracteres).');
+        return;
+      }
+      var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Eliminando...');
+      PVApp.api('inventario/eliminar.php', { moto_id: ctx.moto_id, motivo: motivo })
+        .done(function(r){
+          if (r && r.ok) {
+            PVApp.closeModal();
+            PVApp.toast('Moto eliminada');
+            render();
+          } else {
+            $('#pvDelDirMsg').text((r && r.error) || 'Error desconocido');
+            $btn.prop('disabled', false).text('Eliminar');
+          }
+        })
+        .fail(function(x){
+          var err = (x.responseJSON && x.responseJSON.error) || 'Error de conexión';
+          $('#pvDelDirMsg').text(err);
+          $btn.prop('disabled', false).text('Eliminar');
+        });
     });
   }
 

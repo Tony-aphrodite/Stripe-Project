@@ -67,6 +67,10 @@ window.PV_inventario = (function(){
       if (action === 'ensamble')  iniciarEnsamble(id);
       if (action === 'lista')     marcarLista(id);
     });
+    $('.pv-eliminar-btn').on('click', function(e){
+      e.stopPropagation();
+      showEliminarModal($(this).data('id'), $(this).data('vin'), $(this).data('modelo'), $(this).data('color'));
+    });
   }
   function ventaReferidoCard(v){
     // Online order with this punto's referral code, awaiting CEDIS to link
@@ -157,8 +161,71 @@ window.PV_inventario = (function(){
       }
     }
 
+    // Customer brief 2026-05-09 ("esto es en puntos voltika. Please help
+    // me to delete this."): the punto operator had no in-app way to
+    // remove a stray inventory row (duplicate, test entry, returned
+    // bike) — they had to escalate to admin every time. Add a soft-
+    // delete button ONLY for "Disponible para venta" (no cliente,
+    // physically received), so an active customer order can never get
+    // wiped by accident. The server endpoint
+    // inventario/eliminar.php re-validates the safety gate.
+    if (tipo === 'venta' && m.recepcion_id && !m.cliente_nombre && !m.pedido_num) {
+      h += '<div style="margin-top:8px;">';
+      h += '<button class="ad-btn ghost sm pv-eliminar-btn" data-id="'+m.id+'" '+
+           'data-vin="'+(m.vin_display||m.vin||'')+'" '+
+           'data-modelo="'+(m.modelo||'')+'" data-color="'+(m.color||'')+'" '+
+           'style="color:#b91c1c;border-color:#b91c1c;">'+
+           '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
+           'Eliminar</button>';
+      h += '</div>';
+    }
+
     h += '</div></div>';
     return h;
+  }
+  function showEliminarModal(motoId, vinLabel, modelo, color){
+    PVApp.modal(
+      '<div class="ad-h2" style="color:#b91c1c;">Eliminar moto del inventario</div>'+
+      '<div style="color:var(--ad-dim);margin-bottom:14px;font-size:13px;line-height:1.55;">'+
+        'Vas a eliminar <strong>'+(modelo||'—')+' '+(color||'')+'</strong>'+
+        (vinLabel ? ' (VIN <code>'+vinLabel+'</code>)' : '')+' de tu inventario.<br><br>'+
+        'La moto queda como <strong>eliminada</strong> en la base de datos (no se borra de forma definitiva — admin puede restaurarla). '+
+        'Si es una entrada duplicada o de prueba, esto es lo correcto.'+
+      '</div>'+
+      '<label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Motivo de eliminación *</label>'+
+      '<textarea id="pvDelMotivo" class="ad-input" placeholder="Ej. entrada duplicada · moto regresada a CEDIS · error de captura" '+
+      'style="width:100%;min-height:70px;margin-bottom:6px;"></textarea>'+
+      '<div id="pvDelMsg" style="font-size:12px;color:#b91c1c;min-height:16px;"></div>'+
+      '<div style="display:flex;gap:8px;margin-top:10px;">'+
+        '<button class="ad-btn ghost" id="pvDelCancel" style="flex:1;">Cancelar</button>'+
+        '<button class="ad-btn primary" id="pvDelOk" style="flex:1;background:#b91c1c;border-color:#b91c1c;">Eliminar</button>'+
+      '</div>'
+    );
+    $('#pvDelCancel').on('click', PVApp.closeModal);
+    $('#pvDelOk').on('click', function(){
+      var motivo = ($('#pvDelMotivo').val()||'').trim();
+      if (motivo.length < 4) {
+        $('#pvDelMsg').text('Escribe un motivo (mínimo 4 caracteres).');
+        return;
+      }
+      var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Eliminando...');
+      PVApp.api('inventario/eliminar.php', { moto_id: motoId, motivo: motivo })
+        .done(function(r){
+          if (r && r.ok) {
+            PVApp.closeModal();
+            PVApp.toast('Moto eliminada');
+            render();
+          } else {
+            $('#pvDelMsg').text((r && r.error) || 'Error desconocido');
+            $btn.prop('disabled', false).text('Eliminar');
+          }
+        })
+        .fail(function(x){
+          var err = (x.responseJSON && x.responseJSON.error) || 'Error de conexión';
+          $('#pvDelMsg').text(err);
+          $btn.prop('disabled', false).text('Eliminar');
+        });
+    });
   }
   function iniciarEnsamble(motoId){
     if (!motoId) return;
