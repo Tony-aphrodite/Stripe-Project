@@ -2186,13 +2186,24 @@ window.AD_ventas = (function(){
     // Customer brief 2026-05-07: regen=1 forces a fresh PDF render so
     // cached PDFs from before today's contract-template fix (Fecha de
     // pago / Punto autorizado / Fecha estimada de entrega) get
-    // regenerated with the correct fields. Without regen=1 the static
-    // path served the pre-fix PDF showing "Por definir" + blank dates.
-    if (pedido) {
+    // regenerated with the correct fields.
+    //
+    // Customer brief 2026-05-09 (Óscar — Documentos modal of VK-2605-0002
+    // missing the Contrato row): the row was gated only on `r.pedido`
+    // (legacy long-format column). For rows that only have `pedido_corto`
+    // populated (the short customer-facing code), the contract download
+    // never showed up. Fall back through every identifier we have so
+    // the row is always available when any contract lookup is possible.
+    // descargar-contrato.php was extended in this same patch to accept
+    // pedido_corto AND raw transaccion id as alternative keys.
+    var contractKey = pedido
+        || (r.pedido_corto ? String(r.pedido_corto).replace(/^VK-/i, '') : '')
+        || (r.id ? 'TX' + r.id : '');
+    if (contractKey) {
       rows_.push({
         title: isCredito ? 'Contrato de financiamiento (firmado)' : 'Contrato de compraventa (firmado)',
         desc:  'Contrato con datos del cliente, sello de tiempo y firma electrónica.',
-        url:   '/configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(pedido)+'&inline=1&regen=1&debug=1',
+        url:   '/configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(contractKey)+'&inline=1&regen=1&debug=1',
         icon:  '📄',
         bg:    '#dbeafe', tx: '#1e40af'
       });

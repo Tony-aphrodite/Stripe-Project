@@ -24,23 +24,65 @@ if ($pedido === '') {
 // Look up the order to retrieve the stripe_pi we hashed against. If we
 // can't find the row we 404 instead of leaking existence information by
 // distinguishing "no row" from "wrong token".
+//
+// Customer brief 2026-05-09 (Óscar — Documentos modal of VK-2605-0002
+// hid the Contrato row because `pedido` was empty even though
+// pedido_corto was set): accept three identifier shapes so the admin
+// link always resolves to the right row:
+//   1. raw legacy pedido      ("1778302204-2d66242e", "123456")
+//   2. customer-facing short  ("2605-0002")  — looked up against
+//                              transacciones.pedido_corto
+//   3. transaction id synth   ("TX42")       — last-resort canonical
 $stripePi = '';
 $pdfPath  = '';
+$resolvedPedido = $pedido;   // what we'll embed in regenerated PDF / token
 try {
     $pdo = getDB();
-    $row = $pdo->prepare("SELECT stripe_pi, contrato_pdf_path
+    // (1) raw pedido
+    $row = $pdo->prepare("SELECT id, pedido, stripe_pi, contrato_pdf_path
                           FROM transacciones
                           WHERE pedido = ?
                           ORDER BY id DESC LIMIT 1");
     $row->execute([$pedido]);
     $r = $row->fetch(PDO::FETCH_ASSOC);
+    // (2) pedido_corto fallback
+    if (!$r) {
+        try {
+            $row = $pdo->prepare("SELECT id, pedido, stripe_pi, contrato_pdf_path
+                                  FROM transacciones
+                                  WHERE pedido_corto = ?
+                                  ORDER BY id DESC LIMIT 1");
+            $row->execute([$pedido]);
+            $r = $row->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            // pedido_corto column may not exist on legacy installs — ignore
+        }
+    }
+    // (3) "TX42" synth → resolve to id
+    if (!$r && preg_match('/^TX(\d+)$/i', $pedido, $m)) {
+        $row = $pdo->prepare("SELECT id, pedido, stripe_pi, contrato_pdf_path
+                              FROM transacciones
+                              WHERE id = ?
+                              LIMIT 1");
+        $row->execute([(int)$m[1]]);
+        $r = $row->fetch(PDO::FETCH_ASSOC);
+    }
     if ($r) {
         $stripePi = (string)($r['stripe_pi'] ?? '');
         $pdfPath  = (string)($r['contrato_pdf_path'] ?? '');
+        // Normalise the working identifier to the raw pedido so downstream
+        // regen / file lookup behaves the same regardless of which key
+        // the admin clicked through.
+        if (!empty($r['pedido'])) $resolvedPedido = (string)$r['pedido'];
     }
 } catch (Throwable $e) {
     error_log('descargar-contrato lookup: ' . $e->getMessage());
 }
+
+// Use the resolved pedido for the rest of the file (filename derivation,
+// regen calls, etc.) so a pedido_corto/TX-id click still produces the
+// correct PDF path.
+$pedido = $resolvedPedido;
 
 // ── Authorize ───────────────────────────────────────────────────────────
 // Admin session lives under session_name('VOLTIKA_ADMIN') (see
