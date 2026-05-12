@@ -88,15 +88,25 @@ $selectViUpd    = ($hasVI && $viHasUpdated)   ? "vi.truora_updated_at" : "NULL A
 $selectPid     = $hasPreaprob ? "p.id AS preaprobacion_id" : "NULL AS preaprobacion_id";
 
 // ── Conditional JOIN clauses (skip table entirely when missing) ────────
+//
+// Customer brief 2026-05-12 (Óscar, 10th round — initial output showed
+// 49 identical rows for the same transaccion because Carlos had 49
+// preaprobaciones tied to his email and the LEFT JOIN multiplied them
+// out as a Cartesian product). Gate each JOIN on `p.id = MAX(...)` so
+// we pick exactly ONE most-recent preaprobacion (and one most-recent
+// verificacion_identidad) per transaccion. Without this, every customer
+// who retried CDC / Truora would appear N times.
 $joinPreaprob = $hasPreaprob ? "
-    LEFT JOIN preaprobaciones p ON (
-              (p.email    <> '' AND p.email    = t.email)
-           OR (p.telefono <> '' AND p.telefono = t.telefono)
+    LEFT JOIN preaprobaciones p ON p.id = (
+        SELECT MAX(p2.id) FROM preaprobaciones p2
+         WHERE (p2.email    <> '' AND p2.email    = t.email)
+            OR (p2.telefono <> '' AND p2.telefono = t.telefono)
     )" : "";
 $joinVI = $hasVI ? "
-    LEFT JOIN verificaciones_identidad vi ON (
-              (vi.email    <> '' AND vi.email    = t.email)
-           OR (vi.telefono <> '' AND vi.telefono = t.telefono)
+    LEFT JOIN verificaciones_identidad vi ON vi.id = (
+        SELECT MAX(vi2.id) FROM verificaciones_identidad vi2
+         WHERE (vi2.email    <> '' AND vi2.email    = t.email)
+            OR (vi2.telefono <> '' AND vi2.telefono = t.telefono)
     )" : "";
 
 // ── "Missing signature" predicate ──────────────────────────────────────
