@@ -104,6 +104,21 @@ try {
 // without a populated transaccion_id can still surface the contract
 // option as long as the pedido_num is something descargar-contrato can
 // resolve.
+//
+// Customer brief 2026-05-12 (Óscar, 7th round — screenshot: clicking
+// Contrato firmado on a credit order opened a technical diagnostic page
+// "Contrato no disponible · Pedido: 1778302204-2d66242e · RUTAS
+// BUSCADAS / Dossier Setup / ..."). The cash/MSI contract is generated
+// on the spot, but credit-family contracts (enganche/parcial/crédito)
+// only get a PDF after the customer signs via Truora+Cincel from their
+// portal. When that signing hasn't happened yet, descargar-contrato.php
+// has nothing to serve and falls back to its admin-debug diagnostic
+// page. We pre-check the credit-PDF availability here so the modal can
+// render a friendly "pendiente de firma" card instead of letting the
+// punto operator click into the technical view.
+$contratosDir   = __DIR__ . '/../../../configurador/php/contratos';
+$contratosDirTmp = sys_get_temp_dir() . '/voltika_contratos';
+
 foreach ($rows as &$row) {
     $hasPi = !empty($row['stripe_pi']) && strpos($row['stripe_pi'], 'pi_') === 0;
     $pedidoNumBare = preg_replace('/^VK-/i', '', (string)($row['pedido_num'] ?? ''));
@@ -112,9 +127,36 @@ foreach ($rows as &$row) {
         ?: $pedidoNumBare
         ?: ($row['transaccion_id'] ? 'TX' . (int)$row['transaccion_id'] : '');
     $row['contract_key'] = $contractKey;
-    $row['disponible']   = [
-        'contrato'    => $contractKey !== '',
-        'recibo_pago' => $hasPi,
+
+    // Credit-family detection — these tpagos require the Truora+Cincel
+    // signing flow before a PDF exists on disk.
+    $tpagoNorm   = strtolower(trim((string)($row['tpago'] ?? '')));
+    $isCreditFam = in_array($tpagoNorm, ['credito','enganche','parcial'], true);
+
+    // For credit orders, mirror descargar-contrato.php's glob search to
+    // know whether the signed PDF is actually present.
+    $creditPdfExists = false;
+    if ($isCreditFam) {
+        $safeName = preg_replace('/[^a-zA-Z0-9]/', '_', (string)($row['cliente_nombre'] ?? ''));
+        if ($safeName !== '') {
+            $candidates = array_merge(
+                @glob($contratosDir   . '/contrato_*' . $safeName . '*.pdf') ?: [],
+                @glob($contratosDirTmp . '/contrato_*' . $safeName . '*.pdf') ?: []
+            );
+            $creditPdfExists = !empty($candidates);
+        }
+    }
+
+    $row['is_credit']                  = $isCreditFam;
+    $row['contract_credito_pendiente'] = $isCreditFam && !$creditPdfExists;
+    $row['disponible']                 = [
+        // Contract is "available" when:
+        //   • we have a contract_key, AND
+        //   • either it's NOT a credit order (cash/MSI regen always works)
+        //     OR the credit PDF exists on disk
+        'contrato'                   => $contractKey !== '' && (!$isCreditFam || $creditPdfExists),
+        'contrato_credito_pendiente' => $isCreditFam && !$creditPdfExists,
+        'recibo_pago'                => $hasPi,
     ];
 }
 unset($row);

@@ -234,7 +234,11 @@ window.PV_entrega = (function(){
 
     html += '<div style="display:flex;flex-direction:column;gap:8px;">';
 
-    // Contrato
+    // Contrato — 3 estados posibles:
+    //   1. disponible        → enlace clicable (azul)
+    //   2. crédito pendiente → tarjeta amarilla informativa, no clicable
+    //   3. sin identificador → tarjeta gris (no debería ocurrir si historial
+    //                          devolvió contract_key)
     if (dispo.contrato && contractKey) {
       var contractUrl = '/configurador/php/descargar-contrato.php?pedido='+
         encodeURIComponent(contractKey)+'&inline=1';
@@ -245,6 +249,21 @@ window.PV_entrega = (function(){
         '<div style="font-size:11.5px;opacity:.85;">Contrato de compraventa con firma electrónica del cliente.</div></div>'+
         '<span>›</span>'+
       '</a>';
+    } else if (dispo.contrato_credito_pendiente) {
+      // Customer brief 2026-05-12 (Óscar, 7th round): credit contracts
+      // only get a PDF once the customer signs via Truora+Cincel. We
+      // surface this state explicitly so the punto operator doesn't end
+      // up on the technical diagnostic page.
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;color:#92400e;">'+
+        '<span style="font-size:22px;">⏳</span>'+
+        '<div style="flex:1;">'+
+          '<div style="font-weight:700;">Contrato de crédito pendiente de firma</div>'+
+          '<div style="font-size:11.5px;line-height:1.5;margin-top:2px;">'+
+            'Este pedido es a crédito y el cliente <strong>aún no ha firmado</strong> el contrato electrónico '+
+            '(vía Truora + Cincel desde su portal). El PDF se generará automáticamente cuando complete la firma.'+
+          '</div>'+
+        '</div>'+
+      '</div>';
     } else {
       html += '<div style="padding:12px 14px;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:8px;color:#6b7280;font-size:12.5px;">'+
         '<strong>📄 Contrato firmado</strong><br>No disponible — falta identificador de pedido.</div>';

@@ -178,6 +178,44 @@ if (($absPath === '' || !is_readable($absPath)) && $adminOk) {
 
 if ($absPath === '' || !is_readable($absPath)) {
     http_response_code(404);
+
+    // Customer brief 2026-05-12: same friendly-page path for punto users
+    // as the live descargar-contrato.php — see parent file for rationale.
+    $isPunto = empty($_SESSION['admin_user_id']) && !empty($_SESSION['punto_user_id']);
+
+    if ($isPunto) {
+        $tx = $tx ?? null;
+        $tpagoNorm = strtolower(trim((string)($tx['tpago'] ?? '')));
+        $isCredit  = in_array($tpagoNorm, ['credito','enganche','parcial'], true);
+
+        header('Content-Type: text/html; charset=UTF-8');
+        echo '<!doctype html><html lang="es"><head><meta charset="utf-8">';
+        echo '<title>Contrato no disponible</title><style>';
+        echo 'body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f8fafc;color:#0f172a;padding:24px;max-width:540px;margin:40px auto;line-height:1.55;}';
+        echo '.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.05);}';
+        echo 'h1{font-size:20px;margin:0 0 12px;color:#0f172a;}';
+        echo '.icon{font-size:42px;display:block;text-align:center;margin-bottom:14px;}';
+        echo '.note{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;color:#92400e;font-size:13.5px;margin-top:14px;}';
+        echo '.note strong{color:#78350f;}';
+        echo '.muted{color:#64748b;font-size:12.5px;margin-top:14px;}';
+        echo '</style></head><body><div class="card">';
+        echo '<span class="icon">📄</span>';
+        if ($isCredit) {
+            echo '<h1>Contrato de crédito pendiente de firma</h1>';
+            echo '<p>Este pedido es <strong>a crédito</strong> y el contrato electrónico aún no ha sido firmado por el cliente.</p>';
+            echo '<div class="note"><strong>¿Qué pasa?</strong><br>';
+            echo 'El PDF del contrato se genera automáticamente cuando el cliente firma desde su portal voltika.mx/clientes con su identificación (Truora) y firma electrónica (Cincel). ';
+            echo 'Pídele al cliente que complete la firma desde su celular para que el contrato esté disponible aquí.</div>';
+        } else {
+            echo '<h1>Contrato aún no disponible</h1>';
+            echo '<p>El contrato de este pedido todavía no está listo para descarga.</p>';
+            echo '<div class="note">Esto suele resolverse solo en unos minutos. Si persiste, avisa al equipo central (CEDIS / admin) con el número de pedido para que lo regeneren.</div>';
+        }
+        echo '<div class="muted">Pedido: <code>' . htmlspecialchars($pedido) . '</code></div>';
+        echo '</div></body></html>';
+        exit;
+    }
+
     if ($adminOk) {
         // Full diagnostic page — admin needs to know exactly what failed.
         header('Content-Type: text/html; charset=UTF-8');
