@@ -312,15 +312,24 @@ window.AD_envios = (function(){
             '<div class="ad-dim" style="font-size:11px;margin-top:2px;">Asignada desde Ventas · Para cambiarla, reasigna desde la pantalla de Ventas</div>'+
           '</div>';
       } else {
+        // Customer brief 2026-05-09 (Óscar, 5th round — "We need a filter
+        // here"): the moto list can hit 50+ entries, making manual scroll
+        // painful. Add a live filter input above the dropdown that hides
+        // options not matching VIN / modelo / color / punto substring.
         html += '<label style="font-weight:600;font-size:13px;">Moto:</label>'+
-          '<select class="ad-select" id="adEnvMoto" style="margin-bottom:10px;width:100%;">';
+          '<input class="ad-input" id="adEnvMotoFilter" type="search" placeholder="🔍 Filtrar por VIN, modelo, color o punto..." '+
+          '  style="margin-bottom:6px;width:100%;font-size:13px;" autocomplete="off">'+
+          '<select class="ad-select" id="adEnvMoto" size="8" style="margin-bottom:6px;width:100%;font-size:13px;">';
         html += '<option value="">— Seleccionar moto —</option>';
         motos.forEach(function(m){
           var label = (m.vin_display||m.vin)+' · '+m.modelo+' · '+m.color;
           if (m.punto_nombre) label += ' · Punto: '+m.punto_nombre;
-          html += '<option value="'+m.id+'">'+label+'</option>';
+          // data-search holds the lowercased haystack for filtering
+          var search = ((m.vin_display||m.vin||'')+' '+(m.modelo||'')+' '+(m.color||'')+' '+(m.punto_nombre||'')).toLowerCase();
+          html += '<option value="'+m.id+'" data-search="'+esc(search)+'">'+label+'</option>';
         });
-        html += '</select>';
+        html += '</select>'+
+          '<div id="adEnvMotoCount" style="font-size:11px;color:var(--ad-dim);margin-bottom:8px;">'+motos.length+' motos disponibles</div>';
       }
 
       // Punto selector — auto-select the order's punto.
@@ -381,6 +390,26 @@ window.AD_envios = (function(){
 
       // Back button to return to order selection
       $('#adEnvBack2').on('click', function(){ crearEnvioSelectOrder(); });
+
+      // Live filter for the moto dropdown (Óscar's "we need a filter").
+      // Hides options whose data-search haystack doesn't contain the query
+      // (case-insensitive substring). The first "— Seleccionar moto —"
+      // placeholder always stays visible.
+      $('#adEnvMotoFilter').on('input', function(){
+        var q = $(this).val().toLowerCase().trim();
+        var $sel = $('#adEnvMoto');
+        var shown = 0;
+        $sel.find('option').each(function(){
+          if (this.value === '') { $(this).show(); return; }
+          var hay = ($(this).attr('data-search') || '').toLowerCase();
+          if (!q || hay.indexOf(q) >= 0) { $(this).show(); shown++; }
+          else { $(this).hide(); }
+        });
+        $('#adEnvMotoCount').text(shown + ' de ' + (motos.length) + ' motos coinciden' + (q ? ' con "' + q + '"' : ''));
+        // Reset selection if the currently-selected option got hidden
+        var $cur = $sel.find('option:selected');
+        if ($cur.length && $cur.css('display') === 'none') $sel.val('');
+      });
 
       // Auto-quote when punto selected — purely optional; failures are
       // silent so the admin can still create the envío manually.

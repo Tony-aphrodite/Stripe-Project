@@ -35,6 +35,8 @@ $pdo = getDB();
 // columns added through a separate migration script.
 $newCols = [
     'vin_caja'         => "VARCHAR(40) NULL",
+    'vin_caja_coincide'    => "TINYINT(1) NULL DEFAULT NULL",
+    'vin_mismatch_confirmed' => "TINYINT(1) NOT NULL DEFAULT 0",
     'sello_numero'     => "VARCHAR(60) NULL",
     'sello_intacto'    => "TINYINT(1) NULL DEFAULT NULL",
     'foto_sello_url'   => "VARCHAR(255) NULL",
@@ -68,6 +70,29 @@ if (!$row) puntoJsonOut(['error' => 'Envío no corresponde a este punto'], 404);
 $vinCoincide = (strcasecmp(trim($row['vin']), $vinScan) === 0) ? 1 : 0;
 if (!$vinCoincide) {
     puntoJsonOut(['error' => 'VIN escaneado no coincide con la moto esperada', 'vin_esperado' => $row['vin'], 'vin_escaneado' => $vinScan], 400);
+}
+
+// Customer brief 2026-05-09 (Óscar, 5th round): the VIN PRINTED ON THE BOX
+// must also be compared against the expected chassis VIN. A mismatch means
+// either the wrong moto was put in the box at CEDIS or there's a packing
+// error — the operator MUST acknowledge the discrepancy before we save the
+// reception. The frontend sends confirm_vin_mismatch=1 after showing a
+// confirm() dialog; without that flag, we reject so the situation can't
+// slip through silently.
+$vinCajaIn      = trim((string)($d['vin_caja'] ?? ''));
+$confirmVinDiff = !empty($d['confirm_vin_mismatch']);
+$vinCajaCoincide = null;
+if ($vinCajaIn !== '') {
+    $vinCajaCoincide = (strcasecmp(trim($row['vin']), $vinCajaIn) === 0) ? 1 : 0;
+    if (!$vinCajaCoincide && !$confirmVinDiff) {
+        puntoJsonOut([
+            'error'          => 'El VIN impreso en la caja no coincide con el VIN esperado. Verifica que la moto correcta está en esta caja y reenvía con confirmación explícita.',
+            'vin_esperado'   => $row['vin'],
+            'vin_escaneado'  => $vinScan,
+            'vin_caja'       => $vinCajaIn,
+            'requires_confirm' => true,
+        ], 409);
+    }
 }
 
 // Customer brief 2026-05-09 (Óscar — "When the Voltika point receives a
@@ -156,6 +181,11 @@ $vals = [
 // Conditional column appends — only added if the schema actually has them.
 $extras = [
     'vin_caja'           => trim((string)($d['vin_caja'] ?? '')),
+    // Audit trail for the VIN-on-box vs chassis-VIN comparison:
+    //   coincide=1 → matched; coincide=0 + confirmed=1 → operator
+    //   acknowledged the discrepancy; coincide=NULL → vin_caja blank
+    'vin_caja_coincide'      => $vinCajaCoincide,
+    'vin_mismatch_confirmed' => $confirmVinDiff ? 1 : 0,
     'sello_numero'       => trim((string)($d['sello_numero'] ?? '')),
     'sello_intacto'      => isset($d['sello_intacto']) ? (int)!!$d['sello_intacto'] : null,
     'foto_sello_url'     => $urlSello,
@@ -165,7 +195,11 @@ $extras = [
 ];
 foreach ($extras as $col => $val) {
     if (!in_array($col, $availableCols, true)) continue;   // schema doesn't have it yet
-    if ($val === '' || $val === null) continue;            // skip blanks
+    // For binary flags we want 0 (false) to be written, not skipped. Only
+    // skip when the value is genuinely empty/null AND not the flag columns.
+    $isFlag = in_array($col, ['vin_caja_coincide','vin_mismatch_confirmed','sello_intacto'], true);
+    if (!$isFlag && ($val === '' || $val === null)) continue;
+    if ($isFlag && $val === null) continue;
     $cols[] = $col;
     $vals[] = $val;
 }

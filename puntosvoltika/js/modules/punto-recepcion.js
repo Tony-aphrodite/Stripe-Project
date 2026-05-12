@@ -100,8 +100,14 @@ window.PV_recepcion = (function(){
       '</div>'+
 
       // NEW: VIN escrito en la caja de cartón (puede diferir del VIN del chasis)
+      // Customer brief 2026-05-09 (Óscar, 5th round — screenshot 4): when the
+      // VIN on the box differs from the chassis VIN we expect, the system has
+      // to flag it. A silent mismatch can mean wrong moto in the box or a
+      // mix-up at CEDIS. Live red border + warning message + server-side
+      // mismatch check.
       '<label class="ad-label">VIN impreso en la caja</label>'+
-      '<input id="pvRVinCaja" class="ad-input" placeholder="VIN en la caja" style="margin-bottom:10px;">'+
+      '<input id="pvRVinCaja" class="ad-input" placeholder="VIN en la caja" style="margin-bottom:4px;">'+
+      '<div id="pvRVinCajaWarn" style="font-size:12px;color:#b91c1c;font-weight:600;margin-bottom:10px;min-height:16px;display:none;"></div>'+
 
       // NEW: número de sello + integridad
       '<label class="ad-label">Número de sello aplicado</label>'+
@@ -137,6 +143,33 @@ window.PV_recepcion = (function(){
 
     $('#pvScanBtn').on('click', function(){ openVinScanner(vinEsperado); });
 
+    // Live VIN-caja mismatch warning. Compares against the expected (chassis)
+    // VIN — operator can still proceed if they're sure (server asks for
+    // explicit confirmation in that case).
+    function _normVin(s){ return (s||'').toString().trim().toUpperCase(); }
+    var _vinEsperadoNorm = _normVin(vinEsperado);
+    function recheckVinCaja(){
+      var caja = _normVin($('#pvRVinCaja').val());
+      var $warn = $('#pvRVinCajaWarn');
+      var $inp  = $('#pvRVinCaja');
+      if (!caja) {
+        $warn.hide().text('');
+        $inp.css('border-color', '');
+        return;
+      }
+      if (caja !== _vinEsperadoNorm) {
+        $warn.show().html(
+          '⚠️ VIN en la caja <strong>NO coincide</strong> con el VIN esperado ('+vinEsperado+').<br>'+
+          '<small>Verifica que la moto correcta está en esta caja. Si quieres registrar la diferencia para auditoría, podrás confirmar al guardar.</small>'
+        );
+        $inp.css('border-color', '#b91c1c').css('background', '#fef2f2');
+      } else {
+        $warn.show().html('<span style="color:#059669;">✓ VIN en la caja coincide con el VIN esperado.</span>');
+        $inp.css('border-color', '#059669').css('background', '#f0fdf4');
+      }
+    }
+    $('#pvRVinCaja').on('input change blur', recheckVinCaja);
+
     // Photo button hooks — one per (slot,kind).
     var photos = { sello:null, vin_label:null, unidad:null };
     $('.pvRPhotoOpen').on('click', function(){
@@ -156,6 +189,21 @@ window.PV_recepcion = (function(){
     });
 
     $('#pvRSave').on('click', function(){
+      // Customer brief 2026-05-09: when vin_caja differs from the expected
+      // chassis VIN, ask explicit confirmation before submitting. Adds a
+      // confirm_vin_mismatch flag so the server can persist the discrepancy
+      // without blocking when the operator is sure the box-label was the
+      // wrong one (manufacturing typo, etc.).
+      var caja = _normVin($('#pvRVinCaja').val());
+      var confirmMismatch = 0;
+      if (caja && caja !== _vinEsperadoNorm) {
+        var msg = 'El VIN en la caja (' + $('#pvRVinCaja').val() + ') NO coincide con el VIN esperado (' + vinEsperado + ').\n\n'+
+                  '¿La moto correcta está en esta caja a pesar de la diferencia?\n\n'+
+                  '• OK = registrar la recepción con la discrepancia para auditoría\n'+
+                  '• Cancelar = corregir el dato antes de guardar';
+        if (!confirm(msg)) return;
+        confirmMismatch = 1;
+      }
       var data = {
         envio_id: envioId, moto_id: motoId,
         vin_escaneado: $('#pvRVin').val().trim(),
@@ -173,11 +221,41 @@ window.PV_recepcion = (function(){
         observaciones: $('#pvRObs').val(),
         fecha_recepcion: $('#pvRFecha').val() || null,
         recibido_por_nombre: $('#pvRUser').val().trim(),
-        notas: $('#pvRNotas').val()
+        notas: $('#pvRNotas').val(),
+        // Confirmation when vin_caja != vin_esperado — server rejects
+        // mismatch without this flag, prompts user to acknowledge.
+        confirm_vin_mismatch: confirmMismatch
       };
       PVApp.api('recepcion/recibir.php', data).done(function(r){
         if(r.ok){ PVApp.closeModal(); PVApp.toast('Moto recibida'); render(); }
-      }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Error'); });
+      }).fail(function(x){
+        // Customer brief 2026-05-09 (Óscar, 5th round — "cannot add a
+        // motorcycle"): when the backend rejects with the strict-validation
+        // missing-fields error, list each missing field by name so the
+        // operator immediately sees what to fix instead of getting a
+        // generic "Error".
+        var r = x.responseJSON || {};
+        var err = r.error || 'Error de conexión';
+        if (Array.isArray(r.missing) && r.missing.length) {
+          var labels = {
+            'estado_fisico_ok':       'Estado físico OK',
+            'sin_danos':              'Sin daños visibles',
+            'componentes_completos':  'Componentes completos',
+            'bateria_ok':             'Batería OK',
+            'sello_intacto':          'Sello aplicado y SIN violar (checkbox)',
+            'sello_numero':           'Número de sello aplicado',
+            'vin_caja':               'VIN impreso en la caja',
+            'foto_sello':             'Foto del sello',
+            'foto_vin_label':         'Foto de la etiqueta VIN',
+            'foto_unidad':            'Foto de la unidad'
+          };
+          err += '\n\nFaltan estos campos:\n  • ' + r.missing.map(function(k){ return labels[k] || k; }).join('\n  • ');
+        }
+        if (r.requires_confirm) {
+          err += '\n\n(Para confirmar la discrepancia y guardar, vuelve a presionar Confirmar recepción.)';
+        }
+        alert(err);
+      });
     });
   }
 

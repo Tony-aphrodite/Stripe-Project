@@ -69,7 +69,14 @@ window.PV_inventario = (function(){
     });
     $('.pv-eliminar-btn').on('click', function(e){
       e.stopPropagation();
-      showEliminarModal($(this).data('id'), $(this).data('vin'), $(this).data('modelo'), $(this).data('color'));
+      showEliminarModal(
+        $(this).data('id'),
+        $(this).data('vin'),
+        $(this).data('modelo'),
+        $(this).data('color'),
+        $(this).data('cliente') || '',
+        $(this).data('pedido')  || ''
+      );
     });
   }
   function ventaReferidoCard(v){
@@ -161,19 +168,23 @@ window.PV_inventario = (function(){
       }
     }
 
-    // Customer brief 2026-05-09 ("esto es en puntos voltika. Please help
-    // me to delete this."): the punto operator had no in-app way to
-    // remove a stray inventory row (duplicate, test entry, returned
-    // bike) — they had to escalate to admin every time. Add a soft-
-    // delete button ONLY for "Disponible para venta" (no cliente,
-    // physically received), so an active customer order can never get
-    // wiped by accident. The server endpoint
-    // inventario/eliminar.php re-validates the safety gate.
-    if (tipo === 'venta' && m.recepcion_id && !m.cliente_nombre && !m.pedido_num) {
+    // Customer brief 2026-05-09 (Óscar, 5th round — "the point cannot
+    // delete any moto"): the previous restriction (`tipo === 'venta'`)
+    // only allowed deletion from "Disponible para venta". Punto operators
+    // now report needing delete on the other buckets too: stale duplicate
+    // entries in "Para entrega" and rows with no cliente that ended up in
+    // showroom slots, returned units, etc. Widen the visibility AND
+    // surface a clear warning in the modal when a cliente IS linked —
+    // server-side (inventario/eliminar.php) still enforces the safety
+    // gate, so even if the operator clicks Eliminar on a row with a
+    // real order, the request is rejected with a useful error.
+    if (tipo === 'entrega' || tipo === 'venta') {
       h += '<div style="margin-top:8px;">';
       h += '<button class="ad-btn ghost sm pv-eliminar-btn" data-id="'+m.id+'" '+
            'data-vin="'+(m.vin_display||m.vin||'')+'" '+
            'data-modelo="'+(m.modelo||'')+'" data-color="'+(m.color||'')+'" '+
+           'data-cliente="'+(m.cliente_nombre||'')+'" '+
+           'data-pedido="'+(m.pedido_num||'')+'" '+
            'style="color:#b91c1c;border-color:#b91c1c;">'+
            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
            'Eliminar</button>';
@@ -183,9 +194,25 @@ window.PV_inventario = (function(){
     h += '</div></div>';
     return h;
   }
-  function showEliminarModal(motoId, vinLabel, modelo, color){
+  function showEliminarModal(motoId, vinLabel, modelo, color, clienteName, pedidoNum){
+    // Customer brief 2026-05-09 (Óscar, 5th round — "the point cannot
+    // delete any moto"): the button is now visible on entrega + venta
+    // rows. If the moto has a cliente/pedido linked, show an explicit
+    // warning so the operator understands what they're about to remove,
+    // and the server-side guard in inventario/eliminar.php still
+    // rejects the request if a real order is attached.
+    var hasCliente = (clienteName || pedidoNum);
+    var warningBlock = hasCliente
+        ? '<div style="background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;padding:10px 12px;border-radius:6px;font-size:12.5px;margin-bottom:12px;">'
+          + '<strong>⚠ Atención:</strong> esta moto está vinculada a un cliente / pedido.<br>'
+          + (clienteName ? '<div style="margin-top:4px;">Cliente: <strong>'+clienteName+'</strong></div>' : '')
+          + (pedidoNum   ? '<div>Pedido: <code>'+pedidoNum+'</code></div>' : '')
+          + '<div style="margin-top:6px;font-size:11.5px;">No se podrá eliminar mientras haya un cliente activo. Para reasignar, contacta a CEDIS.</div>'
+          + '</div>'
+        : '';
     PVApp.modal(
       '<div class="ad-h2" style="color:#b91c1c;">Eliminar moto del inventario</div>'+
+      warningBlock+
       '<div style="color:var(--ad-dim);margin-bottom:14px;font-size:13px;line-height:1.55;">'+
         'Vas a eliminar <strong>'+(modelo||'—')+' '+(color||'')+'</strong>'+
         (vinLabel ? ' (VIN <code>'+vinLabel+'</code>)' : '')+' de tu inventario.<br><br>'+

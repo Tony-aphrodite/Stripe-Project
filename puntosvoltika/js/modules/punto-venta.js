@@ -226,17 +226,38 @@ window.PV_venta = (function(){
       '<button class="ad-btn ghost" onclick="PVApp.closeModal()" style="width:100%;margin-top:6px;">Cancelar</button>'
     );
     $('#pvVSave').on('click', function(){
+      // Customer brief 2026-05-09 (Óscar, 5th round — "cannot add a
+      // motorcycle"): minimum-field validation in JS so the user sees the
+      // problem before the round-trip, plus a richer error message when
+      // the backend rejects (typical causes: moto not in 'consignacion'
+      // state, cliente fields missing, moto already linked to a customer).
+      var nombre = ($('#pvVN').val() || '').trim();
+      var email  = ($('#pvVE').val() || '').trim();
+      var tel    = ($('#pvVT').val() || '').trim();
+      if (!nombre) { alert('El nombre del cliente es requerido.'); return; }
+      if (!email && !tel) { alert('Email o teléfono del cliente es requerido (al menos uno).'); return; }
       var $b = $(this).prop('disabled', true).text('Guardando…');
       PVApp.api('asignar/referido.php',{
         moto_id: ctx.moto_id, canal: $('#pvCanal').val(),
-        cliente_nombre: $('#pvVN').val(), cliente_email: $('#pvVE').val(),
-        cliente_telefono: $('#pvVT').val()
+        cliente_nombre: nombre, cliente_email: email,
+        cliente_telefono: tel
         // precio intentionally omitted — backend derives it from modelos
       }).done(function(r){
         if(r.ok){ PVApp.closeModal(); PVApp.toast('Venta registrada. Cliente notificado.'); render(); }
-        else { alert(r.error||'Error'); $b.prop('disabled', false).text('Registrar venta'); }
+        else {
+          var msg = (r && r.error) || 'Error';
+          // Common backend rejection — explain in plain language.
+          if (msg.indexOf('consignación') >= 0 || msg.indexOf('showroom') >= 0) {
+            msg += '\n\n💡 Esta moto fue asignada para entrega a un pedido específico, no como stock de showroom. Para venderla en venta directa, pídele a CEDIS que cambie su tipo a "consignación" desde el panel admin.';
+          } else if (msg.indexOf('ya asignada') >= 0) {
+            msg += '\n\n💡 Esta moto ya tiene un cliente. Si quieres asignársela a otro cliente, primero contacta a admin para desasignarla.';
+          }
+          alert(msg);
+          $b.prop('disabled', false).text('Registrar venta');
+        }
       }).fail(function(x){
-        alert((x.responseJSON&&x.responseJSON.error)||'Error');
+        var err = (x.responseJSON&&x.responseJSON.error)||'Error de conexión con el servidor';
+        alert(err);
         $b.prop('disabled', false).text('Registrar venta');
       });
     });
