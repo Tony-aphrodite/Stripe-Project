@@ -1,6 +1,36 @@
 window.PV_entrega = (function(){
   var ctx = {};
 
+  // Customer brief 2026-05-12 (Óscar, 7th round — screenshot 1:
+  // "Here we need the history of the delivered bikes"): split the
+  // Entregas screen into "Pendientes" (legacy active deliveries) and
+  // "Historial" (completed deliveries with documents). Same UX pattern
+  // as the Recepción screen so the operator only needs one mental model.
+  var _tab = 'pendientes';
+  var _historyFilter = '';
+
+  function tabsBar(){
+    var pCls = _tab === 'pendientes' ? 'primary' : 'ghost';
+    var hCls = _tab === 'historial'  ? 'primary' : 'ghost';
+    return '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">'+
+      '<button class="ad-btn '+pCls+' sm pvEntTab" data-tab="pendientes">🚚 Pendientes</button>'+
+      '<button class="ad-btn '+hCls+' sm pvEntTab" data-tab="historial">🗂️ Historial</button>'+
+    '</div>';
+  }
+
+  function bindTabs(){
+    $('.pvEntTab').off('click').on('click', function(){
+      _tab = $(this).data('tab');
+      render();
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
   // Bug 5.1 (customer brief 2026-05-08): auto-save the wizard state every
   // time the user advances. The server keeps the latest snapshot in
   // entregas.step / step_data so a closed window or refresh doesn't blow
@@ -53,10 +83,12 @@ window.PV_entrega = (function(){
   }
 
   function render(){
-    PVApp.render('<div class="ad-h1">Entregar al cliente</div><div><span class="ad-spin"></span></div>');
+    if (_tab === 'historial') return renderHistorial();
+    PVApp.render(tabsBar() + '<div class="ad-h1">Entregar al cliente</div><div><span class="ad-spin"></span></div>');
+    bindTabs();
     PVApp.api('inventario/listar.php').done(function(r){
       var list = (r.inventario_entrega||[]).filter(function(m){ return m.estado!=='entregada'; });
-      var html = '<div class="ad-h1">Entregar al cliente</div>';
+      var html = tabsBar() + '<div class="ad-h1">Entregar al cliente</div>';
 
       // Fraud-prevention warning. Always shown, regardless of whether the list
       // has items — punto operator must always see this notice before acting.
@@ -90,11 +122,164 @@ window.PV_entrega = (function(){
         '</div>';
       });
       PVApp.render(html);
+      bindTabs();
       $('.pvStart').on('click', function(){
         ctx = { moto_id: $(this).data('id'), cliente: $(this).data('nombre'), tel: $(this).data('tel'), pedido: $(this).data('pedido'), step:0 };
         step1();
       });
     });
+  }
+
+  // ── Historial de entregas (Bug 7.1) ──────────────────────────────────
+  // Lists every delivered moto for this punto with the linked entrega,
+  // the receiving dealer user, and a "Documentos" button to view the
+  // signed contract + Stripe receipt without leaving the punto panel.
+  function renderHistorial(){
+    var html = tabsBar();
+    html += '<div class="ad-h1">Historial de entregas</div>';
+    html += '<div style="color:var(--ad-dim);margin-bottom:10px;">Todas las motos entregadas al cliente en este punto, con acceso a contrato y recibo de pago.</div>';
+    html += '<div style="display:flex;gap:6px;margin-bottom:12px;">'+
+      '<input id="pvEntHistSearch" class="ad-input" placeholder="Buscar por VIN, modelo, pedido o cliente" '+
+        'value="'+(_historyFilter||'').replace(/"/g,'&quot;')+'" style="flex:1;">'+
+      '<button class="ad-btn primary sm" id="pvEntHistSearchBtn">Buscar</button>'+
+      (_historyFilter ? '<button class="ad-btn ghost sm" id="pvEntHistClear">Limpiar</button>' : '')+
+    '</div>';
+    html += '<div id="pvEntHistList"><div><span class="ad-spin"></span> Cargando historial…</div></div>';
+    PVApp.render(html);
+    bindTabs();
+    $('#pvEntHistSearchBtn').on('click', function(){
+      _historyFilter = ($('#pvEntHistSearch').val()||'').trim();
+      renderHistorial();
+    });
+    $('#pvEntHistSearch').on('keydown', function(e){ if(e.which===13){ $('#pvEntHistSearchBtn').click(); } });
+    $('#pvEntHistClear').on('click', function(){ _historyFilter=''; renderHistorial(); });
+
+    var url = 'entrega/historial.php' + (_historyFilter ? '?q='+encodeURIComponent(_historyFilter) : '');
+    PVApp.api(url).done(paintHistorial).fail(function(x){
+      $('#pvEntHistList').html('<div class="ad-card" style="color:#b91c1c;">Error al cargar historial: '+
+        ((x.responseJSON&&x.responseJSON.error)||'conexión')+'</div>');
+    });
+  }
+
+  function paintHistorial(r){
+    var rows = (r && r.entregas) || [];
+    if (rows.length === 0) {
+      $('#pvEntHistList').html('<div class="ad-card" style="color:var(--ad-dim);">No hay entregas completadas'+
+        (_historyFilter ? ' para "'+_historyFilter+'".' : '.') + '</div>');
+      return;
+    }
+    var html = '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">'+
+      rows.length + ' entrega' + (rows.length===1?'':'s') +
+      (_historyFilter ? ' que coinciden con "'+_historyFilter+'"' : '') + '</div>';
+    rows.forEach(function(row, i){ html += histCard(row, i); });
+    $('#pvEntHistList').html(html);
+    $('.pvEntDocs').on('click', function(){
+      var idx = parseInt($(this).data('idx'), 10);
+      var row = rows[idx];
+      if (row) showDocumentosModal(row);
+    });
+  }
+
+  function fmtDate(d){
+    if(!d) return '—';
+    return String(d).slice(0,10);
+  }
+
+  function histCard(row, idx){
+    // idx position is implicit by iteration order — we re-bind via data-idx
+    // below using a closure over the rows array.
+    var actaBadge = row.cliente_acta_firmada == 1
+      ? '<span class="ad-badge green" title="Acta de entrega firmada por el cliente">Acta ✓</span>'
+      : '<span class="ad-badge yellow" title="Falta la firma del acta">Acta pend.</span>';
+    var paymentBadge = (row.stripe_pi && String(row.stripe_pi).indexOf('pi_')===0)
+      ? '<span class="ad-badge blue" title="Pago Stripe vinculado">Stripe</span>'
+      : '<span class="ad-badge gray" title="Sin PaymentIntent">Sin Stripe</span>';
+
+    return '<div class="ad-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">'+
+        '<div style="flex:1;min-width:200px;">'+
+          (row.pedido_num ? '<div style="font-size:11.5px;font-weight:700;color:var(--ad-primary,#039fe1);">'+row.pedido_num+'</div>' : '')+
+          '<div style="font-weight:700;">'+(row.modelo||'—')+' · '+(row.color||'—')+'</div>'+
+          '<div style="font-size:12px;color:var(--ad-dim);">VIN: <code>'+(row.vin_display||row.vin||'—')+'</code></div>'+
+          (row.cliente_nombre ? '<div style="font-size:12.5px;margin-top:4px;">Cliente: <strong>'+escapeHtml(row.cliente_nombre)+'</strong></div>' : '')+
+          (row.cliente_telefono ? '<div style="font-size:11.5px;color:var(--ad-dim);">'+escapeHtml(row.cliente_telefono)+'</div>' : '')+
+        '</div>'+
+        '<div style="text-align:right;">'+
+          '<div style="font-size:11px;color:var(--ad-dim);">'+fmtDate(row.fecha_entrega || row.entrega_freg)+'</div>'+
+          '<div style="font-size:11px;color:#374151;margin-top:2px;">Entregó: <strong>'+escapeHtml(row.recibido_por_nombre||'—')+'</strong></div>'+
+          '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">'+
+            actaBadge + ' ' + paymentBadge +
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<button class="ad-btn ghost sm pvEntDocs" data-idx="'+idx+'" style="margin-top:10px;">'+
+        '📁 Ver documentos'+
+      '</button>'+
+    '</div>';
+  }
+
+  // Documentos modal — contract + Stripe receipt, both reachable from the
+  // punto session. Contract: descargar-contrato.php (now accepts
+  // VOLTIKA_PUNTO session). Receipt: stripe-recibo.php (server fetches the
+  // public receipt_url and 302-redirects — no Stripe dashboard login).
+  function showDocumentosModal(row){
+    var dispo = row.disponible || {};
+    var contractKey = row.contract_key || '';
+    var html = '<div class="ad-h2">Documentos de la entrega</div>'+
+      '<div style="font-size:12.5px;color:var(--ad-dim);margin-bottom:14px;">'+
+        (row.pedido_num ? '<strong>'+escapeHtml(row.pedido_num)+'</strong> · ' : '')+
+        escapeHtml((row.modelo||'')+' '+(row.color||''))+
+        (row.cliente_nombre ? '<br>Cliente: <strong>'+escapeHtml(row.cliente_nombre)+'</strong>' : '')+
+      '</div>';
+
+    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+
+    // Contrato
+    if (dispo.contrato && contractKey) {
+      var contractUrl = '/configurador/php/descargar-contrato.php?pedido='+
+        encodeURIComponent(contractKey)+'&inline=1';
+      html += '<a href="'+contractUrl+'" target="_blank" rel="noopener" '+
+        'style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;text-decoration:none;color:#1e40af;">'+
+        '<span style="font-size:22px;">📄</span>'+
+        '<div style="flex:1;"><div style="font-weight:700;">Contrato firmado</div>'+
+        '<div style="font-size:11.5px;opacity:.85;">Contrato de compraventa con firma electrónica del cliente.</div></div>'+
+        '<span>›</span>'+
+      '</a>';
+    } else {
+      html += '<div style="padding:12px 14px;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:8px;color:#6b7280;font-size:12.5px;">'+
+        '<strong>📄 Contrato firmado</strong><br>No disponible — falta identificador de pedido.</div>';
+    }
+
+    // Recibo de pago (Stripe)
+    if (dispo.recibo_pago) {
+      var receiptUrl = 'php/entrega/stripe-recibo.php?moto_id='+encodeURIComponent(row.moto_id);
+      html += '<a href="'+receiptUrl+'" target="_blank" rel="noopener" '+
+        'style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;text-decoration:none;color:#15803d;">'+
+        '<span style="font-size:22px;">💳</span>'+
+        '<div style="flex:1;"><div style="font-weight:700;">Recibo de pago</div>'+
+        '<div style="font-size:11.5px;opacity:.85;">Recibo público de Stripe — no requiere iniciar sesión.</div></div>'+
+        '<span>›</span>'+
+      '</a>';
+    } else {
+      html += '<div style="padding:12px 14px;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:8px;color:#6b7280;font-size:12.5px;">'+
+        '<strong>💳 Recibo de pago</strong><br>No disponible — esta orden no tiene PaymentIntent de Stripe asociado.</div>';
+    }
+
+    // Acta de entrega
+    if (row.cliente_acta_firmada == 1) {
+      html += '<div style="padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#166534;font-size:12.5px;">'+
+        '<strong>✅ Acta de entrega firmada</strong><br>El cliente firmó electrónicamente vía portal Cincel.</div>';
+    } else {
+      html += '<div style="padding:12px 14px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;color:#92400e;font-size:12.5px;">'+
+        '<strong>⏳ Acta de entrega pendiente</strong><br>El cliente aún no ha firmado el acta en su portal.</div>';
+    }
+
+    html += '</div>'+
+      '<div style="margin-top:14px;text-align:right;">'+
+        '<button class="ad-btn ghost" onclick="PVApp.closeModal()">Cerrar</button>'+
+      '</div>';
+
+    PVApp.modal(html);
   }
   function steps(idx){
     var s='<div class="pv-wizard-steps">';

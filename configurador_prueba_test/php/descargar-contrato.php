@@ -43,17 +43,20 @@ try {
 }
 
 // ── Authorize ───────────────────────────────────────────────────────────
-// Admin session lives under session_name('VOLTIKA_ADMIN') (see
-// admin/php/bootstrap.php). We must adopt that name BEFORE session_start
-// or PHP creates a fresh empty session under PHPSESSID and admin auth
-// silently fails — that produced the misleading "No encontrado" 404
-// when an admin clicked the contract download button (2026-04-29).
+// Same dual-session logic as configurador/php/descargar-contrato.php —
+// admin (VOLTIKA_ADMIN) OR punto (VOLTIKA_PUNTO) sessions are accepted.
+// See the parent file for the full rationale (customer brief 2026-05-12).
 $adminOk = false;
 if (session_status() === PHP_SESSION_NONE) {
     @session_name('VOLTIKA_ADMIN');
     @session_start();
+    if (empty($_SESSION['admin_user_id'])) {
+        @session_write_close();
+        @session_name('VOLTIKA_PUNTO');
+        @session_start();
+    }
 }
-if (!empty($_SESSION['admin_user_id'])) {
+if (!empty($_SESSION['admin_user_id']) || !empty($_SESSION['punto_user_id'])) {
     $adminOk = true;
 }
 

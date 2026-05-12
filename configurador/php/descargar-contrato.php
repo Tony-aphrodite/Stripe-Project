@@ -95,12 +95,29 @@ $pedido = $resolvedPedido;
 // or PHP creates a fresh empty session under PHPSESSID and admin auth
 // silently fails — that produced the misleading "No encontrado" 404
 // when an admin clicked the contract download button (2026-04-29).
+//
+// Customer brief 2026-05-12 (Óscar, 7th round — screenshot 3: punto user
+// got "404 · token inválido o sesión admin no detectada (session_name
+// VOLTIKA_ADMIN). pedido_db_found=1"): punto users also need to view
+// the contract from the Entregas Historial. They use a different
+// session_name (VOLTIKA_PUNTO), so the admin-only check rejects them.
+// We now try BOTH session names and accept either an admin_user_id or
+// a punto_user_id. The contract is delivery-related, not financially
+// sensitive — punto already sees all customer data for its motos.
 $adminOk = false;
 if (session_status() === PHP_SESSION_NONE) {
+    // Try admin first.
     @session_name('VOLTIKA_ADMIN');
     @session_start();
+    if (empty($_SESSION['admin_user_id'])) {
+        // Not an admin — close and reopen as punto so the same request
+        // can be authorized through the dealer panel.
+        @session_write_close();
+        @session_name('VOLTIKA_PUNTO');
+        @session_start();
+    }
 }
-if (!empty($_SESSION['admin_user_id'])) {
+if (!empty($_SESSION['admin_user_id']) || !empty($_SESSION['punto_user_id'])) {
     $adminOk = true;
 }
 
