@@ -238,11 +238,21 @@ function voltikaEnsureSchema(): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
     // Envios CEDIS -> Punto (complete with tracking)
+    // Customer brief 2026-05-09 (Óscar, 4th-round diagnostic): the
+    // estado ENUM previously listed only 3 values, yet existing code
+    // (eliminar.php, limpiar-duplicados.php, limpiar-test-data.php,
+    // force-close-envios.php) writes 'completado_no_exitoso' and
+    // 'cancelado'. In MySQL non-strict mode those out-of-ENUM writes
+    // silently became '' (empty string) AND reported rowCount=1 —
+    // every close operation appeared successful but the row stayed
+    // unchanged. The ENUM is widened here so fresh installs get the
+    // full state machine; runtime ALTERs in force-close-envios.php
+    // upgrade legacy installs automatically.
     $pdo->exec("CREATE TABLE IF NOT EXISTS envios (
         id INT AUTO_INCREMENT PRIMARY KEY,
         moto_id INT NOT NULL,
         punto_destino_id INT NOT NULL,
-        estado ENUM('lista_para_enviar','enviada','recibida') DEFAULT 'lista_para_enviar',
+        estado ENUM('lista_para_enviar','enviada','enviado','en_transito','recibida','completado_no_exitoso','cancelado') DEFAULT 'lista_para_enviar',
         envio_tipo VARCHAR(50) NULL,
         fecha_envio DATE,
         fecha_estimada_llegada DATE,
