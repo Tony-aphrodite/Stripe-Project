@@ -49,9 +49,52 @@ if (!$moto) {
 
 // Block desasignar if the moto is already entregada — at that point it
 // has left inventory and the operation makes no sense.
+//
+// Customer brief 2026-05-09 (Óscar — "The system allows you to unassign
+// a motorcycle that has already been delivered, and that's wrong"):
+// the single estado='entregada' check missed three failure modes:
+//   (a) cliente_acta_firmada=1 was set but estado lagged behind (race
+//       between firmar-acta.php and finalizar.php)
+//   (b) an entregas / acta row exists pointing at this moto even though
+//       inventario_motos.estado was manually changed back
+//   (c) the punto's finalizar-entrega flow already wrote estado='entregada'
+//       earlier and a later manual edit re-set it to 'recibida'
+// Belt-and-suspenders: refuse if ANY delivery evidence exists. The audit
+// log records which signal blocked the release so support can debug.
 $est = strtolower(trim($moto['estado'] ?? ''));
-if ($est === 'entregada') {
-    adminJsonOut(['error' => 'La moto ya fue entregada al cliente. No se puede desasignar.'], 409);
+$actaFirmada = (int)($moto['cliente_acta_firmada'] ?? 0) === 1;
+$entregaCompleta = false;
+try {
+    // entrega_punto / entrega rows have a `completada` or `estado='entregada'`
+    // marker depending on schema age — check both forms.
+    $envCols = $pdo->query("SHOW TABLES LIKE 'entregas'")->fetchColumn();
+    if ($envCols) {
+        $entCols = $pdo->query("SHOW COLUMNS FROM entregas")->fetchAll(PDO::FETCH_COLUMN);
+        $estadoCol = in_array('estado', $entCols, true);
+        $completaCol = in_array('completada', $entCols, true);
+        $cond = [];
+        if ($estadoCol)   $cond[] = "estado = 'entregada'";
+        if ($completaCol) $cond[] = "completada = 1";
+        if ($cond) {
+            $sql = "SELECT 1 FROM entregas WHERE moto_id = ? AND (" . implode(' OR ', $cond) . ") LIMIT 1";
+            $eStmt = $pdo->prepare($sql);
+            $eStmt->execute([(int)$moto['id']]);
+            $entregaCompleta = (bool)$eStmt->fetchColumn();
+        }
+    }
+} catch (Throwable $e) { error_log('desasignar entregas check: ' . $e->getMessage()); }
+
+if ($est === 'entregada' || $actaFirmada || $entregaCompleta) {
+    $reasons = [];
+    if ($est === 'entregada')   $reasons[] = "estado=entregada";
+    if ($actaFirmada)           $reasons[] = "cliente_acta_firmada=1";
+    if ($entregaCompleta)       $reasons[] = "entregas.completada=1";
+    adminJsonOut([
+        'error' => 'La moto ya fue entregada al cliente. No se puede desasignar.',
+        'reasons' => $reasons,
+        'moto_id' => (int)$moto['id'],
+        'vin'     => $moto['vin_display'] ?? $moto['vin'] ?? '',
+    ], 409);
 }
 
 $rel = $pdo->prepare("

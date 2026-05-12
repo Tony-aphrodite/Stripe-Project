@@ -130,8 +130,34 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
             $allowed = ['contado','unico','msi','spei','oxxo','tarjeta','tarjeta de débito o crédito','tarjeta de credito','tarjeta de debito'];
             $isAllowed = false;
             foreach ($allowed as $a) if (strpos($tpagoNorm, $a) !== false || $tpagoNorm === $a) { $isAllowed = true; break; }
-            if (!$isAllowed) {
-                $regenError = "tpago='{$tpagoNorm}' no es contado/MSI/SPEI/OXXO — usar generar-contrato-pdf.php para crédito";
+            // Customer brief 2026-05-09 (Óscar — "We can't check the
+            // contract yet"): for credit-family orders the cash-sale
+            // generator isn't applicable, but generar-contrato-pdf.php
+            // (the credit caratula generator) writes its output to
+            // configurador/php/contratos/contrato_<name>_<ts>.pdf. If
+            // such a file already exists for this customer we serve
+            // the most recent one. If none exists yet, fail with a
+            // hint that the customer must complete the credit-signing
+            // flow (no admin-side regen is possible for credit because
+            // it requires the Cincel NOM-151 timestamp via Truora).
+            $isCreditFam = !$isAllowed && in_array($tpagoNorm, ['credito','enganche','parcial'], true);
+            if ($isCreditFam) {
+                $safeName = preg_replace('/[^a-zA-Z0-9]/', '_', (string)($tx['nombre'] ?? ''));
+                $candidates = [];
+                if ($safeName !== '') {
+                    $candidates = array_merge(
+                        glob(__DIR__ . '/contratos/contrato_*' . $safeName . '*.pdf') ?: [],
+                        glob(sys_get_temp_dir() . '/voltika_contratos/contrato_*' . $safeName . '*.pdf') ?: []
+                    );
+                }
+                if ($candidates) {
+                    usort($candidates, function($a, $b) { return filemtime($b) - filemtime($a); });
+                    $absPath = $candidates[0];
+                } else {
+                    $regenError = 'No existe contrato de crédito generado para este pedido. El PDF se genera automáticamente cuando el cliente firma desde el configurador (Truora + Cincel). Reenvía el link de firma desde la solicitud en Solicitudes.';
+                }
+            } elseif (!$isAllowed) {
+                $regenError = "tpago='{$tpagoNorm}' no es contado/MSI/SPEI/OXXO/crédito — pedido inválido";
             } else {
                 $total = floatval($tx['total'] ?: $tx['precio']);
                 $costoLog = (strpos($tpagoNorm, 'msi') !== false) ? 1800 : 0;

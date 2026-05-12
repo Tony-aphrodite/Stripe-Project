@@ -134,6 +134,34 @@ if ($etaIn !== '') {
     $notifyData['fecha_llegada_punto'] = $fechaHumanUpdated;
 }
 if ($nuevoEstado === 'enviada') {
+    // Customer brief 2026-05-09 (Óscar — "A motorcycle cannot be shipped
+    // unless it has at least the origin checklist"): require a completed
+    // checklist_origen row for the moto before flipping a shipment to
+    // 'enviada'. Without this gate CEDIS could push out a unit that the
+    // quality team never signed off, leaving the punto + customer
+    // without origin-state evidence (frame OK, brakes, lights, etc.).
+    try {
+        $coStmt = $pdo->prepare("SELECT id, completado FROM checklist_origen
+                                  WHERE moto_id = ?
+                               ORDER BY freg DESC LIMIT 1");
+        $coStmt->execute([(int)$envio['moto_id']]);
+        $co = $coStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$co || (int)$co['completado'] !== 1) {
+            adminJsonOut([
+                'error'    => 'La moto no se puede enviar sin checklist de origen completo. Termina la fase de origen en Checklists antes de marcar el envío como enviada.',
+                'moto_id'  => (int)$envio['moto_id'],
+                'checklist_status' => $co ? 'incompleto' : 'no_iniciado',
+                'hint'     => 'Admin → Checklists → Origen → completar todos los puntos.',
+            ], 409);
+        }
+    } catch (Throwable $e) {
+        // Schema missing is a deployment issue — fail closed (don't allow
+        // shipment when we cannot verify the gate).
+        error_log('cambiar-estado checklist gate: ' . $e->getMessage());
+        adminJsonOut([
+            'error' => 'No se pudo verificar el checklist de origen (' . $e->getMessage() . '). Pídele al admin técnico que revise la tabla checklist_origen.',
+        ], 500);
+    }
     // Admin may pass an explicit fecha_envio (backdate). Default to today.
     $updates['fecha_envio'] = $fenvIn !== '' ? $fenvIn : date('Y-m-d');
     // Bug 2.1 second guard: when only ETA is being changed (or only fecha_envio

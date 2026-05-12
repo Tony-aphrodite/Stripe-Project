@@ -205,9 +205,24 @@ if ($estadoMoto && !in_array($estadoMoto, $estadosLibres, true)) {
 // "VK-VK-" prefix when t.pedido already carried "VK-" (mostly legacy
 // rows). Without this the dashboard JOIN failed and Ventas displayed
 // "Sin moto asignada" while CEDIS / inventario rendered the link.
-// Reject when the order has no pedido — writing a bare "VK-" would
-// poison the duplicate-pedido_num guard for every subsequent moto.
-$pedidoNum = voltikaNormalizePedidoNum((string)$order['pedido']);
+//
+// Customer brief 2026-05-09 (Óscar — "La orden no tiene pedido válido"
+// on VK-2605-0002): some rows have the legacy `pedido` field empty
+// while the customer-facing short code is stored under `pedido_corto`.
+// Normalising only `pedido` made these orders unassignable even though
+// the dashboard still listed them by their short code. Fall back to
+// `pedido_corto`, then to the row id, so a real assignment never gets
+// blocked by an empty legacy column. We only refuse when EVERY
+// identifier is missing — at that point the row is genuinely
+// unidentifiable.
+$pedidoNum = voltikaNormalizePedidoNum((string)($order['pedido'] ?? ''));
+if ($pedidoNum === '') {
+    $pedidoNum = voltikaNormalizePedidoNum((string)($order['pedido_corto'] ?? ''));
+}
+if ($pedidoNum === '' && !empty($order['id'])) {
+    // Last-resort canonical identifier when both pedido columns are NULL.
+    $pedidoNum = 'VK-TX' . (int)$order['id'];
+}
 if ($pedidoNum === '') {
     adminJsonOut(['error' => 'La orden no tiene pedido válido — no se puede vincular la moto.'], 400);
 }

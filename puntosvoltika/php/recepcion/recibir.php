@@ -70,10 +70,49 @@ if (!$vinCoincide) {
     puntoJsonOut(['error' => 'VIN escaneado no coincide con la moto esperada', 'vin_esperado' => $row['vin'], 'vin_escaneado' => $vinScan], 400);
 }
 
-// Validate all checks passed (legacy required set, untouched).
+// Customer brief 2026-05-09 (Óscar — "When the Voltika point receives a
+// motorcycle and goes through the checklist, all fields must be filled
+// out"): every checklist field must come back truthy / non-empty BEFORE
+// we record the reception. The old code only flipped `completado=0` and
+// stored the reception anyway as 'retenida' — that left the unit half-
+// received with no audit trail of WHICH fields the operator skipped.
+// Now we return a 400 with the explicit list of missing items so the
+// punto UI can highlight each one.
 $checks = ['estado_fisico_ok','sin_danos','componentes_completos','bateria_ok'];
-$allOk = true;
-foreach ($checks as $c) if (empty($d[$c])) $allOk = false;
+$missing = [];
+foreach ($checks as $c) {
+    if (empty($d[$c])) $missing[] = $c;
+}
+// New required fields (since 2026-05-08 schema upgrade). We require the
+// seal photo / VIN label photo / unit photo + seal-intact confirmation
+// + seal number + VIN-on-box. Observaciones stays optional (it's free-
+// form notes — required would force a sentence every time).
+$requiredExtras = [
+    'sello_intacto'  => 'boolean',
+    'sello_numero'   => 'text',
+    'vin_caja'       => 'text',
+    'foto_sello'     => 'photo',
+    'foto_vin_label' => 'photo',
+    'foto_unidad'    => 'photo',
+];
+foreach ($requiredExtras as $key => $kind) {
+    $v = $d[$key] ?? null;
+    if ($kind === 'boolean') {
+        if (empty($v)) $missing[] = $key;
+    } elseif ($kind === 'photo') {
+        if (!is_string($v) || trim($v) === '') $missing[] = $key;
+    } else {
+        if (!is_string($v) || trim($v) === '') $missing[] = $key;
+    }
+}
+if ($missing) {
+    puntoJsonOut([
+        'error'   => 'Faltan campos del checklist de recepción. Completa todos los puntos antes de guardar.',
+        'missing' => $missing,
+        'hint'    => 'Verifica los 4 checks de estado físico, el sello (número + foto + estado intacto), VIN en caja, y las 3 fotos (sello / etiqueta VIN / unidad).',
+    ], 400);
+}
+$allOk = true; // all required fields validated above; legacy flag kept for downstream code
 
 // ── Bug 3.3: persist optional photos to disk ─────────────────────────────
 $uploadsDir = __DIR__ . '/../../../configurador/php/uploads/recepcion';

@@ -80,10 +80,17 @@ if ($tipo === 'venta') {
     // Link order data to bike. Use the shared normalizer so a pedido
     // that already starts with "VK-" doesn't end up double-prefixed
     // ("VK-VK-12345"), which broke the Ventas Ver-modal JOIN.
-    // Reject the operation if the order has no pedido — without one
-    // we'd write a useless "VK-" placeholder that then blocks every
-    // subsequent assignment (customer report 2026-05-07).
-    $pedidoNum = voltikaNormalizePedidoNum((string)$order['pedido']);
+    // Customer brief 2026-05-09 (Óscar): same fallback chain as
+    // asignar-moto.php — try pedido_corto when the legacy pedido is
+    // empty, then synthesise from the row id, so an order is never
+    // rejected for an empty legacy column alone.
+    $pedidoNum = voltikaNormalizePedidoNum((string)($order['pedido'] ?? ''));
+    if ($pedidoNum === '') {
+        $pedidoNum = voltikaNormalizePedidoNum((string)($order['pedido_corto'] ?? ''));
+    }
+    if ($pedidoNum === '' && !empty($order['id'])) {
+        $pedidoNum = 'VK-TX' . (int)$order['id'];
+    }
     if ($pedidoNum === '') {
         adminJsonOut(['error' => 'La orden no tiene pedido válido — no se puede vincular la moto.'], 400);
     }

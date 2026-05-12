@@ -2218,67 +2218,49 @@ window.AD_ventas = (function(){
         bg:    '#fffbeb', tx: '#92400e'
       });
     }
-    // Credit-only docs — customer brief 2026-05-07 (Group C):
-    // for Crédito orders the documentos window MUST split out each
-    // attachment as its own row so the admin can download them
-    // individually:
-    //   1. Identidad (INE/PASSPORT) — submitted via Truora
-    //   2. CURP + CDC + Truora "same OK" verification
-    //   3. Capacidad crediticia (CDC capacity report)
-    //   4. Resumen de transacción (full transaction summary)
-    //
-    // Customer brief 2026-05-09 (Óscar — "When he tried to get the
-    // contract show this" + JSON-dump screenshot): the previous version
-    // pointed these rows at /admin/php/preaprobaciones/listar.php and
-    // /admin/php/ventas/listar.php with #anchors. Those paths are JSON
-    // API endpoints (return application/json for AJAX), NOT human-
-    // viewable pages. Opening them in a new tab gave the admin a wall
-    // of raw JSON instead of the document view. The #anchor never even
-    // got read — there's no client-side router consuming it.
-    //
-    // Fix: use the in-app SPA navigation (window.AD_preaprobaciones.go
-    // when available, falling back to ADApp.go(route)) and pre-fill
-    // the preaprobaciones search box with the customer's phone/email.
-    // The rows become buttons that switch routes in place. Same one-
-    // click ergonomics, but the result is the actual page the original
-    // comment intended to surface.
-    if (isCredito) {
-      var preapSearch = r.telefono || r.email || '';
+    // Customer brief 2026-05-09 (Óscar — "We need to check the documents
+    // in the dashboard, not in other pages" + "We can't check the
+    // contract / payment / checklist in the dashboard"): every document
+    // row now expands INLINE inside this modal instead of routing the
+    // admin somewhere else.
+    //   • PDF docs (contract, dossier) — open in a popup iframe modal
+    //   • Data docs (CDC, Truora, payment, checklist) — fetch a summary
+    //     via existing detail endpoints and render inside the row
+    // No new endpoints needed: payment data is already on r, checklist
+    // ships via /admin/php/checklists/detalle.php, preaprobaciones detail
+    // is filtered server-side by the customer's phone/email.
+
+    // Payment info row — always available (we already have the data).
+    rows_.push({
+      title: 'Información de pago',
+      desc:  'Total, método, estado del pago y Stripe PaymentIntent (en este panel).',
+      kind:  'payment',
+      data:  r,
+      icon:  '💰',
+      bg:    '#ecfeff', tx: '#155e75'
+    });
+    // Checklist summary — origen + ensamble + entrega phases inline.
+    if (motoId) {
       rows_.push({
-        title: 'Identidad (INE / PASSPORT)',
-        desc:  'Documento oficial submitido vía Truora al solicitar el crédito.',
-        route: 'preaprobaciones',
-        search: preapSearch,
-        focus:  'truora-identidad',
-        icon:  '🪪',
-        bg:    '#fef3c7', tx: '#92400e'
-      });
-      rows_.push({
-        title: 'CURP + Validación CDC/Truora',
-        desc:  'CURP del cliente con acuse de validación de Círculo de Crédito y verificación "same OK" de Truora.',
-        route: 'preaprobaciones',
-        search: preapSearch,
-        focus:  'truora-curp',
-        icon:  '🆔',
-        bg:    '#e0e7ff', tx: '#3730a3'
-      });
-      rows_.push({
-        title: 'Reporte de Capacidad Crediticia',
-        desc:  'Score CDC, PTI, DPD90, deuda existente y capacidad de pago calculada.',
-        route: 'preaprobaciones',
-        search: preapSearch,
-        focus:  'cdc-capacidad',
-        icon:  '📊',
-        bg:    '#ede9fe', tx: '#5b21b6'
-      });
-      rows_.push({
-        title: 'Resumen de Transacción',
-        desc:  'Detalle completo: enganche, plazo, pago semanal, tasa, modelo.',
-        route: 'ventas',
-        search: r.pedido || preapSearch,
-        focus:  'resumen',
+        title: 'Checklist (origen · ensamble · entrega)',
+        desc:  'Resumen de las 3 fases con estado completado y fotos.',
+        kind:  'checklist',
+        motoId: motoId,
         icon:  '📋',
         bg:    '#f0fdf4', tx: '#166534'
+      });
+    }
+    if (isCredito) {
+      var preapSearch = r.telefono || r.email || '';
+      // Identidad / CURP / Capacidad — single combined inline panel
+      // because the data source (preaprobaciones row) is the same.
+      rows_.push({
+        title: 'Identidad + CURP + Capacidad Crediticia',
+        desc:  'INE/Passport (Truora), CURP, Score CDC, PTI, DPD90, capacidad de pago — todo en este panel.',
+        kind:  'cdc',
+        search: preapSearch,
+        icon:  '🪪',
+        bg:    '#fef3c7', tx: '#92400e'
       });
     }
 
@@ -2289,33 +2271,32 @@ window.AD_ventas = (function(){
     } else {
       html += '<div style="display:flex;flex-direction:column;gap:10px;">';
       rows_.forEach(function(d, idx){
-        // Two kinds of rows:
-        //   (a) Direct-URL rows (contract PDF, Stripe dashboard, dossier
-        //       ZIP) — keep as <a target="_blank"> so the browser fetches
-        //       and downloads the artifact.
-        //   (b) Route-based rows (preaprobaciones / ventas SPA pages) —
-        //       render as <a class="adDocRoute"> and let a click handler
-        //       run the in-app navigation. Plain <a href=…> would have
-        //       reloaded the page; with javascript:void(0) the handler
-        //       owns the action entirely.
-        var isRoute = !!d.route;
-        var commonStyle = 'display:flex;align-items:center;gap:14px;padding:14px 16px;background:'+d.bg+';border:1px solid '+d.tx+'40;border-radius:10px;text-decoration:none;color:'+d.tx+';transition:transform .12s;cursor:pointer;';
-        var hover = ' onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'"';
+        // 3 row kinds:
+        //   (a) URL rows  — <a target="_blank"> (PDF/ZIP/Stripe)
+        //   (b) Inline-data rows — click toggles an expandable
+        //       <div class="adDocBody"> that loads via AJAX
+        //   (c) PDF inline rows — same expand, body is an <iframe>
+        var commonStyle = 'display:flex;align-items:center;gap:14px;padding:14px 16px;background:'+d.bg+';border:1px solid '+d.tx+'40;border-radius:10px;text-decoration:none;color:'+d.tx+';cursor:pointer;';
         var body = '<div style="font-size:24px;">'+d.icon+'</div>'
                  + '<div style="flex:1;">'
                  +   '<div style="font-weight:700;font-size:14px;">'+esc(d.title)+'</div>'
                  +   '<div style="font-size:12px;opacity:.85;">'+esc(d.desc)+'</div>'
                  + '</div>'
                  + '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
-        if (isRoute) {
-          html += '<a href="javascript:void(0)" class="adDocRoute" '
-               +    'data-route="'+esc(d.route)+'" '
+        if (d.kind) {
+          // Inline-expand row.
+          html += '<div data-idx="'+idx+'">';
+          html += '<a href="javascript:void(0)" class="adDocExpand" data-idx="'+idx+'" '
+               +    'data-kind="'+esc(d.kind)+'" '
+               +    'data-moto-id="'+(d.motoId||'')+'" '
                +    'data-search="'+esc(d.search||'')+'" '
-               +    'data-focus="'+esc(d.focus||'')+'" '
-               +    'style="'+commonStyle+'"'+hover+'>'+body+'</a>';
+               +    'data-pedido="'+esc(d.pedido||'')+'" '
+               +    'style="'+commonStyle+'">'+body+'</a>';
+          html += '<div class="adDocBody adDocBody-'+idx+'" style="display:none;margin:4px 0 8px;padding:14px;background:#fafafa;border:1px solid #e5e7eb;border-radius:10px;font-size:13px;color:#222;"></div>';
+          html += '</div>';
         } else {
-          html += '<a href="'+d.url+'" target="_blank" rel="noopener" '
-               +    'style="'+commonStyle+'"'+hover+'>'+body+'</a>';
+          // External URL row.
+          html += '<a href="'+d.url+'" target="_blank" rel="noopener" style="'+commonStyle+'">'+body+'</a>';
         }
       });
       html += '</div>';
@@ -2327,33 +2308,111 @@ window.AD_ventas = (function(){
 
     ADApp.modal(html);
 
-    // Wire route-based rows: close this modal, switch route, prime the
-    // search box on the target module. The setTimeout gives the module
-    // a tick to render its UI before we touch the input field.
-    $('.adDocRoute').on('click', function(){
-      var route  = $(this).data('route');
-      var search = $(this).data('search') || '';
-      ADApp.closeModal();
-      ADApp.go(route);
-      setTimeout(function(){
-        if (route === 'preaprobaciones') {
-          $('#apFSearch').val(search);
-          // Trigger the existing search/filter pipeline if available
-          if (window.AD_preaprobaciones && typeof AD_preaprobaciones.search === 'function') {
-            AD_preaprobaciones.search(search);
-          } else {
-            $('#apFSearch').trigger('change').trigger('input');
-            $('.apFilterApply, #apFApply').trigger('click');
-          }
-        } else if (route === 'ventas') {
-          // The ventas module's search box id may vary by build; try the
-          // canonical ones and fall back to a generic class.
-          var $box = $('#vtFSearch, #vtSearch, .ad-search-input').first();
-          if ($box.length) {
-            $box.val(search).trigger('change').trigger('input');
-          }
-        }
-      }, 120);
+    // Inline-expand handler — toggles the body and lazily fetches data.
+    $('.adDocExpand').on('click', function(){
+      var idx  = $(this).data('idx');
+      var kind = $(this).data('kind');
+      var $body = $('.adDocBody-'+idx);
+      var isOpen = $body.is(':visible');
+      if (isOpen) { $body.hide(); return; }
+      $body.show().html('<div style="text-align:center;padding:20px;color:#888;"><span class="ad-spin"></span> Cargando...</div>');
+      if (kind === 'payment') {
+        renderPaymentInline($body, rows_[idx].data);
+      } else if (kind === 'checklist') {
+        fetchChecklistInline($body, rows_[idx].motoId);
+      } else if (kind === 'cdc') {
+        fetchCdcInline($body, rows_[idx].search);
+      } else {
+        $body.html('<div style="color:#b91c1c;">Tipo desconocido</div>');
+      }
+    });
+  }
+
+  // Inline renderers — keep them inside the showDocumentos closure so they
+  // can reference esc/dedupeName etc., but expose nothing globally.
+  function renderPaymentInline($container, row){
+    var pi      = row.stripe_pi || '—';
+    var tpago   = row.tpago || '—';
+    var pago    = row.pago_estado || '—';
+    var total   = row.total != null ? '$'+Number(row.total).toLocaleString('es-MX') : '—';
+    var fecha   = row.freg || '—';
+    var stripeLink = (pi && pi.indexOf('pi_') === 0)
+        ? '<a href="https://dashboard.stripe.com/payments/'+encodeURIComponent(pi)+'" target="_blank" rel="noopener" style="color:#0ea5e9;font-weight:700;">Abrir en Stripe ↗</a>'
+        : '—';
+    $container.html(
+      '<table style="width:100%;border-collapse:collapse;font-size:13px;">'+
+      '<tr><td style="padding:6px 0;color:#64748b;width:40%;">Total cobrado</td><td style="font-weight:700;">'+total+'</td></tr>'+
+      '<tr><td style="padding:6px 0;color:#64748b;">Método (tpago)</td><td>'+esc(tpago)+'</td></tr>'+
+      '<tr><td style="padding:6px 0;color:#64748b;">Estado del pago</td><td>'+esc(pago)+'</td></tr>'+
+      '<tr><td style="padding:6px 0;color:#64748b;">Stripe PI</td><td style="font-family:monospace;font-size:11px;word-break:break-all;">'+esc(pi)+'</td></tr>'+
+      '<tr><td style="padding:6px 0;color:#64748b;">Fecha</td><td>'+esc(fecha)+'</td></tr>'+
+      '<tr><td style="padding:6px 0;color:#64748b;">Dashboard Stripe</td><td>'+stripeLink+'</td></tr>'+
+      '</table>'
+    );
+  }
+  function fetchChecklistInline($container, motoId){
+    ADApp.api('checklists/detalle.php?moto_id='+encodeURIComponent(motoId)).done(function(r){
+      if (!r || (r.error && !r.checklists)) {
+        $container.html('<div style="color:#92400e;">Sin checklists registrados para esta moto.</div>');
+        return;
+      }
+      var phases = [
+        { key: 'origen',   label: 'Origen (CEDIS)', row: r.origen   || r.checklist_origen },
+        { key: 'ensamble', label: 'Ensamble',       row: r.ensamble || r.checklist_ensamble },
+        { key: 'entrega',  label: 'Entrega',        row: r.entrega  || r.checklist_entrega || r.checklist_entrega_v2 },
+      ];
+      var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+      phases.forEach(function(p){
+        var done    = p.row && (p.row.completado == 1 || p.row.completado === '1');
+        var status  = done ? '✓ Completo' : (p.row ? '⏳ Incompleto' : '— No iniciado');
+        var color   = done ? '#059669' : (p.row ? '#d97706' : '#6b7280');
+        var freg    = p.row && p.row.freg ? '<div style="font-size:10px;color:#888;margin-top:2px;">'+esc(p.row.freg)+'</div>' : '';
+        html += '<div style="padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;">'+
+                  '<div style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;letter-spacing:.5px;">'+p.label+'</div>'+
+                  '<div style="font-weight:700;color:'+color+';margin-top:4px;">'+status+'</div>'+
+                  freg+
+                '</div>';
+      });
+      html += '</div>';
+      $container.html(html);
+    }).fail(function(){
+      $container.html('<div style="color:#b91c1c;">Error al cargar checklists. ¿La moto tiene checklists registrados?</div>');
+    });
+  }
+  function fetchCdcInline($container, search){
+    if (!search) { $container.html('<div style="color:#92400e;">Falta teléfono o email del cliente — no se puede buscar en CDC.</div>'); return; }
+    ADApp.api('preaprobaciones/listar.php?' + $.param({ search: search, limit: 1 })).done(function(r){
+      var row = (r && r.rows && r.rows[0]) || null;
+      if (!row) {
+        $container.html('<div style="color:#92400e;">Sin solicitud de crédito asociada a <code>'+esc(search)+'</code>.</div>');
+        return;
+      }
+      function dr(label, v){
+        return '<tr><td style="padding:4px 0;color:#64748b;width:50%;">'+label+'</td><td style="font-weight:700;">'+(v == null || v === '' ? '—' : esc(String(v)))+'</td></tr>';
+      }
+      function pct(n){ if (n == null) return '—'; return Math.round(Number(n)*100)+'%'; }
+      var ineImg = row.truora_documents && row.truora_documents.front
+                 ? '<a href="'+esc(row.truora_documents.front)+'" target="_blank">Ver INE (Truora) ↗</a>'
+                 : '—';
+      $container.html(
+        '<table style="width:100%;border-collapse:collapse;font-size:13px;">'+
+          dr('Score CDC',           row.score)+
+          dr('PTI total',           pct(row.pti_total))+
+          dr('DPD90',               row.dpd90_flag == 1 ? '⚠ Sí (activo)' : 'No')+
+          dr('CURP',                row.curp)+
+          dr('Status del sistema',  row.status)+
+          dr('Truora status',       row.truora_status || row.truora_state || '—')+
+          dr('CURP same OK',        row.curp_match == 1 ? '✓ Sí' : (row.curp_match === 0 ? '✗ No' : '—'))+
+          dr('Pago Voltika mensual',row.pago_mensual ? '$'+Number(row.pago_mensual).toLocaleString('es-MX') : '—')+
+          dr('Identidad (Truora)',  ineImg)+
+        '</table>'+
+        '<div style="margin-top:10px;font-size:11px;color:#888;">'+
+          'Para ver todos los datos + acciones de revisión: '+
+          '<a href="javascript:void(0)" onclick="ADApp.closeModal();ADApp.go(\'preaprobaciones\');setTimeout(function(){if(window.AD_preaprobaciones){AD_preaprobaciones.search('+JSON.stringify(search)+');}},150);" style="color:#0ea5e9;font-weight:700;">abrir en Solicitudes →</a>'+
+        '</div>'
+      );
+    }).fail(function(){
+      $container.html('<div style="color:#b91c1c;">Error al cargar datos de CDC/Truora.</div>');
     });
   }
 
