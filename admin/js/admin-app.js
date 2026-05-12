@@ -82,7 +82,47 @@ window.ADApp = (function(){
     var rolLabel = {admin:'ADMIN',cedis:'CEDIS',operador:'OPERADOR',dealer:'DEALER',logistica:'LOGISTICA',cobranza:'COBRANZA',documentos:'DOCUMENTOS'}[state.user.rol] || state.user.rol;
     $('#adUser').html('<div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(3,159,225,.2);display:flex;align-items:center;justify-content:center;"><img src="../configurador/img/asesor_icon.jpg" style="width:22px;height:22px;border-radius:50%;object-fit:cover;"></div><div><div style="color:rgba(255,255,255,.85);font-weight:600;font-size:13px;">' + state.user.nombre + '</div><div style="font-size:10px;letter-spacing:.5px;color:rgba(255,255,255,.4);text-transform:uppercase;">' + rolLabel + '</div></div></div>');
     filterSidebarByPermisos();
-    go(firstAllowedRoute());
+
+    // Customer brief 2026-05-12 (Óscar, 7th round — contract diagnostic
+    // page deep-link button): support /admin/#route or /admin/#route?q=…
+    // so the "Ir a Solicitudes de crédito" button from descargar-contrato.php
+    // can drop the admin directly on the right tab pre-filtered by the
+    // client's email. Fallback to firstAllowedRoute() when no hash.
+    var routed = false;
+    try {
+      var rawHash = (window.location.hash || '').replace(/^#/, '');
+      if (rawHash) {
+        var parts = rawHash.split('?');
+        var hashRoute = parts[0];
+        var query     = parts[1] || '';
+        if (hashRoute) {
+          // Stash the parsed query so the target module can read it on
+          // first render (e.g. AD_preaprobaciones uses state.hashQuery).
+          state.hashQuery = {};
+          query.split('&').forEach(function(pair){
+            if (!pair) return;
+            var kv = pair.split('=');
+            state.hashQuery[decodeURIComponent(kv[0]||'')] = decodeURIComponent(kv[1]||'');
+          });
+          go(hashRoute);
+          routed = true;
+          // If the target module exposes a search() helper and the hash
+          // carried a q= filter, apply it now. Currently used by
+          // AD_preaprobaciones to pre-filter by client email when admin
+          // is deep-linked from the contract diagnostic page.
+          var targetMod = window['AD_' + hashRoute];
+          if (state.hashQuery.q && targetMod && typeof targetMod.search === 'function') {
+            try { targetMod.search(state.hashQuery.q); } catch (e2) {}
+          }
+          // Clear the hash so a manual refresh doesn't keep re-routing.
+          if (window.history && history.replaceState) {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
+        }
+      }
+    } catch (e) { /* defensive — fall through to normal landing */ }
+
+    if (!routed) go(firstAllowedRoute());
   }
 
   // ── Per-user sidebar filtering (customer brief 2026-05-04 round 7) ──

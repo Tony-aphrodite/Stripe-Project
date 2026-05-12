@@ -84,15 +84,30 @@ if ($tipo === 'venta') {
     // asignar-moto.php — try pedido_corto when the legacy pedido is
     // empty, then synthesise from the row id, so an order is never
     // rejected for an empty legacy column alone.
-    $pedidoNum = voltikaNormalizePedidoNum((string)($order['pedido'] ?? ''));
-    if ($pedidoNum === '') {
-        $pedidoNum = voltikaNormalizePedidoNum((string)($order['pedido_corto'] ?? ''));
+    // Customer brief 2026-05-12 (Óscar, 8th round): mirror asignar-moto.php
+    // expanded fallback — handle whitespace-only / "0" / missing column.
+    $tryPedido      = trim((string)($order['pedido']       ?? ''));
+    $tryPedidoCorto = trim((string)($order['pedido_corto'] ?? ''));
+    $pedidoNum = ($tryPedido !== '' && $tryPedido !== '0')
+        ? voltikaNormalizePedidoNum($tryPedido)
+        : '';
+    if ($pedidoNum === '' && $tryPedidoCorto !== '' && $tryPedidoCorto !== '0') {
+        $pedidoNum = voltikaNormalizePedidoNum($tryPedidoCorto);
     }
     if ($pedidoNum === '' && !empty($order['id'])) {
         $pedidoNum = 'VK-TX' . (int)$order['id'];
     }
     if ($pedidoNum === '') {
-        adminJsonOut(['error' => 'La orden no tiene pedido válido — no se puede vincular la moto.'], 400);
+        adminJsonOut([
+            'error'  => 'La orden no tiene pedido válido — no se puede vincular la moto.',
+            'detail' => [
+                'transaccion_id'  => $transaccionId,
+                'pedido_raw'      => $tryPedido,
+                'pedido_corto_raw'=> $tryPedidoCorto,
+                'order_id'        => $order['id'] ?? null,
+                'columns_present' => array_keys($order),
+            ],
+        ], 400);
     }
     $tpago = strtolower(trim($order['tpago'] ?? ''));
     $pagoEstado = in_array($tpago, ['credito', 'enganche', 'parcial'], true)

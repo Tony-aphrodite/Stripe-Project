@@ -2209,11 +2209,17 @@ window.AD_ventas = (function(){
       });
     }
     // Stripe receipt — only useful when there's a real PI.
+    //
+    // Customer brief 2026-05-12 (Óscar, 8th round — screenshot: clicking
+    // Recibo de Stripe opened dashboard.stripe.com login page). The
+    // dashboard URL needs a Stripe operator login. Switch to our admin
+    // proxy endpoint that fetches latest_charge.receipt_url (the public
+    // customer-facing Voltika-branded receipt page) and 302-redirects.
     if (stripePi && stripePi.indexOf('pi_') === 0) {
       rows_.push({
         title: 'Recibo de Stripe',
         desc:  'Confirmación de pago oficial enviado al cliente.',
-        url:   'https://dashboard.stripe.com/payments/' + encodeURIComponent(stripePi),
+        url:   '/admin/php/pagos/stripe-recibo.php?pi=' + encodeURIComponent(stripePi),
         icon:  '💳',
         bg:    '#dcfce7', tx: '#15803d'
       });
@@ -2263,15 +2269,44 @@ window.AD_ventas = (function(){
     }
     if (isCredito) {
       var preapSearch = r.telefono || r.email || '';
-      // Identidad / CURP / Capacidad — single combined inline panel
-      // because the data source (preaprobaciones row) is the same.
+      // Customer brief 2026-05-12 (Óscar, 8th round — screenshots 4-7:
+      // separate rows for Identidad / CURP / Reporte / Resumen, "not
+      // working all", "redirects to Solicitudes de crédito"). Replace
+      // the single combined row with 4 focused inline-expand rows.
+      // Each one calls the same /admin/php/preaprobaciones/listar.php
+      // endpoint (filter via search term) and renders a focused subset
+      // of the response — no redirect, no extra navigation.
       rows_.push({
-        title: 'Identidad + CURP + Capacidad Crediticia',
-        desc:  'INE/Passport (Truora), CURP, Score CDC, PTI, DPD90, capacidad de pago — todo en este panel.',
-        kind:  'cdc',
+        title: 'Identidad (INE / PASSPORT)',
+        desc:  'Documento oficial submitido vía Truora al solicitar el crédito.',
+        kind:  'identidad',
         search: preapSearch,
         icon:  '🪪',
         bg:    '#fef3c7', tx: '#92400e'
+      });
+      rows_.push({
+        title: 'CURP + Validación CDC/Truora',
+        desc:  'CURP del cliente con acuse de validación de Círculo de Crédito y verificación "same OK" de Truora.',
+        kind:  'curp',
+        search: preapSearch,
+        icon:  '🆔',
+        bg:    '#ede9fe', tx: '#5b21b6'
+      });
+      rows_.push({
+        title: 'Reporte de Capacidad Crediticia',
+        desc:  'Score CDC, PTI, DPD90, deuda existente y capacidad de pago calculada.',
+        kind:  'capacidad',
+        search: preapSearch,
+        icon:  '📊',
+        bg:    '#ede9fe', tx: '#5b21b6'
+      });
+      rows_.push({
+        title: 'Resumen de Transacción',
+        desc:  'Detalle completo: enganche, plazo, pago semanal, tasa, modelo.',
+        kind:  'resumen_tx',
+        data:  r,
+        icon:  '📋',
+        bg:    '#ecfdf5', tx: '#065f46'
       });
     }
 
@@ -2332,11 +2367,157 @@ window.AD_ventas = (function(){
       } else if (kind === 'checklist') {
         fetchChecklistInline($body, rows_[idx].motoId);
       } else if (kind === 'cdc') {
+        // Legacy kind — kept for backward compat. Equivalent to fetching
+        // the full preaprobaciones row and rendering everything.
         fetchCdcInline($body, rows_[idx].search);
+      } else if (kind === 'identidad') {
+        fetchPreapSection($body, rows_[idx].search, 'identidad');
+      } else if (kind === 'curp') {
+        fetchPreapSection($body, rows_[idx].search, 'curp');
+      } else if (kind === 'capacidad') {
+        fetchPreapSection($body, rows_[idx].search, 'capacidad');
+      } else if (kind === 'resumen_tx') {
+        renderResumenTx($body, rows_[idx].data);
       } else {
         $body.html('<div style="color:#b91c1c;">Tipo desconocido</div>');
       }
     });
+  }
+
+  // ── Per-section preaprobaciones renderers (Bug 8.1) ──────────────────
+  // Customer brief 2026-05-12: each credit row in Documentos must show
+  // its specific data inline (NOT redirect to Solicitudes). All three
+  // sections share the same source row from preaprobaciones/listar.php;
+  // we filter by phone/email and render the focused subset.
+  function fetchPreapSection($container, search, section){
+    if (!search) {
+      $container.html('<div style="color:#92400e;background:#fffbeb;padding:10px 12px;border-radius:6px;font-size:12.5px;">Sin teléfono / email para localizar la solicitud.</div>');
+      return;
+    }
+    $.ajax({
+      url: '/admin/php/preaprobaciones/listar.php',
+      method: 'GET',
+      data: { search: search, limit: 1 },
+      xhrFields: { withCredentials: true },
+      dataType: 'json'
+    }).done(function(r){
+      var rows = (r && r.rows) || (r && r.data) || [];
+      if (!rows.length) {
+        $container.html('<div style="color:#92400e;background:#fffbeb;padding:10px 12px;border-radius:6px;font-size:12.5px;">No se encontró una preaprobación que coincida con <code>'+esc(search)+'</code>.</div>');
+        return;
+      }
+      var p = rows[0];
+      if (section === 'identidad')  renderIdentidad($container, p);
+      else if (section === 'curp')  renderCurp($container, p);
+      else if (section === 'capacidad') renderCapacidad($container, p);
+      else $container.html('<div style="color:#b91c1c;">Sección desconocida</div>');
+    }).fail(function(x){
+      $container.html('<div style="color:#b91c1c;background:#fef2f2;padding:10px 12px;border-radius:6px;font-size:12.5px;">Error al cargar datos: '+
+        esc((x.responseJSON&&x.responseJSON.error)||'conexión')+'</div>');
+    });
+  }
+
+  function _kvTable(rows){
+    var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+    rows.forEach(function(r){
+      html += '<tr><td style="padding:6px 0;color:#64748b;width:40%;vertical-align:top;">'+esc(r[0])+'</td>'+
+              '<td style="vertical-align:top;'+(r[2]?'font-weight:700;':'')+'">'+(r[1]||'—')+'</td></tr>';
+    });
+    html += '</table>';
+    return html;
+  }
+
+  function renderIdentidad($c, p){
+    // Identity verification — Truora INE/Passport submission + match.
+    var ineFront = p.truora_doc_front_url || p.ine_frente_url || p.documento_url || '';
+    var ineBack  = p.truora_doc_back_url  || p.ine_reverso_url || '';
+    var selfie   = p.truora_selfie_url    || p.selfie_url || '';
+    var faceMatch = p.truora_face_match;
+    var faceMatchTxt = (faceMatch === null || typeof faceMatch === 'undefined')
+        ? '—'
+        : (faceMatch == 1 ? '<span style="color:#16a34a;">✓ Coincide</span>' : '<span style="color:#b91c1c;">✗ No coincide</span>');
+    var statusTxt = p.truora_status || p.truora_estado || '—';
+    function imgChip(url, label){
+      if (!url) return '';
+      return '<a href="'+esc(url)+'" target="_blank" rel="noopener" style="display:inline-block;margin-right:6px;margin-top:4px;padding:6px 10px;background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;text-decoration:none;color:#1e40af;font-size:12px;">📷 '+label+'</a>';
+    }
+    var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">Identidad — Truora</div>';
+    html += _kvTable([
+      ['Nombre completo', esc((p.nombre||'') + ' ' + (p.apellido_paterno||'') + ' ' + (p.apellido_materno||'')), true],
+      ['CURP', esc(p.curp || '—'), true],
+      ['Email', esc(p.email || '—')],
+      ['Teléfono', esc(p.telefono || '—')],
+      ['Documento subido', (p.truora_document_type || p.tipo_documento || '—')],
+      ['Truora — estado', esc(statusTxt)],
+      ['Truora — score facial', (p.truora_face_score != null ? p.truora_face_score + '%' : '—')],
+      ['Truora — Match (selfie vs INE)', faceMatchTxt],
+    ]);
+    if (ineFront || ineBack || selfie) {
+      html += '<div style="margin-top:10px;">' + imgChip(ineFront,'INE frente') + imgChip(ineBack,'INE reverso') + imgChip(selfie,'Selfie') + '</div>';
+    }
+    $c.html(html);
+  }
+
+  function renderCurp($c, p){
+    var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">CURP + Validación CDC/Truora</div>';
+    var cdcOk = (p.cdc_validado == 1) ? '<span style="color:#16a34a;">✓ Validado</span>'
+             : (p.cdc_validado === 0 ? '<span style="color:#b91c1c;">✗ Rechazado</span>' : '—');
+    var sameOk = (p.truora_same_ok == 1) ? '<span style="color:#16a34a;">✓ same OK</span>'
+              : (p.truora_same_ok === 0 ? '<span style="color:#b91c1c;">✗ no same</span>' : '—');
+    html += _kvTable([
+      ['CURP', esc(p.curp || '—'), true],
+      ['Fecha de nacimiento', esc(p.fecha_nacimiento || '—')],
+      ['CDC — validación', cdcOk],
+      ['CDC — acuse / referencia', esc(p.cdc_referencia || p.cdc_acuse || '—')],
+      ['Truora — same OK (datos coinciden)', sameOk],
+      ['Validación timestamp', esc(p.cdc_validado_at || p.truora_completed_at || '—')],
+    ]);
+    $c.html(html);
+  }
+
+  function renderCapacidad($c, p){
+    var pesos = function(v){ return (v != null && v !== '') ? '$'+Number(v).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'; };
+    var pct   = function(v){ return (v != null && v !== '') ? Number(v).toFixed(1) + '%' : '—'; };
+    var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">Capacidad crediticia</div>';
+    var scoreColor = p.score >= 700 ? '#16a34a' : (p.score >= 600 ? '#ca8a04' : '#dc2626');
+    var scoreCell  = p.score != null ? '<span style="color:'+scoreColor+';font-weight:700;font-size:15px;">'+p.score+'</span>' : '—';
+    var dpdColor   = p.dpd_90 == 0 ? '#16a34a' : (p.dpd_90 != null ? '#dc2626' : '#64748b');
+    var dpdCell    = p.dpd_90 != null ? '<span style="color:'+dpdColor+';font-weight:700;">'+p.dpd_90+'</span>' : '—';
+    html += _kvTable([
+      ['Score CDC', scoreCell],
+      ['PTI (Payment-to-Income)', pct(p.pti)],
+      ['DPD90 (Días Pago Demorados 90+)', dpdCell],
+      ['Deuda existente', pesos(p.deuda_existente)],
+      ['Ingreso reportado', pesos(p.ingreso)],
+      ['Capacidad de pago', pesos(p.capacidad_pago)],
+      ['Pre-aprobado por', esc(p.preaprobado_monto != null ? '$'+Number(p.preaprobado_monto).toLocaleString('es-MX') : '—'), true],
+      ['Decisión', esc(p.estado || p.status || '—')],
+    ]);
+    $c.html(html);
+  }
+
+  function renderResumenTx($c, row){
+    var pesos = function(v){ return (v != null && v !== '') ? '$'+Number(v).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'; };
+    var total = row.total || row.precio || row.monto || row.amount;
+    var enganche = row.enganche || row.engache || null;
+    var plazo    = row.plazo_semanas || row.plazo || null;
+    var pagoSem  = row.pago_semanal || row.pago_recurrente || null;
+    var tasa     = row.tasa_anual || row.tasa || null;
+    var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">Resumen de transacción</div>';
+    html += _kvTable([
+      ['Pedido', esc(row.pedido_corto || row.pedido || ('TX'+row.id)), true],
+      ['Modelo · Color', esc((row.modelo||'—') + ' · ' + (row.color||'—'))],
+      ['Método (tpago)', esc(row.tpago || row.tipo_pago || '—')],
+      ['Total', pesos(total), true],
+      ['Enganche', pesos(enganche)],
+      ['Plazo (semanas)', esc(plazo != null ? plazo : '—')],
+      ['Pago semanal', pesos(pagoSem)],
+      ['Tasa anual', (tasa != null && tasa !== '' ? Number(tasa).toFixed(2)+'%' : '—')],
+      ['Estado del pago', esc(row.pago_estado || '—')],
+      ['Stripe PI', '<code style="font-size:11px;">'+esc(row.stripe_pi || '—')+'</code>'],
+      ['Fecha', esc(row.freg || row.fecha || '—')],
+    ]);
+    $c.html(html);
   }
 
   // Inline renderers — keep them inside the showDocumentos closure so they

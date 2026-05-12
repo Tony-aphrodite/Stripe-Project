@@ -215,16 +215,38 @@ if ($estadoMoto && !in_array($estadoMoto, $estadosLibres, true)) {
 // blocked by an empty legacy column. We only refuse when EVERY
 // identifier is missing — at that point the row is genuinely
 // unidentifiable.
-$pedidoNum = voltikaNormalizePedidoNum((string)($order['pedido'] ?? ''));
-if ($pedidoNum === '') {
-    $pedidoNum = voltikaNormalizePedidoNum((string)($order['pedido_corto'] ?? ''));
+// Customer brief 2026-05-12 (Óscar, 8th round — screenshot still shows
+// "La orden no tiene pedido válido" on VK-2605-0002 despite previous
+// fallbacks): expanded the chain so even rows with hostile data shapes
+// (whitespace-only pedido, "0" string, missing column) still resolve.
+// We also include a diagnostic detail in the error response so future
+// occurrences are immediately debuggable from the network tab.
+$tryPedido      = trim((string)($order['pedido']       ?? ''));
+$tryPedidoCorto = trim((string)($order['pedido_corto'] ?? ''));
+
+// 1) Raw pedido (e.g. "1778302204-2d66242e") → "VK-1778302204-2d66242e"
+$pedidoNum = ($tryPedido !== '' && $tryPedido !== '0')
+    ? voltikaNormalizePedidoNum($tryPedido)
+    : '';
+// 2) pedido_corto (e.g. "2605-0002" or "VK-2605-0002") → normalized
+if ($pedidoNum === '' && $tryPedidoCorto !== '' && $tryPedidoCorto !== '0') {
+    $pedidoNum = voltikaNormalizePedidoNum($tryPedidoCorto);
 }
+// 3) Synthetic TX-id key for orders where every pedido column is empty
 if ($pedidoNum === '' && !empty($order['id'])) {
-    // Last-resort canonical identifier when both pedido columns are NULL.
     $pedidoNum = 'VK-TX' . (int)$order['id'];
 }
 if ($pedidoNum === '') {
-    adminJsonOut(['error' => 'La orden no tiene pedido válido — no se puede vincular la moto.'], 400);
+    adminJsonOut([
+        'error'  => 'La orden no tiene pedido válido — no se puede vincular la moto.',
+        'detail' => [
+            'transaccion_id'  => $transId,
+            'pedido_raw'      => $tryPedido,
+            'pedido_corto_raw'=> $tryPedidoCorto,
+            'order_id'        => $order['id'] ?? null,
+            'columns_present' => array_keys($order),
+        ],
+    ], 400);
 }
 
 // Credit-family orders only have enganche paid at this point → mark 'parcial'.

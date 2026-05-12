@@ -122,7 +122,19 @@ try {
                $trackingSelect
                $cotizSelect,
                t.pago_estado AS tx_pago_estado,
-               m.id AS moto_id, m.vin_display AS moto_vin, m.estado AS moto_estado,
+               -- Customer brief 2026-05-12 (Oscar, 8th round): some rows have
+               -- vin_display populated with a pedido_num pattern (legacy
+               -- import bug), which made the Ventas ASIGNACION column show
+               -- a VK- prefixed string instead of the real VIN. Prefer the
+               -- actual m.vin column when vin_display is empty or starts
+               -- with VK-. Real VINs are 17 alphanumeric chars without VK-.
+               m.id AS moto_id,
+               CASE
+                   WHEN m.vin_display IS NULL OR m.vin_display = '' THEN m.vin
+                   WHEN m.vin_display LIKE 'VK-%'                   THEN m.vin
+                   ELSE m.vin_display
+               END AS moto_vin,
+               m.estado AS moto_estado,
                m.pago_estado,
                m.punto_voltika_id AS moto_punto_id,
                DATEDIFF(CURDATE(), COALESCE(m.fecha_estado, m.freg)) AS moto_dias_en_estado,

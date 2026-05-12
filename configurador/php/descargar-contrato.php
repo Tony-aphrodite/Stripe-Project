@@ -181,6 +181,10 @@ if (!$forceRegen) {
 // code-tree was previously read-only end up here. The /tmp fallback in
 // contratoContadoOutputDir() means the regen now always succeeds.
 $regenError = null;
+// Pre-declared so the diagnostic page can reference them even when the
+// regen branch never ran (e.g. credit row that hit the cash search path).
+$creditSearchPatterns = [];
+$isCreditFam = false;
 if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
     try {
         // Customer brief 2026-05-09 (Óscar — Contrato no disponible on
@@ -234,14 +238,25 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
             // hint that the customer must complete the credit-signing
             // flow (no admin-side regen is possible for credit because
             // it requires the Cincel NOM-151 timestamp via Truora).
+            // (variables pre-declared above; we just assign here)
             $isCreditFam = !$isAllowed && in_array($tpagoNorm, ['credito','enganche','parcial'], true);
             if ($isCreditFam) {
                 $safeName = preg_replace('/[^a-zA-Z0-9]/', '_', (string)($tx['nombre'] ?? ''));
                 $candidates = [];
+                // Customer brief 2026-05-12 (Óscar, 7th round — screenshot:
+                // admin diagnostic showed `contratos/contado/*` paths even
+                // for a credit order, which was misleading). Track the
+                // glob patterns we actually searched so the diagnostic
+                // page can render them instead of the cash paths.
+                $creditSearchPatterns = [];
                 if ($safeName !== '') {
+                    $creditSearchPatterns = [
+                        __DIR__ . '/contratos/contrato_*' . $safeName . '*.pdf',
+                        sys_get_temp_dir() . '/voltika_contratos/contrato_*' . $safeName . '*.pdf',
+                    ];
                     $candidates = array_merge(
-                        glob(__DIR__ . '/contratos/contrato_*' . $safeName . '*.pdf') ?: [],
-                        glob(sys_get_temp_dir() . '/voltika_contratos/contrato_*' . $safeName . '*.pdf') ?: []
+                        glob($creditSearchPatterns[0]) ?: [],
+                        glob($creditSearchPatterns[1]) ?: []
                     );
                 }
                 if ($candidates) {
@@ -420,11 +435,26 @@ if ($absPath === '' || !is_readable($absPath)) {
         }
         echo '</div>';
 
-        echo '<div class="card"><div class="tag">RUTAS BUSCADAS</div><table>';
-        foreach ($searchPaths as $sp) {
+        // Customer brief 2026-05-12 (Óscar, 7th round): for credit-family
+        // orders the cash paths in $searchPaths are misleading. Swap them
+        // for the actual glob patterns the credit branch attempted so the
+        // diagnostic shows what was REALLY searched.
+        $displayPaths = $searchPaths;
+        if ($isCreditFam && !empty($creditSearchPatterns)) {
+            $displayPaths = $creditSearchPatterns;
+        }
+        $rutasTag = $isCreditFam ? 'PATRONES BUSCADOS (crédito)' : 'RUTAS BUSCADAS';
+        echo '<div class="card"><div class="tag">' . $rutasTag . '</div><table>';
+        foreach ($displayPaths as $sp) {
             $exists = $sp && file_exists($sp);
+            // For glob patterns, file_exists is meaningless — show match count instead.
+            $isGlob = strpos((string)$sp, '*') !== false;
+            $matches = $isGlob ? (glob($sp) ?: []) : [];
+            $statusHtml = $isGlob
+                ? '<span class="' . (count($matches) ? 'ok' : 'err') . '">' . count($matches) . ' archivo(s)</span>'
+                : '<span class="' . ($exists ? 'ok' : 'err') . '">' . ($exists ? '✓ existe' : '× no') . '</span>';
             echo '<tr><td><code>' . htmlspecialchars($sp) . '</code></td>';
-            echo '<td class="' . ($exists ? 'ok' : 'err') . '">' . ($exists ? '✓ existe' : '× no') . '</td></tr>';
+            echo '<td>' . $statusHtml . '</td></tr>';
         }
         echo '</table></div>';
 
@@ -442,11 +472,71 @@ if ($absPath === '' || !is_readable($absPath)) {
             echo '</table></div>';
         }
 
+        // ── Acciones directas (Bug 7.3) ─────────────────────────────────
+        // Customer brief 2026-05-12: instead of just listing instructions
+        // for the admin to follow manually, surface the two most common
+        // next actions as one-click buttons:
+        //   • Credit orders → "Ir a Solicitudes" (preaprobaciones tab,
+        //     pre-filtered by client email — see admin-app.js hash router).
+        //   • Cash/MSI orders → "Reenviar link de firma" (calls
+        //     enviar-link-firma.php with the transaccion_id).
+        echo '<style>.acn-btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}'
+           . '.acn-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer;border:0;}'
+           . '.acn-primary{background:#039fe1;color:#fff}.acn-primary:hover{background:#0286c2}'
+           . '.acn-ghost{background:#fff;color:#0c2340;border:1px solid #94a3b8}.acn-ghost:hover{background:#f1f5f9}'
+           . '#acnMsg{font-size:12.5px;margin-top:10px;padding:8px 12px;border-radius:6px;display:none}'
+           . '#acnMsg.ok{display:block;background:#dcfce7;color:#166534;border:1px solid #86efac}'
+           . '#acnMsg.err{display:block;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}'
+           . '</style>';
         echo '<div class="card" style="background:#eff6ff;border-color:#60a5fa;">';
-        echo '<b>¿Qué hacer?</b><br>';
-        echo '1. Ejecuta <a href="../../admin/php/dossier-setup.php"><b>Dossier Setup</b></a> para confirmar que <code>contratos/contado/</code> es escribible o que el fallback /tmp está activo.<br>';
-        echo '2. Si el pedido es de crédito (enganche), usa el endpoint <code>generar-contrato-pdf.php</code> en lugar de éste.<br>';
-        echo '3. Para regenerar manualmente: añade <code>?pedido=' . htmlspecialchars($pedido) . '&inline=1&_force=' . time() . '</code> a la URL.';
+        echo '<b>Acciones rápidas</b>';
+        echo '<div class="acn-btns">';
+        if ($isCreditFam) {
+            // Deep link into the admin preaprobaciones tab; admin-app.js
+            // reads the hash on load and routes to that module.
+            $deepLink = '/admin/#preaprobaciones';
+            $emailFilter = $tx && !empty($tx['email']) ? '?q=' . urlencode($tx['email']) : '';
+            echo '<a class="acn-btn acn-primary" href="' . htmlspecialchars($deepLink . $emailFilter) . '" target="_top">'
+               . '📋 Ir a Solicitudes de crédito</a>';
+            echo '<span style="font-size:12px;color:#475569;padding:10px 0;">'
+               . 'Desde Solicitudes podrás reenviar el link de Truora + Cincel al cliente.</span>';
+        } elseif ($tx && !empty($tx['id'])) {
+            $txIdJs = (int)$tx['id'];
+            echo '<button class="acn-btn acn-primary" id="acnFirmaBtn" data-tx="' . $txIdJs . '">'
+               . '📲 Reenviar link de firma al cliente</button>';
+            echo '<a class="acn-btn acn-ghost" href="../../admin/php/dossier-setup.php" target="_top">'
+               . '🧰 Dossier Setup</a>';
+        }
+        echo '</div>';
+        echo '<div id="acnMsg"></div>';
+        echo '</div>';
+
+        // Inline JS — only needed for the "Reenviar link" button.
+        if (!$isCreditFam && $tx && !empty($tx['id'])) {
+            echo '<script>'
+               . '(function(){var b=document.getElementById("acnFirmaBtn");if(!b)return;'
+               . 'b.addEventListener("click",function(){'
+               . 'var tx=parseInt(this.getAttribute("data-tx"),10);var m=document.getElementById("acnMsg");'
+               . 'm.className="";m.style.display="none";'
+               . 'this.disabled=true;this.textContent="Enviando...";'
+               . 'fetch("/admin/php/ventas/enviar-link-firma.php",{method:"POST",credentials:"include",'
+               . 'headers:{"Content-Type":"application/json"},body:JSON.stringify({transaccion_id:tx})})'
+               . '.then(function(r){return r.json();}).then(function(j){'
+               . 'if(j.ok){m.className="ok";m.textContent="✓ Link enviado. "+'
+               . '(j.email_sent?"Email ✓ ":"")+(j.sms_sent?"SMS ✓":"");'
+               . 'b.textContent="📲 Link enviado";'
+               . '}else{m.className="err";m.textContent="✗ "+(j.error||"Error desconocido");'
+               . 'b.disabled=false;b.textContent="📲 Reintentar";}'
+               . '}).catch(function(e){m.className="err";m.textContent="✗ Error de conexión";'
+               . 'b.disabled=false;b.textContent="📲 Reintentar";});'
+               . '});})();'
+               . '</script>';
+        }
+
+        echo '<div class="card" style="font-size:12px;color:#64748b;">';
+        echo '<b>Ayuda técnica</b><br>';
+        echo '• Verifica que <code>contratos/contado/</code> o <code>/tmp</code> sean escribibles vía <a href="../../admin/php/dossier-setup.php">Dossier Setup</a>.<br>';
+        echo '• Para regeneración manual: <code>?pedido=' . htmlspecialchars($pedido) . '&inline=1&_force=' . time() . '</code>';
         echo '</div></body></html>';
     } else {
         echo 'Contrato no disponible';
