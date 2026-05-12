@@ -38,6 +38,42 @@ if ($motivo === '') {
 $pdo = getDB();
 $results = [];
 
+// ── ROOT-CAUSE FIX: extend the envios.estado ENUM ──────────────────────
+// Customer brief 2026-05-09 (Óscar, 4th-round diagnostic, force-close
+// pass): diagnostic showed rows_affected=1 yet estado was still ''
+// after the UPDATE. Root cause: envios.estado is defined in
+// master-bootstrap.php line 245 as
+//   ENUM('lista_para_enviar','enviada','recibida')
+// — and `completado_no_exitoso` is NOT among the allowed values.
+// MySQL in non-strict mode silently truncates an invalid ENUM write
+// to '' (empty string) AND reports rowCount=1 on the UPDATE. Every
+// cleanup endpoint that tried to set estado='completado_no_exitoso'
+// — limpiar-test-data.php, limpiar-duplicados.php, eliminar.php — has
+// been failing silently for months. Extend the ENUM as the canonical
+// schema migration; existing UPDATE statements will then persist.
+$enumMigrated = false;
+$enumDef      = null;
+try {
+    // Read current ENUM definition for diagnostic purposes
+    $colStmt = $pdo->query("SHOW COLUMNS FROM envios LIKE 'estado'");
+    $colRow  = $colStmt->fetch(PDO::FETCH_ASSOC);
+    $enumDef = $colRow['Type'] ?? null;
+    // Only ALTER if the new state isn't already in the ENUM
+    if ($enumDef && stripos($enumDef, "completado_no_exitoso") === false) {
+        $pdo->exec("ALTER TABLE envios
+                       MODIFY COLUMN estado
+                       ENUM('lista_para_enviar','enviada','enviado','en_transito','recibida','completado_no_exitoso','cancelado')
+                       DEFAULT 'lista_para_enviar'");
+        $enumMigrated = true;
+        // Re-read to confirm
+        $colStmt = $pdo->query("SHOW COLUMNS FROM envios LIKE 'estado'");
+        $colRow  = $colStmt->fetch(PDO::FETCH_ASSOC);
+        $enumDef = $colRow['Type'] ?? null;
+    }
+} catch (Throwable $e) {
+    error_log('force-close-envios ENUM migrate: ' . $e->getMessage());
+}
+
 foreach ($ids as $envioId) {
     if ($envioId <= 0) continue;
     $entry = ['envio_id' => $envioId];
@@ -97,8 +133,10 @@ adminLog('force_close_envios', [
 ]);
 
 adminJsonOut([
-    'ok'      => true,
-    'count'   => count($results),
-    'results' => $results,
-    'motivo'  => $motivo,
+    'ok'             => true,
+    'count'          => count($results),
+    'enum_migrated'  => $enumMigrated,
+    'enum_current'   => $enumDef,
+    'results'        => $results,
+    'motivo'         => $motivo,
 ]);
