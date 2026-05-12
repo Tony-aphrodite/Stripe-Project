@@ -36,9 +36,19 @@ $pdo = getDB();
 
 // Scope-check: the moto must belong to this punto. Prevents a punto from
 // enumerating PaymentIntents of other puntos by guessing moto_ids.
+//
+// Customer brief 2026-05-12 (Óscar, 7th round): the strict JOIN
+// (t.id = m.transaccion_id) fails for legacy rows where transaccion_id
+// is NULL even though pedido_num is set. Mirror the historial.php fix:
+// fall back to matching transacciones via pedido_num shapes.
 $stmt = $pdo->prepare("SELECT t.stripe_pi
                          FROM inventario_motos m
-                         LEFT JOIN transacciones t ON t.id = m.transaccion_id
+                         LEFT JOIN transacciones t ON (
+                                t.id = m.transaccion_id
+                             OR (m.transaccion_id IS NULL AND CONCAT('VK-', t.pedido) = m.pedido_num)
+                             OR (m.transaccion_id IS NULL AND t.pedido_corto         = m.pedido_num)
+                             OR (m.transaccion_id IS NULL AND t.pedido               = m.pedido_num)
+                         )
                         WHERE m.id = ? AND m.punto_voltika_id = ?
                         LIMIT 1");
 $stmt->execute([$motoId, $ctx['punto_id']]);
