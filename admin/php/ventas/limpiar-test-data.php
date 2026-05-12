@@ -187,7 +187,13 @@ try {
     }
     unset($m);
 
-    // Envíos pointing at any moto in the orphan list, in ACTIVE state.
+    // Envíos pointing at any moto in the orphan list.
+    // Customer brief 2026-05-09 (Óscar, 3rd round — "GCTESTVIN0000005,
+    // GCTESTVIN0000007 and VK-1826-TEST still showing"): those rows
+    // had estado=NULL/empty so the previous filter (only active states)
+    // missed them entirely. Widen to also include rows with no estado
+    // — they're test artifacts that never advanced past row creation
+    // and should be closed for the same reason as active rows.
     if ($orphanMotos) {
         $motoIds = array_map(function($m){ return (int)$m['id']; }, $orphanMotos);
         $inM = implode(',', array_fill(0, count($motoIds), '?'));
@@ -197,13 +203,69 @@ try {
                    FROM envios e
                    JOIN inventario_motos m ON m.id = e.moto_id
                   WHERE e.moto_id IN ($inM)
-                    AND e.estado IN ('lista_para_enviar','enviada','enviado','en_transito')";
+                    AND (
+                          e.estado IN ('lista_para_enviar','enviada','enviado','en_transito')
+                       OR e.estado IS NULL
+                       OR e.estado = ''
+                        )";
         $eStmt = $pdo->prepare($eSql);
         $eStmt->execute($motoIds);
         $orphanEnvios = $eStmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (Throwable $e) {
     error_log('limpiar-test-data orphan scan: ' . $e->getMessage());
+}
+
+// ── 2c. Duplicate-envío detection ──────────────────────────────────────
+// Customer brief 2026-05-09 (Óscar, 3rd round): R4WPDTA18T8000048
+// appeared 3 times in Envíos — same moto routed to 3 different
+// destinations. A motorcycle cannot be physically shipped to 3 places.
+// The cause is admin / cron flows creating new envío rows for an
+// existing moto without closing the previous ones. We detect the
+// pattern (same moto_id × multiple active envíos) and KEEP the most
+// recent row, closing the older duplicates as completado_no_exitoso.
+$duplicateEnvios = [];
+try {
+    $dupSql = "SELECT moto_id,
+                      GROUP_CONCAT(id ORDER BY freg DESC) AS env_ids,
+                      COUNT(*) AS dup_count
+                 FROM envios
+                WHERE moto_id IS NOT NULL
+                  AND (
+                        estado IN ('lista_para_enviar','enviada','enviado','en_transito')
+                     OR estado IS NULL
+                     OR estado = ''
+                      )
+             GROUP BY moto_id
+               HAVING COUNT(*) > 1";
+    $dupRows = $pdo->query($dupSql)->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($dupRows as $dup) {
+        $ids = array_map('intval', explode(',', (string)$dup['env_ids']));
+        // First id (sorted by freg DESC) is the most recent — keep it.
+        // Everything else becomes a stale duplicate to close.
+        $keep = $ids[0];
+        $toClose = array_slice($ids, 1);
+        // Hydrate with details for the dry-run preview
+        if ($toClose) {
+            $inD = implode(',', array_fill(0, count($toClose), '?'));
+            $dStmt = $pdo->prepare("SELECT e.id AS envio_id, e.moto_id, e.estado, e.freg,
+                                           e.punto_destino_id, pv.nombre AS punto_nombre,
+                                           m.vin, m.vin_display, m.modelo, m.color
+                                      FROM envios e
+                                 LEFT JOIN puntos_voltika pv ON pv.id = e.punto_destino_id
+                                      JOIN inventario_motos m ON m.id = e.moto_id
+                                     WHERE e.id IN ($inD)");
+            $dStmt->execute($toClose);
+            foreach ($dStmt->fetchAll(PDO::FETCH_ASSOC) as $de) {
+                $de['kept_envio_id'] = $keep;
+                $de['why'] = 'moto_id ' . $dup['moto_id'] . ' tiene ' . $dup['dup_count']
+                           . ' envíos activos — mantener el más reciente (#' . $keep . '), cerrar los anteriores';
+                $duplicateEnvios[] = $de;
+            }
+        }
+    }
+} catch (Throwable $e) {
+    error_log('limpiar-test-data duplicate scan: ' . $e->getMessage());
 }
 
 // ── DRY-RUN: return the plan and exit ──────────────────────────────────
@@ -219,6 +281,9 @@ if ($dryRun) {
         'orphan_motos_count' => count($orphanMotos),
         'orphan_envios'      => $orphanEnvios,
         'orphan_envios_count'=> count($orphanEnvios),
+        // Duplicate-envío pass — same moto with multiple active envíos
+        'duplicate_envios'       => $duplicateEnvios,
+        'duplicate_envios_count' => count($duplicateEnvios),
         'instructions'       => 'Para borrar realmente: POST a este mismo endpoint con body {"dry_run":0,"motivo":"..."}',
     ]);
 }
@@ -283,7 +348,11 @@ try {
                                   notas  = CONCAT(COALESCE(notas,''), '\n[test-cleanup-orphan] ', ?),
                                   fmod   = NOW()
                             WHERE id = ?
-                              AND estado IN ('lista_para_enviar','enviada','enviado','en_transito')")
+                              AND (
+                                    estado IN ('lista_para_enviar','enviada','enviado','en_transito')
+                                 OR estado IS NULL
+                                 OR estado = ''
+                                  )")
                 ->execute([$motivo, (int)$oe['envio_id']]);
             $orphanEnviosClosed++;
         } catch (Throwable $e) {
@@ -319,11 +388,38 @@ try {
         }
     }
 
+    // ── 2c. Close duplicate envíos (keep latest per moto) ──────────────
+    // Each entry in $duplicateEnvios is an OLDER duplicate that should
+    // be closed; the most recent envío for the same moto is kept.
+    $duplicatesClosed = 0;
+    foreach ($duplicateEnvios as $de) {
+        try {
+            $pdo->prepare("UPDATE envios
+                              SET estado = 'completado_no_exitoso',
+                                  notas  = CONCAT(COALESCE(notas,''),
+                                                  '\n[test-cleanup-duplicate] mantener envío #', ?, ' · ', ?),
+                                  fmod   = NOW()
+                            WHERE id = ?
+                              AND (
+                                    estado IN ('lista_para_enviar','enviada','enviado','en_transito')
+                                 OR estado IS NULL
+                                 OR estado = ''
+                                  )")
+                ->execute([(int)$de['kept_envio_id'], $motivo, (int)$de['envio_id']]);
+            $duplicatesClosed++;
+        } catch (Throwable $e) {
+            error_log('duplicate envio close: ' . $e->getMessage());
+        }
+    }
+    $GLOBALS['__dupClosed'] = $duplicatesClosed;
+
     $pdo->commit();
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     adminJsonOut(['error' => 'Falló la operación: ' . $e->getMessage()], 500);
 }
+
+$duplicatesClosed = (int)($GLOBALS['__dupClosed'] ?? 0);
 
 adminLog('limpiar_test_data', [
     'admin_id'              => $uid,
@@ -335,6 +431,7 @@ adminLog('limpiar_test_data', [
     'orphan_envios_closed'  => $orphanEnviosClosed,
     'orphan_motos_soft_del' => $orphanMotosSoftDel,
     'orphan_skipped'        => $orphanSkipped,
+    'duplicates_closed'     => $duplicatesClosed,
 ]);
 
 adminJsonOut([
@@ -348,5 +445,7 @@ adminJsonOut([
     'orphan_envios_closed'  => $orphanEnviosClosed,
     'orphan_motos_soft_del' => $orphanMotosSoftDel,
     'orphan_skipped'        => $orphanSkipped,
+    // Duplicate-envío pass (same moto with multiple active envíos)
+    'duplicates_closed'     => $duplicatesClosed,
     'motivo'                => $motivo,
 ]);
