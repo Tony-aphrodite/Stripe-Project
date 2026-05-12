@@ -61,15 +61,31 @@ $where  = [];
 $params = [];
 
 // "Signed contract" detection — at least ONE of the canonical signals
-// must be present. Cash/MSI orders are considered signed when the path
-// OR the acceptance timestamp is recorded. Credit orders will likely
-// have the path set after Cincel completes; we also do a post-process
-// pass on rows missing the path to check the disk glob for Truora-Cincel
-// PDFs.
+// must be present.
+//
+// Customer brief 2026-05-13 (Óscar, 12th round — Option B): cash and
+// MSI orders are LEGALLY signed the moment the customer accepts the
+// terms in checkout and Stripe captures the payment. The system stores
+// the audit trail (stripe_pi, freg, customer info) on transacciones;
+// the PDF is just a presentation of that audit trail and can always be
+// regenerated on-demand via descargar-contrato.php. So we widen the
+// detection: cash-family orders with a REAL Stripe PI + paid status
+// are implicitly signed even if contrato_pdf_path was never persisted.
+//
+// Credit-family (enganche / parcial / credito) stays strict — those
+// orders require an EXPLICIT Truora+Cincel signing event and don't get
+// the implicit shortcut.
 $signedConds = [];
 if ($hasPdfPath)  $signedConds[] = "(t.contrato_pdf_path IS NOT NULL AND t.contrato_pdf_path <> '')";
 if ($hasAccepted) $signedConds[] = "(t.contrato_aceptado_at IS NOT NULL)";
 if ($hasOtpAt)    $signedConds[] = "(t.contrato_otp_validated_at IS NOT NULL)";
+// Implicit-signed branch (cash/MSI/SPEI/OXXO only).
+$signedConds[] = "(
+    LOWER(COALESCE(t.tpago,'')) IN ('contado','unico','msi','spei','oxxo','tarjeta','tarjeta de débito o crédito','tarjeta de credito','tarjeta de debito')
+    AND LOWER(COALESCE(t.pago_estado,'')) IN ('pagada','aprobada','approved','paid')
+    AND t.stripe_pi IS NOT NULL
+    AND t.stripe_pi REGEXP '^pi_3[A-Za-z0-9]{20,}$'
+)";
 $where[] = '(' . implode(' OR ', $signedConds) . ')';
 
 // Search across multiple columns
@@ -167,9 +183,18 @@ foreach ($rows as &$row) {
             $row['pdf_on_disk'] = !empty($candidates);
         }
     } else {
-        // Cash/MSI — descargar-contrato.php can always regenerate from
-        // accepted-at + transacciones row, so we surface as available.
-        $row['pdf_on_disk'] = !empty($row['contrato_aceptado_at']) || !empty($row['contrato_otp_validated_at']);
+        // Cash/MSI — descargar-contrato.php regenerates from the row
+        // (stripe_pi + nombre + fecha) whenever the admin requests it.
+        // Customer brief 2026-05-13 (Option B): paid cash/MSI orders are
+        // ALWAYS reachable for regen even without contrato_aceptado_at;
+        // we mark pdf_on_disk=true so the boss sees the Ver/Descargar
+        // buttons enabled. The actual file is generated on click and
+        // cached afterwards.
+        $hasRealPi = isset($row['stripe_pi']) && preg_match('/^pi_3[A-Za-z0-9]{20,}$/', (string)$row['stripe_pi']);
+        $isPaid    = in_array(strtolower((string)($row['pago_estado'] ?? '')), ['pagada','aprobada','approved','paid'], true);
+        $row['pdf_on_disk'] = !empty($row['contrato_aceptado_at'])
+                           || !empty($row['contrato_otp_validated_at'])
+                           || ($hasRealPi && $isPaid);
     }
 
     // Pre-build the contract download URL using the same fallback chain
