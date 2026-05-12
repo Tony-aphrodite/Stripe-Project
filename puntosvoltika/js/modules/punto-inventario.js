@@ -67,17 +67,9 @@ window.PV_inventario = (function(){
       if (action === 'ensamble')  iniciarEnsamble(id);
       if (action === 'lista')     marcarLista(id);
     });
-    $('.pv-eliminar-btn').on('click', function(e){
-      e.stopPropagation();
-      showEliminarModal(
-        $(this).data('id'),
-        $(this).data('vin'),
-        $(this).data('modelo'),
-        $(this).data('color'),
-        $(this).data('cliente') || '',
-        $(this).data('pedido')  || ''
-      );
-    });
+    // Customer brief 2026-05-12: pv-eliminar-btn handler removed —
+    // deletion is admin-only now. Markup is no longer emitted; if a stale
+    // cached page still has the button, the click is a silent no-op.
   }
   function ventaReferidoCard(v){
     // Online order with this punto's referral code, awaiting CEDIS to link
@@ -168,92 +160,19 @@ window.PV_inventario = (function(){
       }
     }
 
-    // Customer brief 2026-05-09 (Óscar, 5th round — "the point cannot
-    // delete any moto"): the previous restriction (`tipo === 'venta'`)
-    // only allowed deletion from "Disponible para venta". Punto operators
-    // now report needing delete on the other buckets too: stale duplicate
-    // entries in "Para entrega" and rows with no cliente that ended up in
-    // showroom slots, returned units, etc. Widen the visibility AND
-    // surface a clear warning in the modal when a cliente IS linked —
-    // server-side (inventario/eliminar.php) still enforces the safety
-    // gate, so even if the operator clicks Eliminar on a row with a
-    // real order, the request is rejected with a useful error.
-    if (tipo === 'entrega' || tipo === 'venta') {
-      h += '<div style="margin-top:8px;">';
-      h += '<button class="ad-btn ghost sm pv-eliminar-btn" data-id="'+m.id+'" '+
-           'data-vin="'+(m.vin_display||m.vin||'')+'" '+
-           'data-modelo="'+(m.modelo||'')+'" data-color="'+(m.color||'')+'" '+
-           'data-cliente="'+(m.cliente_nombre||'')+'" '+
-           'data-pedido="'+(m.pedido_num||'')+'" '+
-           'style="color:#b91c1c;border-color:#b91c1c;">'+
-           '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
-           'Eliminar</button>';
-      h += '</div>';
-    }
+    // Customer brief 2026-05-12 (Óscar, 6th round — screenshot 3: green X
+    // over Eliminar button): "Punto cannot delete a moto." Reversing the
+    // previous round's extension — the operator can no longer remove
+    // motos from inventory, regardless of bucket or estado. Deletion is
+    // now admin-only. The server endpoint (eliminar.php) also blocks any
+    // call coming from a punto session (defense in depth).
 
     h += '</div></div>';
     return h;
   }
-  function showEliminarModal(motoId, vinLabel, modelo, color, clienteName, pedidoNum){
-    // Customer brief 2026-05-09 (Óscar, 5th round — "the point cannot
-    // delete any moto"): the button is now visible on entrega + venta
-    // rows. If the moto has a cliente/pedido linked, show an explicit
-    // warning so the operator understands what they're about to remove,
-    // and the server-side guard in inventario/eliminar.php still
-    // rejects the request if a real order is attached.
-    var hasCliente = (clienteName || pedidoNum);
-    var warningBlock = hasCliente
-        ? '<div style="background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;padding:10px 12px;border-radius:6px;font-size:12.5px;margin-bottom:12px;">'
-          + '<strong>⚠ Atención:</strong> esta moto está vinculada a un cliente / pedido.<br>'
-          + (clienteName ? '<div style="margin-top:4px;">Cliente: <strong>'+clienteName+'</strong></div>' : '')
-          + (pedidoNum   ? '<div>Pedido: <code>'+pedidoNum+'</code></div>' : '')
-          + '<div style="margin-top:6px;font-size:11.5px;">No se podrá eliminar mientras haya un cliente activo. Para reasignar, contacta a CEDIS.</div>'
-          + '</div>'
-        : '';
-    PVApp.modal(
-      '<div class="ad-h2" style="color:#b91c1c;">Eliminar moto del inventario</div>'+
-      warningBlock+
-      '<div style="color:var(--ad-dim);margin-bottom:14px;font-size:13px;line-height:1.55;">'+
-        'Vas a eliminar <strong>'+(modelo||'—')+' '+(color||'')+'</strong>'+
-        (vinLabel ? ' (VIN <code>'+vinLabel+'</code>)' : '')+' de tu inventario.<br><br>'+
-        'La moto queda como <strong>eliminada</strong> en la base de datos (no se borra de forma definitiva — admin puede restaurarla). '+
-        'Si es una entrada duplicada o de prueba, esto es lo correcto.'+
-      '</div>'+
-      '<label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Motivo de eliminación *</label>'+
-      '<textarea id="pvDelMotivo" class="ad-input" placeholder="Ej. entrada duplicada · moto regresada a CEDIS · error de captura" '+
-      'style="width:100%;min-height:70px;margin-bottom:6px;"></textarea>'+
-      '<div id="pvDelMsg" style="font-size:12px;color:#b91c1c;min-height:16px;"></div>'+
-      '<div style="display:flex;gap:8px;margin-top:10px;">'+
-        '<button class="ad-btn ghost" id="pvDelCancel" style="flex:1;">Cancelar</button>'+
-        '<button class="ad-btn primary" id="pvDelOk" style="flex:1;background:#b91c1c;border-color:#b91c1c;">Eliminar</button>'+
-      '</div>'
-    );
-    $('#pvDelCancel').on('click', PVApp.closeModal);
-    $('#pvDelOk').on('click', function(){
-      var motivo = ($('#pvDelMotivo').val()||'').trim();
-      if (motivo.length < 4) {
-        $('#pvDelMsg').text('Escribe un motivo (mínimo 4 caracteres).');
-        return;
-      }
-      var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Eliminando...');
-      PVApp.api('inventario/eliminar.php', { moto_id: motoId, motivo: motivo })
-        .done(function(r){
-          if (r && r.ok) {
-            PVApp.closeModal();
-            PVApp.toast('Moto eliminada');
-            render();
-          } else {
-            $('#pvDelMsg').text((r && r.error) || 'Error desconocido');
-            $btn.prop('disabled', false).text('Eliminar');
-          }
-        })
-        .fail(function(x){
-          var err = (x.responseJSON && x.responseJSON.error) || 'Error de conexión';
-          $('#pvDelMsg').text(err);
-          $btn.prop('disabled', false).text('Eliminar');
-        });
-    });
-  }
+  // showEliminarModal removed — customer brief 2026-05-12: punto users
+  // can no longer delete motos. See bikeCard() and eliminar.php for the
+  // matching UI + server-side restrictions.
   function iniciarEnsamble(motoId){
     if (!motoId) return;
     // Open the full assembly checklist (3 phases, 40+ verification items)
@@ -321,6 +240,10 @@ window.PV_inventario = (function(){
       html += '</div>';
 
       // ── Bloqueo ──
+      // Customer brief 2026-05-12 (Óscar, 6th round — screenshot 4: green
+      // X over Bloquear moto button): "And cannot do this." Punto users
+      // can no longer initiate a bloqueo — only display its current state.
+      // CEDIS / admin handle blocking and unblocking from the central panel.
       var isBloq = parseInt(m.bloqueado_venta) === 1;
       html += '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--ad-border,#eee);">';
       html += '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ad-primary,#039fe1);margin-bottom:10px;">Bloqueo</div>';
@@ -329,44 +252,17 @@ window.PV_inventario = (function(){
         html += '<div style="font-size:12px;color:#b91c1c;"><strong>Moto bloqueada</strong><br>Motivo: '+(m.bloqueado_motivo||'Sin motivo')+'</div></div>';
         html += '<div style="font-size:11px;color:var(--ad-dim,#888);">Para desbloquear esta moto, contacta a CEDIS.</div>';
       } else {
-        html += '<div style="font-size:12px;color:#059669;margin-bottom:10px;">Moto disponible (no bloqueada)</div>';
-        html += '<button class="ad-btn ghost" id="pvLockMoto" style="color:#b91c1c;border-color:#b91c1c;width:100%;">Bloquear moto</button>';
+        html += '<div style="font-size:12px;color:#059669;margin-bottom:4px;">Moto disponible (no bloqueada)</div>';
+        html += '<div style="font-size:11px;color:var(--ad-dim,#888);">Si necesitas bloquear esta moto, solicítalo a CEDIS / admin.</div>';
       }
       html += '</div>';
 
       PVApp.modal(html);
-      $('#pvLockMoto').on('click', function(){ showPuntoLockModal(m.id); });
+      // pvLockMoto handler removed — block button is no longer rendered.
     });
   }
-  function showPuntoLockModal(motoId){
-    var html = '<div class="ad-h2">Bloquear moto para venta</div>'+
-      '<div style="color:var(--ad-dim,#888);margin-bottom:12px;font-size:13px;">Esta moto no podrá ser vendida mientras esté bloqueada.</div>'+
-      '<label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Motivo del bloqueo *</label>'+
-      '<textarea id="pvLockMotivo" class="ad-input" placeholder="Ej. Pendiente revisión, daño detectado, etc." style="width:100%;min-height:80px;"></textarea>'+
-      '<button class="ad-btn primary" id="pvLockSave" style="width:100%;margin-top:12px;">Bloquear moto</button>';
-    PVApp.modal(html);
-    $('#pvLockSave').on('click', function(){
-      var motivo = $('#pvLockMotivo').val().trim();
-      if(!motivo){ alert('El motivo es obligatorio'); return; }
-      $(this).prop('disabled',true).html('<span class="ad-spin"></span> Bloqueando...');
-      PVApp.api('inventario/bloquear-venta.php', {
-        moto_id: motoId,
-        bloqueado: 1,
-        motivo: motivo
-      }).done(function(r){
-        if(r.ok){
-          PVApp.closeModal();
-          PVApp.toast('Moto bloqueada para venta');
-          render();
-        } else {
-          alert(r.error||'Error');
-          $('#pvLockSave').prop('disabled',false).html('Bloquear moto');
-        }
-      }).fail(function(x){
-        alert((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
-        $('#pvLockSave').prop('disabled',false).html('Bloquear moto');
-      });
-    });
-  }
+  // showPuntoLockModal removed — customer brief 2026-05-12: punto users
+  // can no longer block motos. Bloqueo is an admin-only action now (see
+  // bloquear-venta.php for the matching server-side rejection).
   return { render:render };
 })();

@@ -7,7 +7,22 @@
 require_once __DIR__ . '/../bootstrap.php';
 $ctx = puntoRequireAuth();
 
+// Customer brief 2026-05-12 (Óscar, 6th round): "Punto cannot do this."
+// The Bloquear moto button is no longer rendered in punto-inventario.js.
+// This endpoint hard-rejects any forged request from a punto session so
+// the restriction can't be bypassed. Audit logged.
 $d = puntoJsonIn();
+puntoLog('intento_bloquear_bloqueado', [
+    'moto_id'  => (int)($d['moto_id'] ?? 0),
+    'punto_id' => $ctx['punto_id'],
+    'user_id'  => $ctx['user_id'],
+]);
+puntoJsonOut([
+    'error' => 'El bloqueo de motos solo lo puede gestionar CEDIS / admin.',
+    'hint'  => 'Esta acción ya no está disponible para puntos.',
+], 403);
+
+// ── Legacy code path kept below (now unreachable) ────────────────────
 $motoId    = (int)($d['moto_id'] ?? 0);
 $bloqueado = (int)($d['bloqueado'] ?? 0);
 $motivo    = trim($d['motivo'] ?? '');

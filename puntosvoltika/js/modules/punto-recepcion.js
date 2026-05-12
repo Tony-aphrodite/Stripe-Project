@@ -1,7 +1,33 @@
 window.PV_recepcion = (function(){
+  // Customer brief 2026-05-12 (Óscar, 6th round — screenshot 2: Recepción
+  // sidebar entry): the screen used to show ONLY pending arrivals. The
+  // operator now needs visibility of past receptions too (checklist, who
+  // received, photos, seal numbers). We split the screen into two tabs:
+  // "Pendientes" (the legacy view) and "Historial" (new).
+  var _tab = 'pendientes';
+  var _historyFilter = '';
+
   function render(){
-    PVApp.render('<div class="ad-h1">Recepción de motos</div><div><span class="ad-spin"></span></div>');
-    PVApp.api('recepcion/envios-pendientes.php').done(paint);
+    if (_tab === 'historial') return renderHistorial();
+    PVApp.render(tabsBar() + '<div class="ad-h1">Recepción de motos</div><div><span class="ad-spin"></span></div>');
+    bindTabs();
+    PVApp.api('recepcion/envios-pendientes.php').done(function(r){ paint(r); bindTabs(); });
+  }
+
+  function tabsBar(){
+    var pCls = _tab === 'pendientes' ? 'primary' : 'ghost';
+    var hCls = _tab === 'historial'  ? 'primary' : 'ghost';
+    return '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">'+
+      '<button class="ad-btn '+pCls+' sm pvRTab" data-tab="pendientes">📦 Pendientes</button>'+
+      '<button class="ad-btn '+hCls+' sm pvRTab" data-tab="historial">🗂️ Historial</button>'+
+    '</div>';
+  }
+
+  function bindTabs(){
+    $('.pvRTab').off('click').on('click', function(){
+      _tab = $(this).data('tab');
+      render();
+    });
   }
   // Bug 3.1 (customer brief 2026-05-08): the raw enum values
   // ('lista_para_enviar', 'enviada') are not human-friendly. Translate to
@@ -26,7 +52,8 @@ window.PV_recepcion = (function(){
   }
 
   function paint(r){
-    var html = '<div class="ad-h1">Recepción de motos</div>';
+    var html = tabsBar();
+    html += '<div class="ad-h1">Recepción de motos</div>';
     html += '<div style="color:var(--ad-dim);margin-bottom:14px">Motos enviadas desde CEDIS esperando recepción</div>';
     if((r.envios||[]).length===0) html += '<div class="ad-card">No hay envíos pendientes</div>';
     (r.envios||[]).forEach(function(e){
@@ -65,10 +92,157 @@ window.PV_recepcion = (function(){
       '</div>';
     });
     PVApp.render(html);
+    bindTabs();
     $('.pvReceive').on('click', function(){
       showReceiveForm($(this).data('env'), $(this).data('moto'), $(this).data('vin'));
     });
   }
+
+  // ── Historial de recepciones (Bug 6.2) ───────────────────────────────
+  // Loads recepcion_punto rows for this punto with full checklist info,
+  // who received, photos, seal numbers, vin-caja match status. Each row
+  // is rendered as a collapsible card; clicking it expands the full
+  // checklist detail with photo thumbnails.
+  function renderHistorial(){
+    var html = tabsBar();
+    html += '<div class="ad-h1">Historial de recepciones</div>';
+    html += '<div style="color:var(--ad-dim);margin-bottom:10px;">Todas las motos recibidas en este punto, con checklist completo y fotos.</div>';
+    html += '<div style="display:flex;gap:6px;margin-bottom:12px;">'+
+      '<input id="pvHistSearch" class="ad-input" placeholder="Buscar por VIN, modelo, pedido o cliente" '+
+        'value="'+ (_historyFilter||'').replace(/"/g,'&quot;') +'" style="flex:1;">'+
+      '<button class="ad-btn primary sm" id="pvHistSearchBtn">Buscar</button>'+
+      (_historyFilter ? '<button class="ad-btn ghost sm" id="pvHistClear">Limpiar</button>' : '')+
+    '</div>';
+    html += '<div id="pvHistList"><div><span class="ad-spin"></span> Cargando historial…</div></div>';
+    PVApp.render(html);
+    bindTabs();
+    $('#pvHistSearchBtn').on('click', function(){
+      _historyFilter = ($('#pvHistSearch').val()||'').trim();
+      renderHistorial();
+    });
+    $('#pvHistSearch').on('keydown', function(e){ if(e.which===13){ $('#pvHistSearchBtn').click(); } });
+    $('#pvHistClear').on('click', function(){ _historyFilter=''; renderHistorial(); });
+
+    var url = 'recepcion/historial.php' + (_historyFilter ? '?q='+encodeURIComponent(_historyFilter) : '');
+    PVApp.api(url).done(paintHistorial).fail(function(x){
+      $('#pvHistList').html('<div class="ad-card" style="color:#b91c1c;">Error al cargar historial: '+
+        ((x.responseJSON&&x.responseJSON.error)||'conexión')+'</div>');
+    });
+  }
+
+  function paintHistorial(r){
+    var rows = (r && r.recepciones) || [];
+    if (rows.length === 0) {
+      $('#pvHistList').html('<div class="ad-card" style="color:var(--ad-dim);">No hay recepciones registradas'+
+        (_historyFilter ? ' para "'+_historyFilter+'".' : '.') +'</div>');
+      return;
+    }
+    var html = '<div style="font-size:12px;color:var(--ad-dim);margin-bottom:8px;">'+
+      rows.length+' recepción' + (rows.length===1?'':'es') +
+      (_historyFilter ? ' que coinciden con "'+_historyFilter+'"' : '') + '</div>';
+    rows.forEach(function(row, idx){ html += histCard(row, idx); });
+    $('#pvHistList').html(html);
+    $('.pvHistToggle').on('click', function(){
+      var $card = $(this).closest('.pv-hist-card');
+      $card.find('.pv-hist-detail').slideToggle(160);
+      var $ic = $(this).find('.pv-hist-caret');
+      $ic.text($ic.text()==='▾' ? '▴' : '▾');
+    });
+  }
+
+  function checkRow(label, val){
+    var ok = val==1 || val===1 || val==='1' || val===true;
+    var icon = ok ? '<span style="color:#059669;">✓</span>' : '<span style="color:#b91c1c;">✗</span>';
+    return '<div style="font-size:12.5px;padding:3px 0;">'+icon+' '+label+'</div>';
+  }
+
+  function vinCajaStatus(row){
+    // 1 = match, 0 = mismatch (confirmed when mismatch_confirmed=1), null = blank
+    if (row.vin_caja_coincide === null || typeof row.vin_caja_coincide === 'undefined') {
+      return '<span class="ad-badge gray" title="VIN de caja no capturado">VIN caja: —</span>';
+    }
+    var coincide = row.vin_caja_coincide==1 || row.vin_caja_coincide===1 || row.vin_caja_coincide==='1';
+    if (coincide) {
+      return '<span class="ad-badge green" title="VIN en caja coincide con chasis">VIN caja ✓</span>';
+    }
+    var confirmed = row.vin_mismatch_confirmed==1 || row.vin_mismatch_confirmed==='1';
+    return '<span class="ad-badge red" title="'+(confirmed?'Discrepancia confirmada por operador':'Discrepancia NO confirmada')+
+           '">VIN caja ✗'+(confirmed?' (confirmado)':'')+'</span>';
+  }
+
+  function histCard(row, idx){
+    var photoChips = '';
+    function chip(url, label){
+      if (!url) return '';
+      return '<a href="'+url+'" target="_blank" class="ad-badge blue" '+
+        'style="text-decoration:none;margin-right:4px;display:inline-block;">📷 '+label+'</a>';
+    }
+    photoChips += chip(row.foto_sello_url,     'Sello');
+    photoChips += chip(row.foto_vin_label_url, 'VIN etiqueta');
+    photoChips += chip(row.foto_unidad_url,    'Unidad');
+    (row.fotos_extra||[]).forEach(function(p,i){
+      if (typeof p === 'string' && p) photoChips += chip(p, 'Extra '+(i+1));
+    });
+
+    var completado = row.completado==1 || row.completado===1 || row.completado==='1';
+    var stateBadge = completado
+      ? '<span class="ad-badge green">Recepción OK</span>'
+      : '<span class="ad-badge yellow">Retenida</span>';
+
+    var head = '<div class="pvHistToggle" style="cursor:pointer;padding:6px 0;">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">'+
+        '<div>'+
+          (row.pedido_num ? '<div style="font-size:11.5px;font-weight:700;color:var(--ad-primary,#039fe1);">'+row.pedido_num+'</div>' : '')+
+          '<div style="font-weight:700;">'+(row.modelo||'—')+' · '+(row.color||'—')+'</div>'+
+          '<div style="font-size:12px;color:var(--ad-dim);">VIN: <code>'+(row.vin_display||row.vin||'—')+'</code></div>'+
+        '</div>'+
+        '<div style="text-align:right;">'+
+          stateBadge+
+          '<div style="font-size:11px;color:var(--ad-dim);margin-top:2px;">'+fmtDate(row.fecha_recepcion)+'</div>'+
+          '<div style="font-size:11px;color:#374151;">Recibió: <strong>'+(row.recibido_por_nombre||'—')+'</strong></div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;align-items:center;">'+
+        vinCajaStatus(row)+
+        (row.sello_numero ? ' <span class="ad-badge blue" title="Número del sello aplicado">Sello: '+row.sello_numero+'</span>' : '')+
+        ' <span class="pv-hist-caret" style="margin-left:auto;font-size:14px;color:var(--ad-dim);">▾</span>'+
+      '</div>'+
+    '</div>';
+
+    var detail =
+      '<div class="pv-hist-detail" style="display:none;border-top:1px solid #eee;margin-top:8px;padding-top:8px;">'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;">'+
+          checkRow('Estado físico OK',     row.estado_fisico_ok)+
+          checkRow('Sin daños visibles',   row.sin_danos)+
+          checkRow('Componentes completos',row.componentes_completos)+
+          checkRow('Batería OK',           row.bateria_ok)+
+          checkRow('Sello aplicado e intacto', row.sello_intacto)+
+          checkRow('VIN escaneado coincide',   row.vin_coincide)+
+        '</div>'+
+
+        '<div style="margin-top:10px;font-size:12px;">'+
+          '<div><span style="color:var(--ad-dim);">VIN escaneado:</span> <code>'+(row.vin_escaneado||'—')+'</code></div>'+
+          (row.vin_caja ? '<div><span style="color:var(--ad-dim);">VIN en caja:</span> <code>'+row.vin_caja+'</code></div>' : '')+
+          (row.sello_numero ? '<div><span style="color:var(--ad-dim);">Número de sello:</span> '+row.sello_numero+'</div>' : '')+
+          (row.tracking_number ? '<div><span style="color:var(--ad-dim);">Tracking:</span> <code>'+row.tracking_number+'</code>'+(row.carrier?' · '+row.carrier:'')+'</div>' : '')+
+          (row.cliente_nombre ? '<div><span style="color:var(--ad-dim);">Cliente:</span> <strong>'+row.cliente_nombre+'</strong></div>' : '')+
+        '</div>'+
+
+        (photoChips ? '<div style="margin-top:10px;"><div style="font-size:11px;color:var(--ad-dim);margin-bottom:4px;">Fotos</div>'+photoChips+'</div>' : '')+
+
+        (row.observaciones ? '<div style="margin-top:10px;padding:8px 10px;background:#f9fafb;border-radius:6px;font-size:12.5px;"><strong>Observaciones:</strong><br>'+escapeHtml(row.observaciones)+'</div>' : '')+
+        (row.notas ? '<div style="margin-top:6px;padding:8px 10px;background:#f9fafb;border-radius:6px;font-size:12.5px;"><strong>Notas:</strong><br>'+escapeHtml(row.notas)+'</div>' : '')+
+      '</div>';
+
+    return '<div class="ad-card pv-hist-card">'+head+detail+'</div>';
+  }
+
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
   function showReceiveForm(envioId, motoId, vinEsperado){
     // Bug 3.3 (customer brief 2026-05-08): the reception checklist must be
     // explicit and capture seal info + 3 photos + observations + dates.
@@ -131,8 +305,20 @@ window.PV_recepcion = (function(){
       '<label class="ad-label">Fecha de recepción</label>'+
       '<input id="pvRFecha" type="date" class="ad-input" value="'+(new Date().toISOString().slice(0,10))+'" style="margin-bottom:10px;">'+
 
+      // Customer brief 2026-05-12 (Óscar, 6th round — screenshot 1: field
+      // showed "DA…" manually typed): the "Recibido por" name must be
+      // populated automatically from the logged-in punto user. We render it
+      // readonly with a lock icon so the operator can't accidentally type
+      // someone else's name. Server already stamps recibido_por with the
+      // session user_id — this field is the human-readable label used in
+      // the historial view.
       '<label class="ad-label">Recibido por</label>'+
-      '<input id="pvRUser" class="ad-input" value="'+ ((PVApp.state && PVApp.state.user && PVApp.state.user.nombre) || '') +'" placeholder="Tu nombre" style="margin-bottom:14px;">'+
+      '<div style="position:relative;margin-bottom:14px;">'+
+        '<input id="pvRUser" class="ad-input" readonly tabindex="-1" '+
+          'value="'+ ((PVApp.state && PVApp.state.user && PVApp.state.user.nombre) || '') +'" '+
+          'style="background:#f3f4f6;color:#374151;cursor:not-allowed;padding-right:32px;">'+
+        '<span title="Tomado automáticamente de la sesión" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;color:#6b7280;">🔒</span>'+
+      '</div>'+
 
       // Legacy "Notas" preserved as a separate quick-jot field for back-compat.
       '<label class="ad-label">Notas</label>'+
