@@ -187,31 +187,38 @@ try {
     }
     unset($m);
 
-    // Envíos pointing at any moto in the orphan list.
-    // Customer brief 2026-05-09 (Óscar, 3rd round — "GCTESTVIN0000005,
-    // GCTESTVIN0000007 and VK-1826-TEST still showing"): those rows
-    // had estado=NULL/empty so the previous filter (only active states)
-    // missed them entirely. Widen to also include rows with no estado
-    // — they're test artifacts that never advanced past row creation
-    // and should be closed for the same reason as active rows.
-    if ($orphanMotos) {
-        $motoIds = array_map(function($m){ return (int)$m['id']; }, $orphanMotos);
-        $inM = implode(',', array_fill(0, count($motoIds), '?'));
-        $eSql = "SELECT e.id AS envio_id, e.moto_id, e.estado, e.tracking_number, e.carrier,
-                        e.fecha_envio, e.fecha_estimada_llegada,
-                        m.vin, m.vin_display, m.modelo, m.color
-                   FROM envios e
-                   JOIN inventario_motos m ON m.id = e.moto_id
-                  WHERE e.moto_id IN ($inM)
-                    AND (
-                          e.estado IN ('lista_para_enviar','enviada','enviado','en_transito')
-                       OR e.estado IS NULL
-                       OR e.estado = ''
-                        )";
-        $eStmt = $pdo->prepare($eSql);
-        $eStmt->execute($motoIds);
+    // Envíos pointing at any moto whose VIN matches the test patterns,
+    // regardless of inventario_motos.activo state. Earlier cleanup
+    // rounds may have already soft-deleted (activo=0) the TEST motos
+    // themselves, but the corresponding envíos with estado=NULL/empty
+    // can still be lingering — that's exactly the symptom Óscar
+    // showed in his 3rd-round screenshot (GCTESTVIN0000005,
+    // GCTESTVIN0000007, VK-1826-TEST still rendering as "Sin estado").
+    // Scan envíos DIRECTLY by the moto's VIN so we catch both:
+    //   (a) motos still activo=1 (the original orphan case), and
+    //   (b) motos already activo=0 but with orphan envíos remaining.
+    $orphanEnviosSql = "SELECT e.id AS envio_id, e.moto_id, e.estado, e.tracking_number, e.carrier,
+                              e.fecha_envio, e.fecha_estimada_llegada,
+                              m.vin, m.vin_display, m.modelo, m.color, m.activo AS moto_activo
+                         FROM envios e
+                         JOIN inventario_motos m ON m.id = e.moto_id
+                        WHERE (
+                                UPPER(m.vin)         LIKE '%TEST%'
+                             OR UPPER(m.vin)         LIKE '%GCTEST%'
+                             OR UPPER(m.vin)         LIKE '%FAKE%'
+                             OR UPPER(COALESCE(m.vin_display,'')) LIKE '%TEST%'
+                             OR UPPER(COALESCE(m.vin_display,'')) LIKE '%DIAG%'
+                              )
+                          AND (
+                                e.estado IN ('lista_para_enviar','enviada','enviado','en_transito')
+                             OR e.estado IS NULL
+                             OR e.estado = ''
+                              )";
+    try {
+        $eStmt = $pdo->prepare($orphanEnviosSql);
+        $eStmt->execute();
         $orphanEnvios = $eStmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+    } catch (Throwable $e) { error_log('orphan envios direct scan: ' . $e->getMessage()); }
 } catch (Throwable $e) {
     error_log('limpiar-test-data orphan scan: ' . $e->getMessage());
 }
