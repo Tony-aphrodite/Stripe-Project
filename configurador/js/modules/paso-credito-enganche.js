@@ -493,28 +493,80 @@ var PasoCreditoEnganche = {
                 tipo:         'enganche'
             }),
             success: function(response) {
-                if (response && response.speiData) {
+                if (response && response.speiData && response.speiData.clabe) {
                     self._showSPEIDetails(response.speiData, data.enganche);
                 } else if (response && response.error) {
-                    self._showSPEIError('Error: ' + response.error);
+                    // Server returned an explicit error message \u2014 use it
+                    // verbatim. The backend (create-payment-intent.php)
+                    // now produces customer-friendly Spanish messages
+                    // for every SPEI failure mode (invalid email, amount
+                    // out of range, account misconfig, etc.).
+                    self._showSPEIError(response.error, response.reason, response.detail);
                 } else {
-                    self._showSPEIError('No se pudieron obtener los datos bancarios. Intenta de nuevo.');
+                    self._showSPEIError(
+                        'No se pudieron obtener los datos bancarios para la transferencia. Intenta de nuevo o usa otro m\u00e9todo de pago.',
+                        'no_data'
+                    );
                 }
             },
             error: function(xhr) {
-                var errMsg = 'Error de conexi\u00f3n.';
-                try { errMsg = JSON.parse(xhr.responseText).error || errMsg; } catch(e) {}
-                console.error('SPEI error:', errMsg, xhr.status, xhr.responseText);
-                self._showSPEIError(errMsg);
+                // Customer brief 2026-05-12 (\u00d3scar, 11th round): when
+                // the server returned raw HTML (e.g. PHP fatal before
+                // headers), JSON.parse threw and the user saw only
+                // "Error de conexi\u00f3n". The backend Throwable catch now
+                // guarantees JSON \u2014 but keep the friendly fallback.
+                var errMsg = 'Tuvimos un problema de conexi\u00f3n al iniciar la transferencia SPEI.';
+                var reason = '';
+                var detail = '';
+                try {
+                    var parsed = JSON.parse(xhr.responseText);
+                    errMsg = parsed.error  || errMsg;
+                    reason = parsed.reason || '';
+                    detail = parsed.detail || '';
+                } catch(e) {}
+                console.error('SPEI error:', errMsg, 'status:', xhr.status, 'reason:', reason, 'detail:', detail);
+                self._showSPEIError(errMsg, reason, detail);
             }
         });
     },
 
-    _showSPEIError: function(msg) {
+    _showSPEIError: function(msg, reason, detail) {
+        // Customer brief 2026-05-12 (Óscar, 11th round — "cliente tried
+        // to pay enganche con SPEI shows ERROR EN SPEI"). Error UI now
+        // (a) shows the actual backend message verbatim (Spanish, user-
+        // friendly), (b) offers a clear "Try another method" CTA so the
+        // sale doesn't dead-end on a SPEI config issue, and (c) hides
+        // technical detail behind a collapsed "Información técnica"
+        // panel that admin can read when debugging.
         var html = '<div style="background:#FFEBEE;border-radius:10px;padding:16px;border:1px solid #E53935;">';
-        html += '<div style="font-size:14px;font-weight:700;color:#C62828;margin-bottom:8px;">&#9888; Error al obtener datos SPEI</div>';
-        html += '<p style="font-size:13px;color:#555;margin:0 0 12px;">' + msg + '</p>';
-        html += '<button id="vk-enganche-spei-retry" style="display:block;width:100%;padding:12px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Intentar de nuevo</button>';
+        html += '<div style="font-size:14px;font-weight:700;color:#C62828;margin-bottom:8px;">&#9888; No se pudo iniciar la transferencia SPEI</div>';
+        html += '<p style="font-size:13px;color:#555;margin:0 0 12px;line-height:1.5;">' + msg + '</p>';
+
+        // Alternative-method nudge — keep the sale alive.
+        var altMsg = '';
+        if (reason === 'no_data' || reason === 'no_next_action' || reason === 'stripe_api_error') {
+            altMsg = 'Mientras revisamos el problema con SPEI, puedes <strong>pagar con tarjeta u OXXO</strong>. Selecciona otro método arriba.';
+        } else if (reason === 'invalid_email') {
+            altMsg = 'Verifica que tu email esté escrito correctamente y vuelve a intentar.';
+        } else if (reason === 'amount_too_low' || reason === 'amount_too_high') {
+            altMsg = 'Este monto no es compatible con SPEI. Usa <strong>tarjeta u OXXO</strong>.';
+        }
+        if (altMsg) {
+            html += '<div style="background:#fff;border-left:3px solid #039fe1;padding:10px 12px;margin:0 0 12px;border-radius:4px;font-size:12.5px;color:#1a3a5c;line-height:1.5;">' + altMsg + '</div>';
+        }
+
+        html += '<button id="vk-enganche-spei-retry" style="display:block;width:100%;padding:12px;background:#039fe1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Intentar de nuevo con SPEI</button>';
+
+        // Hidden technical detail for admin — only renders when detail exists.
+        if (detail) {
+            html += '<details style="margin-top:10px;font-size:11px;color:#888;">'+
+                '<summary style="cursor:pointer;">Información técnica (para soporte)</summary>'+
+                '<pre style="background:#f8f8f8;border:1px solid #e0e0e0;padding:8px;border-radius:4px;margin-top:6px;white-space:pre-wrap;word-break:break-word;font-size:11px;color:#555;">'+
+                  'reason: ' + (reason || '—') + '\ndetail: ' + detail +
+                '</pre>'+
+            '</details>';
+        }
+
         html += '</div>';
         jQuery('#vk-spei-section').html(html).show();
         var self = this;

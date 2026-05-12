@@ -50,11 +50,56 @@ if (!$dryRun && mb_strlen($motivo) < 6) {
 }
 
 // ── Detection patterns ─────────────────────────────────────────────────
-// Substring matches are case-insensitive (LIKE on lower-cased text).
-$nameTestLike  = "(LOWER(nombre) LIKE '%test%' OR LOWER(nombre) LIKE '%prueba%' OR LOWER(nombre) LIKE '%diag%' OR LOWER(nombre) LIKE '%voltika diag%' OR LOWER(nombre) LIKE '%oscar%test%' OR LOWER(nombre) LIKE '%pavel%prueba%')";
-$emailTestLike = "(LOWER(email) LIKE '%test%' OR LOWER(email) LIKE '%prueba%' OR LOWER(email) LIKE '%diag%')";
-$pedidoTestLike= "(UPPER(pedido) LIKE '%TEST%' OR UPPER(pedido) LIKE '%DIAG%')";
-$stripeTestLike= "(stripe_pi LIKE 'manual-%' OR stripe_pi LIKE 'test-%' OR stripe_pi LIKE 'TEST-%')";
+// Customer brief 2026-05-12 (Óscar, 12th round — "the test purchase
+// I sent you yesterday is still there"): leftover test rows survived
+// the previous cleanup pass. Expand the pattern set to catch internal-
+// developer emails (@voltika.mx, @mtechmexico, @mrcdev), the common
+// "dcm@" / "demo" / "qa" prefixes admins use for staging accounts,
+// and OXXO/SPEI test references Stripe issues in test mode.
+$nameTestLike  = "("
+    . "LOWER(nombre) LIKE '%test%' "
+    . "OR LOWER(nombre) LIKE '%prueba%' "
+    . "OR LOWER(nombre) LIKE '%diag%' "
+    . "OR LOWER(nombre) LIKE '%demo%' "
+    . "OR LOWER(nombre) LIKE '%qa %' "
+    . "OR LOWER(nombre) LIKE '%qa-%' "
+    . "OR LOWER(nombre) LIKE '%voltika diag%' "
+    . "OR LOWER(nombre) LIKE '%oscar%test%' "
+    . "OR LOWER(nombre) LIKE '%pavel%prueba%' "
+    . "OR LOWER(nombre) LIKE 'cliente voltika%' "
+    . "OR LOWER(nombre) LIKE '%xxxx%'"
+    . ")";
+$emailTestLike = "("
+    . "LOWER(email) LIKE '%test%' "
+    . "OR LOWER(email) LIKE '%prueba%' "
+    . "OR LOWER(email) LIKE '%diag%' "
+    . "OR LOWER(email) LIKE '%demo%' "
+    . "OR LOWER(email) LIKE '%qa@%' "
+    . "OR LOWER(email) LIKE '%@example%' "
+    . "OR LOWER(email) LIKE '%@voltika.mx' "
+    . "OR LOWER(email) LIKE 'dcm@%' "
+    . "OR LOWER(email) LIKE '%@mtechmexico%' "
+    . "OR LOWER(email) LIKE '%@mrcdev%' "
+    . "OR LOWER(email) LIKE '%@mrcdev.mx%' "
+    . "OR LOWER(email) LIKE 'noreply@%' "
+    . "OR LOWER(email) LIKE 'admin@%'"
+    . ")";
+$pedidoTestLike= "(UPPER(pedido) LIKE '%TEST%' OR UPPER(pedido) LIKE '%DIAG%' OR UPPER(pedido) LIKE '%DEMO%' OR UPPER(pedido) LIKE '%GCTE%')";
+$stripeTestLike= "("
+    . "stripe_pi LIKE 'manual-%' "
+    . "OR stripe_pi LIKE 'test-%' "
+    . "OR stripe_pi LIKE 'TEST-%' "
+    . "OR stripe_pi LIKE 'pi_TEST%' "
+    . "OR stripe_pi LIKE 'pi_GCTE%' "
+    . "OR stripe_pi LIKE 'pi_TST%' "
+    . "OR stripe_pi LIKE 'pi_FAKE%' "
+    . "OR stripe_pi LIKE 'pi_MOCK%'"
+    . ")";
+
+// Telefono short / sequential patterns common in test data (e.g. 5500000000,
+// 5512345678, 1234567890 repeats). Don't include this in the main condition
+// alone — too broad — but use it as supporting evidence.
+$telefonoSuspectLike = "(telefono REGEXP '^(5500|0000|1111|2222|3333|4444|5555|6666|7777|8888|9999|1234|0123)' OR telefono = '' OR telefono IS NULL)";
 
 $mainCond = "($nameTestLike OR $emailTestLike OR $pedidoTestLike OR $stripeTestLike)";
 
@@ -277,6 +322,158 @@ try {
 
 // ── DRY-RUN: return the plan and exit ──────────────────────────────────
 if ($dryRun) {
+    // Customer brief 2026-05-12 (Óscar, 12th round): admins were
+    // reading JSON via the URL bar. Hard to interpret. ?html=1 renders
+    // an admin-friendly diagnostic page with all candidates grouped,
+    // reasons, and a one-click "Delete selected" affordance.
+    if (!empty($_GET['html'])) {
+        header('Content-Type: text/html; charset=UTF-8');
+        $title = 'Limpieza de datos test — Diagnóstico';
+        ?><!doctype html><html lang="es"><head><meta charset="utf-8">
+        <title><?= htmlspecialchars($title) ?></title>
+        <style>
+            body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f5f7fb;color:#0c2340;padding:24px;max-width:1180px;margin:0 auto;}
+            h1{font-size:22px;margin:0 0 6px;}
+            h2{font-size:14px;color:#475569;margin:14px 0 8px;text-transform:uppercase;letter-spacing:.4px;}
+            .kpi-row{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 22px;}
+            .kpi{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;flex:1;min-width:160px;}
+            .kpi-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;}
+            .kpi-value{font-size:26px;font-weight:800;color:#0c2340;margin-top:4px;}
+            .kpi.danger .kpi-value{color:#dc2626;}
+            table{width:100%;background:#fff;border-collapse:collapse;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:18px;}
+            thead{background:#f1f5f9;}
+            th,td{padding:8px 12px;font-size:12.5px;text-align:left;border-bottom:1px solid #f1f5f9;vertical-align:top;}
+            th{color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-size:11px;}
+            tr:last-child td{border-bottom:0;}
+            .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;}
+            .badge.red{background:#fee2e2;color:#991b1b;}
+            .badge.yellow{background:#fef3c7;color:#92400e;}
+            .badge.gray{background:#e5e7eb;color:#374151;}
+            .reasons{font-size:11px;color:#64748b;}
+            .conflict{background:#fffbeb;border-left:3px solid #d97706;padding:4px 8px;margin-top:2px;font-size:11px;color:#92400e;}
+            .empty{padding:30px;text-align:center;background:#fff;border:1px dashed #cbd5e1;border-radius:10px;color:#64748b;}
+            .action-bar{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-top:20px;}
+            .btn{background:#dc2626;color:#fff;border:0;padding:10px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px;}
+            .btn-ghost{background:#fff;color:#475569;border:1px solid #cbd5e1;}
+            code{background:#1e293b;color:#e2e8f0;padding:2px 6px;border-radius:3px;font-size:11px;}
+            details{margin-top:8px;}
+            summary{cursor:pointer;font-size:12px;color:#475569;}
+        </style></head><body>
+        <h1>🧹 Limpieza de datos TEST — Diagnóstico</h1>
+        <div style="color:#64748b;font-size:13px;margin-bottom:12px;">
+            Modo: <strong>dry-run</strong> (no se modificó la base de datos). Para borrar realmente, hay que hacer POST con motivo.
+        </div>
+        <div class="kpi-row">
+            <div class="kpi <?= count($candidates) > 0 ? 'danger' : '' ?>"><div class="kpi-label">Transacciones test</div><div class="kpi-value"><?= count($candidates) ?></div></div>
+            <div class="kpi <?= count($orphanMotos) > 0 ? 'danger' : '' ?>"><div class="kpi-label">Motos huérfanas test</div><div class="kpi-value"><?= count($orphanMotos) ?></div></div>
+            <div class="kpi <?= count($orphanEnvios) > 0 ? 'danger' : '' ?>"><div class="kpi-label">Envíos test residuales</div><div class="kpi-value"><?= count($orphanEnvios) ?></div></div>
+            <div class="kpi <?= count($duplicateEnvios) > 0 ? 'danger' : '' ?>"><div class="kpi-label">Envíos duplicados</div><div class="kpi-value"><?= count($duplicateEnvios) ?></div></div>
+        </div>
+
+        <h2>Transacciones marcadas como test</h2>
+        <?php if (!count($candidates)): ?>
+            <div class="empty">✅ No se encontraron transacciones que coincidan con patrones de test.</div>
+        <?php else: ?>
+            <table><thead><tr>
+                <th>ID</th><th>Pedido</th><th>Cliente</th><th>Email</th><th>Total</th><th>Stripe PI</th><th>Estado pago</th><th>Razones</th>
+            </tr></thead><tbody>
+            <?php foreach ($candidates as $r): ?>
+                <tr>
+                    <td><strong><?= (int)$r['id'] ?></strong></td>
+                    <td><code><?= htmlspecialchars((string)($r['pedido'] ?? '—')) ?></code></td>
+                    <td><?= htmlspecialchars((string)($r['nombre'] ?? '—')) ?></td>
+                    <td><?= htmlspecialchars((string)($r['email'] ?? '—')) ?></td>
+                    <td>$<?= number_format((float)($r['total'] ?? 0), 2) ?></td>
+                    <td><code style="word-break:break-all;"><?= htmlspecialchars((string)($r['stripe_pi'] ?? '—')) ?></code></td>
+                    <td><?= htmlspecialchars((string)($r['pago_estado'] ?? '—')) ?></td>
+                    <td class="reasons">
+                        <?php foreach (($r['reasons'] ?? []) as $why): ?>
+                            <span class="badge red"><?= htmlspecialchars($why) ?></span>
+                        <?php endforeach; ?>
+                        <?php if (!empty($r['conflict'])): ?>
+                            <div class="conflict">⚠ <?= htmlspecialchars($r['conflict']) ?></div>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody></table>
+        <?php endif; ?>
+
+        <h2>Motos huérfanas (VIN test)</h2>
+        <?php if (!count($orphanMotos)): ?>
+            <div class="empty">✅ Sin motos huérfanas con VIN de test.</div>
+        <?php else: ?>
+            <table><thead><tr>
+                <th>ID</th><th>VIN</th><th>Modelo · Color</th><th>Cliente</th><th>Pedido</th><th>Estado</th><th>Razón</th>
+            </tr></thead><tbody>
+            <?php foreach ($orphanMotos as $m): ?>
+                <tr>
+                    <td><strong><?= (int)$m['id'] ?></strong></td>
+                    <td><code><?= htmlspecialchars((string)($m['vin'] ?? '—')) ?></code></td>
+                    <td><?= htmlspecialchars((string)(($m['modelo'] ?? '') . ' · ' . ($m['color'] ?? ''))) ?></td>
+                    <td><?= htmlspecialchars((string)($m['cliente_nombre'] ?? '—')) ?></td>
+                    <td><code><?= htmlspecialchars((string)($m['pedido_num'] ?? '—')) ?></code></td>
+                    <td><?= htmlspecialchars((string)($m['estado'] ?? '—')) ?></td>
+                    <td class="reasons">
+                        <span class="badge yellow"><?= htmlspecialchars((string)($m['why'] ?? '—')) ?></span>
+                        <?php if (!empty($m['conflict'])): ?>
+                            <div class="conflict">⚠ <?= htmlspecialchars((string)$m['conflict']) ?></div>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody></table>
+        <?php endif; ?>
+
+        <h2>Envíos huérfanos (VIN test)</h2>
+        <?php if (!count($orphanEnvios)): ?>
+            <div class="empty">✅ Sin envíos test residuales.</div>
+        <?php else: ?>
+            <table><thead><tr>
+                <th>Envío ID</th><th>Moto ID</th><th>VIN</th><th>Estado</th><th>Tracking</th><th>Modelo</th>
+            </tr></thead><tbody>
+            <?php foreach ($orphanEnvios as $e): ?>
+                <tr>
+                    <td><strong><?= (int)$e['envio_id'] ?></strong></td>
+                    <td><?= (int)$e['moto_id'] ?></td>
+                    <td><code><?= htmlspecialchars((string)($e['vin'] ?? '—')) ?></code></td>
+                    <td><span class="badge gray"><?= htmlspecialchars((string)($e['estado'] ?? '—')) ?></span></td>
+                    <td><code><?= htmlspecialchars((string)($e['tracking_number'] ?? '—')) ?></code></td>
+                    <td><?= htmlspecialchars((string)(($e['modelo'] ?? '') . ' ' . ($e['color'] ?? ''))) ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody></table>
+        <?php endif; ?>
+
+        <h2>Envíos duplicados</h2>
+        <?php if (!count($duplicateEnvios)): ?>
+            <div class="empty">✅ Sin envíos duplicados activos.</div>
+        <?php else: ?>
+            <table><thead><tr>
+                <th>Envío ID</th><th>Moto · VIN</th><th>Punto</th><th>Mantener envío</th><th>Razón</th>
+            </tr></thead><tbody>
+            <?php foreach ($duplicateEnvios as $d): ?>
+                <tr>
+                    <td><strong><?= (int)$d['envio_id'] ?></strong></td>
+                    <td><?= htmlspecialchars((string)(($d['modelo'] ?? '') . ' · ' . ($d['color'] ?? ''))) ?><br><code style="font-size:10px;"><?= htmlspecialchars((string)($d['vin'] ?? '—')) ?></code></td>
+                    <td><?= htmlspecialchars((string)($d['punto_nombre'] ?? '—')) ?></td>
+                    <td>#<?= (int)($d['kept_envio_id'] ?? 0) ?></td>
+                    <td class="reasons"><span class="badge yellow"><?= htmlspecialchars((string)($d['why'] ?? '—')) ?></span></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody></table>
+        <?php endif; ?>
+
+        <div class="action-bar">
+            <strong>Para borrar realmente:</strong> envía POST a este mismo URL con body
+            <code>{"dry_run":0,"motivo":"limpieza solicitada por Óscar"}</code> desde un admin con permiso.
+            <br><br>
+            <a href="?dry_run=1&html=1" class="btn btn-ghost" style="text-decoration:none;display:inline-block;">🔄 Volver a escanear</a>
+        </div>
+        </body></html><?php
+        exit;
+    }
+
     adminJsonOut([
         'ok'                 => true,
         'mode'               => 'dry_run',
@@ -291,7 +488,7 @@ if ($dryRun) {
         // Duplicate-envío pass — same moto with multiple active envíos
         'duplicate_envios'       => $duplicateEnvios,
         'duplicate_envios_count' => count($duplicateEnvios),
-        'instructions'       => 'Para borrar realmente: POST a este mismo endpoint con body {"dry_run":0,"motivo":"..."}',
+        'instructions'       => 'Para borrar realmente: POST a este mismo endpoint con body {"dry_run":0,"motivo":"..."}. Para vista HTML: agrega ?html=1',
     ]);
 }
 

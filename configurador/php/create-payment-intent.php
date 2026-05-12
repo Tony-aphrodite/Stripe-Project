@@ -531,88 +531,219 @@ try {
         $intentData['receipt_email'] = $customer['email'];
     }
 
-    // SPEI: handle server-side and return bank details directly
+    // SPEI: handle server-side and return bank details directly.
+    //
+    // Customer brief 2026-05-12 (Óscar, 11th round — "cliente tried to
+    // pay enganche con SPEI shows ERROR EN SPEI"). Investigation found
+    // 3 problems in this block:
+    //   1. $bankInfo / $clabe were declared INSIDE the
+    //      `if ($intent->next_action ...)` branch but referenced AFTER it
+    //      (in the reminder-email block). When Stripe didn't return
+    //      next_action — or returned it with a different shape — PHP 8
+    //      threw "Attempt to read property on null", which the outer
+    //      catch (Exception $e) didn't catch (it's an Error, not an
+    //      Exception). Result: empty HTTP 500, no JSON → frontend
+    //      printed "Error de conexión".
+    //   2. Customer email validation was lax — a malformed email made
+    //      Stripe reject the customer creation, surfacing a generic
+    //      Stripe error to the buyer.
+    //   3. There was no diagnostic when SPEI succeeded at PI-create but
+    //      Stripe returned the PI in 'processing' before populating
+    //      next_action (occasional race). We now retrieve the PI again
+    //      with expand=['next_action'] in that case before failing.
     if ($method === 'spei') {
-        // SPEI requiere customer obligatorio
-        if (empty($intentData['customer'])) {
-            $stripeCustomer = \Stripe\Customer::create([
-                'name'  => $customer['nombre'] ?? 'Cliente Voltika',
-                'email' => $customer['email'] ?? 'cliente@voltika.mx',
+        // Validate customer email — SPEI absolutely requires a valid
+        // email because Stripe sends the bank-transfer instructions
+        // to it and the customer relies on those instructions.
+        $custEmailRaw = trim((string)($customer['email'] ?? ''));
+        if ($custEmailRaw === '' || !filter_var($custEmailRaw, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(400);
+            echo json_encode([
+                'error'  => 'Para pagar con transferencia SPEI necesitamos tu email correcto. Revisa el campo y vuelve a intentar.',
+                'reason' => 'invalid_email',
             ]);
-            $intentData['customer'] = $stripeCustomer->id;
+            exit;
         }
-        $intentData['payment_method_types'] = ['customer_balance'];
-        $intentData['payment_method_data'] = [
-            'type' => 'customer_balance'
-        ];
+
+        // Validate amount within Stripe MX bank transfer limits.
+        // Min $10 MXN (= 1000 cents), max $250,000 MXN per Stripe docs.
+        // Catch the obvious cases here with a friendly message before
+        // Stripe responds with its own.
+        if ($amount < 1000) {
+            http_response_code(400);
+            echo json_encode(['error' => 'El monto es muy bajo para SPEI (mínimo $10 MXN). Usa otro método.', 'reason' => 'amount_too_low']);
+            exit;
+        }
+        if ($amount > 25000000) {
+            http_response_code(400);
+            echo json_encode(['error' => 'El monto excede el límite de SPEI ($250,000 MXN). Divide en varios pagos o usa transferencia bancaria directa.', 'reason' => 'amount_too_high']);
+            exit;
+        }
+
+        // SPEI requires a Stripe customer. Create one if not already
+        // attached (the earlier block may have skipped it when name/email
+        // were absent — but we just validated email above).
+        if (empty($intentData['customer'])) {
+            try {
+                $stripeCustomer = \Stripe\Customer::create([
+                    'name'  => $customer['nombre'] ?? 'Cliente Voltika',
+                    'email' => $custEmailRaw,
+                ]);
+                $intentData['customer'] = $stripeCustomer->id;
+                $intentData['receipt_email'] = $custEmailRaw;
+            } catch (Throwable $e) {
+                error_log('SPEI customer create: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode([
+                    'error'  => 'No se pudo iniciar la transferencia SPEI. Intenta otro método de pago o contacta a soporte.',
+                    'reason' => 'stripe_customer_error',
+                    'detail' => $e->getMessage(),
+                ]);
+                exit;
+            }
+        }
+
+        $intentData['payment_method_types']  = ['customer_balance'];
+        $intentData['payment_method_data']   = [ 'type' => 'customer_balance' ];
         $intentData['payment_method_options'] = [
             'customer_balance' => [
                 'funding_type' => 'bank_transfer',
-                'bank_transfer' => [
-                    'type' => 'mx_bank_transfer'
-                ]
-            ]
+                'bank_transfer' => [ 'type' => 'mx_bank_transfer' ],
+            ],
         ];
         $intentData['confirm'] = true;
 
-        $intent = \Stripe\PaymentIntent::create($intentData);
+        // ── Create the PaymentIntent ─────────────────────────────────
+        // Wrap with a Throwable catch so account-config errors
+        // ("customer_balance not enabled", "mx_bank_transfer needs
+        // activation in your Dashboard", etc.) surface as actionable
+        // messages — not as an opaque "Error en SPEI".
+        try {
+            $intent = \Stripe\PaymentIntent::create($intentData);
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            $code = $e->getStripeCode() ?: $e->getError()->code ?? '';
+            $msg  = $e->getMessage();
+            error_log('SPEI PI create failed: ' . $msg);
+            http_response_code(500);
+            // Common cause: Stripe account doesn't have customer_balance
+            // (Mexican bank transfers) enabled. Tell admin clearly.
+            $friendly = (stripos($msg, 'bank_transfer') !== false || stripos($msg, 'customer_balance') !== false)
+                ? 'SPEI no está habilitado en la cuenta de Stripe. Pide al admin que active "Transferencias bancarias (Mexico)" en el dashboard de Stripe → Settings → Payment methods.'
+                : 'No se pudo crear el pago SPEI: ' . $msg;
+            echo json_encode([
+                'error'       => $friendly,
+                'reason'      => 'stripe_api_error',
+                'stripe_code' => $code,
+                'detail'      => $msg,
+            ]);
+            exit;
+        } catch (Throwable $e) {
+            error_log('SPEI PI create fatal: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode([
+                'error'  => 'Error inesperado al iniciar SPEI. Intenta otro método o avisa a soporte.',
+                'reason' => 'internal_error',
+                'detail' => $e->getMessage(),
+            ]);
+            exit;
+        }
 
-        // SPEI: track as pendiente immediately. The bank-details email is
-        // sent below (existing _sendReminderEmail) so we only insert the
-        // DB row here — no duplicate email.
-        _voltikaInsertPendingTransaccion($intent->id, $customer, $amount, 'spei', 0);
+        // Track the pending order BEFORE attempting to read next_action,
+        // so even if Stripe's instructions are slow to populate we have
+        // an audit trail.
+        try {
+            _voltikaInsertPendingTransaccion($intent->id, $customer, $amount, 'spei', 0);
+        } catch (Throwable $e) { error_log('SPEI pending insert: ' . $e->getMessage()); }
 
-        $response = ['clientSecret' => $intent->client_secret, 'paymentIntentId' => $intent->id];
+        $response = [
+            'clientSecret'    => $intent->client_secret,
+            'paymentIntentId' => $intent->id,
+        ];
 
-        // Extract bank transfer details
-        if ($intent->next_action && isset($intent->next_action->display_bank_transfer_instructions)) {
-            $bankInfo = $intent->next_action->display_bank_transfer_instructions;
+        // ── Extract bank-transfer details (CLABE + reference) ────────
+        // CRITICAL: $bankInfo and $clabe MUST be declared at this scope
+        // so the reminder-email block below can safely reference them
+        // even when next_action came back empty. Previous bug: they
+        // were declared inside the `if ($intent->next_action ...)` and
+        // PHP 8 threw on `$bankInfo->reference` outside the if.
+        $bankInfo = null;
+        $clabe    = '';
+        $reference = '';
+        $bankoLabel = 'STP';
+
+        $hasInstructions = $intent->next_action
+                        && isset($intent->next_action->display_bank_transfer_instructions);
+
+        // Sometimes Stripe needs a heartbeat between create+confirm and
+        // populating next_action. If it's missing, retrieve the PI once
+        // more before giving up.
+        if (!$hasInstructions) {
+            try {
+                $intent = \Stripe\PaymentIntent::retrieve([
+                    'id'     => $intent->id,
+                    'expand' => ['next_action'],
+                ]);
+                $hasInstructions = $intent->next_action
+                                && isset($intent->next_action->display_bank_transfer_instructions);
+            } catch (Throwable $e) { error_log('SPEI retrieve retry: ' . $e->getMessage()); }
+        }
+
+        if ($hasInstructions) {
+            $bankInfo  = $intent->next_action->display_bank_transfer_instructions;
             $addresses = $bankInfo->financial_addresses ?? [];
-            $clabe = '';
             foreach ($addresses as $addr) {
-                // Try different CLABE property paths
-                if (isset($addr->spei_clabe->clabe)) {
-                    $clabe = $addr->spei_clabe->clabe;
-                    break;
-                } elseif (isset($addr->clabe)) {
-                    $clabe = $addr->clabe;
-                    break;
-                } elseif (isset($addr->spei->clabe)) {
-                    $clabe = $addr->spei->clabe;
-                    break;
-                }
+                if (isset($addr->spei_clabe->clabe))      { $clabe = $addr->spei_clabe->clabe; break; }
+                elseif (isset($addr->clabe))              { $clabe = $addr->clabe; break; }
+                elseif (isset($addr->spei->clabe))        { $clabe = $addr->spei->clabe; break; }
             }
-            // If still no CLABE, try to get from the full object
+            // Recursive search fallback for any 18-digit number.
             if (empty($clabe) && !empty($addresses)) {
                 $firstAddr = json_decode(json_encode($addresses[0]), true);
                 error_log('SPEI address structure: ' . json_encode($firstAddr));
-                // Search recursively for any 18-digit number (CLABE format)
-                array_walk_recursive($firstAddr, function($value) use (&$clabe) {
+                array_walk_recursive($firstAddr, function ($value) use (&$clabe) {
                     if (is_string($value) && preg_match('/^\d{18}$/', $value)) {
                         $clabe = $value;
                     }
                 });
             }
+            $reference  = $bankInfo->reference ?? '';
+            $bankoLabel = !empty($bankInfo->hosted_instructions_url) ? 'Stripe' : 'STP';
+
             $response['speiData'] = [
                 'clabe'        => $clabe,
-                'banco'        => !empty($bankInfo->hosted_instructions_url) ? 'Stripe' : 'STP',
+                'banco'        => $bankoLabel,
                 'beneficiario' => 'MTECH GEARS S.A. DE C.V.',
-                'referencia'   => $bankInfo->reference ?? '',
-                'amount'       => $amount
+                'referencia'   => $reference,
+                'amount'       => $amount,
             ];
+        } else {
+            // Stripe accepted the PI but didn't populate bank-transfer
+            // instructions — happens when the account hasn't enabled
+            // customer_balance / mx_bank_transfer. Return a clear hint
+            // for support staff (the customer just sees the generic
+            // message in the frontend).
+            $response['error']  = 'SPEI no entregó datos bancarios. Revisa que el método "Transferencias bancarias (Mexico)" esté activado en el dashboard de Stripe.';
+            $response['reason'] = 'no_next_action';
+            $response['paymentIntentStatus'] = $intent->status ?? null;
+            error_log('SPEI no next_action — pi=' . $intent->id . ' status=' . ($intent->status ?? '?'));
         }
 
-        // Send SPEI reminder email
-        $custEmail = $customer['email'] ?? '';
-        $custNombre = trim(($customer['nombre'] ?? '') . ' ' . ($customer['apellidos'] ?? ''));
-        if ($custEmail) {
+        // ── Reminder email (safe — every variable guaranteed to exist) ─
+        try {
+            $custNombre = trim(($customer['nombre'] ?? '') . ' ' . ($customer['apellidos'] ?? ''));
             $speiInfo = [
-                'clabe'        => $clabe ?: '',
-                'referencia'   => $bankInfo->reference ?? '',
+                'clabe'        => $clabe,
+                'referencia'   => $reference,
                 'beneficiario' => 'MTECH GEARS S.A. DE C.V.',
-                'banco'        => !empty($bankInfo->hosted_instructions_url) ? 'Stripe' : 'STP'
+                'banco'        => $bankoLabel,
             ];
-            _sendReminderEmail($custEmail, $custNombre, $customer, $amount / 100, 'Transferencia SPEI', $speiInfo);
+            // Only email when we actually have transfer data — sending an
+            // empty CLABE confuses the customer more than not sending.
+            if ($clabe !== '') {
+                _sendReminderEmail($custEmailRaw, $custNombre, $customer, $amount / 100, 'Transferencia SPEI', $speiInfo);
+            }
+        } catch (Throwable $e) {
+            error_log('SPEI reminder email failed (non-fatal): ' . $e->getMessage());
         }
 
         echo json_encode($response);
@@ -799,5 +930,20 @@ try {
     echo json_encode(['error' => 'Error de Stripe: ' . $e->getMessage()]);
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Error interno del servidor']);
+    error_log('create-payment-intent Exception: ' . $e->getMessage());
+    echo json_encode(['error' => 'Error interno del servidor', 'detail' => $e->getMessage()]);
+} catch (\Throwable $e) {
+    // Customer brief 2026-05-12 (Óscar, 11th round — "ERROR EN SPEI"
+    // sometimes returned empty HTTP 500 because PHP 8 `Error` instances
+    // (e.g. "Attempt to read property on null") aren't caught by the
+    // Exception block above — Error extends Throwable directly, not
+    // Exception. Without this catch the response was raw HTML, the
+    // frontend printed "Error de conexión", and admin had no detail.
+    http_response_code(500);
+    error_log('create-payment-intent Throwable: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    echo json_encode([
+        'error'  => 'Error inesperado en el servidor. Vuelve a intentarlo o usa otro método de pago.',
+        'detail' => $e->getMessage(),
+        'reason' => 'php_fatal',
+    ]);
 }
