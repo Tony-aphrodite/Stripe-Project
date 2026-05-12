@@ -2310,6 +2310,12 @@ window.AD_ventas = (function(){
         desc:  'Detalle completo: enganche, plazo, pago semanal, tasa, modelo.',
         kind:  'resumen_tx',
         data:  r,
+        // Customer brief 2026-05-12 (Óscar, 8th round — Option B): for
+        // credit orders also fetch the preaprobacion so the Resumen panel
+        // shows enganche / plazo / pago_semanal / tasa (which live on
+        // preaprobaciones, not transacciones).
+        search: preapSearch,
+        isCredit: true,
         icon:  '📋',
         bg:    '#ecfdf5', tx: '#065f46'
       });
@@ -2382,7 +2388,7 @@ window.AD_ventas = (function(){
       } else if (kind === 'capacidad') {
         fetchPreapSection($body, rows_[idx].search, 'capacidad');
       } else if (kind === 'resumen_tx') {
-        renderResumenTx($body, rows_[idx].data);
+        renderResumenTx($body, rows_[idx].data, rows_[idx].search, rows_[idx].isCredit);
       } else {
         $body.html('<div style="color:#b91c1c;">Tipo desconocido</div>');
       }
@@ -2529,35 +2535,83 @@ window.AD_ventas = (function(){
     $c.html(html);
   }
 
-  function renderResumenTx($c, row){
+  function renderResumenTx($c, row, search, isCredit){
+    // Customer brief 2026-05-12 (Óscar, 8th round — Option B): for credit
+    // orders, render the transacciones data INSTANTLY and then overlay
+    // enganche/plazo/pago_semanal from the preaprobacion (these live on
+    // preaprobaciones, not transacciones). The first paint is synchronous
+    // so the user sees data immediately; the credit-specific fields fill
+    // in once the preaprobaciones fetch resolves.
     var pesos = function(v){ return (v != null && v !== '') ? '$'+Number(v).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'; };
-    // Customer brief 2026-05-12 (Óscar, 8th round — Resumen showed
-    // "Método (tpago): —" while Información de pago showed "enganche"
-    // for the SAME row): the fallback chain was too narrow. Mirror the
-    // full chain used in renderPaymentInline so both renderers agree.
-    var total = row.total || row.precio || row.monto || row.amount;
-    var tpago = row.tpago || row.tipo_pago || row.metodo || row.tipo || '—';
-    var fecha = row.freg || row.fecha || row.fecha_pago || row.created_at || '—';
-    var enganche = row.enganche_monto || row.enganche || row.engache || null;
-    var plazo    = row.plazo_semanas || row.plazo_meses || row.plazo || null;
-    var pagoSem  = row.pago_semanal || row.pago_recurrente || null;
-    var tasa     = row.tasa_anual || row.tasa || row.tasa_interes || null;
-    var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">Resumen de transacción</div>';
-    html += _kvTable([
-      ['Pedido', esc(row.pedido_corto || row.pedido || ('TX'+row.id)), true],
-      ['Modelo · Color', esc((row.modelo||'—') + ' · ' + (row.color||'—'))],
-      ['Método (tpago)', esc(tpago)],
-      ['Total', pesos(total), true],
-      ['Enganche', pesos(enganche)],
-      // plazo may be a number (INT) — pass-through to avoid esc() crash.
-      ['Plazo', (plazo != null ? plazo : '—')],
-      ['Pago semanal', pesos(pagoSem)],
-      ['Tasa anual', (tasa != null && tasa !== '' ? Number(tasa).toFixed(2)+'%' : '—')],
-      ['Estado del pago', esc(row.pago_estado || '—')],
-      ['Stripe PI', '<code style="font-size:11px;">'+esc(row.stripe_pi || '—')+'</code>'],
-      ['Fecha', esc(fecha)],
-    ]);
-    $c.html(html);
+
+    function paint(row, p){
+      // `p` is the preaprobacion row (may be null on first paint or if
+      // not a credit order / no match found).
+      var total = row.total || row.precio || row.monto || row.amount;
+      var tpago = row.tpago || row.tipo_pago || row.metodo || row.tipo || '—';
+      var fecha = row.freg || row.fecha || row.fecha_pago || row.created_at || '—';
+      var pedidoDisplay = row.pedido_corto || row.pedido || ('TX'+row.id);
+
+      var enganche = (p && (p.enganche_requerido != null ? p.enganche_requerido : null))
+                  || row.enganche_monto || row.enganche || row.engache || null;
+      // Plazo — prefer preaprobacion's plazo_meses (credit term in months);
+      // fall back to anything on the transaccion row.
+      var plazoVal = (p && p.plazo_meses != null) ? p.plazo_meses
+                   : (p && p.plazo_max != null)   ? p.plazo_max
+                   : (row.plazo_semanas || row.plazo_meses || row.plazo || null);
+      var plazoUnit = (p && p.plazo_meses != null) ? 'meses'
+                    : (p && p.plazo_max != null)   ? 'semanas'
+                    : '';
+      var pagoSem = (p && p.pago_semanal != null) ? p.pago_semanal
+                  : (row.pago_semanal || row.pago_recurrente || null);
+      var pagoMen = (p && p.pago_mensual != null) ? p.pago_mensual : null;
+      var tasa    = row.tasa_anual || row.tasa || row.tasa_interes || null;
+      var engPct  = (p && p.enganche_pct != null) ? p.enganche_pct : null;
+
+      var rows = [
+        ['Pedido', esc(pedidoDisplay), true],
+        ['Modelo · Color', esc((row.modelo||'—') + ' · ' + (row.color||'—'))],
+        ['Método (tpago)', esc(tpago)],
+        ['Total', pesos(total), true],
+        ['Enganche requerido', pesos(enganche)],
+        ['Enganche %', (engPct != null && engPct !== '' ? Number(engPct).toFixed(1)+'%' : '—')],
+        ['Plazo', (plazoVal != null ? plazoVal + (plazoUnit?' '+plazoUnit:'') : '—')],
+        ['Pago mensual estimado', pesos(pagoMen)],
+        ['Pago semanal estimado', pesos(pagoSem)],
+        ['Tasa anual', (tasa != null && tasa !== '' ? Number(tasa).toFixed(2)+'%' : '—')],
+        ['Estado del pago', esc(row.pago_estado || '—')],
+        ['Stripe PI', '<code style="font-size:11px;">'+esc(row.stripe_pi || '—')+'</code>'],
+        ['Fecha', esc(fecha)],
+      ];
+
+      var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">Resumen de transacción</div>';
+      if (isCredit && !p) {
+        html += '<div style="font-size:11.5px;color:#64748b;margin-bottom:6px;">'+
+          '<span class="ad-spin" style="vertical-align:middle"></span> Cargando datos de crédito…</div>';
+      }
+      html += _kvTable(rows);
+      $c.html(html);
+    }
+
+    // First paint — synchronous, transacciones-only.
+    paint(row, null);
+
+    // Credit overlay — fetch preaprobacion and re-paint with merged data.
+    if (isCredit && search) {
+      $.ajax({
+        url: '/admin/php/preaprobaciones/listar.php',
+        method: 'GET',
+        data: { search: search, limit: 1 },
+        xhrFields: { withCredentials: true },
+        dataType: 'json'
+      }).done(function(r){
+        var preap = (r && r.rows && r.rows[0]) || null;
+        paint(row, preap);
+      }).fail(function(){
+        // Keep the basic view on fetch failure — better than wiping
+        // everything with an error message.
+      });
+    }
   }
 
   // Inline renderers — keep them inside the showDocumentos closure so they
