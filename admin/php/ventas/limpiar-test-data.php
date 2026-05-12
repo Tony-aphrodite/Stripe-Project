@@ -493,6 +493,35 @@ if ($dryRun) {
 }
 
 // ── REAL DELETE: transactional, with linked-row cleanup ────────────────
+//
+// Customer brief 2026-05-12 (Óscar, 12th round — Marcelino Hernandez
+// rows ID#5 and #23 with @mrcdev.mx test email): row #5 had pago=pagada
+// with a real-looking Stripe PI, so the conflict guard skipped it on
+// bulk delete. Admins need a SURGICAL override for cases like this —
+// when they've manually confirmed a row is test despite passing the
+// safety heuristic. Two new body parameters:
+//
+//   force_ids: [5, 23]
+//       Restrict the delete pass to ONLY these transaccion IDs AND
+//       bypass the conflict flag for them. Other candidates aren't
+//       touched. Use this when you've reviewed the dry-run and want
+//       to remove specific known-test rows.
+//
+//   force_conflicts: true
+//       Process the full candidates list but bypass the conflict flag.
+//       More aggressive — only use when the dry-run looks clean of
+//       false positives.
+$forceIds       = [];
+$forceConflicts = false;
+if ($method === 'POST') {
+    $body = $body ?? [];
+    if (!empty($body['force_ids']) && is_array($body['force_ids'])) {
+        $forceIds = array_values(array_unique(array_filter(array_map('intval', $body['force_ids']), fn($v)=>$v>0)));
+    }
+    $forceConflicts = !empty($body['force_conflicts']);
+}
+$useForceIds = count($forceIds) > 0;
+
 $deletedTx          = 0;
 $releasedMotos      = 0;
 $deletedEnvios      = 0;
@@ -504,8 +533,16 @@ $orphanSkipped      = 0;
 try {
     $pdo->beginTransaction();
     foreach ($candidates as $row) {
-        if (!empty($row['conflict'])) { $skippedConflict++; continue; }
         $txId = (int)$row['id'];
+        // Surgical mode — skip rows not in the explicit list.
+        if ($useForceIds && !in_array($txId, $forceIds, true)) continue;
+        // Conflict guard — bypass when caller explicitly forced this ID or
+        // requested force_conflicts. Without an override the row is kept
+        // (safety against accidentally wiping a real paid order).
+        if (!empty($row['conflict']) && !$forceConflicts && !($useForceIds && in_array($txId, $forceIds, true))) {
+            $skippedConflict++;
+            continue;
+        }
 
         // Release any inventario_motos linked to this pedido (don't
         // hard-delete the moto — it may be a real unit later reassigned).
@@ -652,4 +689,11 @@ adminJsonOut([
     // Duplicate-envío pass (same moto with multiple active envíos)
     'duplicates_closed'     => $duplicatesClosed,
     'motivo'                => $motivo,
+    // Customer brief 2026-05-12 (12th round): echo back the surgical-
+    // delete inputs so the admin can confirm the override was applied.
+    // If skipped_conflict > 0 but force_ids was provided, the deploy
+    // might be running an older copy of this script (PHP OPcache).
+    'force_ids'             => $forceIds,
+    'force_conflicts'       => $forceConflicts,
+    'candidates_total'      => count($candidates),
 ]);
