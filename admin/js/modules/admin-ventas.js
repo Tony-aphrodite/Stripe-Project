@@ -2427,16 +2427,24 @@ window.AD_ventas = (function(){
     return html;
   }
 
+  // Customer brief 2026-05-12 (Óscar, 8th round — Reporte de Capacidad
+  // showed "Decisión: Distrito Federal"): the renderer was reading
+  // p.estado but in preaprobaciones that's the geographic state, not
+  // the credit decision. The actual decision is in p.status (values
+  // PREAPROBADO / CONDICIONAL / NO_VIABLE). Field mapping below is now
+  // aligned with admin/php/preaprobaciones/listar.php SELECT.
   function renderIdentidad($c, p){
-    // Identity verification — Truora INE/Passport submission + match.
     var ineFront = p.truora_doc_front_url || p.ine_frente_url || p.documento_url || '';
     var ineBack  = p.truora_doc_back_url  || p.ine_reverso_url || '';
     var selfie   = p.truora_selfie_url    || p.selfie_url || '';
-    var faceMatch = p.truora_face_match;
-    var faceMatchTxt = (faceMatch === null || typeof faceMatch === 'undefined')
+    // Truora face match — verificaciones_identidad columns: curp_match,
+    // name_match, truora_approved.
+    var truoraApproved = p.truora_approved;
+    var approvedTxt = (truoraApproved === null || typeof truoraApproved === 'undefined')
         ? '—'
-        : (faceMatch == 1 ? '<span style="color:#16a34a;">✓ Coincide</span>' : '<span style="color:#b91c1c;">✗ No coincide</span>');
-    var statusTxt = p.truora_status || p.truora_estado || '—';
+        : (truoraApproved == 1 ? '<span style="color:#16a34a;">✓ Aprobado</span>' : '<span style="color:#b91c1c;">✗ Rechazado</span>');
+    var nameMatchTxt = (p.name_match == 1) ? '<span style="color:#16a34a;">✓ Nombre coincide</span>'
+                   : (p.name_match === 0 ? '<span style="color:#b91c1c;">✗ No coincide</span>' : '—');
     function imgChip(url, label){
       if (!url) return '';
       return '<a href="'+esc(url)+'" target="_blank" rel="noopener" style="display:inline-block;margin-right:6px;margin-top:4px;padding:6px 10px;background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;text-decoration:none;color:#1e40af;font-size:12px;">📷 '+label+'</a>';
@@ -2444,13 +2452,14 @@ window.AD_ventas = (function(){
     var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">Identidad — Truora</div>';
     html += _kvTable([
       ['Nombre completo', esc((p.nombre||'') + ' ' + (p.apellido_paterno||'') + ' ' + (p.apellido_materno||'')), true],
-      ['CURP', esc(p.curp || '—'), true],
       ['Email', esc(p.email || '—')],
       ['Teléfono', esc(p.telefono || '—')],
-      ['Documento subido', (p.truora_document_type || p.tipo_documento || '—')],
-      ['Truora — estado', esc(statusTxt)],
-      ['Truora — score facial', (p.truora_face_score != null ? p.truora_face_score + '%' : '—')],
-      ['Truora — Match (selfie vs INE)', faceMatchTxt],
+      ['Truora — estado',         esc(p.truora_status || '—')],
+      ['Truora — process_id',     esc(p.truora_process_id || '—')],
+      ['Truora — aprobación',     approvedTxt],
+      ['Truora — nombre coincide', nameMatchTxt],
+      ['Truora — última actualización', esc(p.truora_updated_at || '—')],
+      ['Revisión manual requerida', (p.manual_review_required == 1 ? '<span style="color:#ca8a04;">⚠ Sí</span>' + (p.manual_review_reason?' — '+esc(p.manual_review_reason):'') : '—')],
     ]);
     if (ineFront || ineBack || selfie) {
       html += '<div style="margin-top:10px;">' + imgChip(ineFront,'INE frente') + imgChip(ineBack,'INE reverso') + imgChip(selfie,'Selfie') + '</div>';
@@ -2460,17 +2469,19 @@ window.AD_ventas = (function(){
 
   function renderCurp($c, p){
     var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">CURP + Validación CDC/Truora</div>';
-    var cdcOk = (p.cdc_validado == 1) ? '<span style="color:#16a34a;">✓ Validado</span>'
-             : (p.cdc_validado === 0 ? '<span style="color:#b91c1c;">✗ Rechazado</span>' : '—');
-    var sameOk = (p.truora_same_ok == 1) ? '<span style="color:#16a34a;">✓ same OK</span>'
-              : (p.truora_same_ok === 0 ? '<span style="color:#b91c1c;">✗ no same</span>' : '—');
+    var curpMatch = (p.curp_match == 1) ? '<span style="color:#16a34a;">✓ Coincide</span>'
+                 : (p.curp_match === 0 ? '<span style="color:#b91c1c;">✗ No coincide</span>' : '—');
+    var truoraOk  = (p.truora_ok == 1) ? '<span style="color:#16a34a;">✓ Truora OK</span>'
+                 : (p.truora_ok === 0 ? '<span style="color:#b91c1c;">✗ Falla</span>' : '—');
     html += _kvTable([
-      ['CURP', esc(p.curp || '—'), true],
+      ['CURP — coincide con INE', curpMatch],
       ['Fecha de nacimiento', esc(p.fecha_nacimiento || '—')],
-      ['CDC — validación', cdcOk],
-      ['CDC — acuse / referencia', esc(p.cdc_referencia || p.cdc_acuse || '—')],
-      ['Truora — same OK (datos coinciden)', sameOk],
-      ['Validación timestamp', esc(p.cdc_validado_at || p.truora_completed_at || '—')],
+      ['Truora — same OK (datos coinciden)', truoraOk],
+      ['Validación CDC — fuente', esc(p.circulo_source || '—')],
+      ['Score Buró (CDC)',    (p.buro_score != null ? p.buro_score : '—')],
+      ['Folio CDC',           esc(p.buro_folio || '—')],
+      ['Fecha consulta CDC',  esc(p.buro_freg || '—')],
+      ['Validación timestamp', esc(p.truora_updated_at || '—')],
     ]);
     $c.html(html);
   }
@@ -2479,43 +2490,64 @@ window.AD_ventas = (function(){
     var pesos = function(v){ return (v != null && v !== '') ? '$'+Number(v).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'; };
     var pct   = function(v){ return (v != null && v !== '') ? Number(v).toFixed(1) + '%' : '—'; };
     var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">Capacidad crediticia</div>';
-    var scoreColor = p.score >= 700 ? '#16a34a' : (p.score >= 600 ? '#ca8a04' : '#dc2626');
-    var scoreCell  = p.score != null ? '<span style="color:'+scoreColor+';font-weight:700;font-size:15px;">'+p.score+'</span>' : '—';
-    var dpdColor   = p.dpd_90 == 0 ? '#16a34a' : (p.dpd_90 != null ? '#dc2626' : '#64748b');
-    var dpdCell    = p.dpd_90 != null ? '<span style="color:'+dpdColor+';font-weight:700;">'+p.dpd_90+'</span>' : '—';
+    // Real fields (see preaprobaciones/listar.php):
+    //   score, pti_total, dpd90_flag, dpd_max, ingreso_mensual,
+    //   pago_mensual, pago_semanal, enganche_requerido, plazo_max,
+    //   status (= PREAPROBADO / CONDICIONAL / NO_VIABLE — the decision).
+    var scoreVal = (p.score != null) ? p.score : p.synth_score;
+    var scoreColor = scoreVal >= 700 ? '#16a34a' : (scoreVal >= 600 ? '#ca8a04' : '#dc2626');
+    var scoreCell  = scoreVal != null ? '<span style="color:'+scoreColor+';font-weight:700;font-size:15px;">'+scoreVal+'</span>' : '—';
+    var dpdMax     = (p.dpd_max != null) ? p.dpd_max : p.buro_dpd_max;
+    var dpdColor   = dpdMax == 0 ? '#16a34a' : (dpdMax != null ? '#dc2626' : '#64748b');
+    var dpdCell    = dpdMax != null ? '<span style="color:'+dpdColor+';font-weight:700;">'+dpdMax+' días</span>' : '—';
+    // Status — PREAPROBADO / CONDICIONAL / NO_VIABLE. Colour-coded.
+    var statusTxt = (p.status || '').toUpperCase();
+    var statusHtml = statusTxt
+        ? '<span style="font-weight:700;color:' + (statusTxt==='PREAPROBADO'?'#16a34a':(statusTxt==='NO_VIABLE'?'#b91c1c':'#ca8a04')) + ';">' + statusTxt + '</span>'
+        : '—';
     html += _kvTable([
       ['Score CDC', scoreCell],
-      ['PTI (Payment-to-Income)', pct(p.pti)],
-      ['DPD90 (Días Pago Demorados 90+)', dpdCell],
-      ['Deuda existente', pesos(p.deuda_existente)],
-      ['Ingreso reportado', pesos(p.ingreso)],
-      ['Capacidad de pago', pesos(p.capacidad_pago)],
-      ['Pre-aprobado por', esc(p.preaprobado_monto != null ? '$'+Number(p.preaprobado_monto).toLocaleString('es-MX') : '—'), true],
-      ['Decisión', esc(p.estado || p.status || '—')],
+      ['PTI (Payment-to-Income)',          pct(p.pti_total)],
+      ['DPD máx (días en mora histórico)', dpdCell],
+      ['¿DPD90+?',                          (p.dpd90_flag == 1 ? '<span style="color:#b91c1c;">⚠ Sí</span>' : (p.dpd90_flag === 0 ? '<span style="color:#16a34a;">✓ No</span>' : '—'))],
+      ['Ingreso mensual reportado',         pesos(p.ingreso_mensual)],
+      ['Pago mensual estimado',             pesos(p.pago_mensual)],
+      ['Pago semanal estimado',             pesos(p.pago_semanal)],
+      ['Enganche requerido',                pesos(p.enganche_requerido)],
+      ['Enganche %',                        pct(p.enganche_pct)],
+      ['Plazo máx ofrecido (semanas)',      esc(p.plazo_max != null ? p.plazo_max : '—')],
+      ['Plazo solicitado (meses)',          esc(p.plazo_meses != null ? p.plazo_meses : '—')],
+      ['Decisión',                          statusHtml, true],
     ]);
     $c.html(html);
   }
 
   function renderResumenTx($c, row){
     var pesos = function(v){ return (v != null && v !== '') ? '$'+Number(v).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'; };
+    // Customer brief 2026-05-12 (Óscar, 8th round — Resumen showed
+    // "Método (tpago): —" while Información de pago showed "enganche"
+    // for the SAME row): the fallback chain was too narrow. Mirror the
+    // full chain used in renderPaymentInline so both renderers agree.
     var total = row.total || row.precio || row.monto || row.amount;
-    var enganche = row.enganche || row.engache || null;
-    var plazo    = row.plazo_semanas || row.plazo || null;
+    var tpago = row.tpago || row.tipo_pago || row.metodo || row.tipo || '—';
+    var fecha = row.freg || row.fecha || row.fecha_pago || row.created_at || '—';
+    var enganche = row.enganche_monto || row.enganche || row.engache || null;
+    var plazo    = row.plazo_semanas || row.plazo_meses || row.plazo || null;
     var pagoSem  = row.pago_semanal || row.pago_recurrente || null;
-    var tasa     = row.tasa_anual || row.tasa || null;
+    var tasa     = row.tasa_anual || row.tasa || row.tasa_interes || null;
     var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">Resumen de transacción</div>';
     html += _kvTable([
       ['Pedido', esc(row.pedido_corto || row.pedido || ('TX'+row.id)), true],
       ['Modelo · Color', esc((row.modelo||'—') + ' · ' + (row.color||'—'))],
-      ['Método (tpago)', esc(row.tpago || row.tipo_pago || '—')],
+      ['Método (tpago)', esc(tpago)],
       ['Total', pesos(total), true],
       ['Enganche', pesos(enganche)],
-      ['Plazo (semanas)', esc(plazo != null ? plazo : '—')],
+      ['Plazo', esc(plazo != null ? plazo : '—')],
       ['Pago semanal', pesos(pagoSem)],
       ['Tasa anual', (tasa != null && tasa !== '' ? Number(tasa).toFixed(2)+'%' : '—')],
       ['Estado del pago', esc(row.pago_estado || '—')],
       ['Stripe PI', '<code style="font-size:11px;">'+esc(row.stripe_pi || '—')+'</code>'],
-      ['Fecha', esc(row.freg || row.fecha || '—')],
+      ['Fecha', esc(fecha)],
     ]);
     $c.html(html);
   }
