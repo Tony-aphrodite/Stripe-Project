@@ -2482,18 +2482,64 @@ window.AD_ventas = (function(){
     var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">CURP + Validación CDC/Truora</div>';
     var curpMatch = (p.curp_match == 1) ? '<span style="color:#16a34a;">✓ Coincide</span>'
                  : (p.curp_match === 0 ? '<span style="color:#b91c1c;">✗ No coincide</span>' : '—');
-    var truoraOk  = (p.truora_ok == 1) ? '<span style="color:#16a34a;">✓ Truora OK</span>'
-                 : (p.truora_ok === 0 ? '<span style="color:#b91c1c;">✗ Falla</span>' : '—');
+
+    // Customer brief 2026-05-12 (Óscar, 10th round — real credit
+    // customer Carlos Ricardo Sánchez): the row "Truora — same OK
+    // (datos coinciden)" showed "✗ Falla" even though every OTHER
+    // Truora signal was ✓ (truora_status=success, truora_approved=1,
+    // name_match=1, curp_match=1, CDC source=real, score=516). The
+    // underlying field p.truora_ok lives on the preaprobaciones table
+    // and is a LEGACY SNAPSHOT — it gets initialised to 0 at preapproval
+    // time and isn't reliably updated when Truora completes verification
+    // later. The authoritative real-time signal is vi.truora_approved
+    // (from verificaciones_identidad), which IS being shown elsewhere
+    // as "Aprobado" for this same customer.
+    //
+    // Fix: compute the "datos coinciden" verdict from the AUTHORITATIVE
+    // per-field verifications (curp_match + name_match + truora_approved)
+    // and drop the misleading reference to the stale truora_ok flag.
+    var signals = [];
+    if (p.truora_approved != null) signals.push({label:'aprobación', ok: p.truora_approved == 1});
+    if (p.name_match     != null) signals.push({label:'nombre',     ok: p.name_match == 1});
+    if (p.curp_match     != null) signals.push({label:'CURP',       ok: p.curp_match == 1});
+    var matchStatus;
+    if (!signals.length) {
+      // No real-time signals available — show legacy flag verbatim so the
+      // admin still sees SOMETHING (with a hint about the field's age).
+      matchStatus = (p.truora_ok == 1) ? '<span style="color:#16a34a;">✓ OK (legacy)</span>'
+                 : (p.truora_ok === 0 ? '<span style="color:#6b7280;" title="Bandera legacy — verifica con Truora directamente">— Sin datos en tiempo real</span>' : '—');
+    } else {
+      var allOk = signals.every(function(s){ return s.ok; });
+      if (allOk) {
+        matchStatus = '<span style="color:#16a34a;font-weight:700;">✓ Todos los datos coinciden</span>'+
+          '<div style="font-size:11px;color:#64748b;margin-top:2px;">' +
+          signals.map(function(s){ return '✓ '+s.label; }).join(' · ') + '</div>';
+      } else {
+        var failed = signals.filter(function(s){ return !s.ok; }).map(function(s){ return s.label; });
+        matchStatus = '<span style="color:#b91c1c;font-weight:700;">✗ Discrepancia en: '+failed.join(', ')+'</span>';
+      }
+    }
+
     html += _kvTable([
       ['CURP — coincide con INE', curpMatch],
       ['Fecha de nacimiento', esc(p.fecha_nacimiento || '—')],
-      ['Truora — same OK (datos coinciden)', truoraOk],
+      ['Verificación de datos (Truora)', matchStatus],
       ['Validación CDC — fuente', esc(p.circulo_source || '—')],
       ['Score Buró (CDC)',    (p.buro_score != null ? p.buro_score : '—')],
       ['Folio CDC',           esc(p.buro_folio || '—')],
       ['Fecha consulta CDC',  esc(p.buro_freg || '—')],
       ['Validación timestamp', esc(p.truora_updated_at || '—')],
     ]);
+
+    // Hint for the admin: when the system disagrees with manual review
+    // (e.g. Truora dashboard says OK but our flag is stale), surface the
+    // process_id so admin can verify directly in the Truora dashboard.
+    if (p.truora_process_id) {
+      html += '<div style="margin-top:10px;padding:8px 12px;background:#f0f9ff;border:1px solid #93c5fd;border-radius:6px;font-size:11.5px;color:#1e40af;line-height:1.5;">'+
+        '<strong>¿Necesitas revisión manual?</strong> Verifica directamente en la consola de Truora con el process_id:<br>'+
+        '<code style="font-size:11px;background:#dbeafe;padding:2px 6px;border-radius:3px;">'+esc(p.truora_process_id)+'</code></div>';
+    }
+
     $c.html(html);
   }
 
