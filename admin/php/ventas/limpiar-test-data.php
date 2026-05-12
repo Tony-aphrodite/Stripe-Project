@@ -138,27 +138,99 @@ if ($txIds) {
             $pedidoNums = array_map(function($p){ return 'VK-' . $p; }, $pedidoList);
             $linkedCounts['inventario_motos'] = (int)$pdo->prepare("SELECT COUNT(*) FROM inventario_motos WHERE pedido_num IN ($inP)")
                 ->execute($pedidoNums) ? (int)$pdo->query("SELECT FOUND_ROWS()")->fetchColumn() : 0;
-        }
+    }
     } catch (Throwable $e) { /* non-fatal */ }
+}
+
+// ── 2b. ORPHAN TEST envíos / motos pass (customer brief 2026-05-09) ────
+// Catches TEST data that has NO matching transacciones row — e.g. the
+// R4WPATATEST500001 / VK-1826-TEST envío whose moto was orphan TEST
+// inventory never linked to a sale. The previous pass only deleted
+// transacciones and their linked envíos; this pass independently scans
+// inventario_motos + envios for VIN / VIN_display patterns that scream
+// "test artifact". Same safety stance as the txn pass: only matches
+// names that no real customer would have, and the cleanup is logged.
+$orphanMotos  = [];
+$orphanEnvios = [];
+try {
+    // Motos with a test-marker VIN that are STILL active (activo=1)
+    // and DON'T have a real customer linked. Adding the activo check
+    // means we don't bother flagging motos already soft-deleted by the
+    // punto-side eliminar.php flow.
+    $vinTestSql = "SELECT id, vin, vin_display, modelo, color, pedido_num, cliente_nombre, estado, activo
+                     FROM inventario_motos
+                    WHERE activo = 1
+                      AND (
+                            UPPER(vin)         LIKE '%TEST%'
+                         OR UPPER(vin)         LIKE '%GCTEST%'
+                         OR UPPER(vin)         LIKE '%FAKE%'
+                         OR UPPER(vin_display) LIKE '%TEST%'
+                         OR UPPER(vin_display) LIKE '%DIAG%'
+                          )";
+    $stmt = $pdo->prepare($vinTestSql);
+    $stmt->execute();
+    $orphanMotos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Annotate each with a "why" + safety verdict. If a moto has a
+    // valid cliente_nombre that doesn't itself look test-y, flag it as
+    // conflict so the cleanup skips it.
+    foreach ($orphanMotos as &$m) {
+        $m['why'] = 'VIN coincide con patrón test';
+        $cn = strtolower((string)($m['cliente_nombre'] ?? ''));
+        $clienteRealSospechoso = $cn !== ''
+            && strpos($cn, 'test')   === false
+            && strpos($cn, 'prueba') === false
+            && strpos($cn, 'diag')   === false;
+        if ($clienteRealSospechoso) {
+            $m['conflict'] = 'Tiene cliente_nombre no-test (' . $m['cliente_nombre'] . '). Revisar manualmente.';
+        }
+    }
+    unset($m);
+
+    // Envíos pointing at any moto in the orphan list, in ACTIVE state.
+    if ($orphanMotos) {
+        $motoIds = array_map(function($m){ return (int)$m['id']; }, $orphanMotos);
+        $inM = implode(',', array_fill(0, count($motoIds), '?'));
+        $eSql = "SELECT e.id AS envio_id, e.moto_id, e.estado, e.tracking_number, e.carrier,
+                        e.fecha_envio, e.fecha_estimada_llegada,
+                        m.vin, m.vin_display, m.modelo, m.color
+                   FROM envios e
+                   JOIN inventario_motos m ON m.id = e.moto_id
+                  WHERE e.moto_id IN ($inM)
+                    AND e.estado IN ('lista_para_enviar','enviada','enviado','en_transito')";
+        $eStmt = $pdo->prepare($eSql);
+        $eStmt->execute($motoIds);
+        $orphanEnvios = $eStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (Throwable $e) {
+    error_log('limpiar-test-data orphan scan: ' . $e->getMessage());
 }
 
 // ── DRY-RUN: return the plan and exit ──────────────────────────────────
 if ($dryRun) {
     adminJsonOut([
-        'ok'          => true,
-        'mode'        => 'dry_run',
-        'candidates'  => $candidates,
-        'count'       => count($candidates),
-        'linked'      => $linkedCounts,
-        'instructions'=> 'Para borrar realmente: POST a este mismo endpoint con body {"dry_run":0,"motivo":"..."}',
+        'ok'                 => true,
+        'mode'               => 'dry_run',
+        'candidates'         => $candidates,
+        'count'              => count($candidates),
+        'linked'             => $linkedCounts,
+        // Orphan-TEST pass — VIN-based detection (no transacciones row)
+        'orphan_motos'       => $orphanMotos,
+        'orphan_motos_count' => count($orphanMotos),
+        'orphan_envios'      => $orphanEnvios,
+        'orphan_envios_count'=> count($orphanEnvios),
+        'instructions'       => 'Para borrar realmente: POST a este mismo endpoint con body {"dry_run":0,"motivo":"..."}',
     ]);
 }
 
 // ── REAL DELETE: transactional, with linked-row cleanup ────────────────
-$deletedTx       = 0;
-$releasedMotos   = 0;
-$deletedEnvios   = 0;
-$skippedConflict = 0;
+$deletedTx          = 0;
+$releasedMotos      = 0;
+$deletedEnvios      = 0;
+$skippedConflict    = 0;
+$orphanEnviosClosed = 0;
+$orphanMotosSoftDel = 0;
+$orphanSkipped      = 0;
 
 try {
     $pdo->beginTransaction();
@@ -194,6 +266,59 @@ try {
             $deletedTx++;
         } catch (Throwable $e) {}
     }
+
+    // ── 2b. Orphan TEST pass: close envíos + soft-delete motos whose
+    //        VIN matches test patterns, when no real customer is linked.
+    //        These had NO transacciones row so the loop above missed them.
+    foreach ($orphanEnvios as $oe) {
+        // Find matching orphan moto to honour its conflict flag
+        $matching = null;
+        foreach ($orphanMotos as $om) {
+            if ((int)$om['id'] === (int)$oe['moto_id']) { $matching = $om; break; }
+        }
+        if ($matching && !empty($matching['conflict'])) { $orphanSkipped++; continue; }
+        try {
+            $pdo->prepare("UPDATE envios
+                              SET estado = 'completado_no_exitoso',
+                                  notas  = CONCAT(COALESCE(notas,''), '\n[test-cleanup-orphan] ', ?),
+                                  fmod   = NOW()
+                            WHERE id = ?
+                              AND estado IN ('lista_para_enviar','enviada','enviado','en_transito')")
+                ->execute([$motivo, (int)$oe['envio_id']]);
+            $orphanEnviosClosed++;
+        } catch (Throwable $e) {
+            error_log('orphan envio close: ' . $e->getMessage());
+        }
+    }
+    // Soft-delete the orphan motos themselves so they stop appearing in
+    // inventario listings. activo=0 preserves the row for audit; admin
+    // can flip back to activo=1 if it turns out to be a mistake. We
+    // also lazy-add eliminado_* audit columns so the source of the
+    // deletion is traceable. Skip motos with a conflict flag.
+    try {
+        $cols = $pdo->query("SHOW COLUMNS FROM inventario_motos")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('eliminado_por',    $cols, true)) $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN eliminado_por INT NULL");
+        if (!in_array('eliminado_motivo', $cols, true)) $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN eliminado_motivo VARCHAR(250) NULL");
+        if (!in_array('eliminado_fecha',  $cols, true)) $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN eliminado_fecha DATETIME NULL");
+    } catch (Throwable $e) { error_log('orphan moto audit cols: ' . $e->getMessage()); }
+    foreach ($orphanMotos as $om) {
+        if (!empty($om['conflict'])) { continue; }
+        try {
+            $pdo->prepare("UPDATE inventario_motos
+                              SET activo = 0,
+                                  eliminado_por = ?,
+                                  eliminado_motivo = ?,
+                                  eliminado_fecha = NOW()
+                            WHERE id = ? AND activo = 1")
+                ->execute([$uid, '[test-cleanup-orphan] ' . $motivo, (int)$om['id']]);
+            if ($pdo->prepare("SELECT 1")->rowCount() >= 0) {
+                $orphanMotosSoftDel++;
+            }
+        } catch (Throwable $e) {
+            error_log('orphan moto soft-delete: ' . $e->getMessage());
+        }
+    }
+
     $pdo->commit();
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
@@ -201,20 +326,27 @@ try {
 }
 
 adminLog('limpiar_test_data', [
-    'admin_id'       => $uid,
-    'motivo'         => $motivo,
-    'deleted_tx'     => $deletedTx,
-    'released_motos' => $releasedMotos,
-    'deleted_envios' => $deletedEnvios,
-    'skipped'        => $skippedConflict,
+    'admin_id'              => $uid,
+    'motivo'                => $motivo,
+    'deleted_tx'            => $deletedTx,
+    'released_motos'        => $releasedMotos,
+    'deleted_envios'        => $deletedEnvios,
+    'skipped'               => $skippedConflict,
+    'orphan_envios_closed'  => $orphanEnviosClosed,
+    'orphan_motos_soft_del' => $orphanMotosSoftDel,
+    'orphan_skipped'        => $orphanSkipped,
 ]);
 
 adminJsonOut([
-    'ok'              => true,
-    'mode'            => 'execute',
-    'deleted_tx'      => $deletedTx,
-    'released_motos'  => $releasedMotos,
-    'deleted_envios'  => $deletedEnvios,
-    'skipped_conflict'=> $skippedConflict,
-    'motivo'          => $motivo,
+    'ok'                    => true,
+    'mode'                  => 'execute',
+    'deleted_tx'            => $deletedTx,
+    'released_motos'        => $releasedMotos,
+    'deleted_envios'        => $deletedEnvios,
+    'skipped_conflict'      => $skippedConflict,
+    // Orphan-TEST pass (no transacciones row, just VIN match)
+    'orphan_envios_closed'  => $orphanEnviosClosed,
+    'orphan_motos_soft_del' => $orphanMotosSoftDel,
+    'orphan_skipped'        => $orphanSkipped,
+    'motivo'                => $motivo,
 ]);
