@@ -45,14 +45,19 @@ try {
                           ORDER BY id DESC LIMIT 1");
     $row->execute([$pedido]);
     $r = $row->fetch(PDO::FETCH_ASSOC);
-    // (2) pedido_corto fallback
+    // (2) pedido_corto fallback — try both the bare and VK-prefixed
+    // forms. voltikaResolvePedidoCorto persists the column as
+    // "VK-YYMM-NNNN" (with prefix), but admin links sometimes carry
+    // just the bare body "2605-0002". Test both shapes.
     if (!$r) {
         try {
+            $bare    = preg_replace('/^VK-/i', '', $pedido);
+            $withPfx = 'VK-' . $bare;
             $row = $pdo->prepare("SELECT id, pedido, stripe_pi, contrato_pdf_path
                                   FROM transacciones
-                                  WHERE pedido_corto = ?
+                                  WHERE pedido_corto = ? OR pedido_corto = ?
                                   ORDER BY id DESC LIMIT 1");
-            $row->execute([$pedido]);
+            $row->execute([$bare, $withPfx]);
             $r = $row->fetch(PDO::FETCH_ASSOC);
         } catch (Throwable $e) {
             // pedido_corto column may not exist on legacy installs — ignore

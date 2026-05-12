@@ -2342,14 +2342,35 @@ window.AD_ventas = (function(){
   // Inline renderers — keep them inside the showDocumentos closure so they
   // can reference esc/dedupeName etc., but expose nothing globally.
   function renderPaymentInline($container, row){
+    // Customer brief 2026-05-09 (Óscar — Información de pago inline showed
+    // dashes for Total / Método / Fecha even though the dashboard row
+    // clearly carried $48,260 / Tarjeta / 2026-05-01). The previous code
+    // only read row.total / row.tpago / row.freg, but listar.php strips /
+    // re-maps some columns AND the data sometimes lives in r.precio (when
+    // total is NULL) or r.fecha (when freg was renamed in a partial
+    // migration). Read every shape the row might carry, in priority order.
     var pi      = row.stripe_pi || '—';
-    var tpago   = row.tpago || '—';
-    var pago    = row.pago_estado || '—';
-    var total   = row.total != null ? '$'+Number(row.total).toLocaleString('es-MX') : '—';
-    var fecha   = row.freg || '—';
+    // tpago — also try tipo_pago, metodo, tipo
+    var tpago   = row.tpago || row.tipo_pago || row.metodo || row.tipo || '—';
+    var pago    = row.pago_estado || row.estado_pago || '—';
+    // total — accept total OR precio OR monto OR amount in that order
+    var rawTotal = row.total;
+    if (rawTotal == null || rawTotal === '' || Number(rawTotal) === 0) rawTotal = row.precio;
+    if (rawTotal == null || rawTotal === '' || Number(rawTotal) === 0) rawTotal = row.monto;
+    if (rawTotal == null || rawTotal === '' || Number(rawTotal) === 0) rawTotal = row.amount;
+    var total   = (rawTotal != null && rawTotal !== '' && Number(rawTotal) > 0)
+        ? '$'+Number(rawTotal).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2})
+        : '—';
+    // fecha — try freg, fecha, fecha_pago, created_at
+    var fecha   = row.freg || row.fecha || row.fecha_pago || row.created_at || '—';
     var stripeLink = (pi && pi.indexOf('pi_') === 0)
         ? '<a href="https://dashboard.stripe.com/payments/'+encodeURIComponent(pi)+'" target="_blank" rel="noopener" style="color:#0ea5e9;font-weight:700;">Abrir en Stripe ↗</a>'
         : '—';
+    // Footer hint when a real Stripe PI exists but the local DB row is
+    // missing the amount — admin can still verify from the Stripe link.
+    var fallbackHint = (total === '—' && pi.indexOf('pi_') === 0)
+        ? '<div style="margin-top:8px;padding:8px 10px;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;font-size:11px;color:#9a3412;">Algunos campos están vacíos en la BD local. El registro completo está disponible en Stripe (link arriba).</div>'
+        : '';
     $container.html(
       '<table style="width:100%;border-collapse:collapse;font-size:13px;">'+
       '<tr><td style="padding:6px 0;color:#64748b;width:40%;">Total cobrado</td><td style="font-weight:700;">'+total+'</td></tr>'+
@@ -2358,7 +2379,8 @@ window.AD_ventas = (function(){
       '<tr><td style="padding:6px 0;color:#64748b;">Stripe PI</td><td style="font-family:monospace;font-size:11px;word-break:break-all;">'+esc(pi)+'</td></tr>'+
       '<tr><td style="padding:6px 0;color:#64748b;">Fecha</td><td>'+esc(fecha)+'</td></tr>'+
       '<tr><td style="padding:6px 0;color:#64748b;">Dashboard Stripe</td><td>'+stripeLink+'</td></tr>'+
-      '</table>'
+      '</table>'+
+      fallbackHint
     );
   }
   function fetchChecklistInline($container, motoId){
