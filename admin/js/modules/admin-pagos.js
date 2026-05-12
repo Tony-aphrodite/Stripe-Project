@@ -248,34 +248,47 @@ window.AD_pagos = (function(){
       }
 
       // ── OTP audit (post-payment phone confirmation) ────────────────
-      // Customer brief 2026-05-12 (Óscar, 9th round — screenshot: Stripe
-      // showed "succeeded" but OTP showed "⏳ Pendiente" with every
-      // sub-field empty (validated_at=—, phone=—, intentos=—). That
-      // wasn't really pending — the OTP was never sent. The UI conflated
-      // three distinct states ("never sent", "sent waiting confirmation",
-      // "validated") into two ("validado", "pendiente"). We now split
-      // them so the admin can tell at a glance whether the customer
-      // simply never went through the OTP step vs. is actually pending.
+      // Customer brief 2026-05-12 (Óscar, 9th round + 9b feedback —
+      // screenshot: Stripe failed with "requires_payment_method /
+      // insufficient funds", payment never completed, yet OTP showed
+      // "✗ Fallido"). The OTP step runs AFTER successful payment, so
+      // when Stripe rejects the charge the OTP is never even attempted.
+      // Calling that "Fallido" misleads the admin into thinking the OTP
+      // itself failed. Add a 5th state "— No aplica" that fires when
+      // the payment didn't succeed — OTP couldn't have run in that case.
+      //
+      // Five distinct states now:
+      //   ✓  Validado     — otp.validated === true
+      //   ⏳ Pendiente    — send_count > 0 but not yet validated
+      //   ✗  Fallido      — otp.validated === false AND payment succeeded
+      //   — No aplica    — Stripe charge failed → OTP never reachable
+      //   — No enviado   — Stripe ok / no charge data, OTP simply never sent
       if (r.otp && (r.otp.validated !== null || r.otp.send_count !== null)) {
         var otp = r.otp;
         html += sectionHeader('Verificación OTP',
           '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M7 12h.01M12 12h.01M17 12h.01"/></svg>');
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:16px;">';
         var sendCount = (otp.send_count != null) ? Number(otp.send_count) : null;
+        // Payment-status snapshot — pull from Stripe response if present,
+        // otherwise from the local pago_estado mirror. Any non-succeeded
+        // state means OTP never ran.
+        var stripeStatus = (s && s.status) ? String(s.status).toLowerCase() : '';
+        var paymentOk = stripeStatus === 'succeeded';
+        var paymentFailed = stripeStatus && stripeStatus !== 'succeeded' &&
+                            stripeStatus !== 'processing' && stripeStatus !== 'requires_action';
         var otpEstado;
         if (otp.validated === true) {
           otpEstado = '<span style="display:inline-flex;align-items:center;gap:4px;color:#15803d;font-weight:700;">'+
             '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Validado</span>';
         } else if (sendCount != null && sendCount > 0) {
           otpEstado = '<span style="color:#b45309;font-weight:700;" title="Código enviado pero el cliente no lo confirmó">⏳ Pendiente</span>';
+        } else if (paymentFailed) {
+          otpEstado = '<span style="color:#6b7280;font-weight:700;" title="El pago no se completó — el OTP no llega a ejecutarse hasta que Stripe cobra exitosamente">— No aplica (pago no completado)</span>';
         } else if (otp.validated === false) {
           otpEstado = '<span style="color:#b91c1c;font-weight:700;" title="OTP intentado y rechazado">✗ Fallido</span>';
         } else {
-          // Most common case for the screenshot: payment captured but
-          // the OTP step was never triggered (customer closed tab,
-          // legacy flow, OTP disabled, etc.). Distinguish this from
-          // "pendiente" so admin knows there's nothing waiting on the
-          // customer side.
+          // Payment succeeded (or status unknown) but OTP was never
+          // triggered (customer closed tab, legacy flow, OTP disabled).
           otpEstado = '<span style="color:#6b7280;font-weight:700;" title="El cliente nunca pasó por el paso OTP">— No enviado</span>';
         }
         html += fieldRow('Estado OTP',     otpEstado, 0);
