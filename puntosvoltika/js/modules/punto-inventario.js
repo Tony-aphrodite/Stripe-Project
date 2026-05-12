@@ -54,6 +54,18 @@ window.PV_inventario = (function(){
     (r.inventario_venta||[]).forEach(function(m){
       html += bikeCard(m, 'venta');
     });
+
+    // Customer brief 2026-05-12 (Óscar, 6th round verification): delivered
+    // motos no longer occupy "Para entrega". They get their own historic
+    // bucket so the punto retains visibility (last 20 most recent).
+    var entregadas = r.inventario_entregadas || [];
+    if (entregadas.length) {
+      html += '<div class="ad-h2" style="margin-top:18px;">Entregadas recientes ('+entregadas.length+')</div>';
+      html += '<div style="font-size:12px;color:var(--ad-dim);margin:2px 0 8px 2px">'+
+        'Motos ya entregadas al cliente. Solo lectura — no requieren acción.</div>';
+      entregadas.forEach(function(m){ html += bikeCard(m, 'entregada'); });
+    }
+
     PVApp.render(html);
 
     $('.pv-bike-card').on('click', function(e){
@@ -144,7 +156,16 @@ window.PV_inventario = (function(){
     // sense when there's a cliente waiting, so it stays gated on tipo==='entrega'.
     // Safety gate: require recepcion_id — guards against data where estado='recibida'
     // was set without the physical receipt.
-    if ((tipo === 'entrega' || tipo === 'venta') && m.recepcion_id) {
+    //
+    // Customer brief 2026-05-12 (Óscar, 6th round — verification screenshot:
+    // BLOQUEADA moto with "Iniciar ensamble" button visible): if the moto is
+    // blocked for sale, ALL operational buttons must be hidden. The punto
+    // cannot push a blocked unit forward in the pipeline; only CEDIS/admin
+    // can unblock. Same rule applies to motos held back at reception
+    // (estado='retenida') — those need CEDIS review, not assembly.
+    var isBloq    = parseInt(m.bloqueado_venta) === 1;
+    var isRetenida = m.estado === 'retenida';
+    if ((tipo === 'entrega' || tipo === 'venta') && m.recepcion_id && !isBloq && !isRetenida) {
       var ensambleBtn = '<button class="ad-btn ghost sm pv-estado-btn" data-id="'+m.id+'" data-action="ensamble"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> Iniciar ensamble</button>';
       var listaBtn    = '<button class="ad-btn primary sm pv-estado-btn" data-id="'+m.id+'" data-action="lista"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg> Marcar lista para entrega</button>';
       if (m.estado === 'recibida') {
@@ -158,6 +179,21 @@ window.PV_inventario = (function(){
         if (tipo === 'entrega') h += listaBtn;
         h += '</div>';
       }
+    }
+
+    // Explicit hint when buttons are hidden because the moto is blocked or
+    // retained — without this the operator sees a "stuck" card with no
+    // explanation and tends to call admin asking why.
+    if (isBloq) {
+      h += '<div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:#fef2f2;border:1px solid #fecaca;font-size:11.5px;color:#991b1b;line-height:1.5;">'+
+        '<strong>Acciones bloqueadas.</strong> Esta moto está bloqueada para venta. '+
+        'Para liberarla, contacta a CEDIS / admin.'+
+      '</div>';
+    } else if (isRetenida) {
+      h += '<div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:#fffbeb;border:1px solid #fde68a;font-size:11.5px;color:#92400e;line-height:1.5;">'+
+        '<strong>Moto retenida en recepción.</strong> Algún punto del checklist quedó incompleto o se detectó una discrepancia. '+
+        'Avisa a CEDIS / admin para que la revise y la libere antes de iniciar ensamble.'+
+      '</div>';
     }
 
     // Customer brief 2026-05-12 (Óscar, 6th round — screenshot 3: green X

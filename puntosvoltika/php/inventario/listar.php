@@ -39,6 +39,12 @@ $porLlegarShowroom     = [];
 $pendienteRecepcion    = [];
 $paraEntrega           = [];
 $paraVenta             = [];
+// Customer brief 2026-05-12 (Óscar, 6th round verification screenshot:
+// "Para entrega (1)" showed a moto with status='entregada'): once a moto
+// is delivered to the client, it should no longer occupy the active
+// pipeline. We move delivered units to a dedicated bucket so the punto
+// retains historic visibility without confusing them with pending work.
+$entregadasRecientes = [];
 
 foreach ($motos as $m) {
     $estado = $m['estado'] ?? '';
@@ -50,6 +56,15 @@ foreach ($motos as $m) {
     // Skip CASE 3 placeholder rows (synthetic VIN like "VK-MOD-0001" created by
     // confirmar-orden.php). Surfaced via ventas_referido_pendientes below.
     if (strpos($vin, 'VK-') === 0) {
+        continue;
+    }
+
+    // Delivered motos go to the historic bucket — out of the active pipeline.
+    // Filter BEFORE the por_llegar / recepcion checks because an entregada
+    // unit by definition has both a reception record and is downstream of
+    // every other state.
+    if ($estado === 'entregada') {
+        $entregadasRecientes[] = $m;
         continue;
     }
 
@@ -79,6 +94,12 @@ foreach ($motos as $m) {
     } else {
         $paraVenta[] = $m;
     }
+}
+
+// Cap the historic bucket so the inventory page doesn't grow unbounded.
+// Most recent first (relies on the ORDER BY m.fmod DESC of the main query).
+if (count($entregadasRecientes) > 20) {
+    $entregadasRecientes = array_slice($entregadasRecientes, 0, 20);
 }
 
 // Per dashboards_diagrams.pdf CASE 3: orders placed online with a punto's
@@ -117,5 +138,6 @@ puntoJsonOut([
     'inventario_por_llegar_showroom' => $porLlegarShowroom,
     'inventario_entrega'             => $paraEntrega,
     'inventario_venta'               => $paraVenta,
+    'inventario_entregadas'          => $entregadasRecientes,
     'total'                          => count($motos),
 ]);
