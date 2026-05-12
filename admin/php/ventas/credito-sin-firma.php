@@ -27,30 +27,82 @@ $pdo = getDB();
 $limit    = max(1, min((int)($_GET['limit']    ?? 200), 1000));
 $daysMin  = max(0, (int)($_GET['days_min']  ?? 0));
 
-// Detect optional columns once so legacy installs still work.
-$txCols = [];
-try {
-    $txCols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
-} catch (Throwable $e) { /* fatal handled below */ }
-$hasPdfPath = in_array('contrato_pdf_path', $txCols, true);
-$hasPdfHash = in_array('contrato_pdf_hash', $txCols, true);
-$hasPedidoCorto = in_array('pedido_corto', $txCols, true);
+// ── Schema discovery (table + column existence) ────────────────────────
+// Customer brief 2026-05-12 (Óscar, 10th round — initial deployment
+// returned "query_failed" because preaprobaciones / verificaciones_
+// identidad tables don't exist on every install, and their column names
+// also drift between deploys (curp_match vs vi.curp_match, etc.). We
+// discover the schema at runtime and emit a query that only references
+// what's actually present.
+function _tableExists(PDO $pdo, string $name): bool {
+    try {
+        $q = $pdo->prepare("SELECT 1 FROM information_schema.tables
+                             WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1");
+        $q->execute([$name]);
+        return (bool)$q->fetchColumn();
+    } catch (Throwable $e) {
+        // Fallback for hosts where information_schema is restricted.
+        try { $pdo->query("SELECT 1 FROM `$name` LIMIT 0"); return true; }
+        catch (Throwable $e2) { return false; }
+    }
+}
+function _cols(PDO $pdo, string $table): array {
+    try { return $pdo->query("SHOW COLUMNS FROM `$table`")->fetchAll(PDO::FETCH_COLUMN); }
+    catch (Throwable $e) { return []; }
+}
 
-// SQL with conditional pieces. We deliberately use LEFT JOINs everywhere
-// so a missing match (no preaprobacion, no verificaciones_identidad)
-// doesn't drop the transaction from the report — those are exactly the
-// rows the admin needs to see.
-$selectPdfPath  = $hasPdfPath ? "t.contrato_pdf_path" : "'' AS contrato_pdf_path";
-$selectPdfHash  = $hasPdfHash ? "t.contrato_pdf_hash" : "'' AS contrato_pdf_hash";
-$selectShort    = $hasPedidoCorto ? "t.pedido_corto" : "'' AS pedido_corto";
+$txCols = _cols($pdo, 'transacciones');
+$hasPdfPath      = in_array('contrato_pdf_path', $txCols, true);
+$hasPdfHash      = in_array('contrato_pdf_hash', $txCols, true);
+$hasPedidoCorto  = in_array('pedido_corto',      $txCols, true);
 
-// The "missing signature" predicate. Credit-family orders only have a PDF
-// when contrato_pdf_path is set OR when a Cincel signing actually happened.
-// We approximate "missing" as path-empty since cincel produces the PDF
-// path. Legacy installs without contrato_pdf_path are treated as missing.
+$hasPreaprob = _tableExists($pdo, 'preaprobaciones');
+$pCols       = $hasPreaprob ? _cols($pdo, 'preaprobaciones') : [];
+$pHasScore   = in_array('score',       $pCols, true);
+$pHasStatus  = in_array('status',      $pCols, true);
+$pHasSeguim  = in_array('seguimiento', $pCols, true);
+
+$hasVI = _tableExists($pdo, 'verificaciones_identidad');
+$viCols = $hasVI ? _cols($pdo, 'verificaciones_identidad') : [];
+$viHasStatus    = in_array('truora_status',     $viCols, true);
+$viHasApproved  = in_array('truora_approved',   $viCols, true);
+// Different installs use `truora_process_id` OR `process_id`; pick whichever exists.
+$viProcCol = in_array('truora_process_id', $viCols, true) ? 'truora_process_id'
+           : (in_array('process_id',         $viCols, true) ? 'process_id' : null);
+$viHasUpdated   = in_array('truora_updated_at', $viCols, true);
+
+// ── Build SELECT columns with NULL/empty fallbacks ─────────────────────
+$selectPdfPath  = $hasPdfPath     ? "t.contrato_pdf_path"          : "NULL AS contrato_pdf_path";
+$selectPdfHash  = $hasPdfHash     ? "t.contrato_pdf_hash"          : "NULL AS contrato_pdf_hash";
+$selectShort    = $hasPedidoCorto ? "t.pedido_corto"               : "NULL AS pedido_corto";
+$selectPid      = $hasPreaprob    ? "p.id"                         : "NULL AS preaprobacion_id";
+$selectScore    = ($hasPreaprob && $pHasScore)  ? "p.score"        : "NULL AS score";
+$selectPStatus  = ($hasPreaprob && $pHasStatus) ? "p.status"       : "NULL AS preap_status";
+$selectPSeguim  = ($hasPreaprob && $pHasSeguim) ? "p.seguimiento"  : "NULL AS preap_seguimiento";
+$selectViStatus = ($hasVI && $viHasStatus)    ? "vi.truora_status"     : "NULL AS truora_status";
+$selectViAppr   = ($hasVI && $viHasApproved)  ? "vi.truora_approved"   : "NULL AS truora_approved";
+$selectViProc   = ($hasVI && $viProcCol)      ? "vi.$viProcCol AS truora_process_id" : "NULL AS truora_process_id";
+$selectViUpd    = ($hasVI && $viHasUpdated)   ? "vi.truora_updated_at" : "NULL AS truora_updated_at";
+
+// Aliases so the renamed SELECT columns match the alias names below.
+$selectPid     = $hasPreaprob ? "p.id AS preaprobacion_id" : "NULL AS preaprobacion_id";
+
+// ── Conditional JOIN clauses (skip table entirely when missing) ────────
+$joinPreaprob = $hasPreaprob ? "
+    LEFT JOIN preaprobaciones p ON (
+              (p.email    <> '' AND p.email    = t.email)
+           OR (p.telefono <> '' AND p.telefono = t.telefono)
+    )" : "";
+$joinVI = $hasVI ? "
+    LEFT JOIN verificaciones_identidad vi ON (
+              (vi.email    <> '' AND vi.email    = t.email)
+           OR (vi.telefono <> '' AND vi.telefono = t.telefono)
+    )" : "";
+
+// ── "Missing signature" predicate ──────────────────────────────────────
 $whereMissing = $hasPdfPath
     ? "(t.contrato_pdf_path IS NULL OR t.contrato_pdf_path = '')"
-    : "1=1";
+    : "1=1";  // legacy install — treat all credit orders as missing PDF
 
 $sql = "
     SELECT
@@ -70,23 +122,17 @@ $sql = "
         DATEDIFF(NOW(), t.freg)           AS dias_sin_firmar,
         $selectPdfPath,
         $selectPdfHash,
-        p.id                              AS preaprobacion_id,
-        p.score                           AS score,
-        p.status                          AS preap_status,
-        p.seguimiento                     AS preap_seguimiento,
-        vi.truora_status                  AS truora_status,
-        vi.truora_approved                AS truora_approved,
-        vi.truora_process_id              AS truora_process_id,
-        vi.truora_updated_at              AS truora_updated_at
+        $selectPid,
+        $selectScore,
+        $selectPStatus,
+        $selectPSeguim,
+        $selectViStatus,
+        $selectViAppr,
+        $selectViProc,
+        $selectViUpd
     FROM transacciones t
-    LEFT JOIN preaprobaciones p ON (
-              (p.email    <> '' AND p.email    = t.email)
-           OR (p.telefono <> '' AND p.telefono = t.telefono)
-    )
-    LEFT JOIN verificaciones_identidad vi ON (
-              (vi.email    <> '' AND vi.email    = t.email)
-           OR (vi.telefono <> '' AND vi.telefono = t.telefono)
-    )
+    $joinPreaprob
+    $joinVI
     WHERE LOWER(TRIM(COALESCE(t.tpago,''))) IN ('credito','credito-orfano','enganche','parcial')
       AND LOWER(TRIM(COALESCE(t.pago_estado,''))) IN ('parcial','pagada','aprobada','approved','paid')
       AND $whereMissing
@@ -100,10 +146,21 @@ try {
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
+    // Always return diagnostic detail so the admin can fix install-
+    // specific schema issues without going through server logs.
     adminJsonOut([
         'ok' => false,
         'error' => 'query_failed',
         'detail' => $e->getMessage(),
+        'schema' => [
+            'has_preaprobaciones'        => $hasPreaprob,
+            'has_verificaciones_identidad' => $hasVI,
+            'has_contrato_pdf_path'      => $hasPdfPath,
+            'has_pedido_corto'           => $hasPedidoCorto,
+            'tx_cols'  => $txCols,
+            'vi_cols'  => $viCols,
+            'p_cols'   => $pCols,
+        ],
     ], 500);
 }
 

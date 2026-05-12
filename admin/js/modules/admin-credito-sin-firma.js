@@ -33,10 +33,7 @@ window.AD_creditoSinFirma = (function(){
   function load(){
     ADApp.api('ventas/credito-sin-firma.php').done(function(r){
       if (!r || !r.ok) {
-        ADApp.render('<div class="ad-h1">Crédito sin firma</div>'+
-          '<div style="color:#b91c1c;padding:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">'+
-            'Error al cargar: '+esc((r && r.error) || 'desconocido')+
-          '</div>');
+        renderError(r);
         return;
       }
       state.rows = r.rows || [];
@@ -53,11 +50,27 @@ window.AD_creditoSinFirma = (function(){
         }
       } catch (e) {}
     }).fail(function(x){
-      ADApp.render('<div class="ad-h1">Crédito sin firma</div>'+
-        '<div style="color:#b91c1c;padding:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">'+
-          'Error de conexión: '+esc((x.responseJSON && x.responseJSON.error) || 'conexión perdida')+
-        '</div>');
+      renderError(x.responseJSON || { error: 'conexión perdida' });
     });
+  }
+
+  function renderError(r){
+    // Customer brief 2026-05-12 (Óscar, 10th round — initial deployment
+    // surfaced "query_failed" with no detail). Always show whatever
+    // diagnostic info the backend returned so we can fix install-specific
+    // schema issues without round-tripping through server logs.
+    var err = (r && r.error) || 'desconocido';
+    var detail = (r && r.detail) || '';
+    var html = '<div class="ad-h1">Crédito sin firma</div>'+
+      '<div style="color:#b91c1c;padding:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:10px;">'+
+        '<strong>Error al cargar:</strong> '+esc(err);
+    if (detail) {
+      html += '<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;">Detalle técnico</summary>'+
+        '<pre style="font-size:11px;background:#1e293b;color:#e2e8f0;padding:10px;border-radius:6px;margin-top:6px;overflow:auto;white-space:pre-wrap;word-break:break-word;">'+esc(detail)+'</pre>'+
+      '</details>';
+    }
+    html += '</div>';
+    ADApp.render(html);
   }
 
   function paint(){
