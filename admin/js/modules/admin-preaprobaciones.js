@@ -1,6 +1,13 @@
 /* admin-preaprobaciones.js — Credit applications (leads) panel */
 window.AD_preaprobaciones = (function(){
   var filters = { status: '', seguimiento: '', source: '', search: '', page: 1, limit: 50 };
+  // Customer brief 2026-05-12 (Óscar, 8th round verification — hash
+  // deep-link populated the search input but the table still showed all
+  // 66 rows): render()'s initial load and the search() trigger race
+  // each other. The unfiltered response sometimes arrives last and
+  // overwrites the filtered one. Tag each load with a monotonically
+  // increasing request id and have paint ignore stale responses.
+  var _reqId = 0;
 
   function render(){
     ADApp.render('<div class="ad-h1">Solicitudes de Crédito</div><div><span class="ad-spin"></span> Cargando...</div>');
@@ -8,7 +15,14 @@ window.AD_preaprobaciones = (function(){
   }
 
   function load(){
-    ADApp.api('preaprobaciones/listar.php?' + $.param(filters)).done(paint);
+    var myId = ++_reqId;
+    ADApp.api('preaprobaciones/listar.php?' + $.param(filters)).done(function(r){
+      // Drop stale response — only the most recent load wins. Without
+      // this, a search() call triggered right after render() may race
+      // and the unfiltered initial response can clobber the filtered one.
+      if (myId !== _reqId) return;
+      paint(r);
+    });
   }
 
   function esc(s){ return jQuery('<div/>').text(s == null ? '' : String(s)).html(); }
