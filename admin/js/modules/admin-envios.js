@@ -38,12 +38,55 @@ window.AD_envios = (function(){
       '<th>Fecha envío</th><th>ETA</th><th>Acciones</th>'+
       '</tr></thead><tbody>';
 
+    // Customer brief 2026-05-09 (Óscar — "En esta de envios revisar que el
+    // estatus de los VIN tambien se vea reflejado que no se enviaron"):
+    // the Estado column sat in position 8/11, off-screen on narrow
+    // viewports. Operators had to horizontally scroll to figure out
+    // whether a row had actually shipped. Build a compact VIN-with-status
+    // cell so the shipment state ("not sent" / "shipped" / "received" /
+    // "closed without shipping") is always visible next to the VIN, no
+    // matter how the table is scrolled. Existing Estado column is kept
+    // so filtering / power-user workflows still work.
+    function vinWithStatusCell(estado, vin){
+      var s = String(estado || '').toLowerCase();
+      var label, bg, fg, icon;
+      if (s === 'lista_para_enviar') {
+        label = 'Sin enviar';   bg = '#fef3c7'; fg = '#92400e'; icon = '⏳';
+      } else if (s === 'enviada' || s === 'enviado') {
+        label = 'Enviada';      bg = '#dbeafe'; fg = '#1e40af'; icon = '🚚';
+      } else if (s === 'en_transito') {
+        label = 'En tránsito';  bg = '#dbeafe'; fg = '#1e40af'; icon = '🚚';
+      } else if (s === 'recibida') {
+        label = 'Recibida';     bg = '#d1fae5'; fg = '#065f46'; icon = '✓';
+      } else if (s === 'completado_no_exitoso') {
+        label = 'NO enviada';   bg = '#fee2e2'; fg = '#991b1b'; icon = '✗';
+      } else if (s === '') {
+        label = 'Sin estado';   bg = '#e5e7eb'; fg = '#374151'; icon = '·';
+      } else {
+        label = estado;         bg = '#e5e7eb'; fg = '#374151'; icon = '·';
+      }
+      return '<div style="font-size:11px;line-height:1.4;">'
+           +   '<div style="font-family:ui-monospace,Menlo,Consolas,monospace;">'+(vin||'—')+'</div>'
+           +   '<div style="display:inline-block;background:'+bg+';color:'+fg+';padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.2px;margin-top:3px;white-space:nowrap;">'
+           +     icon+' '+label
+           +   '</div>'
+           + '</div>';
+    }
+
     envios.forEach(function(e){
-      html += '<tr>'+
+      // Row-level subtle background hint so closed envíos visually fade
+      // and "not sent" pending rows pop. Keeps the dashboard scannable
+      // even before the operator reads the badge text.
+      var rowBg = '';
+      var s = String(e.estado || '').toLowerCase();
+      if (s === 'completado_no_exitoso') rowBg = ' style="background:rgba(254,226,226,0.35);"';
+      else if (s === 'lista_para_enviar') rowBg = ' style="background:rgba(254,243,199,0.30);"';
+
+      html += '<tr'+rowBg+'>'+
         '<td style="white-space:nowrap">'+(e.pedido_num ? '<strong>'+e.pedido_num+'</strong>' : '<span class="ad-dim">Inventario</span>')+'</td>'+
         '<td>'+(e.cliente_nombre||'<span class="ad-dim">—</span>')+'</td>'+
         '<td>'+e.modelo+' '+e.color+'</td>'+
-        '<td style="font-size:11px;">'+(e.vin_display||e.vin||'—')+'</td>'+
+        '<td>'+vinWithStatusCell(e.estado, e.vin_display||e.vin)+'</td>'+
         '<td>'+(e.punto_nombre||'—')+(e.punto_ciudad?' <small class="ad-dim">'+e.punto_ciudad+'</small>':'')+'</td>'+
         '<td>'+(e.tracking_number||'<span class="ad-dim">—</span>')+'</td>'+
         '<td>'+(e.carrier||'—')+'</td>'+
