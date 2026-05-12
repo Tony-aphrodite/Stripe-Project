@@ -20,6 +20,61 @@ window.AD_dashboard = (function(){
   function render(){
     ADApp.render('<div class="ad-h1">Dashboard</div><div class="ad-kpis"><div class="ad-kpi"><span class="ad-spin"></span></div></div>');
     ADApp.api('dashboard/kpis.php').done(paint);
+    // Customer brief 2026-05-12 (Óscar, 10th round — Fase 3 prevention):
+    // surface unsigned-credit-contract count as a red banner on the
+    // dashboard so admin sees the risk every time they log in, not just
+    // when they remember to navigate to the audit panel. Fire-and-forget
+    // — if the endpoint is missing on legacy installs we just skip the
+    // banner without breaking the page.
+    fetchSinFirmaWarning();
+  }
+
+  function fetchSinFirmaWarning(){
+    ADApp.api('ventas/credito-sin-firma.php?limit=1').done(function(r){
+      if (!r || !r.ok) return;
+      var k = r.kpi || {};
+      var n = parseInt(k.total_pedidos || 0, 10);
+      // Mirror count in sidebar badge regardless of whether the banner
+      // shows — admin can also navigate via that visual cue.
+      var $sb = $('#adSinFirmaBadge');
+      if (n > 0) $sb.text(n).show(); else $sb.hide();
+
+      if (n === 0) return; // nothing to warn about
+      var monto = (k.monto_total != null)
+        ? '$' + Number(k.monto_total).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2})
+        : '—';
+      var dias = parseInt(k.dias_max_sin_firmar || 0, 10);
+      var sev  = n > 5 || dias > 14 ? 'critical' : (n > 0 ? 'warning' : 'ok');
+      var bg   = sev === 'critical' ? '#fef2f2' : '#fffbeb';
+      var bd   = sev === 'critical' ? '#fecaca' : '#fde68a';
+      var tx   = sev === 'critical' ? '#991b1b' : '#92400e';
+      var ic   = sev === 'critical' ? '🚨' : '⚠️';
+      var banner = '<div id="adSinFirmaBanner" '+
+        'style="display:flex;gap:12px;align-items:center;background:'+bg+';border:1.5px solid '+bd+';color:'+tx+';padding:14px 18px;border-radius:10px;margin:0 0 18px;cursor:pointer;" '+
+        'onclick="ADApp.go(\'creditoSinFirma\')">'+
+        '<div style="font-size:30px;line-height:1;">'+ic+'</div>'+
+        '<div style="flex:1;">'+
+          '<div style="font-weight:800;font-size:15px;">'+
+            n+' pedido'+(n===1?'':'s')+' a crédito sin contrato firmado'+
+          '</div>'+
+          '<div style="font-size:12.5px;opacity:.9;margin-top:2px;">'+
+            'Monto en juego: <strong>'+monto+'</strong>'+
+            ' · Máx '+dias+' días sin firmar'+
+            ' · Reenvía el link a los clientes para que firmen con Truora + Cincel'+
+          '</div>'+
+        '</div>'+
+        '<button class="ad-btn primary" style="background:'+tx+';border-color:'+tx+';white-space:nowrap;">'+
+          'Ver lista →'+
+        '</button>'+
+      '</div>';
+      // Insert at the very top of the screen, above the H1 + KPIs.
+      var $screen = $('#adScreen');
+      if ($screen.find('#adSinFirmaBanner').length === 0) {
+        $screen.prepend(banner);
+      } else {
+        $screen.find('#adSinFirmaBanner').replaceWith(banner);
+      }
+    }).fail(function(){ /* legacy install — silently skip */ });
   }
 
   function paint(k){

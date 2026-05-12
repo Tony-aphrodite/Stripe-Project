@@ -142,6 +142,7 @@ window.ADApp = (function(){
       dashboard:       'dashboard',
       ventas:          'ventas',
       preaprobaciones: 'ventas',          // credit applications live with ventas
+      creditoSinFirma: 'ventas',          // credit-without-signature audit (Bug 10)
       inventario:      'inventario',
       envios:          'envios',
       pagos:           'pagos',
