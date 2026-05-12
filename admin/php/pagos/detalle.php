@@ -142,10 +142,15 @@ if ($stripePi && $stripeKey) {
 $out = ['ok' => true];
 
 if ($local) {
+    // Customer brief 2026-05-12 (Óscar, 9th round — Detalle de pago
+    // showed "Pedido 18" because frontend fell back to the raw id when
+    // legacy pedido column was empty). Expose pedido_corto so the
+    // frontend can show the customer-facing "VK-YYMM-NNNN" code first.
     $orden = [
-        'id'        => (int)$local['id'],
-        'pedido'    => $local['pedido'] ?? $local['pedido_num'] ?? '',
-        'nombre'    => $local['nombre'] ?? '',
+        'id'           => (int)$local['id'],
+        'pedido'       => $local['pedido']       ?? $local['pedido_num'] ?? '',
+        'pedido_corto' => $local['pedido_corto'] ?? '',
+        'nombre'       => $local['nombre']       ?? '',
         'email'     => $local['email'] ?? '',
         'telefono'  => $local['telefono'] ?? '',
         'modelo'    => $local['modelo'] ?? '',

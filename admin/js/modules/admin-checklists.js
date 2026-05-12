@@ -145,16 +145,24 @@ window.AD_checklists = (function(){
     // the handler was stuck because paint() re-bound it without off(). Now
     // the filter applies instantly on change (no Filtrar button needed), and
     // a visible "Limpiar" escape hatch resets to "Todos".
+    // Customer brief 2026-05-12 (Óscar, 9th round — "We need the same
+    // filters of CEDIS"): match the CEDIS / Inventario page's terminology
+    // so both panels feel like the same product. Labels now mirror
+    // admin-inventario.js (Sin checklist / Con origen / Con ensamble /
+    // Completo) while the backend filter values (sin_origen, con_origen,
+    // …) are preserved for compatibility with listar.php logic. The two
+    // Checklists-specific options ("Origen forzado" and "Sin ensamble")
+    // stay so the inspection flow doesn't lose functionality.
     html += '<div class="ad-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">'+
       '<label style="font-size:12px;color:var(--ad-dim);font-weight:600;">Filtrar:</label>'+
       '<select class="ad-select" id="clFiltro" style="width:260px;">'+
         '<option value="">Todos</option>'+
-        '<option value="sin_origen"'+(currentFilter==='sin_origen'?' selected':'')+'>Sin checklist origen</option>'+
-        '<option value="origen_forzado"'+(currentFilter==='origen_forzado'?' selected':'')+'>⚠ Origen forzado (pendiente inspección)</option>'+
-        '<option value="con_origen"'+(currentFilter==='con_origen'?' selected':'')+'>Con origen real</option>'+
+        '<option value="sin_origen"'+(currentFilter==='sin_origen'?' selected':'')+'>Sin checklist</option>'+
+        '<option value="origen_forzado"'+(currentFilter==='origen_forzado'?' selected':'')+'>⚠ Origen forzado</option>'+
+        '<option value="con_origen"'+(currentFilter==='con_origen'?' selected':'')+'>Con origen</option>'+
         '<option value="sin_ensamble"'+(currentFilter==='sin_ensamble'?' selected':'')+'>Sin ensamble</option>'+
-        '<option value="con_ensamble"'+(currentFilter==='con_ensamble'?' selected':'')+'>Con ensamble completo</option>'+
-        '<option value="completos"'+(currentFilter==='completos'?' selected':'')+'>3 checklists completos</option>'+
+        '<option value="con_ensamble"'+(currentFilter==='con_ensamble'?' selected':'')+'>Con ensamble</option>'+
+        '<option value="completos"'+(currentFilter==='completos'?' selected':'')+'>Completo</option>'+
       '</select>'+
       (currentFilter ? '<button class="ad-btn sm ghost" id="clClear" title="Limpiar filtro">✕ Limpiar</button>' : '')+
       '<span id="clCount" style="font-size:12px;color:var(--ad-dim);">'+Number(r.total||0)+' motos</span>'+

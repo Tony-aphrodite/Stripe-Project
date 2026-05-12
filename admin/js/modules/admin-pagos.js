@@ -165,13 +165,21 @@ window.AD_pagos = (function(){
       var html = '<div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:20px;border-bottom:2px solid var(--ad-border);">';
       html += '<div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#039fe1,#0280b5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
       html += '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>';
+      // Customer brief 2026-05-12 (Óscar, 9th round — screenshot: header
+       // and Pedido row showed just "18" (transacciones.id) instead of
+       // the customer-facing "VK-2605-0018" pedido_corto). Apply the
+       // same 3-tier fallback used in admin-ventas: pedido_corto first
+       // (already VK-prefixed when set), then VK-{pedido}, then TX{id}.
+      var pedidoLabel = o.pedido_corto
+        ? o.pedido_corto
+        : (o.pedido ? 'VK-'+o.pedido : (o.id ? 'TX'+o.id : '—'));
       html += '<div><div style="font-size:20px;font-weight:800;color:var(--ad-navy);line-height:1.2;">Detalle de pago</div>';
-      html += '<div style="font-size:12px;color:var(--ad-dim);margin-top:2px;">Pedido '+(o.pedido?'VK-'+o.pedido:(o.id||''))+'</div></div></div>';
+      html += '<div style="font-size:12px;color:var(--ad-dim);margin-top:2px;">Pedido '+pedidoLabel+'</div></div></div>';
 
       // ── Order info section ──
       html += sectionHeader('Información de la orden', '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>');
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:24px;">';
-      html += fieldRow('Pedido', o.pedido ? 'VK-'+o.pedido : o.id||'—', 0);
+      html += fieldRow('Pedido', pedidoLabel, 0);
       html += fieldRow('Cliente', ADApp.dedupeName(o.nombre||'—'), 1);
       html += fieldRow('Email', o.email||'—', 2);
       html += fieldRow('Teléfono', o.telefono||'—', 3);
@@ -240,18 +248,40 @@ window.AD_pagos = (function(){
       }
 
       // ── OTP audit (post-payment phone confirmation) ────────────────
+      // Customer brief 2026-05-12 (Óscar, 9th round — screenshot: Stripe
+      // showed "succeeded" but OTP showed "⏳ Pendiente" with every
+      // sub-field empty (validated_at=—, phone=—, intentos=—). That
+      // wasn't really pending — the OTP was never sent. The UI conflated
+      // three distinct states ("never sent", "sent waiting confirmation",
+      // "validated") into two ("validado", "pendiente"). We now split
+      // them so the admin can tell at a glance whether the customer
+      // simply never went through the OTP step vs. is actually pending.
       if (r.otp && (r.otp.validated !== null || r.otp.send_count !== null)) {
         var otp = r.otp;
         html += sectionHeader('Verificación OTP',
           '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M7 12h.01M12 12h.01M17 12h.01"/></svg>');
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:16px;">';
-        var otpEstado = otp.validated === true
-          ? '<span style="display:inline-flex;align-items:center;gap:4px;color:#15803d;font-weight:700;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Validado</span>'
-          : '<span style="color:#b45309;font-weight:700;">⏳ Pendiente</span>';
+        var sendCount = (otp.send_count != null) ? Number(otp.send_count) : null;
+        var otpEstado;
+        if (otp.validated === true) {
+          otpEstado = '<span style="display:inline-flex;align-items:center;gap:4px;color:#15803d;font-weight:700;">'+
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Validado</span>';
+        } else if (sendCount != null && sendCount > 0) {
+          otpEstado = '<span style="color:#b45309;font-weight:700;" title="Código enviado pero el cliente no lo confirmó">⏳ Pendiente</span>';
+        } else if (otp.validated === false) {
+          otpEstado = '<span style="color:#b91c1c;font-weight:700;" title="OTP intentado y rechazado">✗ Fallido</span>';
+        } else {
+          // Most common case for the screenshot: payment captured but
+          // the OTP step was never triggered (customer closed tab,
+          // legacy flow, OTP disabled, etc.). Distinguish this from
+          // "pendiente" so admin knows there's nothing waiting on the
+          // customer side.
+          otpEstado = '<span style="color:#6b7280;font-weight:700;" title="El cliente nunca pasó por el paso OTP">— No enviado</span>';
+        }
         html += fieldRow('Estado OTP',     otpEstado, 0);
         html += fieldRow('Validado el',    otp.validated_at || '—', 1);
         html += fieldRow('Teléfono',       otp.phone_masked || '—', 2);
-        html += fieldRow('Intentos envío', otp.send_count != null ? otp.send_count : '—', 3);
+        html += fieldRow('Intentos envío', sendCount != null ? sendCount : '—', 3);
         html += fieldRow('IP',             otp.ip || '—', 4);
         html += '</div>';
       }

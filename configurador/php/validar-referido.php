@@ -45,30 +45,50 @@ try {
         exit;
     }
 
-    // 2) Puntos Voltika — only if the column exists on the table
+    // 2) Puntos Voltika — only if the column exists on the table.
+    //
+    // Customer brief 2026-05-12 (Óscar, 9th round — screenshot: punto admin
+    // showed two codes (PSVOLTCD "Venta directa en tienda" + VOLTCD "Ventas
+    // desde la Web Voltika") but only the first one was accepted by the
+    // configurador checkout; VOLTCD got "Código no válido"). The validator
+    // only inspected codigo_venta. Each punto has TWO referral codes —
+    // codigo_venta (in-store walk-in CASE 4) and codigo_electronico (web
+    // sale routed through this punto's referral CASE 3). Try BOTH columns
+    // in priority order so either code resolves correctly.
     try {
         $cols = $pdo->query("SHOW COLUMNS FROM puntos_voltika")->fetchAll(PDO::FETCH_COLUMN);
-        // Support both column names: codigo_venta (current) and codigo_referido (legacy)
-        $colName = in_array('codigo_venta', $cols, true) ? 'codigo_venta'
-                 : (in_array('codigo_referido', $cols, true) ? 'codigo_referido' : null);
-        if ($colName) {
+        $candidates = [];
+        if (in_array('codigo_electronico', $cols, true)) {
+            $candidates[] = ['col' => 'codigo_electronico', 'sub_tipo' => 'electronico'];
+        }
+        if (in_array('codigo_venta', $cols, true)) {
+            $candidates[] = ['col' => 'codigo_venta', 'sub_tipo' => 'directa'];
+        }
+        if (in_array('codigo_referido', $cols, true)) {
+            // Legacy install — preserved for backward compat.
+            $candidates[] = ['col' => 'codigo_referido', 'sub_tipo' => 'legacy'];
+        }
+        foreach ($candidates as $cand) {
+            $col = $cand['col'];
             $stmt = $pdo->prepare("
-                SELECT id, slug, nombre, tipo, $colName AS codigo
+                SELECT id, slug, nombre, tipo, $col AS codigo
                 FROM puntos_voltika
-                WHERE activo = 1 AND UPPER($colName) = ?
+                WHERE activo = 1 AND UPPER($col) = ?
                 LIMIT 1
             ");
             $stmt->execute([$codigo]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($row) {
                 echo json_encode([
-                    'ok'          => true,
-                    'tipo'        => 'punto',
-                    'id'          => (int)$row['id'],
-                    'nombre'      => $row['nombre'],
-                    'punto_slug'  => $row['slug'] ?: ('punto-' . $row['id']),
-                    'punto_tipo'  => $row['tipo'] ?: 'entrega',
-                    'codigo'      => $row['codigo'],
+                    'ok'           => true,
+                    'tipo'         => 'punto',
+                    'punto_sub'    => $cand['sub_tipo'],  // 'electronico' | 'directa' | 'legacy'
+                    'codigo_columna' => $col,
+                    'id'           => (int)$row['id'],
+                    'nombre'       => $row['nombre'],
+                    'punto_slug'   => $row['slug'] ?: ('punto-' . $row['id']),
+                    'punto_tipo'   => $row['tipo'] ?: 'entrega',
+                    'codigo'       => $row['codigo'],
                 ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
