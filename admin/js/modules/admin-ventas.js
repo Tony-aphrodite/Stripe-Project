@@ -2150,7 +2150,12 @@ window.AD_ventas = (function(){
   }
 
   function esc(s){
-    return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    // Customer brief 2026-05-12 (Óscar, 8th round — runtime error
+    // "esc(s).replace is not a function" when renderCapacidad fed
+    // an INT (plazo_max / plazo_meses) into esc): coerce to string
+    // first. Numbers don't carry HTML-special chars but they don't
+    // have .replace either. String() handles null/undefined/Number/Date.
+    return String(s == null ? '' : s).replace(/'/g,"\\'").replace(/"/g,'&quot;');
   }
   function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : ''; }
 
@@ -2515,8 +2520,10 @@ window.AD_ventas = (function(){
       ['Pago semanal estimado',             pesos(p.pago_semanal)],
       ['Enganche requerido',                pesos(p.enganche_requerido)],
       ['Enganche %',                        pct(p.enganche_pct)],
-      ['Plazo máx ofrecido (semanas)',      esc(p.plazo_max != null ? p.plazo_max : '—')],
-      ['Plazo solicitado (meses)',          esc(p.plazo_meses != null ? p.plazo_meses : '—')],
+      // Numeric fields — pass through directly; _kvTable accepts any
+      // primitive and esc() crashes on non-string input (plazo_* are INT).
+      ['Plazo máx ofrecido (semanas)',      (p.plazo_max   != null ? p.plazo_max   : '—')],
+      ['Plazo solicitado (meses)',          (p.plazo_meses != null ? p.plazo_meses : '—')],
       ['Decisión',                          statusHtml, true],
     ]);
     $c.html(html);
@@ -2542,7 +2549,8 @@ window.AD_ventas = (function(){
       ['Método (tpago)', esc(tpago)],
       ['Total', pesos(total), true],
       ['Enganche', pesos(enganche)],
-      ['Plazo', esc(plazo != null ? plazo : '—')],
+      // plazo may be a number (INT) — pass-through to avoid esc() crash.
+      ['Plazo', (plazo != null ? plazo : '—')],
       ['Pago semanal', pesos(pagoSem)],
       ['Tasa anual', (tasa != null && tasa !== '' ? Number(tasa).toFixed(2)+'%' : '—')],
       ['Estado del pago', esc(row.pago_estado || '—')],
