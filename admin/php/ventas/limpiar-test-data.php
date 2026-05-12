@@ -93,15 +93,28 @@ foreach ($rows as $r) {
     if (strpos($pi, 'test-')   === 0 || strpos($pi, 'TEST-') === 0) $reasons[] = 'stripe_pi prefix test-';
 
     // Heuristic safety: skip rows that LOOK legit despite name match.
-    // A real Stripe PaymentIntent always starts with "pi_". If the row
-    // has one of those AND a non-trivial total AND pago_estado='pagada',
-    // treat as legit even if the name happens to contain "test".
-    $hasRealPI    = is_string($pi) && strpos($pi, 'pi_') === 0;
+    // A REAL Stripe PaymentIntent always matches the pattern
+    //   pi_3[A-Za-z0-9]{24+}      (current production format, e.g. pi_3TSQuyDzBRkc6ufK1kS0S2lW)
+    // FAKE / TEST PIs use distinguishable prefixes:
+    //   pi_TEST_5500_CREDITO_2    (literal TEST)
+    //   pi_GCTE_...                (GC test corrections, GCTE prefix)
+    //   pi_TST_..., pi_FAKE_...    (other dev artifacts)
+    // Customer brief 2026-05-09 (Oscar — second pass cleanup): the
+    // earlier guard (strpos pi_ === 0) was too lax and preserved
+    // obvious TEST rows whose PIs only START with pi_ but clearly
+    // contain "TEST", "GCTE", etc. Tighten to the actual Stripe
+    // PaymentIntent format AND exclude any PI whose body screams test.
+    $isRealStripePI = is_string($pi)
+        && preg_match('/^pi_3[A-Za-z0-9]{20,}$/', $pi)        // canonical pi_3 + ≥20 alnum
+        && stripos($pi, 'test') === false
+        && stripos($pi, 'gcte') === false
+        && stripos($pi, 'fake') === false
+        && stripos($pi, 'mock') === false;
     $payOk        = strtolower((string)($r['pago_estado'] ?? '')) === 'pagada';
     $totalNonZero = (float)($r['total'] ?? 0) > 100;   // anything < 100 MXN is test grade
-    if ($hasRealPI && $payOk && $totalNonZero) {
+    if ($isRealStripePI && $payOk && $totalNonZero) {
         // Flag as conflict — do NOT delete by default
-        $r['conflict'] = 'Tiene stripe_pi=pi_ + pago=pagada + total>100. Revisar manualmente.';
+        $r['conflict'] = 'Tiene stripe_pi formato real (pi_3...) + pago=pagada + total>100. Revisar manualmente.';
     }
     $r['reasons'] = $reasons;
     $candidates[] = $r;
