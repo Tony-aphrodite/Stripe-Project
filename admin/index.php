@@ -41,6 +41,11 @@ $asset = function(string $rel): string {
            page. Surfaces every credit-family order whose contract PDF
            is missing so admin can resend signing links in bulk. -->
       <button data-route="creditoSinFirma"><span><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/><path d="M3 12c1 0 3-1 3-3S4 6 3 6 0 7 0 9s2 3 3 3"/><rect x="3" y="12" width="18" height="9" rx="2"/></svg></span> Sin firma <span id="adSinFirmaBadge" style="display:none;background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:6px;"></span></button>
+      <!-- Customer brief 2026-05-13 (Óscar, 12th round): "my boss cannot
+           check the signed contracts" — central audit panel for every
+           contract that IS signed (contado / MSI / crédito). Boss can
+           review, search and download from one place. -->
+      <button data-route="contratosFirmados"><span><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 14 11 16 15 12"/></svg></span> Contratos firmados</button>
       <button data-route="inventario"><span><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span> CEDIS</button>
       <button data-route="envios"><span><svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span> Envíos</button>
       <button data-route="pagos"><span><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> Pagos</button>
@@ -111,6 +116,7 @@ $asset = function(string $rel): string {
 <script src="<?= $asset('js/modules/admin-buro.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-preaprobaciones.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-credito-sin-firma.js') ?>"></script>
+<script src="<?= $asset('js/modules/admin-contratos-firmados.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-cobranza.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-buscar.js') ?>"></script>
 <script src="<?= $asset('js/modules/admin-analytics.js') ?>"></script>
