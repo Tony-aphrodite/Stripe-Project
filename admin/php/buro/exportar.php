@@ -57,19 +57,32 @@ function _exportFatal(string $msg, ?string $detail = null, int $code = 500): voi
 }
 
 try {
+    // ── Bootstrap (auth + DB) ──────────────────────────────────────────
+    // Customer brief 2026-05-13 (Óscar, 12th round — diagnostic shown:
+    // "require_once .../configurador/php/config.php" failed). The
+    // configurador/php/config.php file is not always present (or its
+    // path differs between deploys). Other endpoints in this folder
+    // (e.g. listar.php) use the standard admin/php/bootstrap.php which
+    // resolves auth + DB + schema in one canonical place. Mirror that
+    // pattern here.
+    require_once __DIR__ . '/../bootstrap.php';
+
     // ── Session check (admin only) ─────────────────────────────────────
-    if (session_status() === PHP_SESSION_NONE) {
-        @session_name('VOLTIKA_ADMIN');
-        @session_start();
-    }
-    if (empty($_SESSION['admin_user_id'])) {
+    // bootstrap.php already starts the VOLTIKA_ADMIN session and exposes
+    // adminRequireAuth(). Use it instead of hand-rolled session check.
+    if (function_exists('adminRequireAuth')) {
+        // Same role-set as buro/listar.php so anyone who can SEE the
+        // CDC data can also EXPORT it. CDC compliance audits often run
+        // through cedis/operador, not just admin.
+        $adminId = adminRequireAuth(['admin','cedis','operador']);
+    } else if (empty($_SESSION['admin_user_id'])) {
         _exportFatal('No autorizado. Inicia sesión como admin para descargar.', null, 401);
     }
 
-    // ── Load DB ────────────────────────────────────────────────────────
-    require_once __DIR__ . '/../../configurador/php/config.php';
+    // ── Resolve DB connection ──────────────────────────────────────────
     if (!function_exists('getDB')) {
-        _exportFatal('No se pudo cargar la conexión a la base de datos.', 'getDB() not defined after config include', 500);
+        _exportFatal('No se pudo cargar la conexión a la base de datos.',
+            'getDB() no está definida — verifica admin/php/bootstrap.php.', 500);
     }
     $pdo = getDB();
     if (!$pdo instanceof PDO) {
