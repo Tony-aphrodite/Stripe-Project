@@ -166,11 +166,41 @@ if (!$forceRegen) {
 $regenError = null;
 if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
     try {
+        // Customer brief 2026-05-09 (Óscar — Contrato no disponible on
+        // VK-2605-0002 despite assignment working): the regen lookup
+        // previously used only `WHERE pedido = ?`. For rows where the
+        // legacy `pedido` column is empty but `pedido_corto` is set
+        // (the standard case for orders going through the new
+        // voltikaResolvePedidoCorto flow), this lookup returned 0 rows
+        // and the diagnostic page wrongly reported "El pedido no
+        // existe en la tabla transacciones". Use the same 3-tier
+        // fallback as the top-of-file lookup so an admin-clicked link
+        // always finds the row when ANY identifier matches.
+        $tx = null;
+        // (1) raw pedido
         $bRow = $pdo->prepare("SELECT * FROM transacciones WHERE pedido = ? ORDER BY id DESC LIMIT 1");
         $bRow->execute([$pedido]);
         $tx = $bRow->fetch(PDO::FETCH_ASSOC);
+        // (2) pedido_corto (bare + VK-prefixed)
         if (!$tx) {
-            $regenError = 'transacciones row not found for pedido ' . $pedido;
+            try {
+                $bare    = preg_replace('/^VK-/i', '', $pedido);
+                $withPfx = 'VK-' . $bare;
+                $bRow = $pdo->prepare("SELECT * FROM transacciones
+                                       WHERE pedido_corto = ? OR pedido_corto = ?
+                                       ORDER BY id DESC LIMIT 1");
+                $bRow->execute([$bare, $withPfx]);
+                $tx = $bRow->fetch(PDO::FETCH_ASSOC);
+            } catch (Throwable $e) { /* pedido_corto column may not exist */ }
+        }
+        // (3) TX{id} synth
+        if (!$tx && preg_match('/^TX(\d+)$/i', $pedido, $m)) {
+            $bRow = $pdo->prepare("SELECT * FROM transacciones WHERE id = ? LIMIT 1");
+            $bRow->execute([(int)$m[1]]);
+            $tx = $bRow->fetch(PDO::FETCH_ASSOC);
+        }
+        if (!$tx) {
+            $regenError = 'transacciones row not found for pedido ' . $pedido . ' (probadas: pedido, pedido_corto, TX{id})';
         } else {
             $tpagoNorm = strtolower((string)($tx['tpago'] ?? ''));
             // Map all 100 %-payment variants — credit-family is excluded.
@@ -208,9 +238,17 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
             } else {
                 $total = floatval($tx['total'] ?: $tx['precio']);
                 $costoLog = (strpos($tpagoNorm, 'msi') !== false) ? 1800 : 0;
+                // Customer brief 2026-05-09: when the row was resolved
+                // via pedido_corto, $tx['pedido'] may be empty. Fall
+                // back to pedido_corto (without VK- prefix) or the URL
+                // param so the regenerated contract never carries an
+                // empty pedido / folio field.
+                $effectivePedido = $tx['pedido']
+                    ?: preg_replace('/^VK-/i', '', (string)($tx['pedido_corto'] ?? ''))
+                    ?: $pedido;
                 $contratoData = [
-                    'pedido'                  => $tx['pedido'],
-                    'folio'                   => $tx['folio_contrato'] ?: $tx['pedido'],
+                    'pedido'                  => $effectivePedido,
+                    'folio'                   => $tx['folio_contrato'] ?: $effectivePedido,
                     // Use today's date for the contract header. Customer
                     // report 2026-04-30: regenerated contracts were showing
                     // the transaction's `freg` (e.g. April 28) instead of
