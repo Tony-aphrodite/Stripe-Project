@@ -2205,10 +2205,20 @@ window.AD_ventas = (function(){
         || (r.pedido_corto ? String(r.pedido_corto).replace(/^VK-/i, '') : '')
         || (r.id ? 'TX' + r.id : '');
     if (contractKey) {
+      // Customer brief 2026-05-13 (Óscar, 12th round — "my boss cannot
+      // check the signed contracts" via Ventas → Documentos): previously
+      // this row was an external <a target=_blank>. For unsigned credit
+      // orders it opened the technical diagnostic page, which confused
+      // the boss. Convert to an inline-expand kind that pre-checks
+      // status via descargar-contrato.php?check_only=1 and renders
+      // status + actions WITHOUT navigating away.
       rows_.push({
         title: isCredito ? 'Contrato de financiamiento (firmado)' : 'Contrato de compraventa (firmado)',
         desc:  'Contrato con datos del cliente, sello de tiempo y firma electrónica.',
-        url:   '/configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(contractKey)+'&inline=1&regen=1&debug=1',
+        kind:  'contrato',
+        contractKey: contractKey,
+        isCredit: isCredito,
+        preapSearch: r.telefono || r.email || '',
         icon:  '📄',
         bg:    '#dbeafe', tx: '#1e40af'
       });
@@ -2375,6 +2385,8 @@ window.AD_ventas = (function(){
       $body.show().html('<div style="text-align:center;padding:20px;color:#888;"><span class="ad-spin"></span> Cargando...</div>');
       if (kind === 'payment') {
         renderPaymentInline($body, rows_[idx].data);
+      } else if (kind === 'contrato') {
+        fetchContratoInline($body, rows_[idx]);
       } else if (kind === 'checklist') {
         fetchChecklistInline($body, rows_[idx].motoId);
       } else if (kind === 'cdc') {
@@ -2393,6 +2405,100 @@ window.AD_ventas = (function(){
         $body.html('<div style="color:#b91c1c;">Tipo desconocido</div>');
       }
     });
+  }
+
+  // ── Contract status renderer (Bug 12.x) ──────────────────────────────
+  // Customer brief 2026-05-13 (Óscar, 12th round — "boss cannot check
+  // the signed contracts" via Ventas → Documentos): pre-flight the
+  // contract URL with check_only=1, then render status inline. Avoids
+  // routing the admin to the technical diagnostic page for unsigned
+  // credit orders.
+  function fetchContratoInline($container, row){
+    var contractKey = row.contractKey;
+    var isCredit    = !!row.isCredit;
+    var preapSearch = row.preapSearch || '';
+
+    $container.html('<div style="text-align:center;padding:20px;color:#888;"><span class="ad-spin"></span> Verificando estado del contrato...</div>');
+
+    $.ajax({
+      url: '/configurador/php/descargar-contrato.php',
+      method: 'GET',
+      data: { pedido: contractKey, check_only: 1 },
+      xhrFields: { withCredentials: true },
+      dataType: 'json'
+    }).done(function(r){
+      renderContratoCard($container, r || {}, contractKey, isCredit, preapSearch);
+    }).fail(function(x){
+      var msg = (x.responseJSON && x.responseJSON.message)
+             || 'No se pudo verificar el estado del contrato.';
+      renderContratoCard($container, { ok:false, available:false, message: msg }, contractKey, isCredit, preapSearch);
+    });
+  }
+
+  function renderContratoCard($container, r, contractKey, isCredit, preapSearch){
+    var viewUrl  = '/configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(contractKey)+'&inline=1';
+    var dlUrl    = '/configurador/php/descargar-contrato.php?pedido='+encodeURIComponent(contractKey);
+    var available = !!r.available;
+    var reason    = r.reason || '';
+
+    var html = '';
+
+    if (available) {
+      html += '<div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:14px;">'+
+        '<div style="font-size:14px;font-weight:700;color:#166534;display:flex;align-items:center;gap:6px;margin-bottom:6px;">'+
+          '✓ Contrato disponible'+
+        '</div>'+
+        '<div style="font-size:12px;color:#166534;margin-bottom:12px;">'+
+          'El PDF del contrato está listo para revisar o descargar.'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+          '<a href="'+viewUrl+'" target="_blank" rel="noopener" class="ad-btn primary sm" style="text-decoration:none;">📄 Ver PDF</a>'+
+          '<a href="'+dlUrl+'" target="_blank" rel="noopener" class="ad-btn ghost sm" style="text-decoration:none;">📥 Descargar</a>'+
+        '</div>'+
+      '</div>';
+    } else if (reason === 'credito_pendiente_firma') {
+      // Credit order, customer hasn't signed via Cincel yet.
+      html += '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:14px;">'+
+        '<div style="font-size:14px;font-weight:700;color:#92400e;display:flex;align-items:center;gap:6px;margin-bottom:6px;">'+
+          '⏳ Contrato de crédito pendiente de firma'+
+        '</div>'+
+        '<div style="font-size:12.5px;color:#78350f;line-height:1.5;margin-bottom:12px;">'+
+          'Este pedido es a crédito y el cliente <strong>aún no ha firmado</strong> el contrato electrónicamente '+
+          '(con Truora + Cincel desde su portal). El PDF se generará automáticamente cuando complete la firma.'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+      // Two actions for credit pending: reenviar link de firma + go to preaprobacion.
+      html += '<a href="/admin/#preaprobaciones?q='+encodeURIComponent(preapSearch)+'" target="_top" class="ad-btn primary sm" style="text-decoration:none;background:#d97706;border-color:#d97706;">📋 Ir a Solicitudes</a>';
+      html += '<button class="ad-btn ghost sm" onclick="ADApp.go(\'creditoSinFirma\')" style="background:#fff;">📲 Panel Sin firma</button>';
+      html += '</div>';
+      html += '</div>';
+    } else {
+      // Cash/MSI without signed PDF — should auto-regen on click.
+      html += '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:14px;">'+
+        '<div style="font-size:14px;font-weight:700;color:#9a3412;display:flex;align-items:center;gap:6px;margin-bottom:6px;">'+
+          '⚠ Contrato no encontrado en archivo'+
+        '</div>'+
+        '<div style="font-size:12.5px;color:#9a3412;line-height:1.5;margin-bottom:12px;">'+
+          (r.message || 'El PDF no está disponible en el sistema. Intenta regenerar — '+
+          'para pedidos pagados con tarjeta/MSI/SPEI/OXXO el sistema puede crearlo al instante.')+
+        '</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+          '<a href="'+viewUrl+'&regen=1" target="_blank" rel="noopener" class="ad-btn primary sm" style="text-decoration:none;">🔄 Regenerar e intentar abrir</a>'+
+        '</div>'+
+      '</div>';
+    }
+
+    // Tiny diagnostic for admin debug
+    html += '<details style="margin-top:10px;font-size:11px;color:#888;">'+
+      '<summary style="cursor:pointer;">Diagnóstico técnico</summary>'+
+      '<pre style="background:#f1f5f9;padding:8px;border-radius:4px;margin-top:4px;font-size:11px;white-space:pre-wrap;word-break:break-word;">'+
+        'pedido: ' + esc(contractKey) + '\n' +
+        'is_credit: ' + (isCredit ? 'sí' : 'no') + '\n' +
+        'available: ' + (available ? 'sí' : 'no') + '\n' +
+        'reason: ' + esc(reason || '—') +
+      '</pre></details>';
+
+    $container.html(html);
   }
 
   // ── Per-section preaprobaciones renderers (Bug 8.1) ──────────────────

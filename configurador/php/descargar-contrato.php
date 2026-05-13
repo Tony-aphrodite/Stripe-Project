@@ -175,6 +175,100 @@ if (!$forceRegen) {
     }
 }
 
+// ── ?check_only=1 — return JSON status, skip PDF generation ─────────────
+//
+// Customer brief 2026-05-13 (Óscar, 12th round — "boss can't check the
+// signed contracts" via Ventas → Documentos): the admin Documentos
+// modal was using an external <a target=_blank> link. For unsigned
+// credit orders that opened the technical diagnostic page, which boss
+// found confusing. Now the modal does a preflight check via this
+// endpoint and renders the contract status inline. The check covers:
+//   • Cash/MSI: PDF exists on disk OR transaccion has stripe_pi + paid
+//   • Credit:   PDF exists on disk OR glob matches contrato_*<name>*.pdf
+if (!empty($_GET['check_only'])) {
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store');
+
+    $available = false;
+    $reason    = '';
+    $isCredit  = false;
+    $clientName = '';
+
+    if (!$r) {
+        echo json_encode([
+            'ok'        => false,
+            'available' => false,
+            'reason'    => 'pedido_no_encontrado',
+            'message'   => 'No se encontró el pedido en la base de datos.',
+        ]);
+        exit;
+    }
+
+    // Re-fetch full transaccion to know tpago, pago_estado, nombre.
+    try {
+        $rowFull = $pdo->prepare("SELECT * FROM transacciones WHERE id = ? LIMIT 1");
+        $rowFull->execute([(int)$r['id']]);
+        $tx = $rowFull->fetch(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) { $tx = []; }
+
+    $tpago     = strtolower(trim((string)($tx['tpago'] ?? '')));
+    $isCredit  = in_array($tpago, ['credito','enganche','parcial'], true);
+    $clientName = (string)($tx['nombre'] ?? '');
+
+    // 1) PDF on the search paths (cash/MSI canonical location)
+    foreach ($searchPaths as $sp) {
+        if ($sp && file_exists($sp) && is_readable($sp)) {
+            $available = true; break;
+        }
+    }
+
+    // 2) Credit-family — glob check for Truora+Cincel-signed PDFs.
+    if (!$available && $isCredit) {
+        $safeName = preg_replace('/[^a-zA-Z0-9]/', '_', $clientName);
+        if ($safeName !== '') {
+            $candidates = array_merge(
+                @glob(__DIR__ . '/contratos/contrato_*' . $safeName . '*.pdf') ?: [],
+                @glob(sys_get_temp_dir() . '/voltika_contratos/contrato_*' . $safeName . '*.pdf') ?: []
+            );
+            $available = !empty($candidates);
+        }
+    }
+
+    // 3) Cash/MSI — even without a cached file, regen can produce one
+    // synchronously when admin clicks. Surface as "available" so the
+    // boss isn't surprised by the spinner.
+    if (!$available && !$isCredit) {
+        $isAllowedTpago = false;
+        foreach (['contado','unico','msi','spei','oxxo','tarjeta'] as $t) {
+            if (strpos($tpago, $t) !== false) { $isAllowedTpago = true; break; }
+        }
+        $isPaid = in_array(strtolower((string)($tx['pago_estado'] ?? '')), ['pagada','aprobada','approved','paid'], true);
+        if ($isAllowedTpago && $isPaid) {
+            $available = true;
+            $reason    = 'regen_on_demand';
+        }
+    }
+
+    // Reason text for the UI hint when not available.
+    if (!$available) {
+        if ($isCredit) {
+            $reason = 'credito_pendiente_firma';
+        } else {
+            $reason = 'sin_pdf_en_archivo';
+        }
+    }
+
+    echo json_encode([
+        'ok'        => true,
+        'available' => $available,
+        'reason'    => $reason,
+        'is_credit' => $isCredit,
+        'pedido'    => $pedido,
+        'nombre'    => $clientName,
+    ]);
+    exit;
+}
+
 // ── If no PDF exists, regenerate on-the-fly (admin only) ────────────────
 // Older orders (placed before contrato-contado.php deployment), orders
 // whose temp PDFs were cleaned up, and ALL orders on hosting where the
