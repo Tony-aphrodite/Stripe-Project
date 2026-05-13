@@ -225,10 +225,50 @@ usort($compras, function($a, $b){
     return strcmp((string)($b['fecha_compra'] ?? ''), (string)($a['fecha_compra'] ?? ''));
 });
 
+// Customer brief 2026-05-13 (Óscar, 14th round — "the purchase shows
+// duplicate" in client panel): a customer who clicks the recovery link
+// repeatedly OR retries the credit flow ends up with multiple
+// subscripciones_credito rows for the same purchase. Dedup at the
+// presentation layer so the customer sees ONE entry per unique
+// purchase attempt instead of identical cards stacked.
+//
+// Dedup key:
+//   credito → tipo + modelo + color + pago_semanal + plazo_meses
+//             + fecha_compra (day granularity)
+//   contado/msi → tipo + pedido (unique per Stripe transaction)
+// Keep the FIRST encounter (most recent because we sorted desc) so the
+// customer sees the latest version of each purchase.
+$seen = [];
+$dedup = [];
+foreach ($compras as $c) {
+    $tipo = (string)($c['tipo'] ?? '');
+    if ($tipo === 'credito') {
+        $key = 'cr|' . ($c['modelo'] ?? '') . '|' . ($c['color'] ?? '')
+             . '|' . sprintf('%.2f', (float)($c['pago_semanal'] ?? 0))
+             . '|' . (int)($c['plazo_meses'] ?? 0)
+             . '|' . substr((string)($c['fecha_compra'] ?? ''), 0, 10);
+    } else {
+        $key = 'tx|' . ($c['pedido'] ?? '') . '|' . (int)($c['id'] ?? 0);
+    }
+    if (isset($seen[$key])) {
+        // Mark the kept entry so the UI can hint at duplicate attempts
+        // if needed (e.g. retries). The dropped duplicate id is appended.
+        $idx = $seen[$key];
+        $dedup[$idx]['duplicate_attempts'] = ($dedup[$idx]['duplicate_attempts'] ?? 1) + 1;
+        $dedup[$idx]['duplicate_ids'][]    = (int)($c['id'] ?? 0);
+        continue;
+    }
+    $seen[$key] = count($dedup);
+    $c['duplicate_attempts'] = 1;
+    $c['duplicate_ids']      = [];
+    $dedup[] = $c;
+}
+
 portalJsonOut([
     'ok'      => true,
-    'total'   => count($compras),
-    'compras' => $compras,
+    'total'   => count($dedup),
+    'total_raw' => count($compras),    // for transparency
+    'compras' => $dedup,
     'cliente' => [
         'id' => $cid,
         'nombre'   => trim(($cliente['nombre'] ?? '')),

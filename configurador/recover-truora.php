@@ -187,10 +187,16 @@ p{font-size:14px;color:#555;margin:0 0 6px;}
     // to opt-in to "I came in via the admin recovery link" behavior.
     sessionStorage.setItem('voltika_recovered', '1');
   } catch (e) {}
-  // The SPA's restore flow reads pasoActual from the envelope and calls
-  // irAPaso(pasoActual) ~50 ms after init — no need for a ?paso= hint.
+  // Customer brief 2026-05-13 (Óscar, 14th round — "click the button,
+  // send to the configuration but the start"): the sessionStorage-based
+  // restore is fragile (race condition between Paso1.init and the 50ms
+  // restore setTimeout, plus iOS Safari sometimes wipes sessionStorage
+  // across the redirect). Add an explicit ?paso= URL parameter so the
+  // SPA doesn't have to guess where to land. The new init handler in
+  // configurador.js reads ?paso and force-navigates after the regular
+  // init finishes, beating any race condition.
   setTimeout(function(){
-    window.location.href = '/configurador/?recovered=1';
+    window.location.href = '/configurador/?recovered=1&paso=credito-identidad';
   }, 600);
 })();
 </script>

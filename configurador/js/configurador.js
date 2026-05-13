@@ -131,6 +131,28 @@
             VkUI.renderProgressBar(1, 'credito');
             Paso1.init(this);
             this.bindGlobalEvents();
+
+            // Customer brief 2026-05-13 (Óscar, 14th round — "the email
+            // recovery button takes the user to the start of the config
+            // instead of Truora identity step"). The previous fix relied
+            // on sessionStorage restore + a 50ms setTimeout to jump to
+            // pasoActual, but that race-conditioned with Paso1.init AND
+            // iOS Safari sometimes wiped sessionStorage across redirects.
+            // Add an explicit ?paso= URL parameter handler — recover-
+            // truora.php now appends &paso=credito-identidad so the SPA
+            // jumps there unconditionally, regardless of sessionStorage
+            // state. Delay 350ms so this fires AFTER Paso1.init renders
+            // AND after _installStatePersistence's 50ms restore.
+            try {
+                var qsPaso = new URLSearchParams(window.location.search).get('paso');
+                if (qsPaso) {
+                    var self2 = this;
+                    setTimeout(function() {
+                        try { self2.irAPaso(qsPaso); }
+                        catch (e) { console.warn('paso override failed:', e); }
+                    }, 350);
+                }
+            } catch (e) { /* defensive — fall through */ }
         },
 
         getModelo: function(modeloId) {
