@@ -2468,8 +2468,13 @@ window.AD_ventas = (function(){
         '</div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
       // Two actions for credit pending: reenviar link de firma + go to preaprobacion.
-      html += '<a href="/admin/#preaprobaciones?q='+encodeURIComponent(preapSearch)+'" target="_top" class="ad-btn primary sm" style="text-decoration:none;background:#d97706;border-color:#d97706;">📋 Ir a Solicitudes</a>';
-      html += '<button class="ad-btn ghost sm" onclick="ADApp.go(\'creditoSinFirma\')" style="background:#fff;">📲 Panel Sin firma</button>';
+      // Customer brief 2026-05-13 (Óscar, follow-up): both buttons must
+      // close the Documentos modal BEFORE navigating — otherwise the
+      // SPA route changes underneath but the modal stays on top, making
+      // it impossible to interact with the target page.
+      var preapHref = '/admin/#preaprobaciones' + (preapSearch ? '?q='+encodeURIComponent(preapSearch) : '');
+      html += '<button class="ad-btn primary sm cfContratoGoSolic" data-href="'+preapHref+'" data-q="'+esc(preapSearch)+'" style="background:#d97706;border-color:#d97706;">📋 Ir a Solicitudes</button>';
+      html += '<button class="ad-btn ghost sm cfContratoGoSinFirma" style="background:#fff;">📲 Panel Sin firma</button>';
       html += '</div>';
       html += '</div>';
     } else {
@@ -2491,7 +2496,7 @@ window.AD_ventas = (function(){
     // Tiny diagnostic for admin debug
     html += '<details style="margin-top:10px;font-size:11px;color:#888;">'+
       '<summary style="cursor:pointer;">Diagnóstico técnico</summary>'+
-      '<pre style="background:#f1f5f9;padding:8px;border-radius:4px;margin-top:4px;font-size:11px;white-space:pre-wrap;word-break:break-word;">'+
+      '<pre style="background:#f1f5f9;padding:8px;margin-top:4px;border-radius:4px;font-size:11px;white-space:pre-wrap;word-break:break-word;">'+
         'pedido: ' + esc(contractKey) + '\n' +
         'is_credit: ' + (isCredit ? 'sí' : 'no') + '\n' +
         'available: ' + (available ? 'sí' : 'no') + '\n' +
@@ -2499,6 +2504,29 @@ window.AD_ventas = (function(){
       '</pre></details>';
 
     $container.html(html);
+
+    // Close-then-navigate handlers for the two credit-pending actions.
+    // Without these the SPA route changes but the Documentos modal stays
+    // on top of the new page (customer brief 2026-05-13 follow-up).
+    $container.find('.cfContratoGoSolic').off('click').on('click', function(){
+      var q = $(this).data('q') || '';
+      ADApp.closeModal();
+      // Stash the search term on state.hashQuery so admin-app's go()
+      // can apply the filter — same mechanism the hash router uses.
+      if (q && window.ADApp && ADApp.state) {
+        ADApp.state.hashQuery = { q: q };
+      }
+      ADApp.go('preaprobaciones');
+      // Apply the search filter once render() has fired (preaprobaciones
+      // does its initial load synchronously via render → load).
+      if (q && window.AD_preaprobaciones && typeof AD_preaprobaciones.search === 'function') {
+        setTimeout(function(){ try { AD_preaprobaciones.search(q); } catch (e) {} }, 60);
+      }
+    });
+    $container.find('.cfContratoGoSinFirma').off('click').on('click', function(){
+      ADApp.closeModal();
+      ADApp.go('creditoSinFirma');
+    });
   }
 
   // ── Per-section preaprobaciones renderers (Bug 8.1) ──────────────────
