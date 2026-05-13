@@ -56,6 +56,16 @@ $checks = [
         'duplicate_attempts',
         'Issue 2 — Mis compras hace dedup de duplicados'
     ),
+    'cdc_excel' => _checkFile(
+        $base . '/admin/php/buro/exportar.php',
+        'NOMBRE_CLIENTE',
+        'Issue 3 — CDC Excel: 16 columnas oficiales NIP-CIEC PF'
+    ),
+    'cdc_excel_order' => _checkFile(
+        $base . '/admin/php/buro/exportar.php',
+        "'Estado',                      // lowercase 'e'",
+        'Issue 3 — CDC Excel: columna Estado con minúscula (template oficial)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
