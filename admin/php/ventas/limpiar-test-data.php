@@ -82,9 +82,24 @@ $emailTestLike = "("
     . "OR LOWER(email) LIKE '%@mrcdev%' "
     . "OR LOWER(email) LIKE '%@mrcdev.mx%' "
     . "OR LOWER(email) LIKE 'noreply@%' "
-    . "OR LOWER(email) LIKE 'admin@%'"
+    . "OR LOWER(email) LIKE 'admin@%' "
+    // Customer brief 2026-05-13 (Óscar, 13th round — screenshot: VK-1..VK-4
+    // duplicate test rows by 'Oscar'/oscarlimon@gmail.com). This is the
+    // admin's own debugging account — explicitly flag it as test.
+    . "OR LOWER(email) = 'oscarlimon@gmail.com' "
+    . "OR LOWER(email) LIKE 'oscarlimon%@%' "
     . ")";
-$pedidoTestLike= "(UPPER(pedido) LIKE '%TEST%' OR UPPER(pedido) LIKE '%DIAG%' OR UPPER(pedido) LIKE '%DEMO%' OR UPPER(pedido) LIKE '%GCTE%')";
+$pedidoTestLike= "("
+    . "UPPER(pedido) LIKE '%TEST%' "
+    . "OR UPPER(pedido) LIKE '%DIAG%' "
+    . "OR UPPER(pedido) LIKE '%DEMO%' "
+    . "OR UPPER(pedido) LIKE '%GCTE%' "
+    // Sequential numeric test pedidos: '1', '2', '12', '99', '123' etc.
+    // Real production pedidos are timestamps + hex (e.g. '1778302204-2d66242e')
+    // or short codes like '2605-0001'. A bare 1-4 digit number is almost
+    // always a developer test entry (VK-1, VK-2, VK-3, VK-4 in screenshot).
+    . "OR pedido REGEXP '^[0-9]{1,4}$' "
+    . ")";
 $stripeTestLike= "("
     . "stripe_pi LIKE 'manual-%' "
     . "OR stripe_pi LIKE 'test-%' "
@@ -96,17 +111,45 @@ $stripeTestLike= "("
     . "OR stripe_pi LIKE 'pi_MOCK%'"
     . ")";
 
+// pedido_corto check — same idea as the bare-numeric pedido pattern but
+// for the customer-facing code (VK-1, VK-2 in the screenshot). We only
+// add it as a search dimension when the column exists on this install.
+$pedidoCortoTestLike = '';
+try {
+    $_pCols = $pdo->query("SHOW COLUMNS FROM transacciones")->fetchAll(PDO::FETCH_COLUMN);
+    if (in_array('pedido_corto', $_pCols, true)) {
+        $pedidoCortoTestLike = "(pedido_corto IS NOT NULL AND ("
+            . "UPPER(pedido_corto) LIKE '%TEST%' "
+            . "OR UPPER(pedido_corto) LIKE '%DIAG%' "
+            . "OR UPPER(pedido_corto) LIKE '%DEMO%' "
+            // VK-1, VK-2, VK-12, VK-999 — sequential debug codes.
+            . "OR UPPER(pedido_corto) REGEXP '^VK-[0-9]{1,4}$' "
+            . "))";
+    }
+} catch (Throwable $e) { /* schema query optional */ }
+
 // Telefono short / sequential patterns common in test data (e.g. 5500000000,
 // 5512345678, 1234567890 repeats). Don't include this in the main condition
 // alone — too broad — but use it as supporting evidence.
 $telefonoSuspectLike = "(telefono REGEXP '^(5500|0000|1111|2222|3333|4444|5555|6666|7777|8888|9999|1234|0123)' OR telefono = '' OR telefono IS NULL)";
 
-$mainCond = "($nameTestLike OR $emailTestLike OR $pedidoTestLike OR $stripeTestLike)";
+$mainCond = "($nameTestLike OR $emailTestLike OR $pedidoTestLike OR $stripeTestLike"
+          . ($pedidoCortoTestLike !== '' ? " OR $pedidoCortoTestLike" : '')
+          . ")";
 
 // ── 1. Identify candidate transacciones ─────────────────────────────────
 $rows = [];
+// Include pedido_corto when the column exists so the HTML preview can
+// show VK-1, VK-2 etc. — same goes for the per-row reason analysis.
+$hasPedidoCorto = false;
 try {
-    $stmt = $pdo->prepare("SELECT id, pedido, nombre, email, telefono, modelo, tpago, total,
+    $_chk = $pdo->query("SHOW COLUMNS FROM transacciones LIKE 'pedido_corto'")->fetch();
+    $hasPedidoCorto = !empty($_chk);
+} catch (Throwable $e) {}
+$pedidoCortoSel = $hasPedidoCorto ? ', pedido_corto' : '';
+
+try {
+    $stmt = $pdo->prepare("SELECT id, pedido$pedidoCortoSel, nombre, email, telefono, modelo, tpago, total,
                                   stripe_pi, pago_estado, freg
                              FROM transacciones
                             WHERE $mainCond
@@ -124,6 +167,7 @@ foreach ($rows as $r) {
     $n  = strtolower((string)($r['nombre'] ?? ''));
     $em = strtolower((string)($r['email']  ?? ''));
     $p  = strtoupper((string)($r['pedido'] ?? ''));
+    $pc = strtoupper((string)($r['pedido_corto'] ?? ''));
     $pi = (string)($r['stripe_pi'] ?? '');
 
     if (strpos($n, 'test')   !== false)    $reasons[] = 'nombre contains "test"';
@@ -132,8 +176,11 @@ foreach ($rows as $r) {
     if (strpos($em, 'test')  !== false)    $reasons[] = 'email contains "test"';
     if (strpos($em, 'prueba')!== false)    $reasons[] = 'email contains "prueba"';
     if (strpos($em, 'diag')  !== false)    $reasons[] = 'email contains "diag"';
+    if (strpos($em, 'oscarlimon') !== false) $reasons[] = 'email = oscarlimon (cuenta de pruebas)';
     if (strpos($p, 'TEST')   !== false)    $reasons[] = 'pedido contains "TEST"';
     if (strpos($p, 'DIAG')   !== false)    $reasons[] = 'pedido contains "DIAG"';
+    if (preg_match('/^[0-9]{1,4}$/', $p))  $reasons[] = 'pedido = número corto (' . $p . ') — patrón de prueba';
+    if ($pc !== '' && preg_match('/^VK-[0-9]{1,4}$/', $pc)) $reasons[] = 'pedido_corto = ' . $pc . ' (patrón VK-#)';
     if (strpos($pi, 'manual-') === 0)      $reasons[] = 'stripe_pi prefix manual-';
     if (strpos($pi, 'test-')   === 0 || strpos($pi, 'TEST-') === 0) $reasons[] = 'stripe_pi prefix test-';
 
@@ -374,13 +421,24 @@ if ($dryRun) {
         <?php if (!count($candidates)): ?>
             <div class="empty">✅ No se encontraron transacciones que coincidan con patrones de test.</div>
         <?php else: ?>
-            <table><thead><tr>
-                <th>ID</th><th>Pedido</th><th>Cliente</th><th>Email</th><th>Total</th><th>Stripe PI</th><th>Estado pago</th><th>Razones</th>
+            <div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:12px 14px;border-radius:8px;margin-bottom:10px;font-size:13px;">
+                <strong>Acciones disponibles:</strong> selecciona filas con el checkbox y borra en lote con
+                <em>Eliminar seleccionadas</em>, o usa el botón individual <strong>🗑</strong> de cada fila.
+            </div>
+            <table id="cleanupTable"><thead><tr>
+                <th style="width:34px;"><input type="checkbox" id="cleanupChkAll"></th>
+                <th>ID</th><th>Pedido</th><th>Cliente</th><th>Email</th><th>Total</th><th>Stripe PI</th><th>Estado pago</th><th>Razones</th><th>Acción</th>
             </tr></thead><tbody>
             <?php foreach ($candidates as $r): ?>
-                <tr>
+                <tr data-id="<?= (int)$r['id'] ?>">
+                    <td><input type="checkbox" class="cleanupChk" value="<?= (int)$r['id'] ?>"></td>
                     <td><strong><?= (int)$r['id'] ?></strong></td>
-                    <td><code><?= htmlspecialchars((string)($r['pedido'] ?? '—')) ?></code></td>
+                    <td>
+                        <code><?= htmlspecialchars((string)($r['pedido'] ?? '—')) ?></code>
+                        <?php if (!empty($r['pedido_corto'])): ?>
+                            <div style="font-size:10px;color:#64748b;">corto: <code><?= htmlspecialchars((string)$r['pedido_corto']) ?></code></div>
+                        <?php endif; ?>
+                    </td>
                     <td><?= htmlspecialchars((string)($r['nombre'] ?? '—')) ?></td>
                     <td><?= htmlspecialchars((string)($r['email'] ?? '—')) ?></td>
                     <td>$<?= number_format((float)($r['total'] ?? 0), 2) ?></td>
@@ -394,9 +452,88 @@ if ($dryRun) {
                             <div class="conflict">⚠ <?= htmlspecialchars($r['conflict']) ?></div>
                         <?php endif; ?>
                     </td>
+                    <td>
+                        <button class="cleanupRowDel" data-id="<?= (int)$r['id'] ?>" title="Eliminar esta fila" style="background:#dc2626;color:#fff;border:0;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;">🗑</button>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody></table>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <button id="cleanupBulkDel" class="btn" disabled style="opacity:.55;cursor:not-allowed;">
+                    🗑 Eliminar seleccionadas (<span id="cleanupSelCount">0</span>)
+                </button>
+                <span style="font-size:12px;color:#64748b;">
+                    <?= count($candidates) ?> filas marcadas como test
+                </span>
+            </div>
+            <script>
+            (function(){
+                var sel = new Set();
+                function refresh(){
+                    var n = sel.size;
+                    var b = document.getElementById('cleanupBulkDel');
+                    document.getElementById('cleanupSelCount').textContent = n;
+                    if (n > 0) { b.disabled = false; b.style.opacity='1'; b.style.cursor='pointer'; }
+                    else       { b.disabled = true;  b.style.opacity='.55'; b.style.cursor='not-allowed'; }
+                }
+                document.querySelectorAll('.cleanupChk').forEach(function(c){
+                    c.addEventListener('change', function(){
+                        var id = parseInt(c.value, 10);
+                        if (c.checked) sel.add(id); else sel.delete(id);
+                        refresh();
+                    });
+                });
+                document.getElementById('cleanupChkAll').addEventListener('change', function(){
+                    var on = this.checked;
+                    document.querySelectorAll('.cleanupChk').forEach(function(c){
+                        c.checked = on;
+                        var id = parseInt(c.value, 10);
+                        if (on) sel.add(id); else sel.delete(id);
+                    });
+                    refresh();
+                });
+                function doDelete(ids, motivo){
+                    var motivoFinal = motivo || prompt('Motivo de la eliminación (mínimo 6 caracteres):', 'limpieza manual filas test');
+                    if (!motivoFinal || motivoFinal.length < 6) {
+                        alert('Motivo requerido (mínimo 6 caracteres).');
+                        return;
+                    }
+                    if (!confirm('Vas a eliminar ' + ids.length + ' fila(s) y sus envíos/motos vinculados. ¿Continuar?')) return;
+                    fetch('/admin/php/ventas/limpiar-test-data.php', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({
+                            dry_run: 0,
+                            motivo: motivoFinal,
+                            force_ids: ids,
+                            force_conflicts: true
+                        })
+                    }).then(function(r){ return r.json(); }).then(function(r){
+                        if (r && r.ok) {
+                            alert('✅ Eliminadas ' + (r.deleted_tx || 0) + ' filas.\n\n' +
+                                  'Recargando para verificar...');
+                            window.location.reload();
+                        } else {
+                            alert('Error: ' + ((r && r.error) || 'desconocido'));
+                        }
+                    }).catch(function(e){
+                        alert('Error de red: ' + e.message);
+                    });
+                }
+                document.querySelectorAll('.cleanupRowDel').forEach(function(btn){
+                    btn.addEventListener('click', function(){
+                        var id = parseInt(btn.getAttribute('data-id'), 10);
+                        doDelete([id]);
+                    });
+                });
+                document.getElementById('cleanupBulkDel').addEventListener('click', function(){
+                    var ids = Array.from(sel);
+                    if (ids.length === 0) return;
+                    doDelete(ids);
+                });
+            })();
+            </script>
         <?php endif; ?>
 
         <h2>Motos huérfanas (VIN test)</h2>
