@@ -254,6 +254,35 @@ if ($pedidoNum === '') {
 // single payment when pago_estado='pagada' — mark as 'pagada'.
 $pagoEstado = $isCreditFamily ? 'parcial' : 'pagada';
 
+// Customer brief 2026-05-13 (Óscar, 13th round — "el cliente no ve su
+// compra en su portal"): until today this UPDATE wrote cliente_nombre /
+// email / telefono but NOT cliente_id. The client portal queries
+// inventario_motos.cliente_id, so assigned motos were invisible to the
+// owner. We now resolve cliente_id by matching email or phone against
+// the clientes table — the same identity link clientes/ uses for login.
+$resolvedClienteId = null;
+try {
+    $emailLk = trim((string)($order['email']    ?? ''));
+    $telLk   = preg_replace('/\D/', '', (string)($order['telefono'] ?? ''));
+    if (strlen($telLk) > 10) $telLk = substr($telLk, -10);
+    if ($emailLk !== '' || $telLk !== '') {
+        $cWh = []; $cPv = [];
+        if ($emailLk !== '') {
+            $cWh[] = "LOWER(email) = LOWER(?)";
+            $cPv[] = $emailLk;
+        }
+        if ($telLk !== '') {
+            $cWh[] = "RIGHT(REPLACE(REPLACE(REPLACE(COALESCE(telefono,''),'+',''),' ',''),'-',''), 10) = ?";
+            $cPv[] = $telLk;
+        }
+        $cLookup = $pdo->prepare("SELECT id FROM clientes WHERE " . implode(' OR ', $cWh) . " ORDER BY id ASC LIMIT 1");
+        $cLookup->execute($cPv);
+        $resolvedClienteId = (int)($cLookup->fetchColumn() ?: 0) ?: null;
+    }
+} catch (Throwable $e) {
+    error_log('asignar-moto cliente_id lookup: ' . $e->getMessage());
+}
+
 // Resolve punto_voltika_id from order's punto_id or punto_nombre
 $puntoVoltId = null;
 $orderPuntoId = $order['punto_id'] ?? '';
@@ -274,21 +303,24 @@ if ($orderPuntoId && $orderPuntoId !== 'centro-cercano') {
     if ($pRow) $puntoVoltId = (int)$pRow['id'];
 }
 
-$stmt = $pdo->prepare("
-    UPDATE inventario_motos SET
-        cliente_nombre   = ?,
-        cliente_email    = ?,
-        cliente_telefono = ?,
-        pedido_num       = ?,
-        stripe_pi        = ?,
-        pago_estado      = ?,
-        punto_voltika_id = ?,
-        tipo_asignacion  = 'entrega_con_orden',
-        fecha_estado     = NOW(),
-        fmod             = NOW()
-    WHERE id = ?
-");
-$stmt->execute([
+// Customer brief 2026-05-13: also set transaccion_id + cliente_id so
+// the client portal can find this moto via the same identity link the
+// rest of the system uses. Detect whether those columns exist on this
+// install (older schemas may be missing them) and build the UPDATE
+// dynamically so legacy installs don't break.
+$updateSets = [
+    'cliente_nombre = ?',
+    'cliente_email = ?',
+    'cliente_telefono = ?',
+    'pedido_num = ?',
+    'stripe_pi = ?',
+    'pago_estado = ?',
+    'punto_voltika_id = ?',
+    "tipo_asignacion = 'entrega_con_orden'",
+    'fecha_estado = NOW()',
+    'fmod = NOW()',
+];
+$updateVals = [
     $order['nombre']   ?? '',
     $order['email']    ?? '',
     $order['telefono'] ?? '',
@@ -296,8 +328,22 @@ $stmt->execute([
     $order['stripe_pi'] ?? '',
     $pagoEstado,
     $puntoVoltId,
-    $motoId,
-]);
+];
+try {
+    $imCols = $pdo->query("SHOW COLUMNS FROM inventario_motos")->fetchAll(PDO::FETCH_COLUMN);
+    if (in_array('cliente_id', $imCols, true) && $resolvedClienteId) {
+        $updateSets[] = 'cliente_id = ?';
+        $updateVals[] = $resolvedClienteId;
+    }
+    if (in_array('transaccion_id', $imCols, true)) {
+        $updateSets[] = 'transaccion_id = ?';
+        $updateVals[] = (int)$order['id'];
+    }
+} catch (Throwable $e) { /* optional columns */ }
+$updateVals[] = $motoId;
+
+$stmt = $pdo->prepare("UPDATE inventario_motos SET " . implode(', ', $updateSets) . " WHERE id = ?");
+$stmt->execute($updateVals);
 
 // ── Log ──────────────────────────────────────────────────────────────────
 adminLog('asignar_moto', [

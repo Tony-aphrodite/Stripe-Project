@@ -66,19 +66,43 @@ $pdo->prepare("INSERT INTO entregas (moto_id, pedido_num, cliente_nombre, client
     ]);
 
 // ── Delivery channels ─────────────────────────────────────────────────────
-// Customer feedback 2026-04-23: OTP was not received. Previously this
-// endpoint only tried SMSmasivos; if that API timed out or returned an error
-// body, the OTP vanished silently and the customer couldn't pick up the bike.
+// Customer feedback 2026-04-23 + 2026-05-13 (Óscar, 13th round — "OTP
+// never arrives" recurring): SMS delivery has multiple failure modes
+// that previously vanished silently. We now diagnose + report each one:
+//   - Phone format issues (no 10-digit body, missing country code).
+//   - SMS provider misconfig (no API key, key revoked, account paused).
+//   - HTTP errors from the SMS gateway (timeout, 401, 403, 5xx).
+//   - "Sent OK" by the gateway but the carrier still drops the message
+//     (the gateway returns 200 with status="queued"/"pending" forever).
 //
-// Now we try in sequence:
+// Strategy:
 //   1. voltikaNotify('otp_entrega', ...) — rich template, sends WhatsApp +
 //      email + SMS simultaneously (whatever channel the customer has), same
 //      mechanism used by admin/php/checklists/enviar-otp.php.
 //   2. Direct SMSmasivos call as a belt-and-braces fallback.
-// The call reports per-channel outcomes so the dealer UI can warn loudly
-// when EVERY channel failed and staff must read the OTP aloud.
-$tel = preg_replace('/\D/', '', $moto['cliente_telefono']);
-if (strlen($tel) === 10) $tel = '52' . $tel;
+// The response includes per-channel outcomes AND the raw gateway response
+// body so the dealer UI / support can see exactly why a customer didn't
+// receive the SMS. The test_code is still surfaced as last-resort fallback
+// when every channel failed.
+
+// Normalize phone — strip everything non-digit; ensure 52-prefixed
+// 12-digit (Mexico). If the source data is malformed we mark it as
+// invalid up-front instead of letting SMS gateways silently swallow it.
+$telRaw = (string)($moto['cliente_telefono'] ?? '');
+$tel = preg_replace('/\D/', '', $telRaw);
+$telInvalid = null;
+if (strlen($tel) === 10) {
+    $tel = '52' . $tel;
+} elseif (strlen($tel) === 12 && strpos($tel, '52') === 0) {
+    // Already in international format with country code.
+} elseif (strlen($tel) === 11 && strpos($tel, '521') === 0) {
+    // Legacy MX mobile prefix '521' — strip the extra 1 so SMS gateways
+    // accept it. Stripe / SMSmasivos / Twilio all want plain '52' + 10 digits.
+    $tel = '52' . substr($tel, 3);
+} else {
+    $telInvalid = 'Número de teléfono no válido (debe tener 10 dígitos de México). Recibido: "' . $telRaw . '"';
+}
+
 $msg = "Voltika: Tu código de entrega es {$otp}. Muéstralo al asesor en el punto. No lo compartas.";
 
 // 1) Multi-channel via voltikaNotify (whatsapp + email + sms template)
@@ -114,10 +138,16 @@ if (function_exists('voltikaNotify')) {
 // 2) SMSmasivos direct fallback — always attempt, even when voltikaNotify
 // succeeds, so SMS lands on carriers the template doesn't cover.
 $smsKey = defined('SMSMASIVOS_API_KEY') ? SMSMASIVOS_API_KEY : (getenv('SMSMASIVOS_API_KEY') ?: '');
-$smsSent = false;
+$smsSent     = false;
 $smsHttpCode = null;
 $smsError    = null;
-if ($smsKey) {
+$smsResponse = null;
+$smsSkipReason = null;
+if ($telInvalid) {
+    $smsSkipReason = 'phone_invalid';
+} elseif (!$smsKey) {
+    $smsSkipReason = 'no_api_key';   // SMSMASIVOS_API_KEY no configurada
+} else {
     $ch = curl_init('https://api.smsmasivos.com.mx/sms/send');
     curl_setopt_array($ch, [
         CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,
@@ -129,6 +159,7 @@ if ($smsKey) {
     $smsHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $smsError    = curl_error($ch) ?: null;
     curl_close($ch);
+    $smsResponse = is_string($res) ? substr($res, 0, 500) : null;
     $smsSent = ($smsHttpCode >= 200 && $smsHttpCode < 300 && !empty($res));
 }
 
@@ -143,13 +174,37 @@ $notifyOk = is_array($notifyResult) && empty($notifyResult['error']) && (
 $anyChannelOk = $notifyOk || $smsSent;
 
 puntoLog('entrega_otp_enviado', [
-    'moto_id'     => $motoId,
-    'notify_ok'   => $notifyOk,
-    'sms_ok'      => $smsSent,
-    'sms_http'    => $smsHttpCode,
-    'sms_error'   => $smsError,
-    'any_channel' => $anyChannelOk,
+    'moto_id'        => $motoId,
+    'notify_ok'      => $notifyOk,
+    'sms_ok'         => $smsSent,
+    'sms_http'       => $smsHttpCode,
+    'sms_error'      => $smsError,
+    'sms_skip'       => $smsSkipReason,
+    'sms_response'   => $smsResponse,
+    'tel_invalid'    => $telInvalid,
+    'tel_normalized' => $tel,
+    'any_channel'    => $anyChannelOk,
 ]);
+
+// Build a precise human-readable warning so the dealer knows exactly
+// what to do when SMS doesn't reach the customer. Customer brief
+// 2026-05-13 (Óscar, 13th round — "OTP never arrives"): the previous
+// generic "Léelo al cliente en persona" message hid the real cause.
+// Now we surface the failure reason directly.
+$warning = null;
+if (!$anyChannelOk) {
+    if ($telInvalid) {
+        $warning = $telInvalid . ' — Pide al cliente que verifique su número y lee el código en persona.';
+    } elseif ($smsSkipReason === 'no_api_key') {
+        $warning = 'El proveedor de SMS no está configurado en el servidor (falta SMSMASIVOS_API_KEY). Lee el código al cliente y reporta a soporte.';
+    } elseif ($smsHttpCode && $smsHttpCode >= 400) {
+        $warning = 'El proveedor de SMS rechazó el envío (HTTP ' . $smsHttpCode . '). Lee el código al cliente y avisa a soporte para revisar la cuenta SMSmasivos.';
+    } elseif ($smsError) {
+        $warning = 'Error de red al enviar SMS: ' . $smsError . '. Lee el código al cliente y reintenta.';
+    } else {
+        $warning = 'No se pudo entregar el código por ningún canal. Léelo al cliente en persona y revisa la conexión del proveedor SMS.';
+    }
+}
 
 puntoJsonOut([
     'ok'           => true,
@@ -159,8 +214,18 @@ puntoJsonOut([
     // test_code is only surfaced when every channel failed, so staff can
     // read the code to the customer in person as last-resort fallback.
     'test_code'    => $anyChannelOk ? null : $otp,
-    'warning'      => $anyChannelOk
-        ? null
-        : 'No se pudo entregar el código por ningún canal. Léelo al cliente en persona y revisa la conexión del proveedor SMS.',
+    'warning'      => $warning,
+    // Detailed diagnostics — surfaced in the UI under a "Detalle técnico"
+    // expander so the operator can tell soporte the exact failure mode.
+    'diagnostico'  => [
+        'tel_recibido'   => $moto['cliente_telefono'] ?? '',
+        'tel_normalized' => $tel,
+        'tel_invalid'    => $telInvalid,
+        'sms_http'       => $smsHttpCode,
+        'sms_error'      => $smsError,
+        'sms_skip'       => $smsSkipReason,
+        'sms_response'   => $smsResponse,
+        'notify_result'  => $notifyResult,
+    ],
     'cliente'      => ['nombre' => $moto['cliente_nombre'], 'telefono' => $moto['cliente_telefono']]
 ]);

@@ -93,6 +93,14 @@ try {
     // surfaces an orphan test moto and hides the real one that was just
     // assigned to Santa Fe / any other punto (customer report 2026-04-23:
     // "Punto Voltika: —" despite the moto being properly assigned).
+    //
+    // Customer brief 2026-05-13 (Óscar, 13th round — "doesn't exist any
+    // purchase" in client portal): admin/php/ventas/asignar-moto.php
+    // populates inventario_motos.cliente_nombre / cliente_email /
+    // cliente_telefono but DOES NOT set cliente_id. So the original
+    // cliente_id-only filter never matched any assigned moto. Fall back
+    // to matching by phone (last-10-digits, format-agnostic) or email
+    // when the cliente_id lookup returns nothing.
     if (!$moto) {
         $stmt = $pdo->prepare("$motoSelect
             WHERE im.cliente_id = ?
@@ -100,6 +108,41 @@ try {
             ORDER BY (im.punto_voltika_id IS NOT NULL) DESC, im.id DESC
             LIMIT 1");
         $stmt->execute([$cid]);
+        $moto = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+    // Phone/email fallback — covers every moto assigned via asignar-moto.php
+    // (cliente_id stays NULL there). Strip non-digits on both sides and
+    // compare the last 10 digits so '+52 565 057 8111' still matches
+    // '5650578111'. Adrian Montoya (the screenshot case) fell into this
+    // branch because his moto was assigned with telefono='5650578111' but
+    // no cliente_id.
+    if (!$moto && ($tel10 || $em)) {
+        $wh = []; $pv = [];
+        if ($tel10) { $wh[] = "RIGHT(REPLACE(REPLACE(REPLACE(COALESCE(im.cliente_telefono,''),'+',''),' ',''),'-',''), 10) = ?"; $pv[] = $tel10; }
+        if ($em)    { $wh[] = "LOWER(COALESCE(im.cliente_email,'')) = LOWER(?)"; $pv[] = $em; }
+        $stmt = $pdo->prepare("$motoSelect
+            WHERE (" . implode(' OR ', $wh) . ")
+              AND im.activo = 1
+              AND im.estado IN ('recibida','lista_para_entrega','por_validar_entrega','en_ensamble','por_ensamblar','retenida','entregada')
+            ORDER BY (im.punto_voltika_id IS NOT NULL) DESC, im.id DESC
+            LIMIT 1");
+        $stmt->execute($pv);
+        $moto = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+    // Final fallback — show ANY moto for this contact that's at least in a
+    // post-shipment state. Lets the customer see "Asignando punto…" even
+    // before the punto receives the unit; otherwise they think the
+    // purchase doesn't exist.
+    if (!$moto && ($tel10 || $em)) {
+        $wh = []; $pv = [];
+        if ($tel10) { $wh[] = "RIGHT(REPLACE(REPLACE(REPLACE(COALESCE(im.cliente_telefono,''),'+',''),' ',''),'-',''), 10) = ?"; $pv[] = $tel10; }
+        if ($em)    { $wh[] = "LOWER(COALESCE(im.cliente_email,'')) = LOWER(?)"; $pv[] = $em; }
+        $stmt = $pdo->prepare("$motoSelect
+            WHERE (" . implode(' OR ', $wh) . ")
+              AND im.activo = 1
+            ORDER BY (im.punto_voltika_id IS NOT NULL) DESC, im.id DESC
+            LIMIT 1");
+        $stmt->execute($pv);
         $moto = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
