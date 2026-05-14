@@ -414,6 +414,17 @@ $checks = [
         'uploadRecepcionFoto',
         'Round 33 — placeholders clicables abren file picker + suben reemplazo'
     ),
+    // ── Round 34 (2026-05-14) — Cambiar tarjeta: auto-recovery customer ───
+    'r34_cambiar_tarjeta_recovery' => _checkFile(
+        $base . '/clientes/php/pagos/cambiar-tarjeta.php',
+        '_voltikaCreateStripeCustomer',
+        'Round 34 — cambiar-tarjeta.php: si stripe_customer_id está stale (No such customer), crea uno nuevo + persiste + reintenta'
+    ),
+    'r34_cambiar_tarjeta_retry' => _checkFile(
+        $base . '/clientes/php/pagos/cambiar-tarjeta.php',
+        '_voltikaCambiarTarjetaCreateSession',
+        'Round 34 — cambiar-tarjeta.php: helper de creación de Checkout Session refactorizado para reintento'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

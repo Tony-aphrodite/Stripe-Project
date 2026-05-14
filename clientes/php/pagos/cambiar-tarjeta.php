@@ -12,19 +12,65 @@ $pdo = getDB();
 
 $sub = null;
 try {
-    $stmt = $pdo->prepare("SELECT stripe_customer_id FROM subscripciones_credito
-        WHERE cliente_id = ? AND stripe_customer_id IS NOT NULL
+    $stmt = $pdo->prepare("SELECT id, stripe_customer_id FROM subscripciones_credito
+        WHERE cliente_id = ?
         ORDER BY id DESC LIMIT 1");
     $stmt->execute([$cid]);
     $sub = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 } catch (Throwable $e) { error_log('cambiar-tarjeta sub: ' . $e->getMessage()); }
 
-if (!$sub || empty($sub['stripe_customer_id'])) {
-    portalJsonOut(['error' => 'No tienes una suscripción activa con cliente Stripe.'], 400);
+if (!$sub) {
+    portalJsonOut(['error' => 'No tienes una suscripción activa.'], 400);
 }
 
 if (!defined('STRIPE_SECRET_KEY') || !STRIPE_SECRET_KEY) {
     portalJsonOut(['error' => 'Stripe no está configurado en el servidor'], 500);
+}
+
+// ── Round 34 (2026-05-14, Óscar — "No such customer: cus_UU0...") ────
+// The Stripe customer ID stored in subscripciones_credito may have been
+// created in a different Stripe mode (test ↔ live) or deleted in the
+// Stripe dashboard. Result: the Checkout Session creation fails with
+// "No such customer" and the operator sees a dead-end error.
+//
+// Helper: build a fresh Stripe customer from the cliente row + persist
+// the new ID. Idempotent — if any other subscripción already has a
+// valid customer, we reuse it; otherwise create one.
+function _voltikaCreateStripeCustomer(int $cid, PDO $pdo): ?string {
+    $cliRow = $pdo->prepare("SELECT nombre, email, telefono FROM clientes WHERE id = ?");
+    $cliRow->execute([$cid]);
+    $cli = $cliRow->fetch(PDO::FETCH_ASSOC) ?: [];
+    $email = trim((string)($cli['email'] ?? ''));
+    if ($email === '') {
+        error_log('cambiar-tarjeta: cliente ' . $cid . ' sin email — no se puede crear Stripe customer.');
+        return null;
+    }
+    $phone = trim((string)($cli['telefono'] ?? ''));
+    $name  = trim((string)($cli['nombre']   ?? ''));
+    $body = http_build_query(array_filter([
+        'email'                  => $email,
+        'name'                   => $name,
+        'phone'                  => $phone !== '' ? ('+52' . $phone) : '',
+        'metadata[cliente_id]'   => (string)$cid,
+        'metadata[origen]'       => 'portal_cambiar_tarjeta_recovery',
+    ]));
+    $ch = curl_init('https://api.stripe.com/v1/customers');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . STRIPE_SECRET_KEY],
+        CURLOPT_POSTFIELDS     => $body,
+        CURLOPT_TIMEOUT        => 12,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($code < 200 || $code >= 300) {
+        error_log('cambiar-tarjeta create customer failed: ' . substr((string)$resp, 0, 400));
+        return null;
+    }
+    $arr = json_decode((string)$resp, true) ?: [];
+    return is_string($arr['id'] ?? null) ? $arr['id'] : null;
 }
 
 // Build Checkout Session in setup mode
@@ -34,41 +80,90 @@ $baseUrl = (defined('VOLTIKA_BASE_URL') && VOLTIKA_BASE_URL)
 $successUrl = $baseUrl . '/clientes/?cambio_tarjeta=ok';
 $cancelUrl  = $baseUrl . '/clientes/?cambio_tarjeta=cancelado';
 
-$payload = [
-    'mode'                     => 'setup',
-    'customer'                 => $sub['stripe_customer_id'],
-    'payment_method_types[0]'  => 'card',
-    'success_url'              => $successUrl,
-    'cancel_url'               => $cancelUrl,
-    // Tag the session so the webhook can find this client + replace the
-    // previous payment_method when setup_intent.succeeded fires.
-    'metadata[cliente_id]'     => (string)$cid,
-    'metadata[purpose]'        => 'replace_backup_card',
-];
+// Round 34: try the stored customer ID first. If Stripe rejects it,
+// auto-recover by creating a new customer + persisting the new ID, then
+// retry once. This avoids a dead-end "No such customer" for clients
+// whose stored ID is stale (test/live mismatch or deleted in dashboard).
+function _voltikaCambiarTarjetaCreateSession(string $customerId, int $cid, string $successUrl, string $cancelUrl): array {
+    $payload = [
+        'mode'                     => 'setup',
+        'customer'                 => $customerId,
+        'payment_method_types[0]'  => 'card',
+        'success_url'              => $successUrl,
+        'cancel_url'               => $cancelUrl,
+        // Tag the session so the webhook can find this client + replace the
+        // previous payment_method when setup_intent.succeeded fires.
+        'metadata[cliente_id]'     => (string)$cid,
+        'metadata[purpose]'        => 'replace_backup_card',
+    ];
+    $ch = curl_init('https://api.stripe.com/v1/checkout/sessions');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . STRIPE_SECRET_KEY],
+        CURLOPT_POSTFIELDS     => http_build_query($payload),
+        CURLOPT_TIMEOUT        => 15,
+    ]);
+    $resp = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return ['code' => $code, 'body' => $resp, 'data' => json_decode((string)$resp, true) ?: []];
+}
 
-$ch = curl_init('https://api.stripe.com/v1/checkout/sessions');
-curl_setopt_array($ch, [
-    CURLOPT_POST           => true,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . STRIPE_SECRET_KEY],
-    CURLOPT_POSTFIELDS     => http_build_query($payload),
-    CURLOPT_TIMEOUT        => 15,
-]);
-$resp = curl_exec($ch);
-$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
+$customerId = (string)($sub['stripe_customer_id'] ?? '');
+$result = null;
+if ($customerId !== '') {
+    $result = _voltikaCambiarTarjetaCreateSession($customerId, (int)$cid, $successUrl, $cancelUrl);
+}
 
-$data = json_decode((string)$resp, true) ?: [];
-if ($code < 200 || $code >= 300 || empty($data['url'])) {
-    error_log('cambiar-tarjeta stripe error: ' . substr((string)$resp, 0, 400));
+// Detect the "No such customer" recovery condition. Stripe returns a 400
+// with error.code = 'resource_missing' and error.message containing
+// the missing customer id. Also retry when there was no stored customer
+// at all.
+$needsRecovery = false;
+if (!$customerId) {
+    $needsRecovery = true;
+} elseif ($result && ($result['code'] < 200 || $result['code'] >= 300)) {
+    $errCode = $result['data']['error']['code'] ?? '';
+    $errMsg  = $result['data']['error']['message'] ?? '';
+    if ($errCode === 'resource_missing' || stripos($errMsg, 'no such customer') !== false) {
+        $needsRecovery = true;
+    }
+}
+
+if ($needsRecovery) {
+    error_log('cambiar-tarjeta: stale customer ' . $customerId . ' for cliente ' . $cid . ' — creating fresh one.');
+    $newCustomerId = _voltikaCreateStripeCustomer((int)$cid, $pdo);
+    if (!$newCustomerId) {
+        portalJsonOut([
+            'error' => 'No se pudo crear tu cliente en Stripe. Verifica que tu email esté registrado correctamente.',
+        ], 500);
+    }
+    // Persist on the most-recent subscripción for this cliente so future
+    // calls hit the valid customer.
+    try {
+        $pdo->prepare("UPDATE subscripciones_credito SET stripe_customer_id = ? WHERE id = ?")
+            ->execute([$newCustomerId, (int)$sub['id']]);
+    } catch (Throwable $e) { error_log('cambiar-tarjeta persist customer: ' . $e->getMessage()); }
+
+    portalLog('tarjeta_cambiar_customer_recreado', [
+        'cliente_id'   => $cid,
+        'customer_old' => $customerId,
+        'customer_new' => $newCustomerId,
+    ]);
+    $result = _voltikaCambiarTarjetaCreateSession($newCustomerId, (int)$cid, $successUrl, $cancelUrl);
+}
+
+if ($result['code'] < 200 || $result['code'] >= 300 || empty($result['data']['url'])) {
+    error_log('cambiar-tarjeta stripe error: ' . substr((string)$result['body'], 0, 400));
     portalJsonOut([
-        'error' => $data['error']['message'] ?? 'No se pudo iniciar el flujo de cambio de tarjeta',
+        'error' => $result['data']['error']['message'] ?? 'No se pudo iniciar el flujo de cambio de tarjeta',
     ], 500);
 }
 
 portalLog('tarjeta_cambiar_iniciado', [
     'cliente_id' => $cid,
-    'session_id' => $data['id'] ?? '',
+    'session_id' => $result['data']['id'] ?? '',
 ]);
 
-portalJsonOut(['url' => $data['url']]);
+portalJsonOut(['url' => $result['data']['url']]);
