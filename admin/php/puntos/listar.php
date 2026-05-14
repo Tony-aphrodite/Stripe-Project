@@ -6,6 +6,15 @@ require_once __DIR__ . '/../bootstrap.php';
 adminRequireAuth(['admin','cedis','operador']);
 
 $pdo = getDB();
+
+// Round 24 (2026-05-14, Óscar): admin Puntos list was showing deactivated
+// puntos (activo=0) — including legacy test puntos like [GC-TEST] — which
+// the operator wanted completely hidden. Now defaults to active-only.
+// Pass ?include_inactive=1 to restore the old behavior when an admin
+// needs to review/reactivate a deactivated punto.
+$includeInactive = !empty($_GET['include_inactive']);
+$activoFilter    = $includeInactive ? '' : 'WHERE pv.activo = 1';
+
 // Inventory breakdown per punto: total, consignación (walk-in pool),
 // para entrega web (online orders with cliente assigned), en ensamble, plus
 // aging of the oldest unsold consignación unit (days since arrival).
@@ -33,6 +42,6 @@ $rows = $pdo->query("SELECT pv.*,
         AND (m.pedido_num IS NULL OR m.pedido_num='')
         AND m.estado NOT IN ('entregada','retenida','por_llegar')
     ) as aging_max_dias
-    FROM puntos_voltika pv ORDER BY pv.nombre")->fetchAll(PDO::FETCH_ASSOC);
+    FROM puntos_voltika pv $activoFilter ORDER BY pv.nombre")->fetchAll(PDO::FETCH_ASSOC);
 
 adminJsonOut(['puntos' => $rows]);

@@ -284,6 +284,11 @@ $checks = [
         '_hasContractPdf',
         'Round 23 — Sales panel: "Firmado" badge requiere contrato_pdf_path (no solo firmas_contratos residual)'
     ),
+    'r24_puntos_hide_inactive' => _checkFile(
+        $base . '/admin/php/puntos/listar.php',
+        'WHERE pv.activo = 1',
+        'Round 24 — Admin Puntos list oculta puntos inactivos por defecto (?include_inactive=1 para verlos)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
