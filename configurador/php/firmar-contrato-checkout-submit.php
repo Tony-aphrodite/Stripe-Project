@@ -174,11 +174,20 @@ try {
                 $deliveryPoint .= ' · ' . trim((string)$tx['ciudad']);
             }
 
+            // Customer fix 2026-05-14 (Óscar): sanitize the stored
+            // tx.nombre so duplicates like "Adrian Montoya Diaz Montoya Diaz"
+            // don't reach the PDF. Also fetch Cincel audit so the inline
+            // checkout regen path mirrors descargar-contrato regen.
+            $cincelAuditInline = contratoContadoFetchCincelAudit(
+                $pdo,
+                (string)($tx['pedido'] ?? ''),
+                isset($tx['id']) ? (int)$tx['id'] : null
+            );
             $contractData = [
                 'pedido'             => $tx['pedido'] ?? '',
                 'folio'              => $tx['folio_contrato'] ?: ($tx['pedido'] ?? ''),
                 'contract_date'      => date('d/m/Y'),
-                'customer_full_name' => $tx['nombre']   ?? '',
+                'customer_full_name' => contratoContadoSanitizeFullName((string)($tx['nombre'] ?? '')),
                 'customer_email'     => $tx['email']    ?? '',
                 'customer_phone'     => $tx['telefono'] ?? '',
                 'customer_zip'       => $tx['cp']       ?? '',
@@ -196,6 +205,20 @@ try {
                 'firma_base64'       => 'data:image/png;base64,' . $rawBase64,
                 'firma_sha256'       => $hash,
                 'firma_freg'         => date('Y-m-d H:i:s'),
+                // Cincel / NOM-151 audit fields. Pre-Acta these are '' so
+                // the REGISTRO table renders "Pendiente — Acta de Entrega";
+                // post-Acta the actual Cincel folio + constancia appears.
+                'cincel_document_id' => $cincelAuditInline['cincel_document_id'] ?? '',
+                'cincel_status'      => $cincelAuditInline['cincel_status']      ?? '',
+                'cincel_signed_at'   => $cincelAuditInline['cincel_signed_at']   ?? '',
+                'cincel_nom151_json' => $cincelAuditInline['cincel_nom151_json'] ?? '',
+                // Acceptance metadata from persisted columns so the table
+                // doesn't render '--' when this is the inline-checkout regen.
+                'acceptance_timestamp'   => $tx['contrato_aceptado_at'] ?? '',
+                'acceptance_ip'          => $tx['contrato_aceptado_ip'] ?? '',
+                'acceptance_user_agent'  => $tx['contrato_aceptado_ua'] ?? '',
+                'acceptance_geolocation' => $tx['contrato_geolocation'] ?? '',
+                'otp_validated'          => (int)($tx['contrato_otp_validated'] ?? 0),
             ];
             // contratoContadoGenerate() returns ['ok'=>bool, 'path'=>string, 'error'=>string].
             // Earlier rev mistakenly treated the array as a path string, so

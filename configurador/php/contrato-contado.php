@@ -172,6 +172,143 @@ function contratoContadoProcessor(string $pagoTipo): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Name sanitizer
+// ─────────────────────────────────────────────────────────────────────────
+// Customer report 2026-05-14 (Óscar, screenshot DÉCIMA SÉPTIMA):
+// "Nombre de EL COMPRADOR" showed "Adrian Montoya Diaz Montoya Diaz" — the
+// apellidos were duplicated. Three legacy SPA bugs all produce this:
+//   (a) $nombre already contains the full name ("Adrian Montoya Diaz")
+//       AND apellidoPaterno/Materno are separately filled.
+//   (b) apellidoPaterno === apellidoMaterno (user pasted both apellidos
+//       into a single field, then duplicated into the other).
+//   (c) The two-half repetition pattern at the tail ("X Y X Y").
+// We can't safely change the SPA without regressing other flows, so this
+// helper sanitizes deterministically inside the contract pipeline. ALL
+// callers (confirmar-orden, descargar-contrato, regen, firmar-checkout)
+// must use it instead of ad-hoc concatenation.
+function contratoContadoSanitizeFullName(string $nombre, string $apPaterno = '', string $apMaterno = ''): string {
+    $norm = static function (string $s): string {
+        $s = preg_replace('/\s+/u', ' ', trim($s));
+        return $s === null ? '' : $s;
+    };
+    // Collapses any trailing repeated token-block ("X Y X Y" → "X Y").
+    // Iterates to a fixed point so n-fold repetitions ("X Y X Y X Y" → "X Y")
+    // also resolve. Lives as a static closure so the helper is self-contained
+    // and the regen path can use the same algorithm even when apellidos are
+    // unknown.
+    $collapseTail = static function (string $s): string {
+        $tokens = explode(' ', trim($s));
+        for ($safety = 0; $safety < 8; $safety++) {
+            $n        = count($tokens);
+            $shrunk   = false;
+            for ($k = (int) floor($n / 2); $k >= 1; $k--) {
+                if ($n < 2 * $k) continue;
+                $tail = array_slice($tokens, $n - $k);
+                $prev = array_slice($tokens, $n - 2 * $k, $k);
+                if (array_map('mb_strtolower', $tail) === array_map('mb_strtolower', $prev)) {
+                    $tokens = array_slice($tokens, 0, $n - $k);
+                    $shrunk = true;
+                    break;
+                }
+            }
+            if (!$shrunk) break;
+        }
+        return trim(implode(' ', $tokens));
+    };
+
+    $nombre = $norm($nombre);
+    $apP    = $norm($apPaterno);
+    $apM    = $norm($apMaterno);
+
+    // Case (b): same string in both apellido fields → drop one.
+    if ($apP !== '' && $apM !== '' && mb_strtolower($apP) === mb_strtolower($apM)) {
+        $apM = '';
+    }
+
+    $apellidos      = trim($apP . ' ' . $apM);
+    $apellidos      = preg_replace('/\s+/u', ' ', $apellidos);
+    $nombreLower    = mb_strtolower($nombre);
+    $apellidosLower = mb_strtolower($apellidos);
+
+    // No apellidos passed → still run tail-collapse on the stored nombre.
+    // This is the regen path: transacciones.nombre may already hold the
+    // duplicated string from the legacy bug.
+    if ($apellidos === '') return $collapseTail($nombre);
+    if ($nombre === '')    return $collapseTail($apellidos);
+
+    // Case (a): nombre already ends with " {apellidos}", or IS the apellidos.
+    if ($nombreLower === $apellidosLower)                                                return $collapseTail($nombre);
+    if (substr($nombreLower, -strlen(' ' . $apellidosLower)) === ' ' . $apellidosLower)  return $collapseTail($nombre);
+    // Apellido paterno alone already at tail of nombre? Skip just apP.
+    if ($apP !== '' && substr($nombreLower, -strlen(' ' . mb_strtolower($apP))) === ' ' . mb_strtolower($apP)) {
+        return $collapseTail(trim($nombre . ' ' . $apM));
+    }
+
+    // Case (c): build candidate then collapse trailing duplicate token-block.
+    $candidate = preg_replace('/\s+/u', ' ', $nombre . ' ' . $apellidos);
+    return $collapseTail($candidate);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Cincel / NOM-151 audit fetcher
+// ─────────────────────────────────────────────────────────────────────────
+// Customer report 2026-05-14: the REGISTRO DE ACEPTACIÓN ELECTRÓNICA table
+// referenced Cincel + NOM-151 in the clause text but didn't show any
+// Cincel folio nor the NOM-151 constancia. Cincel signing happens only at
+// Acta de Entrega (delivery), so at purchase time both are pending. The
+// data lives on inventario_motos.cincel_acta_* — we look it up here so the
+// PDF reflects "Pendiente" pre-delivery and the actual folios post-delivery.
+//
+// Returns an array with these keys (any may be ''):
+//   cincel_document_id, cincel_status, cincel_signed_at, cincel_nom151_json
+function contratoContadoFetchCincelAudit(PDO $pdo, string $pedidoNum, $transaccionId = null): array {
+    $out = [
+        'cincel_document_id' => '',
+        'cincel_status'      => '',
+        'cincel_signed_at'   => '',
+        'cincel_nom151_json' => '',
+    ];
+    try {
+        // Lookup 1: by transaccion_id (preferred when caller knows it).
+        $row = null;
+        if ($transaccionId) {
+            $st = $pdo->prepare("SELECT cincel_acta_document_id, cincel_acta_status, cincel_nom151_data
+                FROM inventario_motos WHERE transaccion_id = ?
+                ORDER BY id DESC LIMIT 1");
+            $st->execute([(int)$transaccionId]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+        }
+        // Lookup 2: by pedido_num (VK-<pedido>).
+        if (!$row && $pedidoNum !== '') {
+            $vkPedido = (stripos($pedidoNum, 'VK-') === 0) ? $pedidoNum : ('VK-' . $pedidoNum);
+            $st = $pdo->prepare("SELECT cincel_acta_document_id, cincel_acta_status, cincel_nom151_data
+                FROM inventario_motos WHERE pedido_num = ? OR pedido_num = ?
+                ORDER BY id DESC LIMIT 1");
+            $st->execute([$vkPedido, $pedidoNum]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+        }
+        if ($row) {
+            $out['cincel_document_id'] = (string)($row['cincel_acta_document_id'] ?? '');
+            $out['cincel_status']      = (string)($row['cincel_acta_status']      ?? '');
+            $out['cincel_nom151_json'] = (string)($row['cincel_nom151_data']      ?? '');
+            // Derive signed_at from nom151_data when present.
+            if ($out['cincel_nom151_json'] !== '') {
+                $decoded = @json_decode($out['cincel_nom151_json'], true);
+                if (is_array($decoded)) {
+                    $out['cincel_signed_at'] = (string)(
+                        $decoded['signed_at']    ?? $decoded['timestamp']
+                        ?? $decoded['created_at'] ?? ''
+                    );
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('contratoContadoFetchCincelAudit: ' . $e->getMessage());
+    }
+    return $out;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // PDF generation
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -475,13 +612,40 @@ function _contratoContadoBuildPdf(array $d): FPDF {
     _ccPdfH2($pdf, 'REGISTRO DE ACEPTACIÓN ELECTRÓNICA');
     _ccPdfPara($pdf, 'Apartado completado automáticamente por el sistema al momento de la aceptación electrónica:');
 
+    // Customer fix 2026-05-14: defensive sanitization for legacy rows where
+    // the caller still concatenated nombre + apellidoPaterno + apellidoMaterno
+    // and produced "X Y X Y". If the caller already passed apellido_paterno/
+    // apellido_materno separately, prefer rebuilding from those.
+    $compradorName = trim((string)($d['customer_full_name'] ?? ''));
+    if (isset($d['apellido_paterno']) || isset($d['apellido_materno'])) {
+        $compradorName = contratoContadoSanitizeFullName(
+            (string)($d['customer_first_name'] ?? $compradorName ?? ''),
+            (string)($d['apellido_paterno']   ?? ''),
+            (string)($d['apellido_materno']   ?? '')
+        );
+    } else {
+        // Token-only dedupe at render time (handles "Adrian Montoya Diaz Montoya Diaz"
+        // even when only customer_full_name was passed).
+        $compradorName = contratoContadoSanitizeFullName($compradorName);
+    }
+
+    // Customer fix 2026-05-14: empty IP/UA/Geo previously rendered as "—",
+    // which made the contract look like the data was never captured. Show an
+    // explicit message instead so the legal record reads coherently.
+    $ipVal   = trim((string)($d['acceptance_ip']         ?? ''));
+    $uaVal   = trim((string)($d['acceptance_user_agent'] ?? ''));
+    $geoVal  = trim((string)($d['acceptance_geolocation'] ?? ''));
+    if ($ipVal === '')  $ipVal  = 'No capturada por el sistema en el momento de la aceptación';
+    if ($uaVal === '')  $uaVal  = 'No capturado por el sistema en el momento de la aceptación';
+    if ($geoVal === '') $geoVal = 'No proporcionada por el usuario (permiso denegado o no solicitado)';
+
     $rows = [
         ['Folio del Contrato',                (string)($d['folio'] ?? $d['pedido'] ?? '')],
-        ['Nombre de EL COMPRADOR',            (string)($d['customer_full_name']    ?? '')],
+        ['Nombre de EL COMPRADOR',            $compradorName],
         ['Fecha y hora de aceptación (UTC)',  (string)($d['acceptance_timestamp']  ?? '')],
-        ['Dirección IP',                      (string)($d['acceptance_ip']         ?? '')],
-        ['Geolocalización',                   (string)($d['acceptance_geolocation'] ?? 'No proporcionada')],
-        ['Dispositivo',                       (string)($d['acceptance_user_agent'] ?? '')],
+        ['Dirección IP',                      $ipVal],
+        ['Geolocalización',                   $geoVal],
+        ['Dispositivo',                       $uaVal],
     ];
 
     // OTP validation block — expanded audit fields when validated, or a
@@ -511,6 +675,43 @@ function _contratoContadoBuildPdf(array $d): FPDF {
     }
 
     $rows[] = ['Referencia de pago',                (string)($d['payment_reference']     ?? '')];
+
+    // ── Cincel / NOM-151 audit block ─────────────────────────────────────
+    // Customer fix 2026-05-14 (Óscar): the clause body cites Cincel + NOM-151
+    // but the table had no row for them, so the contract looked legally
+    // incomplete. Cincel signing happens only at the Acta de Entrega
+    // (Cláusula correspondiente), so at purchase time both fields display
+    // "Pendiente — se generará al firmar el Acta de Entrega". When the
+    // delivery flow later signs the Acta, descargar-contrato.php regen
+    // picks up the populated cincel_acta_* columns and the rows show the
+    // real folio + constancia.
+    $cincelDocId   = trim((string)($d['cincel_document_id'] ?? ''));
+    $cincelStatus  = trim((string)($d['cincel_status']      ?? ''));
+    $cincelSigned  = trim((string)($d['cincel_signed_at']   ?? ''));
+    $cincelNom151  = trim((string)($d['cincel_nom151_json'] ?? ''));
+
+    $rows[] = ['Firma electrónica avanzada (Acta de Entrega)',
+        $cincelDocId !== ''
+            ? 'Firmada vía Cincel S.A.P.I. de C.V. (PSC autorizado SE conforme NOM-151-SCFI-2016)'
+            : 'Pendiente — se firmará al momento de la entrega física del vehículo'
+    ];
+    $rows[] = ['  Folio Cincel',
+        $cincelDocId !== '' ? $cincelDocId : 'Pendiente — Acta de Entrega'
+    ];
+    $rows[] = ['  Estado Cincel',
+        $cincelStatus !== '' ? $cincelStatus : 'Pendiente'
+    ];
+    if ($cincelSigned !== '') {
+        $rows[] = ['  Fecha y hora de firma electrónica (UTC)', $cincelSigned];
+    }
+    $rows[] = ['  Constancia NOM-151-SCFI-2016',
+        $cincelNom151 !== '' && $cincelNom151 !== '{}'
+            ? 'Emitida — sello digital de tiempo conservado en JSON adjunto al expediente'
+            : 'Pendiente — se emitirá al firmar el Acta de Entrega'
+    ];
+    $rows[] = ['  Valor probatorio',
+        'Firma electrónica avanzada equivalente a firma autógrafa conforme al art. 89 Código de Comercio y NOM-151-SCFI-2016'
+    ];
 
     _ccPdfTable($pdf, $rows);
 

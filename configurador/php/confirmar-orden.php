@@ -1274,12 +1274,18 @@ if (!$esCredito) {
         $pdoCC = getDB();
         contratoContadoEnsureSchema($pdoCC);
 
-        $fullName = trim(implode(' ', array_filter([
-            $nombre,
-            $apellidoPaterno,
-            $apellidoMaterno,
-        ])));
-        if ($fullName === '') $fullName = $nombre;
+        // Customer fix 2026-05-14 (Óscar, screenshot DÉCIMA SÉPTIMA):
+        // The naïve implode produced "Adrian Montoya Diaz Montoya Diaz" when
+        // (a) $nombre already contained the full name typed in a single
+        // field, or (b) apellidoPaterno === apellidoMaterno. Both cases are
+        // observed in the wild. contratoContadoSanitizeFullName() normalizes
+        // and dedupes deterministically. See its docblock for cases (a)-(c).
+        $fullName = contratoContadoSanitizeFullName(
+            (string)$nombre,
+            (string)$apellidoPaterno,
+            (string)$apellidoMaterno
+        );
+        if ($fullName === '') $fullName = (string)$nombre;
 
         // Payment reference: Stripe PI for card/MSI/SPEI/OXXO; falls back to
         // the internal pedido number when Stripe didn't return one
@@ -1292,6 +1298,13 @@ if (!$esCredito) {
             ? (int)$json['modelo_anio']
             : (int)date('Y');
 
+        // Customer fix 2026-05-14: at FIRST generation Cincel/Acta hasn't
+        // signed yet (delivery happens days/weeks later). Fetch returns
+        // empty rows, which renders as "Pendiente — Acta de Entrega" in the
+        // REGISTRO table. The regen path (descargar-contrato.php) refetches
+        // after Cincel signs and the table self-updates.
+        $cincelAudit = contratoContadoFetchCincelAudit($pdoCC, $pedidoNum, null);
+
         $contratoData = [
             // pedido = internal id (used for filename, URL token, DB lookup);
             // folio = customer-facing identifier (VK-YYYYMMDD-XXX) shown
@@ -1300,6 +1313,11 @@ if (!$esCredito) {
             'folio'                   => $folioContrato ?: $pedidoNum,
             'contract_date'           => date('d/m/Y'),
             'customer_full_name'      => $fullName,
+            // Pass apellidos separately so the PDF render layer can re-run
+            // the sanitizer defensively (covers legacy callers).
+            'customer_first_name'     => (string)$nombre,
+            'apellido_paterno'        => (string)$apellidoPaterno,
+            'apellido_materno'        => (string)$apellidoMaterno,
             'customer_email'          => $email,
             'customer_phone'          => $telefono,
             'customer_zip'            => $customerCp,
@@ -1329,6 +1347,12 @@ if (!$esCredito) {
             'otp_code_sha256'         => $_SESSION['otp_audit']['code_sha256']    ?? null,
             'otp_ip'                  => $_SESSION['otp_audit']['ip']             ?? null,
             'otp_send_count'          => $_SESSION['otp_audit']['send_count']     ?? null,
+            // Cincel / NOM-151 audit (typically all '' at first generation,
+            // populated by regen after Acta de Entrega is signed).
+            'cincel_document_id'      => $cincelAudit['cincel_document_id'] ?? '',
+            'cincel_status'           => $cincelAudit['cincel_status']      ?? '',
+            'cincel_signed_at'        => $cincelAudit['cincel_signed_at']   ?? '',
+            'cincel_nom151_json'      => $cincelAudit['cincel_nom151_json'] ?? '',
         ];
 
         $genResult = contratoContadoGenerate($contratoData);

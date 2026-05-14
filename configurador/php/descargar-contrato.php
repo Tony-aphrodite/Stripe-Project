@@ -372,6 +372,15 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
                 $effectivePedido = $tx['pedido']
                     ?: preg_replace('/^VK-/i', '', (string)($tx['pedido_corto'] ?? ''))
                     ?: $pedido;
+                // Customer fix 2026-05-14: also fetch Cincel/NOM-151 audit so
+                // a regen AFTER the Acta de Entrega is signed picks up the
+                // real Cincel folio + constancia and the REGISTRO table
+                // self-updates from "Pendiente" to the actual values.
+                $cincelAuditRegen = contratoContadoFetchCincelAudit(
+                    $pdo,
+                    (string)$effectivePedido,
+                    isset($tx['id']) ? (int)$tx['id'] : null
+                );
                 $contratoData = [
                     'pedido'                  => $effectivePedido,
                     'folio'                   => $tx['folio_contrato'] ?: $effectivePedido,
@@ -382,7 +391,12 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
                     // Aligned with confirmar-orden.php:1107 which already
                     // uses date('d/m/Y') at first generation.
                     'contract_date'           => date('d/m/Y'),
-                    'customer_full_name'      => $tx['nombre'] ?: 'Cliente Voltika',
+                    // Customer fix 2026-05-14 (Óscar): legacy rows persisted
+                    // "Adrian Montoya Diaz Montoya Diaz" in transacciones.nombre
+                    // (the duplicated value from the broken implode in
+                    // confirmar-orden.php). Sanitize at render so regenerated
+                    // contracts also display the cleaned name.
+                    'customer_full_name'      => contratoContadoSanitizeFullName($tx['nombre'] ?: 'Cliente Voltika'),
                     'customer_email'          => $tx['email'] ?? '',
                     'customer_phone'          => $tx['telefono'] ?? '',
                     'customer_zip'            => $tx['cp'] ?? '',
@@ -425,6 +439,14 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
                     'otp_code_sha256'         => $tx['contrato_otp_code_sha256']  ?? null,
                     'otp_ip'                  => $tx['contrato_otp_ip']           ?? null,
                     'otp_send_count'          => (int)($tx['contrato_otp_send_count'] ?? 0),
+                    // Cincel / NOM-151 audit fields. When the Acta de Entrega
+                    // has already been signed at regen time, these populate
+                    // the table; otherwise the render falls back to
+                    // "Pendiente — Acta de Entrega".
+                    'cincel_document_id'      => $cincelAuditRegen['cincel_document_id'] ?? '',
+                    'cincel_status'           => $cincelAuditRegen['cincel_status']      ?? '',
+                    'cincel_signed_at'        => $cincelAuditRegen['cincel_signed_at']   ?? '',
+                    'cincel_nom151_json'      => $cincelAuditRegen['cincel_nom151_json'] ?? '',
                 ];
                 $r = contratoContadoGenerate($contratoData);
                 if ($r['ok'] && !empty($r['path']) && file_exists($r['path'])) {

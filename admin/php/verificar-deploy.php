@@ -66,6 +66,42 @@ $checks = [
         "'Estado',                      // lowercase 'e'",
         'Issue 3 — CDC Excel: columna Estado con minúscula (template oficial)'
     ),
+    // ── Round 15 (2026-05-14) — Contrato DÉCIMA SÉPTIMA ────────────────────
+    'r15_name_sanitizer' => _checkFile(
+        $base . '/configurador/php/contrato-contado.php',
+        'function contratoContadoSanitizeFullName(',
+        'Round 15 — Contrato: sanitizer de nombre (no más "Adrian Montoya Diaz Montoya Diaz")'
+    ),
+    'r15_cincel_fetcher' => _checkFile(
+        $base . '/configurador/php/contrato-contado.php',
+        'function contratoContadoFetchCincelAudit(',
+        'Round 15 — Contrato: fetcher de Cincel / NOM-151 audit'
+    ),
+    'r15_registro_cincel_row' => _checkFile(
+        $base . '/configurador/php/contrato-contado.php',
+        'Firma electrónica avanzada (Acta de Entrega)',
+        'Round 15 — Contrato REGISTRO: fila Cincel / firma electrónica avanzada visible'
+    ),
+    'r15_registro_nom151_row' => _checkFile(
+        $base . '/configurador/php/contrato-contado.php',
+        'Constancia NOM-151-SCFI-2016',
+        'Round 15 — Contrato REGISTRO: fila Constancia NOM-151-SCFI-2016'
+    ),
+    'r15_registro_ip_fallback' => _checkFile(
+        $base . '/configurador/php/contrato-contado.php',
+        'No capturada por el sistema en el momento de la aceptación',
+        'Round 15 — Contrato REGISTRO: fallback explícito para IP / Geo / Dispositivo vacíos'
+    ),
+    'r15_confirmar_uses_sanitizer' => _checkFile(
+        $base . '/configurador/php/confirmar-orden.php',
+        'contratoContadoSanitizeFullName(',
+        'Round 15 — confirmar-orden.php usa el sanitizer en lugar del implode crudo'
+    ),
+    'r15_descargar_uses_sanitizer' => _checkFile(
+        $base . '/configurador/php/descargar-contrato.php',
+        'contratoContadoSanitizeFullName(',
+        'Round 15 — descargar-contrato.php regen sanitiza el nombre persistido'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -158,12 +194,12 @@ code{background:#1e293b;color:#e2e8f0;padding:1px 6px;border-radius:3px;font-siz
 ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
 </style></head><body>
 
-<h1>🚀 Verificación de despliegue — Round 14 (2026-05-13)</h1>
+<h1>🚀 Verificación de despliegue — Round 14 + 15 (2026-05-13 / 2026-05-14)</h1>
 <div class="sub">Confirma que los archivos modificados llegaron al servidor con la versión correcta.</div>
 
 <?php if ($allOk): ?>
   <div class="alert alert-ok">
-    <strong>✅ Los 3 archivos están desplegados correctamente.</strong> El servidor ya tiene el código nuevo.
+    <strong>✅ Todos los archivos están desplegados correctamente.</strong> El servidor ya tiene el código nuevo.
     Si todavía ves el comportamiento viejo en el navegador → es caché del navegador (Ctrl+Shift+R) o CDN.
   </div>
 <?php else: ?>
@@ -251,9 +287,21 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>Si necesitas comparar — la API ahora devuelve <code>total_raw: 2</code> y <code>total: 1</code> mostrando que dedupeó.</li>
   </ul>
 
-  <strong style="display:block;margin-top:14px;">Issue 3 — Excel CDC (pendiente):</strong>
+  <strong style="display:block;margin-top:14px;">Issue 3 — Excel CDC:</strong>
   <ul>
-    <li>Necesitamos el template oficial del boss. Una vez que lo mande, en 30 minutos coincide 100%.</li>
+    <li>Login admin → sección <strong>Consultas Buró</strong> → click en <strong>Exportar Excel</strong>.</li>
+    <li>✅ Esperado: 16 columnas en orden oficial NIP-CIEC PF (FOLIO_CDC, FECHA_APROBACION_DE_CONSULTA, …, ACEPTACION_TERMINOS_Y_CONDICIONES).</li>
+    <li>Columna <strong>I</strong> debe llamarse <code>Estado</code> con <strong>e minúscula</strong> (no <code>ESTADO</code>).</li>
+    <li><code>NOMBRE_CLIENTE</code> en formato <code>APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES</code> MAYÚSCULAS.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 15 — Contrato DÉCIMA SÉPTIMA (REGISTRO DE ACEPTACIÓN):</strong>
+  <ul>
+    <li>Cliente con duplicación de nombre ("Adrian Montoya Diaz Montoya Diaz") descarga su contrato de nuevo desde "Mis compras" → <strong>Descargar contrato</strong>.</li>
+    <li>✅ Esperado: <strong>"Adrian Montoya Diaz"</strong> (sin duplicación) en la fila "Nombre de EL COMPRADOR".</li>
+    <li>Si IP / Geolocalización / Dispositivo estaban vacíos, ahora deben mostrar texto explicativo <strong>(no <code>--</code>)</strong>.</li>
+    <li>Nuevas filas en el REGISTRO: <strong>Firma electrónica avanzada (Acta de Entrega)</strong>, <strong>Folio Cincel</strong>, <strong>Estado Cincel</strong>, <strong>Constancia NOM-151-SCFI-2016</strong>, <strong>Valor probatorio</strong>.</li>
+    <li>Antes de la firma del Acta: estas filas dicen "Pendiente — Acta de Entrega". Después de la firma: aparece el folio real de Cincel.</li>
   </ul>
 </div>
 

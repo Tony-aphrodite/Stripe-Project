@@ -98,11 +98,20 @@ function buildContratoData(array $tx): array {
     $eta = !empty($tx['fecha_estimada_entrega'])
         ? date('d/m/Y', strtotime((string)$tx['fecha_estimada_entrega']))
         : date('d/m/Y', strtotime('+10 days', strtotime($tx['freg'] ?? 'now')));
+    // Customer fix 2026-05-14 (Óscar): pull Cincel audit + sanitize name so
+    // bulk regen produces the same clean REGISTRO table as the single-row
+    // download path.
+    $pdoCx = getDB();
+    $cincelAuditBulk = contratoContadoFetchCincelAudit(
+        $pdoCx,
+        (string)$tx['pedido'],
+        isset($tx['id']) ? (int)$tx['id'] : null
+    );
     return [
         'pedido'                  => $tx['pedido'],
         'folio'                   => $tx['folio_contrato'] ?: $tx['pedido'],
         'contract_date'           => date('d/m/Y'),
-        'customer_full_name'      => $tx['nombre'] ?: 'Cliente Voltika',
+        'customer_full_name'      => contratoContadoSanitizeFullName($tx['nombre'] ?: 'Cliente Voltika'),
         'customer_email'          => $tx['email'] ?? '',
         'customer_phone'          => $tx['telefono'] ?? '',
         'customer_zip'            => $tx['cp'] ?? '',
@@ -123,6 +132,11 @@ function buildContratoData(array $tx): array {
         'otp_validated'           => (int)($tx['contrato_otp_validated'] ?? 0),
         'otp_validated_at'        => $tx['contrato_otp_validated_at'] ?? null,
         'otp_phone_masked'        => $tx['contrato_otp_phone_masked'] ?? null,
+        // Cincel / NOM-151 audit (post-Acta-de-Entrega data when present).
+        'cincel_document_id'      => $cincelAuditBulk['cincel_document_id'] ?? '',
+        'cincel_status'           => $cincelAuditBulk['cincel_status']      ?? '',
+        'cincel_signed_at'        => $cincelAuditBulk['cincel_signed_at']   ?? '',
+        'cincel_nom151_json'      => $cincelAuditBulk['cincel_nom151_json'] ?? '',
     ];
 }
 
