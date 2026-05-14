@@ -2744,8 +2744,24 @@ window.AD_ventas = (function(){
     // the full process via the Truora API, persists every standard field
     // back, and tries to download document/selfie URLs to our uploads dir.
     // On success the modal re-renders with the freshly-pulled data.
-    var missingTruora = !p.truora_status || !p.truora_process_id || !p.truora_updated_at || (p.name_match == null) || (p.manual_review_required == null);
-    if (missingTruora || !hasAnyPhoto) {
+    //
+    // Round 21 v3: hide the button when Truora explicitly rejected the
+    // verification (failure / approved=0) AND all standard fields are
+    // already filled — re-syncing won't help, Truora doesn't preserve
+    // documents for rejected processes. Surface a clear explanation
+    // instead so the admin doesn't keep clicking a no-op.
+    var missingTruora    = !p.truora_status || !p.truora_process_id || !p.truora_updated_at || (p.name_match == null) || (p.manual_review_required == null);
+    var truoraFinalFail  = (String(p.truora_status || '').toLowerCase() === 'failure'
+                           || rejectedOverall)
+                           && !missingTruora;
+    if (truoraFinalFail && !hasAnyPhoto) {
+      html += '<div style="margin-top:14px;padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">'+
+                '<div style="font-size:12px;color:#991b1b;line-height:1.5;">'+
+                  '🛈 <strong>Truora rechazó esta verificación</strong> (failure / nombre o CURP no coinciden). '+
+                  'Truora no conserva documentos para procesos rechazados, por lo que las fotos no se pueden recuperar de su API.'+
+                '</div>'+
+              '</div>';
+    } else if (missingTruora || !hasAnyPhoto) {
       var syncId = 'vk-truora-sync-' + Math.random().toString(36).slice(2, 9);
       html += '<div style="margin-top:14px;padding:12px;background:#f0f9ff;border:1px solid #93c5fd;border-radius:8px;">'+
                 '<div style="font-size:12px;color:#1e40af;line-height:1.5;margin-bottom:8px;">'+
