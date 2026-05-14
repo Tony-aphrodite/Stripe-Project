@@ -253,6 +253,26 @@ $checks = [
         'Truora payload debug',
         'Round 21 v4 — truora-payload-debug.php: visualizador de respuesta cruda y fetch_log'
     ),
+    'r21v5_verif_id_targeting' => _checkFile(
+        $base . '/admin/php/preaprobaciones/sync-truora.php',
+        '$verifId = (int)($body[\'verif_id\'] ?? 0)',
+        'Round 21 v5 — sync-truora.php apunta a la row exacta (verif_id) en lugar de la más reciente por teléfono'
+    ),
+    'r21v5_no_s3_auth_header' => _checkFile(
+        $base . '/admin/php/preaprobaciones/sync-truora.php',
+        'AWS S3 signed URLs reject extra Authorization headers',
+        'Round 21 v5 — sync-truora.php: NO envía Truora-API-Key al bajar de S3 (rompía la firma)'
+    ),
+    'r21v5_debug_info' => _checkFile(
+        $base . '/admin/php/preaprobaciones/sync-truora.php',
+        "'_debug'            => \$debugInfo",
+        'Round 21 v5 — sync-truora.php devuelve _debug con sources/classified/downloads'
+    ),
+    'r21v5_listar_verif_id' => _checkFile(
+        $base . '/admin/php/preaprobaciones/listar.php',
+        'vi.id                AS verif_id',
+        'Round 21 v5 — listar.php expone vi.id para que el Sync targetee la row exacta'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

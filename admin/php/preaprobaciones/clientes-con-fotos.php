@@ -196,7 +196,12 @@ $renderTable = function (array $set, string $emptyMsg, bool $showSync = false) u
         if ($showSync) {
             $tel = $esc($r['telefono']);
             $eml = $esc($r['email']);
+            $vid = (int)$r['verif_id'];
+            // Round 21 v5: pass verif_id to target THIS exact row instead
+            // of the most-recent for the phone (which often is a rejected
+            // retry for repeat customers).
             echo ' · <button class="sync-btn ad-btn primary" '.
+                 'data-verif-id="'.$vid.'" '.
                  'data-tel="'.$tel.'" data-email="'.$eml.'" '.
                  'style="font-size:11px;padding:3px 8px;background:#0ea5e9;color:#fff;border:0;border-radius:4px;cursor:pointer;">'.
                  '🔄 Sync</button> <span class="sync-result muted" style="font-size:10px;"></span>';
@@ -228,16 +233,27 @@ document.querySelectorAll('.sync-btn').forEach(function(btn){
     btn.disabled = true;
     statusEl.textContent = '⏳ consultando Truora…';
     statusEl.style.color = '#1e40af';
+    var vid = parseInt(btn.dataset.verifId || '0', 10) || 0;
     fetch('/admin/php/preaprobaciones/sync-truora.php', {
       method: 'POST',
       credentials: 'include',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({telefono: tel, email: email})
+      body: JSON.stringify({verif_id: vid, telefono: tel, email: email})
     }).then(function(r){return r.json();}).then(function(j){
       if (j && j.ok) {
         statusEl.textContent = '✓ ' + (j.photos_count||0) + ' fotos · ' + (j.fetched && j.fetched.status || '?');
         statusEl.style.color = '#15803d';
-        setTimeout(function(){ location.reload(); }, 1200);
+        // Round 21 v5: surface diagnostic info on hover so we can spot
+        // why downloads fail without re-running the page.
+        if (j._debug) {
+          var summary = 'classified=' + JSON.stringify(Object.keys(j._debug.classified || {})) +
+                        ' downloads=' + JSON.stringify((j._debug.downloads||[]).map(function(d){
+                            return d.kind + ':' + d.http_code + (d.saved_as?'(saved)':'(skip)') ;
+                        }));
+          statusEl.title = summary;
+          console.log('sync-truora _debug:', j._debug);
+        }
+        setTimeout(function(){ location.reload(); }, 1500);
       } else {
         statusEl.textContent = '✗ ' + (j.message || j.reason || 'falló');
         statusEl.style.color = '#b91c1c';

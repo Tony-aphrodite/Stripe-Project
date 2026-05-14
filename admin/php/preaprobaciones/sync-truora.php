@@ -29,14 +29,20 @@ require_once __DIR__ . '/../../../configurador/php/truora-api-helpers.php';
 
 adminRequireAuth(['admin','cedis']);
 
-$body  = adminJsonIn();
-$tel   = trim((string)($body['telefono'] ?? ''));
-$email = trim((string)($body['email']    ?? ''));
+$body    = adminJsonIn();
+$tel     = trim((string)($body['telefono'] ?? ''));
+$email   = trim((string)($body['email']    ?? ''));
 $preapId = (int)($body['preap_id'] ?? 0);
+// Round 21 v5 (Óscar): the Sync button used to identify the customer by
+// telefono/email only — but for repeat customers (e.g. Brayan/Carlos with
+// 10+ verification attempts on the same phone) ORDER BY id DESC always
+// picked the most-recent row, which was usually a REJECTED retry. Adding
+// a `verif_id` lets the diagnostic page target the exact row clicked.
+$verifId = (int)($body['verif_id'] ?? 0);
 
-if ($tel === '' && $email === '' && $preapId <= 0) {
+if ($tel === '' && $email === '' && $preapId <= 0 && $verifId <= 0) {
     adminJsonOut(['ok' => false, 'error' => 'parametros_faltantes',
-                  'message' => 'Se requiere telefono, email o preap_id.'], 400);
+                  'message' => 'Se requiere telefono, email, preap_id o verif_id.'], 400);
 }
 
 $pdo = getDB();
@@ -55,16 +61,31 @@ if ($preapId > 0 && ($tel === '' || $email === '')) {
 }
 
 // ── Step 2: locate the verificaciones_identidad row to enrich ─────────────
+// Round 21 v5: when verif_id is provided, target that exact row instead of
+// the most-recent for the phone. Critical for repeat customers like Brayan
+// (10+ retries) where the latest by phone is usually a rejected retry.
 $verifRow = null;
 try {
-    $st = $pdo->prepare("
-        SELECT * FROM verificaciones_identidad
-         WHERE (LENGTH(?) > 0 AND telefono = ?)
-            OR (LENGTH(?) > 0 AND email    = ?)
-         ORDER BY id DESC LIMIT 1
-    ");
-    $st->execute([$tel, $tel, $email, $email]);
-    $verifRow = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($verifId > 0) {
+        $st = $pdo->prepare("SELECT * FROM verificaciones_identidad WHERE id = ? LIMIT 1");
+        $st->execute([$verifId]);
+        $verifRow = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+        // Backfill tel/email from the row so downstream lookups work.
+        if ($verifRow) {
+            if ($tel   === '') $tel   = (string)($verifRow['telefono'] ?? '');
+            if ($email === '') $email = (string)($verifRow['email']    ?? '');
+        }
+    }
+    if (!$verifRow) {
+        $st = $pdo->prepare("
+            SELECT * FROM verificaciones_identidad
+             WHERE (LENGTH(?) > 0 AND telefono = ?)
+                OR (LENGTH(?) > 0 AND email    = ?)
+             ORDER BY id DESC LIMIT 1
+        ");
+        $st->execute([$tel, $tel, $email, $email]);
+        $verifRow = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
 } catch (Throwable $e) {
     error_log('sync-truora verif lookup: ' . $e->getMessage());
 }
@@ -220,6 +241,17 @@ if ($approved === 0) {
 // first-class image source here (the helper still tries it but we ignore
 // its return value). Photos are AWS S3 signed URLs with X-Amz-Expires=900
 // (15 min) so we MUST download them at sync time — already done in Step 7.
+// Round 21 v5 (2026-05-14): diagnostic — track every step so the JSON
+// response can explain WHY photos failed without the admin needing to
+// inspect the DB or fetch_log manually.
+$debugInfo = [
+    'process_id'         => $processId,
+    'details_top_status' => is_array($details) ? ($details['status'] ?? null) : null,
+    'sources'            => [],   // per endpoint: http code, image URLs detected
+    'classified'         => [],   // ine_frente / ine_reverso / selfie matched
+    'downloads'          => [],   // per URL: code, ct, bytes, dest, ok
+];
+
 $imageSources = [$details];
 $extraEndpoints = [
     '/v1/processes/' . urlencode($processId) . '/result',
@@ -248,10 +280,15 @@ foreach ($extraEndpoints as $path) {
                        VALUES (?, ?, ?, ?, NULL)")
             ->execute([$processId, $path, $c, substr((string)$b, 0, 4000)]);
     } catch (Throwable $e) {}
+    $sourceInfo = ['endpoint' => $path, 'http_code' => $c, 'parsed' => false, 'size_bytes' => strlen((string)$b)];
     if ($c >= 200 && $c < 300 && $b) {
         $arr = json_decode((string)$b, true);
-        if (is_array($arr)) $imageSources[] = $arr;
+        if (is_array($arr)) {
+            $imageSources[] = $arr;
+            $sourceInfo['parsed'] = true;
+        }
     }
+    $debugInfo['sources'][] = $sourceInfo;
 }
 
 $imageUrls = []; // associative: ['ine_frente'|'ine_reverso'|'selfie' => url]
@@ -288,6 +325,10 @@ $walk = function ($node, $contextKey = '', $parentKey = '') use (&$walk, &$image
     }
 };
 foreach ($imageSources as $src) $walk($src);
+$debugInfo['classified'] = array_map(function ($u) {
+    // Truncate signed URLs to keep the response compact.
+    return is_string($u) ? (strlen($u) > 160 ? substr($u, 0, 160) . '…' : $u) : null;
+}, $imageUrls);
 
 // ── Step 7: try to download each classified URL to local uploads dir ──────
 // Pattern matches verificar-identidad.php naming so admin-identidad.php /
@@ -299,21 +340,27 @@ if (!is_dir($uploadDir)) @mkdir($uploadDir, 0775, true);
 $downloaded = [];
 $prefix = 'truorasync_' . preg_replace('/[^a-zA-Z0-9]/', '', $accountId ?: $processId) . '_' . time();
 foreach ($imageUrls as $kind => $url) {
+    // Round 21 v5: AWS S3 signed URLs reject extra Authorization headers
+    // because the X-Amz-Signature is calculated against a specific header
+    // set. Send NO custom headers for the actual image download — the
+    // signed URL alone authenticates the request.
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT        => 18,
-        // Truora signed URLs may need the API key too; harmless on public URLs.
-        CURLOPT_HTTPHEADER     => [
-            'Truora-API-Key: ' . (defined('TRUORA_API_KEY') ? TRUORA_API_KEY : ''),
-            'Accept: image/*,*/*',
-        ],
     ]);
     $bin  = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $ct   = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $err  = (string)curl_error($ch);
     curl_close($ch);
+
+    $dlInfo = [
+        'kind' => $kind, 'http_code' => $code, 'content_type' => $ct,
+        'bytes' => is_string($bin) ? strlen($bin) : 0,
+        'curl_err' => $err ?: null, 'saved_as' => null,
+    ];
 
     if ($code >= 200 && $code < 300 && $bin && strlen($bin) > 1024) {
         // Best-effort extension from MIME or URL.
@@ -325,8 +372,12 @@ foreach ($imageUrls as $kind => $url) {
         $dest  = $uploadDir . '/' . $fname;
         if (@file_put_contents($dest, $bin) !== false) {
             $downloaded[$kind] = $fname;
+            $dlInfo['saved_as'] = $fname;
+        } else {
+            $dlInfo['curl_err'] = 'file_put_contents failed at ' . $dest;
         }
     }
+    $debugInfo['downloads'][] = $dlInfo;
 }
 
 // ── Step 8: merge new file names with whatever files_saved already had ────
@@ -439,4 +490,5 @@ adminJsonOut([
     ],
     'photos_downloaded' => array_keys($downloaded),
     'photos_count'      => count($downloaded),
+    '_debug'            => $debugInfo,
 ]);

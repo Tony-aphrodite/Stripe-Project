@@ -2785,6 +2785,10 @@ window.AD_ventas = (function(){
           status.textContent = '⏳ Consultando Truora…';
           status.style.color = '#1e40af';
           ADApp.api('preaprobaciones/sync-truora.php', {
+            // Round 21 v5: pass the exact verificaciones_identidad row id
+            // (joined via listar.php) so the sync targets the right row
+            // for repeat customers with multiple Truora attempts.
+            verif_id: p.verif_id || 0,
             telefono: p.telefono || '',
             email:    p.email    || '',
             preap_id: p.id || 0

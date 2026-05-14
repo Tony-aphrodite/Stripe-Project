@@ -167,6 +167,7 @@ try {
                p.enganche_requerido, p.plazo_max,
                p.dpd90_flag, p.dpd_max,
                p.truora_ok, p.seguimiento, p.notas_admin, p.freg,
+               vi.id                AS verif_id,
                vi.truora_process_id,
                vi.truora_status,
                vi.truora_failure_status,
