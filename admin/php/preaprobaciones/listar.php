@@ -177,6 +177,13 @@ try {
                vi.manual_review_required,
                vi.manual_review_reason,
                vi.truora_updated_at,
+               -- Round 20 (2026-05-14, Óscar): expose the captured INE +
+               -- selfie filenames so the admin Documentos modal can show
+               -- the actual photos. files_saved is a JSON array of
+               -- filenames (relative to configurador/php/uploads/). The
+               -- JS in admin-ventas.js parses it to derive
+               -- ine_front_url / ine_back_url / selfie_url.
+               vi.files_saved       AS truora_files_saved,
                cb.score             AS buro_score,
                cb.pago_mensual      AS buro_pago_mensual,
                cb.dpd90_flag        AS buro_dpd90_flag,

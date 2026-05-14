@@ -196,6 +196,17 @@ $checks = [
         'contratoFirmado',
         'Round 19 — Documentos modal: título del contrato refleja estado real (firmado vs pendiente de firma)'
     ),
+    // ── Round 20 (2026-05-14) — Identidad section: photos visible ──────────
+    'r20_listar_returns_files_saved' => _checkFile(
+        $base . '/admin/php/preaprobaciones/listar.php',
+        'vi.files_saved       AS truora_files_saved',
+        'Round 20 — preaprobaciones/listar.php expone vi.files_saved al SPA admin'
+    ),
+    'r20_ventas_renders_photos' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'truora_files_saved',
+        'Round 20 — Documentos modal Identidad: parsea files_saved y muestra thumbnails INE + selfie'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -288,7 +299,7 @@ code{background:#1e293b;color:#e2e8f0;padding:1px 6px;border-radius:3px;font-siz
 ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
 </style></head><body>
 
-<h1>🚀 Verificación de despliegue — Round 14 + 15 + 16 + 17 + 18 + 19 (2026-05-13 / 2026-05-14)</h1>
+<h1>🚀 Verificación de despliegue — Round 14 → 20 (2026-05-13 / 2026-05-14)</h1>
 <div class="sub">Confirma que los archivos modificados llegaron al servidor con la versión correcta.</div>
 
 <?php if ($allOk): ?>
@@ -387,6 +398,14 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>✅ Esperado: 16 columnas en orden oficial NIP-CIEC PF (FOLIO_CDC, FECHA_APROBACION_DE_CONSULTA, …, ACEPTACION_TERMINOS_Y_CONDICIONES).</li>
     <li>Columna <strong>I</strong> debe llamarse <code>Estado</code> con <strong>e minúscula</strong> (no <code>ESTADO</code>).</li>
     <li><code>NOMBRE_CLIENTE</code> en formato <code>APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES</code> MAYÚSCULAS.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 20 — Identidad section: fotos INE + selfie visibles:</strong>
+  <ul>
+    <li>Admin → Ventas → cualquier orden de crédito (ej. <strong>VK-1826-0001</strong>) → "Documentos del pedido" → desplegar <strong>"Identidad (INE / PASSPORT)"</strong>.</li>
+    <li>✅ Si Truora capturó las fotos: ahora se muestran <strong>3 thumbnails clicables</strong> (INE frente, INE reverso, Selfie) en grid debajo de la tabla de campos. Click en cualquiera → abre la imagen completa en nueva pestaña.</li>
+    <li>✅ Si la verificación está incompleta: se muestra un mensaje explicativo en lugar de quedar la sección vacía.</li>
+    <li>Las URLs son <code>/configurador/php/uploads/{filename}</code> derivadas del JSON <code>verificaciones_identidad.files_saved</code>.</li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 19 — Documentos modal: título del contrato consistente:</strong>

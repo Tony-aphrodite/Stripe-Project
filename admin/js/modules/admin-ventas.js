@@ -2611,9 +2611,34 @@ window.AD_ventas = (function(){
   // PREAPROBADO / CONDICIONAL / NO_VIABLE). Field mapping below is now
   // aligned with admin/php/preaprobaciones/listar.php SELECT.
   function renderIdentidad($c, p){
+    // Round 20 (2026-05-14, Óscar — VK-1826-0001 Carlos Ricardo):
+    // The Identidad section was missing INE photos + selfie because
+    // preaprobaciones/listar.php didn't expose vi.files_saved. Now it
+    // does (as truora_files_saved). Parse the JSON filename array into
+    // absolute URLs under /configurador/php/uploads/ and detect each
+    // image by its '_selfie' / '_ine_frente' / '_ine_reverso' suffix
+    // (the naming convention from verificar-identidad.php).
     var ineFront = p.truora_doc_front_url || p.ine_frente_url || p.documento_url || '';
     var ineBack  = p.truora_doc_back_url  || p.ine_reverso_url || '';
     var selfie   = p.truora_selfie_url    || p.selfie_url || '';
+    if ((!ineFront || !ineBack || !selfie) && p.truora_files_saved) {
+      try {
+        var filesArr = (typeof p.truora_files_saved === 'string')
+            ? JSON.parse(p.truora_files_saved)
+            : p.truora_files_saved;
+        if (Array.isArray(filesArr)) {
+          filesArr.forEach(function(fn){
+            if (!fn || typeof fn !== 'string') return;
+            var url = '/configurador/php/uploads/' + encodeURIComponent(fn);
+            var l = fn.toLowerCase();
+            if (!selfie   && l.indexOf('_selfie')      !== -1) selfie   = url;
+            if (!ineFront && l.indexOf('_ine_frente')  !== -1) ineFront = url;
+            if (!ineBack  && l.indexOf('_ine_reverso') !== -1) ineBack  = url;
+          });
+        }
+      } catch (e) { /* malformed JSON — leave URLs empty */ }
+    }
+
     // Truora face match — verificaciones_identidad columns: curp_match,
     // name_match, truora_approved.
     var truoraApproved = p.truora_approved;
@@ -2622,9 +2647,31 @@ window.AD_ventas = (function(){
         : (truoraApproved == 1 ? '<span style="color:#16a34a;">✓ Aprobado</span>' : '<span style="color:#b91c1c;">✗ Rechazado</span>');
     var nameMatchTxt = (p.name_match == 1) ? '<span style="color:#16a34a;">✓ Nombre coincide</span>'
                    : (p.name_match === 0 ? '<span style="color:#b91c1c;">✗ No coincide</span>' : '—');
-    function imgChip(url, label){
+
+    // Round 20: show actual thumbnails (clickable to enlarge) instead of
+    // plain link chips. Critical evidence for chargeback / PROFECO defense
+    // — the operator needs to see the face + INE photos at a glance, not
+    // just have a link to click.
+    function imgThumb(url, label){
       if (!url) return '';
-      return '<a href="'+esc(url)+'" target="_blank" rel="noopener" style="display:inline-block;margin-right:6px;margin-top:4px;padding:6px 10px;background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;text-decoration:none;color:#1e40af;font-size:12px;">📷 '+label+'</a>';
+      return '<div style="display:inline-block;text-align:center;margin:0 8px 8px 0;vertical-align:top;">'+
+               '<a href="'+esc(url)+'" target="_blank" rel="noopener" '+
+                  'style="display:block;width:120px;height:120px;border-radius:8px;overflow:hidden;border:1px solid #cbd5e1;background:#f1f5f9;">'+
+                 '<img src="'+esc(url)+'" alt="'+esc(label)+'" '+
+                      'style="width:100%;height:100%;object-fit:cover;" '+
+                      'loading="lazy" '+
+                      'onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'<div style=&quot;padding:42px 8px;color:#94a3b8;font-size:11px;text-align:center;&quot;>No disponible</div>\';">'+
+               '</a>'+
+               '<div style="font-size:11px;color:#475569;margin-top:4px;font-weight:600;">'+esc(label)+'</div>'+
+             '</div>';
+    }
+    function imgChip(url, label){
+      // Legacy chip fallback when no URL available — keeps audit trail
+      // for ops that need to flag "no photo captured".
+      if (url) return '';
+      return '<div style="display:inline-block;margin-right:6px;margin-top:4px;padding:6px 10px;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;color:#92400e;font-size:11px;">'+
+               '⚠ '+esc(label)+' no capturada'+
+             '</div>';
     }
     var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">Identidad — Truora</div>';
     html += _kvTable([
@@ -2638,9 +2685,27 @@ window.AD_ventas = (function(){
       ['Truora — última actualización', esc(p.truora_updated_at || '—')],
       ['Revisión manual requerida', (p.manual_review_required == 1 ? '<span style="color:#ca8a04;">⚠ Sí</span>' + (p.manual_review_reason?' — '+esc(p.manual_review_reason):'') : '—')],
     ]);
-    if (ineFront || ineBack || selfie) {
-      html += '<div style="margin-top:10px;">' + imgChip(ineFront,'INE frente') + imgChip(ineBack,'INE reverso') + imgChip(selfie,'Selfie') + '</div>';
+
+    // Photo gallery — render thumbnails when available, missing-warning
+    // chips when not (e.g. customer abandoned Truora mid-flow).
+    var hasAnyPhoto = ineFront || ineBack || selfie;
+    html += '<div style="margin-top:14px;">'+
+              '<div style="font-size:12px;color:#475569;text-transform:uppercase;font-weight:700;letter-spacing:.4px;margin-bottom:8px;">'+
+                (hasAnyPhoto ? '📷 Documentos capturados' : '⚠ Documentos no disponibles')+
+              '</div>';
+    if (hasAnyPhoto) {
+      html += imgThumb(ineFront, 'INE frente') + imgThumb(ineBack, 'INE reverso') + imgThumb(selfie, 'Selfie');
+      // If only some photos are captured, surface what's missing.
+      html += imgChip(ineFront, 'INE frente') + imgChip(ineBack, 'INE reverso') + imgChip(selfie, 'Selfie');
+    } else {
+      html += '<div style="font-size:12px;color:#64748b;line-height:1.5;">'+
+                'No se encontraron documentos de identidad capturados via Truora para este cliente. '+
+                'Esto puede significar: (a) el cliente no completó el flujo Truora, '+
+                '(b) los archivos se subieron pero la tabla verificaciones_identidad no tiene files_saved, '+
+                'o (c) los archivos se borraron del filesystem.'+
+              '</div>';
     }
+    html += '</div>';
     $c.html(html);
   }
 
