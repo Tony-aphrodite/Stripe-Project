@@ -404,6 +404,16 @@ $checks = [
         'fotos_missing_count',
         'Round 31 v2 — Recepción section: fotos faltantes muestran placeholder amable + instrucciones para re-subir'
     ),
+    'r33_admin_upload_recepcion_foto' => _checkFile(
+        $base . '/admin/php/inventario/upload-recepcion-foto.php',
+        "adminRequireAuth(['admin','cedis'])",
+        'Round 33 — endpoint para subir foto de recepción desde admin (reemplaza placeholder)'
+    ),
+    'r33_admin_clickable_placeholder' => _checkFile(
+        $base . '/admin/js/modules/admin-inventario.js',
+        'uploadRecepcionFoto',
+        'Round 33 — placeholders clicables abren file picker + suben reemplazo'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

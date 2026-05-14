@@ -672,16 +672,28 @@ window.AD_inventario = (function(){
                         'style="width:100%;height:100%;object-fit:cover;" loading="lazy">'+
                  '</a>';
         }
-        function rcpPhotoMissing(label){
-          return '<div style="display:inline-block;width:88px;height:88px;border-radius:6px;border:1px dashed #cbd5e1;background:#f8fafc;margin-right:6px;margin-bottom:6px;vertical-align:top;'+
-                       'display:inline-flex;align-items:center;justify-content:center;text-align:center;padding:6px;box-sizing:border-box;" '+
-                   'title="Foto '+esc(label)+' no disponible">'+
+        // Round 33: missing-photo placeholder is clickable — opens a file
+        // picker so admin can upload a replacement directly. The label
+        // is mapped to the upload tipo: "Sello" → sello, "VIN etiqueta"
+        // → vin_label, "Unidad" → unidad. "Extra N" placeholders stay
+        // static (no replacement target for free-form extras).
+        function rcpPhotoMissing(label, tipo){
+          var clickable = !!tipo && ADApp.canWrite && ADApp.canWrite('inventario');
+          var cursor = clickable ? 'pointer' : 'default';
+          var hint   = clickable ? 'Click para subir nueva foto' : 'Foto no disponible';
+          return '<div class="' + (clickable ? 'adRcpReplacePhoto' : '') + '" '+
+                      'data-tipo="'+esc(tipo||'')+'" data-mid="'+m.id+'" '+
+                      'style="display:inline-flex;width:88px;height:88px;border-radius:6px;border:1px dashed #cbd5e1;background:#f8fafc;margin-right:6px;margin-bottom:6px;vertical-align:top;'+
+                             'align-items:center;justify-content:center;text-align:center;padding:6px;box-sizing:border-box;cursor:'+cursor+';" '+
+                   'title="'+hint+'">'+
                    '<div style="font-size:10px;color:#94a3b8;line-height:1.3;">'+
                      '📷<br><strong style="color:#64748b;">'+esc(label)+'</strong><br>'+
-                     '<span style="font-size:9px;">no disponible</span>'+
+                     '<span style="font-size:9px;">'+(clickable ? '<u>subir foto</u>' : 'no disponible')+'</span>'+
                    '</div>'+
                  '</div>';
         }
+        // Map label → upload tipo for the 3 fixed slots.
+        var _rcpTipoMap = { 'Sello':'sello', 'VIN etiqueta':'vin_label', 'Unidad':'unidad' };
         var photoSlots = [
           { url: rcp.foto_sello_url,     label: 'Sello' },
           { url: rcp.foto_vin_label_url, label: 'VIN etiqueta' },
@@ -694,7 +706,7 @@ window.AD_inventario = (function(){
         var anyMissing = false, anyPresent = false;
         photoSlots.forEach(function(p){
           if (p.url) { photos += rcpPhotoThumb(p.url, p.label); anyPresent = true; }
-          else       { photos += rcpPhotoMissing(p.label);      anyMissing = true; }
+          else       { photos += rcpPhotoMissing(p.label, _rcpTipoMap[p.label] || ''); anyMissing = true; }
         });
         html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.08);">'+
                   '<div style="font-size:11px;color:var(--ad-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;">Fotos</div>'+
@@ -818,6 +830,14 @@ window.AD_inventario = (function(){
       // Round 28: Liberar button — flips estado from 'retenida' to 'recibida'
       // via the existing admin-moto-accion.php transition (action='liberar').
       $('#adLiberarMoto').on('click', function(){ liberarMoto(m.id); });
+      // Round 33: click a missing-photo placeholder → open file picker
+      // → upload replacement → re-render the detail with the new photo.
+      $('.adRcpReplacePhoto').on('click', function(){
+        var tipo  = $(this).data('tipo');
+        var motoIdLocal = $(this).data('mid');
+        if (!tipo) return;
+        uploadRecepcionFoto(motoIdLocal, tipo);
+      });
       // Bug fix 2026-05-09: cerrar envíos individuales desde el detalle
       // del inventario. Cada botón rojo "Cerrar" en la sección Envíos
       // dispara un confirm + motivo opcional + POST a eliminar.php.
@@ -1572,6 +1592,65 @@ window.AD_inventario = (function(){
     }).fail(function(x){
       alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
     });
+  }
+
+  // Round 33 (2026-05-14, Óscar): admin uploads a replacement recepción
+  // photo directly from the detail panel. Creates a hidden <input
+  // type=file>, triggers the OS picker, then POSTs the chosen image via
+  // FormData. The detail modal closes + the inventory reloads so the new
+  // photo appears immediately. Errors surface as friendly alerts.
+  function uploadRecepcionFoto(motoId, tipo){
+    var labelMap = { sello:'Sello', vin_label:'VIN etiqueta', unidad:'Unidad' };
+    var prettyLabel = labelMap[tipo] || tipo;
+    // Build a one-shot file input. Detached from DOM after use.
+    var $inp = $('<input type="file" accept="image/*" style="display:none;">').appendTo('body');
+    $inp.on('change', function(){
+      var file = this.files && this.files[0];
+      $inp.remove();
+      if (!file) return;
+      if (!/^image\//i.test(file.type)) {
+        alert('Solo se aceptan imágenes (JPG, PNG, WEBP, HEIC, GIF).');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        alert('El archivo supera 10 MB. Comprime la imagen antes de subirla.');
+        return;
+      }
+      // Optimistic UI: show a "Subiendo…" overlay so the operator knows
+      // something is happening (uploads can take a couple of seconds).
+      var $msg = $('<div style="position:fixed;bottom:20px;right:20px;background:#0f172a;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.3);font-size:13px;z-index:9999;">⏳ Subiendo foto de '+esc(prettyLabel)+'…</div>').appendTo('body');
+      var fd = new FormData();
+      fd.append('moto_id', motoId);
+      fd.append('tipo', tipo);
+      fd.append('foto', file);
+      $.ajax({
+        url: '/admin/php/inventario/upload-recepcion-foto.php',
+        method: 'POST',
+        data: fd,
+        processData: false,
+        contentType: false,
+      }).done(function(r){
+        $msg.remove();
+        if (r && r.ok) {
+          // Quick toast + reload detail. Reusing showDetail() so the
+          // operator immediately sees the new photo without re-clicking.
+          var $ok = $('<div style="position:fixed;bottom:20px;right:20px;background:#065f46;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.3);font-size:13px;z-index:9999;">✓ Foto de '+esc(prettyLabel)+' subida correctamente</div>').appendTo('body');
+          setTimeout(function(){ $ok.fadeOut(400, function(){ $(this).remove(); }); }, 2200);
+          showDetail(motoId);
+          // Also refresh the underlying inventory list so any KPI / row
+          // counters that depend on photo state pick up the change.
+          load();
+        } else {
+          alert((r && r.message) || (r && r.error) || 'Error al subir la foto');
+        }
+      }).fail(function(x){
+        $msg.remove();
+        var msg = 'Error de conexión';
+        try { msg = (x.responseJSON && (x.responseJSON.message || x.responseJSON.error)) || msg; } catch(e){}
+        alert(msg);
+      });
+    });
+    $inp.trigger('click');
   }
 
   return { render:render };
