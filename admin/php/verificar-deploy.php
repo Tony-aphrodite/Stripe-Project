@@ -354,6 +354,16 @@ $checks = [
         'showFotoLightbox',
         'Round 30 — PUNTOVOLTIKA recepción historial: fotos abren en lightbox modal (no más botones muertos)'
     ),
+    'r30v2_recepcion_serve_foto' => _checkFile(
+        $base . '/puntosvoltika/php/recepcion/serve-foto.php',
+        'puntoRequireAuth',
+        'Round 30 v2 — serve-foto.php sirve fotos vía PHP (bypassa .htaccess de Plesk)'
+    ),
+    'r30v2_historial_rewrite' => _checkFile(
+        $base . '/puntosvoltika/php/recepcion/historial.php',
+        'rewritePhoto',
+        'Round 30 v2 — historial.php reescribe URLs legacy a serve-foto.php'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

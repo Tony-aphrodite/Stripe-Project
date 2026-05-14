@@ -91,6 +91,23 @@ try {
     puntoJsonOut(['error' => 'Error al consultar historial', 'detail' => $e->getMessage()], 500);
 }
 
+// Round 30 v2 (2026-05-14, Óscar): rewrite the photo URLs so they go
+// through serve-foto.php (a PHP-served read) instead of directly hitting
+// /configurador/php/uploads/recepcion/<file>. That direct path is blocked
+// by Plesk's default .htaccess on many installs, which is why operators
+// see "No se pudo cargar la imagen". The serve helper reads the file via
+// PHP, bypasses the .htaccess restriction, and validates basename so it
+// can't be turned into a generic file browser.
+$rewritePhoto = function (?string $url): ?string {
+    if (!$url) return $url;
+    // Already a serve-foto URL — leave alone.
+    if (strpos($url, 'serve-foto.php') !== false) return $url;
+    // Direct upload URL — convert to serve helper.
+    $base = basename(parse_url($url, PHP_URL_PATH) ?: $url);
+    if ($base === '') return $url;
+    return '/puntosvoltika/php/recepcion/serve-foto.php?f=' . rawurlencode($base);
+};
+
 // Decode the legacy `fotos` JSON column (extra free-form photos) so the
 // frontend doesn't have to do it inline.
 foreach ($rows as &$r) {
@@ -101,6 +118,15 @@ foreach ($rows as &$r) {
         $r['fotos_extra'] = [];
     }
     unset($r['fotos']);
+    // Rewrite the 3 standard photo slots + every entry in fotos_extra.
+    foreach (['foto_sello_url','foto_vin_label_url','foto_unidad_url'] as $k) {
+        if (array_key_exists($k, $r)) $r[$k] = $rewritePhoto($r[$k] ?? null);
+    }
+    if (is_array($r['fotos_extra'])) {
+        $r['fotos_extra'] = array_map(function ($u) use ($rewritePhoto) {
+            return is_string($u) ? $rewritePhoto($u) : $u;
+        }, $r['fotos_extra']);
+    }
 }
 unset($r);
 
