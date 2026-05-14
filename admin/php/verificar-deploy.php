@@ -379,6 +379,21 @@ $checks = [
         '¿Cómo lo arreglo?',
         'Round 30 v5 — Lightbox muestra mensaje amable + pasos para re-subir la foto (detalles técnicos en toggle)'
     ),
+    'r31_admin_detalle_recepcion' => _checkFile(
+        $base . '/admin/php/inventario/detalle.php',
+        "'recepcion' => \$recepcion",
+        'Round 31 — detalle.php expone recepcion_punto con fotos rewriteadas a admin serve'
+    ),
+    'r31_admin_serve_recepcion_foto' => _checkFile(
+        $base . '/admin/php/inventario/serve-recepcion-foto.php',
+        "adminRequireAuth(['admin','cedis','operador'])",
+        'Round 31 — serve-recepcion-foto.php sirve fotos con admin auth + 3 candidate dirs'
+    ),
+    'r31_admin_inv_recepcion_section' => _checkFile(
+        $base . '/admin/js/modules/admin-inventario.js',
+        'Recepción en el punto',
+        'Round 31 — admin-inventario.js: sección "Recepción en el punto" con checks + fotos + actor'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

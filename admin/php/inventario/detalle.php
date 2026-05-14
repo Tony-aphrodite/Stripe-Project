@@ -94,6 +94,63 @@ if ($retencion && !empty($retencion['usuario'])) {
     } catch (Throwable $e) { /* non-fatal */ }
 }
 
+// ── Round 31 (2026-05-14, Óscar) — Recepción info for admin detail ────
+// The moto detail panel previously showed only "Recepción: Pendiente" or
+// "Pendiente" with no further info. The actual reception data (who
+// received it, when, photos, seal info, integrity checks) lives in
+// recepcion_punto + dealer_usuarios, and was only visible from the punto
+// admin's Historial tab. Admin now gets the same info inline so they
+// don't have to switch panels to investigate.
+$recepcion = null;
+try {
+    $rq = $pdo->prepare("
+        SELECT rp.*,
+               rp.freg AS fecha_recepcion,
+               u.nombre AS recibido_por_nombre,
+               u.email  AS recibido_por_email,
+               pv.nombre AS punto_nombre
+          FROM recepcion_punto rp
+          LEFT JOIN dealer_usuarios u  ON u.id  = rp.recibido_por
+          LEFT JOIN puntos_voltika  pv ON pv.id = rp.punto_id
+         WHERE rp.moto_id = ?
+         ORDER BY rp.freg DESC LIMIT 1");
+    $rq->execute([$id]);
+    $recepcion = $rq->fetch(PDO::FETCH_ASSOC) ?: null;
+} catch (Throwable $e) {
+    error_log('detalle.php recepción lookup: ' . $e->getMessage());
+}
+
+// Rewrite legacy photo URLs to go through the admin-side serve helper
+// (same .htaccess-bypass pattern as the punto serve-foto.php). This way
+// admin can view photos even when /configurador/php/uploads/recepcion/
+// is blocked by Plesk.
+if ($recepcion) {
+    $rewriteAdminFoto = function (?string $url): ?string {
+        if (!$url) return $url;
+        if (strpos($url, 'serve-recepcion-foto.php') !== false) return $url;
+        $base = basename(parse_url($url, PHP_URL_PATH) ?: $url);
+        if ($base === '') return $url;
+        return '/admin/php/inventario/serve-recepcion-foto.php?f=' . rawurlencode($base);
+    };
+    foreach (['foto_sello_url','foto_vin_label_url','foto_unidad_url'] as $k) {
+        if (array_key_exists($k, $recepcion)) {
+            $recepcion[$k] = $rewriteAdminFoto($recepcion[$k] ?? null);
+        }
+    }
+    // Decode the legacy `fotos` JSON column (extra free-form photos).
+    $extras = [];
+    if (!empty($recepcion['fotos']) && is_string($recepcion['fotos'])) {
+        $decoded = json_decode($recepcion['fotos'], true);
+        if (is_array($decoded)) {
+            foreach ($decoded as $u) {
+                if (is_string($u) && $u !== '') $extras[] = $rewriteAdminFoto($u);
+            }
+        }
+    }
+    $recepcion['fotos_extra'] = $extras;
+    unset($recepcion['fotos']);
+}
+
 adminJsonOut([
     'moto' => $moto,
     'checklist_origen' => $co->fetch(PDO::FETCH_ASSOC) ?: null,
@@ -105,4 +162,7 @@ adminJsonOut([
     // Round 28: expose the parsed retención context for the UI. NULL when
     // the moto is not retenida or no log entry was found.
     'retencion' => (strtolower((string)($moto['estado'] ?? '')) === 'retenida') ? $retencion : null,
+    // Round 31: reception event with photos + integrity checks. NULL when
+    // no recepción row exists yet.
+    'recepcion' => $recepcion,
 ]);

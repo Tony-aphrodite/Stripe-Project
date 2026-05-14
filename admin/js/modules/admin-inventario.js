@@ -576,6 +576,95 @@ window.AD_inventario = (function(){
         });
       }
 
+      // ── Round 31 (2026-05-14, Óscar) — Recepción info ──────────────────
+      // Show the full recepción event (who received, when, integrity
+      // checks, seal info, 3 photos) inline so admins don't have to
+      // switch to the punto historial view to investigate. Photos use the
+      // admin-side serve-recepcion-foto.php helper which bypasses Plesk's
+      // .htaccess block on /configurador/php/uploads/recepcion/.
+      if (r.recepcion) {
+        var rcp = r.recepcion;
+        html += secHead('Recepción en el punto','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>');
+        var rcpCompletada = rcp.completado == 1 || rcp.completado === '1';
+        var bg = rcpCompletada ? 'rgba(5,150,105,.06)' : 'rgba(217,119,6,.07)';
+        var bd = rcpCompletada ? 'rgba(5,150,105,.20)' : 'rgba(217,119,6,.20)';
+        var stateLabel = rcpCompletada
+          ? '<span style="color:#059669;font-weight:700;">✓ Recepción OK</span>'
+          : '<span style="color:#b45309;font-weight:700;">⏳ Recepción pendiente</span>';
+        html += '<div style="padding:14px 16px;border-radius:8px;background:'+bg+';border:1px solid '+bd+';margin-bottom:12px;font-size:13px;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;">'+
+                  '<div>'+stateLabel+'</div>'+
+                  '<div style="font-size:11.5px;color:var(--ad-dim);text-align:right;">'+
+                    (rcp.fecha_recepcion ? '<div><strong>Fecha:</strong> '+rcp.fecha_recepcion+'</div>' : '')+
+                    (rcp.recibido_por_nombre ? '<div><strong>Recibió:</strong> '+rcp.recibido_por_nombre+'</div>' : '')+
+                    (rcp.punto_nombre ? '<div><strong>Punto:</strong> '+rcp.punto_nombre+'</div>' : '')+
+                  '</div>'+
+                '</div>';
+        // Integrity checklist — show each check with green ✓ / red ✗.
+        function rcpCheck(label, val){
+          var ok = val == 1 || val === 1 || val === '1' || val === true;
+          var unset = (val === null || typeof val === 'undefined');
+          var icon = unset ? '<span style="color:#cbd5e1;">○</span>' :
+                     (ok ? '<span style="color:#059669;">✓</span>' : '<span style="color:#b91c1c;">✗</span>');
+          return '<div style="font-size:12.5px;padding:3px 0;">'+icon+' '+label+'</div>';
+        }
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 16px;margin-top:6px;">';
+        html += rcpCheck('VIN escaneado coincide',    rcp.vin_coincide);
+        html += rcpCheck('Estado físico OK',          rcp.estado_fisico_ok);
+        html += rcpCheck('Sin daños visibles',        rcp.sin_danos);
+        html += rcpCheck('Componentes completos',     rcp.componentes_completos);
+        html += rcpCheck('Batería OK',                rcp.bateria_ok);
+        if (typeof rcp.sello_intacto !== 'undefined' && rcp.sello_intacto !== null) {
+          html += rcpCheck('Sello aplicado e intacto',rcp.sello_intacto);
+        }
+        html += '</div>';
+        // VIN + sello details (when present)
+        var hasIds = rcp.vin_escaneado || rcp.vin_caja || rcp.sello_numero;
+        if (hasIds) {
+          html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.08);font-size:12px;color:#374151;">';
+          if (rcp.vin_escaneado) html += '<div><span style="color:var(--ad-dim);">VIN escaneado:</span> <code>'+rcp.vin_escaneado+'</code></div>';
+          if (rcp.vin_caja)      html += '<div><span style="color:var(--ad-dim);">VIN en caja:</span> <code>'+rcp.vin_caja+'</code></div>';
+          if (rcp.sello_numero)  html += '<div><span style="color:var(--ad-dim);">Número de sello:</span> '+rcp.sello_numero+'</div>';
+          html += '</div>';
+        }
+        // Photos — thumbnails that open in a new tab. Failures handled by
+        // admin-side serve helper (404 with explanation if file missing).
+        function rcpPhoto(url, label){
+          if (!url) return '';
+          var safe = String(url).replace(/"/g,'&quot;');
+          return '<a href="'+safe+'" target="_blank" rel="noopener" '+
+                   'style="display:inline-block;width:88px;height:88px;border-radius:6px;overflow:hidden;border:1px solid #cbd5e1;background:#f1f5f9;margin-right:6px;margin-bottom:6px;text-decoration:none;" '+
+                   'title="'+esc(label)+'">'+
+                   '<img src="'+safe+'" alt="'+esc(label)+'" '+
+                        'style="width:100%;height:100%;object-fit:cover;" loading="lazy" '+
+                        'onerror="this.style.opacity=.25;this.style.background=\'#fef2f2\';this.alt=\'no disponible\';">'+
+                 '</a>';
+        }
+        var photos = '';
+        photos += rcpPhoto(rcp.foto_sello_url,     'Sello');
+        photos += rcpPhoto(rcp.foto_vin_label_url, 'VIN etiqueta');
+        photos += rcpPhoto(rcp.foto_unidad_url,    'Unidad');
+        (rcp.fotos_extra || []).forEach(function(u, i){
+          photos += rcpPhoto(u, 'Extra ' + (i+1));
+        });
+        if (photos) {
+          html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.08);">'+
+                    '<div style="font-size:11px;color:var(--ad-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;">Fotos</div>'+
+                    photos+
+                  '</div>';
+        } else {
+          html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.08);font-size:11.5px;color:var(--ad-dim);font-style:italic;">Sin fotos adjuntas en este registro de recepción.</div>';
+        }
+        // Notes + observations
+        if (rcp.notas) {
+          html += '<div style="margin-top:10px;padding:8px 10px;background:#fff;border-radius:6px;font-size:12.5px;border:1px solid rgba(0,0,0,.06);"><strong>Notas:</strong><br>'+esc(rcp.notas)+'</div>';
+        }
+        if (rcp.observaciones) {
+          html += '<div style="margin-top:6px;padding:8px 10px;background:#fff;border-radius:6px;font-size:12.5px;border:1px solid rgba(0,0,0,.06);"><strong>Observaciones:</strong><br>'+esc(rcp.observaciones)+'</div>';
+        }
+        html += '</div>';
+      }
+
       // ── Round 28 (2026-05-14, Óscar Pesgo Plus VIN ...12) ───────────────
       // Retención (estado='retenida'): the moto is on operational hold,
       // independent of bloqueado_venta. Before Round 28 there was no UI
