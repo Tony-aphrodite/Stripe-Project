@@ -19,6 +19,22 @@ if (!headers_sent()) {
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 }
 
+// ── Round 35 (2026-05-14, Óscar — "No autorizado" al Confirmar recepción) ──
+// El operador del punto llena la recepción (3 fotos + checklist + datos)
+// y eso toma varios minutos. Con el default de PHP (session.gc_maxlifetime
+// = 1440s = 24 min) la sesión expira ANTES de que pueda guardar, y el
+// submit revienta con "No autorizado". Subimos la vida útil de la sesión
+// del PUNTO a 2 horas — suficiente para llenar el form con calma. Aplica
+// SOLO a la cookie VOLTIKA_PUNTO; no toca admin/portal/configurador.
+ini_set('session.gc_maxlifetime', '7200');
+ini_set('session.cookie_lifetime', '7200');
+session_set_cookie_params([
+    'lifetime' => 7200,
+    'path'     => '/',
+    'secure'   => !empty($_SERVER['HTTPS']),
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_name('VOLTIKA_PUNTO');
 session_start();
 

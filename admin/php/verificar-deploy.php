@@ -425,6 +425,17 @@ $checks = [
         '_voltikaCambiarTarjetaCreateSession',
         'Round 34 — cambiar-tarjeta.php: helper de creación de Checkout Session refactorizado para reintento'
     ),
+    // ── Round 35 (2026-05-14) — Punto: sesión 2h + manejo amable de 401 ───
+    'r35_punto_session_lifetime' => _checkFile(
+        $base . '/puntosvoltika/php/bootstrap.php',
+        "ini_set('session.gc_maxlifetime', '7200')",
+        'Round 35 — bootstrap punto: vida de sesión a 2 horas (evita "No autorizado" al llenar recepción larga)'
+    ),
+    'r35_punto_recepcion_401_handler' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-recepcion.js',
+        'Tu sesión expiró mientras llenabas el formulario',
+        'Round 35 — punto-recepcion.js: 401 muestra mensaje amable + auto-prompt de login (datos del form se preservan)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

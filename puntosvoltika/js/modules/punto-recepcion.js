@@ -534,6 +534,30 @@ window.PV_recepcion = (function(){
       PVApp.api('recepcion/recibir.php', data).done(function(r){
         if(r.ok){ PVApp.closeModal(); PVApp.toast('Moto recibida'); render(); }
       }).fail(function(x){
+        // Round 35 (2026-05-14, Óscar — "voltika.mx dice: No autorizado"):
+        // si la sesión expiró mientras el operador llenaba el form, en
+        // lugar de mostrar un alert críptico, le explicamos qué pasó y le
+        // ofrecemos volver a iniciar sesión SIN perder lo que llevaba
+        // hecho — los campos del modal siguen rellenados al regresar.
+        if (x && x.status === 401) {
+          alert(
+            'Tu sesión expiró mientras llenabas el formulario.\n\n' +
+            'Vuelve a iniciar sesión y presiona "Confirmar recepción" otra vez — los datos que cargaste siguen aquí.'
+          );
+          // Trigger the SPA's auth-check so it shows the login screen.
+          // Once the operator logs in again, the modal is still open with
+          // every field + photo intact, so they can press save once more.
+          if (window.PVApp && typeof PVApp.api === 'function') {
+            PVApp.api('auth/me.php').fail(function(){
+              if (window.PV_login && typeof PV_login.render === 'function') {
+                PV_login.render();
+              } else {
+                location.reload();
+              }
+            });
+          }
+          return;
+        }
         // Customer brief 2026-05-09 (Óscar, 5th round — "cannot add a
         // motorcycle"): when the backend rejects with the strict-validation
         // missing-fields error, list each missing field by name so the
