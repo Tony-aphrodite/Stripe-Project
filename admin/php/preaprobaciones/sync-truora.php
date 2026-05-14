@@ -325,10 +325,10 @@ $walk = function ($node, $contextKey = '', $parentKey = '') use (&$walk, &$image
     }
 };
 foreach ($imageSources as $src) $walk($src);
-$debugInfo['classified'] = array_map(function ($u) {
-    // Truncate signed URLs to keep the response compact.
-    return is_string($u) ? (strlen($u) > 160 ? substr($u, 0, 160) . '…' : $u) : null;
-}, $imageUrls);
+// Round 21 v6: full URLs so the admin can inspect query parameters
+// (presigned signature vs unsigned CDN). Previously truncated to 160
+// chars, which hid the X-Amz-* params and prevented diagnosis.
+$debugInfo['classified'] = $imageUrls;
 
 // ── Step 7: try to download each classified URL to local uploads dir ──────
 // Pattern matches verificar-identidad.php naming so admin-identidad.php /
@@ -414,6 +414,11 @@ foreach ($imageUrls as $kind => $url) {
         'kind' => $kind, 'http_code' => $code, 'content_type' => $ct,
         'bytes' => is_string($bin) ? strlen($bin) : 0,
         'curl_err' => $err ?: null, 'saved_as' => null,
+        // Round 21 v6 debug: include the FULL URL we tried (was hidden by
+        // classified-only truncation). Plus a sample of the 403 body so
+        // we can spot AWS S3 error codes without re-running curl manually.
+        'url'      => $url,
+        'response_sample' => is_string($bin) ? substr($bin, 0, 400) : null,
         'attempts' => $attempts,
     ];
 
