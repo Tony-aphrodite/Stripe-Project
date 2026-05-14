@@ -102,6 +102,22 @@ $checks = [
         'contratoContadoSanitizeFullName(',
         'Round 15 — descargar-contrato.php regen sanitiza el nombre persistido'
     ),
+    // ── Round 16 (2026-05-14) — Dossier de Defensa PDF ─────────────────────
+    'r16_dossier_uses_sanitizer' => _checkFile(
+        $base . '/configurador/php/dossier-defensa.php',
+        'contratoContadoSanitizeFullName(',
+        'Round 16 — Dossier PDF: sanitizer aplicado al nombre del cliente'
+    ),
+    'r16_dossier_modalidad_normalized' => _checkFile(
+        $base . '/configurador/php/dossier-defensa.php',
+        "'CONTADO'",
+        'Round 16 — Dossier PDF: Modalidad de pago "UNICO" normalizada a "CONTADO"'
+    ),
+    'r16_dossier_ip_fallback' => _checkFile(
+        $base . '/configurador/php/dossier-defensa.php',
+        'No capturada por el sistema en el momento de la aceptación',
+        'Round 16 — Dossier PDF: fallback explícito para IP / Geo / Dispositivo / SHA-256'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -194,7 +210,7 @@ code{background:#1e293b;color:#e2e8f0;padding:1px 6px;border-radius:3px;font-siz
 ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
 </style></head><body>
 
-<h1>🚀 Verificación de despliegue — Round 14 + 15 (2026-05-13 / 2026-05-14)</h1>
+<h1>🚀 Verificación de despliegue — Round 14 + 15 + 16 (2026-05-13 / 2026-05-14)</h1>
 <div class="sub">Confirma que los archivos modificados llegaron al servidor con la versión correcta.</div>
 
 <?php if ($allOk): ?>
@@ -293,6 +309,16 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>✅ Esperado: 16 columnas en orden oficial NIP-CIEC PF (FOLIO_CDC, FECHA_APROBACION_DE_CONSULTA, …, ACEPTACION_TERMINOS_Y_CONDICIONES).</li>
     <li>Columna <strong>I</strong> debe llamarse <code>Estado</code> con <strong>e minúscula</strong> (no <code>ESTADO</code>).</li>
     <li><code>NOMBRE_CLIENTE</code> en formato <code>APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES</code> MAYÚSCULAS.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 16 — Dossier de Defensa (DATOS DE LA OPERACIÓN + ACEPTACIÓN ELECTRÓNICA):</strong>
+  <ul>
+    <li>Admin → orden K-2605-0002 → "Documentos del pedido" → <strong>Dossier de Defensa (ZIP)</strong> → descargar.</li>
+    <li>Abrir el PDF <code>00_INDICE.pdf</code> dentro del ZIP.</li>
+    <li>✅ <strong>"Cliente (nombre completo)"</strong>: ahora dice <code>Adrian Montoya Diaz</code> (sin duplicación).</li>
+    <li>✅ <strong>"Modalidad de pago"</strong>: dice <code>CONTADO</code> (no <code>UNICO</code>).</li>
+    <li>✅ Bloque <strong>"ACEPTACIÓN ELECTRÓNICA DEL CONTRATO"</strong>: IP / Geo / User-Agent / SHA-256 muestran texto explicativo (no <code>--</code>).</li>
+    <li>✅ <strong>"Código OTP validado"</strong>: dice <code>Pendiente — modalidad contado (OTP final al momento de la entrega)</code> en lugar de <code>No</code>.</li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 15 — Contrato DÉCIMA SÉPTIMA (REGISTRO DE ACEPTACIÓN):</strong>

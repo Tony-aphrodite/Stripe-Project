@@ -661,7 +661,12 @@ function _dossierCollect(array $ctx, string $workDir): array {
         'stripe_pi'        => $tx['stripe_pi'] ?? null,
         'pago_estado'      => $tx['pago_estado'] ?? null,
         'cliente' => [
-            'nombre'   => $tx['nombre'] ?? null,
+            // Customer fix 2026-05-14 round 16: sanitize stored nombre so
+            // legacy duplicates ("Adrian Montoya Diaz Montoya Diaz") don't
+            // make it into the JSON evidence package either.
+            'nombre'   => function_exists('contratoContadoSanitizeFullName')
+                          ? contratoContadoSanitizeFullName((string)($tx['nombre'] ?? ''))
+                          : ($tx['nombre'] ?? null),
             'email'    => $tx['email']  ?? null,
             'telefono' => $tx['telefono'] ?? null,
             'rfc'      => $ctx['cliente']['rfc'] ?? null,
@@ -823,18 +828,38 @@ function _dossierBuildMasterPdf(string $outPath, array $ctx, array $componentes,
     $pdf->Ln(2);
 
     // ─── DATOS DE LA OPERACIÓN ────────────────────────────────────────
+    // Customer fix 2026-05-14 round 16 (Óscar, Dossier screenshot):
+    //   1. "Cliente (nombre completo)" showed "Adrian Montoya Diaz Montoya Diaz"
+    //      same root cause as the contract — duplicated apellidos. Pull the
+    //      sanitizer from contrato-contado.php (single source of truth).
+    //   2. "Modalidad de pago: UNICO" was inconsistent with the contract
+    //      ("CONTADO"). Both refer to the same flow (one-shot card payment);
+    //      we normalise to CONTADO here so the dossier matches the contract.
+    //   3. The ACEPTACIÓN ELECTRÓNICA block rendered "--" for IP/UA/SHA-256
+    //      when the row had NULLs. Replaced with explicit fallback text so
+    //      the document reads coherently even when capture failed.
+    if (!function_exists('contratoContadoSanitizeFullName')) {
+        $contratoContadoPath = __DIR__ . '/contrato-contado.php';
+        if (file_exists($contratoContadoPath)) require_once $contratoContadoPath;
+    }
     _dossierH2($pdf, 'DATOS DE LA OPERACIÓN');
     $tx = $ctx['transaccion'];
     $cli = $ctx['cliente'] ?? [];
+    $clienteNombre = function_exists('contratoContadoSanitizeFullName')
+        ? contratoContadoSanitizeFullName((string)($tx['nombre'] ?? ''))
+        : (string)($tx['nombre'] ?? '—');
+    if ($clienteNombre === '') $clienteNombre = '—';
+    $tpagoRaw   = strtolower(trim((string)($tx['tpago'] ?? '')));
+    $modalidad  = ($tpagoRaw === 'unico' || $tpagoRaw === '') ? 'CONTADO' : strtoupper($tpagoRaw);
     _dossierTable($pdf, [
         ['Folio del pedido',          $ctx['pedido_corto'] ?: $pedido],
         ['VIN / NIV del vehículo',    $vin],
         ['Modelo · color',            ($ctx['moto']['modelo'] ?? '—') . ' · ' . ($ctx['moto']['color'] ?? '—')],
-        ['Cliente (nombre completo)', $tx['nombre'] ?? '—'],
+        ['Cliente (nombre completo)', $clienteNombre],
         ['Correo electrónico',        $tx['email']    ?? '—'],
         ['Teléfono',                  $tx['telefono'] ?? '—'],
         ['RFC · CURP',                ($cli['rfc'] ?? '—') . ' · ' . ($cli['curp'] ?? '—')],
-        ['Modalidad de pago',         strtoupper($tx['tpago'] ?? '—')],
+        ['Modalidad de pago',         $modalidad],
         ['Monto total cobrado',       $fmtMoney($tx['total'] ?? 0)],
         ['Stripe PaymentIntent',      $tx['stripe_pi'] ?? '—'],
         ['Fecha de compra',           $tx['freg'] ?? '—'],
@@ -842,14 +867,27 @@ function _dossierBuildMasterPdf(string $outPath, array $ctx, array $componentes,
     ], $enc);
 
     // ─── ACEPTACIÓN ELECTRÓNICA DEL CONTRATO ─────────────────────────
+    // Explicit fallback text (matches contrato-contado.php REGISTRO render).
+    $acceptAt  = trim((string)($tx['contrato_aceptado_at'] ?? ''));
+    $acceptIp  = trim((string)($tx['contrato_aceptado_ip'] ?? ''));
+    $acceptUa  = trim((string)($tx['contrato_aceptado_ua'] ?? ''));
+    $acceptGeo = trim((string)($tx['contrato_geolocation'] ?? ''));
+    $acceptSha = trim((string)($tx['contrato_pdf_hash']    ?? ''));
+    if ($acceptAt  === '') $acceptAt  = 'No registrado en el sistema';
+    if ($acceptIp  === '') $acceptIp  = 'No capturada por el sistema en el momento de la aceptación';
+    if ($acceptUa  === '') $acceptUa  = 'No capturado por el sistema en el momento de la aceptación';
+    if ($acceptGeo === '') $acceptGeo = 'No proporcionada por el usuario (permiso denegado o no solicitado)';
+    if ($acceptSha === '') $acceptSha = 'Pendiente — se calculará al persistir el PDF del contrato';
+
+    // ─── ACEPTACIÓN ELECTRÓNICA DEL CONTRATO ─────────────────────────
     _dossierH2($pdf, 'ACEPTACIÓN ELECTRÓNICA DEL CONTRATO (artículo 89 Código de Comercio)');
     _dossierTable($pdf, [
-        ['Checkbox aceptado en',      $tx['contrato_aceptado_at']  ?? '—'],
-        ['Dirección IP',              $tx['contrato_aceptado_ip']  ?? '—'],
-        ['Geolocalización',           $tx['contrato_geolocation']  ?? 'No proporcionada'],
-        ['User-Agent (dispositivo)',  substr($tx['contrato_aceptado_ua'] ?? '—', 0, 90)],
-        ['Código OTP validado',       ($tx['contrato_otp_validated'] ?? 0) ? 'Sí' : 'No'],
-        ['SHA-256 contrato firmado',  $tx['contrato_pdf_hash'] ?? '—'],
+        ['Checkbox aceptado en',      $acceptAt],
+        ['Dirección IP',              $acceptIp],
+        ['Geolocalización',           $acceptGeo],
+        ['User-Agent (dispositivo)',  substr($acceptUa, 0, 120)],
+        ['Código OTP validado',       ($tx['contrato_otp_validated'] ?? 0) ? 'Sí' : 'Pendiente — modalidad ' . strtolower($modalidad) . ' (OTP final al momento de la entrega)'],
+        ['SHA-256 contrato firmado',  $acceptSha],
     ], $enc);
 
     // ─── VALIDACIÓN DE IDENTIDAD (TRUORA) ────────────────────────────
