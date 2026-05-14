@@ -339,27 +339,82 @@ if (!is_dir($uploadDir)) @mkdir($uploadDir, 0775, true);
 
 $downloaded = [];
 $prefix = 'truorasync_' . preg_replace('/[^a-zA-Z0-9]/', '', $accountId ?: $processId) . '_' . time();
+// Round 21 v6 (Óscar, Sain #20 debug): Truora returns image URLs under
+// TWO different domains depending on flow_id/version:
+//   • truora-files-production.s3.us-east-1.amazonaws.com (presigned S3) →
+//     no extra auth headers, the URL itself carries X-Amz-Signature.
+//   • files.truora.com (Truora's CDN/proxy) → needs Truora-API-Key
+//     header; without it returns 403 + 110-byte XML AccessDenied.
+// Try the cheapest variant first (no headers), and on 403 retry with the
+// API key. Optionally try with extra hints headers as a last resort.
+$downloadOne = function (string $url) {
+    $attempts = [];
+    $tryWith = function (array $extraHeaders) use ($url, &$attempts) {
+        $ch = curl_init($url);
+        $headers = ['Accept: image/*,*/*'];
+        foreach ($extraHeaders as $h) $headers[] = $h;
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 18,
+            CURLOPT_HTTPHEADER     => $headers,
+        ]);
+        $bin  = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $ct   = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        $err  = (string)curl_error($ch);
+        curl_close($ch);
+        $attempts[] = ['headers_used' => $extraHeaders, 'code' => $code, 'ct' => $ct, 'bytes' => strlen((string)$bin)];
+        return [$code, $bin, $ct, $err];
+    };
+
+    $isTruoraDomain = (stripos($url, 'truora.com') !== false);
+    $isS3Domain     = (stripos($url, 'amazonaws.com') !== false);
+    $apiKey         = defined('TRUORA_API_KEY') ? TRUORA_API_KEY : '';
+
+    // Attempt 1 — no auth (works for presigned S3 URLs).
+    if ($isS3Domain || !$isTruoraDomain) {
+        list($code, $bin, $ct, $err) = $tryWith([]);
+        if ($code >= 200 && $code < 300 && $bin && strlen($bin) > 1024) {
+            return [$code, $bin, $ct, $err, $attempts];
+        }
+    }
+
+    // Attempt 2 — with Truora API key (needed for files.truora.com).
+    if ($isTruoraDomain && $apiKey !== '') {
+        list($code, $bin, $ct, $err) = $tryWith(['Truora-API-Key: ' . $apiKey]);
+        if ($code >= 200 && $code < 300 && $bin && strlen($bin) > 1024) {
+            return [$code, $bin, $ct, $err, $attempts];
+        }
+    }
+
+    // Attempt 3 — Truora API key + Origin/Referer (some CDNs gate by these).
+    if ($isTruoraDomain && $apiKey !== '') {
+        list($code, $bin, $ct, $err) = $tryWith([
+            'Truora-API-Key: ' . $apiKey,
+            'Origin: https://voltika.mx',
+            'Referer: https://voltika.mx/',
+        ]);
+        if ($code >= 200 && $code < 300 && $bin && strlen($bin) > 1024) {
+            return [$code, $bin, $ct, $err, $attempts];
+        }
+    }
+
+    // Last attempt: no-domain-detected fallback (rare). Just try with API key.
+    if (!$isS3Domain && !$isTruoraDomain && $apiKey !== '') {
+        list($code, $bin, $ct, $err) = $tryWith(['Truora-API-Key: ' . $apiKey]);
+    }
+    return [$code, $bin, $ct, $err, $attempts];
+};
+
 foreach ($imageUrls as $kind => $url) {
-    // Round 21 v5: AWS S3 signed URLs reject extra Authorization headers
-    // because the X-Amz-Signature is calculated against a specific header
-    // set. Send NO custom headers for the actual image download — the
-    // signed URL alone authenticates the request.
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 18,
-    ]);
-    $bin  = curl_exec($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $ct   = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-    $err  = (string)curl_error($ch);
-    curl_close($ch);
+    list($code, $bin, $ct, $err, $attempts) = $downloadOne($url);
 
     $dlInfo = [
         'kind' => $kind, 'http_code' => $code, 'content_type' => $ct,
         'bytes' => is_string($bin) ? strlen($bin) : 0,
         'curl_err' => $err ?: null, 'saved_as' => null,
+        'attempts' => $attempts,
     ];
 
     if ($code >= 200 && $code < 300 && $bin && strlen($bin) > 1024) {
