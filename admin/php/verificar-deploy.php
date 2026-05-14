@@ -238,6 +238,21 @@ $checks = [
         'no aplicable (rechazado)',
         'Round 21 v2 — admin-ventas.js: campos null muestran "no aplicable (rechazado)" cuando el proceso fue rechazado'
     ),
+    'r21v4_result_endpoint' => _checkFile(
+        $base . '/admin/php/preaprobaciones/sync-truora.php',
+        "'/v1/processes/' . urlencode(\$processId) . '/result'",
+        'Round 21 v4 — sync-truora.php: incluye /v1/processes/<id>/result como image source (donde viven front_image/reverse_image)'
+    ),
+    'r21v4_no_downgrade' => _checkFile(
+        $base . '/admin/php/preaprobaciones/sync-truora.php',
+        '$wasApproved',
+        'Round 21 v4 — sync-truora.php: NUNCA degrada success → failure (preserva la aprobación histórica)'
+    ),
+    'r21v4_debug_page' => _checkFile(
+        $base . '/admin/php/preaprobaciones/truora-payload-debug.php',
+        'Truora payload debug',
+        'Round 21 v4 — truora-payload-debug.php: visualizador de respuesta cruda y fetch_log'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
