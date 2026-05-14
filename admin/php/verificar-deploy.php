@@ -273,6 +273,12 @@ $checks = [
         'vi.id                AS verif_id',
         'Round 21 v5 — listar.php expone vi.id para que el Sync targetee la row exacta'
     ),
+    // ── Round 22 (2026-05-14) — Webhook auto-captures photos for new customers ─
+    'r22_webhook_capture' => _checkFile(
+        $base . '/configurador/php/truora-webhook.php',
+        'truoraCaptureProcessPhotos',
+        'Round 22 — Webhook descarga fotos INE+selfie inmediatamente al recibir éxito de Truora (URLs frescas <15min)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -365,7 +371,7 @@ code{background:#1e293b;color:#e2e8f0;padding:1px 6px;border-radius:3px;font-siz
 ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
 </style></head><body>
 
-<h1>🚀 Verificación de despliegue — Round 14 → 21 (2026-05-13 / 2026-05-14)</h1>
+<h1>🚀 Verificación de despliegue — Round 14 → 22 (2026-05-13 / 2026-05-14)</h1>
 <div class="sub">Confirma que los archivos modificados llegaron al servidor con la versión correcta.</div>
 
 <?php if ($allOk): ?>

@@ -579,6 +579,198 @@ function truoraProcessEvent(PDO $pdo, array $ev): void {
             $pdo->prepare("INSERT INTO verificaciones_identidad (" . implode(',', $cols) . ")
                 VALUES (" . implode(',', array_fill(0, count($cols), '?')) . ")")
                 ->execute(array_values($fields));
+            $existingId = (int)$pdo->lastInsertId();
         } catch (Throwable $e) { error_log('webhook insert: ' . $e->getMessage()); }
     }
+
+    // ── Round 22 (2026-05-14, Óscar) — Auto-capture INE + selfie photos ────
+    // Truora returns the document/selfie images in /v1/processes/<id>/result
+    // as 15-minute presigned S3 URLs. After ~15 min those URLs rotate to a
+    // CDN form on `files.truora.com` that we cannot download from backend.
+    // Webhook arrives at completion time → URLs are fresh → this is the
+    // only window where we can pull the photos into our own storage.
+    //
+    // ONLY runs on the final success event so we don't waste requests on
+    // every intermediate step event. Failed processes have no photos worth
+    // archiving (Truora discards rejected documents per their TOS).
+    if ($approved === 1 && $existingId) {
+        try {
+            truoraCaptureProcessPhotos($pdo, $processId, (int)$existingId, $accountId);
+        } catch (Throwable $e) {
+            error_log('webhook photo-capture failed (process=' . $processId . '): ' . $e->getMessage());
+        }
+    }
+}
+
+/**
+ * Round 22 — Download INE front/reverse + selfie from Truora's process
+ * result while the presigned S3 URLs are still valid (~15 min window).
+ *
+ * Saves files to configurador/php/uploads/ with the legacy naming
+ * convention (`<prefix>_ine_frente.png`, `_ine_reverso.png`, `_selfie.png`)
+ * so admin-identidad.php's substring matcher keeps working unchanged.
+ * Updates verificaciones_identidad.files_saved with the JSON array of
+ * filenames the admin Documentos modal already knows how to render.
+ *
+ * Returns the number of photos successfully saved (0..3). All failures
+ * are logged to truora_fetch_log + error_log so future investigations
+ * can replay them.
+ */
+function truoraCaptureProcessPhotos(PDO $pdo, string $processId, int $verifId, string $accountId = ''): int {
+    if ($processId === '' || $verifId <= 0) return 0;
+
+    // Step 1 — fetch /v1/processes/<id>/result (this is where presigned URLs
+    // live). truoraFetchProcessDetails returns the FIRST 200; explicitly
+    // call /result so we don't depend on candidate ordering.
+    if (!defined('TRUORA_IDENTITY_API_URL')) define('TRUORA_IDENTITY_API_URL', 'https://api.identity.truora.com');
+    $resultUrl = TRUORA_IDENTITY_API_URL . '/v1/processes/' . urlencode($processId) . '/result';
+
+    $ch = curl_init($resultUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 12,
+        CURLOPT_HTTPHEADER     => [
+            'Truora-API-Key: ' . (defined('TRUORA_API_KEY') ? TRUORA_API_KEY : ''),
+            'Accept: application/json',
+        ],
+    ]);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    // Audit-log so we can replay this fetch later if photos fail.
+    try {
+        $pdo->prepare("INSERT INTO truora_fetch_log
+                (process_id, url, http_code, response, curl_err)
+            VALUES (?, ?, ?, ?, NULL)")
+            ->execute([$processId, '/result (webhook capture)', $code, substr((string)$body, 0, 8000)]);
+    } catch (Throwable $e) {}
+
+    if ($code < 200 || $code >= 300 || !$body) {
+        error_log('truoraCaptureProcessPhotos: /result returned ' . $code . ' for ' . $processId);
+        return 0;
+    }
+    $result = json_decode((string)$body, true);
+    if (!is_array($result)) return 0;
+
+    // Step 2 — walk the response for image URLs. Truora returns:
+    //   { "front_image": "...", "reverse_image": "...", ... selfie under
+    //     face validation block ... }
+    // Same classifier we use in sync-truora.php — recognise `front_image`,
+    // `reverse_image`, and any selfie/face URL pointing at a Truora-owned
+    // host (AWS S3 presigned OR files.truora.com — though the latter
+    // shouldn't appear yet at webhook time).
+    $imageUrls = [];
+    $walk = function ($node, $contextKey = '', $parentKey = '') use (&$walk, &$imageUrls) {
+        if (is_array($node)) {
+            foreach ($node as $k => $v) {
+                $cur = is_string($k) ? strtolower((string)$k) : '';
+                $walk($v, $cur ?: $contextKey, $contextKey);
+            }
+            return;
+        }
+        if (!is_string($node)) return;
+        if (!preg_match('#^https?://#i', $node)) return;
+        $hayKey  = $contextKey . ' ' . $parentKey;
+        $isImg   = preg_match('#\.(jpe?g|png|webp|heic)(\?|$)#i', $node);
+        $isTru   = (stripos($node, 'truora') !== false);
+        $isAws   = (stripos($node, 'x-amz-signature') !== false || stripos($node, 'amazonaws.com') !== false);
+        $isImgK  = preg_match('/(url|link|image|picture|document|photo|file)/', $hayKey);
+        if (!$isImg && !$isTru && !$isAws && !$isImgK) return;
+        $hay = $hayKey . ' ' . strtolower($node);
+        $key = null;
+        if (preg_match('/(selfie|liveness|face|portrait|user_picture)/', $hay))      $key = 'selfie';
+        elseif (preg_match('/(reverse|reverso|back\b|trasera|trasero|verso)/', $hay)) $key = 'ine_reverso';
+        elseif (preg_match('/(front|frente|delantera|delantero|obverse|anverso)/', $hay)) $key = 'ine_frente';
+        elseif (preg_match('/(document_image|id_card_image|ine_image|identification_image)/', $hay)) $key = 'ine_frente';
+        if ($key && empty($imageUrls[$key])) $imageUrls[$key] = $node;
+    };
+    $walk($result);
+    if (empty($imageUrls)) {
+        error_log('truoraCaptureProcessPhotos: no image URLs found in /result for ' . $processId);
+        return 0;
+    }
+
+    // Step 3 — pick a writable uploads dir + persisted-filename prefix.
+    $uploadDir = __DIR__ . '/uploads';
+    if (!is_dir($uploadDir)) @mkdir($uploadDir, 0775, true);
+    $prefix = 'truorahook_' . preg_replace('/[^a-zA-Z0-9]/', '', $accountId ?: $processId) . '_' . time();
+
+    // Step 4 — download each URL with the right auth scheme per domain
+    // (presigned S3 → no headers; truora.com → API key). Same as the
+    // sync-truora.php downloader to keep behavior consistent.
+    $apiKey  = defined('TRUORA_API_KEY') ? TRUORA_API_KEY : '';
+    $download = function (string $url) use ($apiKey) {
+        $isTruoraDomain = (stripos($url, 'truora.com') !== false);
+        $isS3Domain     = (stripos($url, 'amazonaws.com') !== false);
+        $hdrs = ['Accept: image/*,*/*'];
+        if ($isTruoraDomain && !$isS3Domain && $apiKey !== '') {
+            $hdrs[] = 'Truora-API-Key: ' . $apiKey;
+        }
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 18,
+            CURLOPT_HTTPHEADER     => $hdrs,
+        ]);
+        $bin  = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $ct   = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        curl_close($ch);
+        return [$code, $bin, $ct];
+    };
+
+    $saved = [];
+    foreach ($imageUrls as $kind => $url) {
+        list($code, $bin, $ct) = $download($url);
+        if ($code < 200 || $code >= 300 || !$bin || strlen($bin) < 1024) {
+            error_log("truoraCaptureProcessPhotos: $kind download HTTP=$code bytes=" . strlen((string)$bin) . " url=$url");
+            continue;
+        }
+        $ext = 'jpg';
+        if (stripos($ct, 'png')  !== false) $ext = 'png';
+        if (stripos($ct, 'webp') !== false) $ext = 'webp';
+        if (preg_match('/\.(jpe?g|png|webp|heic)(\?|$)/i', $url, $m)) $ext = strtolower($m[1]);
+        $fname = $prefix . '_' . $kind . '.' . $ext;
+        if (@file_put_contents($uploadDir . '/' . $fname, $bin) !== false) {
+            $saved[] = $fname;
+        }
+    }
+
+    if (!empty($saved)) {
+        // Merge with anything that was already on the row (defensive against
+        // retried webhooks for the same process — never blow away existing
+        // good captures).
+        try {
+            $existing = [];
+            $q = $pdo->prepare("SELECT files_saved FROM verificaciones_identidad WHERE id = ?");
+            $q->execute([$verifId]);
+            $raw = $q->fetchColumn();
+            if ($raw) {
+                $decoded = json_decode((string)$raw, true);
+                if (is_array($decoded)) $existing = $decoded;
+            }
+            // Drop legacy entries for the same kinds we just refreshed.
+            $existing = array_values(array_filter($existing, function ($fn) use ($saved) {
+                if (!is_string($fn)) return false;
+                $l = strtolower($fn);
+                foreach (['_selfie', '_ine_frente', '_ine_reverso'] as $needle) {
+                    foreach ($saved as $newFn) {
+                        if (strpos(strtolower($newFn), $needle) !== false && strpos($l, $needle) !== false) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }));
+            $merged = array_values(array_unique(array_merge($existing, $saved)));
+            $pdo->prepare("UPDATE verificaciones_identidad SET files_saved = ? WHERE id = ?")
+                ->execute([json_encode($merged, JSON_UNESCAPED_SLASHES), $verifId]);
+        } catch (Throwable $e) {
+            error_log('truoraCaptureProcessPhotos persist: ' . $e->getMessage());
+        }
+        error_log('truoraCaptureProcessPhotos: captured ' . count($saved) . ' photos for process ' . $processId);
+    }
+    return count($saved);
 }
