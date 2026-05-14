@@ -53,20 +53,39 @@ if (!preg_match('/^[A-Za-z0-9_.-]+\.(jpe?g|png|webp|heic|gif)$/i', $basename)) {
     exit;
 }
 
-$uploadsDir = realpath(__DIR__ . '/../../../configurador/php/uploads/recepcion');
-if (!$uploadsDir) {
-    // Directory doesn't exist on disk at all.
+// Round 30 v4: recibir.php now tries multiple writable upload locations
+// (canonical → /admin/uploads/recepcion-puntos/ → /tmp). serve-foto.php
+// must check the same locations in the same order to find any file
+// regardless of where the upload landed.
+$candidates = array_filter([
+    realpath(__DIR__ . '/../../../configurador/php/uploads/recepcion'),
+    realpath(__DIR__ . '/../../../admin/uploads/recepcion-puntos'),
+    realpath(sys_get_temp_dir() . '/voltika_recepcion_fotos'),
+]);
+
+if (empty($candidates)) {
+    // None of the candidate dirs even exist yet — no photos saved.
     http_response_code(404);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Uploads directory missing';
+    echo 'Uploads directory missing (no candidate location exists yet — no photos have been uploaded successfully)';
     exit;
 }
-$path = $uploadsDir . '/' . $basename;
-$realPath = realpath($path);
-if (!$realPath || strpos($realPath, $uploadsDir) !== 0 || !is_file($realPath)) {
+
+$realPath = null;
+$searchedIn = [];
+foreach ($candidates as $dir) {
+    $searchedIn[] = $dir;
+    $tryPath = $dir . '/' . $basename;
+    $resolved = realpath($tryPath);
+    if ($resolved && strpos($resolved, $dir) === 0 && is_file($resolved)) {
+        $realPath = $resolved;
+        break;
+    }
+}
+if (!$realPath) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'File not found: ' . $basename;
+    echo "File not found: $basename\n\nSearched in:\n - " . implode("\n - ", $searchedIn);
     exit;
 }
 

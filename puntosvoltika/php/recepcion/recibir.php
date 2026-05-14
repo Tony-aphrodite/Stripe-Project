@@ -139,18 +139,52 @@ if ($missing) {
 }
 $allOk = true; // all required fields validated above; legacy flag kept for downstream code
 
-// ── Bug 3.3: persist optional photos to disk ─────────────────────────────
-$uploadsDir = __DIR__ . '/../../../configurador/php/uploads/recepcion';
-if (!is_dir($uploadsDir)) @mkdir($uploadsDir, 0755, true);
+// ── Bug 3.3 + Round 30 v4: persist optional photos to disk ─────────────
+// Customer report 2026-05-14 (Óscar — "Uploads directory missing"): every
+// previous upload to /configurador/php/uploads/recepcion/ silently failed
+// because Plesk's default permissions block mkdir() under
+// configurador/php/. Photos appeared "saved" (recibir.php returned ok)
+// but no file existed on disk, so the historial lightbox always showed
+// "No se pudo cargar la imagen". Mirror the contrato-contado.php /tmp
+// fallback pattern: try the canonical path first; if mkdir or the write
+// is rejected, fall back to /tmp/voltika_recepcion_fotos which is always
+// writable. Persist the resolved absolute path so serve-foto.php can
+// find it regardless of where it ended up.
+function _puntoResolveUploadDir(): array {
+    $candidates = [
+        __DIR__ . '/../../../configurador/php/uploads/recepcion',
+        __DIR__ . '/../../../admin/uploads/recepcion-puntos',
+        sys_get_temp_dir() . '/voltika_recepcion_fotos',
+    ];
+    foreach ($candidates as $c) {
+        if (!is_dir($c)) {
+            @mkdir($c, 0775, true);
+            @chmod($c, 0775);
+        }
+        if (is_dir($c) && is_writable($c)) {
+            return [$c, basename($c)];   // [absolute, dirname for serve]
+        }
+    }
+    return ['', ''];
+}
+[$uploadsDir, $uploadsLabel] = _puntoResolveUploadDir();
+
 function _puntoSavePhoto($b64, $tipo, $motoId, $uploadsDir) {
     if (!$b64 || !is_string($b64)) return null;
+    if ($uploadsDir === '')        return null;
     $clean = preg_replace('#^data:image/\w+;base64,#', '', $b64);
     $bin = base64_decode($clean);
     if (!$bin) return null;
     $fname = "{$tipo}_{$motoId}_" . time() . '_' . substr(md5(uniqid('', true)), 0, 6) . '.jpg';
     $path  = "$uploadsDir/$fname";
-    @file_put_contents($path, $bin);
-    return '/configurador/php/uploads/recepcion/' . $fname;
+    $ok = @file_put_contents($path, $bin);
+    if ($ok === false || $ok === 0) {
+        error_log('recibir.php save failed: ' . $tipo . ' moto=' . $motoId . ' dir=' . $uploadsDir);
+        return null;
+    }
+    // Always return through the serve helper — it knows how to look up the
+    // file in any of the candidate locations.
+    return '/puntosvoltika/php/recepcion/serve-foto.php?f=' . rawurlencode($fname);
 }
 $urlSello   = _puntoSavePhoto($d['foto_sello']     ?? null, 'sello',     $motoId, $uploadsDir);
 $urlVinLbl  = _puntoSavePhoto($d['foto_vin_label'] ?? null, 'vin_label', $motoId, $uploadsDir);

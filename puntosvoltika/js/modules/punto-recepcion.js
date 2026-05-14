@@ -194,14 +194,45 @@ window.PV_recepcion = (function(){
     );
     $('body').append($overlay);
     // Surface load failures so the operator knows the file is missing.
+    // Round 30 v3: when the <img> fails, follow up with a fetch() so we
+    // can show the actual HTTP status + response body. Browsers don't
+    // expose those on <img onerror>, so a parallel fetch is the cleanest
+    // way to surface "404 file not found" vs "401 unauth" vs "500 error".
     $overlay.find('.pv-foto-img').on('error', function(){
-      $overlay.find('.pv-foto-body').html(
+      var $body = $overlay.find('.pv-foto-body');
+      $body.html(
         '<div style="color:#fca5a5;padding:30px 20px;text-align:center;font-size:13px;line-height:1.6;">'+
           '⚠ No se pudo cargar la imagen.<br>'+
-          '<span style="color:#94a3b8;font-size:11.5px;">El archivo puede haber sido borrado, no existir aún, '+
-          'o estar bloqueado por permisos del servidor (.htaccess / Plesk).</span>'+
+          '<span style="color:#94a3b8;font-size:11.5px;">Consultando servidor…</span>'+
         '</div>'
       );
+      $.ajax({
+        url: url,
+        method: 'GET',
+        dataType: 'text',
+        cache: false,
+      }).always(function(data, textStatus, xhrOrErr){
+        var xhr = (xhrOrErr && xhrOrErr.status) ? xhrOrErr : data;
+        var status = xhr && xhr.status ? xhr.status : '???';
+        var body   = (xhr && xhr.responseText) || (typeof data === 'string' ? data : '') || '';
+        var trimmed = String(body).substring(0, 600);
+        $body.html(
+          '<div style="color:#fca5a5;padding:24px 18px;font-size:13px;line-height:1.6;">'+
+            '<div style="text-align:center;font-weight:700;margin-bottom:10px;">⚠ No se pudo cargar la imagen</div>'+
+            '<div style="background:#1e293b;border-radius:6px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:11.5px;color:#f1f5f9;">'+
+              '<div><span style="color:#94a3b8;">HTTP status:</span> <strong>'+escapeHtml(String(status))+'</strong></div>'+
+              '<div style="margin-top:6px;color:#94a3b8;">Respuesta del servidor:</div>'+
+              '<pre style="white-space:pre-wrap;word-break:break-all;margin:4px 0 0;color:#f87171;">'+escapeHtml(trimmed || '(vacía)')+'</pre>'+
+            '</div>'+
+            '<div style="color:#94a3b8;font-size:11px;margin-top:10px;line-height:1.5;">'+
+              '• <strong>404 File not found</strong> → el archivo no existe en disco (upload falló o se borró)<br>'+
+              '• <strong>401 / No autenticado</strong> → la sesión del punto expiró — vuelve a iniciar sesión<br>'+
+              '• <strong>500</strong> → error en el servidor (revisar error_log)<br>'+
+              '• <strong>400</strong> → nombre de archivo inválido'+
+            '</div>'+
+          '</div>'
+        );
+      });
     });
     // Close: button, click on overlay backdrop, or Esc key
     var close = function(){ $overlay.remove(); $(document).off('keydown.pvFoto'); };

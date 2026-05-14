@@ -364,6 +364,16 @@ $checks = [
         'rewritePhoto',
         'Round 30 v2 — historial.php reescribe URLs legacy a serve-foto.php'
     ),
+    'r30v4_recibir_fallback' => _checkFile(
+        $base . '/puntosvoltika/php/recepcion/recibir.php',
+        '_puntoResolveUploadDir',
+        'Round 30 v4 — recibir.php tiene fallback /tmp para evitar fallos silenciosos cuando Plesk bloquea mkdir'
+    ),
+    'r30v4_serve_multi_location' => _checkFile(
+        $base . '/puntosvoltika/php/recepcion/serve-foto.php',
+        'Round 30 v4: recibir.php now tries multiple writable upload locations',
+        'Round 30 v4 — serve-foto.php busca fotos en las 3 ubicaciones candidatas'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
