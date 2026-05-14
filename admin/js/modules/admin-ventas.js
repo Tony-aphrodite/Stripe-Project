@@ -2221,16 +2221,29 @@ window.AD_ventas = (function(){
       // the path is only set after generar-contrato-pdf.php runs (which
       // requires the customer to have signed via Truora + Cincel), so
       // it's a reliable signal.
-      var contratoPath     = (r.contrato_pdf_path != null) ? String(r.contrato_pdf_path).trim() : '';
-      var contratoFirmado  = contratoPath !== '';
-      // For credit also check transacciones.pago_estado (aliased as
-      // tx_pago_estado in listar.php) — round 18 introduces
-      // 'pendiente_firma' for the edge case where Stripe charged the
-      // card but no signature exists. Defense in depth: explicit guard
-      // so a future change to the path column doesn't flip the label.
-      var txEstado = String(r.tx_pago_estado || '').toLowerCase();
-      if (isCredito && txEstado === 'pendiente_firma') {
-        contratoFirmado = false;
+      // Round 19 (2026-05-14) — corrected per round 20 follow-up
+      // (Óscar VK-2605-0002 Adrian Montoya, contado): the previous check
+      // required contrato_pdf_path to be non-empty to label the card as
+      // "(firmado)". That's correct for CREDIT (PDF only exists if the
+      // customer signed) but wrong for CONTADO (PDF is auto-generated
+      // at purchase and regenerated on demand by descargar-contrato.php
+      // even when the DB column was never persisted by a legacy row).
+      //
+      // New rule:
+      //   • CREDIT  → firmado iff contrato_pdf_path != '' AND
+      //               pago_estado != 'pendiente_firma'
+      //   • CONTADO → firmado iff pago_estado is a "paid" variant
+      //               (regardless of contrato_pdf_path — the PDF is
+      //               always available via regen for paid contado
+      //               orders).
+      var contratoPath = (r.contrato_pdf_path != null) ? String(r.contrato_pdf_path).trim() : '';
+      var txEstado     = String(r.tx_pago_estado || '').toLowerCase();
+      var paidStates   = ['pagada','aprobada','approved','paid'];
+      var contratoFirmado;
+      if (isCredito) {
+        contratoFirmado = contratoPath !== '' && txEstado !== 'pendiente_firma';
+      } else {
+        contratoFirmado = (paidStates.indexOf(txEstado) >= 0) || contratoPath !== '';
       }
       var contratoTitle    = isCredito
         ? (contratoFirmado ? 'Contrato de financiamiento (firmado)' : 'Contrato de financiamiento (pendiente de firma)')
