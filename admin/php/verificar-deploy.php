@@ -289,6 +289,11 @@ $checks = [
         'WHERE pv.activo = 1',
         'Round 24 — Admin Puntos list oculta puntos inactivos por defecto (?include_inactive=1 para verlos)'
     ),
+    'r25_punto_search_input' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'vkAsignPuntoSearch',
+        'Round 25 — Modal "Asignar punto de entrega" tiene buscador en vivo (filtra nombre/ciudad/dirección)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

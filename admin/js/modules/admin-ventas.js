@@ -1616,7 +1616,14 @@ window.AD_ventas = (function(){
           ? '<span style="font-size:11px;color:var(--ad-dim);">'+iconBox+(p.inventario_actual||0)+' unidades en este punto</span>'
           : '';
         var isCurrent = String(p.id) === String(r.punto_id);
+        // Round 25: searchable haystack — normalised lowercase concat of
+        // every field a user might type. Used by the live search filter
+        // below; keeping it as a data-attr means filter is pure DOM (no
+        // network round-trips, no re-render).
+        var searchHay = [p.nombre, dir, loc, p.colonia, p.ciudad, p.estado, p.cp]
+            .filter(function(v){ return v; }).join(' ').toLowerCase();
         return '<label class="adPickPunto" data-pid="'+p.id+'" '
+             +   'data-search="'+esc(searchHay)+'" '
              +   'style="display:block;cursor:pointer;padding:12px;margin-bottom:6px;border:1.5px solid '
              +   (isCurrent ? 'var(--ad-primary)' : 'var(--ad-border)')+';border-radius:8px;background:'
              +   (isCurrent ? '#E8F4FD' : 'var(--ad-surface)')+';">'
@@ -1638,18 +1645,41 @@ window.AD_ventas = (function(){
                + '<div style="background:var(--ad-surface-2);padding:10px 12px;border-radius:6px;margin-bottom:14px;font-size:12px;">'
                +   '<strong>Modelo:</strong> '+esc(r.modelo||'—')+' · '+esc(r.color||'—')+'<br>'
                +   '<strong>Solicitado:</strong> '+esc(r.estado||'—')+(r.ciudad?' · '+esc(r.ciudad):'')+(r.cp?' · CP '+esc(r.cp):'')
-               + '</div>'
-               + '<div style="max-height:340px;overflow-y:auto;padding-right:4px;">';
+               + '</div>';
+
+      // Round 25 (2026-05-14, Óscar): customer asked for a text search box.
+      // For installations with many puntos, scrolling through the full list
+      // is tedious. Live-filter by nombre, ciudad, dirección, colonia, cp.
+      // Filter happens client-side via data attributes on each card row.
+      var totalPuntos = sameState.length + otherState.length;
+      if (totalPuntos > 3) {
+        html += '<div style="position:relative;margin-bottom:10px;">'
+              +   '<input type="text" id="vkAsignPuntoSearch" '
+              +     'placeholder="Buscar punto por nombre, ciudad o dirección…" '
+              +     'class="ad-input" '
+              +     'style="width:100%;padding-left:34px;font-size:13px;" '
+              +     'autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">'
+              +   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+              +     'style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;">'
+              +     '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
+              +   '</svg>'
+              + '</div>';
+      }
+
+      html += '<div style="max-height:340px;overflow-y:auto;padding-right:4px;">';
 
       if (sameState.length) {
-        html += '<div style="font-size:12px;font-weight:700;color:var(--ad-primary);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 6px;">Misma entidad ('+esc(r.estado||'')+')</div>';
+        html += '<div class="vkAsignSection" data-section="same" style="font-size:12px;font-weight:700;color:var(--ad-primary);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 6px;">Misma entidad ('+esc(r.estado||'')+')</div>';
         sameState.forEach(function(p){ html += puntoCardHtml(p); });
       }
       if (otherState.length) {
-        html += '<div style="font-size:12px;font-weight:700;color:var(--ad-dim);text-transform:uppercase;letter-spacing:.5px;margin:'+(sameState.length?'14px':'4px')+' 0 6px;">Otros puntos</div>';
+        html += '<div class="vkAsignSection" data-section="other" style="font-size:12px;font-weight:700;color:var(--ad-dim);text-transform:uppercase;letter-spacing:.5px;margin:'+(sameState.length?'14px':'4px')+' 0 6px;">Otros puntos</div>';
         otherState.forEach(function(p){ html += puntoCardHtml(p); });
       }
 
+      html += '<div id="vkAsignPuntoNoResults" style="display:none;padding:14px;text-align:center;color:#94a3b8;font-size:13px;font-style:italic;">'
+            +   'Sin resultados para esta búsqueda.'
+            + '</div>';
       html += '</div>';
 
       // ETA input: default to today + 10 days, matching the notification text.
@@ -1691,6 +1721,42 @@ window.AD_ventas = (function(){
         $(this).find('input[type="radio"]').prop('checked', true);
         $('#vkAsignPuntoSave').prop('disabled', false);
       });
+
+      // Round 25 (2026-05-14): live search across nombre/ciudad/dirección.
+      // Hides non-matching cards + section headers that end up with no
+      // visible cards. Shows a "Sin resultados" message when filter
+      // matches nothing so the operator knows their query had zero hits.
+      $('#vkAsignPuntoSearch').on('input', function(){
+        var q = String(this.value || '').trim().toLowerCase();
+        var anyVisible = false;
+        $('.adPickPunto').each(function(){
+          var hay = String($(this).data('search') || '');
+          var match = q === '' || hay.indexOf(q) !== -1;
+          $(this).toggle(match);
+          if (match) anyVisible = true;
+        });
+        // Hide section headers whose section has no visible cards.
+        $('.vkAsignSection').each(function(){
+          var $hdr = $(this);
+          var anyInSection = false;
+          var $next = $hdr.next();
+          while ($next.length && !$next.hasClass('vkAsignSection')) {
+            if ($next.hasClass('adPickPunto') && $next.is(':visible')) {
+              anyInSection = true;
+              break;
+            }
+            $next = $next.next();
+          }
+          $hdr.toggle(anyInSection);
+        });
+        $('#vkAsignPuntoNoResults').toggle(!anyVisible && q !== '');
+      });
+
+      // Auto-focus the search field so the operator can just type. Avoid
+      // mobile keyboard pop-up on touch devices — only focus on pointer.
+      if (!('ontouchstart' in window)) {
+        setTimeout(function(){ $('#vkAsignPuntoSearch').trigger('focus'); }, 50);
+      }
 
       $('#vkAsignPuntoCancel').on('click', function(){
         ADApp.closeModal();
