@@ -244,16 +244,37 @@ document.querySelectorAll('.sync-btn').forEach(function(btn){
         statusEl.textContent = '✓ ' + (j.photos_count||0) + ' fotos · ' + (j.fetched && j.fetched.status || '?');
         statusEl.style.color = '#15803d';
         // Round 21 v5: surface diagnostic info on hover so we can spot
-        // why downloads fail without re-running the page.
+        // why downloads fail without re-running the page. Auto-reload is
+        // skipped when photos_count===0 so the Network panel keeps the
+        // sync-truora.php Response body for inspection.
         if (j._debug) {
           var summary = 'classified=' + JSON.stringify(Object.keys(j._debug.classified || {})) +
                         ' downloads=' + JSON.stringify((j._debug.downloads||[]).map(function(d){
                             return d.kind + ':' + d.http_code + (d.saved_as?'(saved)':'(skip)') ;
                         }));
           statusEl.title = summary;
-          console.log('sync-truora _debug:', j._debug);
+          console.log('sync-truora _debug:', JSON.stringify(j._debug, null, 2));
+          // Also dump to a fixed pre on the page so the admin can copy
+          // the entire JSON without DevTools.
+          var dbg = document.getElementById('vk-sync-debug-dump');
+          if (!dbg) {
+            dbg = document.createElement('pre');
+            dbg.id = 'vk-sync-debug-dump';
+            dbg.style.cssText = 'position:fixed;bottom:10px;right:10px;width:560px;max-height:50vh;overflow:auto;background:#0f172a;color:#94a3b8;font-size:11px;padding:10px;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.3);white-space:pre-wrap;word-break:break-all;z-index:9999;';
+            document.body.appendChild(dbg);
+            var close = document.createElement('button');
+            close.textContent = '✕';
+            close.style.cssText = 'position:absolute;top:6px;right:8px;background:#1e293b;color:#fff;border:0;border-radius:4px;cursor:pointer;font-size:12px;padding:2px 6px;';
+            close.onclick = function(){ dbg.remove(); };
+            dbg.appendChild(close);
+          }
+          dbg.insertBefore(document.createTextNode(JSON.stringify(j, null, 2) + '\n\n'), dbg.firstChild);
         }
-        setTimeout(function(){ location.reload(); }, 1500);
+        // Only auto-reload when sync actually downloaded photos. Otherwise
+        // keep the page so the operator can inspect Network/Console.
+        if ((j.photos_count || 0) > 0) {
+          setTimeout(function(){ location.reload(); }, 1500);
+        }
       } else {
         statusEl.textContent = '✗ ' + (j.message || j.reason || 'falló');
         statusEl.style.color = '#b91c1c';
