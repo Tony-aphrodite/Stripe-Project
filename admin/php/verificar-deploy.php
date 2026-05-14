@@ -374,6 +374,11 @@ $checks = [
         'Round 30 v4: recibir.php now tries multiple writable upload locations',
         'Round 30 v4 — serve-foto.php busca fotos en las 3 ubicaciones candidatas'
     ),
+    'r30v5_lightbox_user_friendly' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-recepcion.js',
+        '¿Cómo lo arreglo?',
+        'Round 30 v5 — Lightbox muestra mensaje amable + pasos para re-subir la foto (detalles técnicos en toggle)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

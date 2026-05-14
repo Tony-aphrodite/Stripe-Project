@@ -183,29 +183,58 @@ window.PV_recepcion = (function(){
                  'style="display:block;max-width:100%;max-height:80vh;border-radius:6px;" '+
                  'class="pv-foto-img">'+
           '</div>'+
-          '<div style="margin-top:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">'+
+          '<div style="margin-top:8px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">'+
             '<a href="'+url.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" '+
                'style="color:#7dd3fc;font-size:12px;text-decoration:none;">Abrir en pestaña nueva ↗</a>'+
-            '<span style="color:#64748b;font-size:11px;font-family:ui-monospace,monospace;word-break:break-all;'+
-                         'max-width:520px;text-align:right;">'+escapeHtml(url)+'</span>'+
           '</div>'+
         '</div>'+
       '</div>'
     );
     $('body').append($overlay);
-    // Surface load failures so the operator knows the file is missing.
-    // Round 30 v3: when the <img> fails, follow up with a fetch() so we
-    // can show the actual HTTP status + response body. Browsers don't
-    // expose those on <img onerror>, so a parallel fetch is the cleanest
-    // way to surface "404 file not found" vs "401 unauth" vs "500 error".
+    // Round 30 v5 (2026-05-14, Óscar): present a friendly, actionable
+    // message to the operator instead of raw HTTP debug info. The
+    // technical diagnostic is still captured (via parallel fetch) but
+    // hidden behind a "Detalles técnicos" toggle so support can read it
+    // when the operator escalates a case, while normal operators only
+    // see a polite explanation + next steps.
     $overlay.find('.pv-foto-img').on('error', function(){
       var $body = $overlay.find('.pv-foto-body');
+      // Tipo de foto (label, e.g. "Sello", "VIN etiqueta", "Unidad")
+      // helps the operator know WHICH photo to re-upload.
+      var labelText = label || 'esta foto';
       $body.html(
-        '<div style="color:#fca5a5;padding:30px 20px;text-align:center;font-size:13px;line-height:1.6;">'+
-          '⚠ No se pudo cargar la imagen.<br>'+
-          '<span style="color:#94a3b8;font-size:11.5px;">Consultando servidor…</span>'+
+        '<div style="padding:28px 24px;color:#f1f5f9;font-size:13.5px;line-height:1.65;">'+
+          // Headline
+          '<div style="text-align:center;font-size:15px;font-weight:700;color:#fde68a;margin-bottom:8px;">'+
+            '📷 La foto de <em>'+escapeHtml(labelText)+'</em> no está disponible'+
+          '</div>'+
+          // Body — empathetic explanation + actionable next steps.
+          '<p style="margin:14px 0 8px;color:#e2e8f0;">'+
+            'No pudimos mostrar esta foto. Es probable que la imagen original no se haya guardado correctamente al recibir esta moto (un problema técnico anterior afectaba la subida de fotos).'+
+          '</p>'+
+          '<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.20);border-radius:8px;padding:12px 14px;margin:14px 0;">'+
+            '<div style="font-weight:700;color:#86efac;margin-bottom:6px;">¿Cómo lo arreglo?</div>'+
+            '<ol style="margin:0;padding-left:20px;color:#e2e8f0;line-height:1.7;">'+
+              '<li>Acércate a la moto y toma una nueva foto de <strong>'+escapeHtml(labelText)+'</strong>.</li>'+
+              '<li>Abre la pantalla de <strong>Recepción</strong> y busca este registro en el historial.</li>'+
+              '<li>Vuelve a subir la foto desde ahí. La nueva imagen reemplazará el archivo faltante.</li>'+
+            '</ol>'+
+          '</div>'+
+          '<p style="margin:14px 0 0;color:#94a3b8;font-size:12px;text-align:center;">'+
+            'Si el problema persiste después de subir una foto nueva, contacta a soporte y comparte los detalles técnicos de abajo.'+
+          '</p>'+
+          // Collapsible technical block — useful for support tickets but
+          // doesn't clutter the operator's view.
+          '<details style="margin-top:18px;background:#0b1322;border-radius:6px;padding:8px 10px;">'+
+            '<summary style="cursor:pointer;color:#94a3b8;font-size:11.5px;outline:none;">Detalles técnicos (para soporte)</summary>'+
+            '<div class="pv-foto-tech" style="margin-top:10px;color:#94a3b8;font-size:11px;font-family:ui-monospace,monospace;">'+
+              '<span style="color:#64748b;">Consultando servidor…</span>'+
+            '</div>'+
+          '</details>'+
         '</div>'
       );
+      // Parallel fetch to populate the technical block. Failure here is
+      // harmless — the friendly message already explains the situation.
       $.ajax({
         url: url,
         method: 'GET',
@@ -215,22 +244,12 @@ window.PV_recepcion = (function(){
         var xhr = (xhrOrErr && xhrOrErr.status) ? xhrOrErr : data;
         var status = xhr && xhr.status ? xhr.status : '???';
         var body   = (xhr && xhr.responseText) || (typeof data === 'string' ? data : '') || '';
-        var trimmed = String(body).substring(0, 600);
-        $body.html(
-          '<div style="color:#fca5a5;padding:24px 18px;font-size:13px;line-height:1.6;">'+
-            '<div style="text-align:center;font-weight:700;margin-bottom:10px;">⚠ No se pudo cargar la imagen</div>'+
-            '<div style="background:#1e293b;border-radius:6px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:11.5px;color:#f1f5f9;">'+
-              '<div><span style="color:#94a3b8;">HTTP status:</span> <strong>'+escapeHtml(String(status))+'</strong></div>'+
-              '<div style="margin-top:6px;color:#94a3b8;">Respuesta del servidor:</div>'+
-              '<pre style="white-space:pre-wrap;word-break:break-all;margin:4px 0 0;color:#f87171;">'+escapeHtml(trimmed || '(vacía)')+'</pre>'+
-            '</div>'+
-            '<div style="color:#94a3b8;font-size:11px;margin-top:10px;line-height:1.5;">'+
-              '• <strong>404 File not found</strong> → el archivo no existe en disco (upload falló o se borró)<br>'+
-              '• <strong>401 / No autenticado</strong> → la sesión del punto expiró — vuelve a iniciar sesión<br>'+
-              '• <strong>500</strong> → error en el servidor (revisar error_log)<br>'+
-              '• <strong>400</strong> → nombre de archivo inválido'+
-            '</div>'+
-          '</div>'
+        var trimmed = String(body).substring(0, 500);
+        $overlay.find('.pv-foto-tech').html(
+          '<div><span style="color:#64748b;">HTTP status:</span> <strong style="color:#f1f5f9;">'+escapeHtml(String(status))+'</strong></div>'+
+          '<div style="margin-top:6px;color:#64748b;">Respuesta:</div>'+
+          '<pre style="white-space:pre-wrap;word-break:break-all;margin:4px 0 0;color:#cbd5e1;font-size:10.5px;">'+escapeHtml(trimmed || '(vacía)')+'</pre>'+
+          '<div style="margin-top:8px;color:#64748b;font-size:10.5px;">URL: '+escapeHtml(url)+'</div>'
         );
       });
     });
