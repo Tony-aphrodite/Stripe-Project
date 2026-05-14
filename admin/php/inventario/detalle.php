@@ -124,9 +124,32 @@ try {
 // (same .htaccess-bypass pattern as the punto serve-foto.php). This way
 // admin can view photos even when /configurador/php/uploads/recepcion/
 // is blocked by Plesk.
+//
+// Round 31 v2 (2026-05-14, Óscar — broken thumbnails): also verify the
+// underlying file actually exists in any of the 3 candidate upload dirs.
+// Files from legacy uploads (pre-Round-30-v4) never actually saved to
+// disk — the recibir.php @file_put_contents() silently failed because
+// Plesk blocks mkdir() under configurador/php/. Setting the URL to null
+// when the file is missing lets the frontend show a polite "photo not
+// available" message instead of a broken thumbnail.
 if ($recepcion) {
-    $rewriteAdminFoto = function (?string $url): ?string {
-        if (!$url) return $url;
+    $uploadCandidates = array_filter([
+        realpath(__DIR__ . '/../../../configurador/php/uploads/recepcion'),
+        realpath(__DIR__ . '/../../uploads/recepcion-puntos'),
+        realpath(sys_get_temp_dir() . '/voltika_recepcion_fotos'),
+    ]);
+    $fileExistsLocally = function (string $url) use ($uploadCandidates): bool {
+        if (empty($uploadCandidates)) return false;
+        $base = basename(parse_url($url, PHP_URL_PATH) ?: $url);
+        if ($base === '') return false;
+        foreach ($uploadCandidates as $dir) {
+            if (is_file($dir . '/' . $base)) return true;
+        }
+        return false;
+    };
+    $rewriteAdminFoto = function (?string $url) use ($fileExistsLocally): ?string {
+        if (!$url) return null;
+        if (!$fileExistsLocally($url)) return null;  // file missing → null = no thumbnail
         if (strpos($url, 'serve-recepcion-foto.php') !== false) return $url;
         $base = basename(parse_url($url, PHP_URL_PATH) ?: $url);
         if ($base === '') return $url;
@@ -143,11 +166,20 @@ if ($recepcion) {
         $decoded = json_decode($recepcion['fotos'], true);
         if (is_array($decoded)) {
             foreach ($decoded as $u) {
-                if (is_string($u) && $u !== '') $extras[] = $rewriteAdminFoto($u);
+                if (is_string($u) && $u !== '') {
+                    $rw = $rewriteAdminFoto($u);
+                    if ($rw) $extras[] = $rw;
+                }
             }
         }
     }
     $recepcion['fotos_extra'] = $extras;
+    // Counter so the frontend can show a polite "X photos missing" hint.
+    $missing = 0;
+    foreach (['foto_sello_url','foto_vin_label_url','foto_unidad_url'] as $k) {
+        if (array_key_exists($k, $recepcion) && $recepcion[$k] === null) $missing++;
+    }
+    $recepcion['fotos_missing_count'] = $missing;
     unset($recepcion['fotos']);
 }
 

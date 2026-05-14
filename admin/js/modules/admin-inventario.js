@@ -160,7 +160,15 @@ window.AD_inventario = (function(){
         }
         var rowStyle = asignada ? ' style="background:#f0fdf4;"' : '';
 
-        html += '<tr'+rowStyle+'>'+
+        // Round 32 (2026-05-14, Óscar): the "Ver" action column got cut off
+        // on narrow screens when the table overflowed horizontally — the
+        // operator couldn't find the button without scrolling all the way
+        // right. Fix #1: the whole row is now clickable (cursor:pointer +
+        // data-id on <tr>) so any click opens the detail. Fix #2: the
+        // action <td> uses position:sticky;right:0 so it remains visible
+        // even when the table scrolls horizontally.
+        var stickyBg = asignada ? '#f0fdf4' : 'var(--ad-surface,#fff)';
+        html += '<tr'+rowStyle+' class="adInvRow" data-id="'+m.id+'" style="cursor:pointer;'+(asignada?'background:#f0fdf4;':'')+'">'+
           '<td>'+(m.vin_display||m.vin||'—')+lockBadge+'</td>'+
           '<td style="text-align:center;">'+(m.anio_modelo||'<span style="color:#9ca3af;">—</span>')+'</td>'+
           '<td>'+motorCell+'</td>'+
@@ -170,7 +178,7 @@ window.AD_inventario = (function(){
           '<td>'+diasCell+'</td>'+
           '<td>'+asignacionCell+'</td>'+
           '<td>'+ADApp.badgeEstado(m.pago_estado||'—')+'</td>'+
-          '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
+          '<td style="position:sticky;right:0;background:'+stickyBg+';box-shadow:-2px 0 6px rgba(0,0,0,.04);"><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
         '</tr>';
       });
       html += '</tbody></table></div></div></div>';
@@ -191,7 +199,17 @@ window.AD_inventario = (function(){
       filters.page=1;
       load();
     });
-    $('.adDetail').on('click',function(){ showDetail($(this).data('id')); });
+    // Round 32: Ver button click + row-level click (anywhere on the row
+    // except interactive children opens the detail). Both bind here.
+    $('.adDetail').on('click',function(ev){ ev.stopPropagation(); showDetail($(this).data('id')); });
+    $('.adInvRow').on('click', function(ev){
+      // Don't hijack clicks on real interactive children (buttons, links,
+      // inputs). Only fire when the click target is the row/cells.
+      var tag = (ev.target.tagName || '').toLowerCase();
+      if (tag === 'button' || tag === 'a' || tag === 'input' || tag === 'select' || tag === 'textarea') return;
+      if ($(ev.target).closest('button,a,input,select,textarea').length) return;
+      var id = $(this).data('id'); if (id) showDetail(id);
+    });
     $('.adPage').on('click',function(){ filters.page=$(this).data('p'); load(); });
     $('#adNewMoto').on('click', showNewForm);
     $('#adImportExcel').on('click', showImportForm);
@@ -354,7 +372,17 @@ window.AD_inventario = (function(){
       _selectedPuntoId = null;
       render();
     });
-    $('.adDetail').on('click',function(){ showDetail($(this).data('id')); });
+    // Round 32: Ver button click + row-level click (anywhere on the row
+    // except interactive children opens the detail). Both bind here.
+    $('.adDetail').on('click',function(ev){ ev.stopPropagation(); showDetail($(this).data('id')); });
+    $('.adInvRow').on('click', function(ev){
+      // Don't hijack clicks on real interactive children (buttons, links,
+      // inputs). Only fire when the click target is the row/cells.
+      var tag = (ev.target.tagName || '').toLowerCase();
+      if (tag === 'button' || tag === 'a' || tag === 'input' || tag === 'select' || tag === 'textarea') return;
+      if ($(ev.target).closest('button,a,input,select,textarea').length) return;
+      var id = $(this).data('id'); if (id) showDetail(id);
+    });
   }
 
   function motoSection(title, subtitle, list, showAging){
@@ -397,8 +425,11 @@ window.AD_inventario = (function(){
       } else {
         asignacionCell = '<span style="color:#9ca3af;font-style:italic;">Sin asignar</span>';
       }
-      var rowStyle = asignada ? ' style="background:#f0fdf4;"' : '';
-      html += '<tr'+rowStyle+'>'+
+      // Round 32: same sticky-right + clickable row treatment as the
+      // primary renderer above. Keeps the "Ver" affordance reachable on
+      // narrow screens.
+      var stickyBg2 = asignada ? '#f0fdf4' : 'var(--ad-surface,#fff)';
+      html += '<tr class="adInvRow" data-id="'+m.id+'" style="cursor:pointer;'+(asignada?'background:#f0fdf4;':'')+'">'+
         '<td><code style="font-size:11px;">'+esc(m.vin_display||m.vin||'—')+'</code></td>'+
         '<td>'+esc(m.modelo||'')+'</td>'+
         '<td style="text-align:center;">'+(m.anio_modelo||'<span style="color:#9ca3af;">—</span>')+'</td>'+
@@ -408,7 +439,7 @@ window.AD_inventario = (function(){
         agingCell+
         '<td>'+asignacionCell+'</td>'+
         '<td>'+ADApp.badgeEstado(m.pago_estado||'—')+'</td>'+
-        '<td><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
+        '<td style="position:sticky;right:0;background:'+stickyBg2+';box-shadow:-2px 0 6px rgba(0,0,0,.04);"><button class="ad-btn sm ghost adDetail" data-id="'+m.id+'">Ver</button></td>'+
       '</tr>';
     });
     // Extra </div> closes the overflow-x wrapper added for the new
@@ -627,34 +658,64 @@ window.AD_inventario = (function(){
           if (rcp.sello_numero)  html += '<div><span style="color:var(--ad-dim);">Número de sello:</span> '+rcp.sello_numero+'</div>';
           html += '</div>';
         }
-        // Photos — thumbnails that open in a new tab. Failures handled by
-        // admin-side serve helper (404 with explanation if file missing).
-        function rcpPhoto(url, label){
-          if (!url) return '';
+        // Photos — thumbnails that open in a new tab. Server-side
+        // (detalle.php Round 31 v2) already verified file existence, so
+        // any non-null URL here is guaranteed to load. Missing photos
+        // come back as null and get rendered as a polite placeholder
+        // explaining what happened + how to fix.
+        function rcpPhotoThumb(url, label){
           var safe = String(url).replace(/"/g,'&quot;');
           return '<a href="'+safe+'" target="_blank" rel="noopener" '+
-                   'style="display:inline-block;width:88px;height:88px;border-radius:6px;overflow:hidden;border:1px solid #cbd5e1;background:#f1f5f9;margin-right:6px;margin-bottom:6px;text-decoration:none;" '+
+                   'style="display:inline-block;width:88px;height:88px;border-radius:6px;overflow:hidden;border:1px solid #cbd5e1;background:#f1f5f9;margin-right:6px;margin-bottom:6px;text-decoration:none;vertical-align:top;" '+
                    'title="'+esc(label)+'">'+
                    '<img src="'+safe+'" alt="'+esc(label)+'" '+
-                        'style="width:100%;height:100%;object-fit:cover;" loading="lazy" '+
-                        'onerror="this.style.opacity=.25;this.style.background=\'#fef2f2\';this.alt=\'no disponible\';">'+
+                        'style="width:100%;height:100%;object-fit:cover;" loading="lazy">'+
                  '</a>';
         }
-        var photos = '';
-        photos += rcpPhoto(rcp.foto_sello_url,     'Sello');
-        photos += rcpPhoto(rcp.foto_vin_label_url, 'VIN etiqueta');
-        photos += rcpPhoto(rcp.foto_unidad_url,    'Unidad');
-        (rcp.fotos_extra || []).forEach(function(u, i){
-          photos += rcpPhoto(u, 'Extra ' + (i+1));
-        });
-        if (photos) {
-          html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.08);">'+
-                    '<div style="font-size:11px;color:var(--ad-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;">Fotos</div>'+
-                    photos+
-                  '</div>';
-        } else {
-          html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.08);font-size:11.5px;color:var(--ad-dim);font-style:italic;">Sin fotos adjuntas en este registro de recepción.</div>';
+        function rcpPhotoMissing(label){
+          return '<div style="display:inline-block;width:88px;height:88px;border-radius:6px;border:1px dashed #cbd5e1;background:#f8fafc;margin-right:6px;margin-bottom:6px;vertical-align:top;'+
+                       'display:inline-flex;align-items:center;justify-content:center;text-align:center;padding:6px;box-sizing:border-box;" '+
+                   'title="Foto '+esc(label)+' no disponible">'+
+                   '<div style="font-size:10px;color:#94a3b8;line-height:1.3;">'+
+                     '📷<br><strong style="color:#64748b;">'+esc(label)+'</strong><br>'+
+                     '<span style="font-size:9px;">no disponible</span>'+
+                   '</div>'+
+                 '</div>';
         }
+        var photoSlots = [
+          { url: rcp.foto_sello_url,     label: 'Sello' },
+          { url: rcp.foto_vin_label_url, label: 'VIN etiqueta' },
+          { url: rcp.foto_unidad_url,    label: 'Unidad' },
+        ];
+        (rcp.fotos_extra || []).forEach(function(u, i){
+          photoSlots.push({ url: u, label: 'Extra ' + (i+1) });
+        });
+        var photos = '';
+        var anyMissing = false, anyPresent = false;
+        photoSlots.forEach(function(p){
+          if (p.url) { photos += rcpPhotoThumb(p.url, p.label); anyPresent = true; }
+          else       { photos += rcpPhotoMissing(p.label);      anyMissing = true; }
+        });
+        html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.08);">'+
+                  '<div style="font-size:11px;color:var(--ad-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;">Fotos</div>'+
+                  photos;
+        if (anyMissing) {
+          var missingCount = (rcp.fotos_missing_count != null)
+            ? rcp.fotos_missing_count
+            : photoSlots.filter(function(p){ return !p.url; }).length;
+          html += '<div style="margin-top:10px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;font-size:12px;color:#7c2d12;line-height:1.5;">'+
+                    '<strong>📷 '+missingCount+' foto'+(missingCount===1?'':'s')+' no '+(missingCount===1?'está':'están')+' disponible'+(missingCount===1?'':'s')+'.</strong> '+
+                    'La imagen original no se guardó correctamente al recibir esta moto (problema técnico anterior). '+
+                    'Para arreglarlo, pídele al operador del punto que abra <em>Recepción → Historial</em>, '+
+                    'busque este registro y vuelva a subir las fotos faltantes desde ahí.'+
+                  '</div>';
+        }
+        if (!anyPresent && !anyMissing) {
+          // truly no photo slots at all (legacy row without optional cols)
+          html = html.replace(/<div style="font-size:11px[^>]+>Fotos<\/div>/, '');
+          html += '<div style="font-size:11.5px;color:var(--ad-dim);font-style:italic;">Sin fotos adjuntas en este registro de recepción.</div>';
+        }
+        html += '</div>';
         // Notes + observations
         if (rcp.notas) {
           html += '<div style="margin-top:10px;padding:8px 10px;background:#fff;border-radius:6px;font-size:12.5px;border:1px solid rgba(0,0,0,.06);"><strong>Notas:</strong><br>'+esc(rcp.notas)+'</div>';

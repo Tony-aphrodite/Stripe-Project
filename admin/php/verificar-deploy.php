@@ -394,6 +394,16 @@ $checks = [
         'Recepción en el punto',
         'Round 31 — admin-inventario.js: sección "Recepción en el punto" con checks + fotos + actor'
     ),
+    'r32_inv_row_clickable_sticky' => _checkFile(
+        $base . '/admin/js/modules/admin-inventario.js',
+        'adInvRow',
+        'Round 32 — Inventario rows clicables + columna "Ver" sticky right (no se corta en pantallas angostas)'
+    ),
+    'r31v2_admin_recepcion_missing_photos' => _checkFile(
+        $base . '/admin/js/modules/admin-inventario.js',
+        'fotos_missing_count',
+        'Round 31 v2 — Recepción section: fotos faltantes muestran placeholder amable + instrucciones para re-subir'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
