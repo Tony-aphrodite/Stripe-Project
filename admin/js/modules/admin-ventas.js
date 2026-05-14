@@ -2726,6 +2726,77 @@ window.AD_ventas = (function(){
               '</div>';
     }
     html += '</div>';
+
+    // ── Round 21 (2026-05-14, Óscar): Sincronizar con Truora ─────────────
+    // Whenever any of the standard Truora fields are still missing (status,
+    // process_id, last update, manual_review) or when there are no photos
+    // at all, surface a one-click button that calls the new sync endpoint.
+    // The endpoint resolves process_id from the stored account_id, fetches
+    // the full process via the Truora API, persists every standard field
+    // back, and tries to download document/selfie URLs to our uploads dir.
+    // On success the modal re-renders with the freshly-pulled data.
+    var missingTruora = !p.truora_status || !p.truora_process_id || !p.truora_updated_at || (p.name_match == null) || (p.manual_review_required == null);
+    if (missingTruora || !hasAnyPhoto) {
+      var syncId = 'vk-truora-sync-' + Math.random().toString(36).slice(2, 9);
+      html += '<div style="margin-top:14px;padding:12px;background:#f0f9ff;border:1px solid #93c5fd;border-radius:8px;">'+
+                '<div style="font-size:12px;color:#1e40af;line-height:1.5;margin-bottom:8px;">'+
+                  '⚙ <strong>Datos parciales o sin fotos.</strong> '+
+                  'Puedes traer la información completa desde Truora (status, name_match, manual_review, '+
+                  'INE frente/reverso, selfie) si el proceso existe en el dashboard de Truora.'+
+                '</div>'+
+                '<button id="'+syncId+'" class="ad-btn primary sm" style="background:#0ea5e9;border-color:#0ea5e9;">'+
+                  '🔄 Sincronizar con Truora'+
+                '</button>'+
+                '<span id="'+syncId+'-status" style="margin-left:10px;font-size:11.5px;color:#475569;"></span>'+
+              '</div>';
+      // Defer binding the click handler until the HTML is in the DOM.
+      setTimeout(function(){
+        var btn = document.getElementById(syncId);
+        var status = document.getElementById(syncId + '-status');
+        if (!btn) return;
+        btn.addEventListener('click', function(){
+          if (!status) return;
+          btn.disabled = true;
+          status.textContent = '⏳ Consultando Truora…';
+          status.style.color = '#1e40af';
+          ADApp.api('preaprobaciones/sync-truora.php', {
+            telefono: p.telefono || '',
+            email:    p.email    || '',
+            preap_id: p.id || 0
+          }).done(function(r){
+            if (r && r.ok) {
+              status.textContent = '✓ Sincronizado · '
+                + (r.photos_count || 0) + ' fotos · status=' + (r.fetched && r.fetched.status || '—');
+              status.style.color = '#15803d';
+              // Re-fetch the preaprobaciones row so the rendered fields
+              // refresh. Reuse the same parent renderer entry point.
+              setTimeout(function(){
+                var search = p.telefono || p.email || '';
+                ADApp.api('preaprobaciones/listar.php?' + jQuery.param({search:search, limit:1})).done(function(r2){
+                  var newP = (r2 && r2.rows && r2.rows[0]) || null;
+                  if (newP) {
+                    // Replace the rendered block with the updated data.
+                    $c.find('button').prop('disabled', true);
+                    renderIdentidad($c, newP);
+                  }
+                });
+              }, 400);
+            } else {
+              status.textContent = '⚠ ' + ((r && r.message) || 'no se pudo sincronizar');
+              status.style.color = '#b91c1c';
+              btn.disabled = false;
+            }
+          }).fail(function(xhr){
+            var msg = 'Error de red';
+            try { msg = (JSON.parse(xhr.responseText).message) || msg; } catch (e) {}
+            status.textContent = '✗ ' + msg;
+            status.style.color = '#b91c1c';
+            btn.disabled = false;
+          });
+        });
+      }, 0);
+    }
+
     $c.html(html);
   }
 

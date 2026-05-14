@@ -212,6 +212,17 @@ $checks = [
         'truora_files_saved',
         'Round 20 — Documentos modal Identidad: parsea files_saved y muestra thumbnails INE + selfie'
     ),
+    // ── Round 21 (2026-05-14) — Sync Truora data on-demand ─────────────────
+    'r21_sync_truora_endpoint' => _checkFile(
+        $base . '/admin/php/preaprobaciones/sync-truora.php',
+        'truoraFindProcessByAccountId',
+        'Round 21 — sync-truora.php endpoint: backfill Truora data + descarga fotos'
+    ),
+    'r21_sync_button' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'Sincronizar con Truora',
+        'Round 21 — admin-ventas.js: botón "Sincronizar con Truora" en sección Identidad'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -304,7 +315,7 @@ code{background:#1e293b;color:#e2e8f0;padding:1px 6px;border-radius:3px;font-siz
 ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
 </style></head><body>
 
-<h1>🚀 Verificación de despliegue — Round 14 → 20 (2026-05-13 / 2026-05-14)</h1>
+<h1>🚀 Verificación de despliegue — Round 14 → 21 (2026-05-13 / 2026-05-14)</h1>
 <div class="sub">Confirma que los archivos modificados llegaron al servidor con la versión correcta.</div>
 
 <?php if ($allOk): ?>
@@ -403,6 +414,16 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>✅ Esperado: 16 columnas en orden oficial NIP-CIEC PF (FOLIO_CDC, FECHA_APROBACION_DE_CONSULTA, …, ACEPTACION_TERMINOS_Y_CONDICIONES).</li>
     <li>Columna <strong>I</strong> debe llamarse <code>Estado</code> con <strong>e minúscula</strong> (no <code>ESTADO</code>).</li>
     <li><code>NOMBRE_CLIENTE</code> en formato <code>APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES</code> MAYÚSCULAS.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 21 — Sincronizar con Truora (backfill on-demand):</strong>
+  <ul>
+    <li>Admin → orden con datos parciales de Truora (ej. <strong>VK-1826-0001 Carlos Ricardo Sánchez</strong>) → "Identidad (INE / PASSPORT)" → desplegar.</li>
+    <li>✅ Si faltan campos (status / process_id / name_match / fotos) aparece bloque azul con botón <strong>"🔄 Sincronizar con Truora"</strong>.</li>
+    <li>Click → llama a Truora API con el <code>account_id</code> guardado → resuelve process_id → descarga payload completo + intenta bajar fotos INE/selfie.</li>
+    <li>Tras éxito: tabla se refresca con datos nuevos (status, name_match, verified_name, verified_curp, manual_review) + thumbnails de fotos descargadas.</li>
+    <li>Si Truora no devuelve nada (cliente abandonó el flujo): mensaje claro sin fallar.</li>
+    <li>Audit trail: tabla <code>truora_fetch_log</code> registra cada llamada; <code>verificaciones_identidad.raw_truora_payload</code> guarda el JSON crudo.</li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 20 — Identidad section: fotos INE + selfie visibles:</strong>
