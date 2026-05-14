@@ -314,6 +314,11 @@ $checks = [
         "voltikaNotify('moto_recibida'",
         'Round 26 — guardar-origen.php dispara WhatsApp+email+SMS "moto_recibida" al completar el checklist'
     ),
+    'r27_punto_venta_directa_removed' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-venta.js',
+        'Round 27 (2026-05-14, Óscar): showDirectSaleModal removed',
+        'Round 27 — PUNTOVOLTIKA: botón "Venta directa" y modal removidos (ventas solo via configurador)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

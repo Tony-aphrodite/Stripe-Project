@@ -14,7 +14,10 @@ window.PV_venta = (function(){
     var disponibles = r.inventario_venta || [];
 
     var html = '<div class="ad-h1">Venta por referido</div>';
-    html += '<div style="color:var(--ad-dim);margin-bottom:14px;font-size:13px;">Asigna motos libres de tu punto a pedidos pendientes o ventas directas en tienda.</div>';
+    // Round 27 (2026-05-14, Óscar): puntos can only sell through the
+    // configurator (online). Walk-in direct sale was removed — header
+    // copy no longer mentions "ventas directas en tienda".
+    html += '<div style="color:var(--ad-dim);margin-bottom:14px;font-size:13px;">Asigna motos libres de tu punto a pedidos pendientes que llegaron por tu código de referido.</div>';
 
     // ───────────── Section 1: Pending online orders (CASE 3) ─────────────
     html += '<div style="background:#FFF3E0;border-left:4px solid #FB8C00;padding:10px 12px;border-radius:6px;margin-bottom:10px;">'+
@@ -36,14 +39,18 @@ window.PV_venta = (function(){
       });
     }
 
-    // ───────────── Section 2: Walk-in direct sales ─────────────
+    // ───────────── Section 2: Motos libres en tu inventario ─────────────
+    // Round 27: removed the "Venta directa en tienda" sale button — puntos
+    // sell only via the configurador. Section retained for inventory
+    // awareness and the delete affordance (clean up duplicates / test
+    // rows) which is also surfaced from punto-inventario.js.
     html += '<div style="background:#E3F2FD;border-left:4px solid #1976D2;padding:10px 12px;border-radius:6px;margin:20px 0 10px;">'+
-      '<strong style="color:#0D47A1;">Venta directa en tienda ('+disponibles.length+')</strong>'+
-      '<div style="font-size:12px;color:#455A64;margin-top:2px;">Motos libres en tu inventario. Asígnalas directamente a un cliente que llegó a tu punto.</div>'+
+      '<strong style="color:#0D47A1;">Motos libres en tu inventario ('+disponibles.length+')</strong>'+
+      '<div style="font-size:12px;color:#455A64;margin-top:2px;">Motos disponibles para asignar a pedidos pendientes (arriba). Si encuentras un duplicado o una moto de prueba, puedes eliminarla del inventario.</div>'+
     '</div>';
 
     if (disponibles.length === 0) {
-      html += '<div class="ad-card" style="color:#666;font-size:13px;">Sin motos disponibles para venta directa.</div>';
+      html += '<div class="ad-card" style="color:#666;font-size:13px;">Sin motos libres en tu inventario.</div>';
     } else {
       disponibles.forEach(function(m){
         html += '<div class="ad-card" style="margin-bottom:8px;">';
@@ -53,11 +60,8 @@ window.PV_venta = (function(){
         html += '<div style="font-size:12px;color:var(--ad-dim)">VIN: <code>'+esc(m.vin_display||m.vin||'')+'</code></div>';
         html += '</div>';
         html += '<div style="display:flex;gap:6px;align-items:center;">';
-        html += '<button class="ad-btn primary sm pvSellDirect" data-id="'+m.id+'" data-modelo="'+esc(m.modelo||'')+'" data-color="'+esc(m.color||'')+'">Venta directa</button>';
-        // Customer brief 2026-05-09: mirror the "Eliminar" affordance
-        // from punto-inventario.js so duplicate / test rows can be
-        // cleaned up from this view too. Server endpoint re-validates
-        // the same safety gate (no cliente, no envío activo).
+        // Round 27: "Venta directa" button intentionally removed. Delete
+        // affordance below stays so puntos can prune duplicate/test rows.
         html += '<button class="ad-btn ghost sm pvDeleteDirect" data-id="'+m.id+'" '+
                 'data-vin="'+esc(m.vin_display||m.vin||'')+'" '+
                 'data-modelo="'+esc(m.modelo||'')+'" data-color="'+esc(m.color||'')+'" '+
@@ -73,7 +77,8 @@ window.PV_venta = (function(){
 
     // ───────────── Info ─────────────
     html += '<div style="background:#F5F5F5;padding:10px 12px;border-radius:6px;margin-top:20px;font-size:11px;color:#666;">'+
-      'Las motos ya reservadas en <strong>"Para entrega"</strong> no aparecen aquí — están asignadas a pedidos confirmados por CEDIS y no pueden revenderse.'+
+      'Las motos ya reservadas en <strong>"Para entrega"</strong> no aparecen aquí — están asignadas a pedidos confirmados por CEDIS. '+
+      'Las ventas siempre se completan a través del configurador online; este punto no puede registrar ventas directas en tienda.'+
     '</div>';
 
     PVApp.render(html);
@@ -87,14 +92,9 @@ window.PV_venta = (function(){
         nombre:  $b.data('nombre'),
       });
     });
-    $('.pvSellDirect').on('click', function(){
-      var $b = $(this);
-      showDirectSaleModal({
-        moto_id: $b.data('id'),
-        modelo:  $b.data('modelo'),
-        color:   $b.data('color'),
-      });
-    });
+    // Round 27 (2026-05-14): .pvSellDirect handler removed with the
+    // "Venta directa" button — direct walk-in sales aren't allowed
+    // from the punto admin; sales go through the configurador online.
     $('.pvDeleteDirect').on('click', function(){
       var $b = $(this);
       showDeleteDirectModal({
@@ -203,65 +203,11 @@ window.PV_venta = (function(){
     });
   }
 
-  // ── Modal: walk-in direct sale (CASE 4) ──
-  // Customer feedback 2026-04-23: the precio input was removed — prices are
-  // fixed per model and come from the configurador, not editable by the
-  // point staff. The backend now looks up the canonical price from the
-  // `modelos` catalog, so this modal only collects the CLIENT data.
-  function showDirectSaleModal(ctx){
-    PVApp.modal(
-      '<div class="ad-h2">Venta directa: '+esc(ctx.modelo)+' '+esc(ctx.color)+'</div>'+
-      '<label class="ad-label">Canal</label>'+
-      '<select id="pvCanal" class="ad-input">'+
-        '<option value="directa">Venta directa en tienda</option>'+
-        '<option value="electronica">Venta electrónica</option>'+
-      '</select>'+
-      '<label class="ad-label">Nombre del cliente</label>'+
-      '<input id="pvVN" class="ad-input">'+
-      '<label class="ad-label">Email</label>'+
-      '<input id="pvVE" class="ad-input" type="email">'+
-      '<label class="ad-label">Teléfono</label>'+
-      '<input id="pvVT" class="ad-input" inputmode="numeric" maxlength="10">'+
-      '<button id="pvVSave" class="ad-btn primary" style="width:100%;margin-top:14px">Registrar venta</button>'+
-      '<button class="ad-btn ghost" onclick="PVApp.closeModal()" style="width:100%;margin-top:6px;">Cancelar</button>'
-    );
-    $('#pvVSave').on('click', function(){
-      // Customer brief 2026-05-09 (Óscar, 5th round — "cannot add a
-      // motorcycle"): minimum-field validation in JS so the user sees the
-      // problem before the round-trip, plus a richer error message when
-      // the backend rejects (typical causes: moto not in 'consignacion'
-      // state, cliente fields missing, moto already linked to a customer).
-      var nombre = ($('#pvVN').val() || '').trim();
-      var email  = ($('#pvVE').val() || '').trim();
-      var tel    = ($('#pvVT').val() || '').trim();
-      if (!nombre) { alert('El nombre del cliente es requerido.'); return; }
-      if (!email && !tel) { alert('Email o teléfono del cliente es requerido (al menos uno).'); return; }
-      var $b = $(this).prop('disabled', true).text('Guardando…');
-      PVApp.api('asignar/referido.php',{
-        moto_id: ctx.moto_id, canal: $('#pvCanal').val(),
-        cliente_nombre: nombre, cliente_email: email,
-        cliente_telefono: tel
-        // precio intentionally omitted — backend derives it from modelos
-      }).done(function(r){
-        if(r.ok){ PVApp.closeModal(); PVApp.toast('Venta registrada. Cliente notificado.'); render(); }
-        else {
-          var msg = (r && r.error) || 'Error';
-          // Common backend rejection — explain in plain language.
-          if (msg.indexOf('consignación') >= 0 || msg.indexOf('showroom') >= 0) {
-            msg += '\n\n💡 Esta moto fue asignada para entrega a un pedido específico, no como stock de showroom. Para venderla en venta directa, pídele a CEDIS que cambie su tipo a "consignación" desde el panel admin.';
-          } else if (msg.indexOf('ya asignada') >= 0) {
-            msg += '\n\n💡 Esta moto ya tiene un cliente. Si quieres asignársela a otro cliente, primero contacta a admin para desasignarla.';
-          }
-          alert(msg);
-          $b.prop('disabled', false).text('Registrar venta');
-        }
-      }).fail(function(x){
-        var err = (x.responseJSON&&x.responseJSON.error)||'Error de conexión con el servidor';
-        alert(err);
-        $b.prop('disabled', false).text('Registrar venta');
-      });
-    });
-  }
+  // Round 27 (2026-05-14, Óscar): showDirectSaleModal removed. The punto
+  // admin is intentionally limited to assigning inventory to incoming
+  // online referred orders — direct walk-in sales must happen through
+  // the configurador online so prices, contracts, signatures, payment
+  // and audit trail all run through the canonical flow.
 
   function esc(s){
     return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
