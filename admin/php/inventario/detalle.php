@@ -43,6 +43,57 @@ $ent->execute([$id]);
 $tx = $pdo->prepare("SELECT * FROM transacciones WHERE stripe_pi=? LIMIT 1");
 $tx->execute([$moto['stripe_pi'] ?? '']);
 
+// ── Round 28 (2026-05-14, Óscar — Pesgo Plus VIN ...12 retenida sin
+// motivo visible): the admin detail panel showed a red "retenida" badge
+// but the operator could not see WHO retained it, WHEN, or WHY. The
+// information lives in inventario_motos.log_estados (JSON array of
+// state-change events, written by configurador/php/admin-moto-accion.php)
+// but is never returned by this endpoint. Extract the most-recent
+// 'retenida' entry and expose it so the JS can render a dedicated
+// RETENCIÓN section next to BLOQUEO DE VENTA.
+//
+// Also enrich with the user's display name when possible — log_estados
+// stores `dealer` (user id), not the friendly name.
+$retencion = null;
+$logRaw = $moto['log_estados'] ?? null;
+if ($logRaw) {
+    $logArr = is_array($logRaw) ? $logRaw : @json_decode((string)$logRaw, true);
+    if (is_array($logArr)) {
+        // Walk backwards: most recent matching event wins.
+        for ($i = count($logArr) - 1; $i >= 0; $i--) {
+            $ev = $logArr[$i];
+            if (!is_array($ev)) continue;
+            $estadoEv = strtolower((string)($ev['estado'] ?? ''));
+            $accionEv = strtolower((string)($ev['accion'] ?? ''));
+            $origenEv = strtolower((string)($ev['origen'] ?? ''));
+            // Match either the new shape (estado='retenida') or older
+            // shape (accion='retener'). origen='retener_manual' covers
+            // manual SQL fixes too.
+            $isReten = ($estadoEv === 'retenida' || $accionEv === 'retener'
+                     || strpos($origenEv, 'retener') !== false);
+            if ($isReten) {
+                $retencion = [
+                    'estado'    => $ev['estado']    ?? null,
+                    'accion'    => $ev['accion']    ?? null,
+                    'origen'    => $ev['origen']    ?? null,
+                    'fecha'     => $ev['fecha']     ?? ($ev['timestamp'] ?? null),
+                    'usuario'   => $ev['usuario']   ?? ($ev['dealer'] ?? null),
+                    'notas'     => $ev['notas']     ?? null,
+                ];
+                break;
+            }
+        }
+    }
+}
+if ($retencion && !empty($retencion['usuario'])) {
+    try {
+        $du = $pdo->prepare("SELECT nombre FROM dealer_usuarios WHERE id = ? LIMIT 1");
+        $du->execute([(int)$retencion['usuario']]);
+        $duRow = $du->fetchColumn();
+        if ($duRow) $retencion['usuario_nombre'] = (string)$duRow;
+    } catch (Throwable $e) { /* non-fatal */ }
+}
+
 adminJsonOut([
     'moto' => $moto,
     'checklist_origen' => $co->fetch(PDO::FETCH_ASSOC) ?: null,
@@ -51,4 +102,7 @@ adminJsonOut([
     'envios' => $env->fetchAll(PDO::FETCH_ASSOC),
     'entrega' => $ent->fetch(PDO::FETCH_ASSOC) ?: null,
     'transaccion' => $tx->fetch(PDO::FETCH_ASSOC) ?: null,
+    // Round 28: expose the parsed retención context for the UI. NULL when
+    // the moto is not retenida or no log entry was found.
+    'retencion' => (strtolower((string)($moto['estado'] ?? '')) === 'retenida') ? $retencion : null,
 ]);

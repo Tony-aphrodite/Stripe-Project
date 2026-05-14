@@ -324,6 +324,21 @@ $checks = [
         'Round 27 v2 (2026-05-14, Óscar Inicio screenshot)',
         'Round 27 v2 — PUNTOVOLTIKA Inicio: linea "Venta directa en tienda: <código>" removida'
     ),
+    'r28_detalle_retencion_meta' => _checkFile(
+        $base . '/admin/php/inventario/detalle.php',
+        "'retencion' => (strtolower",
+        'Round 28 — detalle.php parsea log_estados y expone retencion (quién/cuándo/notas)'
+    ),
+    'r28_admin_retencion_section' => _checkFile(
+        $base . '/admin/js/modules/admin-inventario.js',
+        'Retención operativa',
+        'Round 28 — admin-inventario.js: sección "Retención operativa" + botón "Liberar moto"'
+    ),
+    'r28_admin_liberar_handler' => _checkFile(
+        $base . '/admin/js/modules/admin-inventario.js',
+        'function liberarMoto',
+        'Round 28 — admin-inventario.js: handler liberarMoto() llama a admin-moto-accion.php?accion=liberar'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

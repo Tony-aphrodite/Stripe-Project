@@ -576,6 +576,36 @@ window.AD_inventario = (function(){
         });
       }
 
+      // ── Round 28 (2026-05-14, Óscar Pesgo Plus VIN ...12) ───────────────
+      // Retención (estado='retenida'): the moto is on operational hold,
+      // independent of bloqueado_venta. Before Round 28 there was no UI
+      // affordance to see WHO retained it, WHEN, WHY, or to Liberar.
+      // detalle.php now parses log_estados and returns r.retencion =
+      // { fecha, usuario, usuario_nombre, notas, ... } when applicable.
+      var isRetenida = String(m.estado||'').toLowerCase() === 'retenida';
+      if (isRetenida) {
+        var ret = r.retencion || {};
+        html += secHead('Retención operativa','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>');
+        html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-radius:8px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.20);margin-bottom:12px;">';
+        html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#b45309" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+        html += '<div style="flex:1;min-width:0;">';
+        html += '<div style="font-weight:700;color:#b45309;font-size:13px;">Moto retenida (estado operativo)</div>';
+        html += '<div style="font-size:11.5px;color:#92400e;margin-top:2px;line-height:1.5;">Este es un retén operativo (almacén/CEDIS). Es distinto del <strong>bloqueo de venta</strong> de abajo — un retén puede existir sin bloqueo formal.</div>';
+        // Body: actor + fecha + notas (when present)
+        var retActor = ret.usuario_nombre ? esc(ret.usuario_nombre) :
+                       (ret.usuario ? ('usuario #'+esc(ret.usuario)) : null);
+        if (retActor)     html += '<div style="font-size:12px;color:#78350f;margin-top:8px;"><strong>Retenida por:</strong> '+retActor+'</div>';
+        if (ret.fecha)    html += '<div style="font-size:12px;color:#78350f;margin-top:2px;"><strong>Fecha:</strong> '+esc(ret.fecha)+'</div>';
+        if (ret.notas)    html += '<div style="font-size:12px;color:#78350f;margin-top:2px;line-height:1.5;"><strong>Motivo:</strong> '+esc(ret.notas)+'</div>';
+        if (!retActor && !ret.fecha && !ret.notas) {
+          html += '<div style="font-size:12px;color:#92400e;margin-top:8px;font-style:italic;">Sin registro en <code>log_estados</code> — la retención pudo haberse aplicado por SQL directo o en una versión previa del sistema. Si no hay motivo válido, puedes liberar la moto.</div>';
+        }
+        html += '</div></div>';
+        if (ADApp.canWrite && ADApp.canWrite('inventario')) {
+          html += '<button class="ad-btn ghost" id="adLiberarMoto" data-id="'+m.id+'" style="color:#059669;border-color:#059669;">Liberar moto (estado &rarr; recibida)</button>';
+        }
+      }
+
       // ── Bloqueo de venta ──
       var isBloqueada = parseInt(m.bloqueado_venta) === 1;
       if(ADApp.canWrite('inventario')){
@@ -635,6 +665,9 @@ window.AD_inventario = (function(){
       $('#adAssign').on('click',function(){ if(!origenOk || isBloqueada) return; assignToPunto(m.id, {modelo:m.modelo,color:m.color}); });
       $('#adLockMoto').on('click',function(){ showLockModal(m.id); });
       $('#adUnlockMoto').on('click',function(){ unlockMoto(m.id); });
+      // Round 28: Liberar button — flips estado from 'retenida' to 'recibida'
+      // via the existing admin-moto-accion.php transition (action='liberar').
+      $('#adLiberarMoto').on('click', function(){ liberarMoto(m.id); });
       // Bug fix 2026-05-09: cerrar envíos individuales desde el detalle
       // del inventario. Cada botón rojo "Cerrar" en la sección Envíos
       // dispara un confirm + motivo opcional + POST a eliminar.php.
@@ -1353,6 +1386,40 @@ window.AD_inventario = (function(){
       }
     }).fail(function(x){
       alert((x.responseJSON&&x.responseJSON.error)||'Error de conexión');
+    });
+  }
+
+  // Round 28 (2026-05-14, Óscar Pesgo Plus VIN ...12): flip estado from
+  // 'retenida' back to 'recibida' via the existing admin-moto-accion.php
+  // transition. Different from unlockMoto() — that one only touches
+  // bloqueado_venta. This one touches the operational estado field.
+  // Both can be needed independently on the same moto.
+  function liberarMoto(motoId){
+    var notas = prompt(
+      '¿Liberar esta moto?\n\n' +
+      'Estado operativo cambia: retenida → recibida.\n' +
+      '(Esto NO afecta el bloqueo de venta — esos son campos independientes.)\n\n' +
+      'Opcional: escribe un motivo para registrar en el historial:'
+    );
+    if (notas === null) return;   // user cancelled
+    // The admin-moto-accion.php endpoint lives in configurador/php/,
+    // not under admin/php/, so we call it with an absolute path rather
+    // than ADApp.api (which prepends admin/php/).
+    $.ajax({
+      url:    '/configurador/php/admin-moto-accion.php',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ moto_id: motoId, accion: 'liberar', notas: (notas || '').trim() }),
+    }).done(function(r){
+      if (r && r.ok) {
+        ADApp.closeModal();
+        alert('Moto liberada · estado: recibida');
+        load();
+      } else {
+        alert((r && r.error) || 'Error al liberar la moto');
+      }
+    }).fail(function(x){
+      alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión');
     });
   }
 
