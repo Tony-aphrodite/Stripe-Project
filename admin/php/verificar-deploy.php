@@ -337,7 +337,12 @@ $checks = [
     'r28_admin_liberar_handler' => _checkFile(
         $base . '/admin/js/modules/admin-inventario.js',
         'function liberarMoto',
-        'Round 28 — admin-inventario.js: handler liberarMoto() llama a admin-moto-accion.php?accion=liberar'
+        'Round 28 — admin-inventario.js: handler liberarMoto() llama al endpoint admin-side'
+    ),
+    'r28v2_admin_liberar_endpoint' => _checkFile(
+        $base . '/admin/php/inventario/liberar-moto.php',
+        "adminRequireAuth(['admin','cedis'])",
+        'Round 28 v2 — endpoint admin/php/inventario/liberar-moto.php (admin session, fix "No autenticado")'
     ),
 ];
 

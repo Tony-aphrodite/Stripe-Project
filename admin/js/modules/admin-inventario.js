@@ -1389,11 +1389,17 @@ window.AD_inventario = (function(){
     });
   }
 
-  // Round 28 (2026-05-14, Óscar Pesgo Plus VIN ...12): flip estado from
-  // 'retenida' back to 'recibida' via the existing admin-moto-accion.php
-  // transition. Different from unlockMoto() — that one only touches
-  // bloqueado_venta. This one touches the operational estado field.
-  // Both can be needed independently on the same moto.
+  // Round 28 v2 (2026-05-14, Óscar Pesgo Plus VIN ...12): flip estado
+  // from 'retenida' back to 'recibida'. Different from unlockMoto()
+  // which only touches bloqueado_venta. Both can be needed
+  // independently on the same moto.
+  //
+  // v1 called configurador/php/admin-moto-accion.php directly, which
+  // returned "No autenticado" because that endpoint uses the dealer-
+  // panel session (requireDealerAuth) not the admin-panel session.
+  // v2 calls a new admin-side endpoint (admin/php/inventario/
+  // liberar-moto.php) that authenticates via adminRequireAuth so the
+  // logged-in admin can liberar without re-authenticating.
   function liberarMoto(motoId){
     var notas = prompt(
       '¿Liberar esta moto?\n\n' +
@@ -1402,14 +1408,9 @@ window.AD_inventario = (function(){
       'Opcional: escribe un motivo para registrar en el historial:'
     );
     if (notas === null) return;   // user cancelled
-    // The admin-moto-accion.php endpoint lives in configurador/php/,
-    // not under admin/php/, so we call it with an absolute path rather
-    // than ADApp.api (which prepends admin/php/).
-    $.ajax({
-      url:    '/configurador/php/admin-moto-accion.php',
-      method: 'POST',
-      contentType: 'application/json',
-      data: JSON.stringify({ moto_id: motoId, accion: 'liberar', notas: (notas || '').trim() }),
+    ADApp.api('inventario/liberar-moto.php', {
+      moto_id: motoId,
+      notas:   (notas || '').trim()
     }).done(function(r){
       if (r && r.ok) {
         ADApp.closeModal();
