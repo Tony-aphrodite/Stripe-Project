@@ -1669,24 +1669,22 @@ window.AD_ventas = (function(){
                +   '<strong>Solicitado:</strong> '+esc(r.estado||'—')+(r.ciudad?' · '+esc(r.ciudad):'')+(r.cp?' · CP '+esc(r.cp):'')
                + '</div>';
 
-      // Round 25 (2026-05-14, Óscar): customer asked for a text search box.
-      // For installations with many puntos, scrolling through the full list
-      // is tedious. Live-filter by nombre, ciudad, dirección, colonia, cp.
-      // Filter happens client-side via data attributes on each card row.
-      var totalPuntos = sameState.length + otherState.length;
-      if (totalPuntos > 3) {
-        html += '<div style="position:relative;margin-bottom:10px;">'
-              +   '<input type="text" id="vkAsignPuntoSearch" '
-              +     'placeholder="Buscar punto por nombre, ciudad o dirección…" '
-              +     'class="ad-input" '
-              +     'style="width:100%;padding-left:34px;font-size:13px;" '
-              +     'autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">'
-              +   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
-              +     'style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;">'
-              +     '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
-              +   '</svg>'
-              + '</div>';
-      }
+      // Round 25 v2 (2026-05-14, Óscar): customer asked for a text search
+      // box. The v1 attempt added a >3-punto threshold that hid the box
+      // exactly when only 3 puntos existed (the case in the screenshot).
+      // Always show the search input — even small lists benefit from
+      // type-to-find and the customer explicitly requested it.
+      html += '<div style="position:relative;margin-bottom:10px;">'
+            +   '<input type="text" id="vkAsignPuntoSearch" '
+            +     'placeholder="Buscar punto por nombre, ciudad o dirección…" '
+            +     'class="ad-input" '
+            +     'style="width:100%;padding-left:34px;font-size:13px;" '
+            +     'autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">'
+            +   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+            +     'style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;">'
+            +     '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
+            +   '</svg>'
+            + '</div>';
 
       html += '<div style="max-height:340px;overflow-y:auto;padding-right:4px;">';
 
