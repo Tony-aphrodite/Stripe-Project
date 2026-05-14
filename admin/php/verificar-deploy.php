@@ -284,6 +284,11 @@ $checks = [
         '_hasContractPdf',
         'Round 23 — Sales panel: "Firmado" badge requiere contrato_pdf_path (no solo firmas_contratos residual)'
     ),
+    'r23v2_credit_only_strict' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        '_isCreditTipo ? (r.firma_id && _hasContractPdf) : !!r.firma_id',
+        'Round 23 v2 — Sales panel: chequeo estricto solo en CREDIT; CONTADO usa solo firma_id (legacy compat)'
+    ),
     'r24_puntos_hide_inactive' => _checkFile(
         $base . '/admin/php/puntos/listar.php',
         'WHERE pv.activo = 1',

@@ -503,18 +503,31 @@ window.AD_ventas = (function(){
       var firmaTipos = ['contado','unico','msi','spei','oxxo','tarjeta','enganche','credito','parcial'];
       var _peForFirma = String(r.pago_estado || '').toLowerCase();
       var _isPaid    = (_peForFirma === 'pagada' || _peForFirma === 'aprobada' || _peForFirma === 'approved' || _peForFirma === 'paid' || _peForFirma === 'parcial');
-      // Round 23 (2026-05-14, Óscar VK-1826-0001 screenshot): Sales panel
-      // showed "✓ Firmado 2026-05-09" while Panel Sin firma said "× Sin
-      // iniciar" for the SAME order. Root cause: r.firma_id only checks
-      // that ANY firmas_contratos row exists for this customer's phone/
-      // email — for repeat customers like Brayan (10+ Truora attempts)
-      // residual signature rows from earlier attempts wrongly flag the
-      // current order as signed. Require the actual contract PDF path to
-      // be persisted (Round 18+19 ensure this is only set after the
-      // customer truly signs).
+      // Round 23 v2 (2026-05-14, Óscar VK-1826-0001 + RAMIREZ RUIZ row):
+      //
+      // ORIGINAL bug — Sales panel showed "✓ Firmado 2026-05-09" while
+      // Panel Sin firma said "× Sin iniciar" for the SAME credit order
+      // (VK-1826-0001 Brayan). Root cause: r.firma_id only checks that
+      // ANY firmas_contratos row exists for this customer's phone/email
+      // — for repeat customers (10+ Truora attempts) residual signature
+      // rows from earlier attempts wrongly flag the current order as
+      // signed.
+      //
+      // V2 follow-up: Round 23 v1 required contrato_pdf_path for ALL
+      // tipos, which over-tightened the CONTADO path. Legacy CONTADO
+      // orders have firma_id set + contrato_pdf_path NULL because the
+      // PDF was generated but the column was never persisted on older
+      // confirmar-orden.php versions. Those legitimate signed contado
+      // orders started showing "Pagado · Falta firma →" wrongly.
+      //
+      // Final rule: only CREDIT orders need both firma_id AND
+      // contrato_pdf_path. Contado/MSI/SPEI/OXXO keep the original
+      // firma_id-only check.
+      var _isCreditTipo   = (_tpForFirma === 'credito' || _tpForFirma === 'enganche' || _tpForFirma === 'parcial');
       var _hasContractPdf = !!(r.contrato_pdf_path && String(r.contrato_pdf_path).trim() !== '');
+      var _firmaOk        = _isCreditTipo ? (r.firma_id && _hasContractPdf) : !!r.firma_id;
       if (firmaTipos.indexOf(_tpForFirma) >= 0 || /tarjeta de [dc]/i.test(_tpForFirma)) {
-        if (r.firma_id && _hasContractPdf) {
+        if (_firmaOk) {
           var firmaWhen = r.firma_freg ? String(r.firma_freg).substring(0,10) : '';
           firmaInline = '<div style="font-size:10px;font-weight:700;color:#15803d;margin-top:3px;white-space:nowrap;" '+
                         'title="Contrato firmado digitalmente el '+firmaWhen+' — NOM-151 OK">✓ Firmado'+(firmaWhen?' '+firmaWhen:'')+'</div>';
