@@ -279,6 +279,11 @@ $checks = [
         'truoraCaptureProcessPhotos',
         'Round 22 — Webhook descarga fotos INE+selfie inmediatamente al recibir éxito de Truora (URLs frescas <15min)'
     ),
+    'r23_sales_panel_firmado_consistency' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        '_hasContractPdf',
+        'Round 23 — Sales panel: "Firmado" badge requiere contrato_pdf_path (no solo firmas_contratos residual)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

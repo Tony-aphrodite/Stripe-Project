@@ -503,8 +503,18 @@ window.AD_ventas = (function(){
       var firmaTipos = ['contado','unico','msi','spei','oxxo','tarjeta','enganche','credito','parcial'];
       var _peForFirma = String(r.pago_estado || '').toLowerCase();
       var _isPaid    = (_peForFirma === 'pagada' || _peForFirma === 'aprobada' || _peForFirma === 'approved' || _peForFirma === 'paid' || _peForFirma === 'parcial');
+      // Round 23 (2026-05-14, Óscar VK-1826-0001 screenshot): Sales panel
+      // showed "✓ Firmado 2026-05-09" while Panel Sin firma said "× Sin
+      // iniciar" for the SAME order. Root cause: r.firma_id only checks
+      // that ANY firmas_contratos row exists for this customer's phone/
+      // email — for repeat customers like Brayan (10+ Truora attempts)
+      // residual signature rows from earlier attempts wrongly flag the
+      // current order as signed. Require the actual contract PDF path to
+      // be persisted (Round 18+19 ensure this is only set after the
+      // customer truly signs).
+      var _hasContractPdf = !!(r.contrato_pdf_path && String(r.contrato_pdf_path).trim() !== '');
       if (firmaTipos.indexOf(_tpForFirma) >= 0 || /tarjeta de [dc]/i.test(_tpForFirma)) {
-        if (r.firma_id) {
+        if (r.firma_id && _hasContractPdf) {
           var firmaWhen = r.firma_freg ? String(r.firma_freg).substring(0,10) : '';
           firmaInline = '<div style="font-size:10px;font-weight:700;color:#15803d;margin-top:3px;white-space:nowrap;" '+
                         'title="Contrato firmado digitalmente el '+firmaWhen+' — NOM-151 OK">✓ Firmado'+(firmaWhen?' '+firmaWhen:'')+'</div>';
