@@ -220,6 +220,71 @@ if ($vals['completado']) {
             log_estados=JSON_ARRAY_APPEND(COALESCE(log_estados,'[]'), '$', JSON_OBJECT('estado','recibida','fecha',NOW(),'usuario',?,'origen','checklist_origen_completado'))
         WHERE id=? AND estado IN ('por_llegar')")
         ->execute([$uid, $motoId]);
+
+    // ── Round 26 (2026-05-14, Óscar): WhatsApp/email/SMS notification ──────
+    // When CEDIS completes the Origen checklist (photos + items), the moto
+    // transitions to "recibida". The customer should learn this via the
+    // same multi-channel flow used for other status changes — email +
+    // WhatsApp + SMS, dispatched by voltikaNotify('moto_recibida'). The
+    // template (subject/body/email_html/sms) already exists in
+    // voltika-notify.php; it just was never triggered from this endpoint.
+    //
+    // Best-effort: any failure is swallowed so the checklist save itself
+    // never gets rolled back. The notification table records every send so
+    // failures are auditable post-hoc.
+    try {
+        // Look up customer + punto details for template interpolation.
+        $notifQ = $pdo->prepare("
+            SELECT m.cliente_nombre AS nombre,
+                   m.cliente_email  AS email,
+                   m.cliente_telefono AS telefono,
+                   m.modelo, m.color, m.pedido_num,
+                   pv.nombre        AS punto_nombre,
+                   pv.direccion     AS punto_direccion,
+                   pv.ciudad        AS punto_ciudad,
+                   pv.estado        AS punto_estado,
+                   pv.lat           AS punto_lat,
+                   pv.lng           AS punto_lng
+              FROM inventario_motos m
+              LEFT JOIN puntos_voltika pv ON pv.id = m.punto_voltika_id
+             WHERE m.id = ? LIMIT 1
+        ");
+        $notifQ->execute([$motoId]);
+        $notifRow = $notifQ->fetch(PDO::FETCH_ASSOC);
+
+        if ($notifRow && (!empty($notifRow['telefono']) || !empty($notifRow['email']))) {
+            // Lazy-require notify helper (it lives in configurador/php/).
+            $notifyPath = realpath(__DIR__ . '/../../../configurador/php/voltika-notify.php');
+            if ($notifyPath && file_exists($notifyPath)) {
+                require_once $notifyPath;
+            }
+            if (function_exists('voltikaNotify')) {
+                $linkMaps = ($notifRow['punto_lat'] && $notifRow['punto_lng'])
+                    ? 'https://www.google.com/maps?q=' . urlencode($notifRow['punto_lat'] . ',' . $notifRow['punto_lng'])
+                    : ($notifRow['punto_direccion']
+                        ? 'https://www.google.com/maps?q=' . urlencode($notifRow['punto_direccion'])
+                        : 'https://voltika.mx/');
+                $pedidoCorto = $notifRow['pedido_num'] ?: ('moto_' . $motoId);
+                voltikaNotify('moto_recibida', [
+                    'nombre'           => $notifRow['nombre']   ?? 'Cliente Voltika',
+                    'email'            => $notifRow['email']    ?? '',
+                    'telefono'         => $notifRow['telefono'] ?? '',
+                    'whatsapp'         => $notifRow['telefono'] ?? '',
+                    'modelo'           => $notifRow['modelo']   ?? '',
+                    'color'            => $notifRow['color']    ?? '',
+                    'pedido_corto'     => $pedidoCorto,
+                    'punto'            => $notifRow['punto_nombre']    ?? '—',
+                    'direccion_punto'  => trim(($notifRow['punto_direccion'] ?? '') .
+                                              ($notifRow['punto_ciudad'] ? ', ' . $notifRow['punto_ciudad'] : '') .
+                                              ($notifRow['punto_estado'] ? ', ' . $notifRow['punto_estado'] : ''), ', '),
+                    'ciudad'           => $notifRow['punto_ciudad']    ?? '',
+                    'link_maps'        => $linkMaps,
+                ]);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('guardar-origen notification: ' . $e->getMessage());
+    }
 }
 
 adminLog('checklist_origen_' . ($vals['completado'] ? 'completado' : 'guardado'), [

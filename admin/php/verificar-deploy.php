@@ -309,6 +309,11 @@ $checks = [
         'vtMotosSearch',
         'Round 25 v3 — Modal "Asignar moto" tiene buscador en vivo (filtra VIN/modelo/color/estado/punto)'
     ),
+    'r26_origen_notify_moto_recibida' => _checkFile(
+        $base . '/admin/php/checklists/guardar-origen.php',
+        "voltikaNotify('moto_recibida'",
+        'Round 26 — guardar-origen.php dispara WhatsApp+email+SMS "moto_recibida" al completar el checklist'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
