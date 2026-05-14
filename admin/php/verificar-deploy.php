@@ -304,6 +304,11 @@ $checks = [
         'vkAsignPuntoSearch',
         'Round 25 — Modal "Asignar punto de entrega" tiene buscador en vivo (filtra nombre/ciudad/dirección)'
     ),
+    'r25v3_moto_search_input' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'vtMotosSearch',
+        'Round 25 v3 — Modal "Asignar moto" tiene buscador en vivo (filtra VIN/modelo/color/estado/punto)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

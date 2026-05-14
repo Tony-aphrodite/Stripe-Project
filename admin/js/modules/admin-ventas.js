@@ -888,11 +888,30 @@ window.AD_ventas = (function(){
     var motoIndex = {};
     motos.forEach(function(m){ motoIndex[m.id] = m; });
 
+    // Round 25 v3 (2026-05-14, Óscar): same search box pattern as the
+    // Asignar punto modal. Even with a handful of motos, scanning by VIN
+    // is faster with a text filter — and lists of 10+ recibida units are
+    // common during CEDIS reception waves.
+    html += '<div style="position:relative;margin-bottom:10px;">'
+          +   '<input type="text" id="vtMotosSearch" '
+          +     'placeholder="Buscar por VIN, modelo, color, estado o punto…" '
+          +     'class="ad-input" '
+          +     'style="width:100%;padding-left:34px;font-size:13px;" '
+          +     'autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">'
+          +   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+          +     'style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;">'
+          +     '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
+          +   '</svg>'
+          + '</div>';
+
     html += '<div style="max-height:340px;overflow-y:auto;padding-right:4px;">';
     motos.forEach(function(m, i){
       var vinTxt   = m.vin_display || m.vin || '—';
       var metaTxt  = (m.modelo || '') + (m.color ? ' · ' + m.color : '') + (m.estado ? ' · ' + m.estado : '');
       var locTxt   = m.punto_nombre ? m.punto_nombre : 'En CEDIS';
+      // Round 25 v3: searchable haystack — VIN + modelo + color + estado + punto.
+      var _searchHay = [vinTxt, m.modelo, m.color, m.estado, m.punto_nombre, locTxt]
+          .filter(function(v){ return v; }).join(' ').toLowerCase();
 
       // Checklist status: three states rendered as colored pills.
       //  - green  "Checklist OK"       → co_ok=1 and co_force=0
@@ -923,6 +942,7 @@ window.AD_ventas = (function(){
       }
 
       html += '<label class="adPickMoto" data-mid="'+m.id+'" '+
+                'data-search="'+_searchHay.replace(/"/g, '&quot;')+'" '+
                 'style="display:block;cursor:pointer;padding:11px 13px;margin-bottom:6px;'+
                        'border:1.5px solid var(--ad-border);border-radius:8px;background:var(--ad-surface);">'+
                 '<div style="display:flex;gap:10px;align-items:flex-start;">'+
@@ -939,6 +959,9 @@ window.AD_ventas = (function(){
                 '</div>'+
               '</label>';
     });
+    html += '<div id="vtMotosNoResults" style="display:none;padding:14px;text-align:center;color:#94a3b8;font-size:13px;font-style:italic;">'
+          +   'Sin resultados para esta búsqueda.'
+          + '</div>';
     html += '</div>';
     html += '<div id="vtMotosMsg" style="font-size:12px;margin:8px 0 0;"></div>';
     html += '<div style="display:flex;gap:8px;margin-top:12px;">'+
@@ -947,6 +970,23 @@ window.AD_ventas = (function(){
             '</div>';
 
     $('#vtMotos').html(html);
+
+    // Round 25 v3: live filter for the Asignar moto list (VIN, modelo,
+    // color, estado, punto). DOM-only filter — no extra network calls.
+    $('#vtMotosSearch').on('input', function(){
+      var q = String(this.value || '').trim().toLowerCase();
+      var anyVisible = false;
+      $('#vtMotos .adPickMoto').each(function(){
+        var hay = String($(this).data('search') || '');
+        var match = q === '' || hay.indexOf(q) !== -1;
+        $(this).toggle(match);
+        if (match) anyVisible = true;
+      });
+      $('#vtMotosNoResults').toggle(!anyVisible && q !== '');
+    });
+    if (!('ontouchstart' in window)) {
+      setTimeout(function(){ $('#vtMotosSearch').trigger('focus'); }, 50);
+    }
 
     // Highlight selected card
     function syncHighlight(){
