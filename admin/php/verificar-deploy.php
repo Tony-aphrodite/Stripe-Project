@@ -185,6 +185,17 @@ $checks = [
         "'pendiente_firma'",
         'Round 18 — Panel Sin Firma muestra órdenes en estado pendiente_firma'
     ),
+    // ── Round 19 (2026-05-14) — Documentos modal: contract title accuracy ───
+    'r19_listar_returns_pdf_path' => _checkFile(
+        $base . '/admin/php/ventas/listar.php',
+        't.contrato_pdf_path,',
+        'Round 19 — listar.php devuelve t.contrato_pdf_path al SPA admin'
+    ),
+    'r19_ventas_dynamic_contract_title' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'contratoFirmado',
+        'Round 19 — Documentos modal: título del contrato refleja estado real (firmado vs pendiente de firma)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -277,7 +288,7 @@ code{background:#1e293b;color:#e2e8f0;padding:1px 6px;border-radius:3px;font-siz
 ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
 </style></head><body>
 
-<h1>🚀 Verificación de despliegue — Round 14 + 15 + 16 + 17 + 18 (2026-05-13 / 2026-05-14)</h1>
+<h1>🚀 Verificación de despliegue — Round 14 + 15 + 16 + 17 + 18 + 19 (2026-05-13 / 2026-05-14)</h1>
 <div class="sub">Confirma que los archivos modificados llegaron al servidor con la versión correcta.</div>
 
 <?php if ($allOk): ?>
@@ -376,6 +387,15 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>✅ Esperado: 16 columnas en orden oficial NIP-CIEC PF (FOLIO_CDC, FECHA_APROBACION_DE_CONSULTA, …, ACEPTACION_TERMINOS_Y_CONDICIONES).</li>
     <li>Columna <strong>I</strong> debe llamarse <code>Estado</code> con <strong>e minúscula</strong> (no <code>ESTADO</code>).</li>
     <li><code>NOMBRE_CLIENTE</code> en formato <code>APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES</code> MAYÚSCULAS.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 19 — Documentos modal: título del contrato consistente:</strong>
+  <ul>
+    <li>Admin → Ventas → cualquier orden de crédito SIN firma (ej. <strong>VK-1826-0001 Carlos Ricardo Sánchez</strong>) → "Documentos del pedido".</li>
+    <li>✅ La primera tarjeta debe decir <strong>"Contrato de financiamiento (pendiente de firma)"</strong> con icono ⏳ y fondo amarillo — no <strong>"(firmado)"</strong>.</li>
+    <li>✅ Pedidos con contrato realmente firmado siguen mostrando <strong>"(firmado)"</strong> en azul.</li>
+    <li>Pedidos de contado sin PDF generado muestran <strong>"(pendiente)"</strong> en lugar de <strong>"(firmado)"</strong>.</li>
+    <li>Test rápido: comparar la misma orden antes y después: VK-1826-0001 debe pasar de "(firmado)" engañoso a "(pendiente de firma)" honesto.</li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 18 — Crédito: firma del contrato ANTES del enganche (regla "no se recibe enganche sin firma"):</strong>

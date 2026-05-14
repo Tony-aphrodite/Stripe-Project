@@ -2212,15 +2212,47 @@ window.AD_ventas = (function(){
       // the boss. Convert to an inline-expand kind that pre-checks
       // status via descargar-contrato.php?check_only=1 and renders
       // status + actions WITHOUT navigating away.
+      //
+      // Customer report 2026-05-14 round 19 (Óscar, VK-1826-0001): the
+      // card title was hardcoded as "(firmado)" even when the body of
+      // the same card showed "⏳ Contrato de crédito pendiente de firma"
+      // — a contradiction on screen. Title now mirrors the actual state
+      // derived from transacciones.contrato_pdf_path. For credit orders
+      // the path is only set after generar-contrato-pdf.php runs (which
+      // requires the customer to have signed via Truora + Cincel), so
+      // it's a reliable signal.
+      var contratoPath     = (r.contrato_pdf_path != null) ? String(r.contrato_pdf_path).trim() : '';
+      var contratoFirmado  = contratoPath !== '';
+      // For credit also check transacciones.pago_estado (aliased as
+      // tx_pago_estado in listar.php) — round 18 introduces
+      // 'pendiente_firma' for the edge case where Stripe charged the
+      // card but no signature exists. Defense in depth: explicit guard
+      // so a future change to the path column doesn't flip the label.
+      var txEstado = String(r.tx_pago_estado || '').toLowerCase();
+      if (isCredito && txEstado === 'pendiente_firma') {
+        contratoFirmado = false;
+      }
+      var contratoTitle    = isCredito
+        ? (contratoFirmado ? 'Contrato de financiamiento (firmado)' : 'Contrato de financiamiento (pendiente de firma)')
+        : (contratoFirmado ? 'Contrato de compraventa (firmado)'    : 'Contrato de compraventa (pendiente)');
+      var contratoBg       = contratoFirmado ? '#dbeafe' : '#fef3c7';
+      var contratoTx       = contratoFirmado ? '#1e40af' : '#92400e';
+      var contratoIcon     = contratoFirmado ? '📄'      : '⏳';
+      var contratoDesc     = contratoFirmado
+        ? 'Contrato con datos del cliente, sello de tiempo y firma electrónica.'
+        : (isCredito
+            ? 'El cliente aún no ha firmado el contrato electrónicamente. Reenvía el link de Truora.'
+            : 'El PDF aún no está disponible. Puede regenerarse desde la vista detalle.');
+
       rows_.push({
-        title: isCredito ? 'Contrato de financiamiento (firmado)' : 'Contrato de compraventa (firmado)',
-        desc:  'Contrato con datos del cliente, sello de tiempo y firma electrónica.',
+        title: contratoTitle,
+        desc:  contratoDesc,
         kind:  'contrato',
         contractKey: contractKey,
         isCredit: isCredito,
         preapSearch: r.telefono || r.email || '',
-        icon:  '📄',
-        bg:    '#dbeafe', tx: '#1e40af'
+        icon:  contratoIcon,
+        bg:    contratoBg, tx: contratoTx
       });
     }
     // Stripe receipt — only useful when there's a real PI.

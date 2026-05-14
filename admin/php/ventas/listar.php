@@ -122,6 +122,12 @@ try {
                $trackingSelect
                $cotizSelect,
                t.pago_estado AS tx_pago_estado,
+               -- Round 19 (2026-05-14): expose contract PDF path so the
+               -- admin Documentos modal can label the contract card
+               -- correctly. For credit orders this column is only
+               -- populated AFTER the customer signs via
+               -- generar-contrato-pdf.php.
+               t.contrato_pdf_path,
                -- Customer brief 2026-05-12 (Oscar, 8th round): some rows have
                -- vin_display populated with a pedido_num pattern (legacy
                -- import bug), which made the Ventas ASIGNACION column show
