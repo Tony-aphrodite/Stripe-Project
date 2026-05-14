@@ -349,6 +349,11 @@ $checks = [
         'clVinSearch',
         'Round 29 — Checklists page: buscador VIN con debounce (server-side LIKE)'
     ),
+    'r30_recepcion_foto_lightbox' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-recepcion.js',
+        'showFotoLightbox',
+        'Round 30 — PUNTOVOLTIKA recepción historial: fotos abren en lightbox modal (no más botones muertos)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

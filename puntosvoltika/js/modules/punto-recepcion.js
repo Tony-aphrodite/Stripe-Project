@@ -148,6 +148,66 @@ window.PV_recepcion = (function(){
       var $ic = $(this).find('.pv-hist-caret');
       $ic.text($ic.text()==='▾' ? '▴' : '▾');
     });
+    // Round 30: photo lightbox. Stop propagation so the chip click doesn't
+    // also re-toggle the card (would feel broken on mobile).
+    $('.pvShowFoto').off('click.pvFoto').on('click.pvFoto', function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      var url   = $(this).data('url')   || '';
+      var label = $(this).data('label') || 'Foto';
+      showFotoLightbox(String(url), String(label));
+    });
+  }
+
+  // Round 30: simple modal lightbox. Renders the image inline and surfaces
+  // any load failure (broken URL / 404 / forbidden directory) as a visible
+  // error message so the operator knows the photo is missing instead of
+  // staring at a dead button.
+  function showFotoLightbox(url, label){
+    if (!url) return;
+    // Build overlay
+    var $overlay = $(
+      '<div class="pv-foto-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.78);'+
+        'z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">'+
+        '<div style="position:relative;max-width:96vw;max-height:96vh;background:#0f172a;'+
+          'border-radius:10px;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.5);">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">'+
+            '<div style="color:#fff;font-size:13px;font-weight:700;">📷 '+escapeHtml(label)+'</div>'+
+            '<button type="button" class="pv-foto-close" '+
+              'style="background:#1e293b;color:#fff;border:0;border-radius:6px;cursor:pointer;'+
+                     'padding:4px 10px;font-size:14px;">✕</button>'+
+          '</div>'+
+          '<div class="pv-foto-body" style="background:#020617;border-radius:6px;min-height:140px;'+
+                  'display:flex;align-items:center;justify-content:center;">'+
+            '<img src="'+url.replace(/"/g,'&quot;')+'" alt="'+escapeHtml(label)+'" '+
+                 'style="display:block;max-width:100%;max-height:80vh;border-radius:6px;" '+
+                 'class="pv-foto-img">'+
+          '</div>'+
+          '<div style="margin-top:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">'+
+            '<a href="'+url.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" '+
+               'style="color:#7dd3fc;font-size:12px;text-decoration:none;">Abrir en pestaña nueva ↗</a>'+
+            '<span style="color:#64748b;font-size:11px;font-family:ui-monospace,monospace;word-break:break-all;'+
+                         'max-width:520px;text-align:right;">'+escapeHtml(url)+'</span>'+
+          '</div>'+
+        '</div>'+
+      '</div>'
+    );
+    $('body').append($overlay);
+    // Surface load failures so the operator knows the file is missing.
+    $overlay.find('.pv-foto-img').on('error', function(){
+      $overlay.find('.pv-foto-body').html(
+        '<div style="color:#fca5a5;padding:30px 20px;text-align:center;font-size:13px;line-height:1.6;">'+
+          '⚠ No se pudo cargar la imagen.<br>'+
+          '<span style="color:#94a3b8;font-size:11.5px;">El archivo puede haber sido borrado, no existir aún, '+
+          'o estar bloqueado por permisos del servidor (.htaccess / Plesk).</span>'+
+        '</div>'
+      );
+    });
+    // Close: button, click on overlay backdrop, or Esc key
+    var close = function(){ $overlay.remove(); $(document).off('keydown.pvFoto'); };
+    $overlay.find('.pv-foto-close').on('click', close);
+    $overlay.on('click', function(ev){ if (ev.target === this) close(); });
+    $(document).on('keydown.pvFoto', function(ev){ if (ev.key === 'Escape') close(); });
   }
 
   function checkRow(label, val){
@@ -172,10 +232,19 @@ window.PV_recepcion = (function(){
 
   function histCard(row, idx){
     var photoChips = '';
+    // Round 30 (2026-05-14, Óscar): the previous chips were <a target=_blank>
+    // links pointing to /configurador/php/uploads/recepcion/<file>. Some
+    // installs blocked that path with .htaccess and the click silently did
+    // nothing. Switched to an inline lightbox modal — same URL, but loaded
+    // via <img> so a 403/404 surfaces as a visible error instead of a
+    // dead-end click.
     function chip(url, label){
       if (!url) return '';
-      return '<a href="'+url+'" target="_blank" class="ad-badge blue" '+
-        'style="text-decoration:none;margin-right:4px;display:inline-block;">📷 '+label+'</a>';
+      // Encode URL for safe inclusion in data attribute (avoid quote breakage).
+      var safe = String(url).replace(/"/g, '&quot;');
+      return '<button type="button" class="ad-badge blue pvShowFoto" '+
+        'data-url="'+safe+'" data-label="'+escapeHtml(label)+'" '+
+        'style="text-decoration:none;margin-right:4px;display:inline-block;border:0;cursor:pointer;font:inherit;">📷 '+label+'</button>';
     }
     photoChips += chip(row.foto_sello_url,     'Sello');
     photoChips += chip(row.foto_vin_label_url, 'VIN etiqueta');
