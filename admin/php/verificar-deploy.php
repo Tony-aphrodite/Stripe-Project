@@ -344,6 +344,11 @@ $checks = [
         "adminRequireAuth(['admin','cedis'])",
         'Round 28 v2 — endpoint admin/php/inventario/liberar-moto.php (admin session, fix "No autenticado")'
     ),
+    'r29_checklists_vin_search' => _checkFile(
+        $base . '/admin/js/modules/admin-checklists.js',
+        'clVinSearch',
+        'Round 29 — Checklists page: buscador VIN con debounce (server-side LIKE)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

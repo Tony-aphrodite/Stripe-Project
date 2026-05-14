@@ -112,6 +112,11 @@ window.AD_checklists = (function(){
   // ── Main list render ─────────────────────────────────────────────────────
   var currentFilter = '';
   var currentPage   = 1;
+  // Round 29 (2026-05-14, Óscar): VIN search across the whole list,
+  // server-side. The backend already supports ?vin= (LIKE %vin%) in
+  // admin/php/checklists/listar.php, but the UI exposed no input.
+  var currentVin    = '';
+  var _vinTimer     = null;
   var _backBtn = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
 
   function render(){
@@ -120,7 +125,13 @@ window.AD_checklists = (function(){
   }
 
   function load(){
-    ADApp.api('checklists/listar.php?filtro='+encodeURIComponent(currentFilter)+'&page='+currentPage).done(paint);
+    // Round 29: include ?vin= so the server-side LIKE filter narrows the
+    // 131-row list to the operator's typed prefix/substring.
+    var url = 'checklists/listar.php'
+            + '?filtro=' + encodeURIComponent(currentFilter)
+            + '&page='   + currentPage
+            + '&vin='    + encodeURIComponent(currentVin);
+    ADApp.api(url).done(paint);
   }
 
   function paint(r){
@@ -164,7 +175,20 @@ window.AD_checklists = (function(){
         '<option value="con_ensamble"'+(currentFilter==='con_ensamble'?' selected':'')+'>Con ensamble</option>'+
         '<option value="completos"'+(currentFilter==='completos'?' selected':'')+'>Completo</option>'+
       '</select>'+
-      (currentFilter ? '<button class="ad-btn sm ghost" id="clClear" title="Limpiar filtro">✕ Limpiar</button>' : '')+
+      // Round 29: VIN search input. Server-side filter (LIKE %q%) so it
+      // works across all 50+ pages, not just the rows visible now.
+      '<div style="position:relative;display:inline-block;">'+
+        '<input type="text" id="clVinSearch" class="ad-input" '+
+          'placeholder="Buscar VIN…" '+
+          'value="'+(currentVin || '').replace(/"/g,'&quot;')+'" '+
+          'style="width:240px;padding-left:30px;font-size:13px;" '+
+          'autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">'+
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '+
+          'style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;">'+
+          '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'+
+        '</svg>'+
+      '</div>'+
+      ((currentFilter || currentVin) ? '<button class="ad-btn sm ghost" id="clClear" title="Limpiar filtros">✕ Limpiar</button>' : '')+
       '<span id="clCount" style="font-size:12px;color:var(--ad-dim);">'+Number(r.total||0)+' motos</span>'+
       '<div style="flex:1;"></div>'+
       '<button class="ad-btn sm primary" id="clBulkOrigen" disabled '+
@@ -223,8 +247,36 @@ window.AD_checklists = (function(){
       $('#clCount').text('Filtrando…');
       load();
     });
+    // Round 29: VIN search — debounced 300 ms so each keystroke doesn't
+    // spam the server, but the operator gets near-instant results.
+    $('#clVinSearch').off('input.clVin').on('input.clVin', function(){
+      var v = String(this.value || '').trim();
+      clearTimeout(_vinTimer);
+      _vinTimer = setTimeout(function(){
+        if (v === currentVin) return;
+        currentVin  = v;
+        currentPage = 1;
+        $('#clCount').text('Buscando…');
+        load();
+      }, 300);
+    });
+    // Focus retention: after load() re-renders the toolbar, refocus the
+    // VIN input + place the caret at the end so the operator can keep
+    // typing without losing context.
+    if (currentVin) {
+      var $vinEl = $('#clVinSearch');
+      if ($vinEl.length) {
+        $vinEl.trigger('focus');
+        var el = $vinEl[0];
+        try {
+          var len = el.value.length;
+          el.setSelectionRange(len, len);
+        } catch (e) { /* setSelectionRange fails on some input types */ }
+      }
+    }
     $('#clClear').off('click').on('click', function(){
       currentFilter = '';
+      currentVin    = '';
       currentPage   = 1;
       load();
     });
