@@ -523,9 +523,18 @@ window.AD_ventas = (function(){
       // Final rule: only CREDIT orders need both firma_id AND
       // contrato_pdf_path. Contado/MSI/SPEI/OXXO keep the original
       // firma_id-only check.
+      // Round 23 v3 (2026-05-14, Óscar — Fernando Alexis OXXO row):
+      // "Firmado" badge appeared on an OXXO order still in Pendiente
+      // state (customer hasn't paid). Root cause: firma_id from a prior
+      // checkout attempt was persisted in firmas_contratos but the
+      // current OXXO reference was never paid. Require payment to be
+      // confirmed BEFORE labeling as Firmado, otherwise the badge
+      // pretends an unpaid order is complete.
       var _isCreditTipo   = (_tpForFirma === 'credito' || _tpForFirma === 'enganche' || _tpForFirma === 'parcial');
       var _hasContractPdf = !!(r.contrato_pdf_path && String(r.contrato_pdf_path).trim() !== '');
-      var _firmaOk        = _isCreditTipo ? (r.firma_id && _hasContractPdf) : !!r.firma_id;
+      var _firmaOk        = _isCreditTipo
+                            ? (r.firma_id && _hasContractPdf && _isPaid)
+                            : (!!r.firma_id && _isPaid);
       if (firmaTipos.indexOf(_tpForFirma) >= 0 || /tarjeta de [dc]/i.test(_tpForFirma)) {
         if (_firmaOk) {
           var firmaWhen = r.firma_freg ? String(r.firma_freg).substring(0,10) : '';
