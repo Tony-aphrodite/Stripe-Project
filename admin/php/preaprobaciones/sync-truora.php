@@ -352,6 +352,26 @@ try {
     @$pdo->exec("ALTER TABLE verificaciones_identidad ADD COLUMN raw_truora_payload MEDIUMTEXT NULL");
 } catch (Throwable $e) {}
 
+// Round 21 v4 (2026-05-14, Óscar — Brayan #69): sync was downgrading a
+// previously-approved row from status='success' / approved=1 to
+// status='failure' / approved=0 when Truora's API later reported the
+// process as failure (e.g. expired or invalidated). Never overwrite a
+// "better" verdict with a worse one — the historical approval is the
+// legal evidence we relied on at purchase time. Only upgrade.
+$prevStatus    = strtolower((string)($verifRow['truora_status'] ?? ''));
+$prevApproved  = $verifRow['approved'];
+$wasApproved   = ($prevApproved == 1) || in_array($prevStatus, ['success','valid'], true);
+
+if ($wasApproved) {
+    // Stay approved/success regardless of what Truora returns now.
+    if ($status === 'failure' || in_array((string)$status, ['invalid','failed','rejected'], true)) {
+        $status   = $prevStatus ?: 'success';
+        $approved = 1;
+        // Don't pollute the rejection-reason field with a stale failure either.
+        $declinedReason = '';
+    }
+}
+
 $updates = [
     'truora_process_id'       => $processId ?: null,
     'truora_status'           => $status    ?: null,
