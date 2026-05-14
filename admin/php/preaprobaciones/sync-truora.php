@@ -213,11 +213,16 @@ if ($approved === 0) {
 }
 
 // ── Step 6: scan the payload for downloadable image URLs ──────────────────
-// Round 21 v2: try multiple Truora endpoints since attached_documents is
-// often NOT in /v1/processes/<id> but in a separate endpoint. Then walk
-// every payload looking for HTTPS URLs in image-shaped fields.
+// Round 21 v4 (Óscar, Brayan #69): truora_fetch_log proved the photo URLs
+// (front_image / reverse_image) are returned by /v1/processes/<id>/result,
+// not by /v1/processes/<id>. truoraFetchProcessDetails returns only the
+// FIRST 200 response, so /result data never reached us. Add /result as a
+// first-class image source here (the helper still tries it but we ignore
+// its return value). Photos are AWS S3 signed URLs with X-Amz-Expires=900
+// (15 min) so we MUST download them at sync time — already done in Step 7.
 $imageSources = [$details];
 $extraEndpoints = [
+    '/v1/processes/' . urlencode($processId) . '/result',
     '/v1/processes/' . urlencode($processId) . '/attached_documents',
     '/v1/processes/' . urlencode($processId) . '/documents',
     '/v1/processes/' . urlencode($processId) . '/attached_pictures',
