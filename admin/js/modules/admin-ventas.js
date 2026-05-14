@@ -2665,8 +2665,14 @@ window.AD_ventas = (function(){
     var approvedTxt = (truoraApproved === null || typeof truoraApproved === 'undefined')
         ? '—'
         : (truoraApproved == 1 ? '<span style="color:#16a34a;">✓ Aprobado</span>' : '<span style="color:#b91c1c;">✗ Rechazado</span>');
+    // Round 21 v2: when Truora explicitly rejected the customer but
+    // per-field flags are null (legacy Truora response), show a
+    // contextual message instead of plain "—" so the admin sees a
+    // coherent rejection story across all rows.
+    var rejectedOverall = (truoraApproved === 0 || truoraApproved === '0');
     var nameMatchTxt = (p.name_match == 1) ? '<span style="color:#16a34a;">✓ Nombre coincide</span>'
-                   : (p.name_match === 0 ? '<span style="color:#b91c1c;">✗ No coincide</span>' : '—');
+                   : (p.name_match === 0 ? '<span style="color:#b91c1c;">✗ No coincide</span>'
+                   : (rejectedOverall    ? '<span style="color:#94a3b8;">— no aplicable (rechazado)</span>' : '—'));
 
     // Round 20: show actual thumbnails (clickable to enlarge) instead of
     // plain link chips. Critical evidence for chargeback / PROFECO defense
@@ -2703,7 +2709,10 @@ window.AD_ventas = (function(){
       ['Truora — aprobación',     approvedTxt],
       ['Truora — nombre coincide', nameMatchTxt],
       ['Truora — última actualización', esc(p.truora_updated_at || '—')],
-      ['Revisión manual requerida', (p.manual_review_required == 1 ? '<span style="color:#ca8a04;">⚠ Sí</span>' + (p.manual_review_reason?' — '+esc(p.manual_review_reason):'') : '—')],
+      ['Revisión manual requerida',
+        (p.manual_review_required == 1 ? '<span style="color:#ca8a04;">⚠ Sí</span>' + (p.manual_review_reason?' — '+esc(p.manual_review_reason):'')
+         : (p.manual_review_required === 0 ? '<span style="color:#16a34a;">✗ No</span>'
+         : (rejectedOverall ? '<span style="color:#94a3b8;">— no aplicable (rechazado)</span>' : '—')))],
     ]);
 
     // Photo gallery — render thumbnails when available, missing-warning
@@ -2802,8 +2811,10 @@ window.AD_ventas = (function(){
 
   function renderCurp($c, p){
     var html = '<div style="margin-bottom:8px;font-weight:700;color:#0f172a;">CURP + Validación CDC/Truora</div>';
+    var curpRejected = (p.truora_approved === 0 || p.truora_approved === '0');
     var curpMatch = (p.curp_match == 1) ? '<span style="color:#16a34a;">✓ Coincide</span>'
-                 : (p.curp_match === 0 ? '<span style="color:#b91c1c;">✗ No coincide</span>' : '—');
+                 : (p.curp_match === 0 ? '<span style="color:#b91c1c;">✗ No coincide</span>'
+                 : (curpRejected      ? '<span style="color:#94a3b8;">— no aplicable (rechazado)</span>' : '—'));
 
     // Customer brief 2026-05-12 (Óscar, 10th round — real credit
     // customer Carlos Ricardo Sánchez): the row "Truora — same OK

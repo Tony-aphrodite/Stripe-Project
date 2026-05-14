@@ -108,27 +108,85 @@ if (!$details) {
 $status     = truoraExtractStatus($details);     // valid | invalid | pending | ...
 $nameInfo   = truoraExtractName($details);
 $curpFound  = truoraExtractCurp($details);
-$manualRev  = null;
-// Probe common nested keys for manual_review_required (boolean) +
-// declined_reason / failure_status (string).
-foreach (['manual_review_required','manual_review'] as $k) {
-    if (isset($details[$k])) { $manualRev = (int)((bool)$details[$k]); break; }
-}
-$declinedReason = '';
-foreach (['declined_reason','rejection_reason','failure_status'] as $k) {
-    if (!empty($details[$k]) && is_string($details[$k])) { $declinedReason = $details[$k]; break; }
-}
+
+// Round 21 v2: recursive search for fields that the original parser
+// only found at top-level. Truora response shapes vary heavily by
+// flow_id — some put manual_review_required directly on the root,
+// some bury it under .result, .validations[].validation_data,
+// .process_data, etc. Walk the entire tree once and pick the first
+// non-null match.
+$_recursiveFind = function (array $node, array $keys, bool $boolish = false) use (&$_recursiveFind) {
+    foreach ($node as $k => $v) {
+        if (is_string($k)) {
+            $kl = strtolower($k);
+            foreach ($keys as $needle) {
+                if ($kl === $needle || strpos($kl, $needle) !== false) {
+                    if ($boolish) {
+                        if (is_bool($v))   return (int)$v;
+                        if (is_int($v))    return (int)((bool)$v);
+                        if (is_string($v)) {
+                            $sv = strtolower(trim($v));
+                            if (in_array($sv, ['true','1','yes','sí','si','required'], true)) return 1;
+                            if (in_array($sv, ['false','0','no','not_required'], true))     return 0;
+                        }
+                    } else {
+                        if (is_string($v) && $v !== '') return $v;
+                        if (is_int($v) || is_bool($v))  return (int)((bool)$v);
+                    }
+                }
+            }
+        }
+        if (is_array($v)) {
+            $found = $_recursiveFind($v, $keys, $boolish);
+            if ($found !== null) return $found;
+        }
+    }
+    return null;
+};
+
+$manualRev      = $_recursiveFind($details, ['manual_review_required','manual_review'], true);
+$declinedReason = (string)($_recursiveFind($details, ['declined_reason','rejection_reason','failure_status','failure_reason'], false) ?? '');
 
 // Truora's "approved" is sometimes a boolean, sometimes inferred from
-// status. Be defensive.
-$approved = null;
-if (isset($details['approved']))            $approved = (int)((bool)$details['approved']);
-elseif ($status === 'valid')                 $approved = 1;
-elseif (in_array((string)$status, ['invalid','failed','failure','rejected'], true)) $approved = 0;
+// status. Be defensive — recursive search first, then status fallback.
+$approved = $_recursiveFind($details, ['approved','is_approved','approval'], true);
+if ($approved === null) {
+    if ($status === 'valid')                                                              $approved = 1;
+    elseif (in_array((string)$status, ['invalid','failed','failure','rejected'], true)) $approved = 0;
+}
 
-// Name + CURP match — re-evaluate against what the customer entered.
+// Round 21 v2: backfill expected_name / expected_curp from
+// preaprobaciones (or transacciones) when the verificaciones_identidad
+// stub row was created before those fields were captured. Without
+// this, name_match / curp_match stay null forever on legacy rows.
 $expectedName = trim((string)($verifRow['expected_name'] ?? ''));
 $expectedCurp = trim((string)($verifRow['expected_curp'] ?? ''));
+if ($expectedName === '' || $expectedCurp === '') {
+    try {
+        $look = $pdo->prepare("
+            SELECT nombre, apellido_paterno, apellido_materno, NULL AS curp_field
+              FROM preaprobaciones
+             WHERE (LENGTH(?) > 0 AND telefono = ?)
+                OR (LENGTH(?) > 0 AND email    = ?)
+             ORDER BY id DESC LIMIT 1
+        ");
+        $look->execute([$tel, $tel, $email, $email]);
+        $pr = $look->fetch(PDO::FETCH_ASSOC);
+        if ($pr && $expectedName === '') {
+            $expectedName = trim(($pr['nombre'] ?? '') . ' ' .
+                                 ($pr['apellido_paterno'] ?? '') . ' ' .
+                                 ($pr['apellido_materno'] ?? ''));
+        }
+        // CURP fallback: try consultas_buro (most reliable source).
+        if ($expectedCurp === '') {
+            $cb = $pdo->prepare("SELECT curp FROM consultas_buro WHERE telefono = ? OR email = ? ORDER BY id DESC LIMIT 1");
+            $cb->execute([$tel, $email]);
+            $expectedCurp = trim((string)($cb->fetchColumn() ?: ''));
+        }
+    } catch (Throwable $e) { error_log('sync-truora expected backfill: ' . $e->getMessage()); }
+}
+
+// Name + CURP match — re-evaluate against what the customer entered.
 $nameMatch = null; $curpMatch = null;
 if ($expectedName !== '' && $nameInfo && !empty($nameInfo['full_name'])) {
     $nameMatch = truoraNamesMatch($expectedName, $nameInfo['full_name']) ? 1 : 0;
@@ -136,39 +194,95 @@ if ($expectedName !== '' && $nameInfo && !empty($nameInfo['full_name'])) {
 if ($expectedCurp !== '' && $curpFound) {
     $curpMatch = (strtoupper($expectedCurp) === strtoupper($curpFound)) ? 1 : 0;
 }
+// If Truora explicitly reported these per-field flags in its response
+// (sometimes nested under validations[].validation_data), prefer those
+// over our heuristic.
+$tNameMatch = $_recursiveFind($details, ['name_match','full_name_match','match_name'], true);
+$tCurpMatch = $_recursiveFind($details, ['curp_match','national_id_match','match_curp'], true);
+if ($tNameMatch !== null) $nameMatch = $tNameMatch;
+if ($tCurpMatch !== null) $curpMatch = $tCurpMatch;
+
+// Final fallback for rejected verifications — when Truora rejected the
+// process outright but per-field flags are still null, treat the
+// rejection as a name+curp mismatch so the admin sees the failure
+// reason instead of three empty rows next to "✗ Rechazado".
+if ($approved === 0) {
+    if ($nameMatch === null) $nameMatch = 0;
+    if ($curpMatch === null) $curpMatch = 0;
+    if ($manualRev === null) $manualRev = 0;  // already rejected → no manual review needed
+}
 
 // ── Step 6: scan the payload for downloadable image URLs ──────────────────
-// Truora flow versions vary in field naming, so walk the entire response
-// tree and collect every string that looks like an HTTP(S) URL pointing
-// at an image (or a Truora-signed URL). Classify by context keywords from
-// the surrounding field name.
+// Round 21 v2: try multiple Truora endpoints since attached_documents is
+// often NOT in /v1/processes/<id> but in a separate endpoint. Then walk
+// every payload looking for HTTPS URLs in image-shaped fields.
+$imageSources = [$details];
+$extraEndpoints = [
+    '/v1/processes/' . urlencode($processId) . '/attached_documents',
+    '/v1/processes/' . urlencode($processId) . '/documents',
+    '/v1/processes/' . urlencode($processId) . '/attached_pictures',
+    '/v1/processes/' . urlencode($processId) . '/pictures',
+];
+$baseApi = defined('TRUORA_IDENTITY_API_URL') ? TRUORA_IDENTITY_API_URL : 'https://api.identity.truora.com';
+foreach ($extraEndpoints as $path) {
+    $ch = curl_init($baseApi . $path);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_HTTPHEADER     => [
+            'Truora-API-Key: ' . (defined('TRUORA_API_KEY') ? TRUORA_API_KEY : ''),
+            'Accept: application/json',
+        ],
+    ]);
+    $b = curl_exec($ch);
+    $c = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    // Audit log so we know which endpoints have data.
+    try {
+        $pdo->prepare("INSERT INTO truora_fetch_log (process_id, url, http_code, response, curl_err)
+                       VALUES (?, ?, ?, ?, NULL)")
+            ->execute([$processId, $path, $c, substr((string)$b, 0, 4000)]);
+    } catch (Throwable $e) {}
+    if ($c >= 200 && $c < 300 && $b) {
+        $arr = json_decode((string)$b, true);
+        if (is_array($arr)) $imageSources[] = $arr;
+    }
+}
+
 $imageUrls = []; // associative: ['ine_frente'|'ine_reverso'|'selfie' => url]
-$walk = function ($node, $contextKey = '') use (&$walk, &$imageUrls) {
+$walk = function ($node, $contextKey = '', $parentKey = '') use (&$walk, &$imageUrls) {
     if (is_array($node)) {
         foreach ($node as $k => $v) {
-            $walk($v, is_string($k) ? strtolower((string)$k) : $contextKey);
+            $cur = is_string($k) ? strtolower((string)$k) : '';
+            $walk($v, $cur ?: $contextKey, $contextKey);
         }
         return;
     }
     if (!is_string($node)) return;
     if (!preg_match('#^https?://#i', $node)) return;
-    // Image-only filter — accept either a known image extension OR a
-    // Truora-signed URL (which doesn't carry an extension).
-    $isImg  = preg_match('#\.(jpe?g|png|webp|heic)(\?|$)#i', $node);
-    $isTru  = (stripos($node, 'truora') !== false);
-    if (!$isImg && !$isTru) return;
-    // Heuristic classification.
-    $hay = $contextKey . ' ' . strtolower($node);
+    // Round 21 v2 — broader image filter. Accept:
+    //   1. Known image extensions
+    //   2. URLs containing "truora"
+    //   3. URLs inside fields named *url|*link|*image|*picture|*document|*photo
+    //   4. AWS-signed URLs (X-Amz-Signature) which is how Truora delivers most
+    $hayKey  = $contextKey . ' ' . $parentKey;
+    $isImg   = preg_match('#\.(jpe?g|png|webp|heic)(\?|$)#i', $node);
+    $isTru   = (stripos($node, 'truora') !== false);
+    $isAws   = (stripos($node, 'x-amz-signature') !== false || stripos($node, 'amazonaws.com') !== false);
+    $isImgK  = preg_match('/(url|link|image|picture|document|photo|file)/', $hayKey);
+    if (!$isImg && !$isTru && !$isAws && !$isImgK) return;
+
+    $hay = $hayKey . ' ' . strtolower($node);
     $key = null;
-    if (preg_match('/(selfie|liveness|face|portrait)/', $hay))           $key = 'selfie';
-    elseif (preg_match('/(reverse|reverso|back|trasera|trasero)/', $hay)) $key = 'ine_reverso';
-    elseif (preg_match('/(front|frente|delantera|delantero|obverse)/', $hay)) $key = 'ine_frente';
-    elseif (preg_match('/(document|ine|id_card|identification)/', $hay)) $key = 'ine_frente';
+    if (preg_match('/(selfie|liveness|face|portrait|user_picture)/', $hay))    $key = 'selfie';
+    elseif (preg_match('/(reverse|reverso|back\b|trasera|trasero|verso)/', $hay)) $key = 'ine_reverso';
+    elseif (preg_match('/(front|frente|delantera|delantero|obverse|anverso)/', $hay)) $key = 'ine_frente';
+    elseif (preg_match('/(document_image|id_card_image|ine_image|identification_image)/', $hay)) $key = 'ine_frente';
     if ($key && empty($imageUrls[$key])) {
         $imageUrls[$key] = $node;
     }
 };
-$walk($details);
+foreach ($imageSources as $src) $walk($src);
 
 // ── Step 7: try to download each classified URL to local uploads dir ──────
 // Pattern matches verificar-identidad.php naming so admin-identidad.php /

@@ -223,6 +223,21 @@ $checks = [
         'Sincronizar con Truora',
         'Round 21 — admin-ventas.js: botón "Sincronizar con Truora" en sección Identidad'
     ),
+    'r21v2_recursive_search' => _checkFile(
+        $base . '/admin/php/preaprobaciones/sync-truora.php',
+        '_recursiveFind',
+        'Round 21 v2 — sync-truora.php: búsqueda recursiva para name_match / manual_review / approved'
+    ),
+    'r21v2_attached_documents' => _checkFile(
+        $base . '/admin/php/preaprobaciones/sync-truora.php',
+        '/attached_documents',
+        'Round 21 v2 — sync-truora.php: prueba endpoints /attached_documents y /documents de Truora'
+    ),
+    'r21v2_admin_rejected_fallback' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'no aplicable (rechazado)',
+        'Round 21 v2 — admin-ventas.js: campos null muestran "no aplicable (rechazado)" cuando el proceso fue rechazado'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
