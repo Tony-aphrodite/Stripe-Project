@@ -319,6 +319,11 @@ $checks = [
         'Round 27 (2026-05-14, Óscar): showDirectSaleModal removed',
         'Round 27 — PUNTOVOLTIKA: botón "Venta directa" y modal removidos (ventas solo via configurador)'
     ),
+    'r27v2_inicio_code_removed' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-inicio.js',
+        'Round 27 v2 (2026-05-14, Óscar Inicio screenshot)',
+        'Round 27 v2 — PUNTOVOLTIKA Inicio: linea "Venta directa en tienda: <código>" removida'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

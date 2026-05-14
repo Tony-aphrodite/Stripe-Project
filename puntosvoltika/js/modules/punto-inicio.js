@@ -35,8 +35,13 @@ window.PV_inicio = (function(){
     html += '<div class="ad-kpi"><div class="label">Envíos pendientes</div><div class="value blue">'+(env.envios?env.envios.length:0)+'</div></div>';
     html += '</div>';
 
-    html += '<div class="ad-h2">Códigos de referido</div>';
-    html += '<div class="ad-card"><strong>Venta directa en tienda:</strong> <code>'+(p.codigo_venta||'—')+'</code></div>';
+    // Round 27 v2 (2026-05-14, Óscar Inicio screenshot): "Venta directa
+    // en tienda: PSVOLTCD" line removed. Puntos no longer perform
+    // walk-in sales (Round 27 removed the corresponding button in
+    // punto-venta.js); showing this code on the home page misled
+    // operators into believing the channel still existed. The web
+    // referral code (VOLTCD) is the only code they need.
+    html += '<div class="ad-h2">Código de referido</div>';
     html += '<div class="ad-card"><strong>Ventas desde la Web Voltika:</strong> <code>'+(p.codigo_electronico||'—')+'</code></div>';
 
     html += '<div class="ad-h2">Acciones rápidas</div>';
