@@ -13,6 +13,11 @@ if (!$motoId) adminJsonOut(['error' => 'moto_id requerido'], 400);
 
 $pdo = getDB();
 
+// Customer brief 2026-05-14 (Óscar): mirror origen's dealer_nombre_snapshot
+// so the admin Documentos drill-in can show "Completado por X" without a
+// live JOIN that breaks if the user is later deactivated/renamed.
+try { $pdo->exec("ALTER TABLE checklist_entrega_v2 ADD COLUMN dealer_nombre_snapshot VARCHAR(150) NULL"); } catch (Throwable $e) {}
+
 $stmt = $pdo->prepare("SELECT id, bloqueado_venta, bloqueado_motivo FROM inventario_motos WHERE id=?");
 $stmt->execute([$motoId]);
 $moto = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -43,6 +48,13 @@ foreach ($allFields as $f) {
     $vals[$f] = !empty($d[$f]) ? 1 : 0;
 }
 $vals['notas'] = $d['notas'] ?? '';
+
+$dealerNombre = '';
+try {
+    $du = $pdo->prepare("SELECT nombre FROM dealer_usuarios WHERE id=? LIMIT 1");
+    $du->execute([(int)$uid]);
+    $dealerNombre = (string)($du->fetchColumn() ?: '');
+} catch (Throwable $e) { error_log('guardar-entrega dealer name: ' . $e->getMessage()); }
 
 // Determine phase completion
 $fasesDone = [];
@@ -90,7 +102,12 @@ if ($prev) {
     $params[] = $prev['id'];
     $pdo->prepare("UPDATE checklist_entrega_v2 SET " . implode(',', $sets) . " WHERE id=?")->execute($params);
     $checkId = $prev['id'];
+    try {
+        $pdo->prepare("UPDATE checklist_entrega_v2 SET dealer_nombre_snapshot = COALESCE(NULLIF(dealer_nombre_snapshot, ''), ?) WHERE id=?")
+            ->execute([$dealerNombre, $checkId]);
+    } catch (Throwable $e) { error_log('guardar-entrega update name: ' . $e->getMessage()); }
 } else {
+    $vals['dealer_nombre_snapshot'] = $dealerNombre;
     $cols = array_keys($vals);
     $placeholders = implode(',', array_fill(0, count($cols), '?'));
     $pdo->prepare("INSERT INTO checklist_entrega_v2 (" . implode(',', $cols) . ") VALUES ($placeholders)")

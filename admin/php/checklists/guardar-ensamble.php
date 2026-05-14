@@ -14,6 +14,12 @@ if (!$motoId) adminJsonOut(['error' => 'moto_id requerido'], 400);
 
 $pdo = getDB();
 
+// Customer brief 2026-05-14 (Óscar): admin Documentos modal needs to show
+// WHO completed each phase. The origen checklist already snapshots
+// dealer_nombre at completion; mirror that on ensamble for consistency.
+// Idempotent — no-op if the column already exists.
+try { $pdo->exec("ALTER TABLE checklist_ensamble ADD COLUMN dealer_nombre_snapshot VARCHAR(150) NULL"); } catch (Throwable $e) {}
+
 // Verify moto
 $stmt = $pdo->prepare("SELECT id, bloqueado_venta, bloqueado_motivo FROM inventario_motos WHERE id=?");
 $stmt->execute([$motoId]);
@@ -54,6 +60,15 @@ foreach ($allFields as $f) {
     $vals[$f] = !empty($d[$f]) ? 1 : 0;
 }
 $vals['notas'] = $d['notas'] ?? '';
+
+// Resolve dealer display name once so the admin documents view can show
+// "Completado por X" even after a future password reset / role rename.
+$dealerNombre = '';
+try {
+    $du = $pdo->prepare("SELECT nombre FROM dealer_usuarios WHERE id=? LIMIT 1");
+    $du->execute([(int)$uid]);
+    $dealerNombre = (string)($du->fetchColumn() ?: '');
+} catch (Throwable $e) { error_log('guardar-ensamble dealer name: ' . $e->getMessage()); }
 
 // Determine phase completion
 $fase1Done = true;
@@ -101,7 +116,14 @@ if ($prev) {
     $params[] = $prev['id'];
     $pdo->prepare("UPDATE checklist_ensamble SET " . implode(',', $sets) . " WHERE id=?")->execute($params);
     $checkId = $prev['id'];
+    // Mirror origen pattern: only set the snapshot if currently empty so a
+    // later user "viewing" the row doesn't overwrite the original signer.
+    try {
+        $pdo->prepare("UPDATE checklist_ensamble SET dealer_nombre_snapshot = COALESCE(NULLIF(dealer_nombre_snapshot, ''), ?) WHERE id=?")
+            ->execute([$dealerNombre, $checkId]);
+    } catch (Throwable $e) { error_log('guardar-ensamble update name: ' . $e->getMessage()); }
 } else {
+    $vals['dealer_nombre_snapshot'] = $dealerNombre;
     $cols = array_keys($vals);
     $placeholders = implode(',', array_fill(0, count($cols), '?'));
     $pdo->prepare("INSERT INTO checklist_ensamble (" . implode(',', $cols) . ") VALUES ($placeholders)")

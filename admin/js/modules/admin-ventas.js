@@ -2838,9 +2838,16 @@ window.AD_ventas = (function(){
       fallbackHint
     );
   }
+  // Customer brief 2026-05-14 (Óscar, Documentos modal screenshot):
+  // "We need to have the possibility to check each checklist with photos.
+  //  Also we need to know who made the checklist and timestamp in the system."
+  // This view used to show a static 3-card summary. Now each card is
+  // clickable and drills into a detail panel showing: dealer who completed,
+  // every per-phase timestamp, all binary checklist items (collapsed by
+  // default), and a photo gallery grouped by category.
   function fetchChecklistInline($container, motoId){
     ADApp.api('checklists/detalle.php?moto_id='+encodeURIComponent(motoId)).done(function(r){
-      if (!r || (r.error && !r.checklists)) {
+      if (!r || (r.error && !r.checklists && !r.origen && !r.ensamble && !r.entrega)) {
         $container.html('<div style="color:#92400e;">Sin checklists registrados para esta moto.</div>');
         return;
       }
@@ -2849,23 +2856,179 @@ window.AD_ventas = (function(){
         { key: 'ensamble', label: 'Ensamble',       row: r.ensamble || r.checklist_ensamble },
         { key: 'entrega',  label: 'Entrega',        row: r.entrega  || r.checklist_entrega || r.checklist_entrega_v2 },
       ];
-      var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
-      phases.forEach(function(p){
-        var done    = p.row && (p.row.completado == 1 || p.row.completado === '1');
-        var status  = done ? '✓ Completo' : (p.row ? '⏳ Incompleto' : '— No iniciado');
-        var color   = done ? '#059669' : (p.row ? '#d97706' : '#6b7280');
-        var freg    = p.row && p.row.freg ? '<div style="font-size:10px;color:#888;margin-top:2px;">'+esc(p.row.freg)+'</div>' : '';
-        html += '<div style="padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;">'+
-                  '<div style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;letter-spacing:.5px;">'+p.label+'</div>'+
-                  '<div style="font-weight:700;color:'+color+';margin-top:4px;">'+status+'</div>'+
-                  freg+
-                '</div>';
-      });
-      html += '</div>';
-      $container.html(html);
+      renderChecklistOverview($container, phases, motoId);
     }).fail(function(){
       $container.html('<div style="color:#b91c1c;">Error al cargar checklists. ¿La moto tiene checklists registrados?</div>');
     });
+  }
+
+  // ── Overview: 3 clickable phase cards ────────────────────────────────
+  function renderChecklistOverview($container, phases, motoId){
+    var html = '<div class="vk-chk-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+    phases.forEach(function(p, idx){
+      var done    = p.row && (p.row.completado == 1 || p.row.completado === '1');
+      var status  = done ? '✓ Completo' : (p.row ? '⏳ Incompleto' : '— No iniciado');
+      var color   = done ? '#059669' : (p.row ? '#d97706' : '#6b7280');
+      var freg    = p.row && p.row.freg ? '<div style="font-size:10px;color:#888;margin-top:2px;">'+esc(p.row.freg)+'</div>' : '';
+      var fotos   = p.row && p.row._fotos_count ? '<div style="font-size:10px;color:#0ea5e9;margin-top:2px;">📷 '+(p.row._fotos_count|0)+' fotos</div>' : '';
+      var dealer  = p.row && p.row._dealer_nombre ? '<div style="font-size:10px;color:#475569;margin-top:2px;">por '+esc(p.row._dealer_nombre)+'</div>' : '';
+      var clickable = !!p.row;
+      var cursor    = clickable ? 'pointer' : 'default';
+      var borderHv  = clickable ? ';transition:border-color .15s;' : '';
+      html += '<div class="vk-chk-card" data-phase-idx="'+idx+'" '+
+                'style="padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;cursor:'+cursor+borderHv+'" '+
+                (clickable ? 'title="Click para ver detalle, fotos y autor"' : '')+'>'+
+                '<div style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;letter-spacing:.5px;">'+p.label+'</div>'+
+                '<div style="font-weight:700;color:'+color+';margin-top:4px;">'+status+'</div>'+
+                freg + fotos + dealer +
+                (clickable ? '<div style="font-size:10px;color:#0ea5e9;margin-top:6px;font-weight:600;">Ver detalle →</div>' : '')+
+              '</div>';
+    });
+    html += '</div>';
+    $container.html(html);
+    $container.find('.vk-chk-card').on('click', function(){
+      var idx = parseInt($(this).data('phase-idx'), 10);
+      var p = phases[idx];
+      if (!p || !p.row) return;
+      renderChecklistDetail($container, phases, idx, motoId);
+    }).on('mouseenter', function(){ $(this).css('border-color', '#0ea5e9'); })
+      .on('mouseleave', function(){ $(this).css('border-color', '#e5e7eb'); });
+  }
+
+  // ── Detail: items + photos + author + timestamps for one phase ───────
+  function renderChecklistDetail($container, phases, idx, motoId){
+    var p = phases[idx];
+    var row = p.row || {};
+    var done   = row.completado == 1 || row.completado === '1';
+    var status = done ? '✓ Completo' : '⏳ Incompleto';
+    var color  = done ? '#059669' : '#d97706';
+
+    // Author block
+    var dealerNombre = row._dealer_nombre || '—';
+    var dealerRol    = row._dealer_rol    || '';
+    var dealerPunto  = row._dealer_punto  || '';
+    var authorLine   = '<strong>'+esc(dealerNombre)+'</strong>'+
+                       (dealerRol ? ' <span style="color:#64748b;">('+esc(dealerRol)+')</span>' : '')+
+                       (dealerPunto ? ' · <span style="color:#64748b;">'+esc(dealerPunto)+'</span>' : '');
+
+    // Timestamp block — render every key the backend exposed.
+    var tsHtml = '';
+    var ts = row._timestamps || {};
+    var tsLabels = {
+      freg:             'Creado en sistema',
+      fmod:             'Última modificación',
+      fecha_inicio:     'Iniciado',
+      fecha_completado: 'Completado',
+      fase1_fecha:      'Fase 1 completada',
+      fase2_fecha:      'Fase 2 completada',
+      fase3_fecha:      'Fase 3 completada',
+      fase4_fecha:      'Fase 4 completada',
+      fase5_fecha:      'Fase 5 completada'
+    };
+    Object.keys(ts).forEach(function(k){
+      tsHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #f1f5f9;font-size:12px;">'+
+                  '<span style="color:#64748b;">'+esc(tsLabels[k] || k)+'</span>'+
+                  '<span style="font-family:ui-monospace,monospace;font-weight:600;">'+esc(ts[k])+'</span>'+
+                '</div>';
+    });
+
+    // Items block: every key that looks like a binary checklist field.
+    var items = [];
+    Object.keys(row).forEach(function(k){
+      if (k.charAt(0) === '_') return;                  // backend-injected helpers
+      if (k.indexOf('foto') === 0 || k.indexOf('fotos') === 0) return;  // photo cols
+      if (['id','moto_id','dealer_id','freg','fmod','completado','fase_actual','notas',
+           'hash_registro','dealer_nombre_snapshot','fecha_inicio','fecha_completado',
+           'fase1_fecha','fase2_fecha','fase3_fecha','fase4_fecha','fase5_fecha',
+           'fase1_completada','fase2_completada','fase3_completada','fase4_completada','fase5_completada',
+           'face_match_result','face_match_score','otp_code','otp_enviado','otp_validado','otp_timestamp'].indexOf(k) !== -1) return;
+      var v = row[k];
+      // Only show items that are clearly binary (0/1) — skip free-text/notes.
+      if (v === null || v === undefined) return;
+      var vs = String(v);
+      if (vs === '0' || vs === '1') items.push({ key: k, ok: vs === '1' });
+    });
+    var itemsHtml = '';
+    if (items.length) {
+      var doneN = items.filter(function(i){ return i.ok; }).length;
+      itemsHtml = '<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;color:#0c2340;font-size:13px;">'+
+                    'Items del checklist · '+doneN+' / '+items.length+' completados'+
+                  '</summary>'+
+                  '<div style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px;font-size:12px;">';
+      items.forEach(function(i){
+        itemsHtml += '<div style="padding:3px 6px;background:'+(i.ok ? '#dcfce7' : '#fef3c7')+';border-radius:4px;color:'+(i.ok ? '#166534' : '#92400e')+';">'+
+                       (i.ok ? '✓ ' : '○ ')+esc(prettifyKey(i.key))+
+                     '</div>';
+      });
+      itemsHtml += '</div></details>';
+    }
+
+    // Photos block — collapsible per category, thumbnails open in lightbox.
+    var fotosHtml = '';
+    var fotos = row._fotos || {};
+    var totalFotos = row._fotos_count | 0;
+    if (totalFotos > 0) {
+      fotosHtml = '<div style="margin-top:14px;"><div style="font-weight:700;color:#0c2340;font-size:13px;margin-bottom:6px;">📷 Fotos · '+totalFotos+' archivos</div>';
+      Object.keys(fotos).forEach(function(cat){
+        var list = fotos[cat] || [];
+        if (!list.length) return;
+        fotosHtml += '<div style="margin-bottom:10px;">'+
+                       '<div style="font-size:11px;color:#475569;text-transform:uppercase;font-weight:600;letter-spacing:.3px;margin-bottom:4px;">'+esc(prettifyKey(cat))+' · '+list.length+'</div>'+
+                       '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+        list.forEach(function(f){
+          var src = resolveChecklistAssetUrl(f.url);
+          fotosHtml += '<a href="'+esc(src)+'" target="_blank" rel="noopener" '+
+                         'style="display:inline-block;width:88px;height:88px;border-radius:6px;overflow:hidden;border:1px solid #e5e7eb;" '+
+                         'title="'+esc(f.filename || '')+'">'+
+                         '<img src="'+esc(src)+'" alt="'+esc(f.filename || cat)+'" '+
+                              'style="width:100%;height:100%;object-fit:cover;" loading="lazy" '+
+                              'onerror="this.style.opacity=.3;this.alt=\'No disponible\';">'+
+                       '</a>';
+        });
+        fotosHtml += '</div></div>';
+      });
+      fotosHtml += '</div>';
+    } else {
+      fotosHtml = '<div style="margin-top:14px;color:#94a3b8;font-size:12px;font-style:italic;">Sin fotos adjuntas en esta fase.</div>';
+    }
+
+    var html =
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'+
+        '<button class="vk-chk-back" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#0c2340;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">← Volver</button>'+
+        '<div style="font-size:14px;font-weight:700;color:#0c2340;">'+esc(p.label)+'</div>'+
+        '<div style="font-weight:700;color:'+color+';font-size:13px;">'+status+'</div>'+
+      '</div>'+
+      '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px;">'+
+        '<div style="font-size:12px;color:#475569;margin-bottom:4px;">Completado por</div>'+
+        '<div style="font-size:14px;">'+authorLine+'</div>'+
+      '</div>'+
+      (tsHtml ? '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;margin-bottom:10px;">'+
+                  '<div style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;letter-spacing:.3px;margin-bottom:6px;">Sello de tiempo (sistema)</div>'+
+                  tsHtml+
+                '</div>' : '')+
+      itemsHtml +
+      fotosHtml;
+
+    $container.html(html);
+    $container.find('.vk-chk-back').on('click', function(){
+      renderChecklistOverview($container, phases, motoId);
+    });
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────
+  function prettifyKey(k){
+    return String(k).replace(/_/g, ' ').replace(/\b[a-z]/g, function(c){ return c.toUpperCase(); });
+  }
+  // The backend returns photo URLs as "php/checklists/serve-foto.php?f=..."
+  // (relative to /admin/). When this module runs in the admin SPA, the
+  // <base href> usually points to /admin/, but to stay safe we prefix
+  // explicitly so the thumbnails resolve regardless of route.
+  function resolveChecklistAssetUrl(rawUrl){
+    if (!rawUrl) return '';
+    if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+    if (rawUrl.charAt(0) === '/')     return rawUrl;
+    // Relative: scope under /admin/
+    return '/admin/' + rawUrl.replace(/^\.?\//, '');
   }
   function fetchCdcInline($container, search){
     if (!search) { $container.html('<div style="color:#92400e;">Falta teléfono o email del cliente — no se puede buscar en CDC.</div>'); return; }

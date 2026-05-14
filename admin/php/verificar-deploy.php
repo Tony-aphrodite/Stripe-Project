@@ -118,6 +118,32 @@ $checks = [
         'No capturada por el sistema en el momento de la aceptación',
         'Round 16 — Dossier PDF: fallback explícito para IP / Geo / Dispositivo / SHA-256'
     ),
+    // ── Round 17 (2026-05-14) — Checklist drill-in con autor + fotos ───────
+    'r17_detalle_dealer_enrichment' => _checkFile(
+        $base . '/admin/php/checklists/detalle.php',
+        '_detalleDealerInfo(',
+        'Round 17 — detalle.php expone _dealer_nombre / _dealer_rol / _dealer_punto por fase'
+    ),
+    'r17_detalle_fotos_decoder' => _checkFile(
+        $base . '/admin/php/checklists/detalle.php',
+        '_detalleDecodePhotos(',
+        'Round 17 — detalle.php expone arrays de URLs de fotos por columna'
+    ),
+    'r17_ensamble_dealer_snapshot' => _checkFile(
+        $base . '/admin/php/checklists/guardar-ensamble.php',
+        'dealer_nombre_snapshot',
+        'Round 17 — guardar-ensamble.php captura snapshot del nombre del dealer'
+    ),
+    'r17_entrega_dealer_snapshot' => _checkFile(
+        $base . '/admin/php/checklists/guardar-entrega.php',
+        'dealer_nombre_snapshot',
+        'Round 17 — guardar-entrega.php captura snapshot del nombre del dealer'
+    ),
+    'r17_ventas_drill_in' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'renderChecklistDetail(',
+        'Round 17 — admin-ventas.js: drill-in con items + fotos + autor + timestamp'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -210,7 +236,7 @@ code{background:#1e293b;color:#e2e8f0;padding:1px 6px;border-radius:3px;font-siz
 ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
 </style></head><body>
 
-<h1>🚀 Verificación de despliegue — Round 14 + 15 + 16 (2026-05-13 / 2026-05-14)</h1>
+<h1>🚀 Verificación de despliegue — Round 14 + 15 + 16 + 17 (2026-05-13 / 2026-05-14)</h1>
 <div class="sub">Confirma que los archivos modificados llegaron al servidor con la versión correcta.</div>
 
 <?php if ($allOk): ?>
@@ -309,6 +335,21 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>✅ Esperado: 16 columnas en orden oficial NIP-CIEC PF (FOLIO_CDC, FECHA_APROBACION_DE_CONSULTA, …, ACEPTACION_TERMINOS_Y_CONDICIONES).</li>
     <li>Columna <strong>I</strong> debe llamarse <code>Estado</code> con <strong>e minúscula</strong> (no <code>ESTADO</code>).</li>
     <li><code>NOMBRE_CLIENTE</code> en formato <code>APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES</code> MAYÚSCULAS.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 17 — Checklist drill-in (autor + fotos + timestamps):</strong>
+  <ul>
+    <li>Admin → cualquier orden con checklist (ej. K-2605-0002) → "Documentos del pedido" → desplegar la tarjeta <strong>"Checklist (origen · ensamble · entrega)"</strong>.</li>
+    <li>Cada una de las 3 sub-tarjetas (Origen / Ensamble / Entrega) ahora muestra "📷 N fotos" + "por [Nombre]" + flecha <strong>"Ver detalle →"</strong>.</li>
+    <li>Click en cualquier sub-tarjeta abre la vista detalle in-line con:
+      <ul>
+        <li>✅ <strong>Completado por</strong>: nombre del dealer + rol + punto (snapshot inmune a futuras ediciones).</li>
+        <li>✅ <strong>Sello de tiempo (sistema)</strong>: freg, fmod, fecha_inicio, fecha_completado, fase1_fecha, fase2_fecha, …</li>
+        <li>✅ <strong>Items del checklist</strong> (collapsable): cuántos / cuántos completados + listado individual con ✓ / ○.</li>
+        <li>✅ <strong>Fotos</strong>: galería agrupada por categoría con thumbnails clicables (abren en nueva pestaña).</li>
+        <li>Botón <strong>"← Volver"</strong> regresa al grid de 3 tarjetas.</li>
+      </ul>
+    </li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 16 — Dossier de Defensa (DATOS DE LA OPERACIÓN + ACEPTACIÓN ELECTRÓNICA):</strong>
