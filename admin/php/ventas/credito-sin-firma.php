@@ -144,12 +144,17 @@ $sql = "
     $joinPreaprob
     $joinVI
     WHERE LOWER(TRIM(COALESCE(t.tpago,''))) IN ('credito','credito-orfano','enganche','parcial')
-      AND LOWER(TRIM(COALESCE(t.pago_estado,''))) IN ('parcial','pagada','aprobada','approved','paid')
+      AND LOWER(TRIM(COALESCE(t.pago_estado,'')))
+            IN ('parcial','pagada','aprobada','approved','paid','pendiente_firma')
       AND $whereMissing
       AND DATEDIFF(NOW(), t.freg) >= $daysMin
     ORDER BY t.freg ASC
     LIMIT $limit
 ";
+// Round 18 (2026-05-14): include rows in 'pendiente_firma' state. This
+// state is set by confirmar-orden.php when Stripe charges the card but
+// no firmas_contratos row exists at confirmation time — the panel must
+// surface those so admin can resend the Truora link or refund.
 
 try {
     $stmt = $pdo->prepare($sql);

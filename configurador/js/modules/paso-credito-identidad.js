@@ -711,7 +711,11 @@ var PasoCreditoIdentidad = {
             if (r.approved === 1 && r.curp_match !== 0 && r.name_match !== 0) {
                 self._finished = true;
                 self.app.state._identidadVerificada = true;
-                self.app.irAPaso('credito-enganche');
+                // Round 18 (2026-05-14): contract must be signed BEFORE
+                // enganche per business rule. Advance to credito-contrato
+                // first. The enganche step still has an entry-time
+                // signature check as a safety net for any other caller.
+                self.app.irAPaso('credito-contrato');
             } else if (r.approved === 0) {
                 self._finished = true;
                 var mappedFC = self._mapDeclinedReason(
@@ -823,7 +827,8 @@ var PasoCreditoIdentidad = {
                         stopPoll();
                         self._finished = true;
                         self.app.state._identidadVerificada = true;
-                        self.app.irAPaso('credito-enganche');
+                        // Round 18: route to contract signature first.
+                        self.app.irAPaso('credito-contrato');
                     } else if (r.approved === 0 && (r.status === 'failure' || r.status === 'failed' || r.manual_review === 1)) {
                         // Truora outright failed (liveness, doc tampering,
                         // blacklist hit, etc.) → manual-review branch.

@@ -12,14 +12,69 @@ var PasoCreditoEnganche = {
     STRIPE_PUBLISHABLE_KEY: (window.VOLTIKA_CONFIG && window.VOLTIKA_CONFIG.stripe_publishable_key) || '',
     PAYMENT_INTENT_URL: 'php/create-payment-intent.php',
     ORDER_CONFIRM_URL:  'php/confirmar-orden.php',
+    FIRMA_STATUS_URL:   'php/firma-credito-status.php',
 
     init: function(app) {
         this.app = app;
         this._stripe = null;
         this._cardElement = null;
+
+        // Round 18 (2026-05-14): "we cannot receive the pay of the enganche
+        // if the contract is not signed". Before rendering ANY payment UI,
+        // verify the customer has signed the credit contract. If not, jump
+        // to the contract step. The server gate in create-payment-intent.php
+        // is a backup, but redirecting client-side gives a smooth UX so the
+        // customer never sees a 409 from a payment attempt.
+        var self = this;
+        var st   = (app && app.state) || {};
+        // If the SPA already stamped contratoFirmado during this session,
+        // skip the round-trip (fast path).
+        if (st.contratoFirmado) {
+            self._renderAndMount();
+            return;
+        }
+        var email = st.email    || '';
+        var tel   = st.telefono || '';
+        if (!email && !tel) {
+            // Missing customer identity — can't check. Fall through and
+            // rely on the server gate. Should never happen on a normal flow
+            // because previous steps capture both fields.
+            self._renderAndMount();
+            return;
+        }
+        var base = (window.VK_BASE_PATH || '');
+        jQuery.ajax({
+            url:    base + self.FIRMA_STATUS_URL,
+            method: 'GET',
+            data:   { email: email, telefono: tel },
+            dataType: 'json',
+            timeout:  6000,
+        }).done(function(r){
+            if (r && r.signed === true) {
+                st.contratoFirmado = true;
+                self._renderAndMount();
+            } else {
+                // Not signed yet → go to contract step. Customer will sign,
+                // then paso-credito-contrato.js navigates them BACK to
+                // 'credito-enganche' (this step) which on second entry will
+                // pass the check and render the payment UI.
+                try { app.irAPaso('credito-contrato'); } catch (e) {
+                    // Defensive fallback — if routing fails for any reason
+                    // (e.g. step not registered yet), still render so the
+                    // user isn't stranded. Server gate will block payment.
+                    self._renderAndMount();
+                }
+            }
+        }).fail(function(){
+            // Status check failed → render. Server gate is the safety net.
+            self._renderAndMount();
+        });
+    },
+
+    _renderAndMount: function() {
+        var self = this;
         this.render();
         this.bindEvents();
-        var self = this;
         setTimeout(function() { self._mountStripe(); }, 300);
     },
 
@@ -356,8 +411,21 @@ var PasoCreditoEnganche = {
                     }
                 });
             },
-            error: function() {
-                self._showError('Error de conexión. Verifica tu internet.');
+            error: function(xhr) {
+                // Round 18: surface the firma-requerida gate from the
+                // server (HTTP 409 with next_step). Redirect instead of
+                // showing a raw error toast so the UX is clean.
+                var data = null;
+                try { data = xhr && xhr.responseJSON ? xhr.responseJSON : JSON.parse(xhr.responseText || '{}'); } catch (e) {}
+                if (xhr && xhr.status === 409 && data && data.error === 'firma_requerida') {
+                    self._setLoading(false);
+                    self._isProcessing = false;
+                    try { self.app.irAPaso(data.next_step || 'credito-contrato'); } catch (e) {
+                        self._showError(data.message || 'Firme primero el contrato.');
+                    }
+                    return;
+                }
+                self._showError((data && data.message) || 'Error de conexión. Verifica tu internet.');
                 self._setLoading(false);
                 self._isProcessing = false;
             }
@@ -435,7 +503,13 @@ var PasoCreditoEnganche = {
                         'Guarda este número y contacta soporte.'
                     );
                 }
-                self.app.irAPaso('credito-contrato');
+                // Round 18 (2026-05-14): contract is now signed BEFORE
+                // enganche payment, so after the payment succeeds we go
+                // directly to autopago setup. Previously this navigated to
+                // 'credito-contrato' (the old post-payment signing step),
+                // which was the root cause of unsigned-paid orders like
+                // VK-1826-0001.
+                self.app.irAPaso('credito-autopago');
             },
             error: function(xhr) {
                 self._setLoading(false);
@@ -637,9 +711,12 @@ var PasoCreditoEnganche = {
                 setTimeout(function() { jQuery('#vk-spei-copy-clabe').text('Copiar').css('background', '#039fe1'); }, 2000);
             }
         });
-        // Continue to next step
+        // Round 18: after SPEI reference is issued, the contract is ALREADY
+        // signed (gate guarantees it). Customer just has to wait for SPEI
+        // settlement, so advance to autopago setup. Old code jumped to
+        // 'credito-contrato' from here which is now upstream of this step.
         jQuery(document).off('click', '#vk-spei-continuar').on('click', '#vk-spei-continuar', function() {
-            self.app.irAPaso('credito-contrato');
+            self.app.irAPaso('credito-autopago');
         });
     },
 
@@ -740,9 +817,10 @@ var PasoCreditoEnganche = {
         jQuery(document).off('click', '#vk-oxxo-download-pdf').on('click', '#vk-oxxo-download-pdf', function() {
             self._downloadOXXOPDF(refs, enganche);
         });
-        // Continue to next step
+        // Round 18: same as SPEI — contract is already signed before this
+        // step; advance to autopago.
         jQuery(document).off('click', '#vk-oxxo-continuar').on('click', '#vk-oxxo-continuar', function() {
-            self.app.irAPaso('credito-contrato');
+            self.app.irAPaso('credito-autopago');
         });
     },
 

@@ -378,6 +378,51 @@ try {
         $pagoEstadoInit = 'pendiente';
     }
 
+    // ── Round 18 (2026-05-14): credit enganche must not be marked "pagada"
+    // unless the contract is signed. create-payment-intent.php blocks the
+    // PI creation when there is no signature, so reaching here without a
+    // firmas_contratos row is a smell — Stripe may have charged the card
+    // anyway (e.g. older PIs created before this gate was deployed, or
+    // out-of-band confirmations). We refuse to mark these as pagada and
+    // surface them in admin "Panel Sin firma" so the operator can resolve
+    // (resend Truora link → customer signs → re-confirm).
+    $_isCreditFlowEarly = in_array($pagoTipo, ['credito', 'enganche', 'parcial'], true)
+                       || (($json['metodoPago'] ?? '') === 'credito');
+    if ($_isCreditFlowEarly && $pagoEstadoInit === 'pagada') {
+        $hasSignedContract = false;
+        $emailNow = trim((string)($email ?? ''));
+        $telNow   = trim((string)($telefono ?? ''));
+        if ($emailNow !== '' || $telNow !== '') {
+            try {
+                $signQ2 = $pdo->prepare(
+                    "SELECT id FROM firmas_contratos
+                     WHERE firma_sha256 IS NOT NULL AND firma_sha256 != ''
+                       AND (
+                            (LENGTH(?) > 0 AND email    = ?)
+                         OR (LENGTH(?) > 0 AND telefono = ?)
+                       )
+                     ORDER BY freg DESC LIMIT 1"
+                );
+                $signQ2->execute([$emailNow, $emailNow, $telNow, $telNow]);
+                $hasSignedContract = (bool)$signQ2->fetchColumn();
+            } catch (Throwable $e) {
+                error_log('confirmar-orden credit sign check: ' . $e->getMessage());
+                // If the lookup fails, fall back to the original behavior
+                // (do not block — better to record the payment and surface
+                // the inconsistency in admin than to lose the audit trail).
+                $hasSignedContract = true;
+            }
+        }
+        if (!$hasSignedContract) {
+            // Stripe says the charge succeeded but we have no signature.
+            // Record the row in 'pendiente_firma' so admin "Panel Sin firma"
+            // catches it. NEVER set 'pagada' until firma exists, otherwise
+            // we lose the legal evidence trail.
+            $pagoEstadoInit = 'pendiente_firma';
+            error_log('confirmar-orden: credit charge without contract signature for tel=' . $telNow . ' email=' . $emailNow . ' PI=' . (string)$paymentIntentId);
+        }
+    }
+
     // ── Anti-fraud guard: identity-vs-credit-bureau cross-check ──────────
     // Customer brief 2026-04-30: even though the SPA advances to enganche
     // immediately on Truora success (so the user does not get stuck), a

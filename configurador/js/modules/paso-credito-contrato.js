@@ -705,14 +705,25 @@ var PasoCreditoContrato = {
                 // 5. Timestamped PDF sent to customer by email
                 // =====================================================
 
-                self.app.irAPaso('credito-autopago');
+                // Round 18 (2026-05-14): contract is now signed BEFORE the
+                // enganche payment, per business rule "we cannot receive
+                // the pay of the enganche if the contract is not signed".
+                // Previously this jumped to 'credito-autopago' (skipping
+                // enganche entirely — that step was reached by the OLD
+                // pre-signature payment flow). Now we route to the
+                // enganche step which will pick up the just-signed status
+                // and render the payment UI.
+                self.app.irAPaso('credito-enganche');
             },
             error: function() {
-                // Backend not available — still proceed (testing mode)
-                console.warn('confirmar-pedido.php not available, proceeding anyway');
+                // Backend not available — still proceed (testing mode).
+                // Note: in test mode without firma persistence, the
+                // server-side enganche gate may still block; the customer
+                // sees an inline error and can retry signing.
+                console.warn('generar-contrato-pdf.php not available, proceeding anyway');
                 state.contratoFirmado = true;
                 state._firmaContrato = self._getSignatureData();
-                self.app.irAPaso('credito-autopago');
+                self.app.irAPaso('credito-enganche');
             }
         });
     }

@@ -83,6 +83,63 @@ if ($cincelEmail && $cincelPassword) {
     $cincelResult = ['status' => 'skipped', 'reason' => 'Cincel credentials not configured'];
 }
 
+// ── Round 18 fix (2026-05-14): persist contract path into transacciones ──
+// Without this UPDATE the admin "Documentos del pedido" modal still showed
+// "Contrato pendiente de firma" even after the customer signed (because the
+// modal reads transacciones.contrato_pdf_path, which only generar-pdf for
+// contado was filling). Now the credit flow also stamps it. Match the
+// transaction row by email + telefono since the PDF generator doesn't
+// always have a pedido number in hand.
+try {
+    if ($pdfPath && file_exists($pdfPath)) {
+        $pdoTx = getDB();
+        $relPath  = 'contratos/' . basename($pdfPath);
+        $pdfHash  = @hash_file('sha256', $pdfPath) ?: null;
+        $emailKey = trim((string)$email);
+        $telKey   = trim((string)$telefono);
+        if ($emailKey !== '' || $telKey !== '') {
+            // Lazy-add hash column for older installs.
+            try {
+                $cols = $pdoTx->query("SHOW COLUMNS FROM transacciones LIKE 'contrato_pdf_hash'")->fetch();
+                if (!$cols) $pdoTx->exec("ALTER TABLE transacciones ADD COLUMN contrato_pdf_hash CHAR(64) NULL");
+            } catch (Throwable $e) { /* non-fatal */ }
+
+            // Target the most-recent credit-family transaction for this
+            // customer. Limit to credit tpago so the contado flow keeps
+            // using its own update path in confirmar-orden.php.
+            $upd = $pdoTx->prepare(
+                "UPDATE transacciones
+                    SET contrato_pdf_path = ?, contrato_pdf_hash = ?
+                  WHERE (
+                        (LENGTH(?) > 0 AND email    = ?)
+                     OR (LENGTH(?) > 0 AND telefono = ?)
+                  )
+                    AND tpago IN ('credito','enganche','parcial','credito-orfano')
+                  ORDER BY id DESC LIMIT 1"
+            );
+            $upd->execute([$relPath, $pdfHash, $emailKey, $emailKey, $telKey, $telKey]);
+
+            // If the customer had been auto-marked 'pendiente_firma' by the
+            // confirmar-orden gate (Round 18), they have now signed; lift
+            // them to 'pagada' so the admin "Panel Sin firma" clears them
+            // and the order proceeds normally to delivery.
+            $upd2 = $pdoTx->prepare(
+                "UPDATE transacciones
+                    SET pago_estado = 'pagada'
+                  WHERE pago_estado = 'pendiente_firma'
+                    AND (
+                          (LENGTH(?) > 0 AND email    = ?)
+                       OR (LENGTH(?) > 0 AND telefono = ?)
+                    )
+                    AND tpago IN ('credito','enganche','parcial','credito-orfano')"
+            );
+            $upd2->execute([$emailKey, $emailKey, $telKey, $telKey]);
+        }
+    }
+} catch (Throwable $e) {
+    error_log('generar-contrato-pdf transacciones update: ' . $e->getMessage());
+}
+
 // ── Step 3: Contract email — DISABLED at purchase time per client request ──
 // Contract confirmation email will be sent AFTER motorcycle delivery (Stage 2)
 // Only purchase order confirmation is sent at this stage

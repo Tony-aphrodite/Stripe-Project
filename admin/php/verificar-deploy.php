@@ -144,6 +144,47 @@ $checks = [
         'renderChecklistDetail(',
         'Round 17 — admin-ventas.js: drill-in con items + fotos + autor + timestamp'
     ),
+    // ── Round 18 (2026-05-14) — Credit: sign BEFORE enganche payment ───────
+    'r18_create_pi_gate' => _checkFile(
+        $base . '/configurador/php/create-payment-intent.php',
+        "'error'     => 'firma_requerida'",
+        'Round 18 — create-payment-intent.php bloquea PI de enganche sin firma del contrato'
+    ),
+    'r18_confirmar_gate' => _checkFile(
+        $base . '/configurador/php/confirmar-orden.php',
+        "'pendiente_firma'",
+        'Round 18 — confirmar-orden.php marca pendiente_firma si crédito sin firma'
+    ),
+    'r18_generar_updates_tx' => _checkFile(
+        $base . '/configurador/php/generar-contrato-pdf.php',
+        "AND tpago IN ('credito','enganche','parcial','credito-orfano')",
+        'Round 18 — generar-contrato-pdf.php actualiza transacciones.contrato_pdf_path al firmar'
+    ),
+    'r18_firma_status_endpoint' => _checkFile(
+        $base . '/configurador/php/firma-credito-status.php',
+        'firma_sha256 IS NOT NULL',
+        'Round 18 — firma-credito-status.php nuevo endpoint para chequeo SPA'
+    ),
+    'r18_enganche_entry_check' => _checkFile(
+        $base . '/configurador/js/modules/paso-credito-enganche.js',
+        'FIRMA_STATUS_URL',
+        'Round 18 — paso-credito-enganche.js verifica firma al entrar y redirige a contrato si falta'
+    ),
+    'r18_enganche_goto_autopago' => _checkFile(
+        $base . '/configurador/js/modules/paso-credito-enganche.js',
+        "self.app.irAPaso('credito-autopago')",
+        'Round 18 — paso-credito-enganche.js: post-pago va a credito-autopago (firma ya hecha)'
+    ),
+    'r18_contrato_goto_enganche' => _checkFile(
+        $base . '/configurador/js/modules/paso-credito-contrato.js',
+        "self.app.irAPaso('credito-enganche')",
+        'Round 18 — paso-credito-contrato.js: post-firma va a credito-enganche'
+    ),
+    'r18_panel_sin_firma_pendiente' => _checkFile(
+        $base . '/admin/php/ventas/credito-sin-firma.php',
+        "'pendiente_firma'",
+        'Round 18 — Panel Sin Firma muestra órdenes en estado pendiente_firma'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -236,7 +277,7 @@ code{background:#1e293b;color:#e2e8f0;padding:1px 6px;border-radius:3px;font-siz
 ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
 </style></head><body>
 
-<h1>🚀 Verificación de despliegue — Round 14 + 15 + 16 + 17 (2026-05-13 / 2026-05-14)</h1>
+<h1>🚀 Verificación de despliegue — Round 14 + 15 + 16 + 17 + 18 (2026-05-13 / 2026-05-14)</h1>
 <div class="sub">Confirma que los archivos modificados llegaron al servidor con la versión correcta.</div>
 
 <?php if ($allOk): ?>
@@ -335,6 +376,22 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>✅ Esperado: 16 columnas en orden oficial NIP-CIEC PF (FOLIO_CDC, FECHA_APROBACION_DE_CONSULTA, …, ACEPTACION_TERMINOS_Y_CONDICIONES).</li>
     <li>Columna <strong>I</strong> debe llamarse <code>Estado</code> con <strong>e minúscula</strong> (no <code>ESTADO</code>).</li>
     <li><code>NOMBRE_CLIENTE</code> en formato <code>APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES</code> MAYÚSCULAS.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 18 — Crédito: firma del contrato ANTES del enganche (regla "no se recibe enganche sin firma"):</strong>
+  <ul>
+    <li><strong>Flujo nuevo:</strong> CDC aprobado → Truora identidad → <strong>firma del contrato</strong> → <strong>pago del enganche</strong> → autopago → resultado.</li>
+    <li>El servidor (<code>create-payment-intent.php</code>) bloquea el PaymentIntent del enganche con HTTP 409 <code>firma_requerida</code> si no hay row en <code>firmas_contratos</code>.</li>
+    <li>El SPA verifica firma en <code>init()</code> de <code>paso-credito-enganche.js</code> y redirige a <code>credito-contrato</code> si falta.</li>
+    <li>Si Stripe cobra una tarjeta sin firma (caso edge), <code>confirmar-orden.php</code> marca <code>pago_estado = 'pendiente_firma'</code> en lugar de <code>'pagada'</code>.</li>
+    <li>Al firmar, <code>generar-contrato-pdf.php</code> hace UPDATE en <code>transacciones</code> (<code>contrato_pdf_path</code>, <code>contrato_pdf_hash</code>) + sube <code>pago_estado</code> de <code>pendiente_firma</code> → <code>pagada</code>.</li>
+    <li>Tests:
+      <ul>
+        <li>Hacer una orden de crédito de prueba → al llegar a "Pagar enganche" debe redirigir automáticamente a "Firmar contrato" (no debe mostrar el formulario de tarjeta).</li>
+        <li>Firmar el contrato → debe regresar a "Pagar enganche" → ahora sí muestra el formulario de tarjeta.</li>
+        <li>Admin → Ventas → <strong>Panel Sin Firma</strong>: órdenes legacy (como Carlos Ricardo VK-1826-0001) siguen visibles para resend de Truora link.</li>
+      </ul>
+    </li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 17 — Checklist drill-in (autor + fotos + timestamps):</strong>

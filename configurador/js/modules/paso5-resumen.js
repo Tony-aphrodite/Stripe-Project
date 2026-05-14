@@ -395,12 +395,15 @@ var PasoResumen = {
             self.app.irAPaso(4);
         });
 
-        // Legacy: keep old button working if somehow still present
+        // Legacy: keep old button working if somehow still present.
+        // Round 18 (2026-05-14): map a stale data-target='credito-enganche'
+        // to the new first credit step 'credito-contrato' (contract is
+        // signed BEFORE enganche per business rule).
         jQuery(document).off('click', '#vk-resumen-continuar');
         jQuery(document).on('click', '#vk-resumen-continuar', function() {
             var target = jQuery(this).data('target');
-            if (target === 'credito-enganche') {
-                self.app.irAPaso('credito-enganche');
+            if (target === 'credito-enganche' || target === 'credito-contrato') {
+                self.app.irAPaso('credito-contrato');
             } else {
                 self.app.irAPaso(4);
             }

@@ -482,6 +482,86 @@ if ($amount <= 0) {
     exit;
 }
 
+// ── Customer rule 2026-05-14 (Óscar, round 18) ───────────────────────────────
+// "We cannot receive the pay of the enganche if the contract is not signed."
+// Hard gate: if this is a credit-enganche flow, refuse to create a Stripe
+// PaymentIntent unless a signed contract row already exists in
+// firmas_contratos for the customer's email or phone. The SPA is expected
+// to send the customer to the contract step first; this server check is a
+// second line of defense against direct-API attacks AND a guard if a future
+// SPA bug skips the contract step.
+$tipoLower = strtolower(trim($purchaseTipo));
+$isEngancheFlow = ($tipoLower === 'enganche' || $tipoLower === 'credito');
+if ($isEngancheFlow) {
+    $custEmail = trim((string)($customer['email']    ?? ''));
+    $custTel   = trim((string)($customer['telefono'] ?? ''));
+    if ($custEmail === '' && $custTel === '') {
+        http_response_code(400);
+        echo json_encode([
+            'error'   => 'datos_cliente_faltantes',
+            'message' => 'Faltan email o teléfono del cliente para verificar la firma del contrato de crédito.',
+        ]);
+        exit;
+    }
+    try {
+        $pdoSign = getDB();
+        // Lazy-create firmas_contratos so this gate works even on fresh
+        // installs that haven't seen any signature yet (it would otherwise
+        // throw "table not found" and we'd fail closed for no reason).
+        @$pdoSign->exec("CREATE TABLE IF NOT EXISTS firmas_contratos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(200) NULL,
+            email VARCHAR(200) NULL,
+            telefono VARCHAR(40) NULL,
+            curp VARCHAR(20) NULL,
+            modelo VARCHAR(80) NULL,
+            pdf_file VARCHAR(255) NULL,
+            firma_base64 MEDIUMTEXT NULL,
+            firma_sha256 CHAR(64) NULL,
+            ip VARCHAR(45) NULL,
+            user_agent VARCHAR(500) NULL,
+            freg DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX (email), INDEX (telefono)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $signQ = $pdoSign->prepare(
+            "SELECT id, freg FROM firmas_contratos
+             WHERE firma_sha256 IS NOT NULL AND firma_sha256 != ''
+               AND (
+                    (LENGTH(?) > 0 AND email    = ?)
+                 OR (LENGTH(?) > 0 AND telefono = ?)
+               )
+             ORDER BY freg DESC LIMIT 1"
+        );
+        $signQ->execute([$custEmail, $custEmail, $custTel, $custTel]);
+        $signRow = $signQ->fetch(PDO::FETCH_ASSOC);
+        if (!$signRow) {
+            // 409 Conflict: the precondition (signed contract) is not met.
+            // SPA reads next_step and irAPaso() to redirect the customer.
+            http_response_code(409);
+            echo json_encode([
+                'error'     => 'firma_requerida',
+                'message'   => 'Para procesar el enganche del crédito, primero firme el contrato. Se le redirigirá al paso de firma electrónica.',
+                'next_step' => 'credito-contrato',
+            ]);
+            exit;
+        }
+        // Hand-off: tag the request so the metadata block downstream can
+        // record the signing audit ID for legal traceability.
+        $_engancheSignatureAuditId = (int)$signRow['id'];
+    } catch (Throwable $e) {
+        error_log('create-payment-intent enganche sign gate: ' . $e->getMessage());
+        // Fail closed: we'd rather lose a sale than charge an unsigned
+        // customer. Surface a soft "intenta de nuevo" so customer reloads.
+        http_response_code(503);
+        echo json_encode([
+            'error'   => 'verificacion_firma_no_disponible',
+            'message' => 'No pudimos verificar la firma del contrato. Reintenta en unos segundos.',
+        ]);
+        exit;
+    }
+}
+
 // ── Determinar payment_method_types segun metodo ─────────────────────────────
 $paymentMethodTypes = ['card'];
 if ($method === 'oxxo') {
@@ -517,6 +597,9 @@ try {
             'msi_meses' => $installments ? (string)$msiMeses : '0',
             'punto_id'     => $customer['punto_id']     ?? '',
             'punto_nombre' => $customer['punto_nombre'] ?? '',
+            // Round 18: stamp the signature-audit row id onto the Stripe PI
+            // so a future chargeback dispute can match payment → signature.
+            'firma_audit_id' => isset($_engancheSignatureAuditId) ? (string)$_engancheSignatureAuditId : '',
         ],
     ];
 
