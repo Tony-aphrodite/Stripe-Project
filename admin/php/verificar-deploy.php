@@ -196,6 +196,11 @@ $checks = [
         'contratoFirmado',
         'Round 19 — Documentos modal: título del contrato refleja estado real (firmado vs pendiente de firma)'
     ),
+    'r19v3_contado_inclusive_signals' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'Round 19 v3',
+        'Round 19 v3 — CONTADO acepta tx_pago_estado / moto.pago_estado / stripe_pi / contrato_pdf_path como señal de firmado'
+    ),
     // ── Round 20 (2026-05-14) — Identidad section: photos visible ──────────
     'r20_listar_returns_files_saved' => _checkFile(
         $base . '/admin/php/preaprobaciones/listar.php',

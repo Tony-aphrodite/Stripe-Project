@@ -2221,29 +2221,36 @@ window.AD_ventas = (function(){
       // the path is only set after generar-contrato-pdf.php runs (which
       // requires the customer to have signed via Truora + Cincel), so
       // it's a reliable signal.
-      // Round 19 (2026-05-14) — corrected per round 20 follow-up
-      // (Óscar VK-2605-0002 Adrian Montoya, contado): the previous check
-      // required contrato_pdf_path to be non-empty to label the card as
-      // "(firmado)". That's correct for CREDIT (PDF only exists if the
-      // customer signed) but wrong for CONTADO (PDF is auto-generated
-      // at purchase and regenerated on demand by descargar-contrato.php
-      // even when the DB column was never persisted by a legacy row).
+      // Round 19 v3 (2026-05-14) — Óscar VK-2605-0002 still showing
+      // "(pendiente)" even with v2 logic. Cause: this legacy contado
+      // row has tx_pago_estado = '' or 'pendiente' (transacciones never
+      // got its pago_estado updated for this old order); the trustworthy
+      // paid signal is on inventario_motos.pago_estado (mapped to
+      // r.pago_estado), or simply the existence of a Stripe PI.
       //
-      // New rule:
+      // Final rule:
       //   • CREDIT  → firmado iff contrato_pdf_path != '' AND
-      //               pago_estado != 'pendiente_firma'
-      //   • CONTADO → firmado iff pago_estado is a "paid" variant
-      //               (regardless of contrato_pdf_path — the PDF is
-      //               always available via regen for paid contado
-      //               orders).
+      //               tx_pago_estado != 'pendiente_firma'
+      //   • CONTADO → firmado iff ANY of:
+      //               - tx_pago_estado is a "paid" variant
+      //               - moto pago_estado is a "paid" variant
+      //               - contrato_pdf_path already persisted
+      //               - a real Stripe PaymentIntent exists (pi_...)
+      //               The PDF is regen-on-demand so even if the column
+      //               is empty, "Ver / Descargar" still works.
       var contratoPath = (r.contrato_pdf_path != null) ? String(r.contrato_pdf_path).trim() : '';
       var txEstado     = String(r.tx_pago_estado || '').toLowerCase();
-      var paidStates   = ['pagada','aprobada','approved','paid'];
+      var motoEstado   = String(r.pago_estado     || '').toLowerCase();
+      var paidStates   = ['pagada','aprobada','approved','paid','pagado'];
+      var hasRealPI    = String(r.stripe_pi || '').indexOf('pi_') === 0;
       var contratoFirmado;
       if (isCredito) {
         contratoFirmado = contratoPath !== '' && txEstado !== 'pendiente_firma';
       } else {
-        contratoFirmado = (paidStates.indexOf(txEstado) >= 0) || contratoPath !== '';
+        contratoFirmado = (paidStates.indexOf(txEstado)   >= 0)
+                       || (paidStates.indexOf(motoEstado) >= 0)
+                       ||  contratoPath !== ''
+                       ||  hasRealPI;
       }
       var contratoTitle    = isCredito
         ? (contratoFirmado ? 'Contrato de financiamiento (firmado)' : 'Contrato de financiamiento (pendiente de firma)')
