@@ -537,13 +537,24 @@ window.AD_preaprobaciones = (function(){
     function renderRawPair(cmp, label) {
       // Two-row inline display so the admin can verify the actual
       // strings being compared. Keeps width narrow for the modal.
+      // Round 43 v2 (2026-05-16): the previous version put HTML fallback
+      // ("<em>— vacío —</em>") inside esc() — which then escaped the
+      // tags and dumped them as literal text on screen. Build the
+      // inner HTML conditionally so escaped user data and styled
+      // placeholders don't collide.
       if (cmp.result === 'no_data') return '';
-      var eDisp = cmp.e || '<em style="color:#9ca3af">— vacío —</em>';
-      var vDisp = cmp.v || '<em style="color:#9ca3af">— vacío —</em>';
-      var eqColor = (cmp.result === 'match') ? '#10b981' : '#dc2626';
+      var eHtml = cmp.e
+          ? '<strong>'+esc(cmp.e)+'</strong>'
+          : '<em style="color:#9ca3af">— vacío —</em>';
+      var vHtml = cmp.v
+          ? '<strong>'+esc(cmp.v)+'</strong>'
+          : '<em style="color:#9ca3af">— vacío —</em>';
+      var eqColor = (cmp.result === 'match') ? '#10b981'
+                   : (cmp.result === 'mismatch' ? '#dc2626'
+                   : '#f59e0b'); // partial (no_verified / no_expected) → orange
       return '<div style="margin:2px 0 6px 0;padding:6px 10px;background:#f8fafc;border-left:3px solid '+eqColor+';font-size:11.5px;font-family:ui-monospace,monospace;color:#475569;">'+
-               '<div>CDC esperado: <strong>'+esc(eDisp)+'</strong></div>'+
-               '<div>Truora extraído: <strong>'+esc(vDisp)+'</strong></div>'+
+               '<div>CDC esperado: '+eHtml+'</div>'+
+               '<div>Truora extraído: '+vHtml+'</div>'+
              '</div>';
     }
     // Render the CURP match row + raw pair below it.
