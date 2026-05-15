@@ -21,22 +21,22 @@
 require_once __DIR__ . '/../bootstrap.php';
 $ctx = puntoRequireAuth();
 
-// Customer brief 2026-05-12 (Óscar, 6th round): "Punto cannot delete a
-// moto." The frontend no longer surfaces the Eliminar button, and this
-// endpoint now hard-rejects so a forged request (older cached page,
-// curl, etc.) cannot bypass the UI restriction. Audit logged for any
-// attempts.
-puntoLog('intento_eliminar_bloqueado', [
-    'moto_id' => (int)($_POST['moto_id'] ?? json_decode(file_get_contents('php://input'), true)['moto_id'] ?? 0),
-    'punto_id' => $ctx['punto_id'],
-    'user_id'  => $ctx['user_id'],
-]);
-puntoJsonOut([
-    'error' => 'La eliminación de motos está restringida. Solicita a CEDIS / admin que la procese.',
-    'hint'  => 'Esta acción ya no está disponible para puntos. Contacta al equipo central para retirar el registro.',
-], 403);
-
-// ── Legacy code path kept below (now unreachable) ────────────────────
+// ── Round 41 (2026-05-16, Óscar — "The punto can't delete the inventory") ──
+// Policy reversal: the 2026-05-12 hard-block has been LIFTED at the
+// customer's explicit request. Puntos can again soft-delete inventory
+// rows (duplicates / test rows / mistakes) directly from the Venta por
+// referido panel. The existing safety guards below stay in place:
+//
+//   ✓ Must belong to THIS punto (cross-punto deletion blocked).
+//   ✓ No cliente / pedido / email assigned (real orders cannot be
+//     deleted — admin/CEDIS must reassign first).
+//   ✓ No active envío row (lista_para_enviar / enviada / en_transito /
+//     enviado) — physical-in-flight motos cannot disappear from view.
+//   ✓ Non-empty motivo string (audit trail preserved).
+//   ✓ Soft-delete only (activo=0) — admin can restore via eliminado_*
+//     audit columns. Hard deletion still requires DB access.
+//
+// Every attempt — granted or denied — is audit-logged via puntoLog.
 $d = puntoJsonIn();
 $motoId = (int)($d['moto_id'] ?? 0);
 $motivo = trim((string)($d['motivo'] ?? ''));

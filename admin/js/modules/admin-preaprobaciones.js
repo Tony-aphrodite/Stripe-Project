@@ -480,19 +480,40 @@ window.AD_preaprobaciones = (function(){
     if (row.truora_declined_reason) {
       html += dataRow('Razón Truora', '<span style="color:#dc2626;font-weight:600">' + esc(row.truora_declined_reason) + '</span>');
     }
-    // Round 40A: when Truora status is expired/in_progress/pending, the
-    // curp_match value is unreliable (Truora never finished collecting the
-    // document). Show "Verificación incompleta" instead of "✗ No coincide"
-    // so admins don't reject valid customers whose link merely expired.
+    // Round 40A v2 (2026-05-16): inspect BOTH truora_status AND
+    // truora_declined_reason. Real production data: status='failure' +
+    // declined_reason='expired' — the v1 check looked only at status
+    // and missed this case. Now: a curp_match=0 only renders as red
+    // "✗ No coincide" if declined_reason explicitly mentions a CURP/
+    // name mismatch. Anything else (expired/timeout/unverifiable) is
+    // shown as "Verificación incompleta" in grey so admins don't reject
+    // valid customers whose link merely expired.
     if (row.curp_match !== null && row.curp_match !== undefined) {
-      var _trStatus = String(row.truora_status || '').toLowerCase();
-      var _incomplete = (_trStatus === 'expired' || _trStatus === 'in_progress' || _trStatus === 'pending');
+      var _trStatus2 = String(row.truora_status || '').toLowerCase();
+      var _declined2 = String(row.truora_declined_reason || '').toLowerCase();
+      var _incompleteFlow = (
+          _trStatus2 === 'expired' || _trStatus2 === 'in_progress' || _trStatus2 === 'pending' ||
+          _declined2 === 'expired' || _declined2 === 'timeout' || _declined2 === 'incomplete' ||
+          _declined2 === 'verified_curp_unavailable' || _declined2 === 'identity_unverifiable'
+      );
+      var _realMismatch = (
+          _declined2.indexOf('curp_mismatch')  !== -1 ||
+          _declined2.indexOf('name_mismatch')  !== -1 ||
+          _declined2.indexOf('identity_curp')  !== -1 ||
+          _declined2.indexOf('identity_name')  !== -1 ||
+          _declined2 === 'mismatch'
+      );
       var curpLabel;
       if (row.curp_match == 1) {
         curpLabel = '<span style="color:#10b981;font-weight:700">✓ Coincide</span>';
-      } else if (_incomplete) {
-        // Don't blame CURP for an incomplete verification.
-        curpLabel = '<span style="color:#9ca3af;font-weight:600">— Verificación incompleta (' + esc(_trStatus) + ')</span>';
+      } else if (_incompleteFlow && !_realMismatch) {
+        // Incomplete flow + no explicit mismatch evidence → grey out.
+        curpLabel = '<span style="color:#9ca3af;font-weight:600">— Verificación incompleta ('
+                  + esc(_declined2 || _trStatus2) + ')</span>';
+      } else if (!_realMismatch && !_declined2) {
+        // Legacy row with curp_match=0 but no declined_reason populated:
+        // we don't know the cause — show a soft warning instead of red.
+        curpLabel = '<span style="color:#9ca3af;font-weight:600">— No verificable (datos incompletos)</span>';
       } else {
         curpLabel = '<span style="color:#dc2626;font-weight:700">✗ No coincide</span>';
       }
@@ -1218,17 +1239,26 @@ window.AD_preaprobaciones = (function(){
            + (row.truora_updated_at ? ' <span style="color:#6b7280;font-size:11px">' + esc(String(row.truora_updated_at).slice(0,16).replace('T',' ')) + '</span>' : '');
     }
 
-    // ── Round 40B (2026-05-16, Óscar): "expired"/"in_progress"/"pending"
-    // mean the customer never finished the Truora flow. In those states
-    // curp_match=0 is a STALE FALSE-POSITIVE from old server-side code —
-    // the comparison was impossible (Truora returned no CURP) but the
-    // legacy fallback coerced null→0. Show the actual lifecycle state
-    // instead of blaming CURP. Round 37 prevents NEW rows from being
-    // saved this way; this client-side priority fixes the DISPLAY for
-    // pre-existing rows immediately, without needing a DB backfill.
-    if (status === 'expired') {
-      return '<span style="color:#f59e0b;font-weight:700">⏳ Link Truora expiró</span>'
-           + ' <span style="color:#6b7280;font-size:11px">(reenviar link al cliente)</span>';
+    // ── Round 40B v2 (2026-05-16, Óscar): the "expired"/"timeout" signal
+    // lives in TWO places: truora_status (API state) AND
+    // truora_declined_reason (our internal cause code). Real data from
+    // production: status='failure' + declined_reason='expired' is the
+    // dominant pattern — the link expired but our code marked the whole
+    // verification as failure. We MUST inspect declined_reason too, not
+    // just status, otherwise the badge keeps blaming CURP for what is
+    // actually an expired link. Customer screenshot confirmed this case.
+    var _declinedReason = String(row.truora_declined_reason || '').toLowerCase();
+    var _isIncompleteFlow = (
+        status === 'expired' ||
+        _declinedReason === 'expired' ||
+        _declinedReason === 'timeout' ||
+        _declinedReason === 'incomplete' ||
+        _declinedReason === 'verified_curp_unavailable' ||
+        _declinedReason === 'identity_unverifiable'
+    );
+    if (_isIncompleteFlow) {
+      return '<span style="color:#f59e0b;font-weight:700">⏳ Link Truora no completado</span>'
+           + ' <span style="color:#6b7280;font-size:11px">(razón: ' + esc(_declinedReason || status) + ' — reenviar link al cliente)</span>';
     }
     if (status === 'in_progress' || status === 'pending') {
       return '<span style="color:#f59e0b;font-weight:700">⏳ En proceso</span>';
@@ -1238,8 +1268,27 @@ window.AD_preaprobaciones = (function(){
     // Only fires when curp_match is EXPLICITLY 0 AND the verification
     // is in a real terminal state (not expired/in_progress) — those
     // earlier branches catch unreliable curpM values before we get here.
+    // Also require that declined_reason explicitly mentions curp/name/
+    // identity mismatch — if declined_reason says anything else, the
+    // curpM=0 is likely a stale legacy false-positive.
     if (curpM === 0 || curpM === '0') {
-      return '<span style="color:#dc2626;font-weight:700">✗ CURP no coincide</span>';
+      var _looksLikeRealMismatch = (
+          _declinedReason.indexOf('curp_mismatch')   !== -1 ||
+          _declinedReason.indexOf('name_mismatch')   !== -1 ||
+          _declinedReason.indexOf('identity_curp')   !== -1 ||
+          _declinedReason.indexOf('identity_name')   !== -1 ||
+          _declinedReason === 'mismatch'
+      );
+      if (_looksLikeRealMismatch || !_declinedReason) {
+        // No declined_reason → fall back to the historic behaviour so we
+        // don't whitewash a genuine mismatch on legacy rows that have no
+        // detail field populated.
+        return '<span style="color:#dc2626;font-weight:700">✗ CURP no coincide</span>';
+      }
+      // declined_reason exists but is NOT a mismatch reason → display
+      // the actual cause instead of blaming CURP.
+      return '<span style="color:#f59e0b;font-weight:700">⚠ Verificación incompleta</span>'
+           + ' <span style="color:#6b7280;font-size:11px">(' + esc(_declinedReason) + ')</span>';
     }
 
     // ── Priority 5: explicit rejection ────────────────────────────────
