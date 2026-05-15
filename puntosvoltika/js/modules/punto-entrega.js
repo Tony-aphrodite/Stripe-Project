@@ -344,6 +344,14 @@ window.PV_entrega = (function(){
       '<div class="pv-otp-input">'+[0,1,2,3,4,5].map(function(i){return '<input maxlength="1" data-i="'+i+'" inputmode="numeric">';}).join('')+'</div>'+
       (ctx.testCode?'<div class="ad-card" style="color:var(--ad-warn)">Código de prueba: <b>'+ctx.testCode+'</b></div>':'')+
       '<button id="pvS2" class="ad-btn primary" style="width:100%">Verificar</button>'+
+      // Round 38 (2026-05-14, Óscar — "OTP never coming"): when the
+      // first SMS attempt silently fails (carrier blocks, customer's
+      // phone off, wrong number), the operator was stuck with no way
+      // to retry. Resend button regenerates the OTP and retransmits —
+      // any failure surfaces via the same warning + test_code path.
+      '<button id="pvS2Resend" class="ad-btn ghost sm" style="width:100%;margin-top:8px;">'+
+        '📩 ¿No le llegó el SMS al cliente? Reenviar código'+
+      '</button>'+
       noExitosaBtnHtml()
     );
     bindNoExitosa();
@@ -355,6 +363,30 @@ window.PV_entrega = (function(){
       PVApp.api('entrega/verificar-otp.php',{moto_id:ctx.moto_id,codigo:code}).done(function(r){
         if(r.ok){ ctx.entrega_id=r.entrega_id; autosave('step2', { otp_verified: true }); step3(); }
       }).fail(function(x){ alert((x.responseJSON&&x.responseJSON.error)||'Código incorrecto'); });
+    });
+    // Round 38: resend OTP handler — re-calls entrega/iniciar.php which
+    // issues a fresh OTP and re-attempts every channel. Reuses the
+    // warning + test_code surfacing from step1 so failure mode stays
+    // visible (e.g., "El proveedor de SMS rechazó el envío HTTP 401").
+    $('#pvS2Resend').on('click', function(){
+      var $r = $(this).prop('disabled', true).text('Reenviando…');
+      PVApp.api('entrega/iniciar.php', { moto_id: ctx.moto_id }).done(function(r){
+        if (r && r.ok) {
+          if (r.test_code) ctx.testCode = r.test_code;
+          if (r.warning) {
+            alert('⚠️ ' + r.warning + '\n\nCódigo del cliente: ' + (r.test_code || ctx.testCode || '(no disponible)'));
+          } else {
+            PVApp.toast && PVApp.toast('SMS reenviado al ' + (ctx.tel || 'cliente'));
+          }
+          // Re-render step2 to refresh the test_code visibility.
+          step2();
+        } else {
+          alert('No se pudo reenviar el código. Reporta a soporte.');
+        }
+      }).fail(function(x){
+        alert('Error al reenviar: ' + ((x.responseJSON && x.responseJSON.error) || 'Conexión'));
+        $r.prop('disabled', false).text('📩 ¿No le llegó el SMS al cliente? Reenviar código');
+      });
     });
   }
   // Step 3: Face verification + photos.

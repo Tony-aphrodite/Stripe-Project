@@ -223,14 +223,43 @@ $tCurpMatch = $_recursiveFind($details, ['curp_match','national_id_match','match
 if ($tNameMatch !== null) $nameMatch = $tNameMatch;
 if ($tCurpMatch !== null) $curpMatch = $tCurpMatch;
 
-// Final fallback for rejected verifications — when Truora rejected the
-// process outright but per-field flags are still null, treat the
-// rejection as a name+curp mismatch so the admin sees the failure
-// reason instead of three empty rows next to "✗ Rechazado".
+// ── Round 37 (2026-05-14, Óscar — "X CURP no coincide" pero coincide en Truora) ──
+// Customer brief: the admin "RESUMEN BURO" panel was showing "✗ No coincide"
+// for CURP/name even when the data actually matched inside Truora's own
+// dashboard. Root cause: when status='expired' or 'in_progress' (or any
+// rejection that wasn't itself a data-mismatch), the old fallback below
+// coerced null match flags to 0, which the JS then renders as red
+// "✗ No coincide" — misleading the admin into rejecting valid customers.
+//
+// New rule: only coerce null → 0 when we have semantic evidence that the
+// rejection was DUE to a data mismatch (action/reason text mentions
+// "mismatch", "name_mismatch", "document_mismatch"). Otherwise leave the
+// match flags as null and the JS renders "— no aplicable (rechazado)"
+// or "—" instead of the misleading red badge.
+//
+// We still record manual_review = 0 on rejection regardless, because a
+// rejected process never reaches manual review queue.
 if ($approved === 0) {
-    if ($nameMatch === null) $nameMatch = 0;
-    if ($curpMatch === null) $curpMatch = 0;
-    if ($manualRev === null) $manualRev = 0;  // already rejected → no manual review needed
+    $rejectionText = strtolower(json_encode([
+        $details['action']    ?? '',
+        $details['status']    ?? '',
+        $details['reason']    ?? '',
+        $details['decision']  ?? '',
+        $details['result']    ?? '',
+    ]) ?: '');
+    $isMismatchRejection = (
+        strpos($rejectionText, 'mismatch') !== false ||
+        strpos($rejectionText, 'no_match') !== false ||
+        strpos($rejectionText, 'name_mismatch') !== false ||
+        strpos($rejectionText, 'document_mismatch') !== false ||
+        strpos($rejectionText, 'curp_mismatch') !== false
+    );
+    if ($isMismatchRejection) {
+        if ($nameMatch === null) $nameMatch = 0;
+        if ($curpMatch === null) $curpMatch = 0;
+    }
+    // manual review default still applies — already rejected → no manual review
+    if ($manualRev === null) $manualRev = 0;
 }
 
 // ── Step 6: scan the payload for downloadable image URLs ──────────────────

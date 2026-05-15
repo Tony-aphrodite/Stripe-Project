@@ -436,6 +436,30 @@ $checks = [
         'Tu sesión expiró mientras llenabas el formulario',
         'Round 35 — punto-recepcion.js: 401 muestra mensaje amable + auto-prompt de login (datos del form se preservan)'
     ),
+    // ── Round 36 (2026-05-14) — Ensamble: fotos obligatorias al completar ─
+    'r36_ensamble_photo_mandatory' => _checkFile(
+        $base . '/puntosvoltika/php/checklists/guardar-ensamble.php',
+        'Para finalizar el checklist debes subir al menos una foto en cada fase',
+        'Round 36 — guardar-ensamble.php: bloquea completado si falta foto en fase 1/2/3 (mid-fase saves no afectados)'
+    ),
+    // ── Round 37 (2026-05-14) — Truora: dejar de marcar "No coincide" falso ─
+    'r37_truora_no_false_mismatch' => _checkFile(
+        $base . '/admin/php/preaprobaciones/sync-truora.php',
+        '$isMismatchRejection',
+        'Round 37 — sync-truora.php: solo coerce match flags a 0 si hay evidencia semántica de mismatch (no para expired/in_progress)'
+    ),
+    // ── Round 38 (2026-05-14) — Entrega: botón Reenviar OTP ───────────────
+    'r38_entrega_resend_otp' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-entrega.js',
+        '¿No le llegó el SMS al cliente? Reenviar código',
+        'Round 38 — punto-entrega.js: botón "Reenviar código" en step 2 cuando SMS no llega'
+    ),
+    // ── Round 39 (2026-05-14) — Cambiar tarjeta: recovery sin email + diagnóstico ─
+    'r39_cambiar_tarjeta_diagnostic' => _checkFile(
+        $base . '/clientes/php/pagos/cambiar-tarjeta.php',
+        "Round 39 (2026-05-14",
+        'Round 39 — cambiar-tarjeta.php: recovery acepta clientes sin email (Stripe lo pide en Checkout) + razón de fallo específica al cliente'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

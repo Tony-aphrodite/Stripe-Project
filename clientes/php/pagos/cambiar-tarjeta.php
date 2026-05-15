@@ -36,17 +36,28 @@ if (!defined('STRIPE_SECRET_KEY') || !STRIPE_SECRET_KEY) {
 // Helper: build a fresh Stripe customer from the cliente row + persist
 // the new ID. Idempotent — if any other subscripción already has a
 // valid customer, we reuse it; otherwise create one.
-function _voltikaCreateStripeCustomer(int $cid, PDO $pdo): ?string {
+function _voltikaCreateStripeCustomer(int $cid, PDO $pdo): array {
+    // Round 39 (2026-05-14, Óscar — Round 34 customer still saw "No such
+    // customer"): the previous helper returned null when email was empty
+    // OR when the Stripe API itself rejected the request, but the caller
+    // couldn't tell the two apart and the operator/customer just saw a
+    // generic error. Return a structured array so cambiar-tarjeta.php can
+    // surface the exact reason (missing email / Stripe rejection / network).
+    // Also: email is NOT strictly required by Stripe Checkout setup-mode —
+    // the Checkout page itself can collect it. So we attempt the create
+    // even when email is empty; only refuse if BOTH email and phone are
+    // missing (which means we can't identify the customer at all).
     $cliRow = $pdo->prepare("SELECT nombre, email, telefono FROM clientes WHERE id = ?");
     $cliRow->execute([$cid]);
     $cli = $cliRow->fetch(PDO::FETCH_ASSOC) ?: [];
-    $email = trim((string)($cli['email'] ?? ''));
-    if ($email === '') {
-        error_log('cambiar-tarjeta: cliente ' . $cid . ' sin email — no se puede crear Stripe customer.');
-        return null;
-    }
+    $email = trim((string)($cli['email']    ?? ''));
     $phone = trim((string)($cli['telefono'] ?? ''));
     $name  = trim((string)($cli['nombre']   ?? ''));
+    if ($email === '' && $phone === '') {
+        error_log('cambiar-tarjeta: cliente ' . $cid . ' sin email NI teléfono — no se puede crear Stripe customer.');
+        return ['id' => null, 'error' => 'sin_contacto',
+                'detail' => 'Tu perfil no tiene email ni teléfono registrado.'];
+    }
     $body = http_build_query(array_filter([
         'email'                  => $email,
         'name'                   => $name,
@@ -63,14 +74,26 @@ function _voltikaCreateStripeCustomer(int $cid, PDO $pdo): ?string {
         CURLOPT_TIMEOUT        => 12,
     ]);
     $resp = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     curl_close($ch);
     if ($code < 200 || $code >= 300) {
-        error_log('cambiar-tarjeta create customer failed: ' . substr((string)$resp, 0, 400));
-        return null;
+        $shortResp = substr((string)$resp, 0, 400);
+        error_log('cambiar-tarjeta create customer failed (HTTP ' . $code . '): ' . $shortResp);
+        $parsed = json_decode((string)$resp, true) ?: [];
+        return ['id'     => null,
+                'error'  => 'stripe_rejected',
+                'detail' => $parsed['error']['message'] ?? ('Stripe HTTP ' . $code),
+                'code'   => $code,
+                'curl_error' => $curlErr ?: null];
     }
     $arr = json_decode((string)$resp, true) ?: [];
-    return is_string($arr['id'] ?? null) ? $arr['id'] : null;
+    $newId = is_string($arr['id'] ?? null) ? $arr['id'] : null;
+    if (!$newId) {
+        return ['id' => null, 'error' => 'invalid_response',
+                'detail' => 'Stripe respondió sin ID de cliente.'];
+    }
+    return ['id' => $newId, 'error' => null];
 }
 
 // Build Checkout Session in setup mode
@@ -133,10 +156,26 @@ if (!$customerId) {
 
 if ($needsRecovery) {
     error_log('cambiar-tarjeta: stale customer ' . $customerId . ' for cliente ' . $cid . ' — creating fresh one.');
-    $newCustomerId = _voltikaCreateStripeCustomer((int)$cid, $pdo);
+    // Round 39: structured return so we can give the user a specific reason.
+    $newCust = _voltikaCreateStripeCustomer((int)$cid, $pdo);
+    $newCustomerId = $newCust['id'] ?? null;
     if (!$newCustomerId) {
+        // Surface the specific failure reason so the customer/operator
+        // can act (update profile email, or escalate to support).
+        $userMsg = 'No se pudo crear tu cliente en Stripe.';
+        if (($newCust['error'] ?? '') === 'sin_contacto') {
+            $userMsg = 'Tu perfil no tiene email ni teléfono registrado. ' .
+                       'Pide a soporte que actualice tus datos de contacto y vuelve a intentar.';
+        } elseif (($newCust['error'] ?? '') === 'stripe_rejected') {
+            $userMsg = 'Stripe rechazó la creación del cliente. Detalle: ' .
+                       ($newCust['detail'] ?? '') . ' — reporta a soporte con este código.';
+        } elseif (($newCust['error'] ?? '') === 'invalid_response') {
+            $userMsg = 'Stripe no devolvió un cliente válido. Reporta a soporte.';
+        }
         portalJsonOut([
-            'error' => 'No se pudo crear tu cliente en Stripe. Verifica que tu email esté registrado correctamente.',
+            'error'  => $userMsg,
+            'reason' => $newCust['error'] ?? 'unknown',
+            'detail' => $newCust['detail'] ?? null,
         ], 500);
     }
     // Persist on the most-recent subscripción for this cliente so future

@@ -82,6 +82,71 @@ if ($completar) {
         foreach ($allFields as $f) if (!$vals[$f]) $missing[] = $f;
         puntoJsonOut(['error' => 'Faltan ' . count($missing) . ' items', 'missing' => $missing], 400);
     }
+
+    // ── Round 36 (2026-05-14, Óscar — "the photos are mandatory") ───────
+    // Customer brief: the operator must NOT be able to finalize the
+    // assembly checklist without uploading evidence photos. Previously
+    // the server accepted `completar=1` even when zero photos had been
+    // uploaded — admins had no proof of work for liability claims. We
+    // require at least ONE photo per fase (fase1 / fase2 / fase3) before
+    // accepting completion. Mid-fase saves are unaffected — only the
+    // final "Completar" submit is gated.
+    //
+    // Photos live in JSON columns populated by subir-foto.php. We read
+    // the latest checklist_ensamble row and count non-empty photo arrays
+    // per fase. Fase2 has multiple optional zones; we accept ANY of them.
+    $fase1Photos = ['fotos_fase1'];
+    $fase2Photos = ['fotos_desembalaje','fotos_base','fotos_manubrio','fotos_llanta','fotos_espejos'];
+    $fase3Photos = ['fotos_fase3','fotos_3_1_frenos','fotos_3_2_iluminacion','fotos_3_3_electrico',
+                    'fotos_3_4_motor','fotos_3_5_acceso','fotos_3_6_mecanica'];
+    $photoCheck = function (array $cols, ?array $row): int {
+        if (!$row) return 0;
+        $count = 0;
+        foreach ($cols as $c) {
+            if (empty($row[$c])) continue;
+            $arr = is_array($row[$c]) ? $row[$c] : @json_decode((string)$row[$c], true);
+            if (is_array($arr)) {
+                foreach ($arr as $u) {
+                    if (is_string($u) && trim($u) !== '') $count++;
+                }
+            }
+        }
+        return $count;
+    };
+    $photoRow = null;
+    if ($prev) {
+        try {
+            $allPhotoCols = array_merge($fase1Photos, $fase2Photos, $fase3Photos);
+            $pq = $pdo->prepare("SELECT " . implode(',', $allPhotoCols) .
+                                " FROM checklist_ensamble WHERE id = ?");
+            $pq->execute([$prev['id']]);
+            $photoRow = $pq->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (Throwable $e) {
+            // If columns don't exist yet on legacy schema, treat as no photos
+            // so the operator gets a polite error instead of a 500.
+            error_log('guardar-ensamble photo check: ' . $e->getMessage());
+        }
+    }
+    $f1Count = $photoCheck($fase1Photos, $photoRow);
+    $f2Count = $photoCheck($fase2Photos, $photoRow);
+    $f3Count = $photoCheck($fase3Photos, $photoRow);
+    if ($f1Count === 0 || $f2Count === 0 || $f3Count === 0) {
+        $missingPhases = [];
+        if ($f1Count === 0) $missingPhases[] = 'Fase 1 (Recepción y preparación)';
+        if ($f2Count === 0) $missingPhases[] = 'Fase 2 (Ensamble mecánico)';
+        if ($f3Count === 0) $missingPhases[] = 'Fase 3 (Verificación final)';
+        puntoJsonOut([
+            'error'   => 'Para finalizar el checklist debes subir al menos una foto en cada fase. ' .
+                         'Faltan fotos en: ' . implode(', ', $missingPhases) . '.',
+            'missing_photos' => [
+                'fase1' => $f1Count === 0,
+                'fase2' => $f2Count === 0,
+                'fase3' => $f3Count === 0,
+            ],
+            'hint' => 'Toca el ícono de cámara en cada sección de la fase indicada y sube una imagen antes de presionar Completar.',
+        ], 400);
+    }
+
     $vals['completado'] = 1;
     $vals['fase_actual'] = 'completado';
 } else {
