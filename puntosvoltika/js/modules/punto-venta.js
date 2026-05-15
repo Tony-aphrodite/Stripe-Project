@@ -40,13 +40,18 @@ window.PV_venta = (function(){
     }
 
     // ───────────── Section 2: Motos libres en tu inventario ─────────────
-    // Round 27: removed the "Venta directa en tienda" sale button — puntos
-    // sell only via the configurador. Section retained for inventory
-    // awareness and the delete affordance (clean up duplicates / test
-    // rows) which is also surfaced from punto-inventario.js.
+    // Round 41 (2026-05-16, Óscar — operator deleted 4 motos by accident):
+    // the delete (🗑) button used to live here, BUT in production the
+    // proximity of the trash icon to the rows led to accidental deletes.
+    // The customer asked us to remove the deletion affordance from this
+    // view entirely. Inventory cleanup (duplicates / test rows) is now
+    // exclusively an admin/CEDIS job — punto operators read-only here.
+    // The server endpoint also rejects calls from punto (see eliminar.php
+    // Round 41 block) as defense-in-depth in case any stale JS is cached
+    // in a browser.
     html += '<div style="background:#E3F2FD;border-left:4px solid #1976D2;padding:10px 12px;border-radius:6px;margin:20px 0 10px;">'+
       '<strong style="color:#0D47A1;">Motos libres en tu inventario ('+disponibles.length+')</strong>'+
-      '<div style="font-size:12px;color:#455A64;margin-top:2px;">Motos disponibles para asignar a pedidos pendientes (arriba). Si encuentras un duplicado o una moto de prueba, puedes eliminarla del inventario.</div>'+
+      '<div style="font-size:12px;color:#455A64;margin-top:2px;">Motos disponibles para asignar a pedidos pendientes (arriba). Si encuentras un duplicado o una moto de prueba, avisa a admin/CEDIS para que la limpien.</div>'+
     '</div>';
 
     if (disponibles.length === 0) {
@@ -54,22 +59,9 @@ window.PV_venta = (function(){
     } else {
       disponibles.forEach(function(m){
         html += '<div class="ad-card" style="margin-bottom:8px;">';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">';
         html += '<div>';
         html += '<div style="font-weight:700">'+esc(m.modelo)+' · '+esc(m.color)+'</div>';
         html += '<div style="font-size:12px;color:var(--ad-dim)">VIN: <code>'+esc(m.vin_display||m.vin||'')+'</code></div>';
-        html += '</div>';
-        html += '<div style="display:flex;gap:6px;align-items:center;">';
-        // Round 27: "Venta directa" button intentionally removed. Delete
-        // affordance below stays so puntos can prune duplicate/test rows.
-        html += '<button class="ad-btn ghost sm pvDeleteDirect" data-id="'+m.id+'" '+
-                'data-vin="'+esc(m.vin_display||m.vin||'')+'" '+
-                'data-modelo="'+esc(m.modelo||'')+'" data-color="'+esc(m.color||'')+'" '+
-                'style="color:#b91c1c;border-color:#b91c1c;" '+
-                'title="Eliminar moto del inventario">'+
-                '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
-                '</button>';
-        html += '</div>';
         html += '</div>';
         html += '</div>';
       });
@@ -92,63 +84,9 @@ window.PV_venta = (function(){
         nombre:  $b.data('nombre'),
       });
     });
-    // Round 27 (2026-05-14): .pvSellDirect handler removed with the
-    // "Venta directa" button — direct walk-in sales aren't allowed
-    // from the punto admin; sales go through the configurador online.
-    $('.pvDeleteDirect').on('click', function(){
-      var $b = $(this);
-      showDeleteDirectModal({
-        moto_id: $b.data('id'),
-        vin:     $b.data('vin'),
-        modelo:  $b.data('modelo'),
-        color:   $b.data('color'),
-      });
-    });
-  }
-
-  function showDeleteDirectModal(ctx){
-    PVApp.modal(
-      '<div class="ad-h2" style="color:#b91c1c;">Eliminar moto del inventario</div>'+
-      '<div style="color:var(--ad-dim);margin-bottom:14px;font-size:13px;line-height:1.55;">'+
-        'Vas a eliminar <strong>'+esc(ctx.modelo||'—')+' '+esc(ctx.color||'')+'</strong>'+
-        (ctx.vin ? ' (VIN <code>'+esc(ctx.vin)+'</code>)' : '')+' de tu inventario.<br><br>'+
-        'La moto queda como <strong>eliminada</strong> en la base de datos (no se borra de forma definitiva — admin puede restaurarla). '+
-        'Usa esto para entradas duplicadas, motos de prueba o motos regresadas a CEDIS.'+
-      '</div>'+
-      '<label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Motivo de eliminación *</label>'+
-      '<textarea id="pvDelDirMotivo" class="ad-input" placeholder="Ej. entrada duplicada · moto de prueba · regresada a CEDIS" '+
-      'style="width:100%;min-height:70px;margin-bottom:6px;"></textarea>'+
-      '<div id="pvDelDirMsg" style="font-size:12px;color:#b91c1c;min-height:16px;"></div>'+
-      '<div style="display:flex;gap:8px;margin-top:10px;">'+
-        '<button class="ad-btn ghost" id="pvDelDirCancel" style="flex:1;">Cancelar</button>'+
-        '<button class="ad-btn primary" id="pvDelDirOk" style="flex:1;background:#b91c1c;border-color:#b91c1c;">Eliminar</button>'+
-      '</div>'
-    );
-    $('#pvDelDirCancel').on('click', PVApp.closeModal);
-    $('#pvDelDirOk').on('click', function(){
-      var motivo = ($('#pvDelDirMotivo').val()||'').trim();
-      if (motivo.length < 4) {
-        $('#pvDelDirMsg').text('Escribe un motivo (mínimo 4 caracteres).');
-        return;
-      }
-      var $btn = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Eliminando...');
-      PVApp.api('inventario/eliminar.php', { moto_id: ctx.moto_id, motivo: motivo })
-        .done(function(r){
-          if (r && r.ok) {
-            PVApp.closeModal();
-            PVApp.toast('Moto eliminada');
-            render();
-          } else {
-            $('#pvDelDirMsg').text((r && r.error) || 'Error desconocido');
-            $btn.prop('disabled', false).text('Eliminar');
-          }
-        })
-        .fail(function(x){
-          var err = (x.responseJSON && x.responseJSON.error) || 'Error de conexión';
-          $('#pvDelDirMsg').text(err);
-          $btn.prop('disabled', false).text('Eliminar');
-        });
-    });
+    // Round 41 (2026-05-16): .pvDeleteDirect handler + showDeleteDirectModal
+    // removed entirely. Inventory deletion from the punto panel was
+    // disabled at customer request after accidental deletes wiped 4 motos.
   }
 
   // ── Modal: assign free inventory bike to a pending online order (CASE 3) ──

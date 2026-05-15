@@ -481,6 +481,17 @@ $checks = [
         '🔄 Re-verificar con Truora',
         'Round 40C — admin-ventas.js: dentro del recuadro rojo "Truora rechazó" hay un botón Re-verificar (antes no había salida si admin sospechaba false-positive)'
     ),
+    // ── Round 41 (2026-05-16) — Venta por referido: quitar botón Eliminar ──
+    'r41_venta_referido_no_delete' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-venta.js',
+        'Round 41 (2026-05-16, Óscar — operator deleted 4 motos by accident)',
+        'Round 41 — punto-venta.js: el botón 🗑 Eliminar fue removido de "Motos libres en tu inventario" (deletes por accidente)'
+    ),
+    'r41_restore_tool' => _checkFile(
+        $base . '/admin/php/inventario/restaurar-recientes.php',
+        'Voltika Admin — Round 41 recovery tool',
+        'Round 41 — herramienta admin one-shot: lista + restaura motos eliminadas en las últimas N horas'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
