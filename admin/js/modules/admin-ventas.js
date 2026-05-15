@@ -2891,12 +2891,65 @@ window.AD_ventas = (function(){
                            || rejectedOverall)
                            && !missingTruora;
     if (truoraFinalFail && !hasAnyPhoto) {
+      // Round 40C (2026-05-16, Óscar): admins also need a way to RE-verify
+      // a "failure" verification when they suspect the mismatch flag is a
+      // legacy false-positive. The button hidden here previously was the
+      // only entry point to call sync-truora.php — without it operators
+      // had no way to confirm whether the rejection was real. Re-sync may
+      // also pull Truora's latest decision if the customer retried the
+      // link recently, even when the old DB row was stuck in "failure".
+      var reverifyId = 'vk-truora-reverify-' + Math.random().toString(36).slice(2, 9);
       html += '<div style="margin-top:14px;padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">'+
                 '<div style="font-size:12px;color:#991b1b;line-height:1.5;">'+
                   '🛈 <strong>Truora rechazó esta verificación</strong> (failure / nombre o CURP no coinciden). '+
                   'Truora no conserva documentos para procesos rechazados, por lo que las fotos no se pueden recuperar de su API.'+
                 '</div>'+
+                '<div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+                  '<button id="'+reverifyId+'" class="ad-btn sm" style="background:#fff;border:1px solid #fca5a5;color:#991b1b;">'+
+                    '🔄 Re-verificar con Truora'+
+                  '</button>'+
+                  '<span id="'+reverifyId+'-status" style="font-size:11px;color:#7f1d1d;"></span>'+
+                  '<span style="font-size:11px;color:#7f1d1d;">'+
+                    'Si sospechas que el rechazo fue un falso positivo (estado expirado, datos antiguos), reintenta — los flags se recalculan con la lógica nueva (Round 37).'+
+                  '</span>'+
+                '</div>'+
               '</div>';
+      // Reuse the same handler logic as the standard sync button below.
+      setTimeout(function(){
+        var btn = document.getElementById(reverifyId);
+        var status = document.getElementById(reverifyId + '-status');
+        if (!btn) return;
+        btn.addEventListener('click', function(){
+          btn.disabled = true;
+          status.textContent = '⏳ Consultando Truora…';
+          ADApp.api('preaprobaciones/sync-truora.php', {
+            verif_id: p.verif_id || 0,
+            telefono: p.telefono || '',
+            email:    p.email    || '',
+            preap_id: p.id || 0
+          }).done(function(r){
+            if (r && r.ok) {
+              status.textContent = '✓ Sincronizado · status=' + (r.fetched && r.fetched.status || '—');
+              status.style.color = '#15803d';
+              setTimeout(function(){
+                var search = p.telefono || p.email || '';
+                ADApp.api('preaprobaciones/listar.php?' + jQuery.param({search:search, limit:1})).done(function(r2){
+                  var newP = (r2 && r2.rows && r2.rows[0]) || null;
+                  if (newP) { $c.find('button').prop('disabled', true); renderIdentidad($c, newP); }
+                });
+              }, 400);
+            } else {
+              status.textContent = '⚠ ' + ((r && r.message) || 'no se pudo sincronizar');
+              btn.disabled = false;
+            }
+          }).fail(function(xhr){
+            var msg = 'Error de red';
+            try { msg = (JSON.parse(xhr.responseText).message) || msg; } catch (e) {}
+            status.textContent = '✗ ' + msg;
+            btn.disabled = false;
+          });
+        });
+      }, 0);
     } else if (missingTruora || !hasAnyPhoto) {
       var syncId = 'vk-truora-sync-' + Math.random().toString(36).slice(2, 9);
       html += '<div style="margin-top:14px;padding:12px;background:#f0f9ff;border:1px solid #93c5fd;border-radius:8px;">'+

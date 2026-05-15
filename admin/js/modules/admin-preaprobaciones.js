@@ -464,14 +464,38 @@ window.AD_preaprobaciones = (function(){
     html += dataRow('Pago Voltika mensual', fmtMoney(row.pago_mensual));
     html += dataRow('PTI total (CDC + Voltika)', '<span style="color:'+theme.haccent+';font-weight:700">'+fmtPct(row.pti_total)+'</span>');
     html += dataRow('Source', sourceLabel(row.circulo_source));
-    html += dataRow('Truora ID', truoraStatusBadge(row));
+    // ── Round 40A (2026-05-16, Óscar — "X CURP no coincide aunque coincide") ──
+    // The label here used to say "Truora ID" but the value was a status
+    // badge — that's why operators kept seeing "X CURP no coincide" in
+    // the "Truora ID" row even when Truora's dashboard showed a match.
+    // Split into two semantic rows: a status badge (renamed) and, when
+    // available, the actual process_id so admins can cross-check in
+    // Truora's dashboard.
+    html += dataRow('Estado Truora', truoraStatusBadge(row));
+    if (row.truora_process_id) {
+      html += dataRow('Truora process ID',
+        '<span style="font-family:ui-monospace,monospace;font-size:11.5px;color:#475569;word-break:break-all">' +
+        esc(row.truora_process_id) + '</span>');
+    }
     if (row.truora_declined_reason) {
       html += dataRow('Razón Truora', '<span style="color:#dc2626;font-weight:600">' + esc(row.truora_declined_reason) + '</span>');
     }
+    // Round 40A: when Truora status is expired/in_progress/pending, the
+    // curp_match value is unreliable (Truora never finished collecting the
+    // document). Show "Verificación incompleta" instead of "✗ No coincide"
+    // so admins don't reject valid customers whose link merely expired.
     if (row.curp_match !== null && row.curp_match !== undefined) {
-      var curpLabel = (row.curp_match == 1)
-        ? '<span style="color:#10b981;font-weight:700">✓ Coincide</span>'
-        : '<span style="color:#dc2626;font-weight:700">✗ No coincide</span>';
+      var _trStatus = String(row.truora_status || '').toLowerCase();
+      var _incomplete = (_trStatus === 'expired' || _trStatus === 'in_progress' || _trStatus === 'pending');
+      var curpLabel;
+      if (row.curp_match == 1) {
+        curpLabel = '<span style="color:#10b981;font-weight:700">✓ Coincide</span>';
+      } else if (_incomplete) {
+        // Don't blame CURP for an incomplete verification.
+        curpLabel = '<span style="color:#9ca3af;font-weight:600">— Verificación incompleta (' + esc(_trStatus) + ')</span>';
+      } else {
+        curpLabel = '<span style="color:#dc2626;font-weight:700">✗ No coincide</span>';
+      }
       html += dataRow('CURP match', curpLabel);
     }
     html += '</div>';
@@ -1194,15 +1218,28 @@ window.AD_preaprobaciones = (function(){
            + (row.truora_updated_at ? ' <span style="color:#6b7280;font-size:11px">' + esc(String(row.truora_updated_at).slice(0,16).replace('T',' ')) + '</span>' : '');
     }
 
-    // ── Priority 3: CURP mismatch (user-recoverable) ──────────────────
-    // Only fires when curp_match is EXPLICITLY 0 — not null/undefined.
-    if (curpM === 0 || curpM === '0') {
-      return '<span style="color:#dc2626;font-weight:700">✗ CURP no coincide</span>';
+    // ── Round 40B (2026-05-16, Óscar): "expired"/"in_progress"/"pending"
+    // mean the customer never finished the Truora flow. In those states
+    // curp_match=0 is a STALE FALSE-POSITIVE from old server-side code —
+    // the comparison was impossible (Truora returned no CURP) but the
+    // legacy fallback coerced null→0. Show the actual lifecycle state
+    // instead of blaming CURP. Round 37 prevents NEW rows from being
+    // saved this way; this client-side priority fixes the DISPLAY for
+    // pre-existing rows immediately, without needing a DB backfill.
+    if (status === 'expired') {
+      return '<span style="color:#f59e0b;font-weight:700">⏳ Link Truora expiró</span>'
+           + ' <span style="color:#6b7280;font-size:11px">(reenviar link al cliente)</span>';
     }
-
-    // ── Priority 4: in-progress ───────────────────────────────────────
     if (status === 'in_progress' || status === 'pending') {
       return '<span style="color:#f59e0b;font-weight:700">⏳ En proceso</span>';
+    }
+
+    // ── Priority 4: CURP mismatch (user-recoverable) ──────────────────
+    // Only fires when curp_match is EXPLICITLY 0 AND the verification
+    // is in a real terminal state (not expired/in_progress) — those
+    // earlier branches catch unreliable curpM values before we get here.
+    if (curpM === 0 || curpM === '0') {
+      return '<span style="color:#dc2626;font-weight:700">✗ CURP no coincide</span>';
     }
 
     // ── Priority 5: explicit rejection ────────────────────────────────

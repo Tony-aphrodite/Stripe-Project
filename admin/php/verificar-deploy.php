@@ -460,6 +460,27 @@ $checks = [
         "Round 39 (2026-05-14",
         'Round 39 — cambiar-tarjeta.php: recovery acepta clientes sin email (Stripe lo pide en Checkout) + razón de fallo específica al cliente'
     ),
+    // ── Round 40 (2026-05-16) — RESUMEN BURO: 3 bugs en display de Truora ───
+    'r40a_estado_truora_label' => _checkFile(
+        $base . '/admin/js/modules/admin-preaprobaciones.js',
+        "dataRow('Estado Truora', truoraStatusBadge(row))",
+        'Round 40A — admin-preaprobaciones.js: label "Truora ID" mal usado → ahora dice "Estado Truora" + fila separada con el process_id real'
+    ),
+    'r40a_curp_incomplete_label' => _checkFile(
+        $base . '/admin/js/modules/admin-preaprobaciones.js',
+        'Verificación incompleta',
+        'Round 40A — admin-preaprobaciones.js: si status=expired/in_progress muestra "Verificación incompleta" en CURP match en vez de "X No coincide"'
+    ),
+    'r40b_badge_priority' => _checkFile(
+        $base . '/admin/js/modules/admin-preaprobaciones.js',
+        'Link Truora expiró',
+        'Round 40B — truoraStatusBadge: chequea status=expired/in_progress ANTES de curp_match===0 (evita "X CURP no coincide" falso)'
+    ),
+    'r40c_reverify_button' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        '🔄 Re-verificar con Truora',
+        'Round 40C — admin-ventas.js: dentro del recuadro rojo "Truora rechazó" hay un botón Re-verificar (antes no había salida si admin sospechaba false-positive)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
