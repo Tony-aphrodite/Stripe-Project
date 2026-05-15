@@ -480,44 +480,157 @@ window.AD_preaprobaciones = (function(){
     if (row.truora_declined_reason) {
       html += dataRow('Razón Truora', '<span style="color:#dc2626;font-weight:600">' + esc(row.truora_declined_reason) + '</span>');
     }
-    // Round 40A v2 (2026-05-16): inspect BOTH truora_status AND
-    // truora_declined_reason. Real production data: status='failure' +
-    // declined_reason='expired' — the v1 check looked only at status
-    // and missed this case. Now: a curp_match=0 only renders as red
-    // "✗ No coincide" if declined_reason explicitly mentions a CURP/
-    // name mismatch. Anything else (expired/timeout/unverifiable) is
-    // shown as "Verificación incompleta" in grey so admins don't reject
-    // valid customers whose link merely expired.
-    if (row.curp_match !== null && row.curp_match !== undefined) {
-      var _trStatus2 = String(row.truora_status || '').toLowerCase();
-      var _declined2 = String(row.truora_declined_reason || '').toLowerCase();
-      var _incompleteFlow = (
-          _trStatus2 === 'expired' || _trStatus2 === 'in_progress' || _trStatus2 === 'pending' ||
-          _declined2 === 'expired' || _declined2 === 'timeout' || _declined2 === 'incomplete' ||
-          _declined2 === 'verified_curp_unavailable' || _declined2 === 'identity_unverifiable'
-      );
-      var _realMismatch = (
-          _declined2.indexOf('curp_mismatch')  !== -1 ||
-          _declined2.indexOf('name_mismatch')  !== -1 ||
-          _declined2.indexOf('identity_curp')  !== -1 ||
-          _declined2.indexOf('identity_name')  !== -1 ||
-          _declined2 === 'mismatch'
-      );
-      var curpLabel;
-      if (row.curp_match == 1) {
-        curpLabel = '<span style="color:#10b981;font-weight:700">✓ Coincide</span>';
-      } else if (_incompleteFlow && !_realMismatch) {
-        // Incomplete flow + no explicit mismatch evidence → grey out.
-        curpLabel = '<span style="color:#9ca3af;font-weight:600">— Verificación incompleta ('
-                  + esc(_declined2 || _trStatus2) + ')</span>';
-      } else if (!_realMismatch && !_declined2) {
-        // Legacy row with curp_match=0 but no declined_reason populated:
-        // we don't know the cause — show a soft warning instead of red.
-        curpLabel = '<span style="color:#9ca3af;font-weight:600">— No verificable (datos incompletos)</span>';
-      } else {
-        curpLabel = '<span style="color:#dc2626;font-weight:700">✗ No coincide</span>';
+    // ── Round 43 (2026-05-16, Óscar — "정보가 일치하는데 No coincide로 표시") ──
+    // Stop trusting the persisted curp_match / name_match flags — they
+    // can be stale or wrong (legacy false-positives from pre-Round-37
+    // sync). Instead, compare the two RAW strings stored on the row
+    // (expected_* from CDC vs verified_* from Truora's document) live
+    // at render time. The truth is in the underlying data, not in a
+    // flag computed days ago. Also expose the actual pair of strings
+    // so the admin can see WHY a comparison resulted the way it did.
+    function _normCurp(s){
+      return String(s || '').toUpperCase().replace(/\s+/g,'').trim();
+    }
+    function _normName(s){
+      // Uppercase, strip accents, collapse spaces — matches the
+      // sanitization Truora applies on its side so cosmetic differences
+      // (accents, double last names with extra spaces) don't register
+      // as mismatches.
+      var t = String(s || '').toUpperCase()
+        .replace(/[ÁÀÄÂ]/g,'A').replace(/[ÉÈËÊ]/g,'E')
+        .replace(/[ÍÌÏÎ]/g,'I').replace(/[ÓÒÖÔ]/g,'O')
+        .replace(/[ÚÙÜÛ]/g,'U').replace(/[Ñ]/g,'N')
+        .replace(/[^A-Z\s]/g,' ').replace(/\s+/g,' ').trim();
+      return t;
+    }
+    function _liveMatch(expected, verified, normFn) {
+      var e = normFn(expected), v = normFn(verified);
+      if (!e && !v) return { result: 'no_data',  e: e, v: v };
+      if (!e)        return { result: 'no_expected', e: e, v: v };
+      if (!v)        return { result: 'no_verified', e: e, v: v };
+      return { result: (e === v) ? 'match' : 'mismatch', e: e, v: v };
+    }
+    // Build the live comparison rows. Showing BOTH the stored flag and
+    // the live result side-by-side would be noisy — instead we render
+    // the live result authoritatively and surface the raw pair below
+    // it so the admin can verify with their own eyes.
+    var curpCmp = _liveMatch(row.expected_curp, row.verified_curp, _normCurp);
+    var nameCmp = _liveMatch(row.expected_name, row.verified_name, _normName);
+    function renderCmpBadge(cmp) {
+      if (cmp.result === 'match') {
+        return '<span style="color:#10b981;font-weight:700">✓ Coincide</span>';
       }
-      html += dataRow('CURP match', curpLabel);
+      if (cmp.result === 'mismatch') {
+        return '<span style="color:#dc2626;font-weight:700">✗ No coincide</span>';
+      }
+      // No data — neither expected nor verified populated. Most common
+      // cause: link expired before customer completed the flow.
+      if (cmp.result === 'no_data') {
+        return '<span style="color:#9ca3af;font-weight:600">— Sin datos (verificación no completada)</span>';
+      }
+      if (cmp.result === 'no_verified') {
+        return '<span style="color:#f59e0b;font-weight:700">⏳ Falta documento Truora</span>';
+      }
+      // no_expected — we don't have CDC data to compare against (rare).
+      return '<span style="color:#9ca3af;font-weight:600">— Falta dato esperado (CDC)</span>';
+    }
+    function renderRawPair(cmp, label) {
+      // Two-row inline display so the admin can verify the actual
+      // strings being compared. Keeps width narrow for the modal.
+      if (cmp.result === 'no_data') return '';
+      var eDisp = cmp.e || '<em style="color:#9ca3af">— vacío —</em>';
+      var vDisp = cmp.v || '<em style="color:#9ca3af">— vacío —</em>';
+      var eqColor = (cmp.result === 'match') ? '#10b981' : '#dc2626';
+      return '<div style="margin:2px 0 6px 0;padding:6px 10px;background:#f8fafc;border-left:3px solid '+eqColor+';font-size:11.5px;font-family:ui-monospace,monospace;color:#475569;">'+
+               '<div>CDC esperado: <strong>'+esc(eDisp)+'</strong></div>'+
+               '<div>Truora extraído: <strong>'+esc(vDisp)+'</strong></div>'+
+             '</div>';
+    }
+    // Render the CURP match row + raw pair below it.
+    html += dataRow('CURP match', renderCmpBadge(curpCmp));
+    var curpRaw = renderRawPair(curpCmp, 'CURP');
+    if (curpRaw) html += '<div style="margin:-4px 8px 0 8px;">' + curpRaw + '</div>';
+    // Same treatment for name match.
+    html += dataRow('Nombre coincide', renderCmpBadge(nameCmp));
+    var nameRaw = renderRawPair(nameCmp, 'Nombre');
+    if (nameRaw) html += '<div style="margin:-4px 8px 0 8px;">' + nameRaw + '</div>';
+    // Sanity warning: if the stored flag and live comparison disagree,
+    // surface it so the admin knows the DB has a stale value (and
+    // re-sync would clean it up).
+    var liveCurpIsMatch = (curpCmp.result === 'match') ? 1 : (curpCmp.result === 'mismatch' ? 0 : null);
+    if (liveCurpIsMatch !== null && row.curp_match != null &&
+        Number(row.curp_match) !== liveCurpIsMatch) {
+      html += '<div style="margin:4px 8px 0 8px;padding:6px 10px;background:#fff7ed;border-left:3px solid #f59e0b;font-size:11px;color:#78350f;">'+
+                '⚠ La bandera <code>curp_match='+esc(String(row.curp_match))+'</code> en DB no concuerda con la comparación en vivo. '+
+                'Probablemente un valor heredado del código viejo — re-sincronizar para limpiarlo.'+
+              '</div>';
+    }
+
+    // ── Round 42 (2026-05-16, Óscar — "RESUMEN BURO shows NO MATCH but
+    // Truora says match"): until now the only re-sync button lived in
+    // admin-ventas.js (Documentos del pedido). Admins reviewing leads
+    // in Solicitudes had no way to refresh the Truora data from the
+    // panel they were already looking at — they had to navigate to
+    // Ventas, open the Documentos modal, click sync, then come back.
+    // That workflow break is why stale curp_match=0 rows kept showing
+    // up as "X No coincide" even after the operator confirmed match in
+    // Truora's dashboard. Add a sync button RIGHT HERE so the admin can
+    // pull the latest Truora result without leaving the page. Same
+    // endpoint as the Ventas button (preaprobaciones/sync-truora.php).
+    if (row.truora_process_id || row.email || row.telefono) {
+      var syncResumenId = 'vk-resumen-sync-' + Math.random().toString(36).slice(2, 9);
+      html += '<div style="margin-top:14px;padding:10px 12px;background:#f0f9ff;border:1px solid #93c5fd;border-radius:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
+                '<div style="flex:1;min-width:220px;font-size:12px;color:#1e40af;line-height:1.4;">'+
+                  '🔄 ¿Truora dashboard muestra <strong>match</strong> pero aquí ves <strong>no coincide</strong>? '+
+                  'Re-sincroniza para traer el resultado más reciente.'+
+                '</div>'+
+                '<button id="'+syncResumenId+'" class="ad-btn sm" style="background:#0ea5e9;color:#fff;border-color:#0ea5e9;white-space:nowrap;">'+
+                  '🔄 Re-verificar con Truora'+
+                '</button>'+
+                '<span id="'+syncResumenId+'-status" style="width:100%;font-size:11.5px;color:#475569;"></span>'+
+              '</div>';
+      setTimeout(function(){
+        var btn = document.getElementById(syncResumenId);
+        var status = document.getElementById(syncResumenId + '-status');
+        if (!btn) return;
+        btn.addEventListener('click', function(){
+          btn.disabled = true;
+          status.textContent = '⏳ Consultando Truora…';
+          status.style.color = '#1e40af';
+          ADApp.api('preaprobaciones/sync-truora.php', {
+            verif_id: row.verif_id || 0,
+            telefono: row.telefono || '',
+            email:    row.email    || '',
+            preap_id: row.id || 0
+          }).done(function(r){
+            if (r && r.ok) {
+              var newStatus = r.fetched && r.fetched.status ? r.fetched.status : '—';
+              var newCurp   = r.fetched && r.fetched.curp_match;
+              status.textContent = '✓ Sincronizado · status=' + newStatus +
+                                   (newCurp === 1 ? ' · CURP MATCH ✓' :
+                                    newCurp === 0 ? ' · curp_match=0 (Truora confirma mismatch)' :
+                                                    ' · curp_match=null (sin datos)');
+              status.style.color = '#15803d';
+              // Reload the lead row from the server so the panel re-renders
+              // with the fresh data. The list view will pick up the new
+              // values on the next paint cycle.
+              setTimeout(function(){
+                if (typeof load === 'function') load();
+              }, 600);
+            } else {
+              status.textContent = '⚠ ' + ((r && r.message) || 'no se pudo sincronizar');
+              status.style.color = '#b91c1c';
+              btn.disabled = false;
+            }
+          }).fail(function(xhr){
+            var msg = 'Error de red';
+            try { msg = (JSON.parse(xhr.responseText).message) || msg; } catch (e) {}
+            status.textContent = '✗ ' + msg;
+            status.style.color = '#b91c1c';
+            btn.disabled = false;
+          });
+        });
+      }, 0);
     }
     html += '</div>';
 

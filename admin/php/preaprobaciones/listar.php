@@ -174,6 +174,19 @@ try {
                vi.truora_declined_reason,
                vi.curp_match,
                vi.name_match,
+               -- Round 43 (2026-05-16, Óscar): expose the RAW comparison
+               -- inputs so the admin UI can recompute match status live
+               -- at render time. The stored curp_match / name_match
+               -- flags can be stale or wrong (legacy false-positives
+               -- from pre-Round-37 sync), but the underlying string
+               -- pairs (expected_* from CDC vs verified_* from Truora's
+               -- document) are authoritative — when both are present,
+               -- comparing them client-side gives the true answer
+               -- regardless of what flag was persisted.
+               vi.expected_curp,
+               vi.verified_curp,
+               vi.expected_name,
+               vi.verified_name,
                vi.approved          AS truora_approved,
                vi.manual_review_required,
                vi.manual_review_reason,
