@@ -126,13 +126,20 @@ if (!defined('CDC_API_KEY')) {
 // diagnostics) sees the same values. Without these being defined globally,
 // PHP 8+ fatal-errors on "undefined constant CDC_USER" before any code runs.
 //
-// Round 45 (2026-05-16, Óscar via Slack: "Please help me to change the cdc
-// password — VoltiK2026#$ — That's the new password"). The fallback is
-// updated below. Environment variable CDC_PASS still takes precedence if
-// set (allows the admin to override via Plesk panel without code changes);
-// if no env var exists, the hardcoded fallback is what CDC sees.
+// Round 45 (2026-05-16, Óscar via Slack): the customer's stated new
+// CDC password is `VoltiK2026#$`.
+//
+// Round 49 (2026-05-16, Óscar — "I need cdc working and with the password
+// change is not working"): the cdc-password-diag.php proved that the
+// active CDC_PASS at runtime was `#KbC%Ro5XMM046` (14 chars) — the OLD
+// password — because Plesk has an environment variable `CDC_PASS` set
+// to that value, and `getenv() ?: 'VoltiK2026#$'` made the env var win.
+// Inverted priority so the new password is what gets sent to CDC
+// regardless of stale env config. The env-var lookup is intentionally
+// removed for CDC_PASS so the code is the single source of truth.
+// CDC_USER + CDC_FOLIO keep their env-var lookup unchanged.
 if (!defined('CDC_USER'))  define('CDC_USER',  getenv('CDC_USER')  ?: '');
-if (!defined('CDC_PASS'))  define('CDC_PASS',  getenv('CDC_PASS')  ?: 'VoltiK2026#$');
+if (!defined('CDC_PASS'))  define('CDC_PASS',  'VoltiK2026#$');
 if (!defined('CDC_FOLIO')) define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '');
 
 // Envia.com (shipping / tracking)
