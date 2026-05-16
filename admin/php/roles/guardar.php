@@ -23,6 +23,32 @@ if (!$rol)       adminJsonOut(['error' => 'rol requerido'], 400);
 $validRoles = ['admin','dealer','cedis','operador','cobranza','documentos','logistica'];
 if (!in_array($rol, $validRoles, true)) adminJsonOut(['error' => 'Rol no válido'], 400);
 
+// ── Round 48 (2026-05-16, Óscar) — Self-demotion guard ─────────────────────
+// Customer incident on 2026-05-16 03:41:24: admin@voltika.com.mx (uid 1)
+// opened the Roles screen and accidentally clicked "dealer" in the rol
+// dropdown for their OWN row, then hit Save. The endpoint accepted the
+// update → login.php started redirecting them to /configurador/dealer-panel.html
+// because dealer/punto users belong to the punto panel — admin lost
+// access to /admin/. Recovery required a secret-key emergency script
+// (promover-admin.php) and a full audit-log forensic to confirm what
+// happened. To prevent recurrence, block any caller from changing their
+// OWN role to a non-admin value. They can still call this endpoint to
+// edit OTHER users' roles, and another admin can change their role for
+// them if relinquishing privileges is intentional.
+if ($usuarioId === (int)$uid && $rol !== 'admin') {
+    adminLog('rol_actualizado_bloqueado_self', [
+        'usuario_id'   => $usuarioId,
+        'rol_solicitado' => $rol,
+        'motivo'       => 'self_demotion_blocked',
+    ]);
+    adminJsonOut([
+        'error' => 'No puedes cambiar tu propio rol a "' . $rol . '". ' .
+                   'Para evitar bloqueos accidentales (login.php redirige los roles distintos a admin a otro panel), ' .
+                   'esta operación requiere que otro admin la haga en tu nombre.',
+        'reason' => 'self_demotion_blocked',
+    ], 403);
+}
+
 // Defensive coercion — accept array, JSON-string, or comma-separated.
 // The SPA sends an array but earlier reports showed permisos arriving
 // as null in the DB, so be tolerant of upstream encoding mishaps.

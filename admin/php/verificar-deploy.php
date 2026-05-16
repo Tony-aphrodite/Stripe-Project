@@ -577,6 +577,12 @@ $checks = [
         "'apikey: ' . \$smsKey",
         'Round 47 — entrega test endpoint también corregido (paridad con producción)'
     ),
+    // ── Round 48 (2026-05-16) — Roles: bloqueo de auto-democión ────────────
+    'r48_self_demotion_guard' => _checkFile(
+        $base . '/admin/php/roles/guardar.php',
+        'self_demotion_blocked',
+        'Round 48 — roles/guardar.php: un admin NO puede cambiar su propio rol a un valor distinto de "admin" (previene el bloqueo accidental del 2026-05-16)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
