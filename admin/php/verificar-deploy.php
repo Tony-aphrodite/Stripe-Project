@@ -546,6 +546,37 @@ $checks = [
         "Round 45 (2026-05-16, Óscar via Slack",
         'Round 45 — config.php: nuevo fallback de CDC_PASS = "VoltiK2026#$" (env CDC_PASS sigue teniendo prioridad si está set en Plesk)'
     ),
+    // ── Round 47 (2026-05-16) — SMSmasivos: apikey + form (no Bearer/JSON) ─
+    'r47_notify_apikey_header' => _checkFile(
+        $base . '/configurador/php/voltika-notify.php',
+        "'apikey: ' . \$smsKey",
+        'Round 47 — voltikaSendSMS(): apikey + form-urlencoded + body.success check (antes mandaba Bearer/JSON → auth_01 401 silencioso)'
+    ),
+    'r47_iniciar_apikey' => _checkFile(
+        $base . '/puntosvoltika/php/entrega/iniciar.php',
+        "'apikey: ' . \$smsKey",
+        'Round 47 — entrega/iniciar.php: misma corrección de apikey + body.success para evitar false-positive en sms_ok'
+    ),
+    'r47_admin_bootstrap_apikey' => _checkFile(
+        $base . '/admin/php/bootstrap.php',
+        "'apikey: ' . \$smsKey",
+        'Round 47 — admin/bootstrap: corrección de apikey + form'
+    ),
+    'r47_verificar_sms_apikey' => _checkFile(
+        $base . '/admin/php/verificar-sms.php',
+        "'apikey: ' . \$smsKey",
+        'Round 47 — verificar-sms.php diagnóstico ahora valida body.success'
+    ),
+    'r47_diagnostico_sms_apikey' => _checkFile(
+        $base . '/admin/php/diagnostico-sms.php',
+        "'apikey: ' . \$smsKey",
+        'Round 47 — diagnostico-sms.php usa el patrón correcto + reporta auth_01 explícitamente'
+    ),
+    'r47_test_punto_apikey' => _checkFile(
+        $base . '/puntosvoltika_test/php/entrega/iniciar.php',
+        "'apikey: ' . \$smsKey",
+        'Round 47 — entrega test endpoint también corregido (paridad con producción)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

@@ -118,18 +118,33 @@ $smsSent = false;
 $smsHttpCode = null;
 $smsError    = null;
 if ($smsKey) {
+    // Round 47 (2026-05-16): apikey + form-urlencoded (NOT Bearer/JSON).
+    // SMSmasivos returns HTTP 200 + body {"success":false,...} on auth
+    // failure, so we MUST parse the body too. See voltika-notify.php.
+    $telNacional = $tel;
+    if (strlen($telNacional) === 12 && strpos($telNacional, '52') === 0)  $telNacional = substr($telNacional, 2);
+    if (strlen($telNacional) === 11 && strpos($telNacional, '521') === 0) $telNacional = substr($telNacional, 3);
     $ch = curl_init('https://api.smsmasivos.com.mx/sms/send');
     curl_setopt_array($ch, [
         CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json','Authorization: Bearer '.$smsKey],
-        CURLOPT_POSTFIELDS => json_encode(['phone_number'=>$tel,'message'=>$msg]),
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $smsKey,
+            'Content-Type: application/x-www-form-urlencoded',
+        ],
+        CURLOPT_POSTFIELDS => http_build_query([
+            'message'      => $msg,
+            'numbers'      => $telNacional,
+            'country_code' => '52',
+        ]),
         CURLOPT_TIMEOUT => 8,
     ]);
     $res = curl_exec($ch);
     $smsHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $smsError    = curl_error($ch) ?: null;
     curl_close($ch);
-    $smsSent = ($smsHttpCode >= 200 && $smsHttpCode < 300 && !empty($res));
+    $smsParsed = is_string($res) ? json_decode($res, true) : null;
+    $bodyOk    = is_array($smsParsed) && !empty($smsParsed['success']);
+    $smsSent   = ($smsHttpCode >= 200 && $smsHttpCode < 300) && $bodyOk;
 }
 
 // Detect whether at least one channel reported success — the UI uses this

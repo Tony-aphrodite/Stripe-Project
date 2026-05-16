@@ -67,12 +67,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'send
     $codigo = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     $msg = "Voltika: Prueba de entrega SMS. Código de prueba: {$codigo}. (Solo diagnóstico).";
 
+    // Round 47 (2026-05-16): apikey + form-urlencoded matches the real
+    // SMSmasivos auth scheme. Same fix as voltika-notify.php; see there.
+    $telNacional = $tel;
+    if (strlen($telNacional) === 12 && strpos($telNacional, '52') === 0)  $telNacional = substr($telNacional, 2);
+    if (strlen($telNacional) === 11 && strpos($telNacional, '521') === 0) $telNacional = substr($telNacional, 3);
     $ch = curl_init('https://api.smsmasivos.com.mx/sms/send');
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json','Authorization: Bearer '.$smsKey],
-        CURLOPT_POSTFIELDS => json_encode(['phone_number' => $tel, 'message' => $msg]),
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $smsKey,
+            'Content-Type: application/x-www-form-urlencoded',
+        ],
+        CURLOPT_POSTFIELDS => http_build_query([
+            'message'      => $msg,
+            'numbers'      => $telNacional,
+            'country_code' => '52',
+        ]),
         CURLOPT_TIMEOUT => 12,
     ]);
     $startMs = microtime(true);
@@ -107,9 +119,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'send
             ]);
     } catch (Throwable $e) {}
 
+    // Round 47: parse body.success — SMSmasivos returns HTTP 200 + body
+    // {"success":false,...} on auth failure; HTTP code alone is misleading.
+    $bodyOk = is_array($parsedBody) && !empty($parsedBody['success']);
     echo json_encode([
-        'ok'             => $httpCode >= 200 && $httpCode < 300 && !$curlErr,
+        'ok'             => ($httpCode >= 200 && $httpCode < 300) && !$curlErr && $bodyOk,
         'http'           => $httpCode,
+        'body_ok'        => $bodyOk,
         'tel_warn'       => $telWarn,
         'tel_normalized' => $tel,
         'codigo_prueba'  => $codigo,
@@ -117,11 +133,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'send
         'took_ms'        => $tookMs,
         'response_body'  => $res,
         'parsed_body'    => $parsedBody,
-        'gateway_says_ok'=> $parsedBody['status'] ?? $parsedBody['success'] ?? null,
-        'hint'           => $httpCode === 401 ? 'API key inválida o revocada.'
+        'gateway_says_ok'=> $parsedBody['success'] ?? null,
+        'gateway_status' => $parsedBody['status']  ?? null,
+        'gateway_code'   => $parsedBody['code']    ?? null,
+        'hint'           => !$bodyOk && is_array($parsedBody)
+                              ? (($parsedBody['code'] ?? '') === 'auth_01'
+                                  ? 'auth_01 = API key inválida o headers/body en formato incorrecto. Verifica que el código use apikey: + form-urlencoded (no Bearer/JSON).'
+                                  : ('Gateway rechazó: ' . ($parsedBody['message'] ?? '—')))
+                           : ($httpCode === 401 ? 'API key inválida o revocada.'
                            : ($httpCode === 402 ? 'Cuenta sin créditos.'
                            : ($httpCode === 429 ? 'Rate limit.'
-                           : ($httpCode === 200 && empty($parsedBody) ? 'Respuesta vacía/extraña.' : null))),
+                           : (($httpCode === 200 && empty($parsedBody)) ? 'Respuesta vacía/extraña.' : null)))),
     ]);
     exit;
 }

@@ -54,12 +54,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $codigo = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $msg = "Voltika: Prueba de entrega SMS. Código de prueba: {$codigo}. (Este SMS no es real, sólo diagnóstico admin).";
 
+        // Round 47 (2026-05-16): apikey/form-urlencoded auth scheme.
+        // SMSmasivos returns HTTP 200 + body {"success":false,...} on auth
+        // failure, so we MUST parse the body — HTTP code alone is misleading.
+        $telNacional = $tel;
+        if (strlen($telNacional) === 12 && strpos($telNacional, '52') === 0)  $telNacional = substr($telNacional, 2);
+        if (strlen($telNacional) === 11 && strpos($telNacional, '521') === 0) $telNacional = substr($telNacional, 3);
         $ch = curl_init('https://api.smsmasivos.com.mx/sms/send');
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json','Authorization: Bearer '.$smsKey],
-            CURLOPT_POSTFIELDS => json_encode(['phone_number' => $tel, 'message' => $msg]),
+            CURLOPT_HTTPHEADER => [
+                'apikey: ' . $smsKey,
+                'Content-Type: application/x-www-form-urlencoded',
+            ],
+            CURLOPT_POSTFIELDS => http_build_query([
+                'message'      => $msg,
+                'numbers'      => $telNacional,
+                'country_code' => '52',
+            ]),
             CURLOPT_TIMEOUT => 10,
         ]);
         $startMs = microtime(true);
@@ -74,17 +87,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tmp = json_decode($res, true);
             if (is_array($tmp)) $parsedBody = $tmp;
         }
+        $bodyOk = is_array($parsedBody) && !empty($parsedBody['success']);
 
         adminLog('verificar_sms_test', [
             'telefono'   => $tel,
             'http'       => $httpCode,
             'took_ms'    => $tookMs,
             'curl_err'   => $curlErr,
+            'body_ok'    => $bodyOk,
             'response'   => is_string($res) ? substr($res, 0, 1000) : null,
         ]);
 
         echo json_encode([
-            'ok'            => $httpCode >= 200 && $httpCode < 300,
+            'ok'            => $httpCode >= 200 && $httpCode < 300 && $bodyOk,
             'http_code'     => $httpCode,
             'tel_input'     => $rawTel,
             'tel_digits'    => $telOrig,

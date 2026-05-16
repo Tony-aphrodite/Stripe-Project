@@ -148,11 +148,29 @@ if ($telInvalid) {
 } elseif (!$smsKey) {
     $smsSkipReason = 'no_api_key';   // SMSMASIVOS_API_KEY no configurada
 } else {
+    // ── Round 47 (2026-05-16): SMSmasivos uses apikey/form-urlencoded
+    // (NOT Bearer/JSON). The old call silently failed because the
+    // gateway returned HTTP 200 with body {"success":false,"status":401,
+    // "code":"auth_01"} and the code only checked HTTP code. Switched
+    // to the documented auth scheme + body.success parsing so the
+    // operator sees the real failure mode.
+    // SMSmasivos expects `numbers` as 10-digit national (no country
+    // prefix); the country_code field carries '52' separately.
+    $telNacional = $tel;
+    if (strlen($telNacional) === 12 && strpos($telNacional, '52') === 0)  $telNacional = substr($telNacional, 2);
+    if (strlen($telNacional) === 11 && strpos($telNacional, '521') === 0) $telNacional = substr($telNacional, 3);
     $ch = curl_init('https://api.smsmasivos.com.mx/sms/send');
     curl_setopt_array($ch, [
         CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json','Authorization: Bearer '.$smsKey],
-        CURLOPT_POSTFIELDS => json_encode(['phone_number'=>$tel,'message'=>$msg]),
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $smsKey,
+            'Content-Type: application/x-www-form-urlencoded',
+        ],
+        CURLOPT_POSTFIELDS => http_build_query([
+            'message'      => $msg,
+            'numbers'      => $telNacional,
+            'country_code' => '52',
+        ]),
         CURLOPT_TIMEOUT => 8,
     ]);
     $res = curl_exec($ch);
@@ -160,7 +178,15 @@ if ($telInvalid) {
     $smsError    = curl_error($ch) ?: null;
     curl_close($ch);
     $smsResponse = is_string($res) ? substr($res, 0, 500) : null;
-    $smsSent = ($smsHttpCode >= 200 && $smsHttpCode < 300 && !empty($res));
+    $smsParsed   = is_string($res) ? json_decode($res, true) : null;
+    $bodyOk      = is_array($smsParsed) && !empty($smsParsed['success']);
+    $smsSent     = ($smsHttpCode >= 200 && $smsHttpCode < 300) && $bodyOk;
+    // If the gateway explicitly rejected, surface its message via $smsError
+    // so the warning banner below shows the real reason (e.g., auth_01).
+    if (!$smsSent && !$smsError && is_array($smsParsed)) {
+        $smsError = (string)($smsParsed['message'] ?? 'gateway rechazó SMS')
+                  . (isset($smsParsed['code']) ? ' (' . $smsParsed['code'] . ')' : '');
+    }
 }
 
 // Detect whether at least one channel reported success — the UI uses this

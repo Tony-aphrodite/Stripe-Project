@@ -127,17 +127,28 @@ function adminNotify($tipo, $data) {
     foreach ($data as $k => $v) { $msg = str_replace('{'.$k.'}', $v, $msg); }
 
     // Send SMS if phone available
+    // ── Round 47 (2026-05-16): apikey/form-urlencoded (NOT Bearer/JSON)
+    // to match SMSmasivos' real auth scheme. See voltika-notify.php for
+    // full rationale.
     if (!empty($data['telefono'])) {
         $tel = preg_replace('/\D/', '', $data['telefono']);
-        if (strlen($tel) === 10) $tel = '52' . $tel;
+        if (strlen($tel) === 12 && strpos($tel, '52') === 0)  $tel = substr($tel, 2);
+        if (strlen($tel) === 11 && strpos($tel, '521') === 0) $tel = substr($tel, 3);
         $smsKey = defined('SMSMASIVOS_API_KEY') ? SMSMASIVOS_API_KEY : (getenv('SMSMASIVOS_API_KEY') ?: '');
         if ($smsKey) {
             $ch = curl_init('https://api.smsmasivos.com.mx/sms/send');
             curl_setopt_array($ch, [
                 CURLOPT_POST => true,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $smsKey],
-                CURLOPT_POSTFIELDS => json_encode(['phone_number' => $tel, 'message' => $msg]),
+                CURLOPT_HTTPHEADER => [
+                    'apikey: ' . $smsKey,
+                    'Content-Type: application/x-www-form-urlencoded',
+                ],
+                CURLOPT_POSTFIELDS => http_build_query([
+                    'message'      => $msg,
+                    'numbers'      => $tel,
+                    'country_code' => '52',
+                ]),
             ]);
             curl_exec($ch); curl_close($ch);
         }

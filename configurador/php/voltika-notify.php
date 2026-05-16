@@ -1949,8 +1949,19 @@ function voltikaNotifyLog(?int $clienteId, string $tipo, string $canal, ?string 
 }
 
 function voltikaSendSMS(string $telefono, string $mensaje): array {
+    // ── Round 47 (2026-05-16, Óscar — "SMS never arrives" for days):
+    // SMSmasivos rejects "Authorization: Bearer …" + JSON body with HTTP 200
+    // and body {"success":false,"status":401,"code":"auth_01"}. The OLD
+    // code only checked HTTP code, so every failed SMS was logged as
+    // ok=true — silent breakage for days. Switched to the auth scheme
+    // SMSmasivos actually documents (apikey: header + form-urlencoded body
+    // with numbers/country_code split), matching the working pattern in
+    // clientes/php/bootstrap.php::portalSendSMS. Also: parse body.success.
     $tel = preg_replace('/\D/', '', $telefono);
-    if (strlen($tel) === 10) $tel = '52' . $tel;
+    // Strip leading country prefix(es) so we send `numbers` as the bare
+    // 10-digit national number; the API receives the country code separately.
+    if (strlen($tel) === 12 && strpos($tel, '52') === 0)  $tel = substr($tel, 2);
+    if (strlen($tel) === 11 && strpos($tel, '521') === 0) $tel = substr($tel, 3);
     $smsKey = defined('SMSMASIVOS_API_KEY') ? SMSMASIVOS_API_KEY : (getenv('SMSMASIVOS_API_KEY') ?: '');
     if (!$smsKey) return ['ok' => false, 'error' => 'SMS key missing'];
 
@@ -1959,14 +1970,30 @@ function voltikaSendSMS(string $telefono, string $mensaje): array {
         CURLOPT_POST           => true,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 10,
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Authorization: Bearer ' . $smsKey],
-        CURLOPT_POSTFIELDS     => json_encode(['phone_number' => $tel, 'message' => $mensaje]),
+        CURLOPT_HTTPHEADER     => [
+            'apikey: ' . $smsKey,
+            'Content-Type: application/x-www-form-urlencoded',
+        ],
+        CURLOPT_POSTFIELDS     => http_build_query([
+            'message'      => $mensaje,
+            'numbers'      => $tel,
+            'country_code' => '52',
+        ]),
     ]);
     $res  = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err  = curl_error($ch);
     curl_close($ch);
-    return ['ok' => !$err && $code >= 200 && $code < 300, 'error' => $err ?: null, 'response' => $res];
+    $data    = is_string($res) ? json_decode($res, true) : null;
+    $bodyOk  = is_array($data) && !empty($data['success']);
+    $transOk = !$err && $code >= 200 && $code < 300;
+    return [
+        'ok'       => $transOk && $bodyOk,
+        'http'     => $code,
+        'error'    => $err ?: (!$bodyOk ? (is_array($data) ? ($data['message'] ?? 'gateway rechazó') : 'respuesta inválida') : null),
+        'response' => $res,
+        'parsed'   => $data,
+    ];
 }
 
 function voltikaSendWhatsApp(string $telefono, string $mensaje): array {
