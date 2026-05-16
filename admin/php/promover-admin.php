@@ -50,9 +50,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $body = adminJsonIn();
     $email    = trim((string)($body['email']    ?? ''));
     $password = (string)($body['password'] ?? '');
+    // Round 46B v2: "override" mode skips password verification but lets the
+    // admin set a NEW password atomically. Used when the password hash in DB
+    // no longer matches anything anyone remembers (e.g., change-password.php
+    // crashed mid-flight, manual DB edit, etc.). The secret URL key is the
+    // single auth gate — every override is heavy-audited.
+    $override    = !empty($body['override']);
+    $newPassword = (string)($body['newPassword'] ?? '');
 
-    if ($email === '' || $password === '') {
-        echo json_encode(['ok' => false, 'error' => 'Email y contraseña requeridos']);
+    if ($email === '') {
+        echo json_encode(['ok' => false, 'error' => 'Email requerido']);
+        exit;
+    }
+    if (!$override && $password === '') {
+        echo json_encode(['ok' => false, 'error' => 'Contraseña requerida (o activa el modo override + nueva contraseña)']);
+        exit;
+    }
+    if ($override && strlen($newPassword) < 6) {
+        echo json_encode(['ok' => false, 'error' => 'En modo override, la nueva contraseña debe tener al menos 6 caracteres']);
         exit;
     }
 
@@ -70,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['ok' => false, 'error' => 'No existe usuario con ese email']);
         exit;
     }
-    if (!password_verify($password, (string)$user['password_hash'])) {
+    if (!$override && !password_verify($password, (string)$user['password_hash'])) {
         // Audit failed attempts so we can see brute-force attempts.
         try {
             $pdo->prepare(
@@ -80,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         json_encode(['email' => $email, 'reason' => 'wrong_password']),
                         $_SERVER['REMOTE_ADDR'] ?? null]);
         } catch (Throwable $e) {}
-        echo json_encode(['ok' => false, 'error' => 'Contraseña incorrecta']);
+        echo json_encode(['ok' => false, 'error' => 'Contraseña incorrecta — usa el modo Override si quieres forzar la restauración con una nueva contraseña.']);
         exit;
     }
     if ((int)$user['activo'] !== 1) {
@@ -98,15 +113,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Promote: set rol=admin, clear permisos (NULL = full access in sidebar
     // semantics), unbind from any specific punto. Active flag stays as is.
+    // In override mode, also reset the password_hash to the supplied new value.
     try {
-        $pdo->prepare(
-            "UPDATE dealer_usuarios
-                SET rol = 'admin',
-                    permisos = NULL,
-                    punto_id = NULL,
-                    punto_nombre = NULL
-              WHERE id = ?"
-        )->execute([(int)$user['id']]);
+        if ($override) {
+            $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+            $pdo->prepare(
+                "UPDATE dealer_usuarios
+                    SET rol = 'admin',
+                        permisos = NULL,
+                        punto_id = NULL,
+                        punto_nombre = NULL,
+                        password_hash = ?
+                  WHERE id = ?"
+            )->execute([$newHash, (int)$user['id']]);
+        } else {
+            $pdo->prepare(
+                "UPDATE dealer_usuarios
+                    SET rol = 'admin',
+                        permisos = NULL,
+                        punto_id = NULL,
+                        punto_nombre = NULL
+                  WHERE id = ?"
+            )->execute([(int)$user['id']]);
+        }
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'error' => 'Error de DB: ' . $e->getMessage()]);
         exit;
@@ -121,22 +150,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $after = $u2->fetch(PDO::FETCH_ASSOC);
 
     try {
+        $accion = $override ? 'promovido_a_admin_override' : 'promovido_a_admin_emergencia';
         $pdo->prepare(
             "INSERT INTO admin_log (usuario_id, accion, detalle, ip)
-             VALUES (?, 'promovido_a_admin_emergencia', ?, ?)"
+             VALUES (?, ?, ?, ?)"
         )->execute([
             (int)$user['id'],
-            json_encode(['email' => $email, 'before' => $before, 'after' => $after],
-                        JSON_UNESCAPED_UNICODE),
+            $accion,
+            json_encode([
+                'email'         => $email,
+                'override'      => $override,
+                'before'        => $before,
+                'after'         => $after,
+                'password_reset'=> $override ? 'yes' : 'no',
+            ], JSON_UNESCAPED_UNICODE),
             $_SERVER['REMOTE_ADDR'] ?? null,
         ]);
     } catch (Throwable $e) {}
 
     echo json_encode([
-        'ok'      => true,
-        'message' => 'Cuenta restaurada como admin. Ya puedes iniciar sesión en /admin/.',
-        'before'  => $before,
-        'after'   => $after,
+        'ok'              => true,
+        'message'         => $override
+            ? 'Cuenta restaurada como admin Y nueva contraseña guardada. Inicia sesión con la nueva contraseña.'
+            : 'Cuenta restaurada como admin. Ya puedes iniciar sesión en /admin/.',
+        'override_used'   => $override,
+        'before'          => $before,
+        'after'           => $after,
     ]);
     exit;
 }
@@ -182,6 +221,20 @@ code{background:#f1f5f9;color:#1e293b;padding:1px 6px;border-radius:3px;font-siz
   <label>Contraseña actual</label>
   <input id="f_pass" type="password" placeholder="La que escribiste al cambiarla recientemente" autocomplete="current-password">
 
+  <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;margin:12px 0;">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;text-transform:none;letter-spacing:0;color:#9a3412;font-weight:600;margin:0;">
+      <input id="f_override" type="checkbox" style="width:auto;margin:0;">
+      ⚠ Modo override — el password actual no funciona / no lo recuerdo
+    </label>
+    <div id="f_override_panel" style="display:none;margin-top:10px;">
+      <label style="color:#9a3412;">Nueva contraseña (mín. 6 caracteres)</label>
+      <input id="f_newpass" type="password" placeholder="La nueva contraseña que vas a usar para iniciar sesión" autocomplete="new-password" style="margin-bottom:0;">
+      <div style="font-size:11.5px;color:#9a3412;margin-top:8px;line-height:1.5;">
+        En este modo NO se verifica la contraseña actual. Se sustituye <code>password_hash</code> por la nueva contraseña Y se ajusta el rol a admin. El cambio queda registrado en <code>admin_log.promovido_a_admin_override</code> con IP + email + antes/después. Úsalo solo cuando el password actual está corrupto / olvidado.
+      </div>
+    </div>
+  </div>
+
   <button id="f_btn">✓ Promover a admin</button>
   <div id="f_status" style="margin-top:14px;font-size:13px;"></div>
   <div id="f_result"></div>
@@ -194,21 +247,34 @@ code{background:#f1f5f9;color:#1e293b;padding:1px 6px;border-radius:3px;font-siz
 </div>
 
 <script>
+document.getElementById('f_override').addEventListener('change', function(){
+  document.getElementById('f_override_panel').style.display = this.checked ? 'block' : 'none';
+  document.getElementById('f_pass').disabled = this.checked;
+  document.getElementById('f_btn').textContent = this.checked ? '⚠ Override: forzar admin + nueva contraseña' : '✓ Promover a admin';
+});
 document.getElementById('f_btn').addEventListener('click', function(){
   var btn = this;
-  var email = document.getElementById('f_email').value.trim();
-  var pass  = document.getElementById('f_pass').value;
+  var email    = document.getElementById('f_email').value.trim();
+  var pass     = document.getElementById('f_pass').value;
+  var override = document.getElementById('f_override').checked;
+  var newpass  = document.getElementById('f_newpass').value;
   var status = document.getElementById('f_status');
   var result = document.getElementById('f_result');
   result.innerHTML = '';
-  if (!email || !pass) { status.innerHTML = '<span style="color:#b91c1c">Email y contraseña requeridos.</span>'; return; }
+  if (!email) { status.innerHTML = '<span style="color:#b91c1c">Email requerido.</span>'; return; }
+  if (override) {
+    if (!newpass || newpass.length < 6) { status.innerHTML = '<span style="color:#b91c1c">Nueva contraseña requerida (mín. 6 caracteres).</span>'; return; }
+    if (!confirm('Vas a sobrescribir el password de ' + email + ' sin verificar el actual. ¿Continuar?')) return;
+  } else {
+    if (!pass) { status.innerHTML = '<span style="color:#b91c1c">Contraseña actual requerida (o activa Override).</span>'; return; }
+  }
   btn.disabled = true;
-  status.innerHTML = '<span style="color:#1e40af">⏳ Verificando contraseña + actualizando rol…</span>';
+  status.innerHTML = '<span style="color:#1e40af">⏳ ' + (override ? 'Sobrescribiendo password + restaurando rol…' : 'Verificando contraseña + actualizando rol…') + '</span>';
   fetch(location.pathname + location.search, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: email, password: pass })
+    body: JSON.stringify({ email: email, password: pass, override: override, newPassword: newpass })
   })
   .then(function(r){ return r.json(); })
   .then(function(j){
