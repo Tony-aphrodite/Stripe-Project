@@ -40,7 +40,32 @@ window.PVApp = (function(){
     $('#pvUser').html('<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> '+state.user.nombre+'<br><small>'+(state.punto?state.punto.nombre:'Sin punto')+'</small>'+
       '<br><button id="pvChangePassBtn" class="ad-btn sm ghost" style="margin-top:6px;font-size:11px;padding:4px 10px;color:#fff;border:1px solid rgba(255,255,255,0.4);background:transparent;">Cambiar contraseña</button>');
     $('#pvChangePassBtn').on('click', showChangePassword);
+    // ── Round 44 (2026-05-16, Óscar — "No autorizado" en Ensamble fotos):
+    // Long-running flows (full Ensamble checklist = 48 items + dozens of
+    // photo uploads) easily outlast the server's 2-hour session lifetime.
+    // The customer screenshot showed an operator at 26/48 items hitting
+    // "No autorizado" when uploading a Fase 3 photo. Heartbeat every
+    // 3 minutes refreshes the session cookie's sliding window so any
+    // continuously-active operator stays logged in indefinitely.
+    // (Stops automatically when the user navigates away or logs out.)
+    startSessionHeartbeat();
     go('inicio');
+  }
+  var _heartbeatTimer = null;
+  function startSessionHeartbeat() {
+    if (_heartbeatTimer) return;   // already running
+    _heartbeatTimer = setInterval(function(){
+      api('auth/heartbeat.php').done(function(r){
+        if (!r || r.ok !== true) {
+          // Session genuinely expired — show a friendly notice instead of
+          // letting the next normal API call die with a cryptic 401.
+          clearInterval(_heartbeatTimer); _heartbeatTimer = null;
+          alert('Tu sesión expiró. Inicia sesión otra vez para continuar — los datos no guardados se perderán.');
+          state.user = null; $sidebar.hide();
+          if (window.PV_login && typeof PV_login.render === 'function') PV_login.render();
+        }
+      });
+    }, 3 * 60 * 1000);   // 3 minutes
   }
   function showChangePassword(){
     modal(

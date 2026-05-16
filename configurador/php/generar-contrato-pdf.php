@@ -269,11 +269,33 @@ function generateContractPDF($nombre, $email, $telefono, $modelo, $color,
     }
 
     // Save signature image
+    // ── Round 42D (2026-05-16, Óscar — "problem with signature in
+    // contract" raised for days): the old code base64_decode'd in
+    // permissive mode (returns string OR junk for invalid input) and
+    // never checked file_put_contents return — so a corrupted data
+    // URI, full /tmp, or permissions issue silently produced a 0-byte
+    // PNG that FPDF then rendered as a blank box. Strict decode +
+    // size check + audit log catches every failure mode now.
     $firmaImgPath = null;
     if ($firmaBase64 && strpos($firmaBase64, 'data:image/png;base64,') === 0) {
-        $firmaData = base64_decode(str_replace('data:image/png;base64,', '', $firmaBase64));
-        $firmaImgPath = $uploadDir . 'firma_' . date('Ymd_His') . '.png';
-        file_put_contents($firmaImgPath, $firmaData);
+        $rawB64    = str_replace('data:image/png;base64,', '', $firmaBase64);
+        $firmaData = base64_decode($rawB64, true);   // strict mode — false on any non-base64 char
+        if ($firmaData === false || strlen($firmaData) < 100) {
+            // <100 bytes can't be a real signature PNG — treat as missing.
+            error_log('generar-contrato-pdf: firma base64 inválida o vacía (' .
+                      (is_string($firmaData) ? strlen($firmaData) : 'false') . ' bytes)');
+        } else {
+            $candidate = $uploadDir . 'firma_' . date('Ymd_His') . '_' . substr(md5(uniqid('', true)), 0, 6) . '.png';
+            $written   = @file_put_contents($candidate, $firmaData);
+            if ($written === false || $written === 0) {
+                error_log('generar-contrato-pdf: no se pudo escribir PNG firma en ' . $candidate);
+            } else {
+                $firmaImgPath = $candidate;
+            }
+        }
+    } elseif ($firmaBase64) {
+        // Not a data URI — log so we can see what malformed payload arrived.
+        error_log('generar-contrato-pdf: firmaData no es data:image/png;base64 (largo=' . strlen($firmaBase64) . ')');
     }
 
     // Check if FPDF is available — try canonical AND cross-env paths
@@ -578,8 +600,15 @@ function generateCaratulaPDF($filepath, $nombre, $email, $telefono, $modelo, $co
     $pdf->Cell(0, 6, $enc('FIRMA DEL CLIENTE:'), 0, 1);
 
     if ($firmaImgPath && file_exists($firmaImgPath)) {
-        $pdf->Image($firmaImgPath, $pdf->GetX() + 10, $pdf->GetY(), 60, 30);
-        $pdf->Ln(35);
+        // ── Round 42E (2026-05-16, Óscar — signature looks squished in
+        // contract): the old call was Image(..., 60, 30) which forced a
+        // 2:1 box, but the capture canvas is 320×120 (2.67:1) — FPDF
+        // stretched the signature horizontally and customers saw a
+        // distorted scribble. Passing 0 as the height preserves the
+        // native aspect ratio: width=60mm, height auto-calculated from
+        // the PNG's intrinsic dimensions → signature looks natural.
+        $pdf->Image($firmaImgPath, $pdf->GetX() + 10, $pdf->GetY(), 60, 0);
+        $pdf->Ln(28);
     } else {
         $pdf->Ln(5);
         $pdf->Cell(80, 0.3, '', 1, 1);
@@ -1049,8 +1078,10 @@ function generateContratoPages($pdf, $enc, $folio, $nombre, $firmaImgPath, $fech
     $pdf->Cell(0, 5, $enc('Nombre: ' . $nombre), 0, 1, 'C');
 
     if ($firmaImgPath && file_exists($firmaImgPath)) {
-        $pdf->Image($firmaImgPath, $pdf->GetX() + 65, $pdf->GetY(), 60, 26);
-        $pdf->Ln(28);
+        // Round 42E: preserve aspect ratio (height=0 → auto) to keep the
+        // signature from being horizontally squished in the EL CLIENTE block.
+        $pdf->Image($firmaImgPath, $pdf->GetX() + 65, $pdf->GetY(), 60, 0);
+        $pdf->Ln(25);
     } else {
         $pdf->Ln(8);
         $x = $pdf->GetX();

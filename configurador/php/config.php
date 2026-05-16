@@ -125,8 +125,14 @@ if (!defined('CDC_API_KEY')) {
 // Defined centrally so every endpoint that calls CDC (preflight, consultar,
 // diagnostics) sees the same values. Without these being defined globally,
 // PHP 8+ fatal-errors on "undefined constant CDC_USER" before any code runs.
+//
+// Round 45 (2026-05-16, Óscar via Slack: "Please help me to change the cdc
+// password — VoltiK2026#$ — That's the new password"). The fallback is
+// updated below. Environment variable CDC_PASS still takes precedence if
+// set (allows the admin to override via Plesk panel without code changes);
+// if no env var exists, the hardcoded fallback is what CDC sees.
 if (!defined('CDC_USER'))  define('CDC_USER',  getenv('CDC_USER')  ?: '');
-if (!defined('CDC_PASS'))  define('CDC_PASS',  getenv('CDC_PASS')  ?: '');
+if (!defined('CDC_PASS'))  define('CDC_PASS',  getenv('CDC_PASS')  ?: 'VoltiK2026#$');
 if (!defined('CDC_FOLIO')) define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '');
 
 // Envia.com (shipping / tracking)

@@ -492,6 +492,60 @@ $checks = [
         'Voltika Admin — Round 41 recovery tool',
         'Round 41 — herramienta admin one-shot: lista + restaura motos eliminadas en las últimas N horas'
     ),
+    // ── Round 42 (2026-05-16) — Firma del contrato: 5 bugs en cadena ──────
+    'r42a_firma_null_check' => _checkFile(
+        $base . '/configurador/js/modules/paso-credito-contrato.js',
+        'Tu firma no se capturó. Dibuja tu firma en el recuadro antes de continuar',
+        'Round 42A — paso-credito-contrato.js: bloquea submit si _getSignatureData() devuelve null (cliente veía contratoFirmado=true y luego "firma_requerida" en enganche)'
+    ),
+    'r42b_canvas_min_width' => _checkFile(
+        $base . '/configurador/js/modules/paso-credito-contrato.js',
+        'floor: prevents invisible signatures on tiny viewports',
+        'Round 42B — paso-credito-contrato.js: canvas mínimo 280px de ancho (móvil estrecho deja canvas en ~1px → firma invisible)'
+    ),
+    'r42c_firma_error_no_advance' => _checkFile(
+        $base . '/configurador/js/modules/paso-credito-contrato.js',
+        'we now surface the real failure here and DO NOT advance the wizard',
+        'Round 42C — paso-credito-contrato.js: en error AJAX NO marca contratoFirmado=true (antes lo hacía y enganche bloqueaba con "firma_requerida" confuso)'
+    ),
+    'r42d_firma_strict_decode' => _checkFile(
+        $base . '/configurador/php/generar-contrato-pdf.php',
+        'strict mode — false on any non-base64 char',
+        'Round 42D — generar-contrato-pdf.php: base64_decode estricto + size check + log de write fail (antes generaba PNG 0 bytes silencioso)'
+    ),
+    'r42e_pdf_aspect_ratio' => _checkFile(
+        $base . '/configurador/php/generar-contrato-pdf.php',
+        'Passing 0 as the height preserves the',
+        'Round 42E — generar-contrato-pdf.php: $pdf->Image(...,60,0) preserva el aspect ratio del canvas (320×120) → firma ya no sale comprimida horizontalmente'
+    ),
+    // ── Round 43 (2026-05-16) — Entrega: revelación presencial de OTP ──────
+    'r43_revelar_otp_endpoint' => _checkFile(
+        $base . '/puntosvoltika/php/entrega/revelar-otp.php',
+        'entrega_otp_revelaciones',
+        'Round 43 — revelar-otp.php: endpoint para revelar OTP en pantalla cuando SMS no llega (cliente físicamente presente). Audit-log obligatorio.'
+    ),
+    'r43_entrega_reveal_btn' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-entrega.js',
+        '🚨 Cliente en el punto pero no recibe SMS',
+        'Round 43 — punto-entrega.js: botón "Verificar con código en pantalla" en step 2 como último recurso para entrega presencial.'
+    ),
+    // ── Round 44 (2026-05-16) — Punto: heartbeat para sesión larga ─────────
+    'r44_heartbeat_endpoint' => _checkFile(
+        $base . '/puntosvoltika/php/auth/heartbeat.php',
+        'Session keep-alive heartbeat',
+        'Round 44 — heartbeat.php: endpoint que refresca el cookie de sesión cada vez que se llama (sliding window)'
+    ),
+    'r44_heartbeat_js' => _checkFile(
+        $base . '/puntosvoltika/js/punto-app.js',
+        'startSessionHeartbeat',
+        'Round 44 — punto-app.js: JS hace ping cada 3 min a auth/heartbeat.php — el operador no pierde sesión durante Ensamble largo (48 items + fotos)'
+    ),
+    // ── Round 45 (2026-05-16) — CDC: nueva contraseña ──────────────────────
+    'r45_cdc_password' => _checkFile(
+        $base . '/configurador/php/config.php',
+        "Round 45 (2026-05-16, Óscar via Slack",
+        'Round 45 — config.php: nuevo fallback de CDC_PASS = "VoltiK2026#$" (env CDC_PASS sigue teniendo prioridad si está set en Plesk)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

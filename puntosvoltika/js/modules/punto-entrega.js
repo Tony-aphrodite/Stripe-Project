@@ -352,6 +352,16 @@ window.PV_entrega = (function(){
       '<button id="pvS2Resend" class="ad-btn ghost sm" style="width:100%;margin-top:8px;">'+
         '📩 ¿No le llegó el SMS al cliente? Reenviar código'+
       '</button>'+
+      // Round 43 (2026-05-16, Óscar — "we need this today to deliver a
+      // moto"): even after Resend the SMS may never reach the customer
+      // (carrier block, phone off, wrong number variant). Last-resort
+      // option: show the OTP on the operator's screen so it can be
+      // verified IN PERSON with the customer (INE + face match cover
+      // the identity check). The button calls revelar-otp.php which
+      // requires a motivo, audit-logs the action, and returns the OTP.
+      '<button id="pvS2Reveal" class="ad-btn ghost sm" style="width:100%;margin-top:6px;color:#9a3412;border-color:#fed7aa;">'+
+        '🚨 Cliente en el punto pero no recibe SMS — Verificar con código en pantalla'+
+      '</button>'+
       noExitosaBtnHtml()
     );
     bindNoExitosa();
@@ -387,6 +397,61 @@ window.PV_entrega = (function(){
         alert('Error al reenviar: ' + ((x.responseJSON && x.responseJSON.error) || 'Conexión'));
         $r.prop('disabled', false).text('📩 ¿No le llegó el SMS al cliente? Reenviar código');
       });
+    });
+    // Round 43: emergency in-person OTP reveal. Requires a written
+    // justification (≥10 chars) which is recorded in entrega_otp_revelaciones
+    // + admin_log. The OTP is shown in a confirmation modal so the operator
+    // and customer can verify together — operator then types it into the
+    // 6-digit inputs above and presses Verificar normally.
+    $('#pvS2Reveal').on('click', function(){
+      var motivo = prompt(
+        'Esta acción muestra el código OTP en pantalla para verificarlo con el cliente EN PERSONA.\n\n' +
+        '• Úsala solo cuando el cliente está físicamente presente y su teléfono no recibe SMS.\n' +
+        '• La acción queda registrada (quién, cuándo, qué moto, motivo).\n' +
+        '• Verifica la identidad del cliente con INE antes de continuar.\n\n' +
+        'Escribe el motivo (mínimo 10 caracteres):'
+      );
+      if (motivo === null) return;   // user cancelled
+      motivo = String(motivo).trim();
+      if (motivo.length < 10) {
+        alert('El motivo debe tener al menos 10 caracteres. Describe la razón concreta (ej. "teléfono apagado, cliente presente con INE").');
+        return;
+      }
+      var $btn = $(this).prop('disabled', true).text('Procesando...');
+      PVApp.api('entrega/revelar-otp.php', { moto_id: ctx.moto_id, motivo: motivo })
+        .done(function(r){
+          if (r && r.ok) {
+            if (r.already_verified) {
+              PVApp.toast && PVApp.toast('El código ya fue verificado — avanza al siguiente paso');
+              return;
+            }
+            // Show the OTP in a clear, large display the operator can read aloud.
+            alert(
+              '🔐 Código de entrega del cliente:\n\n' +
+              '          ' + r.otp + '\n\n' +
+              'Cliente: ' + (r.cliente || '—') + '\n' +
+              'Teléfono: ' + (r.telefono || '—') + '\n\n' +
+              '⚠ ' + (r.warning || 'Verifica identidad con INE antes de continuar.') + '\n\n' +
+              'Ahora teclea el código en los 6 cuadros arriba y presiona Verificar.'
+            );
+            // Pre-fill the OTP inputs for convenience.
+            try {
+              var digits = String(r.otp).replace(/\D/g, '').split('');
+              for (var i = 0; i < 6 && i < digits.length; i++) {
+                $ins.eq(i).val(digits[i]);
+              }
+              $ins.eq(5).focus();
+            } catch (_e) {}
+          } else {
+            alert((r && r.error) || 'No se pudo revelar el código.');
+          }
+        })
+        .fail(function(x){
+          alert((x.responseJSON && x.responseJSON.error) || 'Error de conexión al revelar el código.');
+        })
+        .always(function(){
+          $btn.prop('disabled', false).text('🚨 Cliente en el punto pero no recibe SMS — Verificar con código en pantalla');
+        });
     });
   }
   // Step 3: Face verification + photos.

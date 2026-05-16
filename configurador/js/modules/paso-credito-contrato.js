@@ -277,9 +277,17 @@ var PasoCreditoContrato = {
         var canvas = document.getElementById('vk-firma-canvas');
         if (!canvas) return;
 
-        // Use CSS computed size, fallback to 320x120 if not yet laid out
+        // ── Round 42B (2026-05-16, Óscar — "problem with the signature in
+        // the contract"): on narrow mobile screens the getBoundingClientRect
+        // value can resolve to a very small width (or 0) before layout
+        // settles, which left the signature canvas at ~1px wide. The
+        // captured PNG was then rendered invisible in the FPDF — customers
+        // thought they had signed but the contract showed a blank box.
+        // Enforce a generous minimum width so the signature always has
+        // room to be drawn, regardless of viewport.
         var rect = canvas.getBoundingClientRect();
         var w = rect.width > 0 ? rect.width : (canvas.parentElement ? canvas.parentElement.clientWidth : 320);
+        if (w < 280) w = 280;   // floor: prevents invisible signatures on tiny viewports
         var h = 120;
 
         // Set canvas resolution to match display size (1:1, no scaling)
@@ -665,6 +673,28 @@ var PasoCreditoContrato = {
         // Get signature as base64
         var firmaData = self._getSignatureData();
 
+        // ── Round 42A (2026-05-16, Óscar — signature problems for days):
+        // _getSignatureData() returns null when the canvas wasn't drawn on
+        // OR when the canvas failed to initialize. The old code submitted
+        // that null to the server, which silently stored an empty firma
+        // row — the customer thought they had signed but the contract
+        // PDF showed nothing AND the enganche gate (Round 18) then
+        // blocked them with "firma_requerida" later in the flow,
+        // creating an impossible-to-debug user experience. Block the
+        // submission here with a clear, actionable message.
+        if (!firmaData) {
+            var $err = jQuery('#vk-contrato-error');
+            if ($err.length) {
+                $err.text('Tu firma no se capturó. Dibuja tu firma en el recuadro antes de continuar.').show();
+            } else {
+                alert('Tu firma no se capturó. Dibuja tu firma en el recuadro antes de continuar.');
+            }
+            jQuery('#vk-contrato-confirmar').prop('disabled', false);
+            jQuery('#vk-contrato-btn-label').show();
+            jQuery('#vk-contrato-btn-spinner').hide();
+            return;
+        }
+
         // Generate contract PDF + Cincel NOM-151 timestamp
         jQuery.ajax({
             url: (window.VK_BASE_PATH || '') + 'php/generar-contrato-pdf.php',
@@ -715,15 +745,26 @@ var PasoCreditoContrato = {
                 // and render the payment UI.
                 self.app.irAPaso('credito-enganche');
             },
-            error: function() {
-                // Backend not available — still proceed (testing mode).
-                // Note: in test mode without firma persistence, the
-                // server-side enganche gate may still block; the customer
-                // sees an inline error and can retry signing.
-                console.warn('generar-contrato-pdf.php not available, proceeding anyway');
-                state.contratoFirmado = true;
-                state._firmaContrato = self._getSignatureData();
-                self.app.irAPaso('credito-enganche');
+            error: function(xhr) {
+                // ── Round 42C (2026-05-16, Óscar — signature problem):
+                // the old fallback marked contratoFirmado=true on ANY
+                // error and routed the user to enganche, where the Round 18
+                // gate then rejected them with the misleading
+                // "firma_requerida" error. We now surface the real failure
+                // here and DO NOT advance the wizard, so the customer can
+                // sign again instead of being trapped downstream.
+                console.warn('generar-contrato-pdf.php error', xhr && xhr.status, xhr && xhr.responseText);
+                var serverMsg = '';
+                try { serverMsg = (xhr && xhr.responseJSON && xhr.responseJSON.error) || ''; } catch (_e) {}
+                var $err = jQuery('#vk-contrato-error');
+                var msg = serverMsg ||
+                          'No se pudo guardar tu firma en el servidor. Verifica tu conexión y vuelve a firmar para reintentar.';
+                if ($err.length) { $err.text(msg).show(); } else { alert(msg); }
+                // Re-enable the button so the customer can retry; DO NOT
+                // flip contratoFirmado or navigate forward.
+                jQuery('#vk-contrato-confirmar').prop('disabled', false);
+                jQuery('#vk-contrato-btn-label').show();
+                jQuery('#vk-contrato-btn-spinner').hide();
             }
         });
     }
