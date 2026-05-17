@@ -584,10 +584,10 @@ $checks = [
         'Round 48 — roles/guardar.php: un admin NO puede cambiar su propio rol a un valor distinto de "admin" (previene el bloqueo accidental del 2026-05-16)'
     ),
     // ── Round 49 (2026-05-16) — CDC_PASS hardcoded, env-var ignored ────────
-    'r49_cdc_pass_hardcoded' => _checkFile(
+    'r52_cdc_pass_env_only' => _checkFile(
         $base . '/configurador/php/config.php',
-        "define('CDC_PASS',  'VoltiK2026#%')",
-        'Round 51 — config.php: CDC_PASS = "VoltiK2026#%" (cambio solicitado por Óscar 2026-05-17 tras 403.2 con #$)'
+        "Round 52 (2026-05-17, Óscar): revert to env-var-only pattern",
+        'Round 52 — config.php: CDC_PASS leído SOLO de env var (sin hardcoded). Cambiar contraseña ahora requiere solo actualizar Plesk env, no redeploy.'
     ),
 ];
 

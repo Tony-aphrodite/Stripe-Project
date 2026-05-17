@@ -126,14 +126,13 @@ if (!defined('CDC_API_KEY')) {
 // diagnostics) sees the same values. Without these being defined globally,
 // PHP 8+ fatal-errors on "undefined constant CDC_USER" before any code runs.
 //
-// Round 45 (2026-05-16, Óscar via Slack): stated CDC password = "VoltiK2026#$".
-// Round 49 (2026-05-16): hardcoded so Plesk env var with stale password
-// `#KbC%Ro5XMM046` can no longer win.
-// Round 51 (2026-05-17, Óscar): "VoltiK2026#%" provided as the new CDC
-// password attempt. Replaces #$ with #% per boss request. Code-side is the
-// single source of truth — env var still ignored.
+// Round 52 (2026-05-17, Óscar): revert to env-var-only pattern. Hardcoding
+// the password was incorrect — credentials should never live in source
+// code. The Plesk env var `CDC_PASS` is now the single source of truth;
+// the admin updates it whenever CDC rotates the password, no code deploy
+// required. Same pattern for CDC_USER and CDC_FOLIO.
 if (!defined('CDC_USER'))  define('CDC_USER',  getenv('CDC_USER')  ?: '');
-if (!defined('CDC_PASS'))  define('CDC_PASS',  'VoltiK2026#%');
+if (!defined('CDC_PASS'))  define('CDC_PASS',  getenv('CDC_PASS')  ?: '');
 if (!defined('CDC_FOLIO')) define('CDC_FOLIO', getenv('CDC_FOLIO') ?: '');
 
 // Envia.com (shipping / tracking)
