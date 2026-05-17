@@ -586,8 +586,8 @@ $checks = [
     // ── Round 49 (2026-05-16) — CDC_PASS hardcoded, env-var ignored ────────
     'r49_cdc_pass_hardcoded' => _checkFile(
         $base . '/configurador/php/config.php',
-        "define('CDC_PASS',  'VoltiK2026#\$')",
-        'Round 49 — config.php: CDC_PASS hardcoded a "VoltiK2026#$" (Plesk env var con la contraseña vieja "#KbC%Ro5XMM046" ya no puede sobreescribir)'
+        "define('CDC_PASS',  'VoltiK2026#%')",
+        'Round 51 — config.php: CDC_PASS = "VoltiK2026#%" (cambio solicitado por Óscar 2026-05-17 tras 403.2 con #$)'
     ),
 ];
 
