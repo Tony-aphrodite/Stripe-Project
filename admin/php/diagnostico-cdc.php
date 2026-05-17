@@ -257,12 +257,76 @@ $cFile = realpath(__DIR__ . '/../../configurador/php/certs/cdc_certificate.pem')
 $keyOnDisk  = $kFile && is_file($kFile);
 $certOnDisk = $cFile && is_file($cFile);
 
-$keyInDb = false;
-$certInDb = false;
+$diskKeyPem  = $keyOnDisk  ? @file_get_contents($kFile) : null;
+$diskCertPem = $certOnDisk ? @file_get_contents($cFile) : null;
+
+$keyInDb = false; $certInDb = false; $dbKeyPem = null; $dbCertPem = null;
 try {
     $row = $pdo->query("SELECT private_key, certificate FROM cdc_certificates WHERE active = 1 ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-    if ($row) { $keyInDb = !empty($row['private_key']); $certInDb = !empty($row['certificate']); }
+    if ($row) {
+        $keyInDb  = !empty($row['private_key']);
+        $certInDb = !empty($row['certificate']);
+        $dbKeyPem  = $row['private_key']  ?? null;
+        $dbCertPem = $row['certificate'] ?? null;
+    }
 } catch (Throwable $e) {}
+
+// ─── Round 53 — Cert/Key match + algorithm + fingerprint analysis ───
+function certInfo(?string $pem): array {
+    if (!$pem) return ['present' => false];
+    $x = @openssl_x509_read($pem);
+    if (!$x) return ['present' => true, 'error' => 'PEM cert no es parseable'];
+    $details = openssl_x509_parse($x);
+    $pubKey = openssl_pkey_get_public($x);
+    $pubDetails = $pubKey ? openssl_pkey_get_details($pubKey) : null;
+    $alg = '?';
+    if ($pubDetails) {
+        if ($pubDetails['type'] === OPENSSL_KEYTYPE_RSA) $alg = 'RSA ' . $pubDetails['bits'] . ' bits';
+        elseif ($pubDetails['type'] === OPENSSL_KEYTYPE_EC) $alg = 'EC (' . ($pubDetails['ec']['curve_name'] ?? 'unknown curve') . ') ' . $pubDetails['bits'] . ' bits';
+        else $alg = 'type=' . $pubDetails['type'];
+    }
+    $fingerprint = openssl_x509_fingerprint($x, 'sha256') ?: null;
+    return [
+        'present'     => true,
+        'subject'     => $details['subject']['CN'] ?? json_encode($details['subject'] ?? null),
+        'issuer'      => $details['issuer']['CN']  ?? null,
+        'not_before'  => isset($details['validFrom_time_t']) ? date('Y-m-d H:i', $details['validFrom_time_t']) : null,
+        'not_after'   => isset($details['validTo_time_t'])   ? date('Y-m-d H:i', $details['validTo_time_t'])   : null,
+        'algorithm'   => $alg,
+        'fingerprint_sha256' => $fingerprint,
+        'serial'      => $details['serialNumberHex'] ?? $details['serialNumber'] ?? null,
+    ];
+}
+function keyInfo(?string $pem): array {
+    if (!$pem) return ['present' => false];
+    $k = @openssl_pkey_get_private($pem);
+    if (!$k) return ['present' => true, 'error' => 'PEM key no es parseable'];
+    $d = openssl_pkey_get_details($k);
+    if ($d['type'] === OPENSSL_KEYTYPE_RSA) $alg = 'RSA ' . $d['bits'] . ' bits';
+    elseif ($d['type'] === OPENSSL_KEYTYPE_EC) $alg = 'EC (' . ($d['ec']['curve_name'] ?? 'unknown') . ') ' . $d['bits'] . ' bits';
+    else $alg = 'type=' . $d['type'];
+    return ['present' => true, 'algorithm' => $alg, 'bits' => $d['bits']];
+}
+function keyMatchesCert(?string $keyPem, ?string $certPem): ?bool {
+    if (!$keyPem || !$certPem) return null;
+    $sample = 'voltika-cdc-test-' . bin2hex(random_bytes(8));
+    $sig = '';
+    if (!@openssl_sign($sample, $sig, $keyPem, OPENSSL_ALGO_SHA256)) return false;
+    $pub = @openssl_pkey_get_public($certPem);
+    if (!$pub) return false;
+    return openssl_verify($sample, $sig, $pub, OPENSSL_ALGO_SHA256) === 1;
+}
+
+$diskCertI = certInfo($diskCertPem);
+$dbCertI   = certInfo($dbCertPem);
+$diskKeyI  = keyInfo($diskKeyPem);
+$dbKeyI    = keyInfo($dbKeyPem);
+
+$diskKeyVsDiskCert = keyMatchesCert($diskKeyPem, $diskCertPem);
+$dbKeyVsDbCert     = keyMatchesCert($dbKeyPem,   $dbCertPem);
+$dbKeyVsDiskCert   = keyMatchesCert($dbKeyPem,   $diskCertPem);
+$diskKeyVsDbCert   = keyMatchesCert($diskKeyPem, $dbCertPem);
+$certsIdentical    = ($diskCertPem && $dbCertPem) ? (trim((string)$diskCertPem) === trim((string)$dbCertPem)) : null;
 
 // Recent CDC query log
 $recentCdc = [];
@@ -346,15 +410,81 @@ pre{background:#0b1322;color:#e2e8f0;padding:10px;border-radius:6px;font-size:11
 <h2>2. Llave privada + certificado (para x-signature)</h2>
 <div class="card">
   <table class="kv">
-    <tr><td>cdc_private.key en disco</td><td><?= $keyOnDisk ? '<span class="ok">✓ ' . htmlspecialchars($kFile) . '</span>' : '<span class="warn">no</span>' ?></td></tr>
-    <tr><td>cdc_certificate.pem en disco</td><td><?= $certOnDisk ? '<span class="ok">✓ ' . htmlspecialchars($cFile) . '</span>' : '<span class="warn">no</span>' ?></td></tr>
-    <tr><td>private_key en cdc_certificates DB</td><td><?= $keyInDb ? '<span class="ok">✓ presente</span>' : '<span class="warn">no</span>' ?></td></tr>
-    <tr><td>certificate en cdc_certificates DB</td><td><?= $certInDb ? '<span class="ok">✓ presente</span>' : '<span class="warn">no</span>' ?></td></tr>
+    <tr><td>cdc_private.key en disco</td><td>
+      <?= $keyOnDisk ? '<span class="ok">✓ ' . htmlspecialchars($kFile) . '</span>' : '<span class="warn">no</span>' ?>
+      <?php if (!empty($diskKeyI['algorithm'])): ?> · <code><?= htmlspecialchars($diskKeyI['algorithm']) ?></code><?php endif; ?>
+    </td></tr>
+    <tr><td>cdc_certificate.pem en disco</td><td>
+      <?= $certOnDisk ? '<span class="ok">✓ ' . htmlspecialchars($cFile) . '</span>' : '<span class="warn">no</span>' ?>
+      <?php if (!empty($diskCertI['algorithm'])): ?>
+        <br>algoritmo: <code><?= htmlspecialchars($diskCertI['algorithm']) ?></code>
+        <br>fingerprint SHA-256: <code><?= htmlspecialchars((string)$diskCertI['fingerprint_sha256']) ?></code>
+        <br>válido: <?= htmlspecialchars((string)$diskCertI['not_before']) ?> → <?= htmlspecialchars((string)$diskCertI['not_after']) ?>
+      <?php endif; ?>
+    </td></tr>
+    <tr><td>private_key en cdc_certificates DB</td><td>
+      <?= $keyInDb ? '<span class="ok">✓ presente</span>' : '<span class="warn">no</span>' ?>
+      <?php if (!empty($dbKeyI['algorithm'])): ?> · <code><?= htmlspecialchars($dbKeyI['algorithm']) ?></code><?php endif; ?>
+    </td></tr>
+    <tr><td>certificate en cdc_certificates DB</td><td>
+      <?= $certInDb ? '<span class="ok">✓ presente</span>' : '<span class="warn">no</span>' ?>
+      <?php if (!empty($dbCertI['algorithm'])): ?>
+        <br>algoritmo: <code><?= htmlspecialchars($dbCertI['algorithm']) ?></code>
+        <br>fingerprint SHA-256: <code><?= htmlspecialchars((string)$dbCertI['fingerprint_sha256']) ?></code>
+        <br>válido: <?= htmlspecialchars((string)$dbCertI['not_before']) ?> → <?= htmlspecialchars((string)$dbCertI['not_after']) ?>
+      <?php endif; ?>
+    </td></tr>
   </table>
+
   <?php if (!$keyOnDisk && !$keyInDb): ?>
     <div class="banner banner-bad" style="margin-top:10px;">
       ✗ <strong>SIN PRIVATE KEY:</strong> x-signature no se puede generar → CDC responderá 403 garantizado.
       Regenera con <code>generar-certificado-cdc.php?key=voltika_cdc_cert_2026&amp;regen=1</code>.
+    </div>
+  <?php endif; ?>
+
+  <h3 style="font-size:13px;color:#475569;margin-top:18px;margin-bottom:8px;">Compatibilidad llave ↔ certificado</h3>
+  <table class="kv">
+    <?php
+    $matchRow = function ($label, $result) {
+      if ($result === null) return '<tr><td>' . $label . '</td><td class="muted">N/A (faltan datos)</td></tr>';
+      if ($result)         return '<tr><td>' . $label . '</td><td><span class="ok">✓ COINCIDE — la llave puede firmar para este cert</span></td></tr>';
+      return '<tr><td>' . $label . '</td><td><span class="bad">✗ NO COINCIDE — firmas no se podrán verificar</span></td></tr>';
+    };
+    echo $matchRow('Llave en disco ↔ Cert en disco',     $diskKeyVsDiskCert);
+    echo $matchRow('Llave en DB    ↔ Cert en DB',         $dbKeyVsDbCert);
+    echo $matchRow('Llave en DB    ↔ Cert en disco',     $dbKeyVsDiskCert);
+    echo $matchRow('Llave en disco ↔ Cert en DB',         $diskKeyVsDbCert);
+    ?>
+    <tr><td>Disk cert idéntico a DB cert</td><td>
+      <?php if ($certsIdentical === null): ?>
+        <span class="muted">N/A</span>
+      <?php elseif ($certsIdentical): ?>
+        <span class="ok">✓ idénticos byte-a-byte</span>
+      <?php else: ?>
+        <span class="bad">✗ son DIFERENTES — probable causa del 403.2</span>
+      <?php endif; ?>
+    </td></tr>
+  </table>
+
+  <?php
+  // Detect the danger pattern: signing uses DB key but uploaded cert was disk cert
+  $signingKey  = $keyInDb ? 'DB' : ($keyOnDisk ? 'disk' : 'NONE');
+  $uploadedToCdcAssumed = 'disk';   // we told user to upload disk file
+  $signWithKey = $keyInDb ? $dbKeyPem : ($keyOnDisk ? $diskKeyPem : null);
+  $signMatchesUpload = keyMatchesCert($signWithKey, $diskCertPem);
+  ?>
+  <?php if ($signMatchesUpload === false): ?>
+    <div class="banner banner-bad" style="margin-top:12px;">
+      🎯 <strong>POSIBLE CAUSA DEL 403.2:</strong> el código firma con la llave de la <strong><?= $signingKey ?></strong>,
+      pero subimos a CDC el <strong>certificado del disco</strong>. Esa llave NO corresponde a ese certificado, por
+      lo que CDC no puede verificar nuestra firma → rechaza con 403.2.<br>
+      <strong>Fix:</strong> subir a CDC el certificado que SÍ corresponde a la llave usada para firmar
+      (probablemente el certificado de la DB).
+    </div>
+  <?php elseif ($signMatchesUpload === true): ?>
+    <div class="banner banner-ok" style="margin-top:12px;">
+      ✓ La llave que el código usa para firmar SÍ corresponde al cert que subiste a CDC. Por aquí no es el problema.
     </div>
   <?php endif; ?>
 </div>
