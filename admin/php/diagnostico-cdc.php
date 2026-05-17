@@ -42,6 +42,29 @@ if (!hash_equals($expected, (string)$key)) {
 
 $pdo = getDB();
 
+// ── Round 53B: download the DB cert as .pem for upload to CDC ───────────
+if (($_GET['download'] ?? '') === 'db_cert') {
+    try {
+        $row = $pdo->query("SELECT certificate FROM cdc_certificates WHERE active = 1 ORDER BY id DESC LIMIT 1")
+                   ->fetch(PDO::FETCH_ASSOC);
+        if ($row && !empty($row['certificate'])) {
+            header('Content-Type: application/x-pem-file');
+            header('Content-Disposition: attachment; filename="voltika_cdc_certificate_db.pem"');
+            echo $row['certificate'];
+            exit;
+        }
+        http_response_code(404);
+        header('Content-Type: text/plain');
+        echo "No hay certificado activo en cdc_certificates";
+        exit;
+    } catch (Throwable $e) {
+        http_response_code(500);
+        header('Content-Type: text/plain');
+        echo "Error: " . $e->getMessage();
+        exit;
+    }
+}
+
 // Helpers
 function maskValue(string $v, int $tail = 6): string {
     $len = strlen($v);
@@ -477,10 +500,22 @@ pre{background:#0b1322;color:#e2e8f0;padding:10px;border-radius:6px;font-size:11
   <?php if ($signMatchesUpload === false): ?>
     <div class="banner banner-bad" style="margin-top:12px;">
       🎯 <strong>POSIBLE CAUSA DEL 403.2:</strong> el código firma con la llave de la <strong><?= $signingKey ?></strong>,
-      pero subimos a CDC el <strong>certificado del disco</strong>. Esa llave NO corresponde a ese certificado, por
+      pero a CDC le subiste el <strong>certificado del disco</strong>. Esa llave NO corresponde a ese certificado, por
       lo que CDC no puede verificar nuestra firma → rechaza con 403.2.<br>
-      <strong>Fix:</strong> subir a CDC el certificado que SÍ corresponde a la llave usada para firmar
-      (probablemente el certificado de la DB).
+      <strong>Fix:</strong> descarga el cert de la DB con el botón de abajo y súbelo a CDC en lugar del de disco.
+    </div>
+    <div style="margin-top:14px;padding:14px;background:#dcfce7;border:2px solid #16a34a;border-radius:8px;">
+      <div style="font-weight:700;color:#166534;font-size:14px;margin-bottom:8px;">⬇ Descargar el certificado correcto</div>
+      <p style="margin:0 0 10px;color:#166534;font-size:13px;">
+        Este es el cert que SÍ corresponde a la llave del código. Súbelo a CDC en "Carga tu certificado".
+      </p>
+      <a href="?key=<?= htmlspecialchars($expected) ?>&download=db_cert" download
+         style="display:inline-block;background:#16a34a;color:#fff;padding:10px 22px;border-radius:6px;font-weight:700;text-decoration:none;">
+         📥 Descargar voltika_cdc_certificate_db.pem
+      </a>
+      <div style="margin-top:8px;font-size:11.5px;color:#475569;">
+        Fingerprint SHA-256: <code><?= htmlspecialchars((string)($dbCertI['fingerprint_sha256'] ?? '?')) ?></code>
+      </div>
     </div>
   <?php elseif ($signMatchesUpload === true): ?>
     <div class="banner banner-ok" style="margin-top:12px;">
