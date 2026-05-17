@@ -68,6 +68,13 @@ function passStructure(string $p): array {
 // POST: run a live CDC test query
 // ─────────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'live_test')) {
+    // Round 50B (2026-05-17): CDC returned 403.2 "No se pudo autenticar".
+    // To distinguish "wrong password" from "wrong signature", allow the
+    // tester to override the password used JUST FOR THIS TEST without
+    // changing anything in config. Lets us try the old password
+    // `#KbC%Ro5XMM046` to confirm whether CDC's side has the new value
+    // or still expects the old one.
+    $passOverride = (string)($_POST['password_override'] ?? '');
     header('Content-Type: application/json; charset=utf-8');
 
     // Build synthetic but well-formed test data. Using a real-looking
@@ -129,6 +136,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'live
     $user   = defined('CDC_USER')    ? CDC_USER    : '';
     $pass   = defined('CDC_PASS')    ? CDC_PASS    : '';
     $url    = defined('CDC_BASE_URL') ? CDC_BASE_URL : 'https://services.circulodecredito.com.mx/v2/rccficoscore';
+    // Round 50B: optional one-shot password override for diagnostic only.
+    $passOverrideActive = false;
+    if ($passOverride !== '') {
+        $pass = $passOverride;
+        $passOverrideActive = true;
+    }
 
     $headers = [
         'Content-Type: application/json',
@@ -208,6 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'live
         'http'              => $httpCode,
         'took_ms'           => $took,
         'diagnosis'         => $diagnosis,
+        'password_overridden_for_test' => $passOverrideActive,
         'request' => [
             'url'         => $url,
             'headers'     => $headersInfo,
@@ -355,12 +369,32 @@ pre{background:#0b1322;color:#e2e8f0;padding:10px;border-radius:6px;font-size:11
   <form id="testForm" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
     <input type="hidden" name="key" value="<?= htmlspecialchars($expected) ?>">
     <input type="hidden" name="action" value="live_test">
+    <input type="hidden" name="password_override" id="passOverride" value="">
     <label>Nombre <input name="primerNombre" value="JUAN"></label>
     <label>Apellido P <input name="apellidoPaterno" value="PEREZ"></label>
     <label>Apellido M <input name="apellidoMaterno" value="LOPEZ"></label>
     <label>Nacimiento <input name="fechaNacimiento" value="1990-01-15"></label>
-    <button type="submit">🔍 Consultar CDC ahora</button>
   </form>
+
+  <div style="margin-top:14px;padding:12px;background:#f0f9ff;border:1px solid #93c5fd;border-radius:8px;">
+    <div style="font-size:13px;color:#1e40af;margin-bottom:10px;line-height:1.5;">
+      <strong>Round 50B — Comparar contraseñas:</strong> CDC respondió <code>403.2 "No se pudo autenticar"</code>.
+      Para descartar si el problema es la contraseña nueva vs el cert/firma, prueba con AMBAS contraseñas a continuación.
+      Estas pruebas <strong>NO modifican</strong> la configuración — solo envían un request al CDC con la contraseña indicada.
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;">
+      <button type="button" id="btnTestActive">
+        🔍 Probar con contraseña ACTUAL (VoltiK2026#$)
+      </button>
+      <button type="button" id="btnTestOld" style="background:#d97706;">
+        🔁 Probar con contraseña VIEJA (#KbC%Ro5XMM046)
+      </button>
+      <button type="button" id="btnTestCustom" style="background:#7c3aed;">
+        ✍️ Probar con contraseña personalizada…
+      </button>
+    </div>
+  </div>
+
   <div id="testStatus" style="margin-top:14px;font-size:13px;"></div>
   <div id="testResult"></div>
 </div>
@@ -390,20 +424,23 @@ pre{background:#0b1322;color:#e2e8f0;padding:10px;border-radius:6px;font-size:11
 </div>
 
 <script>
-document.getElementById('testForm').addEventListener('submit', function(e){
-  e.preventDefault();
-  var form = e.target;
+function runCdcTest(passOverride, label){
+  var form = document.getElementById('testForm');
   var status = document.getElementById('testStatus');
   var result = document.getElementById('testResult');
-  status.textContent = '⏳ Consultando CDC...'; result.innerHTML = '';
+  status.textContent = '⏳ Consultando CDC (' + label + ')...';
+  result.innerHTML = '';
+  document.getElementById('passOverride').value = passOverride || '';
   var fd = new FormData(form);
   fetch(location.pathname, { method: 'POST', credentials: 'include', body: fd })
     .then(function(r){ return r.json(); })
     .then(function(j){
       var cls = j.ok ? 'banner-ok' : (j.http === 401 || j.http === 403 ? 'banner-bad' : 'banner-warn');
       var head = '<div class="banner ' + cls + '">' +
-        '<strong>HTTP ' + j.http + '</strong> · ' + j.took_ms + ' ms<br>' +
-        (j.diagnosis || '') + '</div>';
+        '<strong>Test con: ' + label + '</strong><br>' +
+        '<strong>HTTP ' + j.http + '</strong> · ' + j.took_ms + ' ms' +
+        (j.password_overridden_for_test ? ' · 🔁 override temporal' : '') +
+        '<br>' + (j.diagnosis || '') + '</div>';
       var sections = '';
       sections += '<div style="margin-top:14px;"><strong>Request enviado a CDC:</strong><pre>' + JSON.stringify(j.request, null, 2).replace(/[<>&]/g, function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]}) + '</pre></div>';
       sections += '<div><strong>Response recibida:</strong><pre>' + JSON.stringify(j.response, null, 2).replace(/[<>&]/g, function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]}) + '</pre></div>';
@@ -413,6 +450,18 @@ document.getElementById('testForm').addEventListener('submit', function(e){
     .catch(function(e){
       status.textContent = '✗ ' + e.message;
     });
+}
+document.getElementById('btnTestActive').addEventListener('click', function(){
+  runCdcTest('', 'contraseña ACTUAL en config (VoltiK2026#$)');
+});
+document.getElementById('btnTestOld').addEventListener('click', function(){
+  if (!confirm('Esto enviará una consulta CDC con la contraseña VIEJA #KbC%Ro5XMM046 (solo para diagnóstico — no cambia la config). ¿Continuar?')) return;
+  runCdcTest('#KbC%Ro5XMM046', 'contraseña VIEJA (#KbC%Ro5XMM046)');
+});
+document.getElementById('btnTestCustom').addEventListener('click', function(){
+  var p = prompt('Escribe la contraseña a probar (solo para esta prueba, no se guarda):');
+  if (!p) return;
+  runCdcTest(p, 'contraseña personalizada (' + p.length + ' chars)');
 });
 </script>
 
