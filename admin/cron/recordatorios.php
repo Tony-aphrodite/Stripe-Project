@@ -296,22 +296,34 @@ function sendLegacySMS(array $ciclo): bool {
         $msg = "Voltika: Tu pago semanal de \${$montoFmt} está vencido. Regulariza en voltika.mx/clientes/";
     }
 
+    // Round 54 (2026-05-18): missed path from Round 47 — same Bearer/JSON
+    // bug. Switched to apikey + form-urlencoded + body.success check so
+    // payment reminder SMS actually reaches customers.
     $tel = preg_replace('/\D/', '', $ciclo['telefono']);
-    if (strlen($tel) === 10) $tel = '52' . $tel;
+    if (strlen($tel) === 12 && strpos($tel, '52') === 0)  $tel = substr($tel, 2);
+    if (strlen($tel) === 11 && strpos($tel, '521') === 0) $tel = substr($tel, 3);
 
     $ch = curl_init('https://api.smsmasivos.com.mx/sms/send');
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 15,
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Authorization: Bearer ' . $smsKey],
-        CURLOPT_POSTFIELDS     => json_encode(['phone_number' => $tel, 'message' => $msg]),
+        CURLOPT_HTTPHEADER     => [
+            'apikey: ' . $smsKey,
+            'Content-Type: application/x-www-form-urlencoded',
+        ],
+        CURLOPT_POSTFIELDS     => http_build_query([
+            'message'      => $msg,
+            'numbers'      => $tel,
+            'country_code' => '52',
+        ]),
     ]);
     $raw     = curl_exec($ch);
     $curlErr = curl_error($ch);
     curl_close($ch);
-
-    return !$curlErr;
+    $parsed  = is_string($raw) ? json_decode($raw, true) : null;
+    $bodyOk  = is_array($parsed) && !empty($parsed['success']);
+    return !$curlErr && $bodyOk;
 }
 
 
