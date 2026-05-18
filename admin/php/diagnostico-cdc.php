@@ -549,7 +549,7 @@ pre{background:#0b1322;color:#e2e8f0;padding:10px;border-radius:6px;font-size:11
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;">
       <button type="button" id="btnTestActive">
-        🔍 Probar con contraseña ACTUAL (VoltiK2026#$)
+        🔍 Probar con contraseña ACTUAL (<?= htmlspecialchars(maskValue($pass, 4)) ?>)
       </button>
       <button type="button" id="btnTestOld" style="background:#d97706;">
         🔁 Probar con contraseña VIEJA (#KbC%Ro5XMM046)
@@ -617,7 +617,7 @@ function runCdcTest(passOverride, label){
     });
 }
 document.getElementById('btnTestActive').addEventListener('click', function(){
-  runCdcTest('', 'contraseña ACTUAL en config (VoltiK2026#$)');
+  runCdcTest('', 'contraseña ACTUAL en config (<?= htmlspecialchars(maskValue($pass, 4)) ?>)');
 });
 document.getElementById('btnTestOld').addEventListener('click', function(){
   if (!confirm('Esto enviará una consulta CDC con la contraseña VIEJA #KbC%Ro5XMM046 (solo para diagnóstico — no cambia la config). ¿Continuar?')) return;
