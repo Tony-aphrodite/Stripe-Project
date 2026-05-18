@@ -64,8 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'send
         exit;
     }
 
+    // Round 55 (2026-05-18): SMSmasivos response warning "test_message_detected"
+    // showed that Mexican carriers silently filter SMS containing "Prueba" /
+    // "test". Diagnostic now uses real OTP-style text so the test SMS actually
+    // reaches the operator's phone.
     $codigo = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-    $msg = "Voltika: Prueba de entrega SMS. Código de prueba: {$codigo}. (Solo diagnóstico).";
+    $msg = "Voltika: Tu codigo de verificacion es {$codigo}. Vigente 10 minutos.";
 
     // Round 47 (2026-05-16): apikey + form-urlencoded matches the real
     // SMSmasivos auth scheme. Same fix as voltika-notify.php; see there.
