@@ -6,7 +6,15 @@
  */
 
 // Reuse master bootstrap (DB, SMTP, SMS, Stripe, Truora, .env + all table schemas)
-require_once __DIR__ . '/../../configurador_prueba_test/php/master-bootstrap.php';
+// ── Round 56 (2026-05-18, Óscar — "Se rechazó tu tarjeta. La solicitud se
+// realizó en el modo de prueba"): the customer portal was loading from
+// `configurador_prueba_test/` (the TEST sandbox) instead of production
+// `configurador/`. Result: even with APP_ENV=live and live Stripe keys set
+// in /configurador/.env, the customer portal kept loading the TEST .env and
+// TEST Stripe keys, so real customer cards were rejected with
+// "tarjeta no válida para modo prueba". Admin and puntosvoltika modules
+// already load from configurador/ correctly — this aligns the portal.
+require_once __DIR__ . '/../../configurador/php/master-bootstrap.php';
 voltikaEnsureSchema();
 
 // ── CORS / JSON defaults ────────────────────────────────────────────────────

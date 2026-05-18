@@ -589,6 +589,11 @@ $checks = [
         "Round 52 (2026-05-17, Óscar): revert to env-var-only pattern",
         'Round 52 — config.php: CDC_PASS leído SOLO de env var (sin hardcoded). Cambiar contraseña ahora requiere solo actualizar Plesk env, no redeploy.'
     ),
+    'r56_clientes_bootstrap_production' => _checkFile(
+        $base . '/clientes/php/bootstrap.php',
+        "Round 56 (2026-05-18, Óscar",
+        'Round 56 — clientes/php/bootstrap.php: ahora carga configurador/ (producción) en vez de configurador_prueba_test/ — fix "modo de prueba" en portal cliente'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
