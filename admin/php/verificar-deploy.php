@@ -594,6 +594,11 @@ $checks = [
         "Round 56 (2026-05-18, Óscar",
         'Round 56 — clientes/php/bootstrap.php: ahora carga configurador/ (producción) en vez de configurador_prueba_test/ — fix "modo de prueba" en portal cliente'
     ),
+    'r57_descargar_contrato_paths' => _checkFile(
+        $base . '/clientes/php/documentos/descargar.php',
+        "Round 57 (2026-05-18, Óscar",
+        'Round 57 — descargar.php: contratos/pagares/actas se buscan PRIMERO en configurador/ (producción con Round 42 firma) y luego en configurador_prueba_test/ — fix firma faltante en contrato'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

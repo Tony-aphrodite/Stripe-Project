@@ -83,11 +83,16 @@ if (!$nombreCompleto && $moto) $nombreCompleto = $moto['cliente_nombre'] ?? '';
 if (!$nombreCompleto && $trans) $nombreCompleto = $trans['nombre'] ?? '';
 
 // ── FPDF loader ────────────────────────────────────────────────────────
+// Round 57: prefer the production FPDF path so on-the-fly regen (when a
+// pre-generated PDF can't be found) uses the same library as
+// generar-contrato-pdf.php — keeps signature rendering consistent.
 function loadFPDF(): bool {
     if (class_exists('FPDF')) return true;
     $paths = [
-        __DIR__ . '/../../../configurador_prueba_test/php/vendor/fpdf/fpdf.php',
+        __DIR__ . '/../../../configurador/php/vendor/fpdf/fpdf.php',
+        __DIR__ . '/../../../configurador/php/vendor/setasign/fpdf/fpdf.php',
         __DIR__ . '/../../../admin/php/lib/fpdf.php',
+        __DIR__ . '/../../../configurador_prueba_test/php/vendor/fpdf/fpdf.php',
     ];
     foreach ($paths as $p) {
         if (file_exists($p)) { require_once $p; return true; }
@@ -118,7 +123,17 @@ function serveFile(string $path, string $filename): void {
 // ═══════════════════════════════════════════════════════════════════════
 if ($tipo === 'contrato') {
     // 1. Try pre-generated file on disk
+    // ── Round 57 (2026-05-18, Óscar — contract signature missing for 1 week):
+    // generar-contrato-pdf.php writes contracts to /configurador/php/contratos/
+    // (production, with all Round 42 signature fixes). The old search list
+    // only looked under /configurador_prueba_test/, so the freshly-generated
+    // signed PDFs were never found — the code fell through to the
+    // on-the-fly regen (#3 below) which used unpatched FPDF logic without
+    // a signature image. Adding the production paths FIRST means we serve
+    // the correct signed PDF; the test paths stay as legacy fallback.
     $searchDirs = [
+        __DIR__ . '/../../../configurador/php/contratos/',
+        __DIR__ . '/../../../configurador/php/uploads/contratos/',
         __DIR__ . '/../../../configurador_prueba_test/php/contratos/',
         __DIR__ . '/../../../configurador_prueba_test/php/uploads/contratos/',
         sys_get_temp_dir() . '/voltika_contratos/',
@@ -245,8 +260,11 @@ if ($tipo === 'pagare') {
     } catch (Throwable $e) {}
 
     // 2. Search disk
+    // Round 57: include production path first; test sandbox is legacy fallback.
     $searchDirs = [
         sys_get_temp_dir() . '/voltika_pagares/',
+        __DIR__ . '/../../../configurador/php/uploads/pagares/',
+        __DIR__ . '/../../../configurador/php/pagares/',
         __DIR__ . '/../../../configurador_prueba_test/php/uploads/pagares/',
     ];
     if ($moto) {
@@ -522,7 +540,10 @@ if ($tipo === 'comprobantes') {
 // ═══════════════════════════════════════════════════════════════════════
 if ($tipo === 'acta_entrega') {
     // Try pre-generated file
+    // Round 57: include production path first; test sandbox is legacy fallback.
     $searchDirs = [
+        __DIR__ . '/../../../configurador/php/uploads/actas/',
+        __DIR__ . '/../../../configurador/php/actas/',
         __DIR__ . '/../../../configurador_prueba_test/php/uploads/actas/',
         sys_get_temp_dir() . '/voltika_actas/',
     ];
