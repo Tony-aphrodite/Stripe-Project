@@ -63,24 +63,51 @@ function cincelAuth(): array {
         if (!in_array($v, $baseCandidates, true)) $baseCandidates[] = $v;
     }
 
+    // Comprehensive auth endpoint probe. Cincel has changed their API
+    // path more than once. The Express app on /v3 responds with 404 JSON
+    // for unknown routes (so we get a CLEAR signal which path exists)
+    // while nginx returns HTML 404 when nothing is mounted at the prefix.
+    $authPaths = [
+        '/auth/tokens',
+        '/auth/login',
+        '/sessions',
+        '/oauth/token',
+        '/users/login',
+        '/users/sign_in',
+        '/login',
+        '/token',
+        '/tokens',
+        '/api/auth/tokens',
+        '/api/auth/login',
+        '/api/v3/auth/tokens',
+        '/api/v3/auth/login',
+    ];
     $attempts = [];
     foreach ($baseCandidates as $base) {
-        foreach (['/auth/tokens', '/auth/login'] as $authPath) {
+        foreach ($authPaths as $authPath) {
             $url = $base . $authPath;
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
                 CURLOPT_POSTFIELDS => json_encode(['email' => $email, 'password' => $password]),
-                CURLOPT_TIMEOUT => 12,
+                CURLOPT_TIMEOUT => 8,
             ]);
             $raw = curl_exec($ch);
             $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            $attempts[] = ['url' => $url, 'http' => $code, 'body' => substr((string)$raw, 0, 200)];
-            if ($code === 200) {
+            // Detect nginx HTML 404 vs JSON 404 vs real responses. We only
+            // record JSON 404s and non-404 responses to keep the table
+            // readable (nginx 404s mean wrong base path, not interesting).
+            $isJsonResp = is_string($raw) && (strpos($raw, '<html') === false);
+            if ($code !== 404 || $isJsonResp) {
+                $attempts[] = ['url' => $url, 'http' => $code, 'body' => substr((string)$raw, 0, 200)];
+            }
+            if ($code >= 200 && $code < 300) {
                 $auth = json_decode((string)$raw, true);
-                $token = $auth['access_token'] ?? $auth['token'] ?? null;
+                $token = $auth['access_token'] ?? $auth['token']
+                       ?? ($auth['data']['access_token'] ?? null)
+                       ?? ($auth['data']['token'] ?? null);
                 if ($token) {
                     return [
                         'ok' => true, 'token' => $token, 'api' => $base,
@@ -89,9 +116,22 @@ function cincelAuth(): array {
                     ];
                 }
             }
+            // Also: even 401/422 on a real endpoint is more informative
+            // than 404 — it means the endpoint exists, just credentials
+            // are wrong. Flag it specifically.
+            if ($code === 401 || $code === 403 || $code === 422) {
+                return [
+                    'ok' => false,
+                    'error' => 'Endpoint encontrado en ' . $url . ' pero credenciales rechazadas (HTTP ' . $code . ')',
+                    'endpoint_exists' => $url,
+                    'env_url' => $cincelApiEnv,
+                    'attempts' => $attempts,
+                    'token' => null,
+                ];
+            }
         }
     }
-    return ['ok' => false, 'error' => 'Auth fallida en todas las URLs probadas',
+    return ['ok' => false, 'error' => 'Auth fallida — ningún endpoint conocido responde con éxito',
             'env_url' => $cincelApiEnv, 'attempts' => $attempts, 'token' => null];
 }
 
