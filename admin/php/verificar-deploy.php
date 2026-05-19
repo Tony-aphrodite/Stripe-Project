@@ -599,6 +599,22 @@ $checks = [
         "Round 57 (2026-05-18, Óscar",
         'Round 57 — descargar.php: contratos/pagares/actas se buscan PRIMERO en configurador/ (producción con Round 42 firma) y luego en configurador_prueba_test/ — fix firma faltante en contrato'
     ),
+    // ── Round 58 (2026-05-18) — Acta de Entrega: firma autógrafa + Cincel real ──
+    'r58_webhook_download_signed_pdf' => _checkFile(
+        $base . '/configurador/php/cincel-webhook.php',
+        'cincel_acta_signed_pdf_path',
+        'Round 58 — cincel-webhook.php: descarga el PDF FIRMADO de Cincel (con autógrafa + sello NOM-151) y lo guarda en /uploads/actas/acta_signed_*.pdf'
+    ),
+    'r58_descargar_serves_signed' => _checkFile(
+        $base . '/clientes/php/documentos/descargar.php',
+        'cincel_acta_signed_pdf_path',
+        'Round 58 — descargar.php: sirve el PDF firmado por Cincel (con autógrafa visible) en lugar de la plantilla sin firma'
+    ),
+    'r58_acta_pdf_real_cincel_data' => _checkFile(
+        $base . '/clientes/php/entrega/acta-pdf.php',
+        'ACTA FIRMADA ELECTRÓNICAMENTE',
+        'Round 58 — acta-pdf.php: muestra folio Cincel, timestamp, certificado y sello NOM-151 reales (no el texto estático antiguo)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

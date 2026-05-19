@@ -539,14 +539,53 @@ if ($tipo === 'comprobantes') {
 // ACTA DE ENTREGA
 // ═══════════════════════════════════════════════════════════════════════
 if ($tipo === 'acta_entrega') {
-    // Try pre-generated file
-    // Round 57: include production path first; test sandbox is legacy fallback.
+    // ── Round 58 (2026-05-18, Óscar — missing autograph signature on Acta):
+    // Priority 1 — serve the SIGNED PDF from Cincel if it exists. After
+    // Round 58 the cincel-webhook saves Cincel's fully-signed PDF (with
+    // customer's drawn autograph + NOM-151 timestamp watermark embedded)
+    // to /configurador/php/uploads/actas/acta_signed_<motoId>_*.pdf and
+    // records the filename in inventario_motos.cincel_acta_signed_pdf_path.
+    // Serving that file directly = customer sees their signature + Cincel
+    // proof of NOM-151 timestamp.
+    if ($moto && !empty($moto['id'])) {
+        try {
+            $sp = $pdo->prepare("SELECT cincel_acta_signed_pdf_path FROM inventario_motos WHERE id = ?");
+            $sp->execute([(int)$moto['id']]);
+            $signedName = $sp->fetchColumn();
+            if ($signedName) {
+                $signedCandidates = [
+                    __DIR__ . '/../../../configurador/php/uploads/actas/' . $signedName,
+                    __DIR__ . '/../../../configurador_prueba_test/php/uploads/actas/' . $signedName,
+                ];
+                foreach ($signedCandidates as $sc) {
+                    if (file_exists($sc) && is_readable($sc) && filesize($sc) > 1000) {
+                        serveFile($sc, 'acta_entrega_voltika.pdf');
+                    }
+                }
+            }
+        } catch (Throwable $e) { /* column may not exist on older schemas */ }
+    }
+
+    // Priority 2 — fall back to any signed PDF (acta_signed_*) on disk for this moto.
     $searchDirs = [
         __DIR__ . '/../../../configurador/php/uploads/actas/',
         __DIR__ . '/../../../configurador/php/actas/',
         __DIR__ . '/../../../configurador_prueba_test/php/uploads/actas/',
         sys_get_temp_dir() . '/voltika_actas/',
     ];
+    if ($moto && !empty($moto['id'])) {
+        foreach ($searchDirs as $dir) {
+            if (!is_dir($dir)) continue;
+            $signed = glob($dir . 'acta_signed_' . (int)$moto['id'] . '_*.pdf');
+            if ($signed) {
+                usort($signed, function($a, $b) { return filemtime($b) - filemtime($a); });
+                serveFile($signed[0], 'acta_entrega_voltika.pdf');
+            }
+        }
+    }
+
+    // Priority 3 — legacy: pre-generated unsigned template (acta_cliente_*).
+    // This is the pre-Cincel preview/upload version — no signature embedded.
     foreach ($searchDirs as $dir) {
         if (!is_dir($dir)) continue;
         $files = glob($dir . '*cliente_' . $cid . '*.pdf');

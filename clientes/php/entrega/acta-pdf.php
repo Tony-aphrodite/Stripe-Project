@@ -50,6 +50,48 @@ if (!empty($moto['punto_voltika_id'])) {
     $punto = $pq->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
+// ── Round 58 (2026-05-18, Óscar): pull real Cincel signature data so the
+// PDF reflects the actual signed state, not a static "Firmado mediante Cincel"
+// label. When the document has been signed via Cincel, the FIRMA block now
+// shows the Cincel folio, timestamp, signer name, certificate ID and a
+// dedicated REGISTRO DE FIRMA ELECTRÓNICA section satisfying NOM-151
+// evidentiary requirements. Note: the truly signed PDF (with embedded
+// autograph) is downloaded by cincel-webhook.php and served by
+// descargar.php — this template is only what we send TO Cincel for
+// signing or used as a fallback preview.
+$cincelInfo = [
+    'firmada'         => false,
+    'document_id'     => null,
+    'status'          => null,
+    'fecha'           => null,
+    'signer_name'     => null,
+    'nom151_seal'     => null,
+    'certificate'     => null,
+    'timestamp_utc'   => null,
+];
+try {
+    $cq = $pdo->prepare("SELECT cliente_acta_firmada, cliente_acta_fecha, cliente_acta_firma,
+                                cincel_acta_document_id, cincel_acta_status, cincel_nom151_data
+                           FROM inventario_motos WHERE id = ?");
+    $cq->execute([$motoId]);
+    $cinRow = $cq->fetch(PDO::FETCH_ASSOC) ?: [];
+    if ($cinRow) {
+        $cincelInfo['firmada']     = !empty($cinRow['cliente_acta_firmada']);
+        $cincelInfo['document_id'] = $cinRow['cincel_acta_document_id'] ?? null;
+        $cincelInfo['status']      = $cinRow['cincel_acta_status']      ?? null;
+        $cincelInfo['fecha']       = $cinRow['cliente_acta_fecha']      ?? null;
+        $cincelInfo['signer_name'] = $cinRow['cliente_acta_firma']      ?? null;
+        if (!empty($cinRow['cincel_nom151_data'])) {
+            $nom = @json_decode((string)$cinRow['cincel_nom151_data'], true);
+            if (is_array($nom)) {
+                $cincelInfo['nom151_seal']   = $nom['nom151_seal']   ?? null;
+                $cincelInfo['certificate']   = $nom['certificate']   ?? null;
+                $cincelInfo['timestamp_utc'] = $nom['timestamp']     ?? null;
+            }
+        }
+    }
+} catch (Throwable $e) { /* column may not exist on older schemas — render unsigned template */ }
+
 // ── Locate FPDF (reuses admin's vendored copy) ────────────────────────────
 $fpdfPaths = [
     __DIR__ . '/../../../admin/php/lib/fpdf.php',
@@ -150,16 +192,74 @@ foreach ($decls as $i => $d) {
     $pdf->Ln(1);
 }
 
-$pdf->Ln(8);
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell(0, 5, $enc('Firma electrónica del cliente:'), 0, 1);
-$pdf->Ln(15);
-$pdf->Line(20, $pdf->GetY(), 110, $pdf->GetY());
+$pdf->Ln(6);
+$pdf->SetFont('Arial', 'B', 10);
+$pdf->Cell(0, 5, $enc('FIRMA ELECTRÓNICA DEL CLIENTE'), 0, 1);
 $pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(90, 5, $enc($nombreCompleto), 0, 1);
-$pdf->SetFont('Arial', '', 8);
-$pdf->Cell(90, 4, $enc('Firmado mediante Cincel — NOM-151'), 0, 1);
+
+if ($cincelInfo['firmada']) {
+    // ✓ FIRMADO — show real Cincel data inline. The fully-signed PDF with
+    // the customer's drawn autograph is served by descargar.php (Round 58);
+    // this template version still gets used as the upload artifact, so we
+    // make it informative even if rendered standalone.
+    $pdf->SetFont('Arial', 'B', 11);
+    $pdf->SetTextColor(16, 185, 129);   // green
+    $pdf->Cell(0, 6, $enc('✓ ACTA FIRMADA ELECTRÓNICAMENTE'), 0, 1);
+    $pdf->SetTextColor(0);
+    $pdf->Ln(1);
+
+    $pdf->SetFont('Arial', '', 9);
+    $regRows = [
+        ['Firmante (autógrafa registrada con Cincel):', $cincelInfo['signer_name'] ?: $nombreCompleto],
+        ['Fecha y hora de la firma:',                   $cincelInfo['fecha']       ?: $fechaEntrega],
+        ['Folio Cincel (document_id):',                 $cincelInfo['document_id'] ?: '—'],
+        ['Estado Cincel:',                              $cincelInfo['status']      ?: 'firmado'],
+        ['Validez legal:',                              'NOM-151-SCFI-2016 — Conservación de mensajes de datos'],
+        ['Marca de tiempo UTC (NOM-151):',              $cincelInfo['timestamp_utc'] ?: '—'],
+    ];
+    if (!empty($cincelInfo['certificate'])) {
+        $regRows[] = ['Certificado digital:', is_string($cincelInfo['certificate'])
+            ? substr($cincelInfo['certificate'], 0, 90)
+            : substr(json_encode($cincelInfo['certificate']), 0, 90)];
+    }
+    if (!empty($cincelInfo['nom151_seal'])) {
+        $regRows[] = ['Sello NOM-151:', is_string($cincelInfo['nom151_seal'])
+            ? substr($cincelInfo['nom151_seal'], 0, 90)
+            : substr(json_encode($cincelInfo['nom151_seal']), 0, 90)];
+    }
+    foreach ($regRows as $r) {
+        $pdf->SetFont('Arial', 'B', 8.5);
+        $pdf->Cell(70, 4.5, $enc($r[0]), 0);
+        $pdf->SetFont('Arial', '', 8.5);
+        $pdf->MultiCell(0, 4.5, $enc((string)$r[1]), 0);
+    }
+    $pdf->Ln(2);
+    $pdf->SetFont('Arial', 'I', 8);
+    $pdf->SetTextColor(80);
+    $pdf->MultiCell(0, 4, $enc(
+        'Este documento fue firmado electrónicamente con validez NOM-151-SCFI-2016 a través del proveedor Cincel S.A.P.I. de C.V. ' .
+        'La firma autógrafa registrada y el sello de tiempo se encuentran embebidos en el PDF firmado emitido por Cincel ' .
+        '(disponible en "Descargar" desde la sección Documentos del portal). ' .
+        'Conforme al artículo 89 del Código de Comercio, la firma electrónica avanzada tiene la misma validez jurídica que una firma autógrafa.'
+    ), 0, 'J');
+    $pdf->SetTextColor(0);
+} else {
+    // Pre-sign template — render a signature placeholder + Cincel pending note.
+    $pdf->SetFont('Arial', '', 9);
+    $pdf->Cell(0, 5, $enc('Firma del cliente (se capturará mediante Cincel NOM-151):'), 0, 1);
+    $pdf->Ln(12);
+    $pdf->Line(20, $pdf->GetY(), 110, $pdf->GetY());
+    $pdf->Ln(2);
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(90, 5, $enc($nombreCompleto), 0, 1);
+    $pdf->SetFont('Arial', 'I', 8);
+    $pdf->SetTextColor(120);
+    $pdf->MultiCell(0, 4, $enc(
+        'Pendiente de firma — al firmar a través de Cincel se generará el PDF final con su autógrafa, ' .
+        'sello de tiempo NOM-151-SCFI-2016 y folio único de verificación.'
+    ));
+    $pdf->SetTextColor(0);
+}
 
 if ($mode === 'stream') {
     // Direct download — used for preview from the customer portal.
