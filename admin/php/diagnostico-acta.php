@@ -36,37 +36,63 @@ if (!hash_equals($expected, (string)$key)) {
 $pdo = getDB();
 
 // ── Helper: Cincel auth (mirrors cincel-firma-acta.php logic) ───────────
+// Round 58 v2: try multiple URL variations because Cincel has both prod
+// (api.cincel.digital) and sandbox (sandbox.api.cincel.digital), with and
+// without /v3 prefix. Test credentials only work on sandbox.
 function cincelAuth(): array {
-    $cincelApi = defined('CINCEL_API_URL') ? rtrim(CINCEL_API_URL, '/')
-               : (getenv('CINCEL_API_URL') ?: 'https://api.cincel.digital/v3');
+    $cincelApiEnv = defined('CINCEL_API_URL') ? rtrim(CINCEL_API_URL, '/')
+                  : (getenv('CINCEL_API_URL') ?: 'https://api.cincel.digital/v3');
     $email    = defined('CINCEL_EMAIL')    ? CINCEL_EMAIL    : (getenv('CINCEL_EMAIL')    ?: '');
     $password = defined('CINCEL_PASSWORD') ? CINCEL_PASSWORD : (getenv('CINCEL_PASSWORD') ?: '');
 
     if (!$email || !$password) {
-        return ['ok' => false, 'error' => 'CINCEL_EMAIL / CINCEL_PASSWORD vacíos', 'token' => null];
+        return ['ok' => false, 'error' => 'CINCEL_EMAIL / CINCEL_PASSWORD vacíos', 'token' => null,
+                'env_url' => $cincelApiEnv, 'tried' => []];
     }
+
+    // Build all reasonable URL candidates. The env-defined URL is tried
+    // first; if it fails we automatically try sandbox + variations.
+    $baseCandidates = [$cincelApiEnv];
+    $variants = [
+        'https://api.cincel.digital/v3',
+        'https://api.cincel.digital',
+        'https://sandbox.api.cincel.digital/v3',
+        'https://sandbox.api.cincel.digital',
+    ];
+    foreach ($variants as $v) {
+        if (!in_array($v, $baseCandidates, true)) $baseCandidates[] = $v;
+    }
+
     $attempts = [];
-    foreach (['/auth/tokens', '/auth/login'] as $authPath) {
-        $ch = curl_init($cincelApi . $authPath);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-            CURLOPT_POSTFIELDS => json_encode(['email' => $email, 'password' => $password]),
-            CURLOPT_TIMEOUT => 15,
-        ]);
-        $raw = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        $attempts[] = ['endpoint' => $authPath, 'http' => $code, 'body' => substr((string)$raw, 0, 300)];
-        if ($code === 200) {
-            $auth = json_decode((string)$raw, true);
-            $token = $auth['access_token'] ?? $auth['token'] ?? null;
-            if ($token) {
-                return ['ok' => true, 'token' => $token, 'api' => $cincelApi, 'attempts' => $attempts];
+    foreach ($baseCandidates as $base) {
+        foreach (['/auth/tokens', '/auth/login'] as $authPath) {
+            $url = $base . $authPath;
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                CURLOPT_POSTFIELDS => json_encode(['email' => $email, 'password' => $password]),
+                CURLOPT_TIMEOUT => 12,
+            ]);
+            $raw = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            $attempts[] = ['url' => $url, 'http' => $code, 'body' => substr((string)$raw, 0, 200)];
+            if ($code === 200) {
+                $auth = json_decode((string)$raw, true);
+                $token = $auth['access_token'] ?? $auth['token'] ?? null;
+                if ($token) {
+                    return [
+                        'ok' => true, 'token' => $token, 'api' => $base,
+                        'env_url' => $cincelApiEnv, 'working_url' => $base . $authPath,
+                        'attempts' => $attempts,
+                    ];
+                }
             }
         }
     }
-    return ['ok' => false, 'error' => 'Auth fallida en ambos endpoints', 'attempts' => $attempts, 'api' => $cincelApi, 'token' => null];
+    return ['ok' => false, 'error' => 'Auth fallida en todas las URLs probadas',
+            'env_url' => $cincelApiEnv, 'attempts' => $attempts, 'token' => null];
 }
 
 function fmtJsonShort($v, int $max = 80): string {
@@ -244,8 +270,18 @@ pre{background:#0b1322;color:#e2e8f0;padding:8px;border-radius:5px;font-size:10.
     <tr><td><strong>Auth test</strong></td><td>
       <?php if ($auth['ok']): ?>
         <span class="ok">✓ Token obtenido</span> · longitud <?= strlen($auth['token']) ?>
+        <br>URL que funcionó: <code><?= htmlspecialchars($auth['working_url'] ?? '?') ?></code>
+        <?php if (!empty($auth['api']) && $auth['api'] !== ($auth['env_url'] ?? '')): ?>
+          <div class="banner banner-warn" style="margin-top:8px;">
+            ⚠ Auth funcionó con <code><?= htmlspecialchars($auth['api']) ?></code> pero tu env tiene
+            <code><?= htmlspecialchars((string)($auth['env_url'] ?? '')) ?></code>. <strong>Actualiza
+            tu .env con CINCEL_API_URL=<?= htmlspecialchars($auth['api']) ?></strong> para que el
+            código de producción use la URL correcta.
+          </div>
+        <?php endif; ?>
       <?php else: ?>
         <span class="bad">✗ FALLÓ</span> — <?= htmlspecialchars($auth['error'] ?? '?') ?>
+        <br>Env URL configurada: <code><?= htmlspecialchars((string)($auth['env_url'] ?? '?')) ?></code>
         <pre><?= htmlspecialchars(json_encode($auth['attempts'] ?? [], JSON_PRETTY_PRINT)) ?></pre>
       <?php endif; ?>
     </td></tr>
