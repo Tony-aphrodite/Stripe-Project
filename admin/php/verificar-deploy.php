@@ -67,7 +67,7 @@ $checks = [
     // ── Round 62 (2026-05-20) — Picker de motos cross-punto ────────────────
     'r62_motos_disponibles_cross_punto' => _checkFile(
         $base . '/admin/php/ventas/motos-disponibles.php',
-        "Round 62 (2026-05-20, Óscar — VIN 0049)",
+        "\$row['ubicacion_label']",
         'Round 62 — motos-disponibles.php: ya no excluye motos que están en un punto distinto al del pedido. Ahora muestra TODAS las motos disponibles (activas, sin pedido_num, estado libre) y agrega `ubicacion`/`ubicacion_label`/`necesita_traslado` para que la UI muestre la ubicación de cada moto. Ordena: mismo punto → CEDIS → otros puntos.'
     ),
     'r62_admin_ventas_location_pill' => _checkFile(
