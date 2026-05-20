@@ -627,6 +627,28 @@ $checks = [
         "Round 60 (2026-05-20)",
         'Round 60 — listar.php: agrega contrato_pdf_path al array de respuesta JSON. Antes el SQL lo seleccionaba pero el PHP nunca lo mapeaba al output → la SPA siempre evaluaba _hasContractPdf=false → toda orden de crédito mostraba "Pagado · Falta firma" aunque tuviera firma + PDF persistidos.'
     ),
+    // ── Round 61 (2026-05-20) — desasignar-moto resetea estado + supersede envíos ──
+    'r61_desasignar_resets_estado' => _checkFile(
+        $base . '/admin/php/ventas/desasignar-moto.php',
+        "Round 61 (2026-05-20, Óscar)",
+        'Round 61 — desasignar-moto.php: además de limpiar cliente/pedido_num/punto, ahora resetea estado="recibida" + fecha_estado=NOW() + log audit + supersede de envíos activos. Sin esto la moto quedaba en estado="por_llegar" tras desasignar y motos-disponibles.php (que filtra por estado IN recibida/lista_para_entrega) la ocultaba → admin no podía reasignar a otro punto.'
+    ),
+    'r61_asignar_punto_fallback_inventario' => _checkFile(
+        $base . '/admin/php/inventario/asignar-punto.php',
+        "Round 61 (2026-05-20)",
+        'Round 61 — asignar-punto.php: si tipo=venta y no hay transaccion_id resolvible (moto recién desasignada), cae a tipo=inventario en vez de error 400. Permite reasignar una moto en un solo click aunque la UI envíe el contexto viejo.'
+    ),
+    // ── Round 62 (2026-05-20) — picker de motos ahora incluye TODAS las disponibles ──
+    'r62_motos_disponibles_cross_punto' => _checkFile(
+        $base . '/admin/php/ventas/motos-disponibles.php',
+        "Round 62 (2026-05-20, Óscar — VIN 0049)",
+        'Round 62 — motos-disponibles.php: ya no excluye motos que están en un punto distinto al del pedido. Ahora muestra TODAS las motos disponibles (activas, sin pedido_num, estado libre) y agrega `ubicacion`/`ubicacion_label`/`necesita_traslado` para que la UI muestre la ubicación de cada moto. Ordena: mismo punto → CEDIS → otros puntos.'
+    ),
+    'r62_admin_ventas_location_pill' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'Round 62: location pill',
+        'Round 62 — admin-ventas.js: en el modal "Asignar moto" cada tarjeta muestra una pill de ubicación con icono+color (📍 En este punto / 🏭 CEDIS / 🚛 En Punto X — traslado requerido). El admin ahora ve TODAS las motos asignables y entiende cuáles necesitan traslado.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

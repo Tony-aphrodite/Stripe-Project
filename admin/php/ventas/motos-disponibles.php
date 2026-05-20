@@ -18,23 +18,27 @@ $where  = [
 ];
 $params = [];
 
-// Include CEDIS stock + optional punto stock at the order's destination.
-// Customer brief 2026-05-07: previous filter only included motos still
-// at CEDIS or 'consignacion' stock at the same punto. When the order
-// already had a punto assigned but the moto lived at that punto under
-// any other tipo_asignacion (e.g. 'entrega_con_orden' from a prior
-// move that lost its pedido_num link), the modal returned zero results
-// and the operator could not finish the assignment. Now any unassigned
-// moto at the destination punto is selectable, regardless of
-// tipo_asignacion. The pedido_num/cliente_email guards above still
-// keep us from picking a moto that's tied to a different order.
+// Round 62 (2026-05-20, Óscar — VIN 0049 case): historically this query
+// hid any moto physically parked at a punto OTHER than the order's
+// destination. The 0049 example proved this is wrong: a moto whose
+// origin + assembly checklists are both complete has by definition
+// already moved to a punto. If that punto differs from the order's
+// punto (or the order has no punto yet), the moto silently disappears
+// from the dropdown even though every "available" condition is met:
+// activo=1, no pedido_num, no cliente_email, real VIN, free estado.
+//
+// Fix: do NOT exclude by punto. Surface every truly-available moto,
+// keep returning punto_nombre so the UI can display where it lives,
+// and sort so the natural pick order is preserved:
+//   1) Motos already at the order's destination punto (instant pickup)
+//   2) Motos at CEDIS (no punto yet)
+//   3) Motos at any other punto (admin sees "needs transfer")
+//
+// asignar-moto.php already overwrites moto.punto_voltika_id with the
+// order's punto, so picking a moto from "elsewhere" is a one-click
+// move, not a forbidden cross-location.
 $puntoId = (int)($_GET['punto_id'] ?? 0);
-if ($puntoId > 0) {
-    $where[] = "((m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0) OR m.punto_voltika_id = ?)";
-    $params[] = $puntoId;
-} else {
-    $where[] = "(m.punto_voltika_id IS NULL OR m.punto_voltika_id = 0)";
-}
+// (no WHERE-clause restriction by punto — sort below handles ordering)
 
 // Filters tolerate legacy values ("Voltika Tromox Pesgo" / "Gris moderno"):
 // we normalize the incoming query and also normalize m.modelo / m.color on
@@ -62,9 +66,22 @@ if (!empty($_GET['color'])) {
 // co_force: completado=1 but key inspection items still at 0 (bulk-force-completed
 // without actual physical inspection). Helps the assignment modal flag bikes
 // that need proper checklist review before handover.
+//
+// Round 62: sort prioritizes motos at the order's destination punto, then
+// CEDIS (no punto), then motos elsewhere — so admins still see local
+// stock first but ALL available units are reachable.
+$puntoSortParam = $puntoId > 0 ? $puntoId : -1;
 $sql = "SELECT m.id, m.vin, m.vin_display, m.modelo, m.color, m.estado,
                m.fecha_llegada, m.freg,
+               m.punto_voltika_id,
                pv.nombre AS punto_nombre,
+               pv.ciudad AS punto_ciudad,
+               CASE
+                   WHEN m.punto_voltika_id = ?              THEN 1
+                   WHEN m.punto_voltika_id IS NULL
+                     OR m.punto_voltika_id = 0              THEN 2
+                   ELSE                                          3
+               END AS _ubicacion_orden,
                co.id AS co_id,
                COALESCE(co.completado, 0) AS co_ok,
                CASE WHEN co.completado = 1
@@ -79,11 +96,36 @@ $sql = "SELECT m.id, m.vin, m.vin_display, m.modelo, m.color, m.estado,
             WHERE id IN (SELECT MAX(id) FROM checklist_origen GROUP BY moto_id)
         ) co ON co.moto_id = m.id
         WHERE " . implode(' AND ', $where) . "
-        ORDER BY m.fecha_llegada ASC, m.freg ASC";
+        ORDER BY _ubicacion_orden ASC, m.fecha_llegada ASC, m.freg ASC";
+
+// The sort CASE consumes one parameter before the WHERE params.
+$execParams = array_merge([$puntoSortParam], $params);
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute($params);
+$stmt->execute($execParams);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Decorate each row with a human-readable `ubicacion` label so the UI
+// can show "Aquí mismo" / "CEDIS" / "En Punto X — necesita traslado".
+foreach ($rows as &$row) {
+    $uo = (int)($row['_ubicacion_orden'] ?? 0);
+    if ($uo === 1) {
+        $row['ubicacion']        = 'aqui';
+        $row['ubicacion_label']  = 'En este punto';
+        $row['necesita_traslado'] = 0;
+    } elseif ($uo === 2) {
+        $row['ubicacion']        = 'cedis';
+        $row['ubicacion_label']  = 'CEDIS';
+        $row['necesita_traslado'] = 0;
+    } else {
+        $row['ubicacion']        = 'otro_punto';
+        $row['ubicacion_label']  = 'En ' . ($row['punto_nombre'] ?? 'otro punto')
+                                 . ($row['punto_ciudad'] ? ' · ' . $row['punto_ciudad'] : '');
+        $row['necesita_traslado'] = 1;
+    }
+    unset($row['_ubicacion_orden']);
+}
+unset($row);
 
 adminJsonOut([
     'ok'    => true,

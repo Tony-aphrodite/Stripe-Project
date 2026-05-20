@@ -97,27 +97,126 @@ if ($est === 'entregada' || $actaFirmada || $entregaCompleta) {
     ], 409);
 }
 
-$rel = $pdo->prepare("
-    UPDATE inventario_motos SET
-        cliente_nombre   = NULL,
-        cliente_email    = NULL,
-        cliente_telefono = NULL,
-        pedido_num       = NULL,
-        stripe_pi        = NULL,
-        pago_estado      = NULL,
-        tipo_asignacion  = NULL,
-        punto_voltika_id = NULL,
-        fmod             = NOW()
-    WHERE id = ? AND activo = 1
-");
-$rel->execute([(int)$moto['id']]);
+// Round 61 (2026-05-20, Óscar): in addition to clearing customer + punto
+// fields we ALSO reset estado='recibida' and supersede active envíos.
+//
+// Reason: previously desasignar cleared only the order-link columns but
+// left estado='por_llegar'/'en_transito' from the first assignment and
+// the corresponding envíos row in 'lista_para_enviar'/'en_transito'.
+// Two visible consequences:
+//   (a) motos-disponibles.php filters by estado IN ('recibida',
+//       'lista_para_entrega') so a desasignada moto with estado=
+//       'por_llegar' SILENTLY DISAPPEARED from the reassignment
+//       dropdown. The admin couldn't find the moto and could not
+//       reassign it to a different punto.
+//   (b) The stale envío row pointed at the OLD punto, so the CEDIS
+//       shipping panel kept showing a duplicate active envío for the
+//       same VIN once a new assignment created another one.
+//
+// Resetting estado to 'recibida' (the canonical free-at-CEDIS state)
+// and superseding the old envíos with 'completado_no_exitoso' lines
+// the moto up correctly for the next asignar-punto.php / asignar-moto.php
+// call regardless of which flow the admin uses next.
+$adminNombre = '';
+try {
+    $du = $pdo->prepare("SELECT nombre FROM dealer_usuarios WHERE id = ? LIMIT 1");
+    $du->execute([(int)$adminId]);
+    $adminNombre = (string)($du->fetchColumn() ?: '');
+} catch (Throwable $e) { /* non-fatal */ }
+
+try {
+    $pdo->beginTransaction();
+
+    $rel = $pdo->prepare("
+        UPDATE inventario_motos SET
+            cliente_nombre   = NULL,
+            cliente_email    = NULL,
+            cliente_telefono = NULL,
+            pedido_num       = NULL,
+            stripe_pi        = NULL,
+            pago_estado      = NULL,
+            tipo_asignacion  = NULL,
+            punto_voltika_id = NULL,
+            estado           = 'recibida',
+            fecha_estado     = NOW(),
+            fmod             = NOW(),
+            log_estados      = JSON_ARRAY_APPEND(
+                COALESCE(log_estados, '[]'),
+                '$',
+                JSON_OBJECT(
+                    'estado',         'recibida',
+                    'accion',         'desasignar',
+                    'fecha',          NOW(),
+                    'usuario',        ?,
+                    'usuario_nombre', ?,
+                    'origen',         'admin_ventas_desasignar',
+                    'pedido_num_old', ?
+                )
+            )
+        WHERE id = ? AND activo = 1
+    ");
+    $rel->execute([
+        (int)$adminId,
+        $adminNombre,
+        $moto['pedido_num'] ?? '',
+        (int)$moto['id'],
+    ]);
+
+    // Try-with-log_estados can fail on legacy schemas without the column.
+    // Fall back to a simpler UPDATE in that case so the operation still completes.
+    $pdo->commit();
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    error_log('desasignar-moto with-log_estados update failed: ' . $e->getMessage()
+              . ' — retrying without log_estados');
+    $pdo->prepare("
+        UPDATE inventario_motos SET
+            cliente_nombre   = NULL,
+            cliente_email    = NULL,
+            cliente_telefono = NULL,
+            pedido_num       = NULL,
+            stripe_pi        = NULL,
+            pago_estado      = NULL,
+            tipo_asignacion  = NULL,
+            punto_voltika_id = NULL,
+            estado           = 'recibida',
+            fecha_estado     = NOW(),
+            fmod             = NOW()
+        WHERE id = ? AND activo = 1
+    ")->execute([(int)$moto['id']]);
+}
+
+// Supersede any active envíos for this moto so the CEDIS / Envíos panels
+// don't keep a stale shipping pointer at the old punto. Mirrors the
+// supersede block in asignar-punto.php (lines 157-182).
+$supersededEnvios = [];
+try {
+    $chk = $pdo->prepare("SELECT id FROM envios WHERE moto_id = ?
+                          AND estado IN ('lista_para_enviar','en_transito','enviado','enviada')");
+    $chk->execute([(int)$moto['id']]);
+    $supersededEnvios = array_map('intval', array_column($chk->fetchAll(PDO::FETCH_ASSOC), 'id'));
+    if ($supersededEnvios) {
+        $ph = implode(',', array_fill(0, count($supersededEnvios), '?'));
+        try {
+            $pdo->prepare("UPDATE envios SET estado='completado_no_exitoso', fmod=NOW()
+                            WHERE id IN ($ph)")->execute($supersededEnvios);
+        } catch (Throwable $e) {
+            $pdo->prepare("UPDATE envios SET estado='completado_no_exitoso'
+                            WHERE id IN ($ph)")->execute($supersededEnvios);
+        }
+    }
+} catch (Throwable $e) {
+    error_log('desasignar-moto supersede envios: ' . $e->getMessage());
+}
 
 adminLog('desasignar_moto', [
-    'moto_id'        => (int)$moto['id'],
-    'vin'            => $moto['vin_display'] ?? $moto['vin'] ?? '',
-    'pedido_num'     => $moto['pedido_num'] ?? '',
-    'transaccion_id' => $transId,
-    'admin_id'       => $adminId,
+    'moto_id'           => (int)$moto['id'],
+    'vin'               => $moto['vin_display'] ?? $moto['vin'] ?? '',
+    'pedido_num'        => $moto['pedido_num'] ?? '',
+    'transaccion_id'    => $transId,
+    'admin_id'          => $adminId,
+    'estado_reset_to'   => 'recibida',
+    'envios_superseded' => $supersededEnvios,
 ]);
 
 adminJsonOut([

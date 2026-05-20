@@ -42,7 +42,16 @@ if ($tipo === 'venta' && !$transaccionId) {
     }
 }
 
-if ($tipo === 'venta' && !$transaccionId) adminJsonOut(['error' => 'transaccion_id requerido para tipo venta (moto no vinculada a ningún pedido)'], 400);
+// Round 61 (2026-05-20): if the admin desasignó the moto first and then
+// the UI still sends tipo=venta on the next try (because the modal
+// captured the old context before the unassign), gracefully fall back
+// to tipo=inventario instead of hard-erroring. This lets the boss
+// reassign a moto to a new punto in one click even when the UI sent
+// stale state from the previous selection.
+if ($tipo === 'venta' && !$transaccionId) {
+    $tipo = 'inventario';
+    error_log('asignar-punto: tipo=venta without transaccion_id — falling back to inventario for moto_id=' . $motoId);
+}
 
 // Verify moto exists
 $stmt = $pdo->prepare("SELECT * FROM inventario_motos WHERE id=? AND activo=1");

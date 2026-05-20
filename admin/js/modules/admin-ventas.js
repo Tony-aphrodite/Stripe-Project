@@ -908,7 +908,22 @@ window.AD_ventas = (function(){
     motos.forEach(function(m, i){
       var vinTxt   = m.vin_display || m.vin || '—';
       var metaTxt  = (m.modelo || '') + (m.color ? ' · ' + m.color : '') + (m.estado ? ' · ' + m.estado : '');
-      var locTxt   = m.punto_nombre ? m.punto_nombre : 'En CEDIS';
+      // Round 62: location pill — picker now includes motos from any
+      // punto, so each row says clearly where the unit is. "Aquí mismo"
+      // for same-punto picks, "CEDIS" for unparked stock, and
+      // "Necesita traslado desde X" when the moto is at another punto.
+      var locLabel = m.ubicacion_label || (m.punto_nombre ? m.punto_nombre : 'En CEDIS');
+      var needsXfer = Number(m.necesita_traslado) === 1;
+      var locColor = m.ubicacion === 'aqui'   ? '#15803d'
+                   : m.ubicacion === 'cedis'  ? '#1e40af'
+                   : '#b45309';
+      var locBg    = m.ubicacion === 'aqui'   ? '#dcfce7'
+                   : m.ubicacion === 'cedis'  ? '#dbeafe'
+                   : '#fff7ed';
+      var locIcon  = m.ubicacion === 'aqui'   ? '📍'
+                   : m.ubicacion === 'cedis'  ? '🏭'
+                   : '🚛';
+      var locTxt   = locLabel + (needsXfer ? ' (traslado requerido)' : '');
       // Round 25 v3: searchable haystack — VIN + modelo + color + estado + punto.
       var _searchHay = [vinTxt, m.modelo, m.color, m.estado, m.punto_nombre, locTxt]
           .filter(function(v){ return v; }).join(' ').toLowerCase();
@@ -953,7 +968,13 @@ window.AD_ventas = (function(){
                       badgeHtml+
                     '</div>'+
                     '<div style="font-size:12px;color:var(--ad-dim);margin-top:3px;">'+metaTxt+'</div>'+
-                    '<div style="font-size:11.5px;color:#666;margin-top:2px;">'+locTxt+'</div>'+
+                    '<div style="margin-top:5px;">'+
+                      '<span style="display:inline-block;padding:2px 8px;border-radius:10px;'+
+                                  'background:'+locBg+';color:'+locColor+';font-size:11px;font-weight:700;">'+
+                        locIcon+' '+locLabel+
+                      '</span>'+
+                      (needsXfer ? '<span style="margin-left:6px;font-size:10.5px;color:#b45309;">Se reasignará al punto del pedido</span>' : '')+
+                    '</div>'+
                     (ctaHtml ? '<div>'+ctaHtml+'</div>' : '')+
                   '</div>'+
                 '</div>'+
