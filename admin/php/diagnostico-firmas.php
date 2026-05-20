@@ -50,110 +50,142 @@ $round42Date = '2026-05-16 00:00:00';
 // POST: regenerate one contract via internal HTTP to generar-contrato-pdf.php
 // ─────────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'regenerar_one')) {
+    // Suppress PHP notices/warnings so they never corrupt our JSON body.
+    // The previous "Unexpected end of JSON input" came from stray output here.
+    @ini_set('display_errors', '0');
+    error_reporting(0);
+    // Allow up to 120s for the internal cURL — PDF generation can take 15-30s.
+    @set_time_limit(120);
+    // Buffer everything; we discard whatever leaks before our JSON.
+    ob_start();
     header('Content-Type: application/json; charset=utf-8');
-    $txId = (int)($_POST['tx_id'] ?? 0);
-    if (!$txId) { echo json_encode(['ok' => false, 'error' => 'tx_id requerido']); exit; }
 
-    // Pull all the data we need from DB to rebuild the contract.
-    $tq = $pdo->prepare("SELECT t.id AS tx_id, t.pedido, t.nombre, t.email, t.telefono, t.modelo, t.color,
-                                t.tpago, t.total, t.ciudad, t.estado, t.cp, t.curp, t.domicilio,
-                                t.contrato_pdf_path
-                           FROM transacciones t WHERE t.id = ?");
-    $tq->execute([$txId]);
-    $tx = $tq->fetch(PDO::FETCH_ASSOC);
-    if (!$tx) { echo json_encode(['ok' => false, 'error' => 'Transacción no encontrada']); exit; }
-
-    // Find the signature.
-    $fq = $pdo->prepare("SELECT firma_base64 FROM firmas_contratos
-                          WHERE email = ? OR telefono = ?
-                          ORDER BY freg DESC LIMIT 1");
-    $fq->execute([$tx['email'], $tx['telefono']]);
-    $firma = $fq->fetchColumn();
-    if (!$firma) {
-        echo json_encode(['ok' => false, 'error' => 'No hay firma_base64 en firmas_contratos para este cliente']);
+    $respond = function(array $payload) {
+        // Throw away any unintended output (warnings, BOM, etc.)
+        while (ob_get_level() > 0) { @ob_end_clean(); }
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
         exit;
-    }
-    // Normalize: ensure data URI prefix
-    if (strpos($firma, 'data:image/png;base64,') !== 0) {
-        // Maybe stored as raw base64 — add prefix.
-        $firma = 'data:image/png;base64,' . preg_replace('/^data:image\/[^;]+;base64,/', '', $firma);
-    }
+    };
 
-    // Build the request body matching what generar-contrato-pdf.php expects.
-    $credito = [];
-    if (in_array($tx['tpago'], ['credito','enganche','parcial'], true)) {
-        // Best-effort defaults for credit fields not stored in transacciones.
-        $credito = [
-            'enganchePct'     => 0.30,
-            'plazoMeses'      => 12,
-            'pagoSemanal'     => 0,
-            'montoFinanciado' => (float)($tx['total'] ?? 0) * 0.70,
+    try {
+        $txId = (int)($_POST['tx_id'] ?? 0);
+        if (!$txId) { $respond(['ok' => false, 'error' => 'tx_id requerido']); }
+
+        $tq = $pdo->prepare("SELECT t.id AS tx_id, t.pedido, t.nombre, t.email, t.telefono, t.modelo, t.color,
+                                    t.tpago, t.total, t.ciudad, t.estado, t.cp, t.curp, t.domicilio,
+                                    t.contrato_pdf_path
+                               FROM transacciones t WHERE t.id = ?");
+        $tq->execute([$txId]);
+        $tx = $tq->fetch(PDO::FETCH_ASSOC);
+        if (!$tx) { $respond(['ok' => false, 'error' => 'Transacción no encontrada', 'tx_id' => $txId]); }
+
+        $fq = $pdo->prepare("SELECT firma_base64 FROM firmas_contratos
+                              WHERE email = ? OR telefono = ?
+                              ORDER BY freg DESC LIMIT 1");
+        $fq->execute([$tx['email'], $tx['telefono']]);
+        $firma = $fq->fetchColumn();
+        if (!$firma) {
+            $respond(['ok' => false, 'error' => 'No hay firma_base64 en firmas_contratos para este cliente', 'tx_id' => $txId]);
+        }
+        if (strpos($firma, 'data:image/png;base64,') !== 0) {
+            $firma = 'data:image/png;base64,' . preg_replace('/^data:image\/[^;]+;base64,/', '', $firma);
+        }
+
+        $credito = [];
+        if (in_array($tx['tpago'], ['credito','enganche','parcial','msi'], true)) {
+            $credito = [
+                'enganchePct'     => 0.30,
+                'plazoMeses'      => 12,
+                'pagoSemanal'     => 0,
+                'montoFinanciado' => (float)($tx['total'] ?? 0) * 0.70,
+            ];
+        }
+        $payload = [
+            'nombre'     => $tx['nombre'],
+            'email'      => $tx['email'],
+            'telefono'   => $tx['telefono'],
+            'modelo'     => $tx['modelo'],
+            'color'      => $tx['color'],
+            'metodoPago' => $tx['tpago']  ?: 'contado',
+            'ciudad'     => $tx['ciudad'] ?: '',
+            'estado'     => $tx['estado'] ?: '',
+            'cp'         => $tx['cp']     ?: '',
+            'curp'       => $tx['curp']   ?: '',
+            'domicilio'  => $tx['domicilio'] ?: '',
+            'total'      => (float)($tx['total'] ?? 0),
+            'credito'    => $credito,
+            'firmaData'  => $firma,
+            'contrato'   => true,
         ];
-    }
-    $payload = [
-        'nombre'     => $tx['nombre'],
-        'email'      => $tx['email'],
-        'telefono'   => $tx['telefono'],
-        'modelo'     => $tx['modelo'],
-        'color'      => $tx['color'],
-        'metodoPago' => $tx['tpago']  ?: 'contado',
-        'ciudad'     => $tx['ciudad'] ?: '',
-        'estado'     => $tx['estado'] ?: '',
-        'cp'         => $tx['cp']     ?: '',
-        'curp'       => $tx['curp']   ?: '',
-        'domicilio'  => $tx['domicilio'] ?: '',
-        'total'      => (float)($tx['total'] ?? 0),
-        'credito'    => $credito,
-        'firmaData'  => $firma,
-        'contrato'   => true,
-    ];
 
-    // Internal HTTP POST to /configurador/php/generar-contrato-pdf.php.
-    // We hit voltika.mx (the same host) so the production code runs.
-    $host = $_SERVER['HTTP_HOST'] ?? 'voltika.mx';
-    $url  = 'https://' . $host . '/configurador/php/generar-contrato-pdf.php';
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
-        CURLOPT_TIMEOUT => 60,
-    ]);
-    $resp = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-
-    $parsed = is_string($resp) ? json_decode($resp, true) : null;
-
-    if ($code < 200 || $code >= 300 || !is_array($parsed) || empty($parsed['ok'])) {
-        echo json_encode([
-            'ok' => false,
-            'error' => 'generar-contrato-pdf.php devolvió error',
-            'http' => $code,
-            'curl_err' => $err ?: null,
-            'response_short' => substr((string)$resp, 0, 600),
+        $host = $_SERVER['HTTP_HOST'] ?? 'voltika.mx';
+        $url  = 'https://' . $host . '/configurador/php/generar-contrato-pdf.php';
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+            CURLOPT_TIMEOUT        => 90,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => 0,
         ]);
-        exit;
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if ($resp === false || $code === 0) {
+            $respond([
+                'ok'       => false,
+                'error'    => 'cURL falló al llamar generar-contrato-pdf.php',
+                'tx_id'    => $txId,
+                'url'      => $url,
+                'curl_err' => $err ?: '(empty)',
+                'http'     => $code,
+            ]);
+        }
+
+        $parsed = is_string($resp) ? json_decode($resp, true) : null;
+
+        if ($code < 200 || $code >= 300 || !is_array($parsed) || empty($parsed['ok'])) {
+            $respond([
+                'ok'             => false,
+                'error'          => 'generar-contrato-pdf.php devolvió respuesta inesperada',
+                'tx_id'          => $txId,
+                'http'           => $code,
+                'curl_err'       => $err ?: null,
+                'response_short' => substr((string)$resp, 0, 800),
+                'parsed_keys'    => is_array($parsed) ? array_keys($parsed) : null,
+            ]);
+        }
+
+        if (function_exists('adminLog')) {
+            try {
+                adminLog('contrato_regenerado_backfill', [
+                    'tx_id'    => $txId,
+                    'pedido'   => $tx['pedido'],
+                    'cliente'  => $tx['nombre'],
+                    'pdf_path' => $parsed['pdf_path'] ?? null,
+                ]);
+            } catch (Throwable $logErr) { /* ignore */ }
+        }
+
+        $respond([
+            'ok'       => true,
+            'tx_id'    => $txId,
+            'pdf_path' => $parsed['pdf_path'] ?? null,
+            'http'     => $code,
+            'message'  => 'Contrato regenerado con firma + Round 15/42 aplicados',
+        ]);
+    } catch (Throwable $e) {
+        $respond([
+            'ok'    => false,
+            'error' => 'Excepción PHP: ' . $e->getMessage(),
+            'file'  => basename($e->getFile()) . ':' . $e->getLine(),
+        ]);
     }
-
-    // generar-contrato-pdf.php already updates transacciones.contrato_pdf_path,
-    // so we just need to confirm + log.
-    adminLog('contrato_regenerado_backfill', [
-        'tx_id'    => $txId,
-        'pedido'   => $tx['pedido'],
-        'cliente'  => $tx['nombre'],
-        'pdf_path' => $parsed['pdf_path'] ?? null,
-    ]);
-
-    echo json_encode([
-        'ok'       => true,
-        'tx_id'    => $txId,
-        'pdf_path' => $parsed['pdf_path'] ?? null,
-        'message'  => 'Contrato regenerado con firma + Round 15/42 aplicados',
-    ]);
-    exit;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -368,29 +400,51 @@ button:disabled{background:#94a3b8;cursor:not-allowed;}
 <script>
 function regenerarOne(txId, statusEl, btnEl) {
   return new Promise(function(resolve){
-    if (statusEl) { statusEl.textContent = '⏳'; statusEl.style.color = '#1e40af'; }
+    if (statusEl) { statusEl.innerHTML = '⏳'; statusEl.style.color = '#1e40af'; }
     if (btnEl)    btnEl.disabled = true;
     var fd = new FormData();
     fd.append('key', <?= json_encode($expected) ?>);
     fd.append('action', 'regenerar_one');
     fd.append('tx_id', txId);
     fetch(location.pathname, { method: 'POST', credentials: 'include', body: fd })
-      .then(function(r){ return r.json(); })
-      .then(function(j){
-        if (j.ok) {
-          if (statusEl) { statusEl.textContent = '✓ OK'; statusEl.style.color = '#15803d'; }
+      .then(function(r){
+        return r.text().then(function(text){ return { http: r.status, body: text }; });
+      })
+      .then(function(raw){
+        var j = null, parseErr = null;
+        try { j = JSON.parse(raw.body); } catch(e){ parseErr = e.message; }
+        if (j && j.ok) {
+          if (statusEl) { statusEl.innerHTML = '<span style="color:#15803d">✓ OK</span>'; }
           if (btnEl)    btnEl.textContent = '✓ Regenerado';
           resolve({ tx: txId, ok: true, pdf: j.pdf_path });
-        } else {
-          if (statusEl) { statusEl.textContent = '✗ ' + (j.error || 'falló').substring(0, 30); statusEl.style.color = '#b91c1c'; }
-          if (btnEl)    btnEl.disabled = false;
-          resolve({ tx: txId, ok: false, error: j.error });
+          return;
         }
+        // Build a helpful error: server error JSON, parse error, or raw body sample.
+        var msg, fullDetail;
+        if (j && !j.ok) {
+          msg = (j.error || 'sin detalle').substring(0, 60);
+          fullDetail = 'HTTP ' + raw.http + ' · ' + JSON.stringify(j, null, 2);
+        } else {
+          // Body is not JSON — show first part to diagnose.
+          msg = 'respuesta no-JSON (HTTP ' + raw.http + ')';
+          fullDetail = 'HTTP ' + raw.http + ' · parse error: ' + (parseErr || 'n/a')
+                     + '\n\nBody (first 800 chars):\n' + (raw.body || '(empty)').substring(0, 800);
+        }
+        if (statusEl) {
+          statusEl.innerHTML = '<span style="color:#b91c1c">✗ ' + msg.replace(/[<>&]/g, function(c){
+            return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; }) + '</span>'
+            + ' <a href="#" onclick="event.preventDefault(); var n=this.nextElementSibling; n.style.display=n.style.display===\'block\'?\'none\':\'block\';" style="font-size:10px;">▼ detalles</a>'
+            + '<pre style="display:none;background:#fef2f2;border:1px solid #fecaca;padding:6px;font-size:10px;white-space:pre-wrap;margin-top:4px;max-height:300px;overflow:auto;">'
+            + fullDetail.replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; })
+            + '</pre>';
+        }
+        if (btnEl) btnEl.disabled = false;
+        resolve({ tx: txId, ok: false, error: msg, detail: fullDetail });
       })
       .catch(function(e){
-        if (statusEl) { statusEl.textContent = '✗ ' + e.message; statusEl.style.color = '#b91c1c'; }
-        if (btnEl)    btnEl.disabled = false;
-        resolve({ tx: txId, ok: false, error: e.message });
+        if (statusEl) { statusEl.innerHTML = '<span style="color:#b91c1c">✗ fetch error: ' + e.message + '</span>'; }
+        if (btnEl) btnEl.disabled = false;
+        resolve({ tx: txId, ok: false, error: 'fetch: ' + e.message });
       });
   });
 }
