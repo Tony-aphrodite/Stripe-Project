@@ -615,6 +615,12 @@ $checks = [
         'ACTA FIRMADA ELECTRÓNICAMENTE',
         'Round 58 — acta-pdf.php: muestra folio Cincel, timestamp, certificado y sello NOM-151 reales (no el texto estático antiguo)'
     ),
+    // ── Round 59 (2026-05-19) — Backfill de firmas en contratos legacy ────
+    'r59_diagnostico_firmas' => _checkFile(
+        $base . '/admin/php/diagnostico-firmas.php',
+        'Voltika Admin — Round 59 (2026-05-19)',
+        'Round 59 — diagnostico-firmas.php: herramienta de diagnóstico + backfill que clasifica cada contrato (OK / RECUPERABLE / PENDIENTE / DATOS_PERDIDOS) y permite regenerar todos los contratos legacy a través del código actual (Round 15+42)'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
