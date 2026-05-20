@@ -848,25 +848,52 @@ window.AD_ventas = (function(){
         // Fallback: same model, any color — never show different models
         var urlModelo = 'ventas/motos-disponibles.php?modelo='+encodeURIComponent(modelo)+puntoIdQS;
         ADApp.api(urlModelo).done(function(r2){
-          renderMotos(r2.motos||[], transId, pedido, true, modelo);
+          renderMotos(r2.motos||[], transId, pedido, true, modelo, r2.pendientes || []);
         });
         return;
       }
-      renderMotos(r.motos, transId, pedido, false, modelo);
+      renderMotos(r.motos, transId, pedido, false, modelo, r.pendientes || []);
     });
   }
 
-  function renderMotos(motos, transId, pedido, showAll, modelo){
+  function renderMotos(motos, transId, pedido, showAll, modelo, pendientes){
+    pendientes = pendientes || [];
     if(!motos.length){
       var twoMonths = new Date(); twoMonths.setMonth(twoMonths.getMonth()+2);
       var eta = twoMonths.toISOString().slice(0,10);
+      // Round 63: even when zero motos are assignable, if there are
+      // stuck units of the same modelo the admin needs to see them
+      // first — that's almost always the actual blocker, not lack of
+      // inventory.
+      var stuckHtml = '';
+      if (pendientes.length) {
+        stuckHtml = '<div style="margin-bottom:12px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:12.5px;color:#9a3412;text-align:left;">'+
+                      '<div style="font-weight:700;margin-bottom:6px;">⚠ Hay '+pendientes.length+' '+
+                        (pendientes.length === 1 ? 'moto' : 'motos')+
+                        ' del modelo '+(modelo||'?')+' casi '+(pendientes.length === 1 ? 'lista' : 'listas')+':'+
+                      '</div>'+
+                      '<ul style="margin:0;padding-left:18px;list-style:disc;line-height:1.5;">';
+        pendientes.forEach(function(p){
+          stuckHtml += '<li style="margin:3px 0;">'+
+                         '<code style="background:#fff;padding:1px 6px;border-radius:3px;font-size:11.5px;">'+(p.vin || '—')+'</code> · '+
+                         '<span>'+(p.color || '?')+'</span> · '+
+                         '<span style="color:#7c2d12;">'+(p.ubicacion_label || '')+'</span><br>'+
+                         '<span style="font-size:11.5px;color:#7c2d12;">→ '+(p.razon || '')+'</span>'+
+                         (p.accion_sugerida ? '<span style="font-size:11.5px;color:#9a3412;font-weight:700;"> · '+p.accion_sugerida+'</span>' : '')+
+                       '</li>';
+        });
+        stuckHtml += '</ul></div>';
+      }
       $('#vtMotos').html(
-        '<div style="text-align:center;padding:20px;">'+
-          '<div style="color:var(--ad-dim);margin-bottom:8px;">No hay motos <strong>'+(modelo||'')+'</strong> disponibles en inventario</div>'+
-          '<div style="font-size:13px;color:#b91c1c;background:#fde8e8;padding:10px;border-radius:8px;">'+
-            'La orden quedará en estado <strong>"Pendiente de asignar"</strong> hasta que CEDIS registre '+
-            'nuevas motos de este modelo en el inventario.<br>'+
-            'Entrega estimada: <strong>'+eta+'</strong> (~2 meses)'+
+        '<div style="padding:20px;">'+
+          stuckHtml +
+          '<div style="text-align:center;">'+
+            '<div style="color:var(--ad-dim);margin-bottom:8px;">No hay motos <strong>'+(modelo||'')+'</strong> listas para asignar en este momento</div>'+
+            '<div style="font-size:13px;color:#b91c1c;background:#fde8e8;padding:10px;border-radius:8px;">'+
+              (pendientes.length
+                ? 'Para asignar una de las motos casi listas, completa la acción sugerida arriba (típicamente terminar el checklist de ensamble).'
+                : 'La orden quedará en estado <strong>"Pendiente de asignar"</strong> hasta que CEDIS registre nuevas motos de este modelo en el inventario.<br>Entrega estimada: <strong>'+eta+'</strong> (~2 meses)')+
+            '</div>'+
           '</div>'+
         '</div>'
       );
@@ -881,6 +908,31 @@ window.AD_ventas = (function(){
     var html = '';
     if (showAll) {
       html += '<div class="ad-banner warn" style="margin-bottom:10px;">No hay motos del mismo color. Mostrando otras unidades del mismo modelo.</div>';
+    }
+
+    // Round 63 (2026-05-20): proactive "stuck units" banner. When motos of
+    // the same modelo+color exist but are excluded by state (typically
+    // en_ensamble), tell the admin which ones and how to free them. This
+    // is what was missing the day VIN 0049 didn't appear and the boss
+    // assumed the picker was broken.
+    if (pendientes.length) {
+      html += '<div style="margin-bottom:12px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:12.5px;color:#9a3412;">'+
+                '<div style="font-weight:700;margin-bottom:6px;">⚠ '+pendientes.length+' '+
+                  (pendientes.length === 1 ? 'moto del mismo modelo está casi lista' : 'motos del mismo modelo están casi listas')+
+                  ' pero no aparece'+(pendientes.length === 1 ? '' : 'n')+' aquí:'+
+                '</div>'+
+                '<ul style="margin:0;padding-left:18px;list-style:disc;line-height:1.5;">';
+      pendientes.forEach(function(p){
+        var vin = p.vin || '—';
+        html += '<li style="margin:3px 0;">'+
+                  '<code style="background:#fff;padding:1px 6px;border-radius:3px;font-size:11.5px;">'+vin+'</code> · '+
+                  '<span>'+(p.color || '?')+'</span> · '+
+                  '<span style="color:#7c2d12;">'+(p.ubicacion_label || '')+'</span><br>'+
+                  '<span style="font-size:11.5px;color:#7c2d12;">→ '+(p.razon || '')+'</span>'+
+                  (p.accion_sugerida ? '<span style="font-size:11.5px;color:#9a3412;font-weight:700;"> · '+p.accion_sugerida+'</span>' : '')+
+                '</li>';
+      });
+      html += '</ul></div>';
     }
 
     // Index motos by id so the Confirmar handler can look up checklist status

@@ -75,6 +75,17 @@ $checks = [
         'Round 62: location pill',
         'Round 62 — admin-ventas.js: en el modal "Asignar moto" cada tarjeta muestra una pill de ubicación con icono+color (📍 En este punto / 🏭 CEDIS / 🚛 En Punto X — traslado requerido). El admin ahora ve TODAS las motos asignables y entiende cuáles necesitan traslado.'
     ),
+    // ── Round 63 (2026-05-20) — Picker explica por qué falta una moto ──────
+    'r63_motos_disponibles_pendientes' => _checkFile(
+        $base . '/admin/php/ventas/motos-disponibles.php',
+        "Round 63 (2026-05-20)",
+        'Round 63 — motos-disponibles.php: además de las motos asignables, devuelve un array `pendientes` con motos del mismo modelo+color que están excluidas por estado (en_ensamble, por_llegar, en_transito) junto con la razón concreta y la acción sugerida. Previene la confusión del caso VIN 0049 donde la moto existía en Voltika Center pero estaba en estado en_ensamble y el admin no sabía por qué no aparecía.'
+    ),
+    'r63_admin_ventas_pendientes_banner' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'Round 63 (2026-05-20): proactive "stuck units" banner',
+        'Round 63 — admin-ventas.js: cuando el endpoint devuelve `pendientes`, el modal muestra un banner ámbar arriba listando cada moto bloqueada con VIN, color, ubicación, razón ("Ensamble en progreso — falta marcar como completado") y acción sugerida ("Completar checklist de ensamble"). Funciona tanto cuando hay motos asignables como cuando hay cero — el admin nunca más se queda preguntándose por qué una moto no aparece.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

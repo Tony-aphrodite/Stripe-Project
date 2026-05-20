@@ -203,8 +203,106 @@ foreach ($rows as &$row) {
 }
 unset($row);
 
+// ─────────────────────────────────────────────────────────────────────────
+// Round 63 (2026-05-20): also surface motos of the SAME modelo+color that
+// match every other available-condition BUT are excluded by state. This
+// is what the boss was hitting with VIN 0049 — the moto existed at
+// Voltika Center but was stuck in estado='en_ensamble' because the
+// assembly checklist had been started but never marked completado=1.
+// The picker correctly hid it, but the admin had no way to know WHY.
+// Now we return a `pendientes` array so the UI can show a banner like
+// "1 moto en ensamble — completa el checklist para asignarla".
+$pendientes = [];
+try {
+    $pWhere = [
+        "m.activo = 1",
+        "(m.pedido_num IS NULL OR m.pedido_num = '')",
+        "(m.cliente_email IS NULL OR m.cliente_email = '')",
+        "m.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'",
+        "m.estado NOT IN ('recibida','lista_para_entrega','entregada','retenida')",
+    ];
+    $pParams = [];
+    // Re-apply modelo / color filters (same logic as the main query) so we
+    // only surface near-matches relevant to THIS order.
+    if (!empty($_GET['modelo'])) {
+        $wantedModelo = voltikaNormalizeModelo($_GET['modelo']);
+        $pWhere[] = "("
+                  . "m.modelo = ? "
+                  . "OR LOWER(TRIM(m.modelo)) = LOWER(?) "
+                  . "OR LOWER(REPLACE(TRIM(m.modelo), 'Voltika Tromox ', '')) = LOWER(?)"
+                  . ")";
+        $pParams[] = $wantedModelo;
+        $pParams[] = $wantedModelo;
+        $pParams[] = $wantedModelo;
+    }
+    if (!empty($_GET['color'])) {
+        $wantedColor = voltikaNormalizeColor($_GET['color']);
+        $pWhere[]  = "(LOWER(m.color) = ? OR LOWER(SUBSTRING_INDEX(TRIM(m.color), ' ', 1)) = ?)";
+        $pParams[] = $wantedColor;
+        $pParams[] = $wantedColor;
+    }
+    $pSql = "SELECT m.id, m.vin, m.vin_display, m.modelo, m.color, m.estado,
+                    m.punto_voltika_id,
+                    pv.nombre AS punto_nombre, pv.ciudad AS punto_ciudad,
+                    ce.id AS ensamble_id,
+                    COALESCE(ce.completado, 0) AS ensamble_completado,
+                    ce.fase_actual AS ensamble_fase
+               FROM inventario_motos m
+          LEFT JOIN puntos_voltika pv ON pv.id = m.punto_voltika_id
+          LEFT JOIN (
+              SELECT moto_id, id, completado, fase_actual
+                FROM checklist_ensamble
+               WHERE id IN (SELECT MAX(id) FROM checklist_ensamble GROUP BY moto_id)
+          ) ce ON ce.moto_id = m.id
+              WHERE " . implode(' AND ', $pWhere) . "
+              ORDER BY m.estado, m.fecha_llegada ASC";
+    $ps = $pdo->prepare($pSql);
+    $ps->execute($pParams);
+    foreach ($ps->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $reason = '';
+        $action = '';
+        $estado = strtolower((string)$r['estado']);
+        switch ($estado) {
+            case 'en_ensamble':
+                $reason = (int)$r['ensamble_completado'] === 1
+                    ? 'Ensamble marcado como completado pero el estado de la moto no se actualizó (caso raro — re-guarda el checklist).'
+                    : 'Ensamble en progreso' . ($r['ensamble_fase'] ? ' (fase ' . $r['ensamble_fase'] . ')' : '') . ' — falta marcar el checklist como completado.';
+                $action = 'Completar checklist de ensamble';
+                break;
+            case 'por_llegar':
+                $reason = 'En tránsito desde CEDIS — todavía no llega al punto.';
+                $action = 'Esperar recepción';
+                break;
+            case 'en_transito':
+                $reason = 'En tránsito — todavía no recibida.';
+                $action = 'Esperar recepción';
+                break;
+            default:
+                $reason = 'Estado "' . $r['estado'] . '" — no asignable.';
+                $action = 'Revisar estado en Inventario';
+                break;
+        }
+        $loc = $r['punto_nombre']
+             ? ('En ' . $r['punto_nombre'] . ($r['punto_ciudad'] ? ' · ' . $r['punto_ciudad'] : ''))
+             : 'En CEDIS';
+        $pendientes[] = [
+            'id'                  => (int)$r['id'],
+            'vin'                 => $r['vin_display'] ?: $r['vin'],
+            'modelo'              => $r['modelo'],
+            'color'               => $r['color'],
+            'estado'              => $r['estado'],
+            'ubicacion_label'     => $loc,
+            'razon'               => $reason,
+            'accion_sugerida'     => $action,
+            'ensamble_completado' => (int)$r['ensamble_completado'],
+            'ensamble_fase'       => $r['ensamble_fase'],
+        ];
+    }
+} catch (Throwable $e) { error_log('motos-disponibles pendientes: ' . $e->getMessage()); }
+
 adminJsonOut([
-    'ok'    => true,
-    'motos' => $rows,
-    'total' => count($rows),
+    'ok'         => true,
+    'motos'      => $rows,
+    'total'      => count($rows),
+    'pendientes' => $pendientes,
 ]);
