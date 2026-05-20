@@ -9,6 +9,82 @@ adminRequireAuth(['admin','cedis']);
 
 $pdo = getDB();
 
+// ── Diagnostic mode: ?debug_vin=<partial VIN> ─────────────────────────────
+// Round 62-debug (2026-05-20): returns every moto whose VIN contains the
+// given substring along with the exact reason each is/isn't eligible for
+// the assignment picker. Use this when a specific VIN refuses to appear
+// in the modal despite the admin believing it should be available.
+//
+// Example: GET /admin/php/ventas/motos-disponibles.php?debug_vin=0049
+if (!empty($_GET['debug_vin'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $needle = trim((string)$_GET['debug_vin']);
+    $like = '%' . $needle . '%';
+    $q = $pdo->prepare("SELECT m.id, m.vin, m.vin_display, m.modelo, m.color, m.estado,
+                               m.activo, m.pedido_num, m.cliente_email, m.cliente_nombre,
+                               m.bloqueado_venta, m.bloqueado_motivo,
+                               m.punto_voltika_id, pv.nombre AS punto_nombre,
+                               m.fecha_estado, m.freg, m.fmod
+                          FROM inventario_motos m
+                     LEFT JOIN puntos_voltika pv ON pv.id = m.punto_voltika_id
+                         WHERE m.vin LIKE ? OR m.vin_display LIKE ?
+                         ORDER BY m.id DESC");
+    $q->execute([$like, $like]);
+    $matches = $q->fetchAll(PDO::FETCH_ASSOC);
+
+    $analysis = [];
+    foreach ($matches as $m) {
+        $blockers = [];
+        if ((int)$m['activo'] !== 1) {
+            $blockers[] = "activo=" . ($m['activo'] ?? 'null') . " — la moto está marcada como inactiva (eliminada)";
+        }
+        if (!empty($m['pedido_num'])) {
+            $blockers[] = "pedido_num='" . $m['pedido_num'] . "' — ya asignada a otra orden";
+        }
+        if (!empty($m['cliente_email'])) {
+            $blockers[] = "cliente_email='" . $m['cliente_email'] . "' — ya vinculada a un cliente";
+        }
+        $vinForRegex = $m['vin'] ?? '';
+        if (preg_match('/^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+/i', $vinForRegex)) {
+            $blockers[] = "VIN coincide con regex de phantom (VK-MODEL-timestamp-hex) — registro virtual de confirmar-orden.php";
+        }
+        $estado = strtolower(trim($m['estado'] ?? ''));
+        $estadosLibres = ['recibida','lista_para_entrega'];
+        if (!in_array($estado, $estadosLibres, true)) {
+            $blockers[] = "estado='" . $m['estado'] . "' — el picker solo acepta IN ('recibida','lista_para_entrega')";
+        }
+        $analysis[] = [
+            'id'              => (int)$m['id'],
+            'vin'             => $m['vin'],
+            'vin_display'     => $m['vin_display'],
+            'modelo'          => $m['modelo'],
+            'color'           => $m['color'],
+            'estado'          => $m['estado'],
+            'activo'          => (int)$m['activo'],
+            'pedido_num'      => $m['pedido_num'],
+            'cliente_email'   => $m['cliente_email'],
+            'cliente_nombre'  => $m['cliente_nombre'],
+            'bloqueado_venta' => (int)$m['bloqueado_venta'],
+            'bloqueado_motivo'=> $m['bloqueado_motivo'],
+            'punto_voltika_id'=> $m['punto_voltika_id'],
+            'punto_nombre'    => $m['punto_nombre'],
+            'fecha_estado'    => $m['fecha_estado'],
+            'freg'            => $m['freg'],
+            'fmod'            => $m['fmod'],
+            'visible_en_picker' => empty($blockers),
+            'bloqueadores'    => $blockers,
+            'note_modelo_color' => 'El picker también filtra por modelo+color del pedido — si esta moto no coincide con el modelo/color de la orden, no aparecerá aunque no haya bloqueadores arriba.',
+        ];
+    }
+    echo json_encode([
+        'ok'        => true,
+        'busqueda'  => $needle,
+        'total'     => count($analysis),
+        'motos'     => $analysis,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 $where  = [
     "m.activo = 1",
     "(m.pedido_num IS NULL OR m.pedido_num = '')",
