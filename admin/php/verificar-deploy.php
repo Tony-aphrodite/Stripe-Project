@@ -86,6 +86,12 @@ $checks = [
         'Round 63 (2026-05-20): proactive "stuck units" banner',
         'Round 63 — admin-ventas.js: cuando el endpoint devuelve `pendientes`, el modal muestra un banner ámbar arriba listando cada moto bloqueada con VIN, color, ubicación, razón ("Ensamble en progreso — falta marcar como completado") y acción sugerida ("Completar checklist de ensamble"). Funciona tanto cuando hay motos asignables como cuando hay cero — el admin nunca más se queda preguntándose por qué una moto no aparece.'
     ),
+    // ── Round 64 (2026-05-20) — Auto-heal de estado inconsistente ─────────
+    'r64_motos_disponibles_auto_heal' => _checkFile(
+        $base . '/admin/php/ventas/motos-disponibles.php',
+        "Round 64 (2026-05-20) — Auto-heal stale moto state",
+        'Round 64 — motos-disponibles.php: al abrir el picker, ejecuta un self-healing pass que detecta motos con checklist_ensamble.completado=1 pero estado todavía en "en_ensamble" y las flipa automáticamente a "lista_para_entrega". Resuelve el caso VIN 0049 y previene el bug estructural en guardar-ensamble.php (UPDATE silencioso con catch Throwable). El heal queda registrado en log_estados con accion="auto_heal_picker" para auditoría.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

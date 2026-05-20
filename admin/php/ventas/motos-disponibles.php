@@ -9,6 +9,75 @@ adminRequireAuth(['admin','cedis']);
 
 $pdo = getDB();
 
+// ── Round 64 (2026-05-20) — Auto-heal stale moto state ────────────────────
+// Both guardar-ensamble.php endpoints (admin + punto) wrap the
+// "UPDATE inventario_motos SET estado='lista_para_entrega'" in
+// try/catch (Throwable $e) { error_log(...); }. If that UPDATE fails
+// for ANY reason — DB lock contention, dropped connection, replication
+// lag, network blip — the checklist gets marked completado=1 but the
+// moto's estado stays 'en_ensamble', and the moto disappears from the
+// picker forever (until someone manually re-saves the checklist).
+//
+// This is exactly what blocked VIN R4WPDTA1XT8000049 (Voltika Center)
+// on 2026-05-20.
+//
+// Fix: every time the picker is opened, run a self-healing pass that
+// flips estado='lista_para_entrega' for any moto whose MOST RECENT
+// checklist_ensamble row has completado=1 but whose estado is still
+// 'en_ensamble'. Idempotent + safe — only affects rows that are
+// already inconsistent. The audit row in log_estados records that the
+// heal ran so future investigations can trace the cause.
+try {
+    $self = $pdo->prepare("
+        SELECT m.id, m.vin_display, m.vin
+          FROM inventario_motos m
+          JOIN (
+              SELECT ce.moto_id, ce.completado
+                FROM checklist_ensamble ce
+                JOIN (
+                    SELECT moto_id, MAX(id) AS mid
+                      FROM checklist_ensamble
+                     GROUP BY moto_id
+                ) latest ON latest.moto_id = ce.moto_id AND ce.id = latest.mid
+          ) x ON x.moto_id = m.id
+         WHERE m.estado    = 'en_ensamble'
+           AND m.activo    = 1
+           AND x.completado = 1
+    ");
+    $self->execute();
+    $stale = $self->fetchAll(PDO::FETCH_ASSOC);
+    if ($stale) {
+        $ids = array_map(static function($r) { return (int)$r['id']; }, $stale);
+        $ph  = implode(',', array_fill(0, count($ids), '?'));
+        $pdo->prepare("
+            UPDATE inventario_motos
+               SET estado       = 'lista_para_entrega',
+                   fecha_estado = NOW(),
+                   fmod         = NOW(),
+                   log_estados  = JSON_ARRAY_APPEND(
+                       COALESCE(log_estados, '[]'),
+                       '$',
+                       JSON_OBJECT(
+                           'estado',  'lista_para_entrega',
+                           'accion',  'auto_heal_picker',
+                           'fecha',   NOW(),
+                           'origen',  'motos-disponibles.php · Round 64',
+                           'razon',   'checklist_ensamble.completado=1 pero estado seguia en en_ensamble'
+                       )
+                   )
+             WHERE id IN ($ph)
+        ")->execute($ids);
+        foreach ($stale as $r) {
+            error_log('motos-disponibles auto-heal: moto id=' . $r['id']
+                      . ' vin=' . ($r['vin_display'] ?: $r['vin'])
+                      . ' estado en_ensamble→lista_para_entrega');
+        }
+    }
+} catch (Throwable $e) {
+    // Non-fatal — heal failure must never break the picker.
+    error_log('motos-disponibles auto-heal failed: ' . $e->getMessage());
+}
+
 // ── Diagnostic mode: ?debug_vin=<partial VIN> ─────────────────────────────
 // Round 62-debug (2026-05-20): returns every moto whose VIN contains the
 // given substring along with the exact reason each is/isn't eligible for
