@@ -621,6 +621,12 @@ $checks = [
         'Voltika Admin — Round 59 (2026-05-19)',
         'Round 59 — diagnostico-firmas.php: herramienta de diagnóstico + backfill que clasifica cada contrato (OK / RECUPERABLE / PENDIENTE / DATOS_PERDIDOS) y permite regenerar todos los contratos legacy a través del código actual (Round 15+42)'
     ),
+    // ── Round 60 (2026-05-20) — listar.php response include contrato_pdf_path ──
+    'r60_listar_contrato_pdf_path_in_response' => _checkFile(
+        $base . '/admin/php/ventas/listar.php',
+        "Round 60 (2026-05-20)",
+        'Round 60 — listar.php: agrega contrato_pdf_path al array de respuesta JSON. Antes el SQL lo seleccionaba pero el PHP nunca lo mapeaba al output → la SPA siempre evaluaba _hasContractPdf=false → toda orden de crédito mostraba "Pagado · Falta firma" aunque tuviera firma + PDF persistidos.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

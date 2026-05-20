@@ -286,6 +286,14 @@ try {
             // Contract-signing state (customer brief 2026-05-01).
             'firma_id'                  => $r['firma_id'] ? (int)$r['firma_id'] : null,
             'firma_freg'                => $r['firma_freg'] ?? null,
+            // Round 60 (2026-05-20) — contrato_pdf_path was selected in SQL
+            // but never mapped into the response array, so the SPA's
+            // _hasContractPdf check (admin-ventas.js:534) was always false
+            // for credit orders. Result: every signed credit order was
+            // wrongly showing "Pagado · Falta firma" indefinitely. The
+            // diagnostic page proved the column was correctly populated
+            // in transacciones — only the response shape was wrong.
+            'contrato_pdf_path'         => $r['contrato_pdf_path'] ?? null,
             // Predecessor credit application (customer brief 2026-05-06).
             'preaprobacion_id'          => isset($r['preaprobacion_id']) && $r['preaprobacion_id'] !== null
                                             ? (int)$r['preaprobacion_id'] : null,
