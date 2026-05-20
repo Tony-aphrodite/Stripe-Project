@@ -71,13 +71,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'rege
         $txId = (int)($_POST['tx_id'] ?? 0);
         if (!$txId) { $respond(['ok' => false, 'error' => 'tx_id requerido']); }
 
-        $tq = $pdo->prepare("SELECT t.id AS tx_id, t.pedido, t.nombre, t.email, t.telefono, t.modelo, t.color,
-                                    t.tpago, t.total, t.ciudad, t.estado, t.cp, t.curp, t.domicilio,
-                                    t.contrato_pdf_path
+        // Introspect actual columns of `transacciones` — schema varies between
+        // environments (some have curp/domicilio, others don't).
+        $colsQ = $pdo->query("SHOW COLUMNS FROM transacciones");
+        $existingCols = [];
+        foreach ($colsQ->fetchAll(PDO::FETCH_ASSOC) as $col) {
+            $existingCols[strtolower($col['Field'])] = true;
+        }
+        $wanted = ['id','pedido','nombre','email','telefono','modelo','color',
+                   'tpago','total','ciudad','estado','cp','curp','domicilio',
+                   'contrato_pdf_path'];
+        $selectCols = [];
+        foreach ($wanted as $w) {
+            if (isset($existingCols[$w])) { $selectCols[] = 't.' . $w; }
+        }
+        $tq = $pdo->prepare("SELECT " . implode(',', $selectCols) . "
                                FROM transacciones t WHERE t.id = ?");
         $tq->execute([$txId]);
         $tx = $tq->fetch(PDO::FETCH_ASSOC);
         if (!$tx) { $respond(['ok' => false, 'error' => 'Transacción no encontrada', 'tx_id' => $txId]); }
+
+        // Backfill curp / domicilio / ciudad / estado / cp from
+        // verificaciones_identidad and clientes if missing on `transacciones`.
+        foreach (['curp','domicilio','ciudad','estado','cp'] as $f) {
+            if (!isset($tx[$f]) || $tx[$f] === null || $tx[$f] === '') {
+                $tx[$f] = '';
+            }
+        }
+        if ($tx['curp'] === '' || $tx['domicilio'] === '') {
+            try {
+                $vq = $pdo->prepare("SELECT * FROM verificaciones_identidad
+                                       WHERE email = ? OR telefono = ?
+                                       ORDER BY id DESC LIMIT 1");
+                $vq->execute([$tx['email'] ?? '', $tx['telefono'] ?? '']);
+                $v = $vq->fetch(PDO::FETCH_ASSOC);
+                if ($v) {
+                    foreach (['curp','domicilio','ciudad','estado','cp'] as $f) {
+                        if (($tx[$f] ?? '') === '' && !empty($v[$f])) {
+                            $tx[$f] = $v[$f];
+                        }
+                    }
+                }
+            } catch (Throwable $vErr) { /* table may not exist */ }
+        }
 
         $fq = $pdo->prepare("SELECT firma_base64 FROM firmas_contratos
                               WHERE email = ? OR telefono = ?
