@@ -47,6 +47,61 @@ $pdo = getDB();
 $round42Date = '2026-05-16 00:00:00';
 
 // ─────────────────────────────────────────────────────────────────────────
+// GET ?debug=<tx_id>: dump DB row + the firma_id subquery the panel uses
+// so we can see WHY the panel still says "Falta firma".
+// ─────────────────────────────────────────────────────────────────────────
+if (isset($_GET['debug'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $txId = (int)$_GET['debug'];
+    if (!$txId) { echo json_encode(['ok' => false, 'error' => 'debug=tx_id requerido']); exit; }
+
+    $row = $pdo->prepare("SELECT id, pedido, nombre, email, telefono, tpago, pago_estado,
+                                  contrato_pdf_path, contrato_pdf_hash, freg
+                             FROM transacciones WHERE id = ?");
+    $row->execute([$txId]);
+    $tx = $row->fetch(PDO::FETCH_ASSOC);
+
+    $firma = null;
+    if ($tx) {
+        $fq = $pdo->prepare("SELECT fc.id AS firma_id, fc.freg AS firma_freg, fc.email, fc.telefono,
+                                    LENGTH(fc.firma_base64) AS firma_bytes
+                               FROM firmas_contratos fc
+                              WHERE (fc.telefono <> '' AND fc.telefono = ?)
+                                 OR (fc.email    <> '' AND fc.email    = ?)
+                              ORDER BY fc.id DESC LIMIT 1");
+        $fq->execute([$tx['telefono'] ?? '', $tx['email'] ?? '']);
+        $firma = $fq->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // Replicate the JS panel's _firmaOk logic so we predict what it shows.
+    $tipo  = strtolower(trim((string)($tx['tpago'] ?? '')));
+    $estado = strtolower((string)($tx['pago_estado'] ?? ''));
+    $isCredit = in_array($tipo, ['credito','enganche','parcial'], true);
+    $isPaid   = in_array($estado, ['pagada','aprobada','approved','paid','parcial'], true);
+    $hasFirmaId  = !empty($firma['firma_id']);
+    $hasPdfPath  = !empty($tx['contrato_pdf_path']);
+    $panelFirmaOk = $isCredit ? ($hasFirmaId && $hasPdfPath && $isPaid) : ($hasFirmaId && $isPaid);
+
+    echo json_encode([
+        'ok' => true,
+        'tx' => $tx,
+        'firma_match' => $firma,
+        'panel_logic' => [
+            'tipo'               => $tipo,
+            'pago_estado'        => $estado,
+            'isCreditTipo'       => $isCredit,
+            'isPaid'             => $isPaid,
+            'hasFirmaId'         => $hasFirmaId,
+            'hasContractPdf'     => $hasPdfPath,
+            'expected_badge'     => $panelFirmaOk
+                                  ? '✓ Firmado (verde)'
+                                  : ($isPaid ? '⚠ Pagado · Falta firma (amarillo)' : '⏳ Pendiente'),
+        ],
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // POST: regenerate one contract via internal HTTP to generar-contrato-pdf.php
 // ─────────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'regenerar_one')) {
