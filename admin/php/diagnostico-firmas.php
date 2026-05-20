@@ -197,13 +197,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'rege
             ]);
         }
 
+        // The generator returns 'pdf' (just basename) and only persists
+        // contrato_pdf_path internally for credit-family tpagos. Backfill
+        // the path here so SPEI/OXXO/MSI/contado rows also get updated.
+        $pdfBasename = $parsed['pdf'] ?? ($parsed['pdf_path'] ?? null);
+        $persistedPath = null;
+        if ($pdfBasename) {
+            $relPath = 'contratos/' . basename($pdfBasename);
+            try {
+                $u = $pdo->prepare("UPDATE transacciones
+                                       SET contrato_pdf_path = ?
+                                     WHERE id = ?");
+                $u->execute([$relPath, $txId]);
+                $persistedPath = $relPath;
+            } catch (Throwable $upErr) {
+                // Non-fatal — surface in the response for visibility.
+                $persistedPath = 'UPDATE error: ' . $upErr->getMessage();
+            }
+        }
+
         if (function_exists('adminLog')) {
             try {
                 adminLog('contrato_regenerado_backfill', [
                     'tx_id'    => $txId,
-                    'pedido'   => $tx['pedido'],
-                    'cliente'  => $tx['nombre'],
-                    'pdf_path' => $parsed['pdf_path'] ?? null,
+                    'pedido'   => $tx['pedido'] ?? null,
+                    'cliente'  => $tx['nombre'] ?? null,
+                    'pdf_path' => $persistedPath,
                 ]);
             } catch (Throwable $logErr) { /* ignore */ }
         }
@@ -211,9 +230,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'rege
         $respond([
             'ok'       => true,
             'tx_id'    => $txId,
-            'pdf_path' => $parsed['pdf_path'] ?? null,
+            'pdf'      => $pdfBasename,
+            'pdf_path' => $persistedPath,
             'http'     => $code,
-            'message'  => 'Contrato regenerado con firma + Round 15/42 aplicados',
+            'message'  => 'Contrato regenerado + contrato_pdf_path persistido',
         ]);
     } catch (Throwable $e) {
         $respond([
