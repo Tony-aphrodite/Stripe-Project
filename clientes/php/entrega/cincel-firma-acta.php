@@ -348,6 +348,30 @@ foreach (['/auth/tokens', '/auth/login'] as $authPath) {
     }
 }
 if (!$cincelToken) {
+    // Round 65 (2026-05-20, Óscar — deliveries blocked tomorrow): Cincel
+    // API /auth/tokens is returning HTTP 404 across all known endpoints
+    // (confirmed by diagnostico-acta.php on 2026-05-19). We don't control
+    // when Cincel restores their auth. To unblock physical deliveries,
+    // the customer portal now falls back to an AUTOGRAPH signature path:
+    // the client signs on a canvas, the signature is saved exactly like
+    // the credit contract autograph (Round 42), and the ACTA PDF is
+    // marked as signed via firmar-acta.php — no Cincel/NOM-151 seal,
+    // but legally valid as conformity declaration. When Cincel is back,
+    // future ACTAs go through Cincel normally.
+    portalJsonOut([
+        'ok'                  => true,
+        'fallback_autograph'  => true,
+        'cincel_unavailable'  => true,
+        'reason'              => 'Cincel API no responde en /auth/tokens (HTTP 404). El cliente puede firmar con autógrafa para no bloquear la entrega.',
+        'pdf_url'             => $pdfUrl,
+        'moto_id'             => $motoId,
+        // Keep the diagnostic so support can investigate Cincel separately.
+        'cincel_auth_debug'   => $authDebug,
+    ]);
+}
+if (false) {
+    // Dead branch — kept so the old error response below remains parseable
+    // by tooling that grepped for it. Unreachable.
     portalJsonOut([
         'error'     => 'No se pudo autenticar con Cincel',
         'detail'    => 'Ambos endpoints de auth fallaron. Revisa CINCEL_EMAIL / CINCEL_PASSWORD / CINCEL_API_URL.',

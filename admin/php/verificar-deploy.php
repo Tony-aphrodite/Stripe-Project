@@ -92,6 +92,17 @@ $checks = [
         "Round 64 (2026-05-20) — Auto-heal stale moto state",
         'Round 64 — motos-disponibles.php: al abrir el picker, ejecuta un self-healing pass que detecta motos con checklist_ensamble.completado=1 pero estado todavía en "en_ensamble" y las flipa automáticamente a "lista_para_entrega". Resuelve el caso VIN 0049 y previene el bug estructural en guardar-ensamble.php (UPDATE silencioso con catch Throwable). El heal queda registrado en log_estados con accion="auto_heal_picker" para auditoría.'
     ),
+    // ── Round 65 (2026-05-20) — Cincel-down fallback para entregas ────────
+    'r65_acta_autograph_fallback_backend' => _checkFile(
+        $base . '/clientes/php/entrega/cincel-firma-acta.php',
+        "Round 65 (2026-05-20, Óscar — deliveries blocked tomorrow)",
+        'Round 65 — cincel-firma-acta.php: si la auth de Cincel falla (HTTP 404 en /auth/tokens), responde con ok=true + fallback_autograph=true en vez de error. La UI muestra un canvas para firma autógrafa y submitea a firmar-acta.php (que ya guarda cliente_acta_firmada=1). Desbloquea entregas físicas mientras Cincel restaura su API.'
+    ),
+    'r65_acta_autograph_fallback_ui' => _checkFile(
+        $base . '/clientes/js/modules/entrega.js',
+        "Round 65 (2026-05-20): autograph fallback when Cincel auth is unavailable",
+        'Round 65 — entrega.js: cuando cincel-firma-acta.php devuelve fallback_autograph=true, abre un modal con canvas signature pad + nombre. Al firmar, postea a entrega/firmar-acta.php con signature_data base64. Mensaje claro al cliente: la firma autógrafa tiene validez como declaración de conformidad de recepción; Cincel/NOM-151 se podrá agregar después cuando esté disponible.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

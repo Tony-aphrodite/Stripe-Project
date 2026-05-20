@@ -305,6 +305,17 @@ window.VK_entrega = (function(){
           }
           // Already signed — just refresh.
           if (r.already_signed) { VKApp.toast('ACTA ya firmada.'); render(); return; }
+
+          // Round 65 (2026-05-20): Cincel auth is down. Backend falls back
+          // to autograph signing. Show a canvas signature pad and submit
+          // to entrega/firmar-acta.php (which already supports signature_data).
+          if (r.fallback_autograph) {
+            showAutographSignaturePad(data.moto_id, r.pdf_url || null,
+              'La firma electrónica con Cincel (NOM-151) no está disponible en este momento. '+
+              'Para no demorar tu entrega, firma directamente con autógrafa abajo — tiene plena validez como declaración de conformidad de recepción.');
+            return;
+          }
+
           if (!r.signing_url) {
             $b.prop('disabled', false).text('Iniciar firma con Cincel');
             VKApp.toast('Cincel no devolvió URL de firma.');
@@ -322,6 +333,117 @@ window.VK_entrega = (function(){
 
   // Embeds the Cincel signing UI in a full-screen iframe and polls the
   // status endpoint until the webhook flips cliente_acta_firmada=1.
+  // Round 65 (2026-05-20): autograph fallback when Cincel auth is unavailable.
+  // Renders a canvas signature pad + name input, validates both are provided,
+  // and submits to entrega/firmar-acta.php which already handles base64
+  // signature_data + cliente_acta_firmada=1. After success the page re-renders
+  // and the punto staff sees the ACTA as signed and can finalize delivery.
+  function showAutographSignaturePad(motoId, pdfUrl, explanation){
+    var html = ''+
+      '<div class="vk-h1" style="margin-bottom:6px;">Firma del ACTA — autógrafa</div>'+
+      '<div class="vk-banner warn" style="margin-bottom:12px;font-size:13px;">'+
+        '⚠ '+(explanation||'Cincel no disponible — firma con autógrafa para no demorar la entrega.')+
+      '</div>'+
+      (pdfUrl ? '<div style="margin-bottom:10px;font-size:13px;"><a href="'+pdfUrl+'" target="_blank" rel="noopener" class="vk-link">📄 Ver el contenido del ACTA antes de firmar</a></div>' : '')+
+      '<label style="display:block;font-weight:600;font-size:13px;margin-bottom:4px;">Tu nombre completo:</label>'+
+      '<input type="text" id="vkActaNombre" class="vk-input" placeholder="Ej. Adrian Montoya Diaz" style="width:100%;margin-bottom:14px;" autocomplete="name">'+
+      '<label style="display:block;font-weight:600;font-size:13px;margin-bottom:4px;">Firma con el dedo o ratón en el recuadro:</label>'+
+      '<div style="border:2px solid #cbd5e1;border-radius:8px;background:#fff;position:relative;">'+
+        '<canvas id="vkActaCanvas" style="width:100%;height:180px;display:block;touch-action:none;cursor:crosshair;"></canvas>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;margin-top:8px;">'+
+        '<button id="vkActaClear"   class="vk-btn ghost"   style="flex:1;">Limpiar</button>'+
+        '<button id="vkActaSubmit"  class="vk-btn primary" style="flex:2;">Firmar y completar entrega</button>'+
+      '</div>'+
+      '<div id="vkActaMsg" style="margin-top:8px;font-size:12px;color:#b91c1c;"></div>'+
+      '<div style="margin-top:10px;font-size:11.5px;color:#64748b;line-height:1.5;">'+
+        'Esta firma tiene validez como declaración de conformidad de recepción. '+
+        'Se registra la fecha, hora, IP y un hash criptográfico de tu firma. '+
+        'Cuando el sistema NOM-151 esté disponible, podrás re-firmar con sello digital si lo prefieres.'+
+      '</div>';
+    VKApp.modal(html, { wide: true });
+    // Initialize canvas
+    var canvas = document.getElementById('vkActaCanvas');
+    var ctx    = canvas.getContext('2d');
+    function resizeCanvas(){
+      var ratio = window.devicePixelRatio || 1;
+      var cssW  = canvas.offsetWidth, cssH = canvas.offsetHeight;
+      // Round 42 lesson: enforce a minimum width so a narrow mobile viewport
+      // doesn't reduce the canvas to ~1px (which made signatures invisible).
+      if (cssW < 280) cssW = 280;
+      canvas.width  = cssW * ratio;
+      canvas.height = cssH * ratio;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.strokeStyle = '#0c2340';
+      ctx.lineWidth   = 2;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+    }
+    resizeCanvas();
+    var drawing = false, lastX = 0, lastY = 0, hasDrawn = false;
+    function getPos(e){
+      var rect = canvas.getBoundingClientRect();
+      var pt   = e.touches ? e.touches[0] : e;
+      return { x: pt.clientX - rect.left, y: pt.clientY - rect.top };
+    }
+    function start(e){ e.preventDefault(); drawing = true; var p = getPos(e); lastX = p.x; lastY = p.y; }
+    function move(e){
+      if (!drawing) return; e.preventDefault();
+      var p = getPos(e);
+      ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+      lastX = p.x; lastY = p.y; hasDrawn = true;
+    }
+    function stop(){ drawing = false; }
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup',   stop);
+    canvas.addEventListener('mouseleave',stop);
+    canvas.addEventListener('touchstart',start, {passive:false});
+    canvas.addEventListener('touchmove', move,  {passive:false});
+    canvas.addEventListener('touchend',  stop);
+
+    $('#vkActaClear').on('click', function(){
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hasDrawn = false;
+      $('#vkActaMsg').text('');
+    });
+
+    $('#vkActaSubmit').on('click', function(){
+      var $b = $(this);
+      var nombre = String($('#vkActaNombre').val() || '').trim();
+      if (nombre.length < 3) {
+        $('#vkActaMsg').text('Escribe tu nombre completo (mínimo 3 caracteres).');
+        return;
+      }
+      if (!hasDrawn) {
+        $('#vkActaMsg').text('Por favor firma con el dedo o el ratón en el recuadro.');
+        return;
+      }
+      var dataUrl = canvas.toDataURL('image/png');
+      $b.prop('disabled', true).text('Firmando…');
+      $('#vkActaMsg').text('');
+      VKApp.api('entrega/firmar-acta.php', {
+        moto_id:        motoId,
+        firma_nombre:   nombre,
+        signature_data: dataUrl
+      })
+      .done(function(r){
+        if (!r || !r.ok) {
+          $b.prop('disabled', false).text('Firmar y completar entrega');
+          $('#vkActaMsg').text((r && r.error) || 'No se pudo firmar. Intenta de nuevo.');
+          return;
+        }
+        VKApp.toast('✓ ACTA firmada correctamente.');
+        VKApp.closeModal();
+        render();
+      })
+      .fail(function(x){
+        $b.prop('disabled', false).text('Firmar y completar entrega');
+        $('#vkActaMsg').text((x.responseJSON && x.responseJSON.error) || 'Error de conexión.');
+      });
+    });
+  }
+
   function showCincelIframe(signingUrl){
     var html = ''+
       '<div class="vk-h1" style="margin-bottom:8px;">Firma con Cincel</div>'+
