@@ -3949,8 +3949,14 @@ window.AD_ventas = (function(){
   // and writes both pagos_manuales and transacciones.pago_manual_id.
   // ────────────────────────────────────────────────────────────────────────
   function showRegistrarPagoManual(transId) {
+    // Defensive toast — ADApp.toast doesn't exist in older admin-app.js
+    // builds, so fall back to alert(). Same pattern as other modules.
+    var _toast = function(msg){
+      if (ADApp.toast) { ADApp.toast(msg); }
+      else { alert(msg); }
+    };
     if (!(ADApp.isAdmin && ADApp.isAdmin())) {
-      ADApp.toast('Solo el administrador puede registrar pagos manuales.');
+      _toast('Solo el administrador puede registrar pagos manuales.');
       return;
     }
     var row = (_lastRows || []).find(function(x){ return Number(x.id) === Number(transId); }) || {};
@@ -4072,7 +4078,7 @@ window.AD_ventas = (function(){
           return;
         }
         $msg.css('color', '#15803d').text('✓ ' + (r.message || 'Pago registrado'));
-        ADApp.toast('Pago manual registrado correctamente.');
+        _toast('Pago manual registrado correctamente.');
         setTimeout(function(){
           ADApp.closeModal();
           // Refresh the Ventas table so the row updates to "Pagado (manual)".
