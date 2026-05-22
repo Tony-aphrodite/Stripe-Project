@@ -98,6 +98,14 @@ try {
         try { $pdo->exec("ALTER TABLE transacciones ADD COLUMN preaprobacion_id INT NULL"); } catch (Throwable $e) {}
         try { $pdo->exec("ALTER TABLE transacciones ADD INDEX idx_preap (preaprobacion_id)"); } catch (Throwable $e) {}
     }
+    // Round 67 (2026-05-22) — manual payment back-reference. Created by
+    // /admin/php/pagos-manuales/registrar.php; idempotent here so the
+    // Ventas SELECT can reference t.pago_manual_id unconditionally even
+    // before any manual payment has been registered.
+    if (!in_array('pago_manual_id', $cols, true)) {
+        try { $pdo->exec("ALTER TABLE transacciones ADD COLUMN pago_manual_id INT NULL"); } catch (Throwable $e) {}
+        try { $pdo->exec("ALTER TABLE transacciones ADD INDEX idx_pago_manual (pago_manual_id)"); } catch (Throwable $e) {}
+    }
     // `seguimiento` is used by the phantom-repair tool to archive rows.
     // If it doesn't exist yet, skip the archived-filter in the SELECT
     // below (otherwise the query errors out and the entire orders list
@@ -128,6 +136,10 @@ try {
                -- populated AFTER the customer signs via
                -- generar-contrato-pdf.php.
                t.contrato_pdf_path,
+               -- Round 67 (2026-05-22): manual payment back-reference so
+               -- the Ventas SPA can show a Pagado-manual badge with
+               -- a link to view the comprobante.
+               t.pago_manual_id,
                -- Customer brief 2026-05-12 (Oscar, 8th round): some rows have
                -- vin_display populated with a pedido_num pattern (legacy
                -- import bug), which made the Ventas ASIGNACION column show
@@ -294,6 +306,12 @@ try {
             // diagnostic page proved the column was correctly populated
             // in transacciones — only the response shape was wrong.
             'contrato_pdf_path'         => $r['contrato_pdf_path'] ?? null,
+            // Round 67 (2026-05-22) — manual payment marker. When admin
+            // has registered a manual payment for this transaction, the
+            // SPA can render a "Pagado (manual)" badge and link to the
+            // comprobante.
+            'pago_manual_id'            => isset($r['pago_manual_id']) && $r['pago_manual_id'] !== null
+                                            ? (int)$r['pago_manual_id'] : null,
             // Predecessor credit application (customer brief 2026-05-06).
             'preaprobacion_id'          => isset($r['preaprobacion_id']) && $r['preaprobacion_id'] !== null
                                             ? (int)$r['preaprobacion_id'] : null,

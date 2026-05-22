@@ -718,6 +718,31 @@ window.AD_ventas = (function(){
         }
       }
 
+      // Round 67 (2026-05-22, Óscar): "Registrar pago manual" button —
+      // visible only to admin role (ADApp.isAdmin()) AND only when the
+      // order is NOT yet paid AND doesn't already have a manual payment
+      // recorded. Captures monto + medio_pago + referencia + cliente +
+      // archivo comprobante. Backend at /admin/php/pagos-manuales/registrar.php
+      // enforces the same role gate so a hostile client can't bypass.
+      try {
+        var _peLowM = String(r.pago_estado || '').toLowerCase();
+        var _isPaidM = (_peLowM === 'pagada' || _peLowM === 'aprobada' || _peLowM === 'approved' || _peLowM === 'paid');
+        var _hasManualPagoM = !!(r.pago_manual_id && Number(r.pago_manual_id) > 0);
+        if (ADApp.isAdmin && ADApp.isAdmin() && !_isPaidM && !_hasManualPagoM) {
+          btnArr.push('<button class="ad-btn sm" style="'+btnStyleBase+';background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;" '+
+                      'title="Registrar un pago manual (efectivo, transferencia, depósito, etc.) y marcar la orden como pagada. Requiere subir comprobante." '+
+                      'onclick="event.stopPropagation();AD_ventas.showRegistrarPagoManual('+r.id+')">💵 Pago manual</button>');
+        }
+        // If a manual payment is already registered, expose a one-click
+        // link to view the comprobante.
+        if (_hasManualPagoM) {
+          btnArr.push('<a class="ad-btn sm" style="'+btnStyleBase+';background:#f0f9ff;color:#075985;border:1px solid #7dd3fc;text-decoration:none;text-align:center;" '+
+                      'href="/admin/php/pagos-manuales/serve-comprobante.php?id='+Number(r.pago_manual_id)+'" target="_blank" rel="noopener" '+
+                      'onclick="event.stopPropagation();" '+
+                      'title="Ver el comprobante del pago manual">📋 Comprobante</a>');
+        }
+      } catch(_e){ /* defensive */ }
+
       // Icon-only buttons (contract preview + defense dossier).
       // Customer report 2026-05-04 (round 2): icons work on PC but NOT
       // on mobile Safari. Two root causes confirmed:
@@ -3915,5 +3940,151 @@ window.AD_ventas = (function(){
     });
   }
 
-  return { render:render, showAsignar:showAsignar, showReasignar:showReasignar, doAsignar:doAsignar, desasignarMoto:desasignarMoto, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink, enviarLinkFirma:enviarLinkFirma, syncStripe:syncStripe, openAsignarPuntoOrden:openAsignarPuntoOrden, showDocumentos:showDocumentos };
+  // ────────────────────────────────────────────────────────────────────────
+  // Round 67 (2026-05-22, Óscar): Manual payment registration.
+  // Opens a modal with monto + medio_pago + referencia + datos del
+  // cliente (auto-filled from the order) + file upload for the
+  // comprobante. Submits as multipart/form-data to
+  // /admin/php/pagos-manuales/registrar.php which requires role=admin
+  // and writes both pagos_manuales and transacciones.pago_manual_id.
+  // ────────────────────────────────────────────────────────────────────────
+  function showRegistrarPagoManual(transId) {
+    if (!(ADApp.isAdmin && ADApp.isAdmin())) {
+      ADApp.toast('Solo el administrador puede registrar pagos manuales.');
+      return;
+    }
+    var row = (_lastRows || []).find(function(x){ return Number(x.id) === Number(transId); }) || {};
+    var defaultMonto = Number(row.monto || row.total || 0) || '';
+    var pedido = row.pedido_corto || ('VK-' + (row.pedido || row.id || ''));
+    var clienteNombre   = row.nombre   || '';
+    var clienteEmail    = row.email    || '';
+    var clienteTelefono = row.telefono || '';
+
+    var html = ''+
+      '<div class="ad-h2" style="margin-bottom:6px;">💵 Registrar pago manual · '+pedido+'</div>'+
+      '<div class="ad-banner" style="margin-bottom:14px;background:#fef9c3;border:1px solid #fde047;color:#713f12;font-size:12.5px;">'+
+        '⚠ Esta acción marca la orden como <strong>pagada</strong> y queda registrada con tu identidad de admin. '+
+        'Adjunta SIEMPRE el comprobante (transferencia, recibo, foto del depósito).'+
+      '</div>'+
+      '<form id="pmForm" autocomplete="off">'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+
+          '<div>'+
+            '<label class="ad-label">Monto de pago (MXN) *</label>'+
+            '<input type="number" step="0.01" min="0" id="pmMonto" class="ad-input" value="'+defaultMonto+'" required>'+
+          '</div>'+
+          '<div>'+
+            '<label class="ad-label">Medio de pago *</label>'+
+            '<select id="pmMedio" class="ad-input" required>'+
+              '<option value="">— Selecciona —</option>'+
+              '<option value="efectivo">Efectivo</option>'+
+              '<option value="transferencia">Transferencia SPEI</option>'+
+              '<option value="deposito">Depósito bancario</option>'+
+              '<option value="cheque">Cheque</option>'+
+              '<option value="otro">Otro</option>'+
+            '</select>'+
+          '</div>'+
+        '</div>'+
+        '<label class="ad-label">No. de referencia (opcional)</label>'+
+        '<input type="text" id="pmRef" class="ad-input" maxlength="120" placeholder="Ej. clave de rastreo SPEI, folio del recibo, etc.">'+
+
+        '<div style="margin-top:10px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">'+
+          '<div style="font-size:11.5px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Datos del cliente</div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'+
+            '<div>'+
+              '<label class="ad-label" style="font-size:11.5px;">Nombre</label>'+
+              '<input type="text" id="pmClNom" class="ad-input" value="'+esc(clienteNombre)+'">'+
+            '</div>'+
+            '<div>'+
+              '<label class="ad-label" style="font-size:11.5px;">Teléfono</label>'+
+              '<input type="text" id="pmClTel" class="ad-input" value="'+esc(clienteTelefono)+'">'+
+            '</div>'+
+          '</div>'+
+          '<label class="ad-label" style="font-size:11.5px;">Email</label>'+
+          '<input type="email" id="pmClEmail" class="ad-input" value="'+esc(clienteEmail)+'">'+
+        '</div>'+
+
+        '<label class="ad-label" style="margin-top:14px;">Comprobante de pago * (imagen o PDF, máx 10 MB)</label>'+
+        '<input type="file" id="pmFile" accept="image/*,application/pdf" required '+
+               'style="display:block;width:100%;padding:10px;border:1.5px dashed #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;">'+
+
+        '<label class="ad-label" style="margin-top:10px;">Notas (opcional)</label>'+
+        '<textarea id="pmNotas" class="ad-input" rows="2" maxlength="4000" '+
+                  'placeholder="Comentarios internos sobre este pago"></textarea>'+
+
+        '<div id="pmMsg" style="margin-top:10px;font-size:12px;min-height:18px;"></div>'+
+
+        '<div style="display:flex;gap:8px;margin-top:14px;">'+
+          '<button type="button" class="ad-btn ghost" id="pmCancel" style="flex:1;">Cancelar</button>'+
+          '<button type="submit" class="ad-btn primary" id="pmSubmit" style="flex:2;background:#16a34a;">'+
+            'Registrar pago y marcar como pagada'+
+          '</button>'+
+        '</div>'+
+      '</form>';
+
+    ADApp.modal(html, { wide: true });
+
+    $('#pmCancel').on('click', function(){ ADApp.closeModal(); });
+
+    $('#pmForm').on('submit', function(ev){
+      ev.preventDefault();
+      var $msg = $('#pmMsg').text('').css('color', '#b91c1c');
+      var $sub = $('#pmSubmit');
+
+      var monto    = parseFloat($('#pmMonto').val() || '0');
+      var medio    = String($('#pmMedio').val() || '');
+      var ref      = String($('#pmRef').val()   || '').trim();
+      var nom      = String($('#pmClNom').val() || '').trim();
+      var tel      = String($('#pmClTel').val() || '').trim();
+      var email    = String($('#pmClEmail').val()|| '').trim();
+      var notas    = String($('#pmNotas').val() || '').trim();
+      var file     = ($('#pmFile')[0].files || [])[0];
+
+      if (!(monto > 0)) { $msg.text('Monto inválido. Ingresa un número mayor a 0.'); return; }
+      if (!medio)       { $msg.text('Selecciona un medio de pago.'); return; }
+      if (!file)        { $msg.text('Sube un archivo de comprobante (foto del recibo o PDF).'); return; }
+      if (file.size > 10 * 1024 * 1024) { $msg.text('El comprobante supera 10 MB.'); return; }
+
+      var fd = new FormData();
+      fd.append('transaccion_id',   transId);
+      fd.append('monto',            monto);
+      fd.append('medio_pago',       medio);
+      fd.append('referencia',       ref);
+      fd.append('cliente_nombre',   nom);
+      fd.append('cliente_email',    email);
+      fd.append('cliente_telefono', tel);
+      fd.append('notas',            notas);
+      fd.append('comprobante',      file);
+
+      $sub.prop('disabled', true).text('Subiendo…');
+
+      $.ajax({
+        url: '/admin/php/pagos-manuales/registrar.php',
+        method: 'POST',
+        data: fd,
+        contentType: false,
+        processData: false,
+        xhrFields: { withCredentials: true },
+      }).done(function(r){
+        if (!r || !r.ok) {
+          var err = (r && r.error) || 'Error desconocido.';
+          $msg.text('✗ ' + err);
+          $sub.prop('disabled', false).text('Registrar pago y marcar como pagada');
+          return;
+        }
+        $msg.css('color', '#15803d').text('✓ ' + (r.message || 'Pago registrado'));
+        ADApp.toast('Pago manual registrado correctamente.');
+        setTimeout(function(){
+          ADApp.closeModal();
+          // Refresh the Ventas table so the row updates to "Pagado (manual)".
+          if (typeof render === 'function') render();
+        }, 700);
+      }).fail(function(x){
+        var err = (x.responseJSON && x.responseJSON.error) || ('HTTP ' + x.status);
+        $msg.text('✗ ' + err);
+        $sub.prop('disabled', false).text('Registrar pago y marcar como pagada');
+      });
+    });
+  }
+
+  return { render:render, showAsignar:showAsignar, showReasignar:showReasignar, doAsignar:doAsignar, desasignarMoto:desasignarMoto, showDetalle:showDetalle, showRecuperar:showRecuperar, showEditarVksc:showEditarVksc, showEnviarLink:showEnviarLink, enviarLinkFirma:enviarLinkFirma, syncStripe:syncStripe, openAsignarPuntoOrden:openAsignarPuntoOrden, showDocumentos:showDocumentos, showRegistrarPagoManual:showRegistrarPagoManual };
 })();

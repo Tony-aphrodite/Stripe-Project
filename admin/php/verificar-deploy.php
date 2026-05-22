@@ -103,6 +103,38 @@ $checks = [
         "Round 65 (2026-05-20): autograph fallback when Cincel auth is unavailable",
         'Round 65 — entrega.js: cuando cincel-firma-acta.php devuelve fallback_autograph=true, abre un modal con canvas signature pad + nombre. Al firmar, postea a entrega/firmar-acta.php con signature_data base64. Mensaje claro al cliente: la firma autógrafa tiene validez como declaración de conformidad de recepción; Cincel/NOM-151 se podrá agregar después cuando esté disponible.'
     ),
+    // ── Round 67 (2026-05-22) — Registrar pago manual (super-admin) ───────
+    'r67_pagos_manuales_registrar' => _checkFile(
+        $base . '/admin/php/pagos-manuales/registrar.php',
+        "Round 67 (2026-05-22)",
+        'Round 67 — pagos-manuales/registrar.php: nueva función para registrar pagos manuales (efectivo, transferencia, depósito, cheque, otro) con campos: monto, medio_pago, no. referencia, datos cliente, archivo comprobante (imagen/PDF ≤10MB). Solo rol admin. Crea tabla pagos_manuales + columna transacciones.pago_manual_id idempotentes. Al registrar, marca la transacción como pagada y queda en logs_admin para auditoría.'
+    ),
+    'r67_pagos_manuales_serve' => _checkFile(
+        $base . '/admin/php/pagos-manuales/serve-comprobante.php',
+        "Round 67 (2026-05-22)",
+        'Round 67 — pagos-manuales/serve-comprobante.php: sirve el archivo comprobante con autenticación admin (NUNCA URL plana). Cada acceso queda en logs_admin. Soporta imagen + PDF.'
+    ),
+    'r67_pagos_manuales_listar' => _checkFile(
+        $base . '/admin/php/pagos-manuales/listar.php',
+        "Round 67 (2026-05-22)",
+        'Round 67 — pagos-manuales/listar.php: devuelve pagos manuales registrados (filtrable por transaccion_id). Auth admin.'
+    ),
+    'r67_ventas_listar_pago_manual_id' => _checkFile(
+        $base . '/admin/php/ventas/listar.php',
+        'pago_manual_id',
+        'Round 67 — ventas/listar.php: agrega t.pago_manual_id al SELECT (con idempotent ALTER) y al response array para que el SPA muestre el badge "Pagado (manual)" + link al comprobante.'
+    ),
+    'r67_admin_ventas_boton_pago_manual' => _checkFile(
+        $base . '/admin/js/modules/admin-ventas.js',
+        'showRegistrarPagoManual',
+        'Round 67 — admin-ventas.js: agrega botón "💵 Pago manual" en cada fila no-pagada (solo si ADApp.isAdmin()). Abre modal con formulario: monto + medio_pago + referencia + datos cliente + upload comprobante. Submit a /admin/php/pagos-manuales/registrar.php. Pedidos ya con pago manual muestran botón "📋 Comprobante" que abre el archivo en pestaña nueva.'
+    ),
+    // ── Round 68 (2026-05-22) — Cincel Bootstrap: OTP → JWT → password ────
+    'r68_cincel_bootstrap' => _checkFile(
+        $base . '/admin/php/cincel-bootstrap.php',
+        "Cincel Bootstrap (Round 68, 2026-05-22)",
+        'Round 68 — cincel-bootstrap.php: herramienta de un solo uso que sigue el flujo oficial Cincel (GUIA_USO_API_CINCEL.pdf) para convertir una cuenta OTP-only en una con contraseña fija. Paso 1: GET /v3/tokens/otp con Basic email:"otp" (Cincel envía OTP). Paso 2: GET /v3/tokens/jwt con email:OTP → extrae user_id del JWT → PATCH /v3/users/{id} con Bearer JWT + body password → verifica que el nuevo password funciona → escribe local-secrets.php. Después de correr esto, /v3/tokens/jwt con email:password funciona indefinidamente.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
