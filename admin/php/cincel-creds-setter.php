@@ -31,7 +31,32 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 $adminId = adminRequireAuth(['admin']);
 
-$secretsFile = __DIR__ . '/../../configurador/php/local-secrets.php';
+// Round 67 patch (2026-05-22): /configurador/php/ is read-only on Plesk
+// for the web user. Probe a list of candidate locations and pick the
+// first one that's writable. config.php scans the same list on load.
+$secretsCandidates = [
+    __DIR__ . '/../../configurador/php/local-secrets.php',
+    __DIR__ . '/../../configurador/php/uploads/voltika-secrets.php',
+    __DIR__ . '/../../configurador/php/uploads/firmas/voltika-secrets.php',
+    __DIR__ . '/../../configurador/php/contratos/voltika-secrets.php',
+    __DIR__ . '/data/voltika-secrets.php',
+    sys_get_temp_dir() . '/voltika-secrets.php',
+];
+$secretsFile = null;
+foreach ($secretsCandidates as $candidate) {
+    $dir = dirname($candidate);
+    if (!is_dir($dir)) @mkdir($dir, 0775, true);
+    if (is_dir($dir) && is_writable($dir)) {
+        $secretsFile = $candidate;
+        break;
+    }
+    if (file_exists($candidate) && is_writable($candidate)) {
+        $secretsFile = $candidate;
+        break;
+    }
+}
+// Fallback: still use the original path so error messages mention it.
+if ($secretsFile === null) $secretsFile = $secretsCandidates[0];
 $dirOk = is_writable(dirname($secretsFile));
 
 // Read current state without exposing the password.

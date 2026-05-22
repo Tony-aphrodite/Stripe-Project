@@ -35,9 +35,22 @@ if (file_exists($envFile)) {
 //   <?php
 //   putenv('CINCEL_EMAIL=oscar@riactor.com');
 //   putenv('CINCEL_PASSWORD=********');
-$secretsFile = __DIR__ . '/local-secrets.php';
-if (file_exists($secretsFile)) {
-    @require_once $secretsFile;
+// Scan a list of candidate locations because /configurador/php/ is
+// read-only for the web user on this hosting plan. Whichever location
+// the setter at /admin/php/cincel-creds-setter.php was able to write to
+// is the one we read here.
+foreach ([
+    __DIR__ . '/local-secrets.php',
+    __DIR__ . '/uploads/voltika-secrets.php',
+    __DIR__ . '/uploads/firmas/voltika-secrets.php',
+    __DIR__ . '/contratos/voltika-secrets.php',
+    __DIR__ . '/../../admin/php/data/voltika-secrets.php',
+    sys_get_temp_dir() . '/voltika-secrets.php',
+] as $candidateSecret) {
+    if (is_file($candidateSecret)) {
+        @require_once $candidateSecret;
+        break;
+    }
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
