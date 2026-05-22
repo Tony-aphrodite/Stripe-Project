@@ -158,10 +158,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'ok'       => $http >= 200 && $http < 300,
         ]);
         if ($http >= 200 && $http < 300) {
+            // Surface Cincel's response body — some APIs include the OTP
+            // directly in the response (especially for testing accounts),
+            // which would let us skip the email roundtrip.
             adminJsonOut([
-                'ok'      => true,
-                'message' => 'Cincel envió un código OTP al correo ' . $email . '. Revísalo y úsalo en el paso 2.',
-                'http'    => $http,
+                'ok'          => true,
+                'message'     => 'Cincel envió un código OTP al correo ' . $email . '. Revísalo y úsalo en el paso 2.',
+                'http'        => $http,
+                'cincel_body' => $decoded ?: $raw,
             ]);
         }
         adminJsonOut([
@@ -448,7 +452,18 @@ document.getElementById('btnRequest').addEventListener('click', function(){
   .then(function(res){
     btn.disabled = false; btn.textContent = '📩 Solicitar código OTP';
     if (res.body && res.body.ok) {
-      setMsg('msg1', '✅ ' + (res.body.message || 'OTP solicitado correctamente.') + ' Revisa el correo y continúa con el Paso 2 abajo.', 'ok');
+      var msg = '✅ ' + (res.body.message || 'OTP solicitado correctamente.') + ' Revisa el correo y continúa con el Paso 2 abajo.';
+      // If Cincel returned anything in the body, show it — sometimes the
+      // OTP itself is embedded for sandbox/test accounts.
+      if (res.body.cincel_body) {
+        msg += '<details style="margin-top:6px;font-size:11.5px;"><summary>Respuesta cruda de Cincel</summary><pre>' +
+               (typeof res.body.cincel_body === 'string'
+                  ? res.body.cincel_body
+                  : JSON.stringify(res.body.cincel_body, null, 2)
+               ).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; }) +
+               '</pre></details>';
+      }
+      setMsg('msg1', msg, 'ok');
       setStep('step1','done');
       setStep('step2',null); // activate Step 2
       document.getElementById('bsOtp').focus();
