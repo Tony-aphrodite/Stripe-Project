@@ -186,12 +186,23 @@ try {
     ]);
     $pagoManualId = (int)$pdo->lastInsertId();
 
-    $pdo->prepare("UPDATE transacciones
-                      SET pago_estado    = 'pagada',
-                          pago_manual_id = ?,
-                          fmod           = NOW()
-                    WHERE id = ?")
-        ->execute([$pagoManualId, $transId]);
+    // Defensive UPDATE: the `transacciones.fmod` column doesn't exist on
+    // every install. Build the SET clause from columns we know exist.
+    $txCols = [];
+    try {
+        foreach ($pdo->query("SHOW COLUMNS FROM transacciones") as $cRow) {
+            $txCols[strtolower($cRow['Field'])] = true;
+        }
+    } catch (Throwable $e) { /* will fall back to minimal SET below */ }
+
+    $sets    = ["pago_estado = 'pagada'", 'pago_manual_id = ?'];
+    $vals    = [$pagoManualId];
+    if (isset($txCols['fmod']))      { $sets[] = 'fmod = NOW()'; }
+    if (isset($txCols['updated_at']))  { $sets[] = 'updated_at = NOW()'; }
+    $vals[]  = $transId;
+
+    $pdo->prepare("UPDATE transacciones SET " . implode(', ', $sets) . " WHERE id = ?")
+        ->execute($vals);
 
     $pdo->commit();
 } catch (Throwable $e) {
