@@ -23,6 +23,23 @@ if (file_exists($envFile)) {
     }
 }
 
+// ── Local secret overrides (Round 67, 2026-05-22) ─────────────────────────────
+// Plesk on some shared-hosting plans doesn't expose the "PHP env variables"
+// UI to the admin user. As a fallback for credentials that change in
+// production (without redeploy), we look for /configurador/php/local-secrets.php
+// and apply its putenv() calls FIRST. The admin web form at
+// /admin/php/cincel-creds-setter.php writes/updates this file.
+//
+// The file is intentionally NOT versioned in git and should never be
+// committed. It must contain only putenv() calls, e.g.:
+//   <?php
+//   putenv('CINCEL_EMAIL=oscar@riactor.com');
+//   putenv('CINCEL_PASSWORD=********');
+$secretsFile = __DIR__ . '/local-secrets.php';
+if (file_exists($secretsFile)) {
+    @require_once $secretsFile;
+}
+
 // ── Constants ────────────────────────────────────────────────────────────────
 
 // Environment mode: "test" or "live"
