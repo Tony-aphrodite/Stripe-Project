@@ -210,6 +210,31 @@ $probes[] = _runProbe('POST /v3/auth/tokens (credenciales reales)', function() u
     ]);
 });
 
+// 7.5. ✅ CORRECT ENDPOINT per Cincel support (2026-05-21): GET /v3/tokens/jwt
+//      Try all three plausible auth shapes since their reply didn't specify:
+//      (a) credentials as JSON body on GET, (b) credentials as query string,
+//      (c) HTTP Basic Auth header.
+$probes[] = _runProbe('★ GET /v3/tokens/jwt + JSON body (endpoint correcto por soporte Cincel)', function() use ($rootHost, $email, $password) {
+    return _curlGet($rootHost . '/v3/tokens/jwt', [
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_POSTFIELDS    => json_encode(['email' => $email, 'password' => $password]),
+        CURLOPT_HTTPHEADER    => ['Content-Type: application/json', 'Accept: application/json'],
+    ]);
+});
+$probes[] = _runProbe('★ GET /v3/tokens/jwt?email=...&password=... (query string)', function() use ($rootHost, $email, $password) {
+    $url = $rootHost . '/v3/tokens/jwt?email=' . urlencode($email) . '&password=' . urlencode($password);
+    return _curlGet($url, [
+        CURLOPT_HTTPHEADER => ['Accept: application/json'],
+    ]);
+});
+$probes[] = _runProbe('★ GET /v3/tokens/jwt + HTTP Basic Auth', function() use ($rootHost, $email, $password) {
+    return _curlGet($rootHost . '/v3/tokens/jwt', [
+        CURLOPT_USERPWD    => $email . ':' . $password,
+        CURLOPT_HTTPAUTH   => CURLAUTH_BASIC,
+        CURLOPT_HTTPHEADER => ['Accept: application/json'],
+    ]);
+});
+
 // 8. POST /v3/auth/login
 $probes[] = _runProbe('POST /v3/auth/login (credenciales reales)', function() use ($rootHost, $email, $password) {
     return _curlPostJson($rootHost . '/v3/auth/login', [
