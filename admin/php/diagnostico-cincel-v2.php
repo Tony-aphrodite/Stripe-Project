@@ -285,20 +285,42 @@ $probes[] = _runProbe('Control — HEAD https://www.circulodecredito.com.mx/ (CD
 // ─────────────────────────────────────────────────────────────────────────
 $verdict = [];
 
-$dnsOk     = !empty($probes[0]['resolved'])    ?? false;
-$tlsOk     = !empty($probes[1]['handshake_ok'])?? false;
-$headRoot  = (int)($probes[2]['http']           ?? 0);
-$getRoot   = (int)($probes[3]['http']           ?? 0);
-$v3Code    = (int)($probes[4]['http']           ?? 0);
-$v4Code    = (int)($probes[5]['http']           ?? 0);
-$authToks  = (int)($probes[6]['http']           ?? 0);
-$authLog   = (int)($probes[7]['http']           ?? 0);
-$noV3      = (int)($probes[8]['http']           ?? 0);
-$v4Auth    = (int)($probes[9]['http']           ?? 0);
-$apiV3     = (int)($probes[10]['http']          ?? 0);
-$marketing = (int)($probes[11]['http']          ?? 0);
-$google    = (int)($probes[12]['http']          ?? 0);
-$cdc       = (int)($probes[13]['http']          ?? 0);
+// Find probes by label rather than by hardcoded index — when we add new
+// probes the indices shift, and the verdict used to misreport (e.g.,
+// claimed Google returned 404 when in fact a different probe did).
+$findByLabelStartsWith = function(array $probes, string $prefix) {
+    foreach ($probes as $p) {
+        if (strpos($p['label'], $prefix) === 0) return $p;
+    }
+    return null;
+};
+$pDns       = $findByLabelStartsWith($probes, 'DNS — ');
+$pTls       = $findByLabelStartsWith($probes, 'TLS handshake');
+$pHeadRoot  = $findByLabelStartsWith($probes, 'HEAD https://api.cincel.digital/ ');
+$pAuthToks  = $findByLabelStartsWith($probes, 'POST /v3/auth/tokens');
+$pAuthLog   = $findByLabelStartsWith($probes, 'POST /v3/auth/login');
+$pNoV3      = $findByLabelStartsWith($probes, 'POST /auth/tokens');
+$pV4Auth    = $findByLabelStartsWith($probes, 'POST /v4/auth/tokens');
+$pApiV3     = $findByLabelStartsWith($probes, 'POST /api/v3/auth/tokens');
+$pStarJson  = $findByLabelStartsWith($probes, '★ GET /v3/tokens/jwt + JSON');
+$pStarQs    = $findByLabelStartsWith($probes, '★ GET /v3/tokens/jwt?email');
+$pStarBasic = $findByLabelStartsWith($probes, '★ GET /v3/tokens/jwt + HTTP Basic');
+$pGoogle    = $findByLabelStartsWith($probes, 'Control — HEAD https://www.google.com/');
+$pCdc       = $findByLabelStartsWith($probes, 'Control — HEAD https://www.circulodecredito.com.mx/');
+
+$dnsOk     = !empty($pDns['resolved']);
+$tlsOk     = !empty($pTls['handshake_ok']);
+$headRoot  = (int)($pHeadRoot['http']  ?? 0);
+$authToks  = (int)($pAuthToks['http']  ?? 0);
+$authLog   = (int)($pAuthLog['http']   ?? 0);
+$noV3      = (int)($pNoV3['http']      ?? 0);
+$v4Auth    = (int)($pV4Auth['http']    ?? 0);
+$apiV3     = (int)($pApiV3['http']     ?? 0);
+$starJson  = (int)($pStarJson['http']  ?? 0);
+$starQs    = (int)($pStarQs['http']    ?? 0);
+$starBasic = (int)($pStarBasic['http'] ?? 0);
+$google    = (int)($pGoogle['http']    ?? 0);
+$cdc       = (int)($pCdc['http']       ?? 0);
 
 if (!$dnsOk) {
     $verdict[] = ['bad', 'DNS — no resolvemos api.cincel.digital. Esto SÍ podría ser nuestro (problema de red/DNS).'];
@@ -317,22 +339,40 @@ if ($headRoot >= 200 && $headRoot < 500) {
 } else {
     $verdict[] = ['warn', "HEAD / devolvió HTTP $headRoot — no recibimos respuesta clara de su servidor."];
 }
-if ($google === 200 && $cdc >= 200 && $cdc < 500) {
-    $verdict[] = ['ok', 'Controles — Google y CDC responden bien desde nuestro servidor. Nuestra red está sana.'];
+// Controls: Google should return 200; CDC returns a 3xx redirect (301).
+// Anything in 2xx/3xx is fine — those just prove our outbound HTTPS works.
+$googleOk = ($google >= 200 && $google < 400);
+$cdcOk    = ($cdc    >= 200 && $cdc    < 400);
+if ($googleOk && $cdcOk) {
+    $verdict[] = ['ok', 'Controles — Google ('.$google.') y CDC ('.$cdc.') responden correctamente. Nuestra red está sana.'];
 } else {
     $verdict[] = ['warn', 'Controles — Google ('.$google.') / CDC ('.$cdc.') no respondieron como se esperaba. Posible problema de red local.'];
 }
+
+// Round 67 (2026-05-22): the ★ probes hit the CORRECT endpoint per Cincel
+// support. If any of them returns 200 we have a working auth shape;
+// if all return 401 the URL is right but credentials/transport are wrong.
+$starList = [$starJson, $starQs, $starBasic];
+$starAny200 = in_array(200, $starList, true);
+$starAll401 = ($starJson === 401 && $starQs === 401 && $starBasic === 401);
+
 $authPathsFail = ($authToks === 404 && $authLog === 404 && $noV3 === 404 && $v4Auth === 404 && $apiV3 === 404);
-if ($authPathsFail && $tlsOk && $dnsOk) {
-    $verdict[] = ['conclusion-bad-cincel',
-        'CONCLUSIÓN: Cincel API roto en su lado. DNS + TLS + servidor de Cincel responden, pero TODOS los endpoints de auth devuelven 404. '
-        . 'Un 404 (no 401) significa que Cincel retiró/movió esos endpoints. Es imposible que sea nuestro código si el servidor responde HEAD pero niega TODAS las rutas de auth conocidas.'];
-} elseif (in_array(401, [$authToks, $authLog, $noV3, $v4Auth, $apiV3], true)) {
-    $verdict[] = ['conclusion-creds',
-        'CONCLUSIÓN MIXTA: al menos un endpoint devolvió 401 (credenciales inválidas). El endpoint EXISTE pero nuestras credenciales fueron rechazadas. Esto sí podría requerir rotación de password.'];
-} elseif (in_array(200, [$authToks, $authLog, $noV3, $v4Auth, $apiV3], true)) {
+
+if ($starAny200) {
+    $which = [];
+    if ($starJson === 200)  $which[] = 'JSON body';
+    if ($starQs === 200)    $which[] = 'query string';
+    if ($starBasic === 200) $which[] = 'HTTP Basic Auth';
     $verdict[] = ['conclusion-fixed',
-        '¡Alguno respondió 200! Mira la tabla para ver cuál — actualiza CINCEL_API_URL para apuntar ahí.'];
+        '✅ ¡AUTENTICACIÓN EXITOSA con GET /v3/tokens/jwt vía ' . implode(' + ', $which) . '! Ya podemos actualizar el código de producción para usar este endpoint.'];
+} elseif ($starAll401) {
+    $verdict[] = ['conclusion-creds',
+        'CONCLUSIÓN: El endpoint correcto (GET /v3/tokens/jwt) existe y responde — pero todas las formas de auth devuelven 401. '
+        . 'Esto significa: o las credenciales son inválidas (necesitamos las de producción), o Cincel requiere un header distinto (x-api-key, etc.). '
+        . 'Revisa el body de cada ★ probe abajo para ver el mensaje exacto que devuelve Cincel.'];
+} elseif ($authPathsFail && $tlsOk && $dnsOk) {
+    $verdict[] = ['conclusion-bad-cincel',
+        'Los endpoints viejos (/v3/auth/tokens etc.) devuelven 404 — pero esos NO son los correctos. El endpoint válido es /v3/tokens/jwt. Revisa los ★ probes para ver si la auth funciona ahí.'];
 } else {
     $verdict[] = ['conclusion-mixed',
         'Resultado mixto — revisa la tabla detallada abajo para más contexto.'];
@@ -431,11 +471,12 @@ button.copy{background:#039fe1;color:#fff;border:0;padding:8px 14px;border-radiu
               <pre><?= htmlspecialchars(json_encode($p, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></pre>
             </details>
           <?php else: ?>
-            <?php if (!empty($p['headers'])): ?>
-              <details><summary>Headers</summary><pre><?= htmlspecialchars($p['headers']) ?></pre></details>
-            <?php endif; ?>
             <?php if (!empty($p['body_preview'])): ?>
-              <details><summary>Body (primeros <?= (int)strlen($p['body_preview']) ?> bytes)</summary><pre><?= htmlspecialchars($p['body_preview']) ?></pre></details>
+              <div style="margin-top:4px;font-size:11px;color:#475569;font-weight:600;">Body:</div>
+              <pre style="background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d;margin:2px 0 6px;padding:6px;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:180px;overflow:auto;"><?= htmlspecialchars($p['body_preview']) ?></pre>
+            <?php endif; ?>
+            <?php if (!empty($p['headers'])): ?>
+              <details><summary style="font-size:11px;color:#94a3b8;">Headers</summary><pre><?= htmlspecialchars($p['headers']) ?></pre></details>
             <?php endif; ?>
           <?php endif; ?>
         </td>
