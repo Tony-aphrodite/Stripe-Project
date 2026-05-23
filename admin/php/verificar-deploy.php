@@ -75,6 +75,23 @@ $checks = [
         '_checkBuildVersion',
         'Round 70 v5 — clientes/js/app.js: VKApp.start() hace fetch a version.php; si la versión guardada en localStorage difiere, fuerza window.location.reload(). Auto-cache-bust permanente.'
     ),
+
+    // ── Round 71 (2026-05-23) — Cincel NOM-151 timestamp integration ──
+    'r71_cincel_timestamp_module' => _checkFile(
+        $base . '/configurador/php/cincel-timestamp.php',
+        'Round 71, 2026-05-23',
+        'Round 71 — configurador/php/cincel-timestamp.php: módulo de producción para timestamps NOM-151 de Cincel. Funciones: cincelGetJWT() con cache 4h, cincelTimestampExists() (GET público sin auth), cincelCreateTimestamp() (POST autenticado con auto-refresh), cincelGetOrCreateTimestamp() (end-to-end idempotente por hash), cincelEnsureSchema() y cincelSaveTimestamp() (persistencia en cincel_timestamps).'
+    ),
+    'r71_cincel_diagnostico_create' => _checkFile(
+        $base . '/admin/php/diagnostico-cincel-timestamp-create.php',
+        'Round 71, 2026-05-23',
+        'Round 71 — admin/php/diagnostico-cincel-timestamp-create.php: ejecuta el flujo COMPLETO (JWT → check → POST). Lista PDFs de contratos en disco; el admin elige uno y prueba check (sin gasto) o create (1 crédito si nuevo). Confirma que el módulo está listo antes de hookearlo en confirmar-orden.'
+    ),
+    'r71_cincel_hook_confirmar_orden' => _checkFile(
+        $base . '/configurador/php/confirmar-orden.php',
+        'Round 71 (2026-05-23) — NOM-151 timestamp via Cincel',
+        'Round 71 — configurador/php/confirmar-orden.php: después de generar el PDF del contrato CONTADO, llama cincelGetOrCreateTimestamp() y guarda el resultado en cincel_timestamps. Gateable con CINCEL_TIMESTAMP_ENABLED=0 si Cincel tiene outage. Toda excepción se loggea sin abortar el flujo de orden.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -220,6 +237,18 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>Endpoint funcionando: <code>voltika.mx/clientes/php/version.php</code> devuelve <code>{ version: "&lt;hash&gt;", files: {…} }</code>.</li>
     <li>Cliente con app abierta en pestaña/PWA → próxima vez que entre o navegue, la app hace <code>fetch</code> a <code>version.php</code>; si la versión cambió, se recarga sola.</li>
     <li>Test: DevTools → Application → Local Storage → editar <code>vk_build_version</code> a "x" → recargar → la página se debe re-recargar sola para traer JS fresco.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 71 — Cincel NOM-151 timestamp en producción:</strong>
+  <ul>
+    <li><strong>1)</strong> Abrir <code>/admin/php/diagnostico-cincel-timestamp-create.php?key=voltika_diag_2026</code>.</li>
+    <li>✅ La sección "Estado del JWT" debe estar verde — el módulo obtuvo token con las credenciales de <code>local-secrets.php</code>.</li>
+    <li>✅ La lista muestra los PDFs de contratos disponibles. Click en <strong>Check</strong> de cualquiera → respuesta limpia (existe / no existe).</li>
+    <li><strong>2)</strong> Click en <strong>Create</strong> de un PDF cuyo hash sepamos que es nuevo → pantalla de confirmación → "Sí, crear timestamp ahora".</li>
+    <li>✅ Resultado: banner verde "Timestamp NOM-151 creado correctamente". Links de descarga para nom151/timestamp/bitcoin.</li>
+    <li>✅ DB: fila en <code>cincel_timestamps</code> + actualización de <code>transacciones.cincel_timestamp_hash</code>.</li>
+    <li><strong>3)</strong> Hacer una compra CONTADO real (o sandbox) → al confirmar la orden y generar el contrato PDF, la integración debe correr en automático y agregar un sello NOM-151 sin intervención manual.</li>
+    <li>Para deshabilitar temporalmente (e.g. outage Cincel): poner <code>CINCEL_TIMESTAMP_ENABLED=0</code> en .env / local-secrets.</li>
   </ul>
 </div>
 

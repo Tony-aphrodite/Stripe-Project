@@ -1500,6 +1500,42 @@ if (!$esCredito) {
                     error_log('confirmar-orden contrato email: ' . $e->getMessage());
                 }
             }
+
+            // Round 71 (2026-05-23) — NOM-151 timestamp via Cincel.
+            // Customer brief (Óscar): "We only need the timestamp from
+            // Cincel." Apply a NOM-151 cryptographic timestamp to the
+            // contract PDF hash so it has legal evidence of existence
+            // at this moment in time, independent of our infrastructure.
+            //
+            // Idempotent by hash: if Cincel already has a sello for this
+            // exact PDF (e.g. duplicate webhook fired), we just retrieve
+            // the existing certs and don't double-charge the c.Doc credit.
+            //
+            // Gated by CINCEL_TIMESTAMP_ENABLED so it can be disabled
+            // quickly if Cincel has an outage, without redeploying.
+            $tsEnabled = strtolower((string)(getenv('CINCEL_TIMESTAMP_ENABLED') ?: '1'));
+            $tsEnabled = in_array($tsEnabled, ['1','true','yes','on'], true);
+            if ($tsEnabled && !empty($genResult['path']) && is_file($genResult['path'])) {
+                try {
+                    require_once __DIR__ . '/cincel-timestamp.php';
+                    $ts = cincelGetOrCreateTimestamp($genResult['path']);
+                    if (!empty($ts['ok'])) {
+                        // Resolve transaccion id so we can link the audit row.
+                        $txnId = null;
+                        try {
+                            $row = $pdoCC->prepare("SELECT id FROM transacciones WHERE pedido = ? ORDER BY id DESC LIMIT 1");
+                            $row->execute([$pedidoNum]);
+                            $txnId = (int)($row->fetchColumn() ?: 0) ?: null;
+                        } catch (Throwable $e) { /* non-fatal */ }
+                        cincelSaveTimestamp($pdoCC, $ts, $txnId, $genResult['path']);
+                    } else {
+                        error_log('confirmar-orden cincel timestamp failed: ' . json_encode($ts));
+                    }
+                } catch (Throwable $e) {
+                    // Never let a Cincel hiccup block the order confirmation flow.
+                    error_log('confirmar-orden cincel timestamp exception: ' . $e->getMessage());
+                }
+            }
         } else {
             error_log('confirmar-orden contrato generate failed: ' . ($genResult['error'] ?? 'n/a'));
         }
