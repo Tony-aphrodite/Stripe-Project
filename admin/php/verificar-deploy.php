@@ -173,6 +173,12 @@ $checks = [
         'Round 70 v3 (2026-05-23, \xc3\x93scar',
         'Round 70 v3 — contratos-firmados.php: el panel "Contratos firmados" ahora requiere que exista una fila en firmas_contratos (match por email/telefono) para considerar un contrato como firmado. Antes clasificaba como Listo cualquier orden cash/MSI/SPEI/OXXO pagada solo porque tenía stripe_pi. Ahora exige firma autógrafa real (Round 70). Las órdenes legacy sin autógrafa salen del listado.'
     ),
+    // ── Round 70 v4 (2026-05-23) — Customer portal respects pago_estado ─
+    'r70_v4_inicio_pago_estado_aware' => _checkFile(
+        $base . '/clientes/js/modules/inicio.js',
+        'Round 70 v4 (2026-05-23',
+        'Round 70 v4 — clientes/js/modules/inicio.js: el card "RESUMEN DE PAGO" del portal cliente ya no muestra "Pagado al 100%" + "Tu compra está liquidada" incondicionalmente. Ahora respeta compra.pago_estado: pagada/aprobada/approved/paid → verde "Pagado al 100%"; parcial → azul "Enganche pagado · resto a plazos"; fallido/cancelada → rojo "Pago no completado"; pendiente/vacío → ámbar "Pago pendiente" con hint específico por método (SPEI/OXXO/tarjeta). Fix del bug reportado por cliente VK-1826-0004 donde la orden SPEI sin pagar mostraba "Tu compra está liquidada".'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

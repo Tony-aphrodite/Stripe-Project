@@ -213,13 +213,62 @@ window.VK_inicio = (function(){
             '</div>';
 
     // ── Resumen de pago card ──
+    // Round 70 v4 (2026-05-23, Óscar — "says paid but order isn't paid yet"):
+    // previously this card hardcoded "Pagado al 100%" + "Tu compra está
+    // liquidada" + green check, regardless of whether the order had
+    // actually cleared. For SPEI/OXXO orders sitting in pago_estado='pendiente'
+    // (customer hasn't paid at the bank yet), this falsely told the
+    // customer their purchase was complete and they could just wait
+    // for delivery — leading to no-pays and ghost orders. We now
+    // branch the UI by the real pago_estado returned by me.php.
+    var _pe = String(compra.pago_estado || '').toLowerCase();
+    var _esPagado = (_pe === 'pagada' || _pe === 'aprobada' ||
+                     _pe === 'approved' || _pe === 'paid');
+    var _esCreditoParcial = (_pe === 'parcial');
+    // Different visuals for paid vs pending vs failed.
+    var _statusBigLabel, _statusFooter, _headIcon, _amountColor;
+    if (_esPagado) {
+        _statusBigLabel = 'Pagado al 100%';
+        _statusFooter   = 'Tu compra está liquidada';
+        _headIcon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        _amountColor = '';
+    } else if (_esCreditoParcial) {
+        _statusBigLabel = 'Enganche pagado · resto a plazos';
+        _statusFooter   = 'Pagos semanales activos';
+        _headIcon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#039fe1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        _amountColor = '';
+    } else if (_pe === 'fallido' || _pe === 'cancelada') {
+        _statusBigLabel = 'Pago no completado';
+        _statusFooter   = 'Tu pago no se procesó. Intenta de nuevo o contacta soporte.';
+        _headIcon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+        _amountColor = 'color:#dc2626;';
+    } else {
+        // pendiente, requires_action, vacío, etc. — SPEI/OXXO waiting,
+        // 3DS not completed, processing.
+        var _metodoPago = String(compra.tpago || '').toLowerCase();
+        var _hintByMethod = {
+            spei:    'Espera la confirmación del depósito SPEI (puede tardar hasta 24 horas).',
+            oxxo:    'Paga en OXXO con la ficha que te enviamos. Tu pago se aplicará en 24-48 horas.',
+            tarjeta: 'Estamos esperando la confirmación de tu banco.',
+            contado: 'Estamos esperando la confirmación de tu pago.'
+        };
+        _statusBigLabel = 'Pago pendiente';
+        _statusFooter   = _hintByMethod[_metodoPago] || 'Estamos esperando la confirmación de tu pago.';
+        _headIcon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        _amountColor = 'color:#7c2d12;';
+    }
+    var _paidClass = _esPagado || _esCreditoParcial ? 'vk-resumen-paid' : 'vk-resumen-paid vk-resumen-pending';
+    var _paidStyle = _esPagado || _esCreditoParcial
+        ? ''
+        : 'color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;padding:6px 10px;border-radius:6px;display:inline-block;';
+
     html += '<div class="vk-card vk-resumen-pago">'+
               '<div class="vk-resumen-head">'+
                 '<div class="vk-resumen-h">RESUMEN DE PAGO</div>'+
-                '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'+
+                _headIcon +
               '</div>'+
-              '<div class="vk-resumen-amount">'+totalFmt+'</div>'+
-              '<div class="vk-resumen-paid">Pagado al 100%</div>'+
+              '<div class="vk-resumen-amount" style="'+_amountColor+'">'+totalFmt+'</div>'+
+              '<div class="'+_paidClass+'" style="'+_paidStyle+'">'+_statusBigLabel+'</div>'+
               '<div class="vk-resumen-divider"></div>'+
               '<div class="vk-resumen-rows">'+
                 '<div class="vk-resumen-row"><span class="k">Modalidad</span><span class="v">'+modalidad+'</span></div>'+
@@ -232,7 +281,7 @@ window.VK_inicio = (function(){
                     : '<span class="v" style="color:#888;">Tras la entrega</span>')+
                 '</div>'+
               '</div>'+
-              '<div class="vk-resumen-footer">Tu compra está liquidada</div>'+
+              '<div class="vk-resumen-footer" style="'+(_esPagado || _esCreditoParcial ? '' : 'color:#9a3412;font-weight:600;')+'">'+_statusFooter+'</div>'+
             '</div>';
 
     VKApp.render(html);
