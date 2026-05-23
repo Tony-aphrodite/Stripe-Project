@@ -53,7 +53,7 @@ $checks = [
     // ── Round 69 (2026-05-23) — Cincel TIMESTAMP diagnostic (current focus) ──
     'r69_cincel_timestamp_diagnostic' => _checkFile(
         $base . '/admin/php/diagnostico-cincel-timestamp.php',
-        'Diagn\xc3\xb3stico Cincel Timestamp (Round 69, 2026-05-23)',
+        'Diagnóstico Cincel Timestamp (Round 69, 2026-05-23)',
         'Round 69 — diagnostico-cincel-timestamp.php: 3 probes contra GET /v3/timestamps/{hash} (endpoint público SIN auth, NO consume créditos). Confirma si Cincel está alcanzable para integrar el servicio de estampas de tiempo NOM-151 (lo que realmente necesita el cliente — no la firma completa).'
     ),
 
