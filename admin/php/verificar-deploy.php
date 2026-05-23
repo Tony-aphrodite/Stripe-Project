@@ -167,6 +167,12 @@ $checks = [
         'Round 70 v2 — same autograph lookup',
         'Round 70 v2 — descargar-contrato.php: ruta de regeneración también hace lookup de firma autógrafa para que contratos legacy (firmados antes de Round 70 v2) muestren la firma al re-descargarse desde el panel admin.'
     ),
+    // ── Round 70 v3 (2026-05-23) — Contratos firmados ahora requiere autógrafa ──
+    'r70_v3_contratos_firmados_require_autograph' => _checkFile(
+        $base . '/admin/php/ventas/contratos-firmados.php',
+        'Round 70 v3 (2026-05-23, \xc3\x93scar',
+        'Round 70 v3 — contratos-firmados.php: el panel "Contratos firmados" ahora requiere que exista una fila en firmas_contratos (match por email/telefono) para considerar un contrato como firmado. Antes clasificaba como Listo cualquier orden cash/MSI/SPEI/OXXO pagada solo porque tenía stripe_pi. Ahora exige firma autógrafa real (Round 70). Las órdenes legacy sin autógrafa salen del listado.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

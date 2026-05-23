@@ -60,33 +60,66 @@ if (!$hasPdfPath && !$hasAccepted) {
 $where  = [];
 $params = [];
 
-// "Signed contract" detection — at least ONE of the canonical signals
-// must be present.
+// Round 70 v3 (2026-05-23, Óscar — "contract appears as signed but no
+// signature nor checkbox was requested"): the previous logic
+// classified any paid cash/MSI order as implicitly signed just because
+// stripe_pi was set. That worked when the legal model was
+// "checkbox + OTP = consent". The customer has now mandated handwritten
+// autograph signatures for ALL purchases — so an order is signed ONLY
+// when a row exists in firmas_contratos for the customer's
+// email/telefono. We keep the existing canonical signals (pdf_path /
+// aceptado_at / otp_at) but require the autograph as an AND, not an
+// alternative.
 //
-// Customer brief 2026-05-13 (Óscar, 12th round — Option B): cash and
-// MSI orders are LEGALLY signed the moment the customer accepts the
-// terms in checkout and Stripe captures the payment. The system stores
-// the audit trail (stripe_pi, freg, customer info) on transacciones;
-// the PDF is just a presentation of that audit trail and can always be
-// regenerated on-demand via descargar-contrato.php. So we widen the
-// detection: cash-family orders with a REAL Stripe PI + paid status
-// are implicitly signed even if contrato_pdf_path was never persisted.
-//
-// Credit-family (enganche / parcial / credito) stays strict — those
-// orders require an EXPLICIT Truora+Cincel signing event and don't get
-// the implicit shortcut.
-$signedConds = [];
-if ($hasPdfPath)  $signedConds[] = "(t.contrato_pdf_path IS NOT NULL AND t.contrato_pdf_path <> '')";
-if ($hasAccepted) $signedConds[] = "(t.contrato_aceptado_at IS NOT NULL)";
-if ($hasOtpAt)    $signedConds[] = "(t.contrato_otp_validated_at IS NOT NULL)";
-// Implicit-signed branch (cash/MSI/SPEI/OXXO only).
-$signedConds[] = "(
+// Legacy orders (pre-Round 70) that have a PDF but never captured an
+// autograph DROP OUT of this list — which is exactly what the customer
+// expects. Those orders should be addressed via the "Sin firma" panel
+// (re-sending the customer a signing link).
+try {
+    $fcExists = $pdo->query("SHOW TABLES LIKE 'firmas_contratos'")->fetchColumn();
+} catch (Throwable $e) { $fcExists = false; }
+
+// Build the "has autograph for this customer" condition. We try a
+// best-effort match: email match OR telefono match (digits-only).
+// firmas_contratos is the single source of truth for autograph signatures
+// across both the credit flow (paso-credito-contrato.js) and the
+// post-Round-70 contado flow (paso4a-checkout.js).
+// Telefono comparison uses nested REPLACE() (not REGEXP_REPLACE) for
+// compatibility with MySQL 5.7 / MariaDB 10.0 — strips +, spaces, and
+// dashes so "+52 55 1234 5678" matches "5512345678".
+$tnorm = "REPLACE(REPLACE(REPLACE(COALESCE(%s,''),'+',''),' ',''),'-','')";
+$autografCondition = $fcExists
+    ? "EXISTS (
+           SELECT 1 FROM firmas_contratos fc
+            WHERE fc.firma_base64 IS NOT NULL
+              AND fc.firma_base64 <> ''
+              AND (
+                  (t.email    IS NOT NULL AND t.email    <> '' AND LOWER(fc.email) = LOWER(t.email))
+               OR (
+                      t.telefono IS NOT NULL AND t.telefono <> ''
+                  AND " . sprintf($tnorm, 'fc.telefono') . " = " . sprintf($tnorm, 't.telefono') . "
+                  )
+              )
+       )"
+    : "0";
+
+// At least one of the canonical "contract artifact exists" signals.
+$artifactConds = [];
+if ($hasPdfPath)  $artifactConds[] = "(t.contrato_pdf_path IS NOT NULL AND t.contrato_pdf_path <> '')";
+if ($hasAccepted) $artifactConds[] = "(t.contrato_aceptado_at IS NOT NULL)";
+if ($hasOtpAt)    $artifactConds[] = "(t.contrato_otp_validated_at IS NOT NULL)";
+// Cash/MSI/SPEI/OXXO orders that paid + accepted (the legacy implicit
+// path) — kept ONLY as an artifact signal; the autograph requirement
+// below filters them further.
+$artifactConds[] = "(
     LOWER(COALESCE(t.tpago,'')) IN ('contado','unico','msi','spei','oxxo','tarjeta','tarjeta de débito o crédito','tarjeta de credito','tarjeta de debito')
     AND LOWER(COALESCE(t.pago_estado,'')) IN ('pagada','aprobada','approved','paid')
     AND t.stripe_pi IS NOT NULL
     AND t.stripe_pi REGEXP '^pi_3[A-Za-z0-9]{20,}$'
 )";
-$where[] = '(' . implode(' OR ', $signedConds) . ')';
+$where[] = '(' . implode(' OR ', $artifactConds) . ')';
+// AND the autograph must exist.
+$where[] = $autografCondition;
 
 // Search across multiple columns
 if ($q !== '') {
