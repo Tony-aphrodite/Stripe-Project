@@ -179,6 +179,17 @@ $checks = [
         'Round 70 v4 (2026-05-23',
         'Round 70 v4 — clientes/js/modules/inicio.js: el card "RESUMEN DE PAGO" del portal cliente ya no muestra "Pagado al 100%" + "Tu compra está liquidada" incondicionalmente. Ahora respeta compra.pago_estado: pagada/aprobada/approved/paid → verde "Pagado al 100%"; parcial → azul "Enganche pagado · resto a plazos"; fallido/cancelada → rojo "Pago no completado"; pendiente/vacío → ámbar "Pago pendiente" con hint específico por método (SPEI/OXXO/tarjeta). Fix del bug reportado por cliente VK-1826-0004 donde la orden SPEI sin pagar mostraba "Tu compra está liquidada".'
     ),
+    // ── Round 70 v5 (2026-05-23) — Auto-reload customer SPA on new build ──
+    'r70_v5_version_endpoint' => _checkFile(
+        $base . '/clientes/php/version.php',
+        'Round 70 v5 (2026-05-23)',
+        'Round 70 v5 — clientes/php/version.php: nuevo endpoint que devuelve un hash de los mtimes de los módulos JS del portal cliente. Sirve como "build version" que la SPA consulta al arrancar para forzar reload cuando se publica una nueva versión — los clientes con la app abierta o pineada como PWA ya no se quedan con JS viejo después de un deploy.'
+    ),
+    'r70_v5_app_version_check' => _checkFile(
+        $base . '/clientes/js/app.js',
+        '_checkBuildVersion',
+        'Round 70 v5 — clientes/js/app.js: VKApp.start() ahora hace fetch a version.php antes de inicializar la UI. Si el servidor reportó una versión distinta a la guardada en localStorage, fuerza window.location.reload() para traer JS fresco. Resuelve el caso donde clientes con caché viejo seguían viendo "Pagado al 100%" después del fix v4 hasta hacer hard-refresh manual.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

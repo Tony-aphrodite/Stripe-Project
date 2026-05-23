@@ -91,7 +91,54 @@ window.VKApp = (function(){
     if(mod && mod.render) mod.render();
   }
 
+  // Round 70 v5 (2026-05-23) — Runtime build-version check. Every time
+  // start() runs we compare the server's current build hash with what
+  // localStorage has from this session. If they differ, the deployed
+  // JS has been updated since this client last loaded — force a hard
+  // reload so the customer always sees the latest UI. Without this,
+  // customers with the SPA open in a tab (or pinned as a PWA) would
+  // hold onto stale JS across deploys until they manually hard-refresh.
+  function _checkBuildVersion(onReady) {
+    try {
+      $.ajax({
+        url: 'php/version.php',
+        method: 'GET',
+        cache: false,
+        timeout: 5000,
+        dataType: 'json'
+      }).done(function(resp) {
+        try {
+          var serverV = (resp && resp.version) ? String(resp.version) : '';
+          if (!serverV) { if (onReady) onReady(); return; }
+          var key = 'vk_build_version';
+          var stored = window.localStorage.getItem(key) || '';
+          if (stored && stored !== serverV) {
+            // Stale client — force a fresh fetch of all scripts.
+            window.localStorage.setItem(key, serverV);
+            // Stop the SPA from rendering anything (we're about to reload).
+            window.location.reload();
+            return;
+          }
+          if (!stored) window.localStorage.setItem(key, serverV);
+        } catch (e) {}
+        if (onReady) onReady();
+      }).fail(function() {
+        // Network hiccup — don't block the app from starting.
+        if (onReady) onReady();
+      });
+    } catch (e) { if (onReady) onReady(); }
+  }
+
   function start(){
+    // Check build version before doing anything else. If the server
+    // has shipped a newer build, _checkBuildVersion() will reload the
+    // page and start() will run again in a moment with the fresh code.
+    _checkBuildVersion(function() {
+      _startInternal();
+    });
+  }
+
+  function _startInternal(){
     $screen = $('#vkScreen'); $tabbar = $('#vkTabbar');
     $tabbar.on('click','button',function(){ go($(this).data('route')); });
     // Restore any previously selected purchase
