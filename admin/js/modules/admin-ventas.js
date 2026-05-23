@@ -803,10 +803,24 @@ window.AD_ventas = (function(){
         // Pull the dossier/contrato icons out of btnArr so we can place
         // them next to Ver in the bottom row.
         var iconBtns = btnArr.filter(function(b){ return b.indexOf('descargar-contrato') !== -1 || b.indexOf('descargar-dossier') !== -1; });
+        // Round 70 v2 (2026-05-23, Óscar — "Pago manual must be on ALL
+        // unpaid orders"): when actionsLayout === stacked_pago_pendiente
+        // the previous code threw away every button in btnArr except the
+        // download-icon buttons. That meant the 💵 Pago manual button
+        // (pushed unconditionally for admin role + unpaid orders) was
+        // SILENTLY DROPPED on exactly the orders the admin needs it
+        // most — SPEI/OXXO pendientes and unpaid card orders with a
+        // stripe_pi. We now pull those buttons back into the bottom row
+        // so the layout still shows "Enviar link" on top + Pago manual /
+        // Comprobante / Ver / icons below.
+        var pagoManualBtns = btnArr.filter(function(b){
+            return b.indexOf('showRegistrarPagoManual') !== -1
+                || b.indexOf('serve-comprobante.php') !== -1;
+        });
         var bottomBtns = [
           '<button class="ad-btn sm ghost" style="'+btnStyleBase+'" '+
             'onclick="AD_ventas.showDetalle('+r.id+')">Ver</button>'
-        ].concat(iconBtns);
+        ].concat(pagoManualBtns).concat(iconBtns);
         var bottomCols = bottomBtns.length === 1 ? '1fr' : (bottomBtns.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr');
         var bottomGrid = '<div style="display:grid;grid-template-columns:'+bottomCols+';gap:5px;">'+ bottomBtns.join('') +'</div>';
         actionTd = '<td style="min-width:170px;"><div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;">'+
