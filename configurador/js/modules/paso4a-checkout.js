@@ -162,13 +162,48 @@ var Paso4A = {
         // Compraventa" link (boss report 2026-04-29: contract opened with
         // empty placeholders because the checkbox sat above the inputs).
         // We build the HTML into _checkboxHtml here and inject it later.
+        // Round 70 (2026-05-23, \u00d3scar): firma aut\u00f3grafa obligatoria en
+        // compras CONTADO/MSI/SPEI/OXXO. Hasta ahora solo hab\u00eda un
+        // checkbox de aceptaci\u00f3n \u2014 el cliente pidi\u00f3 firma real, mismo
+        // tipo que la del flujo de cr\u00e9dito. La firma se guarda en
+        // firmas_contratos v\u00eda guardar-firma-precompra.php antes de
+        // disparar el cobro de Stripe, as\u00ed el PDF del contrato final
+        // (generado por confirmar-orden.php) ya la incluye embebida.
+        var _signatureHtml =
+            '<div class="vk-firma-section" style="margin-bottom:16px;background:#fafafa;border:1.5px solid #e2e8f0;border-radius:8px;padding:14px;">' +
+              '<div style="font-size:13px;font-weight:700;color:#0c2340;margin-bottom:6px;">' +
+                '\u270d\ufe0f Firma electr\u00f3nica del contrato' +
+              '</div>' +
+              '<div style="font-size:11.5px;color:#666;line-height:1.5;margin-bottom:10px;">' +
+                'Firma con el dedo (m\u00f3vil) o el rat\u00f3n en el recuadro. Esta firma queda integrada en el contrato de compraventa con validez legal.' +
+              '</div>' +
+              '<div style="position:relative;border:2px dashed #cbd5e1;border-radius:6px;background:#fff;">' +
+                '<canvas id="vk-firma-canvas-checkout" ' +
+                  'style="width:100%;height:140px;display:block;touch-action:none;cursor:crosshair;border-radius:4px;"></canvas>' +
+                '<div id="vk-firma-placeholder-checkout" ' +
+                  'style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;pointer-events:none;">' +
+                  'Firma aqu\u00ed \u2193' +
+                '</div>' +
+              '</div>' +
+              '<div style="display:flex;gap:8px;margin-top:8px;align-items:center;">' +
+                '<button type="button" id="vk-firma-clear-checkout" class="vk-btn" ' +
+                  'style="background:#fff;color:#64748b;border:1px solid #cbd5e1;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">' +
+                  '\u21ba Limpiar' +
+                '</button>' +
+                '<span id="vk-firma-status-checkout" style="font-size:11.5px;color:#94a3b8;">' +
+                  'Firma pendiente' +
+                '</span>' +
+              '</div>' +
+            '</div>';
+
         var _checkboxHtml =
+            _signatureHtml +
             '<div class="vk-checkbox-group" style="margin-bottom:16px;">' +
             '<input type="checkbox" class="vk-checkbox" id="vk-terms-check">' +
             '<label class="vk-checkbox-label" for="vk-terms-check">' +
             'Acepto <a href="https://voltika.mx/docs/tyc_2026.pdf" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">T\u00e9rminos y Condiciones</a>, ' +
             '<a href="https://voltika.mx/docs/privacidad_2026.pdf" target="_blank" rel="noopener" style="color:var(--vk-green-primary);text-decoration:underline;">Aviso de Privacidad</a> y el ' +
-            '<a href="docs/contrato_compraventa_2026.html" target="_blank" rel="noopener" id="vk-contrato-preview-link" style="color:var(--vk-green-primary);text-decoration:underline;">Contrato de Compraventa</a>, ' +
+            '<a href="docs/contrato_compraventa_2026.html" target="_blank" rel="noopener" id="vk-contrato-preview-link" style="color:var(--vk-green-primary);text-decoration:underline;">Contrato de Compraventa</a> con mi firma electr\u00f3nica, ' +
             'y autorizo el pago de <strong id="vk-checkbox-amount">' + _checkboxAmount + ' MXN</strong> por el medio seleccionado.' +
             '</label>' +
             '</div>';
@@ -445,6 +480,11 @@ var Paso4A = {
             }
         });
 
+        // Round 70 — Initialize the autograph signature canvas. Must be
+        // called AFTER the checkout HTML is in the DOM (we call it from
+        // _bindEvents which runs right after .html() injection).
+        self._initSignatureCanvas();
+
         // Button 1: Pago unico
         $(document).off('click', '#vk-pay-unico');
         $(document).on('click', '#vk-pay-unico', function(e) {
@@ -673,6 +713,41 @@ var Paso4A = {
         // Prevent double-submit (rapid clicks can create multiple PaymentIntents)
         if (self._isProcessing) return;
 
+        // Round 70 — gate on autograph signature (mandatory before payment).
+        if (!self._hasSignature || !self._signatureDataUrl) {
+            var $canvas = $('#vk-firma-canvas-checkout');
+            if ($canvas.length) {
+                $('html, body').animate({ scrollTop: $canvas.offset().top - 100 }, 200);
+                $('#vk-firma-status-checkout')
+                    .text('⚠ Firma con el dedo o ratón para continuar')
+                    .css({ color: '#b91c1c', fontWeight: '700' });
+            } else {
+                alert('Firma con el dedo o ratón antes de pagar.');
+            }
+            return;
+        }
+
+        if (!$('#vk-terms-check').is(':checked')) {
+            alert('Por favor acepta los terminos y condiciones.');
+            return;
+        }
+
+        // Round 70 — persist the autograph signature into firmas_contratos
+        // BEFORE initiating the Stripe payment. confirmar-orden.php picks
+        // it up automatically afterwards by email/telefono match.
+        self._postSignaturePrePago(function(ok, errMsg) {
+            if (!ok) {
+                alert('No se pudo guardar la firma electrónica: ' + (errMsg || 'error desconocido') +
+                      '. Intenta firmar de nuevo y reintentar.');
+                return;
+            }
+            // Signature persisted — continue with the Stripe payment flow.
+            self._continueSubmitAfterSignature();
+        });
+    },
+
+    _continueSubmitAfterSignature: function() {
+        var self = this;
         if (!$('#vk-terms-check').is(':checked')) {
             alert('Por favor acepta los terminos y condiciones.');
             return;
@@ -1270,6 +1345,139 @@ var Paso4A = {
      * (card path has its own inline validation; SPEI/OXXO now share this helper
      * so mandatory fields are enforced in all payment paths).
      */
+    // Round 70 — autograph signature canvas (mirrors paso-credito-contrato).
+    // Tracks signature state in self._signatureDataUrl and self._hasSignature.
+    _initSignatureCanvas: function() {
+        var self = this;
+        var canvas = document.getElementById('vk-firma-canvas-checkout');
+        var placeholder = document.getElementById('vk-firma-placeholder-checkout');
+        var clearBtn = document.getElementById('vk-firma-clear-checkout');
+        var statusEl = document.getElementById('vk-firma-status-checkout');
+        if (!canvas) return;
+
+        self._hasSignature = false;
+        self._signatureDataUrl = null;
+
+        var ctx = null;
+        function resize() {
+            var rect = canvas.getBoundingClientRect();
+            // Round 42 lesson: enforce minimum width so narrow viewports
+            // don't end up with a ~1px canvas where the signature is invisible.
+            var w = rect.width > 0 ? rect.width : 320;
+            if (w < 280) w = 280;
+            var h = 140;
+            canvas.width  = w;
+            canvas.height = h;
+            ctx = canvas.getContext('2d');
+            ctx.lineWidth = 2.5;
+            ctx.lineCap   = 'round';
+            ctx.lineJoin  = 'round';
+            ctx.strokeStyle = '#0c2340';
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        var drawing = false, lastX = 0, lastY = 0;
+        function getPos(e) {
+            var rect = canvas.getBoundingClientRect();
+            var pt = e.touches ? e.touches[0] : e;
+            return { x: pt.clientX - rect.left, y: pt.clientY - rect.top };
+        }
+        function start(e) {
+            e.preventDefault();
+            drawing = true;
+            var p = getPos(e);
+            lastX = p.x; lastY = p.y;
+            if (placeholder) placeholder.style.display = 'none';
+        }
+        function move(e) {
+            if (!drawing) return;
+            e.preventDefault();
+            var p = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+            lastX = p.x; lastY = p.y;
+            if (!self._hasSignature) {
+                self._hasSignature = true;
+                if (statusEl) {
+                    statusEl.textContent = '✓ Firma capturada';
+                    statusEl.style.color = '#15803d';
+                    statusEl.style.fontWeight = '700';
+                }
+            }
+        }
+        function end() {
+            if (!drawing) return;
+            drawing = false;
+            if (self._hasSignature) {
+                self._signatureDataUrl = canvas.toDataURL('image/png');
+            }
+        }
+
+        canvas.addEventListener('mousedown',  start);
+        canvas.addEventListener('mousemove',  move);
+        canvas.addEventListener('mouseup',    end);
+        canvas.addEventListener('mouseleave', end);
+        canvas.addEventListener('touchstart', start, { passive: false });
+        canvas.addEventListener('touchmove',  move,  { passive: false });
+        canvas.addEventListener('touchend',   end);
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                self._hasSignature = false;
+                self._signatureDataUrl = null;
+                if (placeholder) placeholder.style.display = 'flex';
+                if (statusEl) {
+                    statusEl.textContent = 'Firma pendiente';
+                    statusEl.style.color = '#94a3b8';
+                    statusEl.style.fontWeight = '400';
+                }
+            });
+        }
+    },
+
+    // Round 70 — Submit the captured signature to the server BEFORE the
+    // Stripe payment flow runs. The signature is keyed by email/telefono
+    // so confirmar-orden.php (post-payment) can pick it up automatically
+    // when generating the contract PDF. Calls back on success/failure.
+    _postSignaturePrePago: function(onDone) {
+        var self = this;
+        if (!self._signatureDataUrl) {
+            if (typeof onDone === 'function') onDone(false, 'Firma no capturada.');
+            return;
+        }
+        var state = self.app.state;
+        var modelo = self.app.getModelo(state.modeloSeleccionado);
+        $.ajax({
+            url: 'php/guardar-firma-precompra.php',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                email:           ($('#vk-email').val() || state.email || '').trim().toLowerCase(),
+                telefono:        ($('#vk-telefono').val() || state.telefono || '').trim(),
+                nombre:          ($('#vk-nombre').val() || state.nombre || '').trim(),
+                modelo:          modelo ? modelo.nombre : '',
+                signature_data:  self._signatureDataUrl
+            }),
+            success: function(resp) {
+                if (resp && resp.ok) {
+                    state._firmaPrecompraId = resp.firma_id;
+                    if (typeof onDone === 'function') onDone(true);
+                } else {
+                    var err = (resp && resp.error) || 'No se pudo guardar la firma.';
+                    if (typeof onDone === 'function') onDone(false, err);
+                }
+            },
+            error: function(x) {
+                var err = (x.responseJSON && x.responseJSON.error) || 'Error de conexión al guardar la firma.';
+                if (typeof onDone === 'function') onDone(false, err);
+            }
+        });
+    },
+
     _validarDatosContacto: function() {
         // Compose nombre + 1er + 2do apellido into the hidden vk-nombre
         // field (downstream code reads it as the full name) and persist
@@ -1302,10 +1510,38 @@ var Paso4A = {
         this.app.state.nombre   = $('#vk-nombre').val().trim();
         this.app.state.email    = $('#vk-email').val().trim();
         this.app.state.telefono = $('#vk-telefono').val().trim();
+
+        // Round 70 — autograph signature is mandatory for CONTADO purchases.
+        if (!this._hasSignature || !this._signatureDataUrl) {
+            // Scroll user to the signature canvas and flash a hint.
+            var $canvas = $('#vk-firma-canvas-checkout');
+            if ($canvas.length) {
+                $('html, body').animate({ scrollTop: $canvas.offset().top - 100 }, 200);
+                var $status = $('#vk-firma-status-checkout');
+                $status.text('⚠ Firma con el dedo o ratón para continuar')
+                       .css({ color: '#b91c1c', fontWeight: '700' });
+            } else {
+                alert('Firma con el dedo o ratón antes de pagar.');
+            }
+            return false;
+        }
         return true;
     },
 
     _handleContadoSPEI: function() {
+        var self = this;
+        // Round 70 — Make sure signature is persisted server-side before
+        // we generate the SPEI reference. _validarDatosContacto (called
+        // by the click handler) already enforced that the user signed.
+        self._postSignaturePrePago(function(ok, errMsg) {
+            if (!ok) {
+                alert('No se pudo guardar la firma electrónica: ' + (errMsg || 'error') + '. Intenta de nuevo.');
+                return;
+            }
+            self._handleContadoSPEIAfterSignature();
+        });
+    },
+    _handleContadoSPEIAfterSignature: function() {
         var self = this;
         var state = self.app.state;
         var modelo = self.app.getModelo(state.modeloSeleccionado);
@@ -1373,6 +1609,17 @@ var Paso4A = {
     },
 
     _handleContadoOXXO: function() {
+        var self = this;
+        // Round 70 — persist signature first.
+        self._postSignaturePrePago(function(ok, errMsg) {
+            if (!ok) {
+                alert('No se pudo guardar la firma electrónica: ' + (errMsg || 'error') + '. Intenta de nuevo.');
+                return;
+            }
+            self._handleContadoOXXOAfterSignature();
+        });
+    },
+    _handleContadoOXXOAfterSignature: function() {
         var self = this;
         var state = self.app.state;
         var modelo = self.app.getModelo(state.modeloSeleccionado);

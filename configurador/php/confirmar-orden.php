@@ -1213,8 +1213,29 @@ if (!empty($paymentIntentId)) {
     $canSend = true;
 }
 
+// Round 70 (2026-05-23, Óscar — customer report VK-1826-0004 "Prueb"):
+// Previously voltikaNotify('compra_confirmada_*') fired the moment the
+// order row was persisted, regardless of whether Stripe had actually
+// cleared the payment. SPEI/OXXO orders sit in pago_estado='pendiente'
+// for hours/days while the customer pays at the bank/store — but our
+// "Tu VOLTIKA está confirmada" email arrived immediately, misleading
+// customers into thinking the purchase was complete when it wasn't.
+// Some customers then never paid, leaving ghost orders.
+//
+// Fix: only send the immediate confirmation when pago_estado is
+// genuinely "paid enough" (full card payment, or credit enganche
+// captured). For pending payments, stripe-webhook.php already sends
+// the same `compra_confirmada_*` template when the payment_intent
+// actually succeeds — so the customer still gets the email, just at
+// the right moment (when funds clear, not when the order is created).
+$pagoListoParaNotificar = in_array(
+    strtolower((string)($pagoEstadoInit ?? '')),
+    ['pagada', 'aprobada', 'approved', 'paid', 'parcial'],
+    true
+);
+
 $emailSent = false;
-if ($canSend) {
+if ($canSend && $pagoListoParaNotificar) {
     voltikaNotify($tplKey, $notifyData);
     $emailSent = !empty($email);
 
@@ -1228,6 +1249,16 @@ if ($canSend) {
     } else {
         voltikaNotifyDelayed('portal_contado', $notifyData, 300);
     }
+} elseif ($canSend && !$pagoListoParaNotificar) {
+    // Pending payment (SPEI/OXXO/3DS) — release the dedup claim so
+    // stripe-webhook.php can send the notification when payment clears.
+    try {
+        $pdoRel = getDB();
+        $pdoRel->prepare("UPDATE transacciones SET notif_sent_at = NULL
+                           WHERE stripe_pi = ? AND notif_sent_at IS NOT NULL")
+               ->execute([$paymentIntentId]);
+    } catch (Throwable $e) { error_log('release notif claim: ' . $e->getMessage()); }
+    error_log("confirmar-orden: pago_estado='$pagoEstadoInit' for PI=$paymentIntentId — notification deferred to webhook");
 } else {
     error_log("confirmar-orden: notifications already claimed by webhook for PI=$paymentIntentId — skip");
 }

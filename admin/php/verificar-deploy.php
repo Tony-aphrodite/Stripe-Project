@@ -135,6 +135,22 @@ $checks = [
         "Cincel Bootstrap (Round 68, 2026-05-22)",
         'Round 68 — cincel-bootstrap.php: herramienta de un solo uso que sigue el flujo oficial Cincel (GUIA_USO_API_CINCEL.pdf) para convertir una cuenta OTP-only en una con contraseña fija. Paso 1: GET /v3/tokens/otp con Basic email:"otp" (Cincel envía OTP). Paso 2: GET /v3/tokens/jwt con email:OTP → extrae user_id del JWT → PATCH /v3/users/{id} con Bearer JWT + body password → verifica que el nuevo password funciona → escribe local-secrets.php. Después de correr esto, /v3/tokens/jwt con email:password funciona indefinidamente.'
     ),
+    // ── Round 70 (2026-05-23) — 3 customer-reported issues fixed ──────────
+    'r70_confirmar_orden_gate_notif' => _checkFile(
+        $base . '/configurador/php/confirmar-orden.php',
+        'Round 70 (2026-05-23, Óscar — customer report VK-1826-0004',
+        'Round 70 — confirmar-orden.php: el correo "🎉 ¡Tu VOLTIKA está confirmada!" solo se envía cuando pago_estado es realmente "pagada"/"parcial". Para SPEI/OXXO en estado "pendiente" libera la claim de notif_sent_at para que stripe-webhook.php envíe el correo cuando el pago se concrete. Fix del bug reportado por cliente "Prueb Prueba Prueba" recibió correo de confirmación sin haber pagado.'
+    ),
+    'r70_firma_precompra_endpoint' => _checkFile(
+        $base . '/configurador/php/guardar-firma-precompra.php',
+        'Pre-payment signature capture for CONTADO',
+        'Round 70 — guardar-firma-precompra.php: nuevo endpoint que recibe firma autógrafa (canvas base64) + email + telefono ANTES del cobro Stripe. Guarda en firmas_contratos para que confirmar-orden.php / generar-contrato-pdf.php la encuentren por email/telefono al generar el PDF final. Rate-limit 30 calls/10min por IP.'
+    ),
+    'r70_paso4a_canvas_signature' => _checkFile(
+        $base . '/configurador/js/modules/paso4a-checkout.js',
+        '_initSignatureCanvas',
+        'Round 70 — paso4a-checkout.js: agrega canvas de firma autógrafa antes del checkbox de términos. Bloquea botones de pago (Pago único / 9 MSI / SPEI / OXXO) hasta que el cliente firma. Antes del cobro Stripe, llama a guardar-firma-precompra.php para persistir la firma. Resuelve la queja del cliente: "el configurador no pide firma en compras CONTADO".'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
