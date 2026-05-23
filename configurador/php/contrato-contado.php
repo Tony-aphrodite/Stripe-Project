@@ -261,6 +261,46 @@ function contratoContadoSanitizeFullName(string $nombre, string $apPaterno = '',
 //
 // Returns an array with these keys (any may be ''):
 //   cincel_document_id, cincel_status, cincel_signed_at, cincel_nom151_json
+/**
+ * Round 70 v2 (2026-05-23, Óscar — "in that button we need to check
+ * the contract when is signed"): fetch the autograph signature the
+ * customer drew on the configurador's paso4a-checkout canvas. Stored
+ * by guardar-firma-precompra.php BEFORE the Stripe payment in the
+ * firmas_contratos table, keyed by email/telefono.
+ *
+ * Returns null if no signature was found for this customer.
+ */
+function contratoContadoFetchFirmaAutografa(PDO $pdo, string $email, string $telefono): ?array {
+    $email    = strtolower(trim($email));
+    $telefono = preg_replace('/\D/', '', $telefono);
+    if ($email === '' && strlen($telefono) < 7) return null;
+    try {
+        // Make sure the table exists — first-time customers won't have it yet.
+        $exists = $pdo->query("SHOW TABLES LIKE 'firmas_contratos'")->fetchColumn();
+        if (!$exists) return null;
+        $stmt = $pdo->prepare("
+            SELECT firma_base64, firma_sha256, ip, freg
+              FROM firmas_contratos
+             WHERE (LENGTH(?) > 0 AND LOWER(email)    = ?)
+                OR (LENGTH(?) > 0 AND telefono = ?)
+             ORDER BY id DESC
+             LIMIT 1
+        ");
+        $stmt->execute([$email, $email, $telefono, $telefono]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || empty($row['firma_base64'])) return null;
+        return [
+            'firma_base64' => (string)$row['firma_base64'],
+            'firma_sha256' => (string)($row['firma_sha256'] ?? ''),
+            'ip'           => (string)($row['ip']           ?? ''),
+            'fecha'        => (string)($row['freg']         ?? ''),
+        ];
+    } catch (Throwable $e) {
+        error_log('contratoContadoFetchFirmaAutografa: ' . $e->getMessage());
+        return null;
+    }
+}
+
 function contratoContadoFetchCincelAudit(PDO $pdo, string $pedidoNum, $transaccionId = null): array {
     $out = [
         'cincel_document_id' => '',
@@ -690,6 +730,23 @@ function _contratoContadoBuildPdf(array $d): FPDF {
     $cincelSigned  = trim((string)($d['cincel_signed_at']   ?? ''));
     $cincelNom151  = trim((string)($d['cincel_nom151_json'] ?? ''));
 
+    // Round 70 v2 — autograph signature captured at checkout. Goes on
+    // top of the REGISTRO so the legal evidence is visible immediately.
+    $firmaAutoBase64 = trim((string)($d['firma_autografa_base64'] ?? ''));
+    $firmaAutoFecha  = trim((string)($d['firma_autografa_fecha']  ?? ''));
+    $firmaAutoIp     = trim((string)($d['firma_autografa_ip']     ?? ''));
+    if ($firmaAutoBase64 !== '') {
+        $rows[] = ['Firma autógrafa del COMPRADOR (al momento de la compra)',
+            'Capturada el ' . ($firmaAutoFecha ?: '—') .
+            ($firmaAutoIp !== '' ? ' · IP ' . $firmaAutoIp : '') .
+            ' · Embebida en este Contrato (sección FIRMA AUTÓGRAFA)'
+        ];
+    } else {
+        $rows[] = ['Firma autógrafa del COMPRADOR (al momento de la compra)',
+            'Pendiente — no se registró firma autógrafa en el momento del checkout'
+        ];
+    }
+
     $rows[] = ['Firma electrónica avanzada (Acta de Entrega)',
         $cincelDocId !== ''
             ? 'Firmada vía Cincel S.A.P.I. de C.V. (PSC autorizado SE conforme NOM-151-SCFI-2016)'
@@ -714,6 +771,58 @@ function _contratoContadoBuildPdf(array $d): FPDF {
     ];
 
     _ccPdfTable($pdf, $rows);
+
+    // Round 70 v2 — embed the autograph signature image at the bottom
+    // of the REGISTRO section. Uses the same defensive PNG-decode logic
+    // as Round 42 (generar-contrato-pdf.php) so a corrupted base64
+    // doesn't crash the PDF generation.
+    if ($firmaAutoBase64 !== '') {
+        try {
+            $b64 = preg_replace('/^data:image\/[^;]+;base64,/', '', $firmaAutoBase64);
+            $bin = base64_decode($b64, true);
+            if ($bin !== false && strlen($bin) > 100) {
+                // Page break if not enough room (need ~50mm).
+                if ($pdf->GetY() > 230) $pdf->AddPage();
+
+                $pdf->Ln(4);
+                $pdf->SetFont('Arial', 'B', 9);
+                $pdf->SetTextColor(26, 58, 92);
+                $pdf->Cell(0, 5, _contratoContadoEnc('FIRMA AUTÓGRAFA DEL COMPRADOR'), 0, 1);
+                $pdf->SetTextColor(0);
+                $pdf->SetFont('Arial', '', 8);
+                $pdf->MultiCell(0, 4, _contratoContadoEnc(
+                    'Firma capturada electrónicamente al momento del checkout. ' .
+                    'Conforme al artículo 89 del Código de Comercio, esta firma equivale a firma autógrafa para todos los efectos legales.'
+                ), 0, 'J');
+                $pdf->Ln(2);
+
+                // Write the PNG to a temp file (FPDF requires a file path for Image()).
+                $tmpDir = sys_get_temp_dir();
+                $tmpPath = $tmpDir . '/voltika-firma-' . md5($firmaAutoBase64) . '.png';
+                @file_put_contents($tmpPath, $bin);
+                if (file_exists($tmpPath) && filesize($tmpPath) > 100) {
+                    // 60mm wide, preserves aspect ratio. Centered.
+                    $imgX = ($pdf->GetPageWidth() - 60) / 2;
+                    $pdf->Image($tmpPath, $imgX, $pdf->GetY(), 60, 0, 'PNG');
+                    $pdf->Ln(28); // approximate height after Image() (proportional)
+                    // Signature label line
+                    $pdf->SetLineWidth(0.2);
+                    $pdf->Line($imgX, $pdf->GetY(), $imgX + 60, $pdf->GetY());
+                    $pdf->Ln(1);
+                    $pdf->SetFont('Arial', 'B', 8);
+                    $nombreFirma = trim((string)($d['customer_full_name'] ?? ''));
+                    $pdf->SetX($imgX);
+                    $pdf->Cell(60, 4, _contratoContadoEnc($nombreFirma), 0, 1, 'C');
+                    $pdf->SetFont('Arial', '', 7);
+                    $pdf->SetTextColor(120);
+                    $pdf->SetX($imgX);
+                    $pdf->Cell(60, 4, _contratoContadoEnc('EL COMPRADOR'), 0, 1, 'C');
+                    $pdf->SetTextColor(0);
+                    @unlink($tmpPath);
+                }
+            }
+        } catch (Throwable $e) { error_log('contrato-contado firma autógrafa render: ' . $e->getMessage()); }
+    }
 
     // Footer disclaimer
     $pdf->Ln(4);

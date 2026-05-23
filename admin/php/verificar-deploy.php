@@ -151,6 +151,22 @@ $checks = [
         '_initSignatureCanvas',
         'Round 70 — paso4a-checkout.js: agrega canvas de firma autógrafa antes del checkbox de términos. Bloquea botones de pago (Pago único / 9 MSI / SPEI / OXXO) hasta que el cliente firma. Antes del cobro Stripe, llama a guardar-firma-precompra.php para persistir la firma. Resuelve la queja del cliente: "el configurador no pide firma en compras CONTADO".'
     ),
+    // ── Round 70 v2 (2026-05-23) — Embed autograph signature in contract PDF ─
+    'r70_v2_contrato_contado_firma_autografa' => _checkFile(
+        $base . '/configurador/php/contrato-contado.php',
+        'contratoContadoFetchFirmaAutografa',
+        'Round 70 v2 — contrato-contado.php: nuevo helper contratoContadoFetchFirmaAutografa(email,telefono) busca firma_base64 en firmas_contratos. La fila "Firma autógrafa del COMPRADOR" del REGISTRO ahora muestra "Capturada el [fecha] · IP X" en vez de "Pendiente". Y al final del REGISTRO embebe la imagen PNG de la firma autógrafa en una sección "FIRMA AUTÓGRAFA DEL COMPRADOR" con nombre del comprador debajo. Defensive PNG decode + page-break si no hay espacio.'
+    ),
+    'r70_v2_confirmar_orden_firma_lookup' => _checkFile(
+        $base . '/configurador/php/confirmar-orden.php',
+        'Round 70 v2 (2026-05-23',
+        'Round 70 v2 — confirmar-orden.php: antes de llamar a contratoContadoGenerate, hace lookup de la firma autógrafa por email/telefono y la añade a $contratoData. Sin esto, la firma del paso4a-checkout nunca llegaba al PDF final.'
+    ),
+    'r70_v2_descargar_contrato_firma_lookup' => _checkFile(
+        $base . '/configurador/php/descargar-contrato.php',
+        'Round 70 v2 — same autograph lookup',
+        'Round 70 v2 — descargar-contrato.php: ruta de regeneración también hace lookup de firma autógrafa para que contratos legacy (firmados antes de Round 70 v2) muestren la firma al re-descargarse desde el panel admin.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

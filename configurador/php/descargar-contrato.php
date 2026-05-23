@@ -448,6 +448,23 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
                     'cincel_signed_at'        => $cincelAuditRegen['cincel_signed_at']   ?? '',
                     'cincel_nom151_json'      => $cincelAuditRegen['cincel_nom151_json'] ?? '',
                 ];
+
+                // Round 70 v2 — same autograph lookup as the live
+                // confirmar-orden.php path. Ensures admins regenerating
+                // a contract see the customer's autograph signature too.
+                try {
+                    $firmaAutoR = contratoContadoFetchFirmaAutografa(
+                        $pdo,
+                        (string)($tx['email']    ?? ''),
+                        (string)($tx['telefono'] ?? '')
+                    );
+                    if ($firmaAutoR) {
+                        $contratoData['firma_autografa_base64'] = $firmaAutoR['firma_base64'];
+                        $contratoData['firma_autografa_fecha']  = $firmaAutoR['fecha'];
+                        $contratoData['firma_autografa_ip']     = $firmaAutoR['ip'];
+                    }
+                } catch (Throwable $eFa) { error_log('descargar-contrato firma autógrafa: ' . $eFa->getMessage()); }
+
                 $r = contratoContadoGenerate($contratoData);
                 if ($r['ok'] && !empty($r['path']) && file_exists($r['path'])) {
                     $absPath = $r['path'];

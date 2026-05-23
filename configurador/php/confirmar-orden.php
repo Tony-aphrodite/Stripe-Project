@@ -1431,6 +1431,20 @@ if (!$esCredito) {
             'cincel_nom151_json'      => $cincelAudit['cincel_nom151_json'] ?? '',
         ];
 
+        // Round 70 v2 (2026-05-23, Óscar — "in that button we need to check
+        // the contract when is signed"): pull the autograph signature
+        // captured by paso4a-checkout.js (saved to firmas_contratos via
+        // guardar-firma-precompra.php) so contrato-contado.php can embed
+        // it in the final contract PDF. Without this, the contract row
+        // for "Firma autógrafa" stayed as "Pendiente" even though the
+        // customer drew their signature during checkout.
+        $firmaAuto = contratoContadoFetchFirmaAutografa($pdoCC, (string)$email, (string)$telefono);
+        if ($firmaAuto) {
+            $contratoData['firma_autografa_base64'] = $firmaAuto['firma_base64'];
+            $contratoData['firma_autografa_fecha']  = $firmaAuto['fecha'];
+            $contratoData['firma_autografa_ip']     = $firmaAuto['ip'];
+        }
+
         $genResult = contratoContadoGenerate($contratoData);
         if ($genResult['ok']) {
             // contratoUrl + contratoToken already pre-computed above so
