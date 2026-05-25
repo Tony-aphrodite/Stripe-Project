@@ -78,22 +78,43 @@ if (!function_exists('cdcComputeRFC')) {
 }
 
 if (!function_exists('cdcEstadoEnum')) {
+    /**
+     * Normalize free-text "estado" into CDC's CatalogoEstados v2 enum.
+     * MUST match the codes used by consultar-buro.php — earlier versions
+     * of this helper had short codes (COA, CAM, DF, …) which CDC v2 rejects
+     * with "El estado COA no es válido en direccion".
+     */
     function cdcEstadoEnum(string $raw): string {
-        $map = [
-            'AGUASCALIENTES'=>'AGS','BAJA CALIFORNIA'=>'BC','BAJA CALIFORNIA SUR'=>'BCS',
-            'CAMPECHE'=>'CAM','CHIAPAS'=>'CHS','CHIHUAHUA'=>'CHI','COAHUILA'=>'COA',
-            'COLIMA'=>'COL','CIUDAD DE MEXICO'=>'DF','CDMX'=>'DF','DURANGO'=>'DGO',
-            'ESTADO DE MEXICO'=>'MEX','MEXICO'=>'MEX','GUANAJUATO'=>'GTO','GUERRERO'=>'GRO',
-            'HIDALGO'=>'HGO','JALISCO'=>'JAL','MICHOACAN'=>'MICH','MORELOS'=>'MOR',
-            'NAYARIT'=>'NAY','NUEVO LEON'=>'NL','OAXACA'=>'OAX','PUEBLA'=>'PUE',
-            'QUERETARO'=>'QRO','QUINTANA ROO'=>'QR','SAN LUIS POTOSI'=>'SLP',
-            'SINALOA'=>'SIN','SONORA'=>'SON','TABASCO'=>'TAB','TAMAULIPAS'=>'TAM',
-            'TLAXCALA'=>'TLX','VERACRUZ'=>'VER','YUCATAN'=>'YUC','ZACATECAS'=>'ZAC',
+        $k = cdcAscii($raw);
+        $k = preg_replace('/\s+/', '', $k);
+        $codes = ['CDMX','AGS','BC','BCS','CAMP','CHIS','CHIH','COAH','COL','DGO',
+                  'GTO','GRO','HGO','JAL','MEX','MICH','MOR','NAY','NL','OAX','PUE',
+                  'QRO','QROO','SLP','SIN','SON','TAB','TAMS','TLAX','VER','YUC','ZAC'];
+        if (in_array($k, $codes, true)) return $k;
+        $aliases = [
+            'CIUDADDEMEXICO' => 'CDMX', 'DISTRITOFEDERAL' => 'CDMX', 'DF' => 'CDMX',
+            'AGUASCALIENTES' => 'AGS',
+            'BAJACALIFORNIA' => 'BC', 'BAJACALIFORNIASUR' => 'BCS',
+            'CAMPECHE' => 'CAMP',
+            'CHIAPAS' => 'CHIS', 'CHIHUAHUA' => 'CHIH',
+            'COAHUILA' => 'COAH', 'COLIMA' => 'COL',
+            'DURANGO' => 'DGO',
+            'GUANAJUATO' => 'GTO', 'GUERRERO' => 'GRO',
+            'HIDALGO' => 'HGO',
+            'JALISCO' => 'JAL',
+            'ESTADODEMEXICO' => 'MEX', 'MEXICO' => 'MEX',
+            'MICHOACAN' => 'MICH', 'MORELOS' => 'MOR',
+            'NAYARIT' => 'NAY', 'NUEVOLEON' => 'NL',
+            'OAXACA' => 'OAX',
+            'PUEBLA' => 'PUE',
+            'QUERETARO' => 'QRO', 'QUINTANAROO' => 'QROO',
+            'SANLUISPOTOSI' => 'SLP', 'SINALOA' => 'SIN', 'SONORA' => 'SON',
+            'TABASCO' => 'TAB', 'TAMAULIPAS' => 'TAMS', 'TLAXCALA' => 'TLAX',
+            'VERACRUZ' => 'VER',
+            'YUCATAN' => 'YUC',
+            'ZACATECAS' => 'ZAC',
         ];
-        $key = cdcAscii($raw);
-        if (isset($map[$key])) return $map[$key];
-        // If already a 2-3 letter enum, return as-is.
-        if (preg_match('/^[A-Z]{2,4}$/', $key)) return $key;
+        if (isset($aliases[$k])) return $aliases[$k];
         return ''; // empty signals "unknown — try CP-derived fallback"
     }
 }
@@ -101,25 +122,23 @@ if (!function_exists('cdcEstadoEnum')) {
 if (!function_exists('cdcEstadoFromCP')) {
     /**
      * Mexican CPs are state-prefixed per SAT/SEPOMEX. The first 2 digits
-     * map to one Estado. This is the fallback when the applicant's
-     * preaprobaciones.estado field is empty/unrecognizable — without it,
-     * CDC rejects with "El código postal no pertenece al Estado DF"
-     * because cdcEstadoEnum used to default to DF.
+     * map to one Estado. Used as fallback when the applicant's stored
+     * estado field is empty/unrecognizable. Returns the CDC v2 enum
+     * (CDMX, COAH, …) — NOT 2-3 letter codes.
      */
     function cdcEstadoFromCP(string $cp): string {
         $cp = preg_replace('/\D/', '', $cp);
         if (strlen($cp) < 5) return '';
         $p = (int)substr($cp, 0, 2);
-        // SEPOMEX-based ranges (covers all 32 estados).
-        if ($p >= 1  && $p <= 16) return 'DF';
+        if ($p >= 1  && $p <= 16) return 'CDMX';
         if ($p === 20)            return 'AGS';
         if ($p >= 21 && $p <= 22) return 'BC';
         if ($p === 23)            return 'BCS';
-        if ($p === 24)            return 'CAM';
-        if ($p >= 25 && $p <= 27) return 'COA';
+        if ($p === 24)            return 'CAMP';
+        if ($p >= 25 && $p <= 27) return 'COAH';
         if ($p === 28)            return 'COL';
-        if ($p >= 29 && $p <= 30) return 'CHS';
-        if ($p >= 31 && $p <= 33) return 'CHI';
+        if ($p >= 29 && $p <= 30) return 'CHIS';
+        if ($p >= 31 && $p <= 33) return 'CHIH';
         if ($p >= 34 && $p <= 35) return 'DGO';
         if ($p >= 36 && $p <= 38) return 'GTO';
         if ($p >= 39 && $p <= 41) return 'GRO';
@@ -133,13 +152,13 @@ if (!function_exists('cdcEstadoFromCP')) {
         if ($p >= 68 && $p <= 71) return 'OAX';
         if ($p >= 72 && $p <= 75) return 'PUE';
         if ($p === 76)            return 'QRO';
-        if ($p === 77)            return 'QR';
+        if ($p === 77)            return 'QROO';
         if ($p >= 78 && $p <= 79) return 'SLP';
         if ($p >= 80 && $p <= 82) return 'SIN';
         if ($p >= 83 && $p <= 85) return 'SON';
         if ($p >= 86 && $p <= 87) return 'TAB';
-        if ($p >= 88 && $p <= 89) return 'TAM';
-        if ($p === 90)            return 'TLX';
+        if ($p >= 88 && $p <= 89) return 'TAMS';
+        if ($p === 90)            return 'TLAX';
         if ($p >= 91 && $p <= 96) return 'VER';
         if ($p >= 97 && $p <= 98) return 'YUC';
         if ($p === 99)            return 'ZAC';
@@ -257,7 +276,7 @@ function cdcQueryPersona(array $persona): array {
     if ($estadoNorm === '' && $cp !== '') {
         $estadoNorm = cdcEstadoFromCP($cp);
     }
-    if ($estadoNorm === '') $estadoNorm = 'DF'; // last-resort
+    if ($estadoNorm === '') $estadoNorm = 'CDMX'; // last-resort (CDC v2 enum)
 
 
     // ── Build request body ────────────────────────────────────────────
