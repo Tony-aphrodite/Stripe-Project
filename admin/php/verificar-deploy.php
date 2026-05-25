@@ -197,6 +197,23 @@ $checks = [
         'Round 79 — admin/php/ventas/backfill-asignaciones.php: herramienta admin que encuentra TODAS las motos con pedido_num en formato sintético "VK-TX{id}" (asignaciones huérfanas de antes del fix). Las agrupa por transacción y permite Bindear (link FK) o Desasignar cada una con un click. Idempotente — correr múltiples veces es seguro. Caso Leobardo se resuelve aquí.'
     ),
 
+    // ── Round 80 (2026-05-25) — Standalone ACTA signing (bypass SPA cache) ──
+    'r80_solicitar_firma_acta' => _checkFile(
+        $base . '/admin/php/checklists/solicitar-firma-acta.php',
+        'Round 80, 2026-05-25',
+        'Round 80 — admin/php/checklists/solicitar-firma-acta.php: endpoint admin que genera token de 40hex + URL para firmar la ACTA DE ENTREGA sin pasar por el SPA. Guarda en firma_acta_requests (TTL 24h), envía link por email + devuelve copy_text para WhatsApp. Bypassea el problema de caché en iPhone Safari / PWA mode donde el SPA queda colgado en "Preparando documento…".'
+    ),
+    'r80_firmar_acta_page' => _checkFile(
+        $base . '/clientes/firmar-acta-directa.php',
+        'Round 80, 2026-05-25',
+        'Round 80 — clientes/firmar-acta-directa.php: página HTML standalone (NO app.js, NO entrega.js, NO SPA modules). Valida el token, muestra modelo/color/VIN + canvas de firma + declaración legal. Submit POSTea a firmar-acta-directa-guardar.php. URL única + Cache-Control no-store garantiza que el browser NUNCA tenga cache vieja de esta página.'
+    ),
+    'r80_firmar_acta_save' => _checkFile(
+        $base . '/clientes/php/firmar-acta-directa-guardar.php',
+        'Round 80, 2026-05-25',
+        'Round 80 — clientes/php/firmar-acta-directa-guardar.php: backend del flujo standalone. Valida token, guarda firma en firmas_contratos, genera PDF de ACTA con autógrafa embebida (FPDF inline, replica el código de cincel-firma-acta.php sin requerir portal auth), aplica NOM-151 vía Cincel, marca inventario_motos.cliente_acta_firmada=1 + cincel_acta_status=signed_with_timestamp, notifica al punto panel. Hace todo lo que firmar-acta.php + cincel-firma-acta.php hacen, pero en un solo POST atómico.'
+    ),
+
     // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
     'r78_estado_inconsistencia_banner' => _checkFile(
         $base . '/admin/js/modules/admin-inventario.js',
@@ -348,6 +365,30 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>Endpoint funcionando: <code>voltika.mx/clientes/php/version.php</code> devuelve <code>{ version: "&lt;hash&gt;", files: {…} }</code>.</li>
     <li>Cliente con app abierta en pestaña/PWA → próxima vez que entre o navegue, la app hace <code>fetch</code> a <code>version.php</code>; si la versión cambió, se recarga sola.</li>
     <li>Test: DevTools → Application → Local Storage → editar <code>vk_build_version</code> a "x" → recargar → la página se debe re-recargar sola para traer JS fresco.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 80 — Firma directa de ACTA (bypass del SPA cache):</strong>
+  <ul>
+    <li><strong>Problema raíz:</strong> el SPA del cliente (entrega.js) queda colgado en "Preparando documento…" para clientes con caché vieja (especialmente iPhone Safari en modo PWA, que ignora Cache-Control headers). Round 73 + Round 76 no resolvieron esto para ALL casos.</li>
+    <li><strong>Solución Round 80:</strong> URL standalone que NO depende del SPA. Como el browser nunca ha visitado esta URL, no puede tener cache vieja.</li>
+    <li><strong>Uso desde admin (DevTools console):</strong>
+      <pre style="background:#1e293b;color:#e2e8f0;padding:8px;border-radius:4px;font-size:11px;">fetch('/admin/php/checklists/solicitar-firma-acta.php', {
+  method:'POST', headers:{'Content-Type':'application/json'},
+  body: JSON.stringify({ moto_id: 143 })   // ← Diego Ramirez
+}).then(r=>r.json()).then(j=>{console.log(j);});</pre>
+    </li>
+    <li>Respuesta: <code>{ ok:true, signing_url:"voltika.mx/clientes/firmar-acta-directa.php?token=...", copy_text:"..." }</code></li>
+    <li>Copia el <code>signing_url</code> → mándalo al cliente por WhatsApp/SMS → cliente abre en su celular → ve datos del moto + canvas → firma con dedo → click "Firmar entrega" → en 10-20s ve banner verde "Recibimos tu firma y sellamos tu ACTA con NOM-151".</li>
+    <li>Verificar en DB:
+      <ul>
+        <li><code>firma_acta_requests.estado='signed'</code></li>
+        <li>Nueva fila en <code>firmas_contratos</code> con la firma base64</li>
+        <li><code>inventario_motos.cliente_acta_firmada=1</code>, <code>cincel_acta_status='signed_with_timestamp'</code>, <code>cincel_acta_timestamp_hash</code> con sha256 de 64 chars</li>
+        <li>Nueva fila en <code>cincel_timestamps</code></li>
+        <li>Notificación al punto panel: <code>notificaciones_log</code> con tipo='acta_firmada_punto'</li>
+      </ul>
+    </li>
+    <li><strong>Caso urgente (Diego Ramirez moto_id 143):</strong> usa este flujo en vez del SPA. El cliente nunca tendrá el "Preparando documento…" colgado porque no abre el SPA.</li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 79 — Fix asignar-moto bug + backfill huérfanos (Leobardo):</strong>
