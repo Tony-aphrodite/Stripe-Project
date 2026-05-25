@@ -89,7 +89,7 @@ if (!function_exists('cdcEstadoEnum')) {
         $k = preg_replace('/\s+/', '', $k);
         $codes = ['CDMX','AGS','BC','BCS','CAMP','CHIS','CHIH','COAH','COL','DGO',
                   'GTO','GRO','HGO','JAL','MEX','MICH','MOR','NAY','NL','OAX','PUE',
-                  'QRO','QROO','SLP','SIN','SON','TAB','TAMS','TLAX','VER','YUC','ZAC'];
+                  'QRO','QROO','SLP','SIN','SON','TAB','TAMP','TLAX','VER','YUC','ZAC'];
         if (in_array($k, $codes, true)) return $k;
         $aliases = [
             'CIUDADDEMEXICO' => 'CDMX', 'DISTRITOFEDERAL' => 'CDMX', 'DF' => 'CDMX',
@@ -109,7 +109,7 @@ if (!function_exists('cdcEstadoEnum')) {
             'PUEBLA' => 'PUE',
             'QUERETARO' => 'QRO', 'QUINTANAROO' => 'QROO',
             'SANLUISPOTOSI' => 'SLP', 'SINALOA' => 'SIN', 'SONORA' => 'SON',
-            'TABASCO' => 'TAB', 'TAMAULIPAS' => 'TAMS', 'TLAXCALA' => 'TLAX',
+            'TABASCO' => 'TAB', 'TAMAULIPAS' => 'TAMP', 'TLAXCALA' => 'TLAX',
             'VERACRUZ' => 'VER',
             'YUCATAN' => 'YUC',
             'ZACATECAS' => 'ZAC',
@@ -157,7 +157,7 @@ if (!function_exists('cdcEstadoFromCP')) {
         if ($p >= 80 && $p <= 82) return 'SIN';
         if ($p >= 83 && $p <= 85) return 'SON';
         if ($p >= 86 && $p <= 87) return 'TAB';
-        if ($p >= 88 && $p <= 89) return 'TAMS';
+        if ($p >= 88 && $p <= 89) return 'TAMP';
         if ($p === 90)            return 'TLAX';
         if ($p >= 91 && $p <= 96) return 'VER';
         if ($p >= 97 && $p <= 98) return 'YUC';
