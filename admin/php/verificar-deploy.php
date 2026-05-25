@@ -174,6 +174,35 @@ $checks = [
         'Round 77 diag, 2026-05-25',
         'Round 77 — admin/php/diagnostico-checklists-moto.php: dado un moto_id, vuelca el estado COMPLETO de cada checklist (recepcion_punto, checklist_origen, checklist_ensamble, checklist_entrega_v2, entregas, firmas_contratos, cincel_timestamps). El admin o boss puede ver de un vistazo qué tabla tiene fila y qué no — útil para reportar bugs específicos en vez de "no se ve nada".'
     ),
+
+    // ── Round 79 (2026-05-25) — Fix asignar/desasignar data-sync bug ──
+    'r79_asignar_moto_fk' => _checkFile(
+        $base . '/admin/php/ventas/asignar-moto.php',
+        'Round 79 (2026-05-25) — Direct FK on transacciones',
+        'Round 79 — admin/php/ventas/asignar-moto.php: además de poblar inventario_motos.cliente_*, ahora también escribe transacciones.moto_id = ? para que Ventas pueda hacer JOIN directo (sin depender de string matching de pedido_num). Caso Leobardo: la asignación stamping VK-TX32 nunca era visible en Ventas porque listar.php no reconocía ese formato.'
+    ),
+    'r79_listar_prefer_fk' => _checkFile(
+        $base . '/admin/php/ventas/listar.php',
+        'Round 79 (2026-05-25) — Prefer the direct FK link',
+        'Round 79 — admin/php/ventas/listar.php: el JOIN ahora prioriza m.id = t.moto_id (FK directo). Mantiene los 5 fallbacks legacy (pedido_corto, pedido, etc.) + agrega reconocimiento del formato sintético CONCAT(VK-TX, t.id) para recuperar huérfanos de asignaciones pre-Round-79.'
+    ),
+    'r79_desasignar_clear_fk' => _checkFile(
+        $base . '/admin/php/ventas/desasignar-moto.php',
+        'Round 79 (2026-05-25) — Also clear the direct FK link',
+        'Round 79 — admin/php/ventas/desasignar-moto.php: añade limpieza simétrica de transacciones.moto_id = NULL cuando el admin desasigna una moto. Sin este paso quedarían filas con FK colgante apuntando a un moto ya liberado.'
+    ),
+    'r79_backfill_tool' => _checkFile(
+        $base . '/admin/php/ventas/backfill-asignaciones.php',
+        'Round 79, 2026-05-25',
+        'Round 79 — admin/php/ventas/backfill-asignaciones.php: herramienta admin que encuentra TODAS las motos con pedido_num en formato sintético "VK-TX{id}" (asignaciones huérfanas de antes del fix). Las agrupa por transacción y permite Bindear (link FK) o Desasignar cada una con un click. Idempotente — correr múltiples veces es seguro. Caso Leobardo se resuelve aquí.'
+    ),
+
+    // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
+    'r78_estado_inconsistencia_banner' => _checkFile(
+        $base . '/admin/js/modules/admin-inventario.js',
+        'Round 78 (2026-05-25)',
+        'Round 78 — admin/js/modules/admin-inventario.js: al abrir el detalle de un moto, aparece un banner ROJO/AMARILLO arriba cuando moto.estado está adelantado de los checklists requeridos. Detecta 3 casos: (1) estado>=recibida sin recepcion_punto o con recepción.completado=0, (2) estado>=lista_para_entrega sin ensamble.completado=1, (3) estado=entregada sin entrega.completado=1. Surfacing inmediato — el admin ya no tiene que adivinar por qué la moto "está mal".'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -319,6 +348,14 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>Endpoint funcionando: <code>voltika.mx/clientes/php/version.php</code> devuelve <code>{ version: "&lt;hash&gt;", files: {…} }</code>.</li>
     <li>Cliente con app abierta en pestaña/PWA → próxima vez que entre o navegue, la app hace <code>fetch</code> a <code>version.php</code>; si la versión cambió, se recarga sola.</li>
     <li>Test: DevTools → Application → Local Storage → editar <code>vk_build_version</code> a "x" → recargar → la página se debe re-recargar sola para traer JS fresco.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 79 — Fix asignar-moto bug + backfill huérfanos (Leobardo):</strong>
+  <ul>
+    <li>Bug: asignar-moto.php solo escribía cliente_* en inventario_motos. Ventas (listar.php) hacía JOIN por string matching de pedido_num. Cuando caía al fallback "VK-TX{id}", el JOIN nunca matcheaba → Ventas mostraba "Sin asignar" mientras CEDIS mostraba la moto asignada.</li>
+    <li>Fix Round 79: asignar-moto.php ahora también escribe <code>transacciones.moto_id</code> directamente. listar.php prioriza ese FK + reconoce el formato VK-TX{id} como último recurso.</li>
+    <li>Para huérfanos pre-Round-79: abrir <code>/admin/php/ventas/backfill-asignaciones.php?key=voltika_diag_2026</code>. Lista todas las motos con pedido_num="VK-TX{id}" agrupadas por transacción. Botón verde "Bindear" para fijar el FK, botón rojo "Desasignar" para liberar duplicados.</li>
+    <li>Test: para Leobardo (txn 32), abrir el backfill → deberían aparecer 2 motos huérfanas marcadas como "VK-TX32" → elegir UNA para bindear, desasignar la otra → recargar Ventas → la fila ya muestra la moto asignada con su VIN.</li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 76 — Cache-bust automático en primera visita:</strong>

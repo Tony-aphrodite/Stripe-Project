@@ -345,6 +345,44 @@ $updateVals[] = $motoId;
 $stmt = $pdo->prepare("UPDATE inventario_motos SET " . implode(', ', $updateSets) . " WHERE id = ?");
 $stmt->execute($updateVals);
 
+// ── Round 79 (2026-05-25) — Direct FK on transacciones ────────────────
+// Until this round, asignar-moto.php only wrote the customer info into
+// inventario_motos.cliente_*. The Ventas listar.php JOIN tried to match
+// inventario_motos.pedido_num against various string forms of
+// transacciones.pedido / pedido_corto. When the pedido fields drifted
+// (especially for orders falling through to the synthetic "VK-TX{id}"
+// fallback), the JOIN never matched, and the Sales dashboard showed
+// "Sin asignar" while CEDIS happily showed the moto assigned.
+//
+// Customer brief (Óscar via Tony, 2026-05-25, Leobardo case): "we tried
+// assigning another one, and that one didn't show up on the sales portal
+// either, but when we check CEDIS, it appears as assigned and we can't
+// unassign it." Root cause confirmed: pedido_num="VK-TX32" was written
+// to inventario_motos, but listar.php's JOIN didn't recognize that form.
+//
+// Fix: also write the moto_id directly into transacciones. This gives
+// the Ventas view a bulletproof FK link that doesn't depend on pedido_num
+// string matching. Wrapped in column-existence check so legacy schemas
+// without the column don't break.
+try {
+    $hasTxnMotoId = (bool)$pdo->query("SHOW COLUMNS FROM transacciones LIKE 'moto_id'")->fetch();
+    if (!$hasTxnMotoId) {
+        // Add the column idempotently. If the DDL fails (e.g. permissions),
+        // the rest of the flow still completes — we just lose the direct link.
+        try {
+            $pdo->exec("ALTER TABLE transacciones ADD COLUMN moto_id INT NULL, ADD INDEX idx_moto_id (moto_id)");
+            $hasTxnMotoId = true;
+        } catch (Throwable $e) { error_log('asignar-moto: cannot add transacciones.moto_id: ' . $e->getMessage()); }
+    }
+    if ($hasTxnMotoId) {
+        $pdo->prepare("UPDATE transacciones SET moto_id = ? WHERE id = ?")
+            ->execute([$motoId, $transId]);
+    }
+} catch (Throwable $e) {
+    // Never block the assignment because the FK update failed — log + continue.
+    error_log('asignar-moto: tx.moto_id update: ' . $e->getMessage());
+}
+
 // ── Log ──────────────────────────────────────────────────────────────────
 adminLog('asignar_moto', [
     'transaccion_id' => $transId,

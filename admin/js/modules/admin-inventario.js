@@ -477,6 +477,67 @@ window.AD_inventario = (function(){
       if(m.vin_display||m.vin) html += '<code style="font-size:11px;background:var(--ad-surface-2);padding:2px 8px;border-radius:4px;">'+( m.vin_display||m.vin)+'</code>';
       html += '</div></div></div>';
 
+      // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
+      // Customer brief (Óscar via Tony): "still not showing the checklist of
+      // reception in the admin dashboard, and also we can't check the
+      // checklist of delivery". Investigation found that the recepción row
+      // IS showing, but admins were confused because moto.estado said
+      // "lista_para_entrega" while the recepción was actually pendiente
+      // with 5 failed checks and 3 missing photos. The state hierarchy
+      // had been advanced manually without the actual checklists being
+      // completed. This banner surfaces those discrepancies prominently
+      // at the TOP of the detail panel so they can't be missed.
+      var stateOrder = ['por_llegar','enviada','en_transito','recibida','por_ensamblar','en_ensamble','lista_para_entrega','por_validar_entrega','entregada'];
+      var stateIdx = function(s){ var i = stateOrder.indexOf(String(s||'').toLowerCase()); return i < 0 ? 0 : i; };
+      var motoStage = stateIdx(m.estado);
+      var rcpDone   = !!(r.recepcion && (r.recepcion.completado == 1 || r.recepcion.completado === '1'));
+      var ensDone   = !!(r.checklist_ensamble && (r.checklist_ensamble.completado == 1 || r.checklist_ensamble.completado === '1'));
+      var entDone   = !!(r.checklist_entrega  && (r.checklist_entrega.completado  == 1 || r.checklist_entrega.completado  === '1'));
+      var problems = [];
+      // estado at "recibida" or beyond but recepción isn't complete
+      if (motoStage >= stateIdx('recibida') && !rcpDone) {
+        if (!r.recepcion) {
+          problems.push({sev:'high', label:'Recepción nunca registrada',
+            detail:'La moto está en estado "'+m.estado+'" pero NO existe ningún registro en recepcion_punto. Probablemente el estado fue avanzado manualmente. El punto debe escanear el VIN desde Recepción → Recibir moto para crear el registro.'});
+        } else {
+          // Count failed/missing checks
+          var checks = ['vin_coincide','estado_fisico_ok','sin_danos','componentes_completos','bateria_ok'];
+          var failed = [];
+          checks.forEach(function(k){
+            var v = r.recepcion[k];
+            if (v !== 1 && v !== '1' && v !== true) failed.push(k);
+          });
+          var photosMissing = (typeof r.recepcion.fotos_missing_count === 'number') ? r.recepcion.fotos_missing_count : 0;
+          problems.push({sev:'high', label:'Recepción incompleta — '+failed.length+' check(s) fallido(s)'+(photosMissing>0?', '+photosMissing+' foto(s) faltante(s)':''),
+            detail:'La moto está en estado "'+m.estado+'" pero la recepción está marcada como pendiente. Operador: '+(r.recepcion.recibido_por_nombre||'?')+'. Pídele al punto que la complete desde Recepción → Historial.'});
+        }
+      }
+      // estado at "lista_para_entrega" or beyond but ensamble isn't complete
+      if (motoStage >= stateIdx('lista_para_entrega') && !ensDone) {
+        problems.push({sev:'med', label:'Ensamble no completado',
+          detail:'Estado "'+m.estado+'" implica ensamble terminado, pero checklist_ensamble.completado != 1. El punto debe terminar las 5 fases del checklist de ensamble.'});
+      }
+      // estado is "entregada" but delivery checklist isn't complete
+      if (m.estado === 'entregada' && !entDone) {
+        problems.push({sev:'med', label:'Entrega cerrada sin checklist',
+          detail:'La moto está marcada como entregada, pero checklist_entrega_v2 no está completado. La firma del cliente puede estar pendiente o el checklist no se cerró desde el punto.'});
+      }
+
+      if (problems.length) {
+        var bannerBg = '#fef3c7'; var bannerBd = '#facc15'; var bannerTitle = '⚠ Inconsistencia en el estado de la moto';
+        var hasHigh = problems.some(function(p){ return p.sev === 'high'; });
+        if (hasHigh) { bannerBg = '#fee2e2'; bannerBd = '#fca5a5'; bannerTitle = '🔴 Estado avanzado sin completar checklists requeridos'; }
+        html += '<div style="background:'+bannerBg+';border:1px solid '+bannerBd+';border-left:5px solid '+bannerBd+';border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:13px;">';
+        html += '<div style="font-weight:800;font-size:14px;color:#7c2d12;margin-bottom:8px;">'+bannerTitle+'</div>';
+        html += '<div style="font-size:12px;color:#7c2d12;margin-bottom:10px;">La moto tiene <code style="font-size:11px;background:rgba(255,255,255,.6);padding:1px 6px;border-radius:3px;">estado="'+esc(m.estado)+'"</code> pero los siguientes pasos NO están completados. Esto suele pasar cuando se mueve el estado manualmente desde la BD sin pasar por la app del punto.</div>';
+        html += '<ul style="margin:0;padding-left:18px;line-height:1.55;">';
+        problems.forEach(function(p){
+          html += '<li style="margin-bottom:6px;"><strong style="color:#7c2d12;">'+esc(p.label)+'</strong><br><span style="font-size:11.5px;color:#78350f;">'+esc(p.detail)+'</span></li>';
+        });
+        html += '</ul>';
+        html += '</div>';
+      }
+
       // ── Vehículo ──
       secIx = 0;
       html += secHead('Vehículo','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>');

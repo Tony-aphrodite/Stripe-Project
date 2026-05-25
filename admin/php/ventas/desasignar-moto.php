@@ -186,6 +186,26 @@ try {
     ")->execute([(int)$moto['id']]);
 }
 
+// Round 79 (2026-05-25) — Also clear the direct FK link on transacciones.
+// asignar-moto.php now writes transacciones.moto_id when assigning; the
+// symmetric clear here ensures Ventas doesn't keep showing the released
+// moto as still bound to the order.
+$txnIdsCleared = [];
+try {
+    $hasTxnMotoId = (bool)$pdo->query("SHOW COLUMNS FROM transacciones LIKE 'moto_id'")->fetch();
+    if ($hasTxnMotoId) {
+        $find = $pdo->prepare("SELECT id FROM transacciones WHERE moto_id = ?");
+        $find->execute([(int)$moto['id']]);
+        $txnIdsCleared = array_map('intval', $find->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        if ($txnIdsCleared) {
+            $pdo->prepare("UPDATE transacciones SET moto_id = NULL WHERE moto_id = ?")
+                ->execute([(int)$moto['id']]);
+        }
+    }
+} catch (Throwable $e) {
+    error_log('desasignar-moto tx.moto_id clear: ' . $e->getMessage());
+}
+
 // Supersede any active envíos for this moto so the CEDIS / Envíos panels
 // don't keep a stale shipping pointer at the old punto. Mirrors the
 // supersede block in asignar-punto.php (lines 157-182).

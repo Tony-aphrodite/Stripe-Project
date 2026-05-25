@@ -182,6 +182,15 @@ try {
         FROM transacciones t
         LEFT JOIN inventario_motos m
                ON m.id = (
+                   -- Round 79 (2026-05-25) — Prefer the direct FK link
+                   -- transacciones.moto_id, set by asignar-moto.php from
+                   -- this round forward. Falls back to the legacy string
+                   -- matching for rows assigned before the FK was wired up.
+                   -- See full notes in admin/php/ventas/asignar-moto.php
+                   -- (double quotes are forbidden in this comment block
+                   -- because the entire SQL lives inside a PHP double-
+                   -- quoted string).
+                   --
                    -- Customer brief 2026-05-04 round 5: orders showing
                    -- Sin-asignar in the dashboard despite CEDIS showing
                    -- the moto as assigned. Root cause: a single match
@@ -197,13 +206,19 @@ try {
                     WHERE m2.activo = 1
                       AND m2.vin NOT REGEXP '^VK-[A-Z0-9]+-[0-9]+-[a-f0-9]+'
                       AND (
-                          m2.pedido_num = CONCAT('VK-', t.pedido)
+                          /* PRIMARY: direct FK link from transacciones.moto_id */
+                          m2.id = t.moto_id
+                          /* FALLBACKS: legacy string-matching for pre-Round-79 assignments */
+                          OR m2.pedido_num = CONCAT('VK-', t.pedido)
                           OR m2.pedido_num = t.pedido_corto
                           OR m2.pedido_num = t.pedido
                           OR m2.pedido_num = CONCAT('VK-VK-', t.pedido)
                           OR (t.pedido LIKE 'VK-%' AND m2.pedido_num = t.pedido)
+                          /* Round 79 — also recognize the synthetic VK-TX{id} format
+                             that asignar-moto.php uses as its last-resort fallback */
+                          OR m2.pedido_num = CONCAT('VK-TX', t.id)
                       )
-                    ORDER BY m2.fmod DESC
+                    ORDER BY (m2.id = t.moto_id) DESC, m2.fmod DESC
                     LIMIT 1
                )
         LEFT JOIN puntos_voltika pm ON pm.id = m.punto_voltika_id
