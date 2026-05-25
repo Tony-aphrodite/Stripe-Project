@@ -145,7 +145,24 @@ try {
     // ─────────────────────────────────────────────────────────────────────
     require_once __DIR__ . '/../../configurador/php/contrato-contado.php';
 
-    $pedido     = (string)($txn['pedido']           ?? '');
+    // Pedido fallback chain — many old transacciones rows have pedido=NULL
+    // because the original confirmar-orden.php only sets stripe_pi + pedido_corto.
+    // The existing PDF on disk for these rows is named contrato_contado_TX{id}.pdf
+    // (see consultar-orden output for Enrique: "contrato_contado_TX34.pdf").
+    // We must use that SAME identifier so the regen OVERWRITES the old file
+    // instead of creating an orphan one with the wrong filename.
+    $pedido = (string)($txn['pedido'] ?? '');
+    if ($pedido === '') {
+        // Try pedido_corto first (newer rows have it), then fall back to TX{id}
+        $pedido = (string)($txn['pedido_corto'] ?? '');
+        // Strip the "VK-" prefix if present — file naming convention used the raw id.
+        if ($pedido !== '' && strpos($pedido, 'VK-') === 0) {
+            $pedido = substr($pedido, 3);
+        }
+        if ($pedido === '') {
+            $pedido = 'TX' . $txnId;   // matches existing contrato_contado_TX{id}.pdf
+        }
+    }
     $modelo     = (string)($txn['modelo']           ?? '');
     $color      = (string)($txn['color']            ?? '');
     $apePat     = (string)($txn['apellido_paterno'] ?? '');
