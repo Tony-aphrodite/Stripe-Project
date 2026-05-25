@@ -94,7 +94,56 @@ if (!function_exists('cdcEstadoEnum')) {
         if (isset($map[$key])) return $map[$key];
         // If already a 2-3 letter enum, return as-is.
         if (preg_match('/^[A-Z]{2,4}$/', $key)) return $key;
-        return 'DF';
+        return ''; // empty signals "unknown — try CP-derived fallback"
+    }
+}
+
+if (!function_exists('cdcEstadoFromCP')) {
+    /**
+     * Mexican CPs are state-prefixed per SAT/SEPOMEX. The first 2 digits
+     * map to one Estado. This is the fallback when the applicant's
+     * preaprobaciones.estado field is empty/unrecognizable — without it,
+     * CDC rejects with "El código postal no pertenece al Estado DF"
+     * because cdcEstadoEnum used to default to DF.
+     */
+    function cdcEstadoFromCP(string $cp): string {
+        $cp = preg_replace('/\D/', '', $cp);
+        if (strlen($cp) < 5) return '';
+        $p = (int)substr($cp, 0, 2);
+        // SEPOMEX-based ranges (covers all 32 estados).
+        if ($p >= 1  && $p <= 16) return 'DF';
+        if ($p === 20)            return 'AGS';
+        if ($p >= 21 && $p <= 22) return 'BC';
+        if ($p === 23)            return 'BCS';
+        if ($p === 24)            return 'CAM';
+        if ($p >= 25 && $p <= 27) return 'COA';
+        if ($p === 28)            return 'COL';
+        if ($p >= 29 && $p <= 30) return 'CHS';
+        if ($p >= 31 && $p <= 33) return 'CHI';
+        if ($p >= 34 && $p <= 35) return 'DGO';
+        if ($p >= 36 && $p <= 38) return 'GTO';
+        if ($p >= 39 && $p <= 41) return 'GRO';
+        if ($p >= 42 && $p <= 43) return 'HGO';
+        if ($p >= 44 && $p <= 49) return 'JAL';
+        if ($p >= 50 && $p <= 57) return 'MEX';
+        if ($p >= 58 && $p <= 61) return 'MICH';
+        if ($p === 62)            return 'MOR';
+        if ($p === 63)            return 'NAY';
+        if ($p >= 64 && $p <= 67) return 'NL';
+        if ($p >= 68 && $p <= 71) return 'OAX';
+        if ($p >= 72 && $p <= 75) return 'PUE';
+        if ($p === 76)            return 'QRO';
+        if ($p === 77)            return 'QR';
+        if ($p >= 78 && $p <= 79) return 'SLP';
+        if ($p >= 80 && $p <= 82) return 'SIN';
+        if ($p >= 83 && $p <= 85) return 'SON';
+        if ($p >= 86 && $p <= 87) return 'TAB';
+        if ($p >= 88 && $p <= 89) return 'TAM';
+        if ($p === 90)            return 'TLX';
+        if ($p >= 91 && $p <= 96) return 'VER';
+        if ($p >= 97 && $p <= 98) return 'YUC';
+        if ($p === 99)            return 'ZAC';
+        return '';
     }
 }
 
@@ -199,7 +248,17 @@ function cdcQueryPersona(array $persona): array {
         $rfc = cdcComputeRFC($primerNombre, $apellidoPaterno, $apellidoMaterno, $fechaNacimiento);
     }
     if (strlen($rfc) === 10) $rfc .= 'XXX';
+    // Estado: try the explicit field first; if empty/unrecognizable, derive
+    // from CP. CDC rejects when CP and Estado don't match (e.g. CP=76000
+    // in Querétaro but Estado='DF' triggers "El código postal no pertenece
+    // al Estado DF"), so the fallback must produce the CORRECT state, not
+    // a placeholder.
     $estadoNorm = cdcEstadoEnum($estado);
+    if ($estadoNorm === '' && $cp !== '') {
+        $estadoNorm = cdcEstadoFromCP($cp);
+    }
+    if ($estadoNorm === '') $estadoNorm = 'DF'; // last-resort
+
 
     // ── Build request body ────────────────────────────────────────────
     $requestBody = [
