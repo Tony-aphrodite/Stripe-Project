@@ -31,20 +31,33 @@ if ($token === '' || !preg_match('/^[a-f0-9]{40}$/i', $token)) {
     try {
         $pdo = getDB();
 
-        // Lookup the token + transaccion in one go. Schema-tolerant on
-        // missing tables (e.g. fresh install) so we surface a clear error
-        // instead of a 500.
+        // Lookup the token + transaccion in two queries. Schema-tolerant:
+        // pulls all transacciones columns with SELECT * so we don't break
+        // when an installation is missing optional columns like precio_unitario
+        // or total. The previous combined SELECT was failing with "Unknown
+        // column" on older schemas and swallowing the cause.
         try {
-            $st = $pdo->prepare("SELECT r.*, t.pedido, t.nombre, t.email, t.telefono,
-                                        t.modelo, t.precio_unitario, t.total,
-                                        t.contrato_pdf_path, t.contrato_aceptado_at
-                                 FROM firma_contrato_requests r
-                                 JOIN transacciones t ON t.id = r.transaccion_id
-                                 WHERE r.token = ? LIMIT 1");
+            $st = $pdo->prepare("SELECT * FROM firma_contrato_requests WHERE token = ? LIMIT 1");
             $st->execute([$token]);
             $req = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+
+            if ($req) {
+                $tx = $pdo->prepare("SELECT * FROM transacciones WHERE id = ? LIMIT 1");
+                $tx->execute([(int)$req['transaccion_id']]);
+                $txRow = $tx->fetch(PDO::FETCH_ASSOC) ?: null;
+                if ($txRow) {
+                    // Merge transacciones fields into $req so the template
+                    // below can read them with the same key names. Token row
+                    // keys take precedence over txn keys on collision.
+                    $req = array_merge($txRow, $req);
+                } else {
+                    $req = null;
+                    $errMsg = 'La transacción asociada al enlace ya no existe.';
+                }
+            }
         } catch (Throwable $e) {
-            $errMsg = 'El sistema de firmas no está disponible. Contacta a Voltika.';
+            error_log('firmar-contrato-retro lookup SQL: ' . $e->getMessage());
+            $errMsg = 'El sistema de firmas no está disponible. Contacta a Voltika. (' . $e->getMessage() . ')';
         }
 
         if (!$req) {
