@@ -87,14 +87,50 @@ $cdc = cdcQueryPersona([
 ]);
 
 if (empty($cdc['ok'])) {
+    // Surface CDC's actual rejection body so the admin can see WHY it failed
+    // (validation errors, missing field, etc.). Otherwise the toast just
+    // shows "HTTP 400 o transport error" and nobody knows what to fix.
+    $cdcBody = $cdc['raw'] ?? null;
+    $cdcMsg  = '';
+    if (is_array($cdcBody)) {
+        if (!empty($cdcBody['errores']) && is_array($cdcBody['errores'])) {
+            $parts = [];
+            foreach ($cdcBody['errores'] as $err) {
+                $cod = $err['codigo'] ?? '';
+                $des = $err['descripcion'] ?? $err['mensaje'] ?? '';
+                $parts[] = trim($cod . ' ' . $des);
+            }
+            $cdcMsg = implode(' · ', array_filter($parts));
+        } elseif (!empty($cdcBody['message'])) {
+            $cdcMsg = (string)$cdcBody['message'];
+        } elseif (!empty($cdcBody['error'])) {
+            $cdcMsg = (string)$cdcBody['error'];
+        }
+    }
+    if ($cdcMsg === '' && is_string($cdc['diag']['body_resp'] ?? null)) {
+        $cdcMsg = substr($cdc['diag']['body_resp'], 0, 300);
+    }
+    if ($cdcMsg === '') {
+        $cdcMsg = $cdc['error'] ?? 'Sin detalle';
+    }
+
     adminJsonOut([
-        'ok'      => false,
-        'error'   => 'cdc_falló',
-        'message' => 'CDC no respondió correctamente: HTTP ' . ($cdc['http'] ?? '?') .
-                     ($cdc['error'] ?? '' ? ' — ' . $cdc['error'] : ''),
-        'http'    => $cdc['http']     ?? 0,
-        'curl_err'=> $cdc['curl_err'] ?? '',
-        'diag'    => $cdc['diag']     ?? null,
+        'ok'        => false,
+        'error'     => 'cdc_falló',
+        'message'   => 'CDC HTTP ' . ($cdc['http'] ?? '?') . ' — ' . $cdcMsg,
+        'http'      => $cdc['http']     ?? 0,
+        'curl_err'  => $cdc['curl_err'] ?? '',
+        'cdc_body'  => $cdcBody,
+        'diag'      => $cdc['diag']     ?? null,
+        'sent'      => [
+            'nombre'   => $nombre,
+            'paterno'  => $paterno,
+            'materno'  => $materno,
+            'dob'      => $dob,
+            'cp'       => $cp,
+            'ciudad'   => $ciudad,
+            'estado'   => $estado,
+        ],
     ], 502);
 }
 
