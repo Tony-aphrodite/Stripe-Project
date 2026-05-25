@@ -696,8 +696,20 @@ window.AD_preaprobaciones = (function(){
                                      ' · ' + scoreTxt +
                                      ' · fuente=' + (f.circulo_source || '—');
                 status.style.color = '#15803d';
+                // Refetch the list AND re-render this detail panel so the
+                // yellow "CDC sin respuesta" card is replaced by the proper
+                // risk-band recommendation based on the new score. Without
+                // this re-render, the admin would still see the stale yellow
+                // card and have to close+reopen the row manually.
                 setTimeout(function(){
-                  if (typeof load === 'function') load();
+                  ADApp.api('preaprobaciones/listar.php?' + $.param(filters))
+                    .done(function(resp){
+                      var freshRows = (resp && resp.rows)
+                                   || (resp && resp.items)
+                                   || (Array.isArray(resp) ? resp : []);
+                      if (typeof paint === 'function') paint(resp);
+                      if (freshRows.length) showDetail(row.id, freshRows);
+                    });
                 }, 700);
               } else {
                 status.textContent = '⚠ ' + ((r && r.message) || 'CDC no respondió correctamente');
