@@ -126,6 +126,13 @@ $checks = [
         'Round 73 (2026-05-24)',
         'Round 73 — clientes/js/modules/entrega.js: el mensaje del panel de firma autógrafa ya no dice "Cincel no está disponible". Ahora explica claramente que la firma se sella con timestamp NOM-151 a través de Cincel — sin alarmar al cliente.'
     ),
+
+    // ── Round 74 (2026-05-25) — Stepper consistente cuando no hay punto ──
+    'r74_estado_stepper_clamp' => _checkFile(
+        $base . '/clientes/php/entrega/estado.php',
+        'Round 74 (2026-05-25)',
+        'Round 74 — clientes/php/entrega/estado.php: si punto_voltika_id es null, $estadoUi se clampa a "pendiente" (paso 1) sin importar otros flags. Evita la contradicción "Entregada ✓ + Asignando punto…" que aparecía cuando la data quedaba inconsistente (test seed o admin override).'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -271,6 +278,13 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>Endpoint funcionando: <code>voltika.mx/clientes/php/version.php</code> devuelve <code>{ version: "&lt;hash&gt;", files: {…} }</code>.</li>
     <li>Cliente con app abierta en pestaña/PWA → próxima vez que entre o navegue, la app hace <code>fetch</code> a <code>version.php</code>; si la versión cambió, se recarga sola.</li>
     <li>Test: DevTools → Application → Local Storage → editar <code>vk_build_version</code> a "x" → recargar → la página se debe re-recargar sola para traer JS fresco.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 74 — Stepper consistente cuando aún no hay punto:</strong>
+  <ul>
+    <li>Antes: si una moto tenía <code>estado='entregada'</code> o <code>cliente_acta_firmada=1</code> pero <code>punto_voltika_id IS NULL</code>, el portal mostraba <strong>paso 7 (Entregada) + badge amarillo "Asignando punto…"</strong> al mismo tiempo. Contradictorio.</li>
+    <li>Ahora: si no hay punto asignado, el stepper se clampa al paso 1 (En tránsito) sin importar otros flags. El badge "Asignando punto…" sigue visible — eso le da contexto correcto al cliente.</li>
+    <li>Test: abre el portal con un cliente cuyo moto tenga <code>punto_voltika_id = NULL</code> y verifica que el stepper esté en paso 1, no en paso 6/7.</li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 73 — "Preparando documento…" se desbloquea en la entrega:</strong>

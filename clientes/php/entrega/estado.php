@@ -189,6 +189,22 @@ try {
     elseif ($entrega && $entrega['estado'] === 'confirmado') $estadoUi = 'confirmado';
     elseif ($entrega && $entrega['estado'] === 'otp_enviado') $estadoUi = 'otp_enviado';
 
+    // Round 74 (2026-05-25) — data integrity clamp.
+    // A moto can NOT legitimately progress past the "awaiting punto" stage
+    // without punto_voltika_id being set. Yet the conditions above (e.g.
+    // moto.estado='entregada' or cliente_acta_firmada=1) can flip the
+    // stepper to step 6/7 even when no punto was ever assigned, producing
+    // the contradictory UI: green "Entregada" stepper + yellow "Asignando
+    // punto…" badge in the same screen. Observed in a test row but also
+    // possible in production if an admin manually flips a flag for QA.
+    //
+    // When no punto exists, clamp the stepper back to step 1 ('pendiente').
+    // The "Asignando punto…" badge stays — that's the informative pill
+    // the customer needs to see.
+    if (empty($moto['punto_voltika_id'])) {
+        $estadoUi = 'pendiente';
+    }
+
     portalJsonOut([
         'ok' => true,
         'entrega' => [
