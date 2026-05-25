@@ -100,11 +100,27 @@ $result = null;
 if ($run && $motoId > 0 && $cliente) {
     // Persist a one-shot portal session targeting this customer, then send
     // its session id as a cookie on the cURL request.
-    // The portal uses PHP native sessions — we open one ourselves.
-    if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
+    //
+    // CRITICAL: the customer portal uses a custom session cookie name
+    // (VOLTIKA_PORTAL) — confirmed by the Set-Cookie header on every portal
+    // response. If we leave the default PHPSESSID, the customer endpoint
+    // opens a fresh empty session and returns 401 even though we wrote
+    // portal_cliente_id correctly. Switch the cookie name BEFORE
+    // session_start() so the session-id we read out is the right one.
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        // Close any pre-existing session opened by the admin bootstrap so we
+        // can re-open under a different cookie name. The admin auth uses
+        // its OWN session (which we already validated above), so we don't
+        // need it anymore for the cURL call.
+        session_write_close();
+    }
+    session_name('VOLTIKA_PORTAL');
+    @session_start();
     $_SESSION['portal_cliente_id'] = (int)$cliente['id'];
     $_SESSION['portal_telefono']   = $cliente['telefono'] ?? null;
     $_SESSION['portal_email']      = $cliente['email']    ?? null;
+    $sid         = session_id();
+    $sessionName = session_name();   // now 'VOLTIKA_PORTAL'
     // PHP's auto session_write_close happens at the end of this script —
     // but the cURL below needs the data to be flushed BEFORE the call.
     session_write_close();
@@ -112,9 +128,6 @@ if ($run && $motoId > 0 && $cliente) {
     $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
     $host   = $_SERVER['HTTP_HOST'] ?? 'voltika.mx';
     $url    = $scheme . '://' . $host . '/clientes/php/entrega/cincel-firma-acta.php';
-
-    $sid = session_id();
-    $sessionName = session_name();   // typically 'PHPSESSID'
 
     $start = microtime(true);
     $ch = curl_init($url);
@@ -157,9 +170,8 @@ if ($run && $motoId > 0 && $cliente) {
         'parsed'  => $parsed,
     ];
 
-    // Reopen our session so the rest of the page still has it (we won't write
-    // anything else but PHP gets confused if it can't reopen).
-    @session_start();
+    // Don't reopen — we're done with sessions. The page below is read-only
+    // HTML rendering. Reopening with mixed cookie names confuses PHP.
 }
 
 header('Content-Type: text/html; charset=utf-8');
