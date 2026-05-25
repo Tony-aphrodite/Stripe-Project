@@ -213,6 +213,11 @@ $checks = [
         'Round 80, 2026-05-25',
         'Round 80 — clientes/php/firmar-acta-directa-guardar.php: backend del flujo standalone. Valida token, guarda firma en firmas_contratos, genera PDF de ACTA con autógrafa embebida (FPDF inline, replica el código de cincel-firma-acta.php sin requerir portal auth), aplica NOM-151 vía Cincel, marca inventario_motos.cliente_acta_firmada=1 + cincel_acta_status=signed_with_timestamp, notifica al punto panel. Hace todo lo que firmar-acta.php + cincel-firma-acta.php hacen, pero en un solo POST atómico.'
     ),
+    'r80_herramienta_firma_acta' => _checkFile(
+        $base . '/admin/php/checklists/herramienta-firma-acta.php',
+        'Round 80 helper, 2026-05-25',
+        'Round 80 helper — admin/php/checklists/herramienta-firma-acta.php: página visual con la tabla de motos eligibles para firma de ACTA directa. Botón "Generar link" por fila → muestra URL, botón Copiar, botón WhatsApp con mensaje pre-cargado. Reemplaza el flujo de DevTools console para usuarios no-técnicos.'
+    ),
 
     // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
     'r78_estado_inconsistencia_banner' => _checkFile(
