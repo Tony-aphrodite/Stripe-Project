@@ -59,8 +59,49 @@ try {
         WHERE id = ?")
         ->execute([$firma, $_SERVER['REMOTE_ADDR'] ?? null, $motoId]);
 
+    // Round 73 (2026-05-24) — Apply Cincel NOM-151 timestamp to the ACTA PDF.
+    // cincel-firma-acta.php saved the PDF disk path on inventario_motos when it
+    // generated the document; we look it up now and stamp it. The stamp is
+    // idempotent by hash, so even if a customer somehow re-signs we don't
+    // double-charge a Cincel c.Doc credit.
+    //
+    // The whole try/catch is non-fatal: if Cincel is down or the PDF path is
+    // missing, the ACTA is still marked as signed (we already updated the
+    // row above) — the timestamp is added best-effort.
+    $tsHashOut = null;
+    try {
+        $pathRow = $pdo->prepare("SELECT cincel_acta_pdf_path FROM inventario_motos WHERE id = ? LIMIT 1");
+        $pathRow->execute([$motoId]);
+        $actaPdfPath = (string)($pathRow->fetchColumn() ?: '');
+        if ($actaPdfPath !== '' && is_file($actaPdfPath)) {
+            require_once __DIR__ . '/../../../configurador/php/cincel-timestamp.php';
+            $ts = cincelGetOrCreateTimestamp($actaPdfPath);
+            if (!empty($ts['ok'])) {
+                cincelSaveTimestamp($pdo, $ts, null, $actaPdfPath);
+                $tsHashOut = $ts['hash'] ?? null;
+                try { $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN cincel_acta_timestamp_hash CHAR(64) NULL"); } catch (Throwable $e) {}
+                if ($tsHashOut) {
+                    try {
+                        $pdo->prepare("UPDATE inventario_motos
+                            SET cincel_acta_timestamp_hash = ?,
+                                cincel_acta_status = 'signed_with_timestamp'
+                            WHERE id = ?")
+                            ->execute([$tsHashOut, $motoId]);
+                    } catch (Throwable $e) { /* column may not exist on legacy schema */ }
+                }
+            } else {
+                error_log('firmar-acta cincel timestamp failed: ' . json_encode($ts));
+            }
+        }
+    } catch (Throwable $e) {
+        // Never block delivery confirmation if Cincel has an outage.
+        error_log('firmar-acta cincel timestamp exception: ' . $e->getMessage());
+    }
+
     // Log
-    portalLog('acta_firmada', ['cliente_id' => $cid, 'success' => 1, 'detalle' => "moto=$motoId firma_img=" . ($firmaPath ? '1' : '0')]);
+    portalLog('acta_firmada', ['cliente_id' => $cid, 'success' => 1,
+        'detalle' => "moto=$motoId firma_img=" . ($firmaPath ? '1' : '0')
+                   . ' cincel_ts=' . ($tsHashOut ? substr($tsHashOut, 0, 12) : 'no')]);
 
     // Notify cliente (confirmation) — punto staff will see it in their UI automatically
     try {

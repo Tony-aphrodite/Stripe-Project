@@ -306,13 +306,16 @@ window.VK_entrega = (function(){
           // Already signed — just refresh.
           if (r.already_signed) { VKApp.toast('ACTA ya firmada.'); render(); return; }
 
-          // Round 65 (2026-05-20): Cincel auth is down. Backend falls back
-          // to autograph signing. Show a canvas signature pad and submit
-          // to entrega/firmar-acta.php (which already supports signature_data).
+          // Round 73 (2026-05-24): backend always routes here — autograph
+          // signature + Cincel NOM-151 timestamp on the resulting PDF.
+          // No Cincel signing iframe / ceremony any more (Óscar's brief:
+          // "we only need the timestamp from Cincel"). The previous
+          // wording said "Cincel is unavailable" which scared customers —
+          // updated to make clear NOM-151 IS applied to their signature.
           if (r.fallback_autograph) {
             showAutographSignaturePad(data.moto_id, r.pdf_url || null,
-              'La firma electrónica con Cincel (NOM-151) no está disponible en este momento. '+
-              'Para no demorar tu entrega, firma directamente con autógrafa abajo — tiene plena validez como declaración de conformidad de recepción.');
+              'Firma con tu dedo en el recuadro de abajo. Tu firma se sellará con un timestamp NOM-151 a través de Cincel — '+
+              'tiene plena validez legal como declaración de conformidad de recepción.');
             return;
           }
 

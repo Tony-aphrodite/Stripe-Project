@@ -662,6 +662,60 @@ window.AD_preaprobaciones = (function(){
     if (rec.action) {
       html += '<div style="margin-top:8px;font-weight:700;color:'+recTitleColor+';">Acción sugerida: '+esc(rec.action)+'</div>';
     }
+
+    // Round 72 (2026-05-23) — "Reintentar CDC" button surfaces only when
+    // the original consultation failed (circulo_source='estimado'). After
+    // CDC connectivity is restored, the admin can click this to re-query
+    // CDC for THIS applicant and the row's score/source/PTI are updated
+    // server-side. The list reloads and this same yellow card switches
+    // away from "CDC sin respuesta" to the real-score recommendation.
+    if (row.circulo_source === 'estimado' || row.circulo_source === 'cdc_sin_score') {
+      var rcId = 'vk-rcdc-' + Math.random().toString(36).slice(2, 9);
+      html += '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed '+recBorder+';display:flex;flex-wrap:wrap;align-items:center;gap:10px;">'
+           +    '<button id="'+rcId+'" class="ad-btn sm" style="background:#0ea5e9;color:#fff;border-color:#0ea5e9;">'
+           +      '🔁 Reintentar consulta CDC'
+           +    '</button>'
+           +    '<span id="'+rcId+'-status" style="font-size:11.5px;color:#475569;flex:1;min-width:200px;"></span>'
+           +  '</div>';
+      setTimeout(function(){
+        var btn = document.getElementById(rcId);
+        var status = document.getElementById(rcId + '-status');
+        if (!btn) return;
+        btn.addEventListener('click', function(){
+          btn.disabled = true;
+          status.textContent = '⏳ Consultando CDC… (puede tardar hasta 10 segundos)';
+          status.style.color = '#1e40af';
+          ADApp.api('preaprobaciones/reconsultar-cdc.php', { preap_id: row.id || 0 })
+            .done(function(r){
+              if (r && r.ok) {
+                var f = r.fetched || {};
+                var scoreTxt = (f.score !== null && f.score !== undefined)
+                                 ? ('FICO ' + f.score)
+                                 : 'sin score (thin file)';
+                status.textContent = '✓ ' + (r.message || 'Actualizado') +
+                                     ' · ' + scoreTxt +
+                                     ' · fuente=' + (f.circulo_source || '—');
+                status.style.color = '#15803d';
+                setTimeout(function(){
+                  if (typeof load === 'function') load();
+                }, 700);
+              } else {
+                status.textContent = '⚠ ' + ((r && r.message) || 'CDC no respondió correctamente');
+                status.style.color = '#b91c1c';
+                btn.disabled = false;
+              }
+            })
+            .fail(function(xhr){
+              var msg = 'Error de red';
+              try { msg = (JSON.parse(xhr.responseText).message) || msg; } catch (e) {}
+              status.textContent = '✗ ' + msg;
+              status.style.color = '#b91c1c';
+              btn.disabled = false;
+            });
+        });
+      }, 0);
+    }
+
     html += '</div>';
 
     // ── 7. Manual override of enganche / plazo (NEW FEATURE 2026-05-04) ─

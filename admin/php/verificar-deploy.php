@@ -92,6 +92,40 @@ $checks = [
         'Round 71 (2026-05-23) — NOM-151 timestamp via Cincel',
         'Round 71 — configurador/php/confirmar-orden.php: después de generar el PDF del contrato CONTADO, llama cincelGetOrCreateTimestamp() y guarda el resultado en cincel_timestamps. Gateable con CINCEL_TIMESTAMP_ENABLED=0 si Cincel tiene outage. Toda excepción se loggea sin abortar el flujo de orden.'
     ),
+
+    // ── Round 72 (2026-05-23) — Reintentar CDC para preap_id existente ──
+    'r72_cdc_call_helper' => _checkFile(
+        $base . '/configurador/php/cdc-call.php',
+        'Round 72, 2026-05-23',
+        'Round 72 — configurador/php/cdc-call.php: helper reusable para hacer consultas CDC desde código admin (sin pasar por consultar-buro.php). Expone cdcQueryPersona($persona) con firma + mTLS + retry + parseo. Funciones cdcAscii/cdcComputeRFC/cdcEstadoEnum/extractPreaprobacionData con function_exists() para coexistir con consultar-buro.php.'
+    ),
+    'r72_reconsultar_cdc_endpoint' => _checkFile(
+        $base . '/admin/php/preaprobaciones/reconsultar-cdc.php',
+        'Round 72, 2026-05-23',
+        'Round 72 — admin/php/preaprobaciones/reconsultar-cdc.php: endpoint que recibe preap_id, carga los datos del solicitante, llama cdcQueryPersona() y actualiza score/circulo_source/pago_mensual_buro/dpd90_flag/dpd_max + pti_total. Devuelve fetched={score, circulo_source, person_found, …} para que el frontend recargue.'
+    ),
+    'r72_reintentar_cdc_button' => _checkFile(
+        $base . '/admin/js/modules/admin-preaprobaciones.js',
+        'Round 72 (2026-05-23)',
+        'Round 72 — admin/js/modules/admin-preaprobaciones.js: botón "🔁 Reintentar consulta CDC" debajo del card de recomendación cuando circulo_source es estimado o cdc_sin_score. POSTea a reconsultar-cdc.php y recarga la lista al terminar.'
+    ),
+
+    // ── Round 73 (2026-05-24) — Unstick "Preparando documento…" en entrega ──
+    'r73_acta_skip_cincel_ceremony' => _checkFile(
+        $base . '/clientes/php/entrega/cincel-firma-acta.php',
+        'Round 73 (2026-05-24) — Skip Cincel signature ceremony',
+        'Round 73 — clientes/php/entrega/cincel-firma-acta.php: tras generar el PDF, retorna fallback_autograph inmediatamente (sin intentar auth a Cincel que tardaba hasta 30s y fallaba). Customer brief Round 71 (Óscar): "solo necesitamos el timestamp de Cincel". Persiste también cincel_acta_pdf_path para que firmar-acta.php pueda sellar el PDF luego.'
+    ),
+    'r73_acta_nom151_timestamp' => _checkFile(
+        $base . '/clientes/php/entrega/firmar-acta.php',
+        'Round 73 (2026-05-24) — Apply Cincel NOM-151 timestamp',
+        'Round 73 — clientes/php/entrega/firmar-acta.php: después de guardar la firma autógrafa, llama cincelGetOrCreateTimestamp() sobre el PDF del acta y guarda el hash en cincel_acta_timestamp_hash. Idempotente por hash. Si Cincel falla, la entrega NO se bloquea (la firma se guarda igual).'
+    ),
+    'r73_entrega_js_wording' => _checkFile(
+        $base . '/clientes/js/modules/entrega.js',
+        'Round 73 (2026-05-24)',
+        'Round 73 — clientes/js/modules/entrega.js: el mensaje del panel de firma autógrafa ya no dice "Cincel no está disponible". Ahora explica claramente que la firma se sella con timestamp NOM-151 a través de Cincel — sin alarmar al cliente.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -237,6 +271,25 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>Endpoint funcionando: <code>voltika.mx/clientes/php/version.php</code> devuelve <code>{ version: "&lt;hash&gt;", files: {…} }</code>.</li>
     <li>Cliente con app abierta en pestaña/PWA → próxima vez que entre o navegue, la app hace <code>fetch</code> a <code>version.php</code>; si la versión cambió, se recarga sola.</li>
     <li>Test: DevTools → Application → Local Storage → editar <code>vk_build_version</code> a "x" → recargar → la página se debe re-recargar sola para traer JS fresco.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 73 — "Preparando documento…" se desbloquea en la entrega:</strong>
+  <ul>
+    <li>Cliente entra a su portal y va a <strong>Entrega</strong> → <strong>Firmar ACTA</strong>.</li>
+    <li>Click en <strong>Iniciar firma con Cincel</strong> → en ~1 segundo aparece el recuadro de firma autógrafa (antes se quedaba 30s en "Preparando documento…" y no avanzaba).</li>
+    <li>Mensaje del recuadro debe decir: <em>"Firma con tu dedo en el recuadro de abajo. Tu firma se sellará con un timestamp NOM-151 a través de Cincel…"</em>. NO debe decir "Cincel no está disponible".</li>
+    <li>Cliente firma con el dedo → server guarda la firma + aplica sello NOM-151 al PDF del ACTA → ACTA queda firmada.</li>
+    <li>Verificar en DB: <code>inventario_motos.cincel_acta_timestamp_hash</code> tiene un sha256 de 64 chars, <code>cincel_acta_status='signed_with_timestamp'</code>.</li>
+    <li>Una fila nueva en <code>cincel_timestamps</code> con el mismo hash + nom151_file/timestamp_file/bitcoin_file.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 72 — Reintentar CDC para casos con "CDC sin respuesta":</strong>
+  <ul>
+    <li>Abrir cualquier preaprobación que tenga la recomendación amarilla <em>"⚠ Recomendación del sistema: No se pudo consultar Círculo de Crédito"</em>.</li>
+    <li>Debajo del card amarillo aparece un botón azul: <strong>🔁 Reintentar consulta CDC</strong>.</li>
+    <li>Click → "Consultando CDC…" → en ~3-10s muestra "✓ CDC respondió con score real. Recomendación actualizada · FICO N · fuente=real".</li>
+    <li>La lista se recarga sola y el mismo card amarillo se vuelve naranja/verde/rojo dependiendo del score real.</li>
+    <li>Si CDC aún falla → "⚠ CDC no respondió correctamente: HTTP N". Vuelve a presionarlo cuando la conectividad esté restaurada.</li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 71 — Cincel NOM-151 timestamp en producción:</strong>

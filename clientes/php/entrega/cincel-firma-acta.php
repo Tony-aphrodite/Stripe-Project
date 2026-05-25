@@ -271,7 +271,52 @@ if (!$pdfPath || !file_exists($pdfPath)) {
     portalJsonOut(['error' => 'PDF del acta no se pudo persistir'], 500);
 }
 
-// ── 3. Authenticate against Cincel ─────────────────────────────────────
+// ── Round 73 (2026-05-24) — Skip Cincel signature ceremony entirely ──
+// Customer brief (Óscar, Round 71): "We only need the timestamp from
+// Cincel". The full Cincel signing UI (request-signatures + iframe +
+// webhook polling) requires endpoints that have moved in v3, AND the
+// auth attempts were hanging up to 30 seconds — customers saw "Preparando
+// documento…" frozen on screen.
+//
+// New flow:
+//   1. We generated the ACTA PDF above.
+//   2. Return `fallback_autograph: true` immediately so the portal shows
+//      the autograph signature pad in ~1 second instead of waiting 30s.
+//   3. After the customer signs in firmar-acta.php, that endpoint applies
+//      a Cincel NOM-151 timestamp to the PDF — same legal validity, no
+//      Cincel signature ceremony required.
+//
+// We also persist the PDF disk path so firmar-acta.php can locate the
+// file later for timestamping (the cincel_acta_pdf_url is just the public
+// URL, not the filesystem path).
+try { $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN cincel_acta_pdf_path VARCHAR(600) NULL"); } catch (Throwable $e) {}
+try {
+    $pdo->prepare("UPDATE inventario_motos
+        SET cincel_acta_pdf_url  = ?,
+            cincel_acta_pdf_path = ?,
+            cincel_acta_status   = 'autograph_pending'
+        WHERE id = ?")
+        ->execute([$pdfUrl, $pdfPath, $motoId]);
+} catch (Throwable $e) { error_log('cincel-firma-acta persist path: ' . $e->getMessage()); }
+
+portalLog('cincel_acta_autograph_route', ['cliente_id' => $cid, 'detalle' => 'moto=' . $motoId]);
+
+portalJsonOut([
+    'ok'                  => true,
+    'fallback_autograph'  => true,
+    'pdf_url'             => $pdfUrl,
+    'pdf_path'            => $pdfPath,
+    'moto_id'             => $motoId,
+    'reason'              => 'Cincel queda solo para timestamp NOM-151; la firma se hace con autógrafa directamente.',
+]);
+
+// ── Dead code below (kept for reference) ──────────────────────────────
+// The full Cincel signature ceremony (create document + add signer +
+// request signatures + iframe + webhook) used to live below. We bypass
+// it now per Óscar's brief. If Cincel ever exposes a stable v3 signing
+// API again, remove the portalJsonOut above and restore the flow.
+
+// ── 3. Authenticate against Cincel (DEAD — see Round 73 note above) ───
 require_once __DIR__ . '/../../../configurador/php/config.php';
 if (!defined('CINCEL_API_URL') || !defined('CINCEL_EMAIL') || !defined('CINCEL_PASSWORD')) {
     portalJsonOut(['error' => 'Cincel no está configurado en este entorno'], 500);
