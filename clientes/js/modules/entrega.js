@@ -389,7 +389,24 @@ window.VK_entrega = (function(){
         'Se registra la fecha, hora, IP y un hash criptográfico de tu firma. '+
         'Cuando el sistema NOM-151 esté disponible, podrás re-firmar con sello digital si lo prefieres.'+
       '</div>';
-    VKApp.modal(html, { wide: true });
+    // Round 81 (2026-05-26) — ACTUAL root cause fix for "Preparando documento…"
+    // stuck state. The previous code here called VKApp.modal(html, {wide:true}),
+    // but VKApp.modal() does NOT exist on the VKApp object — it only exports
+    // start/api/render/go/toast/state/loadEstado/logout/showTabbar/...
+    //
+    // Calling a non-existent method throws a TypeError inside the .done()
+    // callback. The button text was set to "Preparando documento…" BEFORE
+    // the AJAX call, and the TypeError aborts execution BEFORE the screen
+    // is replaced. The .fail() handler never fires (because .done() did
+    // execute partway). Result: button stays stuck forever, customer
+    // cannot sign, and the only escape was the workaround Round 80 page.
+    //
+    // This was misdiagnosed for days as a cache problem because customers
+    // who hard-refreshed STILL hit it (since the bug is in the deployed JS
+    // itself, not in stale cached JS). The fix: replace the non-existent
+    // VKApp.modal() with VKApp.render() which actually exists and replaces
+    // the screen with the autograph signature pad.
+    VKApp.render(html);
     // Initialize canvas
     var canvas = document.getElementById('vkActaCanvas');
     var ctx    = canvas.getContext('2d');
@@ -462,7 +479,9 @@ window.VK_entrega = (function(){
           return;
         }
         VKApp.toast('✓ ACTA firmada correctamente.');
-        VKApp.closeModal();
+        // Round 81 — VKApp.closeModal() also doesn't exist. Since we use
+        // VKApp.render() (not modal) above, there's no modal to close.
+        // Just re-render the entrega screen to show the signed state.
         render();
       })
       .fail(function(x){

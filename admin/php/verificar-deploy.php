@@ -226,6 +226,13 @@ $checks = [
         'Round 80 v2 — puntosvoltika/php/entrega/iniciar.php: cuando el operador del punto hace click en "Iniciar entrega", el sistema AHORA genera automáticamente un token de Round 80 + URL standalone, y la INCLUYE en el SMS que recibe el cliente. El cliente puede ignorar el SPA (que se cuelga por cache vieja) y tocar el link directo — backwards compatible, el OTP sigue ahí para el flujo existente. Cierra definitivamente el problema "Preparando documento…" sin pedirle nada al cliente.'
     ),
 
+    // ── Round 81 (2026-05-26) — ROOT CAUSE FIX of "Preparando documento…" ──
+    'r81_fix_vkapp_modal_typeerror' => _checkFile(
+        $base . '/clientes/js/modules/entrega.js',
+        'Round 81 (2026-05-26)',
+        'Round 81 — clientes/js/modules/entrega.js: ROOT CAUSE finalmente identificado. showAutographSignaturePad() llamaba VKApp.modal(html, {wide:true}) pero VKApp.modal NO EXISTE en app.js (solo exporta start/api/render/go/toast/loadEstado/logout/etc). El TypeError silencioso aborta el .done() callback ANTES de cambiar la pantalla, dejando el botón eternamente en "Preparando documento…". Reemplazado por VKApp.render(html) (que sí existe). Mismo fix para VKApp.closeModal() (también inexistente). Esto NO era caché — los hard-refresh no ayudaban porque el bug está EN el JS desplegado, no en versiones cacheadas.'
+    ),
+
     // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
     'r78_estado_inconsistencia_banner' => _checkFile(
         $base . '/admin/js/modules/admin-inventario.js',
