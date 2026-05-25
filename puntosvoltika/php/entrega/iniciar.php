@@ -103,7 +103,68 @@ if (strlen($tel) === 10) {
     $telInvalid = 'Número de teléfono no válido (debe tener 10 dígitos de México). Recibido: "' . $telRaw . '"';
 }
 
-$msg = "Voltika: Tu código de entrega es {$otp}. Muéstralo al asesor en el punto. No lo compartas.";
+// Round 80 v2 (2026-05-25) — Auto-include the standalone signing link in
+// the SMS so customers whose SPA fails for ANY reason (cache, JS error,
+// network glitch, anything) can still complete the signature by tapping
+// the link in the SMS. Same URL the new admin tool generates; backwards
+// compatible — the OTP is still in the message for customers/asesores
+// who prefer the existing flow.
+$standaloneSigningUrl = '';
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS firma_acta_requests (
+        id              INT AUTO_INCREMENT PRIMARY KEY,
+        moto_id         INT NOT NULL,
+        token           CHAR(40) NOT NULL UNIQUE,
+        email           VARCHAR(200) NULL,
+        telefono        VARCHAR(30) NULL,
+        estado          ENUM('pending','signed','expired') NOT NULL DEFAULT 'pending',
+        expires_at      INT NOT NULL,
+        signed_at       DATETIME NULL,
+        signed_firma_id INT NULL,
+        ip              VARCHAR(45) NULL,
+        user_agent      VARCHAR(500) NULL,
+        admin_id        INT NULL,
+        freg            DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_moto   (moto_id),
+        INDEX idx_estado (estado)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Expire any prior pending token for this moto so only ONE is active.
+    $pdo->prepare("UPDATE firma_acta_requests SET estado='expired'
+                    WHERE moto_id=? AND estado='pending'")
+        ->execute([$motoId]);
+
+    $sigToken = bin2hex(random_bytes(20));
+    $sigExpires = time() + (24 * 3600);
+    $pdo->prepare("INSERT INTO firma_acta_requests
+            (moto_id, token, email, telefono, expires_at)
+        VALUES (?, ?, ?, ?, ?)")
+        ->execute([
+            $motoId, $sigToken,
+            $moto['cliente_email']    ?? null,
+            $moto['cliente_telefono'] ?? null,
+            $sigExpires,
+        ]);
+
+    $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+    $host   = $_SERVER['HTTP_HOST'] ?? 'voltika.mx';
+    $standaloneSigningUrl = $scheme . '://' . $host . '/clientes/firmar-acta-directa.php?token=' . $sigToken;
+} catch (Throwable $e) {
+    error_log('iniciar.php standalone signing link generation: ' . $e->getMessage());
+}
+
+// Build the SMS body. When the standalone link is available, use a shorter
+// message that fits 160 chars including the ~96-char URL. Otherwise fall
+// back to the original instruction.
+if ($standaloneSigningUrl !== '') {
+    // Keep wording tight so the total stays under 160 chars:
+    //   "Voltika: codigo XXXXXX. Firma directo aqui: " ≈ 44 chars
+    //   + URL ≈ 96 chars  → ~140 chars total
+    $msg = "Voltika: codigo {$otp}. Firma tu entrega directo aqui: {$standaloneSigningUrl}";
+} else {
+    // Legacy message — OTP only, customer must use the SPA.
+    $msg = "Voltika: Tu codigo de entrega es {$otp}. Muestralo al asesor en el punto. No lo compartas.";
+}
 
 // 1) Multi-channel via voltikaNotify (whatsapp + email + sms template)
 $notifyResult = null;
@@ -128,6 +189,10 @@ if (function_exists('voltikaNotify')) {
             'telefono'   => $moto['cliente_telefono'],
             'whatsapp'   => $moto['cliente_telefono'],
             'email'      => $moto['cliente_email'] ?? '',
+            // Round 80 v2 — standalone signing URL passed alongside the OTP
+            // so the email/whatsapp templates can optionally include it.
+            // If the template ignores this field, no harm done.
+            'signing_url'=> $standaloneSigningUrl,
         ]);
     } catch (Throwable $e) {
         error_log('notify otp_entrega: ' . $e->getMessage());

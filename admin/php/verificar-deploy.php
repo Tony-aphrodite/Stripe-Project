@@ -219,6 +219,13 @@ $checks = [
         'Round 80 helper — admin/php/checklists/herramienta-firma-acta.php: página visual con la tabla de motos eligibles para firma de ACTA directa. Botón "Generar link" por fila → muestra URL, botón Copiar, botón WhatsApp con mensaje pre-cargado. Reemplaza el flujo de DevTools console para usuarios no-técnicos.'
     ),
 
+    // ── Round 80 v2 (2026-05-25) — Auto-link in punto SMS ──
+    'r80_v2_iniciar_auto_link' => _checkFile(
+        $base . '/puntosvoltika/php/entrega/iniciar.php',
+        'Round 80 v2 (2026-05-25)',
+        'Round 80 v2 — puntosvoltika/php/entrega/iniciar.php: cuando el operador del punto hace click en "Iniciar entrega", el sistema AHORA genera automáticamente un token de Round 80 + URL standalone, y la INCLUYE en el SMS que recibe el cliente. El cliente puede ignorar el SPA (que se cuelga por cache vieja) y tocar el link directo — backwards compatible, el OTP sigue ahí para el flujo existente. Cierra definitivamente el problema "Preparando documento…" sin pedirle nada al cliente.'
+    ),
+
     // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
     'r78_estado_inconsistencia_banner' => _checkFile(
         $base . '/admin/js/modules/admin-inventario.js',
