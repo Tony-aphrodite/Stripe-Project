@@ -162,6 +162,18 @@ $checks = [
         'Round 76 (2026-05-25)',
         'Round 76 — clientes/js/app.js: en el primer arranque donde el localStorage no tiene vk_build_version NI vk_build_primed, se asume caché del navegador desconocido y se fuerza ONE reload (con primed=1 para no caer en loop). Cierra el agujero del v5 original donde clientes con JS pre-Round-70-v5 nunca disparaban auto-reload y se quedaban con "Preparando documento…" stuck.'
     ),
+
+    // ── Round 77 (2026-05-25) — Surface "no recepción" + diagnóstico ──
+    'r77_admin_inventario_recepcion_placeholder' => _checkFile(
+        $base . '/admin/js/modules/admin-inventario.js',
+        'Round 77 (2026-05-25)',
+        'Round 77 — admin/js/modules/admin-inventario.js: si recepcion_punto no tiene fila para el moto, el card "Recepción en el punto" ya no desaparece silenciosamente. Ahora muestra el header siempre, con 3 estados distintos según moto.estado: ⚠ Inconsistencia (estado=recibida/entregada pero sin fila), ⏳ En tránsito, o — pendiente. Customer brief Óscar: "still not showing the checklist of reception in the admin dashboard".'
+    ),
+    'r77_diagnostico_checklists' => _checkFile(
+        $base . '/admin/php/diagnostico-checklists-moto.php',
+        'Round 77 diag, 2026-05-25',
+        'Round 77 — admin/php/diagnostico-checklists-moto.php: dado un moto_id, vuelca el estado COMPLETO de cada checklist (recepcion_punto, checklist_origen, checklist_ensamble, checklist_entrega_v2, entregas, firmas_contratos, cincel_timestamps). El admin o boss puede ver de un vistazo qué tabla tiene fila y qué no — útil para reportar bugs específicos en vez de "no se ve nada".'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

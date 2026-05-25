@@ -736,6 +736,38 @@ window.AD_inventario = (function(){
           html += '<div style="margin-top:6px;padding:8px 10px;background:#fff;border-radius:6px;font-size:12.5px;border:1px solid rgba(0,0,0,.06);"><strong>Observaciones:</strong><br>'+esc(rcp.observaciones)+'</div>';
         }
         html += '</div>';
+      } else {
+        // ── Round 77 (2026-05-25) — Surface the "no recepción row" state ──
+        // Previously, if recepcion_punto had no row for this moto, the whole
+        // Recepción section silently disappeared. The admin saw nothing
+        // where they expected to see something. Customer brief (Óscar):
+        // "still not showing the checklist of reception in the admin
+        // dashboard". Now we always render the section header, with a
+        // clear status pill explaining what state the moto is in.
+        html += secHead('Recepción en el punto','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>');
+        var motoEstado = String(m.estado || '').toLowerCase();
+        // 3 distinct "no row" interpretations based on moto.estado
+        var receivedStates = ['recibida','lista_para_entrega','por_validar_entrega','en_ensamble','por_ensamblar','retenida','entregada'];
+        var transitStates  = ['enviada','en_transito','en_camino'];
+        var label, color, bg, bd, hint;
+        if (receivedStates.indexOf(motoEstado) !== -1) {
+          // Data inconsistency: the moto's estado says "received" but no row.
+          label = '⚠ Inconsistencia: la moto está en estado "'+motoEstado+'" pero no hay registro de recepción en recepcion_punto';
+          color = '#b91c1c'; bg = 'rgba(220,38,38,.08)'; bd = 'rgba(220,38,38,.30)';
+          hint  = 'Esto suele pasar cuando se movió manualmente el estado sin pasar por la app del punto. Pídele al punto que escanee el VIN desde Recepción → Recibir moto para crear el registro correctamente. Si urge, el admin puede crearlo manualmente desde el panel del punto (POST a /puntosvoltika/recepcion/recibir.php).';
+        } else if (transitStates.indexOf(motoEstado) !== -1) {
+          label = '⏳ La moto está en tránsito al punto — recepción aún no registrada';
+          color = '#b45309'; bg = 'rgba(217,119,6,.08)'; bd = 'rgba(217,119,6,.20)';
+          hint  = 'Cuando la moto llegue, el punto debe abrir Recepción → Recibir moto, escanear el VIN, completar el checklist de integridad (sello, VIN, daños, batería, componentes) y subir las 3 fotos requeridas.';
+        } else {
+          label = '— Recepción pendiente';
+          color = '#64748b'; bg = '#f8fafc'; bd = '#e2e8f0';
+          hint  = 'Esta moto todavía no fue enviada al punto. Cuando se envíe (estado = "enviada") aparecerá aquí el seguimiento del tránsito y, al recibirla, el checklist de recepción completo (VIN, sello, fotos, integridad).';
+        }
+        html += '<div style="padding:14px 16px;border-radius:8px;background:'+bg+';border:1px solid '+bd+';margin-bottom:12px;font-size:13px;">'+
+                  '<div style="color:'+color+';font-weight:700;margin-bottom:6px;">'+esc(label)+'</div>'+
+                  '<div style="color:#475569;font-size:12px;line-height:1.5;">'+esc(hint)+'</div>'+
+                '</div>';
       }
 
       // ── Round 28 (2026-05-14, Óscar Pesgo Plus VIN ...12) ───────────────
