@@ -22,6 +22,16 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 
+// CDC_BASE_URL historically lived inside consultar-buro.php (not config.php).
+// When this helper is loaded standalone — e.g. from /admin/php/preaprobaciones/
+// reconsultar-cdc.php — consultar-buro.php is NOT included, so the constant
+// stayed undefined and PHP fatal'd with HTTP 500. Define it here with the
+// same default so both call paths work.
+if (!defined('CDC_BASE_URL')) {
+    define('CDC_BASE_URL',
+        getenv('CDC_BASE_URL') ?: 'https://services.circulodecredito.com.mx/v2/rccficoscore');
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Shared helpers (mirrored from consultar-buro.php with guards)
 // ─────────────────────────────────────────────────────────────────────────
