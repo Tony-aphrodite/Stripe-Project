@@ -54,22 +54,27 @@ if (strlen($sig) < 200 || strpos($sig, 'data:image/png;base64,') !== 0) {
 $pdo = getDB();
 
 try {
-    $pdo->beginTransaction();
-
-    $st = $pdo->prepare("SELECT * FROM firma_contrato_requests
-                         WHERE token = ? FOR UPDATE");
+    // Round 75 v2 (2026-05-25) — Removed beginTransaction/commit wrapping.
+    // Both contratoContadoGenerate() and cincelSaveTimestamp() execute DDL
+    // (CREATE TABLE / ALTER TABLE) which MySQL implicitly commits, killing
+    // any active transaction. The final commit then threw "no active
+    // transaction" and the customer saw that error after a successful sign.
+    //
+    // Idempotency is now enforced by an atomic conditional UPDATE on the
+    // token at the end (UPDATE ... WHERE estado='pending'). If two requests
+    // race, only one will affect rows = 1; the other gets 0 and we treat
+    // it as "already signed".
+    $st = $pdo->prepare("SELECT * FROM firma_contrato_requests WHERE token = ? LIMIT 1");
     $st->execute([$token]);
     $req = $st->fetch(PDO::FETCH_ASSOC) ?: null;
 
     if (!$req) {
-        $pdo->rollBack();
         http_response_code(404);
         echo json_encode(['ok' => false, 'error' => 'token_no_encontrado',
                           'message' => 'El enlace ya no es válido.']);
         exit;
     }
     if ((string)$req['estado'] === 'signed') {
-        $pdo->rollBack();
         echo json_encode(['ok' => false, 'error' => 'ya_firmado',
                           'message' => 'Este contrato ya fue firmado.']);
         exit;
@@ -77,7 +82,6 @@ try {
     if ((string)$req['estado'] === 'expired' || (int)$req['expires_at'] < time()) {
         $pdo->prepare("UPDATE firma_contrato_requests SET estado='expired' WHERE id=?")
             ->execute([(int)$req['id']]);
-        $pdo->commit();
         echo json_encode(['ok' => false, 'error' => 'token_expirado',
                           'message' => 'El enlace expiró. Pide a Voltika que te envíe uno nuevo.']);
         exit;
@@ -88,7 +92,6 @@ try {
     $txStmt->execute([$txnId]);
     $txn = $txStmt->fetch(PDO::FETCH_ASSOC) ?: null;
     if (!$txn) {
-        $pdo->rollBack();
         echo json_encode(['ok' => false, 'error' => 'transaccion_no_encontrada',
                           'message' => 'No encontramos la transacción asociada.']);
         exit;
@@ -190,9 +193,8 @@ try {
 
     $genResult = contratoContadoGenerate($contratoData);
     if (empty($genResult['ok'])) {
-        // Don't roll back the firmas_contratos insert — the signature is
-        // valuable evidence even if the PDF regen failed. Just report.
-        $pdo->commit();
+        // Signature is already saved (above) — keep that evidence even when
+        // the PDF regen fails. Voltika can regenerate manually later.
         echo json_encode([
             'ok'      => false,
             'error'   => 'pdf_regen_failed',
@@ -245,7 +247,11 @@ try {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Mark token as signed
+    // Mark token as signed — atomic conditional update.
+    // Only flips the row if it's still 'pending'; if a concurrent request
+    // already signed it, this is a no-op (affected rows = 0) and we'd
+    // already have a second signature in firmas_contratos which is fine
+    // (extra evidence, never less).
     // ─────────────────────────────────────────────────────────────────────
     $pdo->prepare("UPDATE firma_contrato_requests
                       SET estado = 'signed',
@@ -253,10 +259,8 @@ try {
                           signed_firma_id = ?,
                           ip = ?,
                           user_agent = ?
-                    WHERE id = ?")
+                    WHERE id = ? AND estado = 'pending'")
         ->execute([$firmaId, $ip, $ua, (int)$req['id']]);
-
-    $pdo->commit();
 
     // Build a public URL for the new PDF if it's web-accessible.
     $newUrl = null;
@@ -274,7 +278,6 @@ try {
     ]);
 
 } catch (Throwable $e) {
-    try { if ($pdo->inTransaction()) $pdo->rollBack(); } catch (Throwable $r) {}
     error_log('firmar-contrato-retro-guardar: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
