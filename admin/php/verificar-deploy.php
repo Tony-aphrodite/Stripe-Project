@@ -155,6 +155,13 @@ $checks = [
         'Round 75, 2026-05-25',
         'Round 75 — clientes/php/firmar-contrato-retro-guardar.php: backend del flujo retro. Guarda firma en firmas_contratos, regenera el PDF con autógrafa embebida (contratoContadoGenerate), aplica NOM-151 vía Cincel, actualiza transacciones (path/hash/cincel_timestamp_hash), marca el token como signed. Lock con FOR UPDATE para evitar doble firma.'
     ),
+
+    // ── Round 76 (2026-05-25) — Auto cache-bust hardening ──
+    'r76_app_js_first_visit_reload' => _checkFile(
+        $base . '/clientes/js/app.js',
+        'Round 76 (2026-05-25)',
+        'Round 76 — clientes/js/app.js: en el primer arranque donde el localStorage no tiene vk_build_version NI vk_build_primed, se asume caché del navegador desconocido y se fuerza ONE reload (con primed=1 para no caer en loop). Cierra el agujero del v5 original donde clientes con JS pre-Round-70-v5 nunca disparaban auto-reload y se quedaban con "Preparando documento…" stuck.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -300,6 +307,14 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>Endpoint funcionando: <code>voltika.mx/clientes/php/version.php</code> devuelve <code>{ version: "&lt;hash&gt;", files: {…} }</code>.</li>
     <li>Cliente con app abierta en pestaña/PWA → próxima vez que entre o navegue, la app hace <code>fetch</code> a <code>version.php</code>; si la versión cambió, se recarga sola.</li>
     <li>Test: DevTools → Application → Local Storage → editar <code>vk_build_version</code> a "x" → recargar → la página se debe re-recargar sola para traer JS fresco.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 76 — Cache-bust automático en primera visita:</strong>
+  <ul>
+    <li>Antes: si <code>localStorage.vk_build_version</code> nunca había sido escrito, el v5 original NO forzaba reload — los clientes que tenían Voltika abierto antes de v5 quedaban atrapados con JS viejo (síntoma: "Preparando documento…" se cuelga porque su JS no entiende <code>fallback_autograph</code>).</li>
+    <li>Ahora: en el primer arranque sin <code>vk_build_version</code>, se asume caché desconocido y se hace UN reload guiado por la flag <code>vk_build_primed</code> (no hay loop infinito).</li>
+    <li>Test: DevTools → Application → Local Storage → borrar <code>vk_build_version</code> y <code>vk_build_primed</code> → recargar voltika.mx/clientes → debe recargar UNA vez sola para limpiar caché.</li>
+    <li>Efecto secundario positivo: cuando shippeemos un nuevo Round (77, 78…), todos los clientes con cache pre-v5 se actualizarán automáticamente en su próxima visita sin intervención manual.</li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 75 — Solicitar firma autógrafa retroactiva a un cliente:</strong>

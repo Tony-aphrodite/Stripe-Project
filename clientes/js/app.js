@@ -111,7 +111,9 @@ window.VKApp = (function(){
           var serverV = (resp && resp.version) ? String(resp.version) : '';
           if (!serverV) { if (onReady) onReady(); return; }
           var key = 'vk_build_version';
+          var primedKey = 'vk_build_primed';
           var stored = window.localStorage.getItem(key) || '';
+          var primed = window.localStorage.getItem(primedKey) || '';
           if (stored && stored !== serverV) {
             // Stale client — force a fresh fetch of all scripts.
             window.localStorage.setItem(key, serverV);
@@ -119,7 +121,27 @@ window.VKApp = (function(){
             window.location.reload();
             return;
           }
-          if (!stored) window.localStorage.setItem(key, serverV);
+          // Round 76 (2026-05-25) — Harden the first-visit case.
+          // Round 70 v5's original logic only triggered a reload when
+          // `stored` already existed AND differed from `serverV`. Customers
+          // who had Voltika open BEFORE Round 70 v5 was deployed never had
+          // a version key, so the diff branch never fired — they kept
+          // serving cached JS from before Round 73 / Round 74 indefinitely,
+          // and saw "Preparando documento…" stuck on the ACTA signing flow.
+          //
+          // Fix: on the very first run where neither `stored` nor `primed`
+          // exist, the browser cache for our JS is unknown — could be
+          // anything from days/weeks old. Seed the version, mark "primed",
+          // and force ONE reload so the next fetch is guaranteed fresh.
+          // Subsequent visits hit the steady-state branch (stored === serverV).
+          if (!stored) {
+            window.localStorage.setItem(key, serverV);
+            if (!primed) {
+              window.localStorage.setItem(primedKey, '1');
+              window.location.reload();
+              return;
+            }
+          }
         } catch (e) {}
         if (onReady) onReady();
       }).fail(function() {
