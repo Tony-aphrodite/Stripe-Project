@@ -133,6 +133,11 @@ $checks = [
         'Round 74 (2026-05-25)',
         'Round 74 — clientes/php/entrega/estado.php: si punto_voltika_id es null, $estadoUi se clampa a "pendiente" (paso 1) sin importar otros flags. Evita la contradicción "Entregada ✓ + Asignando punto…" que aparecía cuando la data quedaba inconsistente (test seed o admin override).'
     ),
+    'r74_v2_entrega_js_suppress' => _checkFile(
+        $base . '/clientes/js/modules/entrega.js',
+        'Round 74 v2 (2026-05-25)',
+        'Round 74 v2 — clientes/js/modules/entrega.js: cuando no hay punto asignado, se oculta el card de Envío (que mostraba "Recibida en el punto" en verde) y el banner "Tu moto está en tránsito al punto de entrega". Aparece un solo mensaje amarillo claro: "Estamos asignando tu punto de entrega…". UI consistente con el stepper en paso 1 + badge "Asignando punto…".'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses

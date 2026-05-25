@@ -79,9 +79,31 @@ window.VK_entrega = (function(){
       (data.punto && data.punto.telefono ?'<div class="vk-row"><span class="k">Teléfono</span><span class="v">'+escapeHtml(data.punto.telefono)+'</span></div>':'')+
     '</div>';
 
+    // Round 74 v2 (2026-05-25) — Suppress shipment narrative until punto is assigned.
+    // When punto_voltika_id is null the customer was seeing "Recibida en el punto"
+    // (green) inside the Envío card AND "Tu moto está en tránsito al punto de
+    // entrega" (amber) at the bottom — both contradictory with the "Asignando
+    // punto..." badge above. The shipment can't logically be "in transit" or
+    // "received at the point" if no point exists yet, so we hide both pieces
+    // until the point is actually assigned, and show one clear info card instead.
+    var hasPunto = !!(data.punto && data.punto.nombre);
+    if (!hasPunto) {
+      html += '<div class="vk-card" style="background:#fef9c3;border-left:4px solid #ca8a04;">'+
+                '<div style="display:flex;gap:10px;align-items:flex-start;">'+
+                  '<div style="font-size:20px;">📍</div>'+
+                  '<div style="flex:1;font-size:13.5px;color:#713f12;line-height:1.5;">'+
+                    '<strong>Estamos asignando tu punto de entrega.</strong><br>'+
+                    'En cuanto Voltika seleccione el punto más cercano a tu zona, verás aquí la dirección, '+
+                    'la fecha estimada de llegada y los siguientes pasos para recibir tu moto. '+
+                    'Te avisaremos por SMS y por este portal.'+
+                  '</div>'+
+                '</div>'+
+              '</div>';
+    }
+
     // Shipment tracking card — Skydrop ETA. Shown whenever we have envio data
     // and the client hasn't received the moto at the point yet.
-    if (data.envio && st !== 'entregada' && st !== 'firmada' && st !== 'checklist_ok') {
+    if (hasPunto && data.envio && st !== 'entregada' && st !== 'firmada' && st !== 'checklist_ok') {
       var env = data.envio;
       var etaFmt = fechaLarga(env.fecha_estimada_llegada);
       var enviadoFmt = fechaLarga(env.fecha_envio);
@@ -147,7 +169,10 @@ window.VK_entrega = (function(){
     }
 
     // State-specific actions
-    if ((st === 'pendiente' || st === 'en_transito') && !data.fecha_recoleccion) {
+    // Round 74 v2 — only show the "en tránsito al punto" banner when a punto
+    // actually exists. Without one the message is misleading (the moto can't
+    // be in transit to a point that hasn't been assigned).
+    if (hasPunto && (st === 'pendiente' || st === 'en_transito') && !data.fecha_recoleccion) {
       var etaMsg = (data.envio && data.envio.fecha_estimada_llegada)
         ? 'Tu moto está en tránsito al punto de entrega. Llegada estimada: <strong>'+fechaLarga(data.envio.fecha_estimada_llegada)+'</strong>.'
         : 'Tu moto está en tránsito al punto de entrega. Te avisaremos cuando esté lista para recogerla.';
