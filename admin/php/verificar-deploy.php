@@ -138,6 +138,23 @@ $checks = [
         'Round 74 v2 (2026-05-25)',
         'Round 74 v2 — clientes/js/modules/entrega.js: cuando no hay punto asignado, se oculta el card de Envío (que mostraba "Recibida en el punto" en verde) y el banner "Tu moto está en tránsito al punto de entrega". Aparece un solo mensaje amarillo claro: "Estamos asignando tu punto de entrega…". UI consistente con el stepper en paso 1 + badge "Asignando punto…".'
     ),
+
+    // ── Round 75 (2026-05-25) — Retro-firma autógrafa del contrato ──
+    'r75_solicitar_firma_endpoint' => _checkFile(
+        $base . '/admin/php/ventas/solicitar-firma-contrato.php',
+        'Round 75, 2026-05-25',
+        'Round 75 — admin/php/ventas/solicitar-firma-contrato.php: endpoint admin que recibe transaccion_id, genera token de 40 hex, lo guarda en firma_contrato_requests (TTL 48h), envía link por email al cliente y devuelve copy_text listo para pegar en WhatsApp. Customer brief Óscar: "Is there any way to resend the signature request to the client".'
+    ),
+    'r75_firmar_contrato_page' => _checkFile(
+        $base . '/clientes/firmar-contrato-retro.php',
+        'Round 75, 2026-05-25',
+        'Round 75 — clientes/firmar-contrato-retro.php: página pública (sin login) que valida el token, muestra los datos del contrato + canvas de firma con el dedo (touch+mouse, HiDPI). Submit POSTea a firmar-contrato-retro-guardar.php.'
+    ),
+    'r75_firmar_contrato_save' => _checkFile(
+        $base . '/clientes/php/firmar-contrato-retro-guardar.php',
+        'Round 75, 2026-05-25',
+        'Round 75 — clientes/php/firmar-contrato-retro-guardar.php: backend del flujo retro. Guarda firma en firmas_contratos, regenera el PDF con autógrafa embebida (contratoContadoGenerate), aplica NOM-151 vía Cincel, actualiza transacciones (path/hash/cincel_timestamp_hash), marca el token como signed. Lock con FOR UPDATE para evitar doble firma.'
+    ),
 ];
 
 // Live runtime checks — sanity-test the actual responses
@@ -283,6 +300,24 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
     <li>Endpoint funcionando: <code>voltika.mx/clientes/php/version.php</code> devuelve <code>{ version: "&lt;hash&gt;", files: {…} }</code>.</li>
     <li>Cliente con app abierta en pestaña/PWA → próxima vez que entre o navegue, la app hace <code>fetch</code> a <code>version.php</code>; si la versión cambió, se recarga sola.</li>
     <li>Test: DevTools → Application → Local Storage → editar <code>vk_build_version</code> a "x" → recargar → la página se debe re-recargar sola para traer JS fresco.</li>
+  </ul>
+
+  <strong style="display:block;margin-top:14px;">Round 75 — Solicitar firma autógrafa retroactiva a un cliente:</strong>
+  <ul>
+    <li>El cliente ya pagó pero su contrato no tiene firma autógrafa (compras de antes de 2026-05-23, o cualquier caso similar).</li>
+    <li>Desde el admin, hacer POST a <code>/admin/php/ventas/solicitar-firma-contrato.php</code> con <code>{ transaccion_id: N }</code>.</li>
+    <li>El sistema genera un token de 40 hex, lo guarda en <code>firma_contrato_requests</code> (TTL 48h), y envía el link al email del cliente. También devuelve <code>copy_text</code> listo para pegar en WhatsApp.</li>
+    <li>Cliente abre el link (<code>voltika.mx/clientes/firmar-contrato-retro.php?token=…</code>) en su celular → ve sus datos + canvas de firma → firma con el dedo → click "Firmar".</li>
+    <li>✅ Resultado esperado: banner verde "Tu firma quedó sellada con NOM-151" + link para descargar el contrato actualizado.</li>
+    <li>Verificar en DB:
+      <ul>
+        <li><code>firma_contrato_requests.estado='signed'</code>, <code>signed_at</code> con fecha</li>
+        <li><code>firmas_contratos</code> nueva fila con <code>firma_base64</code> y sha256</li>
+        <li><code>transacciones.contrato_pdf_hash</code> y <code>cincel_timestamp_hash</code> actualizados</li>
+        <li>Una fila nueva en <code>cincel_timestamps</code> con el nuevo hash + URLs de descarga</li>
+      </ul>
+    </li>
+    <li>El PDF regenerado tendrá la sección "FIRMA AUTÓGRAFA DEL COMPRADOR" con el PNG embebido (Round 70 v2).</li>
   </ul>
 
   <strong style="display:block;margin-top:14px;">Round 74 — Stepper consistente cuando aún no hay punto:</strong>
