@@ -50,6 +50,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $sub = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     } catch (Throwable $e) { error_log('perfil sub: ' . $e->getMessage()); }
 
+    // Round 94 (2026-05-26) — Fallback to inventario_motos for contado
+    // customers. Before this, perfil.php only looked at subscripciones_credito,
+    // so contado customers (no sub) got moto=null and the SPA's "Mi Voltika"
+    // card defaulted to "Voltika / — / —" with no real data. Now when no
+    // sub is found, query inventario_motos directly using cliente_id/email/
+    // telefono. Caso Adrian Montoya (cid=3, moto 147, M05 negro, VIN
+    // R4WPDTA19T8000043).
+    if (!$sub) {
+        try {
+            $tel = (string)($c['telefono'] ?? '');
+            $em  = (string)($c['email']    ?? '');
+            $stmt = $pdo->prepare("SELECT modelo, color,
+                                          COALESCE(vin_display, vin) AS serie,
+                                          fecha_estado AS fecha_entrega,
+                                          estado
+                                     FROM inventario_motos
+                                    WHERE cliente_id = ?
+                                       OR (LENGTH(?) > 0 AND cliente_email = ?)
+                                       OR (LENGTH(?) > 0 AND cliente_telefono = ?)
+                                    ORDER BY id DESC LIMIT 1");
+            $stmt->execute([$cid, $em, $em, $tel, $tel]);
+            $sub = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (Throwable $e) { error_log('perfil inventario fallback: ' . $e->getMessage()); }
+    }
+
     // Resolve motorcycle image path
     $motoImg = null;
     if ($sub && !empty($sub['modelo'])) {

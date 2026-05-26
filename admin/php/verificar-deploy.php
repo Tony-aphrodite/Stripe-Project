@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 94 (2026-05-26) — Perfil.php inventario_motos fallback ──
+    'r94_perfil_inventario_fallback' => _checkFile(
+        $base . '/clientes/php/cliente/perfil.php',
+        'Round 94 (2026-05-26)',
+        'Round 94 — clientes/php/cliente/perfil.php: cuando no hay subscripcion_credito para el cliente, ahora consulta inventario_motos directamente (por cliente_id/email/teléfono) para alimentar el card "Mi Voltika" del Cuenta page. Sin esto, clientes contado como Adrian Montoya veían "Voltika / Color: — / Serie: —" en su tab de Cuenta porque perfil.php devolvía moto=null. Ahora se obtiene modelo/color/VIN reales desde inventario_motos.'
+    ),
+
     // ── Round 93 (2026-05-26) — Contado view in Mi Voltika + Inicio ──
     'r93_mivoltika_contado_view' => _checkFile(
         $base . '/clientes/js/modules/mivoltika.js',
