@@ -711,7 +711,16 @@ var PasoCreditoContrato = {
                 estado:     state.estado,
                 cp:         state.codigoPostal,
                 total:      credito.enganche,
+                // Round 87 (2026-05-26) — include precioContado and enganche
+                // so the credit contract PDF (generar-contrato-pdf.php:249-250)
+                // can render real amounts instead of $0.00. Bug surfaced by
+                // Carlos Ricardo Sánchez's contract where every monetary
+                // field showed "$0.00 MXN" because the backend defaulted
+                // missing precioContado/enganche to 0 (lines 249-250 of
+                // generar-contrato-pdf.php).
                 credito: {
+                    precioContado:   credito.precioContado,
+                    enganche:        credito.enganche,
                     enganchePct:     state.enganchePorcentaje,
                     plazoMeses:      state.plazoMeses,
                     pagoSemanal:     credito.pagoSemanal,

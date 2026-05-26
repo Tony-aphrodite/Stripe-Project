@@ -593,7 +593,26 @@ try {
             'estado'    => $customer['estado']    ?? '',
             'cp'        => $customer['cp']        ?? '',
             'method'    => $method,
-            'tpago'     => $customer['tpago']     ?? ($installments ? 'msi' : $method),
+            // Round 88 (2026-05-26) — when the SPA explicitly tags this PI as
+            // credit/enganche flow ($isEngancheFlow), store tpago='enganche'
+            // in the Stripe metadata REGARDLESS of the payment method (card,
+            // oxxo, spei). The METHOD and the purchase TYPE are independent —
+            // a credit customer paying their enganche via OXXO still has
+            // tpago='enganche', not 'oxxo'.
+            //
+            // Bug surfaced by Leobardo Arreola (pedido VK-2605-0004): he
+            // selected the credit plan and paid the $14,478 enganche via OXXO.
+            // The pre-Round-88 fallback ($installments?'msi':$method) stored
+            // tpago='oxxo' in the PI metadata. The stripe-webhook then inserted
+            // his transacciones row with tpago='oxxo'. Then confirmar-orden's
+            // $esCredito check (==='enganche' || metodoPago==='credito') was
+            // false, so he received a "Contrato de compraventa AL CONTADO"
+            // instead of the credit Carátula. After this fix, the metadata
+            // carries the correct flow tag and downstream logic routes him
+            // to the credit contract path.
+            'tpago'     => $customer['tpago']
+                          ?? ($isEngancheFlow ? 'enganche'
+                                              : ($installments ? 'msi' : $method)),
             'msi_meses' => $installments ? (string)$msiMeses : '0',
             'punto_id'     => $customer['punto_id']     ?? '',
             'punto_nombre' => $customer['punto_nombre'] ?? '',

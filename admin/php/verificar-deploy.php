@@ -269,6 +269,20 @@ $checks = [
         'Round 83 v2 — clientes/php/acta-pdf-generator.php: dos fixes críticos descubiertos cuando la v1 regeneró el PDF de Adrian pero el nombre seguía duplicado y la firma seguía vacía. (1) Fuerza require_once de configurador/php/contrato-contado.php al cargar el módulo, para que contratoContadoSanitizeFullName() esté SIEMPRE disponible — antes voltikaActaSanitizeFullName() lo verificaba con function_exists() pero nada en el path de regen lo cargaba, así que el dedup real nunca corría. Fallback ahora tiene un collapseTail iterativo que sí elimina "Apellido Apellido" repetido. (2) El regex de la firma ahora acepta data:image/png, data:image/jpeg, data:image/jpg, y base64 raw sin prefijo — antes solo aceptaba PNG estricto, así que firmas guardadas en otros formatos se rechazaban y el PDF salía con línea vacía. Loguea cuando rechaza para diagnóstico.'
     ),
 
+    // ── Round 87 (2026-05-26) — Credit contract empty fields fix ──
+    'r87_credito_contrato_full_data' => _checkFile(
+        $base . '/configurador/js/modules/paso-credito-contrato.js',
+        'Round 87 (2026-05-26)',
+        'Round 87 — configurador/js/modules/paso-credito-contrato.js: añade precioContado y enganche al payload enviado a generar-contrato-pdf.php. Sin estos dos campos el backend (línea 249-250 de generar-contrato-pdf.php) recibía undefined y aplicaba el default floatval=0, produciendo un contrato de crédito con TODOS los montos en "$0.00 MXN" (caso Carlos Ricardo Sánchez, VIN R4WPDTA15T8000072, enganche real $12,065 pero el contrato firmado mostraba precio=$0, IVA=$0, total=$0). El cálculo correcto ya existía en credito.precioContado y credito.enganche — solo faltaba pasarlos en el JSON.'
+    ),
+
+    // ── Round 88 (2026-05-26) — Credit contract type misclassification fix ──
+    'r88_pi_tpago_enganche_metadata' => _checkFile(
+        $base . '/configurador/php/create-payment-intent.php',
+        'Round 88 (2026-05-26)',
+        'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
+    ),
+
     // ── Round 86 (2026-05-26) — Accept legacy tpago='unico' in portal lookups ──
     'r86_compras_unico'         => _checkFile(
         $base . '/clientes/php/cliente/compras.php',
