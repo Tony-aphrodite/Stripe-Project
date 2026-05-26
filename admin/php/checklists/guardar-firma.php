@@ -9,7 +9,25 @@
  *   4. Saves evidence metadata
  */
 require_once __DIR__ . '/../bootstrap.php';
-$uid = adminRequireAuth(['admin','cedis']);
+
+// Round 102 (2026-05-26) — Accept punto auth too. The punto operator
+// captures the customer's PAGARÉ autograph at moto handoff via
+// punto-entrega.js stepPagare. Without this fallback, the punto session
+// can't reach this admin endpoint → the customer can't sign their
+// pagaré at the punto and credit deliveries are legally incomplete.
+$uid = 0;
+if (!empty($_SESSION['admin_user_id'])) {
+    $uid = adminRequireAuth(['admin','cedis']);
+} else {
+    @session_write_close();
+    @session_name('VOLTIKA_PUNTO');
+    @session_start();
+    if (!empty($_SESSION['punto_user_id'])) {
+        $uid = (int)$_SESSION['punto_user_id'];
+    } else {
+        adminJsonOut(['error' => 'No autorizado (ni admin ni punto)'], 401);
+    }
+}
 
 $d = adminJsonIn();
 $motoId   = (int)($d['moto_id'] ?? 0);

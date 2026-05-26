@@ -129,6 +129,18 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 102 (2026-05-26) — PAGARÉ signing step in punto delivery flow ──
+    'r102_punto_step_pagare' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-entrega.js',
+        'Round 102 (2026-05-26)',
+        'Round 102 — puntosvoltika/js/modules/punto-entrega.js: agrega stepPagare entre el checklist F1/F2/F3 y el step5 (ACTA). Detecta automáticamente clientes de crédito vía _isCreditDelivery() y muestra un canvas para que firmen el PAGARÉ con el dedo. Al firmar, llama guardar-firma + generar-pagare (que aplica Cincel NOM-151 vía Round 96). Clientes contado/MSI saltan el step (no necesitan PAGARÉ). Caso urgente: Carlos Ricardo Sánchez (entrega hoy, crédito, sin PAGARÉ firmado).'
+    ),
+    'r102_admin_endpoints_punto_auth' => _checkFile(
+        $base . '/admin/php/checklists/generar-pagare.php',
+        'Round 102 (2026-05-26)',
+        'Round 102 — admin/php/checklists/generar-pagare.php + guardar-firma.php: aceptan auth de punto como fallback (swap a session VOLTIKA_PUNTO si no hay admin_user_id). Necesario para que el operador del punto pueda firmar el PAGARÉ desde el flujo de entrega sin requerir credenciales admin.'
+    ),
+
     // ── Round 101 (2026-05-26) — Fix system-wide Truora false rejection ──
     'r101_truora_status_trust' => _checkFile(
         $base . '/configurador/php/truora-status.php',

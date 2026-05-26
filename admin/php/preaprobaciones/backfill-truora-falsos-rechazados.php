@@ -54,6 +54,11 @@ code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-size:11.5px;}
 echo '<h1>🔧 Backfill — Falsos rechazos Truora (Round 101)</h1>';
 echo '<p style="color:#64748b;font-size:13px;margin-top:0;">Flippea a aprobado=1 los clientes que tenían approved=0 con declined_reason="verified_curp_unavailable" (rechazo paranoico cuando no se pudo extraer el CURP del payload de Truora). Truora ya los aprobó en su dashboard — este backfill arregla nuestra DB para reflejar eso.</p>';
 
+// Round 101 v2 — Broader detection. The system-wide rejection bug can
+// manifest via THREE different signals (any of which the admin UI treats
+// as a hard reject): approved=0, truora_status IN (failure/rejected/denied),
+// or manual_review_required=1. Catch all three so the backfill clears any
+// false rejection regardless of which field carries the marker.
 try {
     $rows = $pdo->query("
         SELECT id, telefono, email, expected_curp, verified_curp,
@@ -62,11 +67,18 @@ try {
                approved, manual_review_required, manual_review_reason,
                curp_match, name_match, freg
           FROM verificaciones_identidad
-         WHERE (truora_declined_reason = 'verified_curp_unavailable'
-             OR truora_failure_status  = 'identity_unverifiable'
-             OR manual_review_reason   = 'verified_curp_unavailable')
-           AND (approved = 0 OR approved IS NULL OR manual_review_required = 1)
+         WHERE (
+                  approved = 0
+               OR manual_review_required = 1
+               OR truora_status IN ('failed','failure','rejected','denied','invalid')
+               OR truora_declined_reason IS NOT NULL
+               OR truora_failure_status IS NOT NULL
+               OR manual_review_reason IS NOT NULL
+           )
+           AND truora_process_id IS NOT NULL
+           AND truora_process_id <> ''
          ORDER BY id DESC
+         LIMIT 200
     ")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
     $rows = [];

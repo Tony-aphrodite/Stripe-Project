@@ -790,7 +790,17 @@ window.PV_entrega = (function(){
           fotos_moto: [files.pvFoto1, files.pvFoto2, files.pvFoto3].filter(Boolean)
         });
         PVApp.api('entrega/checklist.php', payload).done(function(r){
-          if(r.ok) { autosave('step4', { checklist_done: true, progreso: r.progreso || null }); step5(); }
+          if(r.ok) {
+            autosave('step4', { checklist_done: true, progreso: r.progreso || null });
+            // Round 102 (2026-05-26) — Inject PAGARÉ step for credit
+            // customers. Before this, the punto delivery flow jumped
+            // straight from F1/F2/F3 checklist to ACTA waiting without
+            // ever asking the customer to sign the PAGARÉ ejecutivo
+            // (Art. 170-173 LGTOC), even though it's legally required
+            // for credit purchases. Now: if the moto is credit-family,
+            // route through stepPagare; otherwise skip to step5.
+            if (_isCreditDelivery()) stepPagare(); else step5();
+          }
           else { $b.prop('disabled',false).text('Guardar checklist'); alert(r.error||'Error'); }
         }).fail(function(x){
           $b.prop('disabled',false).text('Guardar checklist');
@@ -800,6 +810,142 @@ window.PV_entrega = (function(){
     }
 
     paint();
+  }
+
+  // Round 102 (2026-05-26) — Detect credit-family deliveries.
+  // Returns true when the moto's transaction is credit/enganche/parcial.
+  // Reads from ctx.tpago which the punto bootstrap passes through; falls
+  // back to ctx.moto.tpago if present.
+  function _isCreditDelivery(){
+    var tp = String(((ctx && ctx.tpago) || (ctx && ctx.moto && ctx.moto.tpago) || '')).toLowerCase();
+    return tp === 'credito' || tp === 'enganche' || tp === 'parcial' || tp === 'credito-orfano';
+  }
+
+  // Round 102 — Step PAGARÉ. Customer signs the executive promissory note
+  // with their finger at the punto. After signing:
+  //   1) Save autograph signature to firmas_contratos (via checklists/guardar-firma)
+  //   2) Generate PAGARÉ PDF via checklists/generar-pagare (Round 96 stamps it
+  //      with Cincel NOM-151 automatically)
+  //   3) Move to step5 (ACTA + finalize)
+  function stepPagare(){
+    autosave('stepPagare', { pagare_pending: true });
+
+    var html = steps(4) +
+      '<div class="ad-h2">5a. Firma del Pagaré</div>' +
+      '<div class="ad-card" style="background:#fef3c7;border-left:4px solid #f59e0b;font-size:13px;color:#92400e;">' +
+        '<strong>📝 Pagaré ejecutivo de crédito</strong><br>' +
+        'Como esta compra es a plazos, el cliente debe firmar el pagaré con su dedo. ' +
+        'Este documento permite a Voltika cobrar el saldo en caso de incumplimiento. ' +
+        'Se sella automáticamente con NOM-151 vía Cincel al guardar.' +
+      '</div>' +
+      '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:12px;">' +
+        '<div style="font-size:13px;color:#374151;margin-bottom:6px;font-weight:600;">Firma del cliente</div>' +
+        '<canvas id="pvPagareSig" width="500" height="200" style="display:block;width:100%;height:200px;border:2px dashed #cbd5e1;border-radius:8px;background:#fafafa;touch-action:none;cursor:crosshair;"></canvas>' +
+        '<div style="display:flex;gap:8px;margin-top:8px;">' +
+          '<button id="pvPagareSigClear" class="ad-btn" style="flex:1;background:#fff;color:#0c2340;border:1px solid #cbd5e1;">Limpiar firma</button>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#6b7280;margin-top:6px;">Pide al cliente que firme con el dedo en el recuadro de arriba.</div>' +
+      '</div>' +
+      '<button id="pvPagareSubmit" class="ad-btn primary" style="width:100%" disabled>Firmar Pagaré y continuar</button>' +
+      noExitosaBtnHtml();
+
+    PVApp.modal(html);
+    bindNoExitosa();
+
+    // Canvas signature capture (touch + mouse)
+    var canvas = document.getElementById('pvPagareSig');
+    var ctx2d  = canvas.getContext('2d');
+    var drawing = false;
+    var hasInk  = false;
+    function resizeCanvas() {
+      var rect = canvas.getBoundingClientRect();
+      var dpr  = window.devicePixelRatio || 1;
+      canvas.width  = rect.width  * dpr;
+      canvas.height = rect.height * dpr;
+      ctx2d.scale(dpr, dpr);
+      ctx2d.strokeStyle = '#0c2340';
+      ctx2d.lineWidth   = 2.5;
+      ctx2d.lineCap     = 'round';
+      ctx2d.lineJoin    = 'round';
+    }
+    resizeCanvas();
+
+    function getPoint(e) {
+      var rect = canvas.getBoundingClientRect();
+      var t = (e.touches && e.touches[0]) || e;
+      return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+    }
+    function start(e) { e.preventDefault(); drawing = true; var p = getPoint(e); ctx2d.beginPath(); ctx2d.moveTo(p.x, p.y); }
+    function move(e)  { if (!drawing) return; e.preventDefault(); var p = getPoint(e); ctx2d.lineTo(p.x, p.y); ctx2d.stroke(); hasInk = true; $('#pvPagareSubmit').prop('disabled', false); }
+    function end(e)   { e.preventDefault(); drawing = false; }
+    canvas.addEventListener('mousedown',  start);
+    canvas.addEventListener('mousemove',  move);
+    canvas.addEventListener('mouseup',    end);
+    canvas.addEventListener('mouseleave', end);
+    canvas.addEventListener('touchstart', start);
+    canvas.addEventListener('touchmove',  move);
+    canvas.addEventListener('touchend',   end);
+
+    $('#pvPagareSigClear').on('click', function(){
+      ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+      hasInk = false;
+      $('#pvPagareSubmit').prop('disabled', true);
+    });
+
+    $('#pvPagareSubmit').on('click', function(){
+      if (!hasInk) { alert('Pide al cliente que firme primero.'); return; }
+      var $b = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Procesando...');
+      var firmaData = canvas.toDataURL('image/png');
+
+      // Round 102 — Use ABSOLUTE URLs to reach /admin/php/* endpoints from
+      // the punto SPA. PVApp.api prepends 'php/' which would route to the
+      // wrong path. The admin endpoints accept punto session auth (Round 102
+      // patch in guardar-firma.php + generar-pagare.php).
+      function callAdminApi(absoluteUrl, payload) {
+        return $.ajax({
+          url: absoluteUrl,
+          method: 'POST',
+          data: JSON.stringify(payload),
+          contentType: 'application/json',
+          dataType: 'json',
+          xhrFields: { withCredentials: true }
+        });
+      }
+      // 1) Save signature via guardar-firma (admin endpoint, now accepts punto auth)
+      callAdminApi('/admin/php/checklists/guardar-firma.php', {
+        moto_id: ctx.moto_id,
+        tipo:    'pagare',
+        firma_data: firmaData
+      }).done(function(r1){
+        if (!r1 || !r1.ok) {
+          $b.prop('disabled', false).text('Firmar Pagaré y continuar');
+          alert('No se pudo guardar la firma: ' + ((r1 && r1.error) || 'error desconocido'));
+          return;
+        }
+        // 2) Generate the PAGARÉ PDF (Round 96 stamps it with Cincel)
+        callAdminApi('/admin/php/checklists/generar-pagare.php', {
+          moto_id: ctx.moto_id
+        }).done(function(r2){
+          if (!r2 || !r2.ok) {
+            $b.prop('disabled', false).text('Firmar Pagaré y continuar');
+            alert('No se pudo generar el Pagaré: ' + ((r2 && r2.error) || 'error desconocido'));
+            return;
+          }
+          autosave('stepPagare', {
+            pagare_signed: true,
+            pagare_pdf_hash: r2.pdf_hash || null,
+            cincel_hash: r2.cincel_hash || null
+          });
+          step5();
+        }).fail(function(x){
+          $b.prop('disabled', false).text('Firmar Pagaré y continuar');
+          alert('Error generando Pagaré: ' + ((x.responseJSON && x.responseJSON.error) || 'red'));
+        });
+      }).fail(function(x){
+        $b.prop('disabled', false).text('Firmar Pagaré y continuar');
+        alert('Error guardando firma: ' + ((x.responseJSON && x.responseJSON.error) || 'red'));
+      });
+    });
   }
   // Step 5: Wait for ACTA + finalize.
   //
