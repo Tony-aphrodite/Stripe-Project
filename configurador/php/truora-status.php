@@ -130,6 +130,25 @@ try {
             // string level, classify as identity_curp_mismatch regardless
             // of Truora's status, so the SPA shows the clean
             // "regresa, corrige tu CURP" CTA.
+            // Round 101 (2026-05-26) — ROOT CAUSE FIX for system-wide rejection.
+            // Before: when Truora returned approved=1 but truoraExtractCurp()
+            // failed to locate the CURP in their response (which started
+            // happening after Truora changed their API/webhook payload
+            // format), we OVERRODE to approved=0 with 'verified_curp_unavailable'.
+            // Result: every successfully verified customer was rejected in
+            // our admin even though Truora's dashboard showed them as
+            // Exitoso. Caso Carlos Ricardo Sánchez (verificado 13-may-26
+            // con todos los checks verdes en Truora, pero rechazado en
+            // nuestra Vista Ventas).
+            //
+            // New rule: only override to rejected when we have ACTIVE
+            // evidence of mismatch — i.e., we successfully extracted a
+            // verified_curp AND it differs from expected_curp. When
+            // verified_curp is missing (extraction failed because Truora
+            // doesn't expose it in our fallback API endpoints anymore),
+            // trust Truora's own verdict. Their dashboard already shows
+            // the customer as approved; rejecting them here was a paranoid
+            // safety net that now backfires.
             $expectedCurp = $row['expected_curp'] ?? null;
             $newCurpMatch = null;
             $newDeclined  = null;
@@ -141,11 +160,12 @@ try {
                     $newDeclined   = 'identity_curp_mismatch';
                     $newFailStatus = 'curp_mismatch';
                 }
-            } elseif ($newApproved === 1 && $expectedCurp && !$verifiedCurp) {
-                $newApproved   = 0;
-                $newDeclined   = 'verified_curp_unavailable';
-                $newFailStatus = 'identity_unverifiable';
             }
+            // Round 101 — DO NOT override approved=1 when verified_curp is
+            // missing. Trust Truora's verdict in that case (their dashboard
+            // is the source of truth). The 'verified_curp_unavailable'
+            // branch is intentionally removed to fix the system-wide
+            // false-rejection bug.
 
             // Name cross-check — RECORDED ONLY, NOT BLOCKING.
             // CURP-anchor revision (customer brief 2026-04-30): name

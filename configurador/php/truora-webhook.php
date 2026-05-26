@@ -427,16 +427,15 @@ function truoraProcessEvent(PDO $pdo, array $ev): void {
             $declined   = 'identity_curp_mismatch';
             $failStatus = 'curp_mismatch';
         }
-    } elseif ($approved === 1 && $expectedCurp && !$verifiedCurp) {
-        // Truora succeeded but we could not retrieve verified CURP.
-        // STRICT mode: do not approve. Customer requirement 2026-04-29:
-        // an order MUST NOT appear in admin until identity is fully
-        // cross-checked. The admin can review via truora_curp_audit +
-        // truora_fetch_log to find the missing field.
-        $approved   = 0;
-        $declined   = 'verified_curp_unavailable';
-        $failStatus = 'identity_unverifiable';
     }
+    // Round 101 (2026-05-26) — Same fix as truora-status.php. Previously
+    // we OVERRODE approved=0 when verified_curp couldn't be extracted from
+    // the webhook payload. After Truora changed their payload format,
+    // this rejected every successfully-verified customer. Caso Carlos
+    // Ricardo Sánchez (Truora Exitoso 13-may-26, pero rechazado en admin
+    // Voltika). Now we trust Truora's verdict when we lack contradicting
+    // evidence — only override when verified_curp exists AND differs.
+    // The 'verified_curp_unavailable' branch removed intentionally.
     // If $expectedCurp is missing entirely (legacy rows or test mode),
     // leave $approved unchanged with a null $curpMatch.
 

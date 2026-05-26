@@ -129,6 +129,23 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 101 (2026-05-26) — Fix system-wide Truora false rejection ──
+    'r101_truora_status_trust' => _checkFile(
+        $base . '/configurador/php/truora-status.php',
+        'Round 101 (2026-05-26)',
+        'Round 101 — configurador/php/truora-status.php: removida la rama paranoica que sobrescribía approved=1 a 0 cuando no se pudo extraer verified_curp del payload de Truora. Esto rechazaba a TODOS los clientes legítimamente verificados porque Truora cambió el formato de respuesta y truoraExtractCurp() ya no encuentra el CURP. Caso Carlos Ricardo Sánchez (Exitoso en Truora dashboard, rechazado en admin Voltika). Ahora confiamos en el verdict de Truora cuando no tenemos evidencia activa de discrepancia.'
+    ),
+    'r101_truora_webhook_trust' => _checkFile(
+        $base . '/configurador/php/truora-webhook.php',
+        'Round 101 (2026-05-26)',
+        'Round 101 — configurador/php/truora-webhook.php: mismo fix en el webhook path. La rama "verified_curp_unavailable" estaba sobrescribiendo approved=0 cuando el webhook payload no incluía el CURP — rechazaba clientes legítimos. Removida.'
+    ),
+    'r101_backfill_falsos_rechazados' => _checkFile(
+        $base . '/admin/php/preaprobaciones/backfill-truora-falsos-rechazados.php',
+        'Round 101 (2026-05-26)',
+        'Round 101 — admin/php/preaprobaciones/backfill-truora-falsos-rechazados.php: herramienta 1-shot que arregla verificaciones_identidad ya marcadas como rechazadas por el bug. Encuentra filas con truora_declined_reason="verified_curp_unavailable" o manual_review_reason equivalente y las flippea a approved=1, manual_review_required=0.'
+    ),
+
     // ── Round 100 (2026-05-26) — Multi-source credit payment check on delivery start ──
     'r100_iniciar_credit_fallback' => _checkFile(
         $base . '/puntosvoltika/php/entrega/iniciar.php',
