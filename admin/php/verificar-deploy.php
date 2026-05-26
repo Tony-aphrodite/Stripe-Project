@@ -269,6 +269,23 @@ $checks = [
         'Round 83 v2 — clientes/php/acta-pdf-generator.php: dos fixes críticos descubiertos cuando la v1 regeneró el PDF de Adrian pero el nombre seguía duplicado y la firma seguía vacía. (1) Fuerza require_once de configurador/php/contrato-contado.php al cargar el módulo, para que contratoContadoSanitizeFullName() esté SIEMPRE disponible — antes voltikaActaSanitizeFullName() lo verificaba con function_exists() pero nada en el path de regen lo cargaba, así que el dedup real nunca corría. Fallback ahora tiene un collapseTail iterativo que sí elimina "Apellido Apellido" repetido. (2) El regex de la firma ahora acepta data:image/png, data:image/jpeg, data:image/jpg, y base64 raw sin prefijo — antes solo aceptaba PNG estricto, así que firmas guardadas en otros formatos se rechazaban y el PDF salía con línea vacía. Loguea cuando rechaza para diagnóstico.'
     ),
 
+    // ── Round 85 (2026-05-26) — Sanitize duplicated names in portal cliente endpoints ──
+    'r85_me_sanitize'           => _checkFile(
+        $base . '/clientes/php/auth/me.php',
+        'Round 85 (2026-05-26)',
+        'Round 85 — clientes/php/auth/me.php: aplica contratoContadoSanitizeFullName() al construir nombre_completo. Corrige el saludo del portal del cliente que mostraba "¡Hola, Adrian Montoya Diaz Montoya Diaz!" — la duplicación venía de cómo clientes.nombre + apellido_paterno + apellido_materno se concatenan cuando datos legacy guardaron el nombre completo en `nombre` Y los apellidos separados también. El sanitizer canónico (Round 83 v2) hace tail-collapse y devuelve "Adrian Montoya Diaz". También limpia el campo `nombre` individual en la respuesta para que código downstream que lee c.nombre directamente vea la versión limpia.'
+    ),
+    'r85_login_sanitize'        => _checkFile(
+        $base . '/clientes/php/auth/login-verify.php',
+        'Round 85 (2026-05-26)',
+        'Round 85 — clientes/php/auth/login-verify.php: aplica el mismo sanitizer canónico al construir nombre_completo justo después del login OTP. Sin este fix, la primera carga del portal post-login mostraba el nombre duplicado hasta que me.php se refrescaba (race condition que el cliente alcanzaba a ver).'
+    ),
+    'r85_perfil_sanitize'       => _checkFile(
+        $base . '/clientes/php/cliente/perfil.php',
+        'Round 85 (2026-05-26)',
+        'Round 85 — clientes/php/cliente/perfil.php: aplica el mismo sanitizer canónico al endpoint que alimenta la pantalla "Mi Cuenta / Mi Perfil" del portal del cliente. Sin este fix, la pantalla de perfil seguía mostrando el nombre duplicado aunque el saludo de inicio ya estuviera limpio.'
+    ),
+
     // ── Round 84 (2026-05-26) — Mandatory entrega checklist enforcement ──
     'r84_checklist_mandatory_fields' => _checkFile(
         $base . '/puntosvoltika/php/entrega/checklist.php',

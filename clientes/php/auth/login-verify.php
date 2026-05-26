@@ -133,12 +133,26 @@ try {
     }
 
     if ($cli) {
-        $parts = array_filter([
-            trim((string)($cli['nombre'] ?? '')),
-            trim((string)($cli['apellido_paterno'] ?? '')),
-            trim((string)($cli['apellido_materno'] ?? '')),
-        ], 'strlen');
-        $cli['nombre_completo'] = $parts ? implode(' ', $parts) : '';
+        // Round 85 (2026-05-26) — sanitize via canonical helper to collapse
+        // duplicated apellidos ("Adrian Montoya Diaz Montoya Diaz"). Same
+        // logic as me.php and acta-pdf-generator.php (Round 83 v2).
+        @require_once __DIR__ . '/../../../configurador/php/contrato-contado.php';
+        if (function_exists('contratoContadoSanitizeFullName')) {
+            $clean = contratoContadoSanitizeFullName(
+                (string)($cli['nombre'] ?? ''),
+                (string)($cli['apellido_paterno'] ?? ''),
+                (string)($cli['apellido_materno'] ?? '')
+            );
+            $cli['nombre_completo'] = $clean;
+            if ($clean !== '') $cli['nombre'] = $clean;
+        } else {
+            $parts = array_filter([
+                trim((string)($cli['nombre'] ?? '')),
+                trim((string)($cli['apellido_paterno'] ?? '')),
+                trim((string)($cli['apellido_materno'] ?? '')),
+            ], 'strlen');
+            $cli['nombre_completo'] = $parts ? implode(' ', $parts) : '';
+        }
     }
 } catch (Throwable $e) { error_log('login-verify cliente: ' . $e->getMessage()); }
 

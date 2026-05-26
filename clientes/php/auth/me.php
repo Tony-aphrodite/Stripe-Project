@@ -92,12 +92,32 @@ try {
 
         // Compose the display name. If the deployment uses split fields, join
         // them. Otherwise the full name is already in `nombre` — use as-is.
-        $parts = array_filter([
-            trim((string)($c['nombre'] ?? '')),
-            trim((string)($c['apellido_paterno'] ?? '')),
-            trim((string)($c['apellido_materno'] ?? '')),
-        ], 'strlen');
-        $c['nombre_completo'] = $parts ? implode(' ', $parts) : '';
+        //
+        // Round 85 (2026-05-26) — sanitize the assembled name through the
+        // canonical contratoContadoSanitizeFullName() so duplicated apellidos
+        // like "Adrian Montoya Diaz Montoya Diaz" (caused by legacy imports
+        // where the full name was stored in `nombre` AND apellido_*) are
+        // collapsed to "Adrian Montoya Diaz" before the SPA renders the
+        // greeting. Same helper used by acta-pdf-generator.php (Round 83 v2).
+        @require_once __DIR__ . '/../../../configurador/php/contrato-contado.php';
+        if (function_exists('contratoContadoSanitizeFullName')) {
+            $clean = contratoContadoSanitizeFullName(
+                (string)($c['nombre'] ?? ''),
+                (string)($c['apellido_paterno'] ?? ''),
+                (string)($c['apellido_materno'] ?? '')
+            );
+            $c['nombre_completo'] = $clean;
+            // Also surface the cleaned single-name so downstream code that
+            // reads c.nombre directly doesn't show the duplicate.
+            if ($clean !== '') $c['nombre'] = $clean;
+        } else {
+            $parts = array_filter([
+                trim((string)($c['nombre'] ?? '')),
+                trim((string)($c['apellido_paterno'] ?? '')),
+                trim((string)($c['apellido_materno'] ?? '')),
+            ], 'strlen');
+            $c['nombre_completo'] = $parts ? implode(' ', $parts) : '';
+        }
     }
 } catch (Throwable $e) {
     error_log('me.php: ' . $e->getMessage());
