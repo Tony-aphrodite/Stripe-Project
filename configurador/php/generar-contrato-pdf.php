@@ -6,6 +6,15 @@
  * Autofill fields from configurador state + Truora INE + Stripe
  */
 
+// Round 89 (2026-05-26) — Library-mode guard. When this file is included
+// from another script (e.g. /admin/php/inventario/regenerar-contrato-credito-once.php)
+// the caller defines VOLTIKA_PDF_LIBRARY_MODE to skip the HTTP request
+// handling and only expose the generateContractPDF() / sendToCincel() /
+// saveFirmaAudit() helper functions below. Without this guard, requiring
+// the file from a non-HTTP context tries to read php://input, generate a
+// PDF from empty data, echo JSON, and exit — corrupting the caller's flow.
+if (!defined('VOLTIKA_PDF_LIBRARY_MODE')) {
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -161,6 +170,14 @@ echo json_encode([
     'firma_audit_id' => $firmaAuditId,
     'timestamp'      => date('c')
 ]);
+
+} // end VOLTIKA_PDF_LIBRARY_MODE guard — functions below are always defined
+
+// In library mode the caller still needs config (DB, FPDF path, etc.) — load
+// it here so saveFirmaAudit() and others have a working PDO + constants.
+if (defined('VOLTIKA_PDF_LIBRARY_MODE')) {
+    require_once __DIR__ . '/config.php';
+}
 
 /**
  * Save a row in `firmas_contratos` so we have a tamper-evident record of who

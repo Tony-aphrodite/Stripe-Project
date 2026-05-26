@@ -269,6 +269,13 @@ $checks = [
         'Round 83 v2 — clientes/php/acta-pdf-generator.php: dos fixes críticos descubiertos cuando la v1 regeneró el PDF de Adrian pero el nombre seguía duplicado y la firma seguía vacía. (1) Fuerza require_once de configurador/php/contrato-contado.php al cargar el módulo, para que contratoContadoSanitizeFullName() esté SIEMPRE disponible — antes voltikaActaSanitizeFullName() lo verificaba con function_exists() pero nada en el path de regen lo cargaba, así que el dedup real nunca corría. Fallback ahora tiene un collapseTail iterativo que sí elimina "Apellido Apellido" repetido. (2) El regex de la firma ahora acepta data:image/png, data:image/jpeg, data:image/jpg, y base64 raw sin prefijo — antes solo aceptaba PNG estricto, así que firmas guardadas en otros formatos se rechazaban y el PDF salía con línea vacía. Loguea cuando rechaza para diagnóstico.'
     ),
 
+    // ── Round 89 (2026-05-26) — Library-mode guard on generar-contrato-pdf ──
+    'r89_pdf_library_mode_guard' => _checkFile(
+        $base . '/configurador/php/generar-contrato-pdf.php',
+        'Round 89 (2026-05-26)',
+        'Round 89 — configurador/php/generar-contrato-pdf.php: wrappea el handler HTTP top-level dentro de if(!defined("VOLTIKA_PDF_LIBRARY_MODE")) para que admin scripts puedan require_once el archivo sin disparar el flujo de generación-y-respuesta-JSON. Necesario por el 1-shot tool admin/php/inventario/regenerar-contrato-credito-once.php que necesita llamar generateContractPDF() programáticamente sin que el archivo intente leer php://input ni hacer echo+exit.'
+    ),
+
     // ── Round 87 (2026-05-26) — Credit contract empty fields fix ──
     'r87_credito_contrato_full_data' => _checkFile(
         $base . '/configurador/js/modules/paso-credito-contrato.js',
