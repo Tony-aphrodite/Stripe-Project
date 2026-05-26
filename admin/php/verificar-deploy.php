@@ -233,6 +233,18 @@ $checks = [
         'Round 81 — clientes/js/modules/entrega.js: ROOT CAUSE finalmente identificado. showAutographSignaturePad() llamaba VKApp.modal(html, {wide:true}) pero VKApp.modal NO EXISTE en app.js (solo exporta start/api/render/go/toast/loadEstado/logout/etc). El TypeError silencioso aborta el .done() callback ANTES de cambiar la pantalla, dejando el botón eternamente en "Preparando documento…". Reemplazado por VKApp.render(html) (que sí existe). Mismo fix para VKApp.closeModal() (también inexistente). Esto NO era caché — los hard-refresh no ayudaban porque el bug está EN el JS desplegado, no en versiones cacheadas.'
     ),
 
+    // ── Round 82 (2026-05-26) — Admin viewer for ACTA PDF ──
+    'r82_view_acta_endpoint' => _checkFile(
+        $base . '/admin/php/inventario/view-acta.php',
+        'Round 82, 2026-05-26',
+        'Round 82 — admin/php/inventario/view-acta.php: nuevo endpoint admin que toma ?moto_id=N, lee cincel_acta_pdf_path de la BD, valida que el archivo esté en un directorio seguro, y sirve el PDF inline. Cubre el gap donde el ACTA existía en disco pero ningún botón del admin lo podía ver (serve-acta.php tenía regex que no matcheaba acta_cliente_* ni acta_directa_*). Incluye fallback a glob por moto_id si la columna está vacía.'
+    ),
+    'r82_inventario_acta_button' => _checkFile(
+        $base . '/admin/js/modules/admin-inventario.js',
+        'Round 82 (2026-05-26)',
+        'Round 82 — admin/js/modules/admin-inventario.js: en el detalle del moto aparece ahora una sección "ACTA DE ENTREGA" con el estado (✓ Firmada o ⏳ Pendiente), fecha, firma, hash NOM-151, y un botón "📄 Ver ACTA PDF" que abre el PDF en una pestaña nueva vía /admin/php/inventario/view-acta.php?moto_id=N. Si no está firmada, también muestra botón "Solicitar firma al cliente" (Round 80).'
+    ),
+
     // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
     'r78_estado_inconsistencia_banner' => _checkFile(
         $base . '/admin/js/modules/admin-inventario.js',

@@ -831,6 +831,57 @@ window.AD_inventario = (function(){
                 '</div>';
       }
 
+      // ── Round 82 (2026-05-26) — ACTA DE ENTREGA section ───────────────
+      // Customer brief (Óscar, 2026-05-26): admin couldn't find the signed
+      // ACTA PDF anywhere in the UI even though the customer portal showed
+      // the delivery as completed. The PDF was being saved by the Round 73 /
+      // Round 80 flows but had no admin-side viewer. This section surfaces:
+      //   - Whether the ACTA was signed (cliente_acta_firmada)
+      //   - The NOM-151 timestamp hash if applicable
+      //   - A "Ver ACTA" button that opens the PDF in a new tab via the
+      //     new /admin/php/inventario/view-acta.php endpoint
+      var actaSigned = !!(m.cliente_acta_firmada == 1 || m.cliente_acta_firmada === '1');
+      html += secHead('ACTA DE ENTREGA','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 14 11 16 15 12"/></svg>');
+      var actaBg, actaBd, actaLabel;
+      if (actaSigned) {
+        actaBg = 'rgba(5,150,105,.06)'; actaBd = 'rgba(5,150,105,.20)';
+        actaLabel = '<span style="color:#059669;font-weight:700;">✓ ACTA firmada</span>';
+      } else {
+        actaBg = 'rgba(217,119,6,.07)'; actaBd = 'rgba(217,119,6,.20)';
+        actaLabel = '<span style="color:#b45309;font-weight:700;">⏳ ACTA pendiente</span>';
+      }
+      html += '<div style="padding:14px 16px;border-radius:8px;background:'+actaBg+';border:1px solid '+actaBd+';margin-bottom:12px;font-size:13px;">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;">'+
+                '<div>'+actaLabel+'</div>'+
+                '<div style="font-size:11.5px;color:var(--ad-dim);text-align:right;">'+
+                  (m.cliente_acta_fecha ? '<div><strong>Firmada el:</strong> '+esc(m.cliente_acta_fecha)+'</div>' : '')+
+                  (m.cliente_acta_firma ? '<div><strong>Por:</strong> '+esc(m.cliente_acta_firma)+'</div>' : '')+
+                '</div>'+
+              '</div>';
+      // Show NOM-151 status if applicable
+      var hasHash = m.cincel_acta_timestamp_hash && String(m.cincel_acta_timestamp_hash).length === 64;
+      if (hasHash) {
+        html += '<div style="font-size:11.5px;color:#374151;margin-top:6px;padding-top:6px;border-top:1px dashed rgba(0,0,0,.08);">'+
+                  '<strong>NOM-151 sello:</strong> <code style="font-size:10px;background:#fff;padding:2px 6px;border-radius:3px;">'+
+                  esc(String(m.cincel_acta_timestamp_hash).substring(0, 32))+'…</code>'+
+                '</div>';
+      }
+      if (m.cincel_acta_status) {
+        html += '<div style="font-size:11.5px;color:#374151;margin-top:4px;">'+
+                  '<strong>Estado Cincel:</strong> '+esc(m.cincel_acta_status)+
+                '</div>';
+      }
+      // View ACTA button — opens the PDF in a new tab
+      html += '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">';
+      html += '<a class="ad-btn sm" href="/admin/php/inventario/view-acta.php?moto_id='+m.id+'" target="_blank" rel="noopener" '+
+              'style="background:#039fe1;color:#fff;border-color:#039fe1;text-decoration:none;">📄 Ver ACTA PDF</a>';
+      if (!actaSigned) {
+        html += '<a class="ad-btn sm ghost" href="/admin/php/checklists/herramienta-firma-acta.php" target="_blank" rel="noopener" '+
+                'style="text-decoration:none;">📝 Solicitar firma al cliente</a>';
+      }
+      html += '</div>';
+      html += '</div>';
+
       // ── Round 28 (2026-05-14, Óscar Pesgo Plus VIN ...12) ───────────────
       // Retención (estado='retenida'): the moto is on operational hold,
       // independent of bloqueado_venta. Before Round 28 there was no UI
