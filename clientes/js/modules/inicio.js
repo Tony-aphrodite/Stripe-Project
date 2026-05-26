@@ -71,9 +71,18 @@ window.VK_inicio = (function(){
   }
 
   // ── Main router ─────────────────────────────────────────────────
+  // Round 93 (2026-05-26) — Robust contado detection. Same multi-signal
+  // pattern as Round 91 pagos.js, Round 92 documentos.js, and mivoltika.js.
   function render(){
-    var tipo = VKApp.state.tipoPortal;
-    if(tipo === 'contado' || tipo === 'msi'){
+    var e        = VKApp.state.estado || {};
+    var active   = VKApp.state.activeCompra || {};
+    var tipo     = VKApp.state.tipoPortal || e.tipo_portal || '';
+    var infoSub  = (e.info && e.info.subscripcion) || e.subscripcion || null;
+    var compra   = e.compra || null;
+    var isContado = (tipo === 'contado' || tipo === 'msi')
+                 || (active.tipo === 'contado' || active.tipo === 'msi')
+                 || (!!compra && !infoSub && tipo !== 'credito');
+    if(isContado){
       renderContado();
     } else {
       renderCredito();

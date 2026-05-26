@@ -129,6 +129,18 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 93 (2026-05-26) — Contado view in Mi Voltika + Inicio ──
+    'r93_mivoltika_contado_view' => _checkFile(
+        $base . '/clientes/js/modules/mivoltika.js',
+        'Round 93 (2026-05-26)',
+        'Round 93 — clientes/js/modules/mivoltika.js: misma detección robusta de contado que Round 91/92 (3 señales: state.tipoPortal, state.activeCompra.tipo, presencia de estado.compra sin subscripción). Antes Adrian veía "Voltika / --- / Pendiente" porque renderCredito corría con e.subscripcion=null y caía a fallback strings. Ahora renderContado se ejecuta correctamente y muestra modelo/color/VIN reales.'
+    ),
+    'r93_inicio_contado_view' => _checkFile(
+        $base . '/clientes/js/modules/inicio.js',
+        'Round 93 (2026-05-26)',
+        'Round 93 — clientes/js/modules/inicio.js: misma detección robusta de contado. Sin esto, el hero card de Inicio podría renderizar la versión de crédito ("Paga esta semana", "Adelanta pagos") para un cliente contado cuyo tipoPortal quedó stale en credito.'
+    ),
+
     // ── Round 92 (2026-05-26) — Contado documents page fix ──
     'r92_documentos_contado_unlock' => _checkFile(
         $base . '/clientes/js/modules/documentos.js',

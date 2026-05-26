@@ -3,12 +3,25 @@ window.VK_mivoltika = (function(){
   function render(){
     var e = VKApp.state.estado || {};
     var c = VKApp.state.cliente || {};
-    var tipo = VKApp.state.tipoPortal;
+    // Round 93 (2026-05-26) — Robust contado detection (same pattern as
+    // Round 91 pagos.js + Round 92 documentos.js). The old check relied
+    // only on VKApp.state.tipoPortal, which can be stale 'credito' default
+    // when estado.php hasn't refreshed it. Caso Adrian Montoya: his
+    // tipoPortal was 'credito' even though he's a contado customer, so
+    // renderCredito ran and showed "Voltika / --- / Pendiente" placeholders
+    // (because he has no subscripcion data). Now we check 3 signals.
+    var active   = VKApp.state.activeCompra || {};
+    var tipo     = VKApp.state.tipoPortal || e.tipo_portal || '';
+    var infoSub  = (e.info && e.info.subscripcion) || e.subscripcion || null;
+    var compra   = e.compra || null;
+    var isContado = (tipo === 'contado' || tipo === 'msi')
+                 || (active.tipo === 'contado' || active.tipo === 'msi')
+                 || (!!compra && !infoSub && tipo !== 'credito');
 
     var html = '';
     html += '<div class="vk-h1">Mi Voltika</div>';
 
-    if(tipo === 'contado' || tipo === 'msi'){
+    if(isContado){
       renderContado(html, e, c);
     } else {
       renderCredito(html, e, c);
