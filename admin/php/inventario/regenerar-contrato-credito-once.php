@@ -72,6 +72,10 @@ foreach ([
 
 $action = (string)($_GET['action'] ?? $_POST['action'] ?? 'list');
 $pedido = trim((string)($_GET['pedido'] ?? $_POST['pedido'] ?? ''));
+// Round 90 (2026-05-26) — also accept tx_id (transacciones.id) so rows
+// with empty/null pedido (some legacy webhook paths never set it) can
+// still be processed via the Preview button.
+$txId   = (int)($_GET['tx_id'] ?? $_POST['tx_id'] ?? 0);
 
 // ──────────────────────────────────────────────────────────────────────────
 // Render helpers
@@ -105,17 +109,23 @@ echo '<p class="crumb"><a href="?">← Lista de candidatos</a></p>';
 // ──────────────────────────────────────────────────────────────────────────
 // ACTION: APPLY — actually regenerate the contract
 // ──────────────────────────────────────────────────────────────────────────
-if ($action === 'apply' && $pedido !== '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($action === 'apply' && ($pedido !== '' || $txId > 0) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $plazoMeses = max(12, min(60, (int)($_POST['plazo'] ?? 36)));
 
-    // 1) Load transacciones row
-    $st = $pdo->prepare("SELECT * FROM transacciones WHERE pedido = ? ORDER BY id DESC LIMIT 1");
-    $st->execute([$pedido]);
+    // 1) Load transacciones row — prefer tx_id when given (it's unique), fall back to pedido.
+    if ($txId > 0) {
+        $st = $pdo->prepare("SELECT * FROM transacciones WHERE id = ? LIMIT 1");
+        $st->execute([$txId]);
+    } else {
+        $st = $pdo->prepare("SELECT * FROM transacciones WHERE pedido = ? ORDER BY id DESC LIMIT 1");
+        $st->execute([$pedido]);
+    }
     $tx = $st->fetch(PDO::FETCH_ASSOC) ?: null;
     if (!$tx) {
-        echo '<div class="err">Pedido no encontrado: ' . htmlspecialchars($pedido) . '</div></body></html>';
+        echo '<div class="err">Transacción no encontrada (pedido=' . htmlspecialchars($pedido) . ', tx_id=' . $txId . ')</div></body></html>';
         exit;
     }
+    $pedido = (string)($tx['pedido'] ?? '');
 
     // Idempotency check
     if ((int)($tx['contrato_regenerado_admin'] ?? 0) === 1) {
@@ -312,14 +322,21 @@ if ($action === 'apply' && $pedido !== '' && $_SERVER['REQUEST_METHOD'] === 'POS
 // ──────────────────────────────────────────────────────────────────────────
 // ACTION: PREVIEW — show details + form
 // ──────────────────────────────────────────────────────────────────────────
-if ($action === 'preview' && $pedido !== '') {
-    $st = $pdo->prepare("SELECT * FROM transacciones WHERE pedido = ? ORDER BY id DESC LIMIT 1");
-    $st->execute([$pedido]);
+if ($action === 'preview' && ($pedido !== '' || $txId > 0)) {
+    if ($txId > 0) {
+        $st = $pdo->prepare("SELECT * FROM transacciones WHERE id = ? LIMIT 1");
+        $st->execute([$txId]);
+    } else {
+        $st = $pdo->prepare("SELECT * FROM transacciones WHERE pedido = ? ORDER BY id DESC LIMIT 1");
+        $st->execute([$pedido]);
+    }
     $tx = $st->fetch(PDO::FETCH_ASSOC) ?: null;
     if (!$tx) {
-        echo '<div class="err">Pedido no encontrado: ' . htmlspecialchars($pedido) . '</div>';
+        echo '<div class="err">Transacción no encontrada (pedido=' . htmlspecialchars($pedido) . ', tx_id=' . $txId . ')</div>';
         echo '</body></html>'; exit;
     }
+    $pedido = (string)($tx['pedido'] ?? '');
+    $txId   = (int)$tx['id'];
     $modelo = (string)($tx['modelo'] ?? '');
     $precioContado = CATALOGO_PRECIOS[$modelo] ?? null;
     foreach (CATALOGO_PRECIOS as $k => $v) {
@@ -355,6 +372,7 @@ if ($action === 'preview' && $pedido !== '') {
     echo '<form method="post" style="margin-top:14px;">';
     echo '<input type="hidden" name="action" value="apply">';
     echo '<input type="hidden" name="pedido" value="' . htmlspecialchars($pedido) . '">';
+    echo '<input type="hidden" name="tx_id" value="' . (int)$txId . '">';
     echo '<label><strong>plazoMeses:</strong> ';
     echo '<select name="plazo">';
     foreach ([12, 18, 24, 36, 48] as $p) {
@@ -393,13 +411,13 @@ try {
         echo '<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Total</th><th>tpago</th><th>Regenerado?</th><th></th></tr></thead><tbody>';
         foreach ($rows as $r) {
             echo '<tr>';
-            echo '<td><code>' . htmlspecialchars((string)$r['pedido']) . '</code></td>';
+            echo '<td><code>' . htmlspecialchars((string)($r['pedido'] ?: '#' . (int)$r['id'])) . '</code></td>';
             echo '<td>' . htmlspecialchars((string)$r['nombre']) . '<br><small style="color:#64748b;">' . htmlspecialchars((string)$r['email']) . ' · ' . htmlspecialchars((string)$r['telefono']) . '</small></td>';
             echo '<td>' . htmlspecialchars((string)$r['modelo']) . ' / ' . htmlspecialchars((string)$r['color']) . '</td>';
             echo '<td>$' . number_format((float)$r['total'], 2) . '</td>';
             echo '<td><code>' . htmlspecialchars((string)$r['tpago']) . '</code></td>';
             echo '<td>' . ($r['contrato_regenerado_admin'] ? '<span class="ok">SÍ</span>' : '<span class="warn">no</span>') . '</td>';
-            echo '<td><a class="btn ghost" href="?action=preview&pedido=' . urlencode((string)$r['pedido']) . '">Preview →</a></td>';
+            echo '<td><a class="btn ghost" href="?action=preview&tx_id=' . (int)$r['id'] . '">Preview →</a></td>';
             echo '</tr>';
         }
         echo '</tbody></table>';
@@ -421,13 +439,36 @@ echo '</form>';
 $q = trim((string)($_GET['q'] ?? ''));
 if ($action === 'search' && $q !== '') {
     try {
-        $like = '%' . $q . '%';
-        $st = $pdo->prepare("SELECT id, pedido, nombre, email, telefono, modelo, color, total, tpago, contrato_pdf_path, contrato_regenerado_admin
-                               FROM transacciones
-                              WHERE pedido = ? OR email = ? OR telefono = ?
-                                 OR nombre LIKE ?
-                              ORDER BY id DESC LIMIT 20");
-        $st->execute([$q, $q, $q, $like]);
+        // Round 90 (2026-05-26) — Strip "VK-" prefix and use LIKE so
+        // searches like "VK-2605-0004" match the underlying transacciones.pedido
+        // (which is stored as "2605-0004" or just numbers — the "VK-" prefix
+        // is only added at display time). Also join inventario_motos so a
+        // search for the displayed pedido_num (e.g. "VK-2605-0004") finds
+        // the linked transaction even if transacciones.pedido was empty/diff.
+        $qStripped = preg_replace('/^VK-?/i', '', $q);
+        $like      = '%' . $qStripped . '%';
+        $nameLike  = '%' . $q . '%';
+        $st = $pdo->prepare("
+            SELECT DISTINCT t.id, t.pedido, t.nombre, t.email, t.telefono,
+                   t.modelo, t.color, t.total, t.tpago,
+                   t.contrato_pdf_path, t.contrato_regenerado_admin
+              FROM transacciones t
+              LEFT JOIN inventario_motos m
+                     ON (m.cliente_email <> '' AND m.cliente_email = t.email)
+                     OR (m.cliente_telefono <> '' AND m.cliente_telefono = t.telefono)
+                     OR (m.stripe_pi <> '' AND m.stripe_pi = t.stripe_pi)
+             WHERE t.pedido = ? OR t.pedido = ? OR t.pedido LIKE ?
+                OR t.email = ? OR t.telefono = ?
+                OR t.nombre LIKE ?
+                OR m.pedido_num = ? OR m.pedido_num = ?
+             ORDER BY t.id DESC
+             LIMIT 20");
+        $st->execute([
+            $q, $qStripped, $like,
+            $q, $q,
+            $nameLike,
+            $q, ('VK-' . $qStripped),
+        ]);
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
         if (!$rows) {
             echo '<div class="empty">Sin resultados.</div>';
@@ -435,13 +476,13 @@ if ($action === 'search' && $q !== '') {
             echo '<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Total</th><th>tpago</th><th>Regenerado?</th><th></th></tr></thead><tbody>';
             foreach ($rows as $r) {
                 echo '<tr>';
-                echo '<td><code>' . htmlspecialchars((string)$r['pedido']) . '</code></td>';
+                echo '<td><code>' . htmlspecialchars((string)($r['pedido'] ?: '#' . (int)$r['id'])) . '</code></td>';
                 echo '<td>' . htmlspecialchars((string)$r['nombre']) . '<br><small style="color:#64748b;">' . htmlspecialchars((string)$r['email']) . ' · ' . htmlspecialchars((string)$r['telefono']) . '</small></td>';
                 echo '<td>' . htmlspecialchars((string)$r['modelo']) . ' / ' . htmlspecialchars((string)$r['color']) . '</td>';
                 echo '<td>$' . number_format((float)$r['total'], 2) . '</td>';
                 echo '<td><code>' . htmlspecialchars((string)$r['tpago']) . '</code></td>';
                 echo '<td>' . ($r['contrato_regenerado_admin'] ? '<span class="ok">SÍ</span>' : '<span class="warn">no</span>') . '</td>';
-                echo '<td><a class="btn ghost" href="?action=preview&pedido=' . urlencode((string)$r['pedido']) . '">Preview →</a></td>';
+                echo '<td><a class="btn ghost" href="?action=preview&tx_id=' . (int)$r['id'] . '">Preview →</a></td>';
                 echo '</tr>';
             }
             echo '</tbody></table>';

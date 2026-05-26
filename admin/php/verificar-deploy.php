@@ -43,208 +43,13 @@ function _checkFile(string $path, string $marker, string $description): array {
 $base = realpath(__DIR__ . '/../..');
 
 // ─────────────────────────────────────────────────────────────────────────
-// NOTE: Rounds 59–68 + 70 + 70 v2 + 70 v3 fueron desplegados y validados
-// previamente — sus markers se removieron de este verificador para que el
-// admin solo vea lo que sigue activo o en pruebas. Los archivos siguen
-// en disco. Si necesitas re-validar algún round viejo, consulta git
-// history de este archivo.
+// NOTE: Rounds 59–82 + Round 78 fueron desplegados y validados previamente —
+// sus markers se removieron de este verificador para que el admin solo vea
+// lo que sigue activo o en pruebas. Los archivos siguen en disco. Si
+// necesitas re-validar algún round viejo, consulta git history de este
+// archivo.
 // ─────────────────────────────────────────────────────────────────────────
 $checks = [
-    // ── Round 69 (2026-05-23) — Cincel TIMESTAMP diagnostic (current focus) ──
-    'r69_cincel_timestamp_diagnostic' => _checkFile(
-        $base . '/admin/php/diagnostico-cincel-timestamp.php',
-        'Diagnóstico Cincel Timestamp (Round 69, 2026-05-23)',
-        'Round 69 — diagnostico-cincel-timestamp.php: 3 probes contra GET /v3/timestamps/{hash} (endpoint público SIN auth, NO consume créditos). Confirma si Cincel está alcanzable para integrar el servicio de estampas de tiempo NOM-151 (lo que realmente necesita el cliente — no la firma completa).'
-    ),
-
-    // ── Round 70 v4 (2026-05-23) — Customer portal respects pago_estado ──
-    'r70_v4_inicio_pago_estado_aware' => _checkFile(
-        $base . '/clientes/js/modules/inicio.js',
-        'Round 70 v4 (2026-05-23',
-        'Round 70 v4 — clientes/js/modules/inicio.js: el card "RESUMEN DE PAGO" respeta compra.pago_estado: pagada→verde "Pagado al 100%"; parcial→azul; fallido→rojo; pendiente→ámbar "Pago pendiente". Fix del bug VK-1826-0004 (SPEI sin pagar mostraba "Tu compra está liquidada").'
-    ),
-
-    // ── Round 70 v5 (2026-05-23) — Auto-reload customer SPA on new build ──
-    'r70_v5_version_endpoint' => _checkFile(
-        $base . '/clientes/php/version.php',
-        'Round 70 v5 (2026-05-23)',
-        'Round 70 v5 — clientes/php/version.php: endpoint que devuelve hash de mtimes de los JS del portal cliente. SPA lo consulta al arrancar y fuerza reload cuando cambia → los clientes ya no se quedan con JS viejo después de un deploy.'
-    ),
-    'r70_v5_app_version_check' => _checkFile(
-        $base . '/clientes/js/app.js',
-        '_checkBuildVersion',
-        'Round 70 v5 — clientes/js/app.js: VKApp.start() hace fetch a version.php; si la versión guardada en localStorage difiere, fuerza window.location.reload(). Auto-cache-bust permanente.'
-    ),
-
-    // ── Round 71 (2026-05-23) — Cincel NOM-151 timestamp integration ──
-    'r71_cincel_timestamp_module' => _checkFile(
-        $base . '/configurador/php/cincel-timestamp.php',
-        'Round 71, 2026-05-23',
-        'Round 71 — configurador/php/cincel-timestamp.php: módulo de producción para timestamps NOM-151 de Cincel. Funciones: cincelGetJWT() con cache 4h, cincelTimestampExists() (GET público sin auth), cincelCreateTimestamp() (POST autenticado con auto-refresh), cincelGetOrCreateTimestamp() (end-to-end idempotente por hash), cincelEnsureSchema() y cincelSaveTimestamp() (persistencia en cincel_timestamps).'
-    ),
-    'r71_cincel_diagnostico_create' => _checkFile(
-        $base . '/admin/php/diagnostico-cincel-timestamp-create.php',
-        'Round 71, 2026-05-23',
-        'Round 71 — admin/php/diagnostico-cincel-timestamp-create.php: ejecuta el flujo COMPLETO (JWT → check → POST). Lista PDFs de contratos en disco; el admin elige uno y prueba check (sin gasto) o create (1 crédito si nuevo). Confirma que el módulo está listo antes de hookearlo en confirmar-orden.'
-    ),
-    'r71_cincel_hook_confirmar_orden' => _checkFile(
-        $base . '/configurador/php/confirmar-orden.php',
-        'Round 71 (2026-05-23) — NOM-151 timestamp via Cincel',
-        'Round 71 — configurador/php/confirmar-orden.php: después de generar el PDF del contrato CONTADO, llama cincelGetOrCreateTimestamp() y guarda el resultado en cincel_timestamps. Gateable con CINCEL_TIMESTAMP_ENABLED=0 si Cincel tiene outage. Toda excepción se loggea sin abortar el flujo de orden.'
-    ),
-
-    // ── Round 72 (2026-05-23) — Reintentar CDC para preap_id existente ──
-    'r72_cdc_call_helper' => _checkFile(
-        $base . '/configurador/php/cdc-call.php',
-        'Round 72, 2026-05-23',
-        'Round 72 — configurador/php/cdc-call.php: helper reusable para hacer consultas CDC desde código admin (sin pasar por consultar-buro.php). Expone cdcQueryPersona($persona) con firma + mTLS + retry + parseo. Funciones cdcAscii/cdcComputeRFC/cdcEstadoEnum/extractPreaprobacionData con function_exists() para coexistir con consultar-buro.php.'
-    ),
-    'r72_reconsultar_cdc_endpoint' => _checkFile(
-        $base . '/admin/php/preaprobaciones/reconsultar-cdc.php',
-        'Round 72, 2026-05-23',
-        'Round 72 — admin/php/preaprobaciones/reconsultar-cdc.php: endpoint que recibe preap_id, carga los datos del solicitante, llama cdcQueryPersona() y actualiza score/circulo_source/pago_mensual_buro/dpd90_flag/dpd_max + pti_total. Devuelve fetched={score, circulo_source, person_found, …} para que el frontend recargue.'
-    ),
-    'r72_reintentar_cdc_button' => _checkFile(
-        $base . '/admin/js/modules/admin-preaprobaciones.js',
-        'Round 72 (2026-05-23)',
-        'Round 72 — admin/js/modules/admin-preaprobaciones.js: botón "🔁 Reintentar consulta CDC" debajo del card de recomendación cuando circulo_source es estimado o cdc_sin_score. POSTea a reconsultar-cdc.php y recarga la lista al terminar.'
-    ),
-
-    // ── Round 73 (2026-05-24) — Unstick "Preparando documento…" en entrega ──
-    'r73_acta_skip_cincel_ceremony' => _checkFile(
-        $base . '/clientes/php/entrega/cincel-firma-acta.php',
-        'Round 73 (2026-05-24) — Skip Cincel signature ceremony',
-        'Round 73 — clientes/php/entrega/cincel-firma-acta.php: tras generar el PDF, retorna fallback_autograph inmediatamente (sin intentar auth a Cincel que tardaba hasta 30s y fallaba). Customer brief Round 71 (Óscar): "solo necesitamos el timestamp de Cincel". Persiste también cincel_acta_pdf_path para que firmar-acta.php pueda sellar el PDF luego.'
-    ),
-    'r73_acta_nom151_timestamp' => _checkFile(
-        $base . '/clientes/php/entrega/firmar-acta.php',
-        'Round 73 (2026-05-24) — Apply Cincel NOM-151 timestamp',
-        'Round 73 — clientes/php/entrega/firmar-acta.php: después de guardar la firma autógrafa, llama cincelGetOrCreateTimestamp() sobre el PDF del acta y guarda el hash en cincel_acta_timestamp_hash. Idempotente por hash. Si Cincel falla, la entrega NO se bloquea (la firma se guarda igual).'
-    ),
-    'r73_entrega_js_wording' => _checkFile(
-        $base . '/clientes/js/modules/entrega.js',
-        'Round 73 (2026-05-24)',
-        'Round 73 — clientes/js/modules/entrega.js: el mensaje del panel de firma autógrafa ya no dice "Cincel no está disponible". Ahora explica claramente que la firma se sella con timestamp NOM-151 a través de Cincel — sin alarmar al cliente.'
-    ),
-
-    // ── Round 74 (2026-05-25) — Stepper consistente cuando no hay punto ──
-    'r74_estado_stepper_clamp' => _checkFile(
-        $base . '/clientes/php/entrega/estado.php',
-        'Round 74 (2026-05-25)',
-        'Round 74 — clientes/php/entrega/estado.php: si punto_voltika_id es null, $estadoUi se clampa a "pendiente" (paso 1) sin importar otros flags. Evita la contradicción "Entregada ✓ + Asignando punto…" que aparecía cuando la data quedaba inconsistente (test seed o admin override).'
-    ),
-    'r74_v2_entrega_js_suppress' => _checkFile(
-        $base . '/clientes/js/modules/entrega.js',
-        'Round 74 v2 (2026-05-25)',
-        'Round 74 v2 — clientes/js/modules/entrega.js: cuando no hay punto asignado, se oculta el card de Envío (que mostraba "Recibida en el punto" en verde) y el banner "Tu moto está en tránsito al punto de entrega". Aparece un solo mensaje amarillo claro: "Estamos asignando tu punto de entrega…". UI consistente con el stepper en paso 1 + badge "Asignando punto…".'
-    ),
-
-    // ── Round 75 (2026-05-25) — Retro-firma autógrafa del contrato ──
-    'r75_solicitar_firma_endpoint' => _checkFile(
-        $base . '/admin/php/ventas/solicitar-firma-contrato.php',
-        'Round 75, 2026-05-25',
-        'Round 75 — admin/php/ventas/solicitar-firma-contrato.php: endpoint admin que recibe transaccion_id, genera token de 40 hex, lo guarda en firma_contrato_requests (TTL 48h), envía link por email al cliente y devuelve copy_text listo para pegar en WhatsApp. Customer brief Óscar: "Is there any way to resend the signature request to the client".'
-    ),
-    'r75_firmar_contrato_page' => _checkFile(
-        $base . '/clientes/firmar-contrato-retro.php',
-        'Round 75, 2026-05-25',
-        'Round 75 — clientes/firmar-contrato-retro.php: página pública (sin login) que valida el token, muestra los datos del contrato + canvas de firma con el dedo (touch+mouse, HiDPI). Submit POSTea a firmar-contrato-retro-guardar.php.'
-    ),
-    'r75_firmar_contrato_save' => _checkFile(
-        $base . '/clientes/php/firmar-contrato-retro-guardar.php',
-        'Round 75, 2026-05-25',
-        'Round 75 — clientes/php/firmar-contrato-retro-guardar.php: backend del flujo retro. Guarda firma en firmas_contratos, regenera el PDF con autógrafa embebida (contratoContadoGenerate), aplica NOM-151 vía Cincel, actualiza transacciones (path/hash/cincel_timestamp_hash), marca el token como signed. Lock con FOR UPDATE para evitar doble firma.'
-    ),
-
-    // ── Round 76 (2026-05-25) — Auto cache-bust hardening ──
-    'r76_app_js_first_visit_reload' => _checkFile(
-        $base . '/clientes/js/app.js',
-        'Round 76 (2026-05-25)',
-        'Round 76 — clientes/js/app.js: en el primer arranque donde el localStorage no tiene vk_build_version NI vk_build_primed, se asume caché del navegador desconocido y se fuerza ONE reload (con primed=1 para no caer en loop). Cierra el agujero del v5 original donde clientes con JS pre-Round-70-v5 nunca disparaban auto-reload y se quedaban con "Preparando documento…" stuck.'
-    ),
-
-    // ── Round 77 (2026-05-25) — Surface "no recepción" + diagnóstico ──
-    'r77_admin_inventario_recepcion_placeholder' => _checkFile(
-        $base . '/admin/js/modules/admin-inventario.js',
-        'Round 77 (2026-05-25)',
-        'Round 77 — admin/js/modules/admin-inventario.js: si recepcion_punto no tiene fila para el moto, el card "Recepción en el punto" ya no desaparece silenciosamente. Ahora muestra el header siempre, con 3 estados distintos según moto.estado: ⚠ Inconsistencia (estado=recibida/entregada pero sin fila), ⏳ En tránsito, o — pendiente. Customer brief Óscar: "still not showing the checklist of reception in the admin dashboard".'
-    ),
-    'r77_diagnostico_checklists' => _checkFile(
-        $base . '/admin/php/diagnostico-checklists-moto.php',
-        'Round 77 diag, 2026-05-25',
-        'Round 77 — admin/php/diagnostico-checklists-moto.php: dado un moto_id, vuelca el estado COMPLETO de cada checklist (recepcion_punto, checklist_origen, checklist_ensamble, checklist_entrega_v2, entregas, firmas_contratos, cincel_timestamps). El admin o boss puede ver de un vistazo qué tabla tiene fila y qué no — útil para reportar bugs específicos en vez de "no se ve nada".'
-    ),
-
-    // ── Round 79 (2026-05-25) — Fix asignar/desasignar data-sync bug ──
-    'r79_asignar_moto_fk' => _checkFile(
-        $base . '/admin/php/ventas/asignar-moto.php',
-        'Round 79 (2026-05-25) — Direct FK on transacciones',
-        'Round 79 — admin/php/ventas/asignar-moto.php: además de poblar inventario_motos.cliente_*, ahora también escribe transacciones.moto_id = ? para que Ventas pueda hacer JOIN directo (sin depender de string matching de pedido_num). Caso Leobardo: la asignación stamping VK-TX32 nunca era visible en Ventas porque listar.php no reconocía ese formato.'
-    ),
-    'r79_listar_prefer_fk' => _checkFile(
-        $base . '/admin/php/ventas/listar.php',
-        'Round 79 (2026-05-25) — Prefer the direct FK link',
-        'Round 79 — admin/php/ventas/listar.php: el JOIN ahora prioriza m.id = t.moto_id (FK directo). Mantiene los 5 fallbacks legacy (pedido_corto, pedido, etc.) + agrega reconocimiento del formato sintético CONCAT(VK-TX, t.id) para recuperar huérfanos de asignaciones pre-Round-79.'
-    ),
-    'r79_desasignar_clear_fk' => _checkFile(
-        $base . '/admin/php/ventas/desasignar-moto.php',
-        'Round 79 (2026-05-25) — Also clear the direct FK link',
-        'Round 79 — admin/php/ventas/desasignar-moto.php: añade limpieza simétrica de transacciones.moto_id = NULL cuando el admin desasigna una moto. Sin este paso quedarían filas con FK colgante apuntando a un moto ya liberado.'
-    ),
-    'r79_backfill_tool' => _checkFile(
-        $base . '/admin/php/ventas/backfill-asignaciones.php',
-        'Round 79, 2026-05-25',
-        'Round 79 — admin/php/ventas/backfill-asignaciones.php: herramienta admin que encuentra TODAS las motos con pedido_num en formato sintético "VK-TX{id}" (asignaciones huérfanas de antes del fix). Las agrupa por transacción y permite Bindear (link FK) o Desasignar cada una con un click. Idempotente — correr múltiples veces es seguro. Caso Leobardo se resuelve aquí.'
-    ),
-
-    // ── Round 80 (2026-05-25) — Standalone ACTA signing (bypass SPA cache) ──
-    'r80_solicitar_firma_acta' => _checkFile(
-        $base . '/admin/php/checklists/solicitar-firma-acta.php',
-        'Round 80, 2026-05-25',
-        'Round 80 — admin/php/checklists/solicitar-firma-acta.php: endpoint admin que genera token de 40hex + URL para firmar la ACTA DE ENTREGA sin pasar por el SPA. Guarda en firma_acta_requests (TTL 24h), envía link por email + devuelve copy_text para WhatsApp. Bypassea el problema de caché en iPhone Safari / PWA mode donde el SPA queda colgado en "Preparando documento…".'
-    ),
-    'r80_firmar_acta_page' => _checkFile(
-        $base . '/clientes/firmar-acta-directa.php',
-        'Round 80, 2026-05-25',
-        'Round 80 — clientes/firmar-acta-directa.php: página HTML standalone (NO app.js, NO entrega.js, NO SPA modules). Valida el token, muestra modelo/color/VIN + canvas de firma + declaración legal. Submit POSTea a firmar-acta-directa-guardar.php. URL única + Cache-Control no-store garantiza que el browser NUNCA tenga cache vieja de esta página.'
-    ),
-    'r80_firmar_acta_save' => _checkFile(
-        $base . '/clientes/php/firmar-acta-directa-guardar.php',
-        'Round 80, 2026-05-25',
-        'Round 80 — clientes/php/firmar-acta-directa-guardar.php: backend del flujo standalone. Valida token, guarda firma en firmas_contratos, genera PDF de ACTA con autógrafa embebida (FPDF inline, replica el código de cincel-firma-acta.php sin requerir portal auth), aplica NOM-151 vía Cincel, marca inventario_motos.cliente_acta_firmada=1 + cincel_acta_status=signed_with_timestamp, notifica al punto panel. Hace todo lo que firmar-acta.php + cincel-firma-acta.php hacen, pero en un solo POST atómico.'
-    ),
-    'r80_herramienta_firma_acta' => _checkFile(
-        $base . '/admin/php/checklists/herramienta-firma-acta.php',
-        'Round 80 helper, 2026-05-25',
-        'Round 80 helper — admin/php/checklists/herramienta-firma-acta.php: página visual con la tabla de motos eligibles para firma de ACTA directa. Botón "Generar link" por fila → muestra URL, botón Copiar, botón WhatsApp con mensaje pre-cargado. Reemplaza el flujo de DevTools console para usuarios no-técnicos.'
-    ),
-
-    // ── Round 80 v2 (2026-05-25) — Auto-link in punto SMS ──
-    'r80_v2_iniciar_auto_link' => _checkFile(
-        $base . '/puntosvoltika/php/entrega/iniciar.php',
-        'Round 80 v2 (2026-05-25)',
-        'Round 80 v2 — puntosvoltika/php/entrega/iniciar.php: cuando el operador del punto hace click en "Iniciar entrega", el sistema AHORA genera automáticamente un token de Round 80 + URL standalone, y la INCLUYE en el SMS que recibe el cliente. El cliente puede ignorar el SPA (que se cuelga por cache vieja) y tocar el link directo — backwards compatible, el OTP sigue ahí para el flujo existente. Cierra definitivamente el problema "Preparando documento…" sin pedirle nada al cliente.'
-    ),
-
-    // ── Round 81 (2026-05-26) — ROOT CAUSE FIX of "Preparando documento…" ──
-    'r81_fix_vkapp_modal_typeerror' => _checkFile(
-        $base . '/clientes/js/modules/entrega.js',
-        'Round 81 (2026-05-26)',
-        'Round 81 — clientes/js/modules/entrega.js: ROOT CAUSE finalmente identificado. showAutographSignaturePad() llamaba VKApp.modal(html, {wide:true}) pero VKApp.modal NO EXISTE en app.js (solo exporta start/api/render/go/toast/loadEstado/logout/etc). El TypeError silencioso aborta el .done() callback ANTES de cambiar la pantalla, dejando el botón eternamente en "Preparando documento…". Reemplazado por VKApp.render(html) (que sí existe). Mismo fix para VKApp.closeModal() (también inexistente). Esto NO era caché — los hard-refresh no ayudaban porque el bug está EN el JS desplegado, no en versiones cacheadas.'
-    ),
-
-    // ── Round 82 (2026-05-26) — Admin viewer for ACTA PDF ──
-    'r82_view_acta_endpoint' => _checkFile(
-        $base . '/admin/php/inventario/view-acta.php',
-        'Round 82, 2026-05-26',
-        'Round 82 — admin/php/inventario/view-acta.php: nuevo endpoint admin que toma ?moto_id=N, lee cincel_acta_pdf_path de la BD, valida que el archivo esté en un directorio seguro, y sirve el PDF inline. Cubre el gap donde el ACTA existía en disco pero ningún botón del admin lo podía ver (serve-acta.php tenía regex que no matcheaba acta_cliente_* ni acta_directa_*). Incluye fallback a glob por moto_id si la columna está vacía.'
-    ),
-    'r82_inventario_acta_button' => _checkFile(
-        $base . '/admin/js/modules/admin-inventario.js',
-        'Round 82 (2026-05-26)',
-        'Round 82 — admin/js/modules/admin-inventario.js: en el detalle del moto aparece ahora una sección "ACTA DE ENTREGA" con el estado (✓ Firmada o ⏳ Pendiente), fecha, firma, hash NOM-151, y un botón "📄 Ver ACTA PDF" que abre el PDF en una pestaña nueva vía /admin/php/inventario/view-acta.php?moto_id=N. Si no está firmada, también muestra botón "Solicitar firma al cliente" (Round 80).'
-    ),
-
     // ── Round 83 (2026-05-26) — Real fix: regenerate PDF with signature ──
     'r83_acta_pdf_generator' => _checkFile(
         $base . '/clientes/php/acta-pdf-generator.php',
@@ -269,37 +74,16 @@ $checks = [
         'Round 83 v2 — clientes/php/acta-pdf-generator.php: dos fixes críticos descubiertos cuando la v1 regeneró el PDF de Adrian pero el nombre seguía duplicado y la firma seguía vacía. (1) Fuerza require_once de configurador/php/contrato-contado.php al cargar el módulo, para que contratoContadoSanitizeFullName() esté SIEMPRE disponible — antes voltikaActaSanitizeFullName() lo verificaba con function_exists() pero nada en el path de regen lo cargaba, así que el dedup real nunca corría. Fallback ahora tiene un collapseTail iterativo que sí elimina "Apellido Apellido" repetido. (2) El regex de la firma ahora acepta data:image/png, data:image/jpeg, data:image/jpg, y base64 raw sin prefijo — antes solo aceptaba PNG estricto, así que firmas guardadas en otros formatos se rechazaban y el PDF salía con línea vacía. Loguea cuando rechaza para diagnóstico.'
     ),
 
-    // ── Round 89 (2026-05-26) — Library-mode guard on generar-contrato-pdf ──
-    'r89_pdf_library_mode_guard' => _checkFile(
-        $base . '/configurador/php/generar-contrato-pdf.php',
-        'Round 89 (2026-05-26)',
-        'Round 89 — configurador/php/generar-contrato-pdf.php: wrappea el handler HTTP top-level dentro de if(!defined("VOLTIKA_PDF_LIBRARY_MODE")) para que admin scripts puedan require_once el archivo sin disparar el flujo de generación-y-respuesta-JSON. Necesario por el 1-shot tool admin/php/inventario/regenerar-contrato-credito-once.php que necesita llamar generateContractPDF() programáticamente sin que el archivo intente leer php://input ni hacer echo+exit.'
+    // ── Round 84 (2026-05-26) — Mandatory entrega checklist enforcement ──
+    'r84_checklist_mandatory_fields' => _checkFile(
+        $base . '/puntosvoltika/php/entrega/checklist.php',
+        'Round 84 (2026-05-26)',
+        'Round 84 — puntosvoltika/php/entrega/checklist.php: hard-rechaza con HTTP 400 cualquier guardado de checklist con campos faltantes (los 16 items de F1+F2+F3 ahora son obligatorios). Antes el endpoint aceptaba payloads parciales en silencio y solo flipeaba los flags fase{N}_completada cuando ALL fields=1, lo que permitía a callers que bypasseaban la UI (devtools, harness legacy) avanzar el flujo con checklist incompleto. La respuesta de error incluye lista en español de qué items faltan. Customer brief Óscar: "put the next checklist mandatory all fields".'
     ),
-
-    // ── Round 87 (2026-05-26) — Credit contract empty fields fix ──
-    'r87_credito_contrato_full_data' => _checkFile(
-        $base . '/configurador/js/modules/paso-credito-contrato.js',
-        'Round 87 (2026-05-26)',
-        'Round 87 — configurador/js/modules/paso-credito-contrato.js: añade precioContado y enganche al payload enviado a generar-contrato-pdf.php. Sin estos dos campos el backend (línea 249-250 de generar-contrato-pdf.php) recibía undefined y aplicaba el default floatval=0, produciendo un contrato de crédito con TODOS los montos en "$0.00 MXN" (caso Carlos Ricardo Sánchez, VIN R4WPDTA15T8000072, enganche real $12,065 pero el contrato firmado mostraba precio=$0, IVA=$0, total=$0). El cálculo correcto ya existía en credito.precioContado y credito.enganche — solo faltaba pasarlos en el JSON.'
-    ),
-
-    // ── Round 88 (2026-05-26) — Credit contract type misclassification fix ──
-    'r88_pi_tpago_enganche_metadata' => _checkFile(
-        $base . '/configurador/php/create-payment-intent.php',
-        'Round 88 (2026-05-26)',
-        'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
-    ),
-
-    // ── Round 86 (2026-05-26) — Accept legacy tpago='unico' in portal lookups ──
-    'r86_compras_unico'         => _checkFile(
-        $base . '/clientes/php/cliente/compras.php',
-        'Round 86 (2026-05-26)',
-        'Round 86 — clientes/php/cliente/compras.php: agrega "unico" a la lista IN para que transacciones legacy con tpago="unico" (creadas antes de la normalización en stripe-webhook.php:598) aparezcan en "Mis compras". Caso Adrian Montoya (moto 147, pedido VK-2605-0002): pago único exitoso de $48,260 a través de Stripe pero invisible en el portal porque el filtro IN excluía "unico". También normaliza tpago al construir el campo `tipo` y `metodo` en la respuesta para que el SPA muestre "Contado" en vez de "UNICO".'
-    ),
-    'r86_estado_unico'          => _checkFile(
-        $base . '/clientes/php/cliente/estado.php',
-        'Round 86 (2026-05-26)',
-        'Round 86 — clientes/php/cliente/estado.php: mismo fix en los 3 lookups de transacciones que alimentan el hero card de "Inicio". Sin esto, después de aplicar Round 86 a compras.php, la pantalla "Inicio" seguía mostrando "preparación" en vez del estado real de entrega para clientes con tpago="unico".'
+    'r84_finalizar_checklist_gate' => _checkFile(
+        $base . '/puntosvoltika/php/entrega/finalizar.php',
+        'Round 84 (2026-05-26)',
+        'Round 84 — puntosvoltika/php/entrega/finalizar.php: agrega gate que requiere checklist_entrega_v2.fase1/2/3_completada=1 (o legacy completado=1) ANTES de marcar inventario_motos.estado="entregada". Antes solo se verificaba cliente_acta_firmada + entregas.otp_verified — la moto podía entregarse con el checklist F1/F2/F3 en blanco, que es exactamente lo que produjo el caso Adrian (banner amarillo "Entrega cerrada sin checklist"). Ahora finalizar devuelve HTTP 409 con lista de fases pendientes si está incompleto.'
     ),
 
     // ── Round 85 (2026-05-26) — Sanitize duplicated names in portal cliente endpoints ──
@@ -319,23 +103,37 @@ $checks = [
         'Round 85 — clientes/php/cliente/perfil.php: aplica el mismo sanitizer canónico al endpoint que alimenta la pantalla "Mi Cuenta / Mi Perfil" del portal del cliente. Sin este fix, la pantalla de perfil seguía mostrando el nombre duplicado aunque el saludo de inicio ya estuviera limpio.'
     ),
 
-    // ── Round 84 (2026-05-26) — Mandatory entrega checklist enforcement ──
-    'r84_checklist_mandatory_fields' => _checkFile(
-        $base . '/puntosvoltika/php/entrega/checklist.php',
-        'Round 84 (2026-05-26)',
-        'Round 84 — puntosvoltika/php/entrega/checklist.php: hard-rechaza con HTTP 400 cualquier guardado de checklist con campos faltantes (los 16 items de F1+F2+F3 ahora son obligatorios). Antes el endpoint aceptaba payloads parciales en silencio y solo flipeaba los flags fase{N}_completada cuando ALL fields=1, lo que permitía a callers que bypasseaban la UI (devtools, harness legacy) avanzar el flujo con checklist incompleto. La respuesta de error incluye lista en español de qué items faltan. Customer brief Óscar: "put the next checklist mandatory all fields".'
+    // ── Round 86 (2026-05-26) — Accept legacy tpago='unico' in portal lookups ──
+    'r86_compras_unico'         => _checkFile(
+        $base . '/clientes/php/cliente/compras.php',
+        'Round 86 (2026-05-26)',
+        'Round 86 — clientes/php/cliente/compras.php: agrega "unico" a la lista IN para que transacciones legacy con tpago="unico" (creadas antes de la normalización en stripe-webhook.php:598) aparezcan en "Mis compras". Caso Adrian Montoya (moto 147, pedido VK-2605-0002): pago único exitoso de $48,260 a través de Stripe pero invisible en el portal porque el filtro IN excluía "unico". También normaliza tpago al construir el campo `tipo` y `metodo` en la respuesta para que el SPA muestre "Contado" en vez de "UNICO".'
     ),
-    'r84_finalizar_checklist_gate' => _checkFile(
-        $base . '/puntosvoltika/php/entrega/finalizar.php',
-        'Round 84 (2026-05-26)',
-        'Round 84 — puntosvoltika/php/entrega/finalizar.php: agrega gate que requiere checklist_entrega_v2.fase1/2/3_completada=1 (o legacy completado=1) ANTES de marcar inventario_motos.estado="entregada". Antes solo se verificaba cliente_acta_firmada + entregas.otp_verified — la moto podía entregarse con el checklist F1/F2/F3 en blanco, que es exactamente lo que produjo el caso Adrian (banner amarillo "Entrega cerrada sin checklist"). Ahora finalizar devuelve HTTP 409 con lista de fases pendientes si está incompleto.'
+    'r86_estado_unico'          => _checkFile(
+        $base . '/clientes/php/cliente/estado.php',
+        'Round 86 (2026-05-26)',
+        'Round 86 — clientes/php/cliente/estado.php: mismo fix en los 3 lookups de transacciones que alimentan el hero card de "Inicio". Sin esto, después de aplicar Round 86 a compras.php, la pantalla "Inicio" seguía mostrando "preparación" en vez del estado real de entrega para clientes con tpago="unico".'
     ),
 
-    // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
-    'r78_estado_inconsistencia_banner' => _checkFile(
-        $base . '/admin/js/modules/admin-inventario.js',
-        'Round 78 (2026-05-25)',
-        'Round 78 — admin/js/modules/admin-inventario.js: al abrir el detalle de un moto, aparece un banner ROJO/AMARILLO arriba cuando moto.estado está adelantado de los checklists requeridos. Detecta 3 casos: (1) estado>=recibida sin recepcion_punto o con recepción.completado=0, (2) estado>=lista_para_entrega sin ensamble.completado=1, (3) estado=entregada sin entrega.completado=1. Surfacing inmediato — el admin ya no tiene que adivinar por qué la moto "está mal".'
+    // ── Round 87 (2026-05-26) — Credit contract empty fields fix ──
+    'r87_credito_contrato_full_data' => _checkFile(
+        $base . '/configurador/js/modules/paso-credito-contrato.js',
+        'Round 87 (2026-05-26)',
+        'Round 87 — configurador/js/modules/paso-credito-contrato.js: añade precioContado y enganche al payload enviado a generar-contrato-pdf.php. Sin estos dos campos el backend (línea 249-250 de generar-contrato-pdf.php) recibía undefined y aplicaba el default floatval=0, produciendo un contrato de crédito con TODOS los montos en "$0.00 MXN" (caso Carlos Ricardo Sánchez, VIN R4WPDTA15T8000072, enganche real $12,065 pero el contrato firmado mostraba precio=$0, IVA=$0, total=$0). El cálculo correcto ya existía en credito.precioContado y credito.enganche — solo faltaba pasarlos en el JSON.'
+    ),
+
+    // ── Round 88 (2026-05-26) — Credit contract type misclassification fix ──
+    'r88_pi_tpago_enganche_metadata' => _checkFile(
+        $base . '/configurador/php/create-payment-intent.php',
+        'Round 88 (2026-05-26)',
+        'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
+    ),
+
+    // ── Round 89 (2026-05-26) — Library-mode guard on generar-contrato-pdf ──
+    'r89_pdf_library_mode_guard' => _checkFile(
+        $base . '/configurador/php/generar-contrato-pdf.php',
+        'Round 89 (2026-05-26)',
+        'Round 89 — configurador/php/generar-contrato-pdf.php: wrappea el handler HTTP top-level dentro de if(!defined("VOLTIKA_PDF_LIBRARY_MODE")) para que admin scripts puedan require_once el archivo sin disparar el flujo de generación-y-respuesta-JSON. Necesario por el 1-shot tool admin/php/inventario/regenerar-contrato-credito-once.php que necesita llamar generateContractPDF() programáticamente sin que el archivo intente leer php://input ni hacer echo+exit.'
     ),
 ];
 
@@ -460,128 +258,7 @@ ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
   </div>
 </div>
 
-<h2>3. Pruebas manuales — checklist</h2>
-<div class="card" style="font-size:13.5px;line-height:1.7;">
-  <strong>Round 69 — Cincel TIMESTAMP diagnostic:</strong>
-  <ul>
-    <li>Abrir <code>/admin/php/diagnostico-cincel-timestamp.php?key=voltika_diag_2026</code>.</li>
-    <li>3 probes corren automáticamente contra <code>GET /v3/timestamps/{hash}</code>.</li>
-    <li>✅ Esperado en el veredicto: <em>"El endpoint de timestamps RESPONDE correctamente"</em> (HTTP 200 ó 404 limpio).</li>
-    <li>Si verde → seguir con la integración de timestamps NOM-151. Si rojo/amarillo → WAF aún activo, esperar y reintentar.</li>
-  </ul>
-
-  <strong style="display:block;margin-top:14px;">Round 70 v4 — Portal cliente respeta pago_estado:</strong>
-  <ul>
-    <li>Cliente con orden SPEI/OXXO no pagada → abre <code>voltika.mx/clientes/</code> e inicia sesión.</li>
-    <li>✅ Card RESUMEN DE PAGO muestra <strong style="color:#9a3412;">🟠 Pago pendiente</strong> (no verde "Pagado al 100%").</li>
-    <li>Footer en ámbar: hint específico por método ("Espera la confirmación del depósito SPEI…").</li>
-  </ul>
-
-  <strong style="display:block;margin-top:14px;">Round 70 v5 — Auto-cache-bust del portal cliente:</strong>
-  <ul>
-    <li>Endpoint funcionando: <code>voltika.mx/clientes/php/version.php</code> devuelve <code>{ version: "&lt;hash&gt;", files: {…} }</code>.</li>
-    <li>Cliente con app abierta en pestaña/PWA → próxima vez que entre o navegue, la app hace <code>fetch</code> a <code>version.php</code>; si la versión cambió, se recarga sola.</li>
-    <li>Test: DevTools → Application → Local Storage → editar <code>vk_build_version</code> a "x" → recargar → la página se debe re-recargar sola para traer JS fresco.</li>
-  </ul>
-
-  <strong style="display:block;margin-top:14px;">Round 80 — Firma directa de ACTA (bypass del SPA cache):</strong>
-  <ul>
-    <li><strong>Problema raíz:</strong> el SPA del cliente (entrega.js) queda colgado en "Preparando documento…" para clientes con caché vieja (especialmente iPhone Safari en modo PWA, que ignora Cache-Control headers). Round 73 + Round 76 no resolvieron esto para ALL casos.</li>
-    <li><strong>Solución Round 80:</strong> URL standalone que NO depende del SPA. Como el browser nunca ha visitado esta URL, no puede tener cache vieja.</li>
-    <li><strong>Uso desde admin (DevTools console):</strong>
-      <pre style="background:#1e293b;color:#e2e8f0;padding:8px;border-radius:4px;font-size:11px;">fetch('/admin/php/checklists/solicitar-firma-acta.php', {
-  method:'POST', headers:{'Content-Type':'application/json'},
-  body: JSON.stringify({ moto_id: 143 })   // ← Diego Ramirez
-}).then(r=>r.json()).then(j=>{console.log(j);});</pre>
-    </li>
-    <li>Respuesta: <code>{ ok:true, signing_url:"voltika.mx/clientes/firmar-acta-directa.php?token=...", copy_text:"..." }</code></li>
-    <li>Copia el <code>signing_url</code> → mándalo al cliente por WhatsApp/SMS → cliente abre en su celular → ve datos del moto + canvas → firma con dedo → click "Firmar entrega" → en 10-20s ve banner verde "Recibimos tu firma y sellamos tu ACTA con NOM-151".</li>
-    <li>Verificar en DB:
-      <ul>
-        <li><code>firma_acta_requests.estado='signed'</code></li>
-        <li>Nueva fila en <code>firmas_contratos</code> con la firma base64</li>
-        <li><code>inventario_motos.cliente_acta_firmada=1</code>, <code>cincel_acta_status='signed_with_timestamp'</code>, <code>cincel_acta_timestamp_hash</code> con sha256 de 64 chars</li>
-        <li>Nueva fila en <code>cincel_timestamps</code></li>
-        <li>Notificación al punto panel: <code>notificaciones_log</code> con tipo='acta_firmada_punto'</li>
-      </ul>
-    </li>
-    <li><strong>Caso urgente (Diego Ramirez moto_id 143):</strong> usa este flujo en vez del SPA. El cliente nunca tendrá el "Preparando documento…" colgado porque no abre el SPA.</li>
-  </ul>
-
-  <strong style="display:block;margin-top:14px;">Round 79 — Fix asignar-moto bug + backfill huérfanos (Leobardo):</strong>
-  <ul>
-    <li>Bug: asignar-moto.php solo escribía cliente_* en inventario_motos. Ventas (listar.php) hacía JOIN por string matching de pedido_num. Cuando caía al fallback "VK-TX{id}", el JOIN nunca matcheaba → Ventas mostraba "Sin asignar" mientras CEDIS mostraba la moto asignada.</li>
-    <li>Fix Round 79: asignar-moto.php ahora también escribe <code>transacciones.moto_id</code> directamente. listar.php prioriza ese FK + reconoce el formato VK-TX{id} como último recurso.</li>
-    <li>Para huérfanos pre-Round-79: abrir <code>/admin/php/ventas/backfill-asignaciones.php?key=voltika_diag_2026</code>. Lista todas las motos con pedido_num="VK-TX{id}" agrupadas por transacción. Botón verde "Bindear" para fijar el FK, botón rojo "Desasignar" para liberar duplicados.</li>
-    <li>Test: para Leobardo (txn 32), abrir el backfill → deberían aparecer 2 motos huérfanas marcadas como "VK-TX32" → elegir UNA para bindear, desasignar la otra → recargar Ventas → la fila ya muestra la moto asignada con su VIN.</li>
-  </ul>
-
-  <strong style="display:block;margin-top:14px;">Round 76 — Cache-bust automático en primera visita:</strong>
-  <ul>
-    <li>Antes: si <code>localStorage.vk_build_version</code> nunca había sido escrito, el v5 original NO forzaba reload — los clientes que tenían Voltika abierto antes de v5 quedaban atrapados con JS viejo (síntoma: "Preparando documento…" se cuelga porque su JS no entiende <code>fallback_autograph</code>).</li>
-    <li>Ahora: en el primer arranque sin <code>vk_build_version</code>, se asume caché desconocido y se hace UN reload guiado por la flag <code>vk_build_primed</code> (no hay loop infinito).</li>
-    <li>Test: DevTools → Application → Local Storage → borrar <code>vk_build_version</code> y <code>vk_build_primed</code> → recargar voltika.mx/clientes → debe recargar UNA vez sola para limpiar caché.</li>
-    <li>Efecto secundario positivo: cuando shippeemos un nuevo Round (77, 78…), todos los clientes con cache pre-v5 se actualizarán automáticamente en su próxima visita sin intervención manual.</li>
-  </ul>
-
-  <strong style="display:block;margin-top:14px;">Round 75 — Solicitar firma autógrafa retroactiva a un cliente:</strong>
-  <ul>
-    <li>El cliente ya pagó pero su contrato no tiene firma autógrafa (compras de antes de 2026-05-23, o cualquier caso similar).</li>
-    <li>Desde el admin, hacer POST a <code>/admin/php/ventas/solicitar-firma-contrato.php</code> con <code>{ transaccion_id: N }</code>.</li>
-    <li>El sistema genera un token de 40 hex, lo guarda en <code>firma_contrato_requests</code> (TTL 48h), y envía el link al email del cliente. También devuelve <code>copy_text</code> listo para pegar en WhatsApp.</li>
-    <li>Cliente abre el link (<code>voltika.mx/clientes/firmar-contrato-retro.php?token=…</code>) en su celular → ve sus datos + canvas de firma → firma con el dedo → click "Firmar".</li>
-    <li>✅ Resultado esperado: banner verde "Tu firma quedó sellada con NOM-151" + link para descargar el contrato actualizado.</li>
-    <li>Verificar en DB:
-      <ul>
-        <li><code>firma_contrato_requests.estado='signed'</code>, <code>signed_at</code> con fecha</li>
-        <li><code>firmas_contratos</code> nueva fila con <code>firma_base64</code> y sha256</li>
-        <li><code>transacciones.contrato_pdf_hash</code> y <code>cincel_timestamp_hash</code> actualizados</li>
-        <li>Una fila nueva en <code>cincel_timestamps</code> con el nuevo hash + URLs de descarga</li>
-      </ul>
-    </li>
-    <li>El PDF regenerado tendrá la sección "FIRMA AUTÓGRAFA DEL COMPRADOR" con el PNG embebido (Round 70 v2).</li>
-  </ul>
-
-  <strong style="display:block;margin-top:14px;">Round 74 — Stepper consistente cuando aún no hay punto:</strong>
-  <ul>
-    <li>Antes: si una moto tenía <code>estado='entregada'</code> o <code>cliente_acta_firmada=1</code> pero <code>punto_voltika_id IS NULL</code>, el portal mostraba <strong>paso 7 (Entregada) + badge amarillo "Asignando punto…"</strong> al mismo tiempo. Contradictorio.</li>
-    <li>Ahora: si no hay punto asignado, el stepper se clampa al paso 1 (En tránsito) sin importar otros flags. El badge "Asignando punto…" sigue visible — eso le da contexto correcto al cliente.</li>
-    <li>Test: abre el portal con un cliente cuyo moto tenga <code>punto_voltika_id = NULL</code> y verifica que el stepper esté en paso 1, no en paso 6/7.</li>
-  </ul>
-
-  <strong style="display:block;margin-top:14px;">Round 73 — "Preparando documento…" se desbloquea en la entrega:</strong>
-  <ul>
-    <li>Cliente entra a su portal y va a <strong>Entrega</strong> → <strong>Firmar ACTA</strong>.</li>
-    <li>Click en <strong>Iniciar firma con Cincel</strong> → en ~1 segundo aparece el recuadro de firma autógrafa (antes se quedaba 30s en "Preparando documento…" y no avanzaba).</li>
-    <li>Mensaje del recuadro debe decir: <em>"Firma con tu dedo en el recuadro de abajo. Tu firma se sellará con un timestamp NOM-151 a través de Cincel…"</em>. NO debe decir "Cincel no está disponible".</li>
-    <li>Cliente firma con el dedo → server guarda la firma + aplica sello NOM-151 al PDF del ACTA → ACTA queda firmada.</li>
-    <li>Verificar en DB: <code>inventario_motos.cincel_acta_timestamp_hash</code> tiene un sha256 de 64 chars, <code>cincel_acta_status='signed_with_timestamp'</code>.</li>
-    <li>Una fila nueva en <code>cincel_timestamps</code> con el mismo hash + nom151_file/timestamp_file/bitcoin_file.</li>
-  </ul>
-
-  <strong style="display:block;margin-top:14px;">Round 72 — Reintentar CDC para casos con "CDC sin respuesta":</strong>
-  <ul>
-    <li>Abrir cualquier preaprobación que tenga la recomendación amarilla <em>"⚠ Recomendación del sistema: No se pudo consultar Círculo de Crédito"</em>.</li>
-    <li>Debajo del card amarillo aparece un botón azul: <strong>🔁 Reintentar consulta CDC</strong>.</li>
-    <li>Click → "Consultando CDC…" → en ~3-10s muestra "✓ CDC respondió con score real. Recomendación actualizada · FICO N · fuente=real".</li>
-    <li>La lista se recarga sola y el mismo card amarillo se vuelve naranja/verde/rojo dependiendo del score real.</li>
-    <li>Si CDC aún falla → "⚠ CDC no respondió correctamente: HTTP N". Vuelve a presionarlo cuando la conectividad esté restaurada.</li>
-  </ul>
-
-  <strong style="display:block;margin-top:14px;">Round 71 — Cincel NOM-151 timestamp en producción:</strong>
-  <ul>
-    <li><strong>1)</strong> Abrir <code>/admin/php/diagnostico-cincel-timestamp-create.php?key=voltika_diag_2026</code>.</li>
-    <li>✅ La sección "Estado del JWT" debe estar verde — el módulo obtuvo token con las credenciales de <code>local-secrets.php</code>.</li>
-    <li>✅ La lista muestra los PDFs de contratos disponibles. Click en <strong>Check</strong> de cualquiera → respuesta limpia (existe / no existe).</li>
-    <li><strong>2)</strong> Click en <strong>Create</strong> de un PDF cuyo hash sepamos que es nuevo → pantalla de confirmación → "Sí, crear timestamp ahora".</li>
-    <li>✅ Resultado: banner verde "Timestamp NOM-151 creado correctamente". Links de descarga para nom151/timestamp/bitcoin.</li>
-    <li>✅ DB: fila en <code>cincel_timestamps</code> + actualización de <code>transacciones.cincel_timestamp_hash</code>.</li>
-    <li><strong>3)</strong> Hacer una compra CONTADO real (o sandbox) → al confirmar la orden y generar el contrato PDF, la integración debe correr en automático y agregar un sello NOM-151 sin intervención manual.</li>
-    <li>Para deshabilitar temporalmente (e.g. outage Cincel): poner <code>CINCEL_TIMESTAMP_ENABLED=0</code> en .env / local-secrets.</li>
-  </ul>
-</div>
-
-<h2>4. Si algo no está OK</h2>
+<h2>3. Si algo no está OK</h2>
 <div class="card" style="font-size:13.5px;line-height:1.7;">
   <strong>Si un archivo dice ✗ "marcador no encontrado":</strong>
   <ol style="margin:6px 0 0 18px;">
