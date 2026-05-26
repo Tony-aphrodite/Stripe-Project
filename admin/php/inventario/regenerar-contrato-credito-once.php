@@ -415,7 +415,43 @@ if ($action === 'preview' && ($pedido !== '' || $txId > 0)) {
     echo '</table>';
 
     if (!empty($tx['contrato_regenerado_admin'])) {
-        echo '<div class="success">Ya regenerado. Si necesitas regenerar otra vez por algún motivo, primero borra el flag <code>contrato_regenerado_admin</code> en la BD.</div>';
+        // Round 90 v4 — auto-correct the stored path if it points to a
+        // non-existent file (the case for contracts regenerated before
+        // Round 90 v4 stored relative paths the viewer couldn't resolve).
+        $existingPath = (string)($tx['contrato_pdf_path'] ?? '');
+        $resolvedFile = '';
+        if ($existingPath !== '') {
+            if ($existingPath[0] === '/') {
+                $resolvedFile = is_file($existingPath) ? $existingPath : '';
+            } else {
+                foreach ([
+                    __DIR__ . '/../../../configurador/' . ltrim($existingPath, '/'),
+                    __DIR__ . '/../../../configurador/php/' . ltrim($existingPath, '/'),
+                ] as $candidate) {
+                    if (is_file($candidate)) { $resolvedFile = $candidate; break; }
+                }
+            }
+        }
+        $pathFixed = false;
+        if ($resolvedFile !== '' && $resolvedFile !== $existingPath) {
+            try {
+                $pdo->prepare("UPDATE transacciones SET contrato_pdf_path = ? WHERE id = ?")
+                    ->execute([$resolvedFile, (int)$tx['id']]);
+                $pathFixed = true;
+            } catch (Throwable $e) {}
+        }
+        if ($pathFixed) {
+            echo '<div class="success">Ya regenerado. <strong>Path en BD corregido</strong>: ahora apunta a <code>' . htmlspecialchars($resolvedFile) . '</code>.</div>';
+        } elseif ($resolvedFile !== '') {
+            echo '<div class="success">Ya regenerado. Archivo OK en <code>' . htmlspecialchars($resolvedFile) . '</code>.</div>';
+        } else {
+            echo '<div class="err">Ya regenerado pero el archivo PDF no se encuentra en disco. Borra <code>contrato_regenerado_admin</code> en la BD para permitir re-generar:<br><code>UPDATE transacciones SET contrato_regenerado_admin = 0 WHERE id = ' . (int)$tx['id'] . ';</code></div>';
+        }
+        $viewUrl = '/configurador/php/descargar-contrato.php?pedido=TX' . (int)$tx['id'] . '&inline=1';
+        echo '<p style="margin-top:14px;">';
+        echo '<a class="btn" href="' . htmlspecialchars($viewUrl) . '" target="_blank" style="background:#10b981;">📄 Ver PDF nuevo</a> ';
+        echo '<a class="btn ghost" href="?">← Volver a la lista</a>';
+        echo '</p>';
         echo '</div></body></html>'; exit;
     }
     if (!$precioContado) {
