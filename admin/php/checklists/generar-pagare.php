@@ -424,11 +424,66 @@ adminLog('pagare_pdf_generado', [
     'pdf_hash' => $pdfHash,
 ]);
 
+// ── Round 96 (2026-05-26) — Apply Cincel NOM-151 timestamp to the PAGARÉ ──
+// Customer brief (Óscar, today's Carlos Ricardo Sánchez delivery): "I need
+// you to make sure that the promissory note works properly and that the PDF
+// is signed with CINCEL." Before this fix, the PAGARÉ PDF was generated and
+// stored but no actual Cincel NOM-151 stamp was applied — the PDF text
+// mentioned NOM-151 but no API call was ever made. Now we mirror the
+// Round 71/73 pattern from firmar-acta.php / confirmar-orden.php: get-or-
+// create timestamp via Cincel, persist the result in cincel_timestamps,
+// and store the certified hash in checklist_entrega_v2.cincel_pagare_timestamp_hash
+// so admin can verify the legal trail.
+//
+// Failure-safe: any exception is logged but never blocks the response.
+// The pagaré PDF + DB row already exist; Cincel stamping can be retried
+// later by re-running this endpoint or via admin/php/diagnostico-cincel-timestamp-create.php.
+// Gateable globally via CINCEL_TIMESTAMP_ENABLED=0 in case Cincel has an outage.
+$cincelHash = null;
+$cincelErr  = null;
+$cincelEnabled = strtolower((string)(getenv('CINCEL_TIMESTAMP_ENABLED') ?: '1'));
+if (in_array($cincelEnabled, ['1','true','yes','on'], true)) {
+    try {
+        require_once __DIR__ . '/../../../configurador/php/cincel-timestamp.php';
+        // Idempotent column add — older installs may not have these columns.
+        try { $pdo->exec("ALTER TABLE checklist_entrega_v2 ADD COLUMN cincel_pagare_timestamp_hash CHAR(64) NULL"); } catch (Throwable $e) {}
+        try { $pdo->exec("ALTER TABLE checklist_entrega_v2 ADD COLUMN cincel_pagare_status VARCHAR(40) NULL"); } catch (Throwable $e) {}
+
+        $ts = cincelGetOrCreateTimestamp($filepath);
+        if (!empty($ts['ok'])) {
+            cincelSaveTimestamp($pdo, $ts, null, $filepath);
+            $cincelHash = $ts['hash'] ?? null;
+            if ($cincelHash) {
+                try {
+                    $pdo->prepare("UPDATE checklist_entrega_v2
+                        SET cincel_pagare_timestamp_hash = ?,
+                            cincel_pagare_status = 'signed_with_timestamp'
+                        WHERE id = ?")
+                        ->execute([$cincelHash, $checkId]);
+                } catch (Throwable $e) { error_log('generar-pagare cincel persist: ' . $e->getMessage()); }
+            }
+            adminLog('pagare_cincel_timestamp', [
+                'moto_id' => $motoId, 'checklist_id' => $checkId,
+                'cincel_hash' => $cincelHash, 'folio' => $folio,
+            ]);
+        } else {
+            $cincelErr = 'Cincel respondió HTTP ' . ($ts['http'] ?? '?') . ' — ' . ($ts['error'] ?? 'sin detalle');
+            error_log('generar-pagare cincel failed: ' . json_encode($ts));
+        }
+    } catch (Throwable $e) {
+        $cincelErr = 'Cincel exception: ' . $e->getMessage();
+        error_log('generar-pagare cincel exception: ' . $e->getMessage());
+    }
+}
+
 adminJsonOut([
     'ok' => true,
     'folio' => $folio,
     'pdf_path' => $filename,
     'pdf_hash' => $pdfHash,
+    'cincel_hash' => $cincelHash,
+    'cincel_status' => $cincelHash ? 'signed_with_timestamp' : ($cincelErr ? 'cincel_failed' : 'cincel_disabled'),
+    'cincel_err' => $cincelErr,
     'datos' => [
         'nombre' => $nombreCompleto,
         'monto' => $pagoTotalPlazos,

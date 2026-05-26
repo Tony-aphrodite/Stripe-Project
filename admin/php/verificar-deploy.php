@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 96 (2026-05-26) — Apply Cincel NOM-151 to PAGARÉ ──
+    'r96_pagare_cincel_timestamp' => _checkFile(
+        $base . '/admin/php/checklists/generar-pagare.php',
+        'Round 96 (2026-05-26)',
+        'Round 96 — admin/php/checklists/generar-pagare.php: después de generar y guardar el PAGARÉ PDF, ahora llama cincelGetOrCreateTimestamp() y persiste el sello NOM-151 en cincel_timestamps + checklist_entrega_v2.cincel_pagare_timestamp_hash. Antes el PAGARÉ se generaba sin la certificación real de Cincel — el PDF mencionaba NOM-151 pero ninguna llamada API se hacía. Mismo patrón que firmar-acta.php (Round 73). Idempotente, failure-safe (no bloquea la respuesta si Cincel falla), gateable con CINCEL_TIMESTAMP_ENABLED=0. Customer brief Óscar (2026-05-26): "I need you to make sure that the promissory note works properly and that the PDF is signed with CINCEL". Caso urgente Carlos Ricardo Sánchez, entrega hoy.'
+    ),
+
     // ── Round 95 (2026-05-26) — 1-shot resend corrected contract email ──
     'r95_reenviar_contrato_correo' => _checkFile(
         $base . '/admin/php/inventario/reenviar-contrato-correo-once.php',
