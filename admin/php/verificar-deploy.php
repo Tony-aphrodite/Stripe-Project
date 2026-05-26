@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 92 (2026-05-26) — Contado documents page fix ──
+    'r92_documentos_contado_unlock' => _checkFile(
+        $base . '/clientes/js/modules/documentos.js',
+        'Round 92 (2026-05-26)',
+        'Round 92 — clientes/js/modules/documentos.js: tres correcciones para que clientes contado puedan ver sus documentos. (1) Detección robusta de modo contado usando 3 señales (state.tipoPortal, state.activeCompra.tipo, presencia de estado.compra sin subscripción) — antes dependía solo de tipoPortal que se queda stale. (2) Agrega comprobante_contado, contrato_contado y acta_entrega al DOC_META_CONTADO y al keys list para que aparezcan en la pantalla. (3) Desbloquea cada doc según su condición real (pago=pagada → comprobante+contrato+confirmacion; moto=entregada → acta+factura+carta_factura) en lugar de depender del flag global DOCS_PROXIMAMENTE_MODE que mantenía todo bloqueado. Caso Adrian Montoya: contado $48,260, moto entregada, ACTA firmada, pero la pantalla Documentos mostraba TODO como Próximamente.'
+    ),
+
     // ── Round 91 (2026-05-26) — Contado view for Mis Pagos ──
     'r91_pagos_contado_view' => _checkFile(
         $base . '/clientes/js/modules/pagos.js',

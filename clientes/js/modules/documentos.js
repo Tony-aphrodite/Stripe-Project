@@ -74,6 +74,39 @@ window.VK_documentos = (function(){
   //   - remove Contrato de compraventa for now (legal text still in review)
   //   - Manual del usuario → web page instead of PDF download
   var DOC_META_CONTADO = {
+    // Round 92 (2026-05-26) — Added comprobante_contado + contrato_contado +
+    // acta_entrega so contado customers can download these post-delivery
+    // (Adrian's case: paid, moto entregada, ACTA signed — but no way to see
+    // any of those PDFs from the portal). Each one's `available` becomes
+    // true when its real-world condition is met (stripe_pi present, moto
+    // entregada, etc.) at render time.
+    comprobante_contado: {
+      icon: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#8b5cf6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>',
+      label: 'Comprobante de pago',
+      desc: 'Recibo de Stripe del pago de tu compra.',
+      size: 'PDF',
+      badge: 'DISPONIBLE',
+      badgeColor: 'green',
+      available: true
+    },
+    contrato_contado: {
+      icon: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#22c55e" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 12l2 2 4-4"/></svg>',
+      label: 'Contrato de Compraventa al Contado',
+      desc: 'Tu contrato firmado de la compra al contado.',
+      size: 'PDF',
+      badge: 'DISPONIBLE',
+      badgeColor: 'green',
+      available: true
+    },
+    acta_entrega: {
+      icon: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#22c55e" stroke-width="2"><path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>',
+      label: 'Acta de entrega',
+      desc: 'Confirmación de que recibiste tu Voltika.',
+      size: 'PDF',
+      badge: 'DISPONIBLE',
+      badgeColor: 'green',
+      available: true
+    },
     confirmacion: {
       icon: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
       label: 'Confirmacion de compra',
@@ -151,9 +184,27 @@ window.VK_documentos = (function(){
   }
 
   // ── Main router ─────────────────────────────────────────────────
+  // Round 92 (2026-05-26) — Robust contado detection. The old code
+  // depended solely on VKApp.state.tipoPortal, which can be stale
+  // ('credito' default) when estado.php's response hasn't updated it
+  // OR when the customer has no activeCompra selected yet. Now we
+  // check THREE signals: state.tipoPortal, state.activeCompra.tipo,
+  // and the shape of state.estado (compra present + no credit
+  // subscription = contado). Any of them positive routes to the
+  // contado view. Caso Adrian Montoya: he paid $48,260 contado but
+  // tipoPortal was 'credito' so his Documents page rendered the
+  // credit layout (Contrato de compra con facilidades de pago, etc.)
+  // which is incorrect for him.
   function render(){
-    var tipo = VKApp.state.tipoPortal;
-    if(tipo === 'contado' || tipo === 'msi'){
+    var e         = VKApp.state.estado || {};
+    var active    = VKApp.state.activeCompra || {};
+    var tipoPortal = VKApp.state.tipoPortal || e.tipo_portal || '';
+    var infoSub   = (e.info && e.info.subscripcion) || e.subscripcion || null;
+    var compra    = e.compra || null;
+    var isContado = (tipoPortal === 'contado' || tipoPortal === 'msi')
+                 || (active.tipo === 'contado' || active.tipo === 'msi')
+                 || (!!compra && !infoSub && tipoPortal !== 'credito');
+    if (isContado) {
       renderContado();
     } else {
       renderCredito();
@@ -203,19 +254,41 @@ window.VK_documentos = (function(){
     html += '<a class="vk-link" id="vkDownloadAll" style="font-size:12px;cursor:pointer">Descargar todo &#128229;</a>';
     html += '</div>';
 
-    // Document rows — visible order per customer brief 2026-04-23:
-    //   confirmacion → recibo → factura → carta_factura → manual
-    // Contrato de compraventa is temporarily hidden (still defined in
-    // DOC_META_CONTADO for easy re-enable).
+    // Round 92 (2026-05-26) — Expanded contado document set. Added
+    // comprobante_contado (payment receipt), contrato_contado (the
+    // signed contado contract), and acta_entrega (delivery receipt) so
+    // contado customers can see the same critical docs that credit
+    // customers see. Each one's unlock is gated by its real condition.
+    //
+    // Document rows visible order:
+    //   comprobante_contado → confirmacion → contrato_contado → acta_entrega
+    //   → factura → carta_factura → manual
+    var compraEstado = (VKApp.state.estado || {}).compra || {};
+    var pagoOk = (compraEstado.pago_estado || '').toLowerCase();
+    var hasStripePi = !!compraEstado.stripe_pi || (compraEstado.pedido && pagoOk === 'pagada');
+    var isPaid = pagoOk === 'pagada' || pagoOk === 'aprobada' || pagoOk === 'paid' || pagoOk === 'approved';
     var docs = DOC_META_CONTADO;
-    var keys = ['confirmacion','recibo','factura','carta_factura','manual'];
+    var keys = ['comprobante_contado','confirmacion','contrato_contado','acta_entrega','factura','carta_factura','manual'];
     for(var i=0;i<keys.length;i++){
       var k = keys[i];
       var d = docs[k];
-      // Pass the doc object so admin-uploaded files (d.available=true)
-      // bypass the global PROXIMAMENTE lock per customer.
-      var prox = isProximamente(k, d);
-      var isAvail = !prox && (d.available || entregado);
+      if (!d) continue;  // metadata missing — skip silently
+      // Per-doc availability: unlock based on real-world state instead
+      // of relying solely on the global PROXIMAMENTE flag.
+      var perDocAvailable = false;
+      if (k === 'comprobante_contado') perDocAvailable = isPaid;
+      else if (k === 'contrato_contado') perDocAvailable = isPaid; // contado contract exists once payment is confirmed
+      else if (k === 'acta_entrega')    perDocAvailable = entregado;
+      else if (k === 'confirmacion')    perDocAvailable = isPaid;
+      else if (k === 'factura')         perDocAvailable = entregado; // CFDI emitted after delivery
+      else if (k === 'carta_factura')   perDocAvailable = entregado;
+      else if (k === 'manual')          perDocAvailable = true;
+      else perDocAvailable = !!d.available;
+      // d.disponible flag still overrides (admin-uploaded files)
+      if (d.disponible) perDocAvailable = true;
+
+      var prox = !perDocAvailable && isProximamente(k, d);
+      var isAvail = perDocAvailable;
       var badge = prox ? 'PRÓXIMAMENTE' : (isAvail ? 'DISPONIBLE' : d.badge);
       var badgeCol = prox ? 'gray' : (isAvail ? 'green' : d.badgeColor);
 
