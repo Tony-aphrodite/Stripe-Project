@@ -143,12 +143,28 @@ if ($action === 'apply' && ($pedido !== '' || $txId > 0) && $_SERVER['REQUEST_ME
             if ($existingPath[0] === '/') {
                 $resolvedFile = is_file($existingPath) ? $existingPath : '';
             } else {
-                // Try both legacy and new save folders.
+                // Try ALL known save folders. generateContractPDF falls back to
+                // sys_get_temp_dir() . '/voltika_contratos/' when the primary
+                // directory isn't writable (Plesk hosting). Need to check there too.
+                $baseFile = basename($existingPath);
                 foreach ([
                     __DIR__ . '/../../../configurador/' . ltrim($existingPath, '/'),
                     __DIR__ . '/../../../configurador/php/' . ltrim($existingPath, '/'),
+                    sys_get_temp_dir() . '/voltika_contratos/' . $baseFile,
+                    sys_get_temp_dir() . '/voltika_contratos_contado/' . $baseFile,
                 ] as $candidate) {
                     if (is_file($candidate)) { $resolvedFile = $candidate; break; }
+                }
+                // Last resort: glob by filename across all known dirs.
+                if ($resolvedFile === '') {
+                    foreach ([
+                        __DIR__ . '/../../../configurador/contratos/',
+                        __DIR__ . '/../../../configurador/php/contratos/',
+                        sys_get_temp_dir() . '/voltika_contratos/',
+                    ] as $dir) {
+                        $hits = @glob($dir . $baseFile);
+                        if ($hits) { $resolvedFile = $hits[0]; break; }
+                    }
                 }
             }
         }
