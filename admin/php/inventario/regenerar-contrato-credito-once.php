@@ -470,8 +470,84 @@ if ($action === 'search' && $q !== '') {
             $q, ('VK-' . $qStripped),
         ]);
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+
+        // Round 90 v2 — 2-step fallback: if direct search returns 0, query
+        // inventario_motos by pedido_num and then use its email/telefono to
+        // find linked transacciones. Handles the case where transacciones
+        // and inventario_motos have different email/telefono values (the
+        // JOIN above fails) but the user knows the pedido_num from the
+        // admin moto detail screen.
         if (!$rows) {
-            echo '<div class="empty">Sin resultados.</div>';
+            try {
+                $invSt = $pdo->prepare("SELECT id, pedido_num, cliente_nombre, cliente_email, cliente_telefono,
+                                               modelo, color, stripe_pi, estado
+                                          FROM inventario_motos
+                                         WHERE pedido_num = ?
+                                            OR pedido_num = ?
+                                            OR pedido_num LIKE ?
+                                            OR cliente_email = ?
+                                            OR cliente_telefono = ?
+                                            OR cliente_nombre LIKE ?
+                                         ORDER BY id DESC LIMIT 5");
+                $invSt->execute([$q, ('VK-' . $qStripped), '%' . $qStripped . '%', $q, $q, $nameLike]);
+                $invRows = $invSt->fetchAll(PDO::FETCH_ASSOC);
+                if ($invRows) {
+                    // Now use each inventario_motos row's email/telefono/stripe_pi
+                    // to find the linked transacciones row.
+                    $foundIds = [];
+                    foreach ($invRows as $inv) {
+                        $tArgs = [];
+                        $where2 = [];
+                        if (!empty($inv['stripe_pi'])) {
+                            $where2[] = 't.stripe_pi = ?'; $tArgs[] = $inv['stripe_pi'];
+                        }
+                        if (!empty($inv['cliente_email'])) {
+                            $where2[] = 't.email = ?'; $tArgs[] = $inv['cliente_email'];
+                        }
+                        if (!empty($inv['cliente_telefono'])) {
+                            $where2[] = 't.telefono = ?'; $tArgs[] = $inv['cliente_telefono'];
+                        }
+                        if (!$where2) continue;
+                        $tStmt = $pdo->prepare("SELECT t.id, t.pedido, t.nombre, t.email, t.telefono,
+                                                       t.modelo, t.color, t.total, t.tpago,
+                                                       t.contrato_pdf_path, t.contrato_regenerado_admin
+                                                  FROM transacciones t
+                                                 WHERE (" . implode(' OR ', $where2) . ")
+                                                 ORDER BY t.id DESC LIMIT 5");
+                        $tStmt->execute($tArgs);
+                        foreach ($tStmt->fetchAll(PDO::FETCH_ASSOC) as $tr) {
+                            if (!isset($foundIds[$tr['id']])) {
+                                $foundIds[$tr['id']] = true;
+                                $rows[] = $tr;
+                            }
+                        }
+                    }
+                    if ($rows) {
+                        echo '<div class="hint">⚠ No match directo en <code>transacciones</code>. Match encontrado vía <code>inventario_motos</code> (email/teléfono/stripe_pi de la moto).</div>';
+                    } else {
+                        echo '<div class="hint">⚠ La moto existe en <code>inventario_motos</code> pero no encontré ninguna <code>transacciones</code> ligada por email/teléfono/stripe_pi. Posiblemente la transacción nunca se grabó (webhook falló) o sus campos están vacíos. Detalles abajo:</div>';
+                        echo '<table style="margin-top:10px;"><thead><tr><th>moto_id</th><th>pedido_num</th><th>cliente</th><th>email</th><th>tel</th><th>stripe_pi</th><th>estado</th></tr></thead><tbody>';
+                        foreach ($invRows as $inv) {
+                            echo '<tr>';
+                            echo '<td>' . (int)$inv['id'] . '</td>';
+                            echo '<td><code>' . htmlspecialchars((string)$inv['pedido_num']) . '</code></td>';
+                            echo '<td>' . htmlspecialchars((string)$inv['cliente_nombre']) . '</td>';
+                            echo '<td>' . htmlspecialchars((string)$inv['cliente_email']) . '</td>';
+                            echo '<td>' . htmlspecialchars((string)$inv['cliente_telefono']) . '</td>';
+                            echo '<td><code style="font-size:10px;">' . htmlspecialchars((string)$inv['stripe_pi']) . '</code></td>';
+                            echo '<td>' . htmlspecialchars((string)$inv['estado']) . '</td>';
+                            echo '</tr>';
+                        }
+                        echo '</tbody></table>';
+                    }
+                }
+            } catch (Throwable $e) {
+                echo '<div class="err">Error fallback inventario_motos: ' . htmlspecialchars($e->getMessage()) . '</div>';
+            }
+        }
+
+        if (!$rows) {
+            echo '<div class="empty">Sin resultados — ni en transacciones ni en inventario_motos.</div>';
         } else {
             echo '<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Modelo</th><th>Total</th><th>tpago</th><th>Regenerado?</th><th></th></tr></thead><tbody>';
             foreach ($rows as $r) {
