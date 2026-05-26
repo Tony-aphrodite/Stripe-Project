@@ -25,30 +25,48 @@
 
 declare(strict_types=1);
 
+// Round 83 v2 (2026-05-26) — Load the canonical sanitizer up-front.
+// The pre-v2 code only used the function if it was ALREADY loaded — but
+// nothing else in the regen path loads contrato-contado.php, so the proper
+// dedup never ran and names like "Adrian Montoya Diaz Montoya Diaz"
+// passed through untouched. Force-load the file here so we always have
+// the heavy-duty collapseTail logic.
+$_contratoContadoPath = __DIR__ . '/../../configurador/php/contrato-contado.php';
+if (is_file($_contratoContadoPath) && !function_exists('contratoContadoSanitizeFullName')) {
+    @require_once $_contratoContadoPath;
+}
+
 if (!function_exists('voltikaActaSanitizeFullName')) {
     /**
      * Dedupe and clean customer's full name.
-     * Reuses the proven logic from contrato-contado.php with a guard so
-     * we don't redeclare the function if that file was loaded first.
+     * Prefers contratoContadoSanitizeFullName (proven dedup with collapseTail
+     * for "Apellido Apellido" repetition). Falls back to a tail-collapse
+     * implementation when the canonical helper isn't available.
      */
     function voltikaActaSanitizeFullName(string $nombre, string $apPaterno = '', string $apMaterno = ''): string {
-        // Try to use the canonical helper from contrato-contado.php if it's
-        // already been loaded by another code path on this request.
         if (function_exists('contratoContadoSanitizeFullName')) {
             return contratoContadoSanitizeFullName($nombre, $apPaterno, $apMaterno);
         }
-        // Standalone fallback — minimal dedup. If we have a single nombre
-        // that contains all tokens, return it directly.
-        $clean = function ($s) { return trim(preg_replace('/\s+/u', ' ', (string)$s) ?: ''); };
-        $nombre = $clean($nombre); $apPaterno = $clean($apPaterno); $apMaterno = $clean($apMaterno);
-        if ($nombre === '') return $clean($apPaterno . ' ' . $apMaterno);
-        // Detect duplication pattern "A B C B C" where the tail repeats the apellidos
-        $apellidos = trim($apPaterno . ' ' . $apMaterno);
-        if ($apellidos !== '' && stripos($nombre, ' ' . $apellidos) !== false) {
-            return $nombre;
+        // Stronger fallback — actually collapses tail duplication.
+        // Example: "Adrian Montoya Diaz Montoya Diaz" → "Adrian Montoya Diaz"
+        $norm = function ($s) { return trim(preg_replace('/\s+/u', ' ', (string)$s) ?: ''); };
+        $tokens = preg_split('/\s+/u', $norm($nombre . ' ' . $apPaterno . ' ' . $apMaterno)) ?: [];
+        $n = count($tokens);
+        // Look for the longest k where the last k tokens equal the previous k tokens; remove the trailing copy.
+        for ($k = (int) floor($n / 2); $k >= 1; $k--) {
+            $tail   = array_slice($tokens, -$k);
+            $before = array_slice($tokens, -2 * $k, $k);
+            $eq = true;
+            for ($i = 0; $i < $k; $i++) {
+                if (mb_strtolower($tail[$i]) !== mb_strtolower($before[$i])) { $eq = false; break; }
+            }
+            if ($eq) {
+                $tokens = array_slice($tokens, 0, $n - $k);
+                $n = count($tokens);
+                $k = (int) floor($n / 2) + 1; // restart the loop
+            }
         }
-        if ($apellidos === '') return $nombre;
-        return $nombre . ' ' . $apellidos;
+        return implode(' ', $tokens);
     }
 }
 
@@ -181,15 +199,39 @@ function generarActaPdf(PDO $pdo, array $moto, string $signatureDataUrl, ?string
     $pdf->Cell(0, 5, $enc('FIRMA DEL CLIENTE'), 0, 1);
     $pdf->Ln(2);
 
+    // Round 83 v2 — accept multiple signature formats:
+    //   • data:image/png;base64,XXX                  (canvas.toDataURL default)
+    //   • data:image/jpeg;base64,XXX                 (jpeg-encoded sigs)
+    //   • XXX                                        (raw base64 without prefix
+    //                                                 — some legacy code paths)
+    // Previously only the first format was matched, so signatures saved with
+    // the other shapes silently dropped to "no image" and the PDF showed an
+    // empty signature line.
     $tmpSig = null;
-    if ($signatureDataUrl !== '' && preg_match('/^data:image\/png;base64,(.+)$/', $signatureDataUrl, $mm)) {
-        $bin = base64_decode($mm[1]);
-        if ($bin !== false) {
-            $tmpSig = tempnam(sys_get_temp_dir(), 'sig_') . '.png';
+    $rawBase64 = '';
+    $imgType   = 'PNG';
+    if ($signatureDataUrl !== '') {
+        if (preg_match('/^data:image\/(png|jpeg|jpg);base64,(.+)$/i', $signatureDataUrl, $mm)) {
+            $rawBase64 = $mm[2];
+            $imgType   = (strtolower($mm[1]) === 'png') ? 'PNG' : 'JPG';
+        } elseif (preg_match('#^[A-Za-z0-9+/=\r\n]+$#', trim($signatureDataUrl))) {
+            // Looks like raw base64 — assume PNG (most common from canvas)
+            $rawBase64 = trim($signatureDataUrl);
+            $imgType   = 'PNG';
+        }
+    }
+    if ($rawBase64 !== '') {
+        $bin = base64_decode($rawBase64, true);
+        if ($bin === false || strlen($bin) < 50) {
+            error_log('generarActaPdf: base64_decode failed or too small ('. strlen((string)$bin) .' bytes)');
+            $pdf->Ln(20);
+        } else {
+            $ext = $imgType === 'JPG' ? '.jpg' : '.png';
+            $tmpSig = tempnam(sys_get_temp_dir(), 'sig_') . $ext;
             file_put_contents($tmpSig, $bin);
             try {
                 // Width 90mm — fills most of the signature line area cleanly.
-                $pdf->Image($tmpSig, 20, $pdf->GetY(), 90, 0, 'PNG');
+                $pdf->Image($tmpSig, 20, $pdf->GetY(), 90, 0, $imgType);
                 $pdf->Ln(40);
             } catch (Throwable $e) {
                 error_log('generarActaPdf: image embed failed: ' . $e->getMessage());
@@ -198,6 +240,9 @@ function generarActaPdf(PDO $pdo, array $moto, string $signatureDataUrl, ?string
         }
     } else {
         // No signature data — leave a blank signature line.
+        if ($signatureDataUrl !== '') {
+            error_log('generarActaPdf: signatureDataUrl rejected (first 80 chars): ' . substr($signatureDataUrl, 0, 80));
+        }
         $pdf->Ln(20);
     }
     $pdf->Line(20, $pdf->GetY(), 110, $pdf->GetY());

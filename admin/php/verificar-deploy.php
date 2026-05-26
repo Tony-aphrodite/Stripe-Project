@@ -262,6 +262,13 @@ $checks = [
         'Round 83 — admin/php/inventario/regenerar-acta.php: endpoint admin que regenera el ACTA PDF de cualquier moto, tomando la firma más reciente desde firmas_contratos (matched por email/teléfono). Aplica NOM-151 sobre el nuevo hash y actualiza inventario_motos.cincel_acta_pdf_path + cincel_acta_status. Fixea retroactivamente ACTAs con autograph_pending status (caso Adrian Montoya).'
     ),
 
+    // ── Round 83 v2 (2026-05-26) — Hardening for sanitizer + signature regex ──
+    'r83v2_acta_pdf_generator_hardened' => _checkFile(
+        $base . '/clientes/php/acta-pdf-generator.php',
+        'Round 83 v2 (2026-05-26)',
+        'Round 83 v2 — clientes/php/acta-pdf-generator.php: dos fixes críticos descubiertos cuando la v1 regeneró el PDF de Adrian pero el nombre seguía duplicado y la firma seguía vacía. (1) Fuerza require_once de configurador/php/contrato-contado.php al cargar el módulo, para que contratoContadoSanitizeFullName() esté SIEMPRE disponible — antes voltikaActaSanitizeFullName() lo verificaba con function_exists() pero nada en el path de regen lo cargaba, así que el dedup real nunca corría. Fallback ahora tiene un collapseTail iterativo que sí elimina "Apellido Apellido" repetido. (2) El regex de la firma ahora acepta data:image/png, data:image/jpeg, data:image/jpg, y base64 raw sin prefijo — antes solo aceptaba PNG estricto, así que firmas guardadas en otros formatos se rechazaban y el PDF salía con línea vacía. Loguea cuando rechaza para diagnóstico.'
+    ),
+
     // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
     'r78_estado_inconsistencia_banner' => _checkFile(
         $base . '/admin/js/modules/admin-inventario.js',
