@@ -264,6 +264,31 @@ puntoLog('entrega_checklist', [
     'fase2_done' => $fase2Done,
     'fase3_done' => $fase3Done,
 ]);
+// Round 105 (2026-05-26) — Return is_credit flag so the SPA knows whether
+// to invoke stepPagare. Previously punto-entrega.js relied on ctx.tpago
+// which was never populated by the moto-card data attributes — so the
+// PAGARÉ step never fired for credit customers. Now we determine credit
+// status server-side from the moto's linked transacciones row and return
+// it in the response. This is the authoritative source of truth.
+$isCredit = false;
+try {
+    $tq = $pdo->prepare("SELECT m.pedido_num, m.cliente_email, m.cliente_telefono
+                           FROM inventario_motos m WHERE m.id = ? LIMIT 1");
+    $tq->execute([$motoId]);
+    $mInfo = $tq->fetch(PDO::FETCH_ASSOC) ?: [];
+    $email = (string)($mInfo['cliente_email'] ?? '');
+    $tel   = (string)($mInfo['cliente_telefono'] ?? '');
+    if ($email !== '' || $tel !== '') {
+        $cq = $pdo->prepare("SELECT tpago FROM transacciones
+                              WHERE (LENGTH(?) > 0 AND email = ?)
+                                 OR (LENGTH(?) > 0 AND telefono = ?)
+                              ORDER BY id DESC LIMIT 1");
+        $cq->execute([$email, $email, $tel, $tel]);
+        $tpago = strtolower(trim((string)($cq->fetchColumn() ?: '')));
+        $isCredit = in_array($tpago, ['credito','enganche','parcial','credito-orfano'], true);
+    }
+} catch (Throwable $e) { error_log('entrega/checklist is_credit check: ' . $e->getMessage()); }
+
 puntoJsonOut([
     'ok' => true,
     'progreso' => [
@@ -271,4 +296,5 @@ puntoJsonOut([
         'fase2' => $fase2Done,
         'fase3' => $fase3Done,
     ],
+    'is_credit' => $isCredit,
 ]);

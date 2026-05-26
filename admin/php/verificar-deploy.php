@@ -129,6 +129,18 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 105 (2026-05-26) — Flow fix: server-authoritative is_credit ──
+    'r105_checklist_returns_is_credit' => _checkFile(
+        $base . '/puntosvoltika/php/entrega/checklist.php',
+        'Round 105 (2026-05-26)',
+        'Round 105 — puntosvoltika/php/entrega/checklist.php: la respuesta ahora incluye is_credit (determinado server-side desde transacciones.tpago del moto). Sin esto, Round 102 stepPagare nunca se invocaba porque dependía de ctx.tpago en el SPA que jamás se poblaba (las data-attrs del card solo tenían moto_id/cliente/tel/pedido). Ahora el flujo correcto: step4 save → backend devuelve is_credit → SPA invoca stepPagare automáticamente para crédito.'
+    ),
+    'r105_punto_use_server_is_credit' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-entrega.js',
+        'Round 105 (2026-05-26)',
+        'Round 105 — puntosvoltika/js/modules/punto-entrega.js: usa r.is_credit del response del backend en lugar de _isCreditDelivery() basado en ctx.tpago (que nunca se poblaba). Cachea en ctx.is_credit para que stepPagare lo tenga disponible. El cliente paga, firma ACTA, firma PAGARÉ — todo en orden sin necesidad de overrides admin.'
+    ),
+
     // ── Round 104 (2026-05-26) — Emergency tool for stuck deliveries ──
     'r104_entrega_emergencia' => _checkFile(
         $base . '/admin/php/inventario/entrega-emergencia-once.php',

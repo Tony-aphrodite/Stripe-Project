@@ -792,14 +792,16 @@ window.PV_entrega = (function(){
         PVApp.api('entrega/checklist.php', payload).done(function(r){
           if(r.ok) {
             autosave('step4', { checklist_done: true, progreso: r.progreso || null });
-            // Round 102 (2026-05-26) — Inject PAGARÉ step for credit
-            // customers. Before this, the punto delivery flow jumped
-            // straight from F1/F2/F3 checklist to ACTA waiting without
-            // ever asking the customer to sign the PAGARÉ ejecutivo
-            // (Art. 170-173 LGTOC), even though it's legally required
-            // for credit purchases. Now: if the moto is credit-family,
-            // route through stepPagare; otherwise skip to step5.
-            if (_isCreditDelivery()) stepPagare(); else step5();
+            // Round 105 (2026-05-26) — Use server-authoritative is_credit
+            // flag returned by checklist.php (looks up the moto's
+            // transacciones.tpago). The previous Round 102 used a
+            // client-side _isCreditDelivery() check on ctx.tpago which
+            // was NEVER populated (data attrs only had moto_id/cliente/
+            // tel/pedido). So PAGARÉ step never fired for credit
+            // customers. Now the server tells us directly.
+            // Cache it on ctx so stepPagare and others can re-check.
+            ctx.is_credit = !!r.is_credit;
+            if (r.is_credit) stepPagare(); else step5();
           }
           else { $b.prop('disabled',false).text('Guardar checklist'); alert(r.error||'Error'); }
         }).fail(function(x){
