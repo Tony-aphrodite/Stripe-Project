@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 95 (2026-05-26) — 1-shot resend corrected contract email ──
+    'r95_reenviar_contrato_correo' => _checkFile(
+        $base . '/admin/php/inventario/reenviar-contrato-correo-once.php',
+        'Round 95 (2026-05-26)',
+        'Round 95 — admin/php/inventario/reenviar-contrato-correo-once.php: herramienta 1-shot para reenviar el contrato corregido a clientes con contrato_regenerado_admin=1. Usa PHPMailer/SMTP con el mismo template de correo de crédito normal (sin mencionar que es una corrección, per brief Óscar). BCC a legal@voltika.mx. Idempotente — marca contrato_correo_reenviado_admin=1 después de envío. Botón "Forzar reenvío" disponible para casos puntuales.'
+    ),
+
     // ── Round 94 (2026-05-26) — Perfil.php inventario_motos fallback ──
     'r94_perfil_inventario_fallback' => _checkFile(
         $base . '/clientes/php/cliente/perfil.php',
