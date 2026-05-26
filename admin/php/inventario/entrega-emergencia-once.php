@@ -141,12 +141,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         elseif ($action === 'mark_entregada') {
+            // Round 106 (2026-05-26) — Replicate finalizar.php's downstream
+            // logic so the emergency override has the same effects as the
+            // proper flow: (1) estado=entregada, (2) cliente_acta_firmada=1,
+            // (3) activate subscripciones_credito with fecha_inicio=today
+            // so the cron generar-ciclos can create the 156 weekly payments
+            // and the customer appears in the Cobranza dashboard.
+            //
+            // Without (3), credit customers finalized via the emergency tool
+            // remain "limbo" — their subscription exists with fecha_inicio
+            // NULL, no ciclos_pago are generated, and they're invisible to
+            // Cobranza even though their moto is delivered.
             $pdo->prepare("UPDATE inventario_motos
                 SET estado = 'entregada', fecha_estado = NOW()
                 WHERE id = ?")->execute([$motoId]);
-            // Also mark cliente_acta_firmada if column exists (legacy data point)
             try { $pdo->prepare("UPDATE inventario_motos SET cliente_acta_firmada = 1, cliente_acta_fecha = NOW() WHERE id = ?")->execute([$motoId]); } catch (Throwable $e) {}
-            $msg = '✅ inventario_motos.estado=entregada. moto_id=' . $motoId;
+
+            // Activate the credit subscription (start weekly billing countdown).
+            $activatedSubs = 0;
+            try {
+                $subCols = $pdo->query("SHOW COLUMNS FROM subscripciones_credito")->fetchAll(PDO::FETCH_COLUMN);
+                $sets = ['fecha_inicio = CURDATE()'];
+                if (in_array('fecha_entrega', $subCols, true)) $sets[] = 'fecha_entrega = CURDATE()';
+                if (in_array('inventario_moto_id', $subCols, true)) $sets[] = 'inventario_moto_id = ' . $motoId;
+
+                // Try cliente_id first, then telefono, then email
+                $cid = (int)($moto['cliente_id'] ?? 0);
+                $tel = (string)($moto['cliente_telefono'] ?? '');
+                $em  = (string)($moto['cliente_email'] ?? '');
+                if ($cid > 0) {
+                    $r1 = $pdo->prepare("UPDATE subscripciones_credito SET " . implode(', ', $sets) . "
+                        WHERE cliente_id = ? AND (fecha_inicio IS NULL OR fecha_inicio = '0000-00-00')");
+                    $r1->execute([$cid]);
+                    $activatedSubs += $r1->rowCount();
+                }
+                if ($activatedSubs === 0 && $tel !== '') {
+                    $r2 = $pdo->prepare("UPDATE subscripciones_credito SET " . implode(', ', $sets) . "
+                        WHERE telefono = ? AND (fecha_inicio IS NULL OR fecha_inicio = '0000-00-00')");
+                    $r2->execute([$tel]);
+                    $activatedSubs += $r2->rowCount();
+                }
+                if ($activatedSubs === 0 && $em !== '') {
+                    $r3 = $pdo->prepare("UPDATE subscripciones_credito SET " . implode(', ', $sets) . "
+                        WHERE email = ? AND (fecha_inicio IS NULL OR fecha_inicio = '0000-00-00')");
+                    $r3->execute([$em]);
+                    $activatedSubs += $r3->rowCount();
+                }
+            } catch (Throwable $e) { error_log('emergency activate sub: ' . $e->getMessage()); }
+
+            $msg = '✅ inventario_motos.estado=entregada. moto_id=' . $motoId
+                 . ($activatedSubs > 0 ? ' · subscripción crédito activada (fecha_inicio=hoy) — el cron generar-ciclos creará los 156 pagos semanales en su próxima corrida.' : ' · sin subscripción crédito que activar (probablemente cliente contado).');
         }
         elseif ($action === 'sign_pagare' && !empty($_POST['firma_data'])) {
             $firmaB64 = (string)$_POST['firma_data'];

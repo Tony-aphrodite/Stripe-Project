@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 106 (2026-05-26) — Emergency tool also activates credit subscription ──
+    'r106_emergency_activates_sub' => _checkFile(
+        $base . '/admin/php/inventario/entrega-emergencia-once.php',
+        'Round 106 (2026-05-26)',
+        'Round 106 — admin/php/inventario/entrega-emergencia-once.php: la acción "Marcar entregada" ahora replica completamente finalizar.php — además de estado=entregada, activa subscripciones_credito.fecha_inicio=CURDATE() para que el cron generar-ciclos cree los 156 pagos semanales y el cliente aparezca en el dashboard de Cobranza. Sin esto, clientes de crédito finalizados vía emergency tool quedaban en limbo: sub existía pero fecha_inicio=NULL → no ciclos → invisibles en Cobranza. La cadena correcta del flujo proper (Rounds 100-105) hace lo mismo automáticamente vía Finalizar.'
+    ),
+
     // ── Round 105 (2026-05-26) — Flow fix: server-authoritative is_credit ──
     'r105_checklist_returns_is_credit' => _checkFile(
         $base . '/puntosvoltika/php/entrega/checklist.php',
