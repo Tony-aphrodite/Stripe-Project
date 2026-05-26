@@ -184,7 +184,12 @@ try {
         $allTxns = $st2->fetchAll(PDO::FETCH_ASSOC);
         if (count($allTxns) > count($txns)) {
             echo '<div class="hint">⚠ Existen ' . (count($allTxns) - count($txns)) . ' transacción(es) más para este cliente que <code>compras.php</code> NO muestra porque su <code>tpago</code> no está en la lista permitida:</div>';
-            echo renderTable(array_diff_key(array_combine(array_column($allTxns, 'id'), $allTxns), array_combine(array_column($txns, 'id'), $txns)));
+            // Diff by id (avoid array_combine + array_diff_key crash when ids are non-zero keys).
+            $allowedIds = array_column($txns, 'id');
+            $extras = array_values(array_filter($allTxns, function($r) use ($allowedIds) {
+                return !in_array($r['id'], $allowedIds, true);
+            }));
+            echo renderTable($extras);
         }
     }
 } catch (Throwable $e) {
