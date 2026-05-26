@@ -269,6 +269,18 @@ $checks = [
         'Round 83 v2 — clientes/php/acta-pdf-generator.php: dos fixes críticos descubiertos cuando la v1 regeneró el PDF de Adrian pero el nombre seguía duplicado y la firma seguía vacía. (1) Fuerza require_once de configurador/php/contrato-contado.php al cargar el módulo, para que contratoContadoSanitizeFullName() esté SIEMPRE disponible — antes voltikaActaSanitizeFullName() lo verificaba con function_exists() pero nada en el path de regen lo cargaba, así que el dedup real nunca corría. Fallback ahora tiene un collapseTail iterativo que sí elimina "Apellido Apellido" repetido. (2) El regex de la firma ahora acepta data:image/png, data:image/jpeg, data:image/jpg, y base64 raw sin prefijo — antes solo aceptaba PNG estricto, así que firmas guardadas en otros formatos se rechazaban y el PDF salía con línea vacía. Loguea cuando rechaza para diagnóstico.'
     ),
 
+    // ── Round 84 (2026-05-26) — Mandatory entrega checklist enforcement ──
+    'r84_checklist_mandatory_fields' => _checkFile(
+        $base . '/puntosvoltika/php/entrega/checklist.php',
+        'Round 84 (2026-05-26)',
+        'Round 84 — puntosvoltika/php/entrega/checklist.php: hard-rechaza con HTTP 400 cualquier guardado de checklist con campos faltantes (los 16 items de F1+F2+F3 ahora son obligatorios). Antes el endpoint aceptaba payloads parciales en silencio y solo flipeaba los flags fase{N}_completada cuando ALL fields=1, lo que permitía a callers que bypasseaban la UI (devtools, harness legacy) avanzar el flujo con checklist incompleto. La respuesta de error incluye lista en español de qué items faltan. Customer brief Óscar: "put the next checklist mandatory all fields".'
+    ),
+    'r84_finalizar_checklist_gate' => _checkFile(
+        $base . '/puntosvoltika/php/entrega/finalizar.php',
+        'Round 84 (2026-05-26)',
+        'Round 84 — puntosvoltika/php/entrega/finalizar.php: agrega gate que requiere checklist_entrega_v2.fase1/2/3_completada=1 (o legacy completado=1) ANTES de marcar inventario_motos.estado="entregada". Antes solo se verificaba cliente_acta_firmada + entregas.otp_verified — la moto podía entregarse con el checklist F1/F2/F3 en blanco, que es exactamente lo que produjo el caso Adrian (banner amarillo "Entrega cerrada sin checklist"). Ahora finalizar devuelve HTTP 409 con lista de fases pendientes si está incompleto.'
+    ),
+
     // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
     'r78_estado_inconsistencia_banner' => _checkFile(
         $base . '/admin/js/modules/admin-inventario.js',

@@ -28,6 +28,58 @@ if (!(int)$e->fetchColumn()) {
     puntoJsonOut(['error' => 'OTP del cliente no verificado'], 400);
 }
 
+// Round 84 (2026-05-26) — Checklist completion gate. Customer brief (Óscar):
+// the entrega checklist must be complete before estado='entregada' is set.
+// Before Round 84 this endpoint only checked ACTA + OTP, so a moto could be
+// marked entregada with the F1/F2/F3 checklist still incomplete. That's
+// what produced Adrian's case (yellow inconsistency banner — estado matches
+// but checklist_entrega_v2.fase{1,2,3}_completada=0).
+//
+// Now: require all three operator-side fases marked complete. Tolerant of
+// legacy rows that only have the `completado` column (older single-flag schema).
+try {
+    $cl = $pdo->prepare("SELECT fase1_completada, fase2_completada, fase3_completada, completado
+                           FROM checklist_entrega_v2
+                          WHERE moto_id = ?
+                          ORDER BY id DESC LIMIT 1");
+    $cl->execute([$motoId]);
+    $clRow = $cl->fetch(PDO::FETCH_ASSOC) ?: null;
+} catch (Throwable $exc) {
+    // Column may not exist on a legacy install — fall back to `completado` only
+    try {
+        $cl = $pdo->prepare("SELECT completado FROM checklist_entrega_v2 WHERE moto_id=? ORDER BY id DESC LIMIT 1");
+        $cl->execute([$motoId]);
+        $clRow = ['completado' => (int)$cl->fetchColumn()];
+    } catch (Throwable $exc2) { $clRow = null; }
+}
+
+if (!$clRow) {
+    puntoJsonOut([
+        'error' => 'No hay checklist de entrega registrado para esta moto. '
+                 . 'Abre el módulo de Entrega → Paso 4 (Checklist) y completa las 3 fases antes de finalizar.',
+        'code'  => 'checklist_no_iniciado',
+    ], 409);
+}
+
+// Accept EITHER the legacy `completado=1` flag OR all three per-fase flags.
+$clFullyDone = ((int)($clRow['completado'] ?? 0) === 1)
+            || ((int)($clRow['fase1_completada'] ?? 0) === 1
+             && (int)($clRow['fase2_completada'] ?? 0) === 1
+             && (int)($clRow['fase3_completada'] ?? 0) === 1);
+
+if (!$clFullyDone) {
+    $pendientes = [];
+    if (!(int)($clRow['fase1_completada'] ?? 0)) $pendientes[] = 'F1 — Identidad';
+    if (!(int)($clRow['fase2_completada'] ?? 0)) $pendientes[] = 'F2 — Pago';
+    if (!(int)($clRow['fase3_completada'] ?? 0)) $pendientes[] = 'F3 — Unidad';
+    puntoJsonOut([
+        'error' => 'Checklist de entrega incompleto. Faltan: ' . implode(', ', $pendientes ?: ['todas las fases'])
+                 . '. Vuelve al módulo de Entrega → Paso 4 y marca todos los items obligatorios.',
+        'code'  => 'checklist_incompleto',
+        'fases_pendientes' => $pendientes,
+    ], 409);
+}
+
 // Update moto final status
 $pdo->prepare("UPDATE inventario_motos SET estado='entregada', fecha_estado=NOW() WHERE id=?")
     ->execute([$motoId]);

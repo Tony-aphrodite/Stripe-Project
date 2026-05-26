@@ -126,6 +126,54 @@ $fields = [
     'unidad_ensamblada'        => $bit('unidad_ensamblada'),
 ];
 
+// Round 84 (2026-05-26) — Mandatory-fields gate. Customer brief (Óscar):
+// "Solve this but put the next checklist mandatory all fields". Before
+// Round 84 this endpoint silently accepted partial payloads — only the
+// per-fase completion flags flipped when ALL fields were 1, but the row
+// was still saved with any combination. That let UI-bypassing callers
+// (devtools, legacy harnesses, manual POST) advance the entrega flow
+// with an incomplete checklist, which is what produced Adrian's case
+// (estado='entregada' + yellow inconsistency banner).
+//
+// Now: reject the save with HTTP 400 and a Spanish breakdown of what's
+// missing. The legacy "partial save" mode is opt-in via { _allow_partial: 1 }
+// so the older admin testing harness still works.
+$labels = [
+    'ine_presentada'           => 'INE presentada',
+    'nombre_coincide'          => 'Nombre coincide con la orden',
+    'foto_coincide'            => 'Foto de INE coincide con el cliente',
+    'datos_confirmados'        => 'Datos personales confirmados',
+    'ultimos4_telefono'        => 'Últimos 4 dígitos del teléfono verificados',
+    'modelo_confirmado'        => 'Modelo de moto confirmado',
+    'forma_pago_confirmada'    => 'Forma de pago confirmada',
+    'pago_confirmado'          => 'Pago confirmado en sistema',
+    'enganche_validado'        => 'Enganche validado',
+    'metodo_pago_registrado'   => 'Método de pago registrado',
+    'domiciliacion_confirmada' => 'Domiciliación confirmada',
+    'vin_coincide'             => 'VIN coincide con la orden',
+    'estado_fisico_ok'         => 'Estado físico correcto',
+    'sin_danos'                => 'Sin daños visibles',
+    'unidad_completa'          => 'Unidad completa (accesorios, llaves, manual)',
+    'unidad_ensamblada'        => 'Unidad ensamblada (checklist ensamble completo)',
+];
+$allowPartial = !empty($d['_allow_partial']);
+if (!$allowPartial) {
+    $missing = [];
+    foreach ($fields as $col => $val) {
+        if ((int)$val !== 1) $missing[] = ['key' => $col, 'label' => $labels[$col] ?? $col];
+    }
+    if ($missing) {
+        $list = array_map(fn($m) => '• ' . $m['label'], $missing);
+        puntoJsonOut([
+            'error'   => 'Faltan ' . count($missing) . ' verificación(es) por marcar. '
+                       . 'No se puede guardar el checklist incompleto — todos los campos son obligatorios:' . "\n"
+                       . implode("\n", $list),
+            'code'    => 'checklist_incompleto',
+            'missing' => $missing,
+        ], 400);
+    }
+}
+
 // Determine fase completion — only flip the flag when EVERY field in the
 // fase is present, mirroring the admin's behavior.
 $fase1Keys = ['ine_presentada','nombre_coincide','foto_coincide','datos_confirmados',
