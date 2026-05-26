@@ -317,7 +317,11 @@ if ($action === 'apply' && ($pedido !== '' || $txId > 0) && $_SERVER['REQUEST_ME
     echo '</ul>';
     echo '<p><strong>Importante:</strong> el contrato se regeneró con la firma autógrafa existente del cliente. Si necesitas que el cliente firme un contrato amendment formal, gestiónalo aparte por flujo de re-firma.</p>';
     echo '</div>';
-    echo '<p><a class="btn" href="?">← Volver a la lista</a></p>';
+    $viewUrl = '/configurador/php/descargar-contrato.php?pedido=TX' . (int)$tx['id'] . '&inline=1';
+    echo '<p>';
+    echo '<a class="btn" href="' . htmlspecialchars($viewUrl) . '" target="_blank" style="background:#10b981;">📄 Ver PDF nuevo</a> ';
+    echo '<a class="btn ghost" href="?">← Volver a la lista</a>';
+    echo '</p>';
     echo '</body></html>';
     exit;
 }
