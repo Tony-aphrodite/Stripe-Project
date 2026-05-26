@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 103 (2026-05-26) — CRITICAL: fase1_completada was never persisted ──
+    'r103_fase1_persistence' => _checkFile(
+        $base . '/puntosvoltika/php/entrega/checklist.php',
+        'Round 103 (2026-05-26)',
+        'Round 103 — puntosvoltika/php/entrega/checklist.php: BUG CRÍTICO. El código computaba $fase1Done correctamente pero NUNCA persistía fase1_completada al DB (solo fase2 y fase3 tenían UPDATE/INSERT). Resultado: el operador del punto completaba todos los items de F1 — Identidad y el save respondía OK, pero fase1_completada permanecía en 0. Round 84 finalize gate rechazaba "F1 — Identidad" → entrega bloqueada. Caso Carlos Ricardo Sánchez (entrega hoy). Fix: agregadas las cláusulas UPDATE + INSERT para fase1_completada y fase1_fecha exactamente como fase2 y fase3.'
+    ),
+
     // ── Round 102 (2026-05-26) — PAGARÉ signing step in punto delivery flow ──
     'r102_punto_step_pagare' => _checkFile(
         $base . '/puntosvoltika/js/modules/punto-entrega.js',

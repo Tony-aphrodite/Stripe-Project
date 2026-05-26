@@ -217,6 +217,19 @@ if (in_array('fase2_completada', $availableCols, true)) {
         $updateSets[] = 'fase2_fecha=NOW()';
     }
 }
+// Round 103 (2026-05-26) — CRITICAL FIX. fase1_completada was being
+// computed but NEVER persisted to DB (only fase2 and fase3 had the
+// UPDATE/INSERT logic). Result: even after operator completed all F1
+// boxes, fase1_completada stayed at 0 → Round 84 finalize gate
+// rejected "F1 — Identidad" → delivery couldn't be finalized. Carlos
+// Ricardo Sánchez delivery today blocked because of this. Now F1
+// flag persists exactly like F2 and F3.
+if (in_array('fase1_completada', $availableCols, true)) {
+    $updateSets[] = $fase1Done ? 'fase1_completada=1' : 'fase1_completada=fase1_completada';
+    if (in_array('fase1_fecha', $availableCols, true) && $fase1Done) {
+        $updateSets[] = 'fase1_fecha=NOW()';
+    }
+}
 // Always include into the INSERT side
 $cols[] = 'fase3_completada'; $vals[] = $fase3Done ? 1 : 0;
 $cols[] = 'fase3_fecha';      $vals[] = $fase3Done ? date('Y-m-d H:i:s') : null;
@@ -225,6 +238,13 @@ if (in_array('fase2_completada', $availableCols, true)) {
 }
 if (in_array('fase2_fecha', $availableCols, true)) {
     $cols[] = 'fase2_fecha'; $vals[] = $fase2Done ? date('Y-m-d H:i:s') : null;
+}
+// Round 103 — F1 was missing from INSERT side too. Add it.
+if (in_array('fase1_completada', $availableCols, true)) {
+    $cols[] = 'fase1_completada'; $vals[] = $fase1Done ? 1 : 0;
+}
+if (in_array('fase1_fecha', $availableCols, true)) {
+    $cols[] = 'fase1_fecha'; $vals[] = $fase1Done ? date('Y-m-d H:i:s') : null;
 }
 
 // De-dup any double appends (defensive)
