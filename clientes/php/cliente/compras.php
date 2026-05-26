@@ -156,11 +156,20 @@ try {
     if ($email) { $where[] = "email = ?"; $params[] = $email; }
     if (!$where) $where[] = '0';
 
+    // Round 86 (2026-05-26) — accept tpago='unico' as an alias for 'contado'.
+    // Legacy webhook paths (pre stripe-webhook.php normalization) stored some
+    // single-payment Stripe transactions with tpago='unico' instead of 'contado'.
+    // Stripe-webhook.php:598 now normalizes new rows, but historical rows like
+    // Adrian Montoya's (moto 147, pedido VK-2605-0002) were left at 'unico' and
+    // were invisible on "Mis compras" because this filter excluded them.
+    // The admin migration admin/reparar-unico-a-contado.php fixes the data, but
+    // making the read path tolerant means the customer sees their purchase
+    // immediately without depending on the migration being run.
     $sql = "SELECT id, pedido, nombre, modelo, color, total, tpago, msi_meses, freg,
                    pago_estado, stripe_pi, punto_nombre, estado AS estado_mx, ciudad, cp
             FROM transacciones
             WHERE (" . implode(' OR ', $where) . ")
-              AND tpago IN ('contado','msi','spei','oxxo')
+              AND tpago IN ('contado','msi','spei','oxxo','unico')
             ORDER BY id DESC";
     $tStmt = $pdo->prepare($sql);
     $tStmt->execute($params);
@@ -192,8 +201,10 @@ try {
             case 'entregada':           $paso = 4; $etiqueta = 'listo'; break;
         }
 
+        // Normalize legacy tpago='unico' to 'contado' for display (Round 86).
+        $tpagoNorm = ($t['tpago'] === 'unico') ? 'contado' : $t['tpago'];
         $compras[] = [
-            'tipo'         => ($t['tpago'] === 'msi' ? 'msi' : 'contado'),
+            'tipo'         => ($tpagoNorm === 'msi' ? 'msi' : 'contado'),
             'id'           => (int)$t['id'],
             'pedido'       => $t['pedido'],
             'modelo'       => $t['modelo'] ?? ($moto['modelo'] ?? null),
@@ -202,7 +213,7 @@ try {
             'msi_meses'    => $t['msi_meses'] ? (int)$t['msi_meses'] : null,
             'fecha_compra' => $t['freg'],
             'pago_estado'  => $t['pago_estado'] ?: 'pendiente',
-            'metodo'       => $t['tpago'],
+            'metodo'       => $tpagoNorm,
             'estado'       => $estadoMoto ?: 'sin_asignar',
             'moto'         => $moto ? [
                 'vin'    => $moto['vin_display'] ?: $moto['vin'],

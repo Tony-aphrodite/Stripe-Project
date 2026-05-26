@@ -163,13 +163,16 @@ if (!$sub && !$compra) {
     if (strlen($tel10) > 10) $tel10 = substr($tel10, -10);
     $em = $cliente['email'] ?? null;
 
+    // Round 86 (2026-05-26) — accept legacy tpago='unico' as 'contado'. Same
+    // reason as compras.php: pre-normalization webhook rows (Adrian Montoya
+    // case) had this value and were invisible to the portal "Inicio" hero card.
     if ($tel10) {
-        $stmt = $pdo->prepare("SELECT * FROM transacciones WHERE RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''),10) = ? AND tpago IN ('contado','msi') ORDER BY id DESC LIMIT 1");
+        $stmt = $pdo->prepare("SELECT * FROM transacciones WHERE RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''),10) = ? AND tpago IN ('contado','msi','unico') ORDER BY id DESC LIMIT 1");
         $stmt->execute([$tel10]);
         $compra = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
     if (!$compra && $em) {
-        $stmt = $pdo->prepare("SELECT * FROM transacciones WHERE email = ? AND tpago IN ('contado','msi') ORDER BY id DESC LIMIT 1");
+        $stmt = $pdo->prepare("SELECT * FROM transacciones WHERE email = ? AND tpago IN ('contado','msi','unico') ORDER BY id DESC LIMIT 1");
         $stmt->execute([$em]);
         $compra = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
@@ -476,10 +479,11 @@ try {
         $params = [];
         if ($tel10) { $where[] = "RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''),10) = ?"; $params[] = $tel10; }
         if ($em)    { $where[] = "email = ?"; $params[] = $em; }
+        // Round 86 — same legacy-tpago handling as above.
         $sql = "SELECT id, pedido, modelo, color, total, tpago, msi_meses, freg, pago_estado
                 FROM transacciones
                 WHERE (" . implode(' OR ', $where) . ")
-                  AND tpago IN ('contado','msi')
+                  AND tpago IN ('contado','msi','unico')
                 ORDER BY id DESC";
         $tStmt = $pdo->prepare($sql);
         $tStmt->execute($params);

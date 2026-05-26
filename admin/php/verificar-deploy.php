@@ -269,6 +269,18 @@ $checks = [
         'Round 83 v2 — clientes/php/acta-pdf-generator.php: dos fixes críticos descubiertos cuando la v1 regeneró el PDF de Adrian pero el nombre seguía duplicado y la firma seguía vacía. (1) Fuerza require_once de configurador/php/contrato-contado.php al cargar el módulo, para que contratoContadoSanitizeFullName() esté SIEMPRE disponible — antes voltikaActaSanitizeFullName() lo verificaba con function_exists() pero nada en el path de regen lo cargaba, así que el dedup real nunca corría. Fallback ahora tiene un collapseTail iterativo que sí elimina "Apellido Apellido" repetido. (2) El regex de la firma ahora acepta data:image/png, data:image/jpeg, data:image/jpg, y base64 raw sin prefijo — antes solo aceptaba PNG estricto, así que firmas guardadas en otros formatos se rechazaban y el PDF salía con línea vacía. Loguea cuando rechaza para diagnóstico.'
     ),
 
+    // ── Round 86 (2026-05-26) — Accept legacy tpago='unico' in portal lookups ──
+    'r86_compras_unico'         => _checkFile(
+        $base . '/clientes/php/cliente/compras.php',
+        'Round 86 (2026-05-26)',
+        'Round 86 — clientes/php/cliente/compras.php: agrega "unico" a la lista IN para que transacciones legacy con tpago="unico" (creadas antes de la normalización en stripe-webhook.php:598) aparezcan en "Mis compras". Caso Adrian Montoya (moto 147, pedido VK-2605-0002): pago único exitoso de $48,260 a través de Stripe pero invisible en el portal porque el filtro IN excluía "unico". También normaliza tpago al construir el campo `tipo` y `metodo` en la respuesta para que el SPA muestre "Contado" en vez de "UNICO".'
+    ),
+    'r86_estado_unico'          => _checkFile(
+        $base . '/clientes/php/cliente/estado.php',
+        'Round 86 (2026-05-26)',
+        'Round 86 — clientes/php/cliente/estado.php: mismo fix en los 3 lookups de transacciones que alimentan el hero card de "Inicio". Sin esto, después de aplicar Round 86 a compras.php, la pantalla "Inicio" seguía mostrando "preparación" en vez del estado real de entrega para clientes con tpago="unico".'
+    ),
+
     // ── Round 85 (2026-05-26) — Sanitize duplicated names in portal cliente endpoints ──
     'r85_me_sanitize'           => _checkFile(
         $base . '/clientes/php/auth/me.php',
