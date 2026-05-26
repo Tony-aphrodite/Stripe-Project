@@ -130,11 +130,52 @@ if ($action === 'apply' && ($pedido !== '' || $txId > 0) && $_SERVER['REQUEST_ME
     }
     $pedido = (string)($tx['pedido'] ?? '');
 
-    // Idempotency check
+    // Idempotency check — skip only when a previous regen succeeded AND the
+    // stored file is still findable on disk. Round 90 v4 (2026-05-26): a
+    // previous regen could have stored a relative path that descargar-contrato.php
+    // resolves to a non-existent location (the path-resolution bug). Detect
+    // that case and ALLOW the re-run instead of false-positively short-
+    // circuiting on "ya regenerado".
     if ((int)($tx['contrato_regenerado_admin'] ?? 0) === 1) {
-        echo '<div class="success">✅ Ya regenerado el ' . htmlspecialchars((string)$tx['contrato_regenerado_admin_fecha']) . '. Nada que hacer.</div>';
-        echo '</body></html>';
-        exit;
+        $existingPath = (string)($tx['contrato_pdf_path'] ?? '');
+        $resolvedFile = '';
+        if ($existingPath !== '') {
+            if ($existingPath[0] === '/') {
+                $resolvedFile = is_file($existingPath) ? $existingPath : '';
+            } else {
+                // Try both legacy and new save folders.
+                foreach ([
+                    __DIR__ . '/../../../configurador/' . ltrim($existingPath, '/'),
+                    __DIR__ . '/../../../configurador/php/' . ltrim($existingPath, '/'),
+                ] as $candidate) {
+                    if (is_file($candidate)) { $resolvedFile = $candidate; break; }
+                }
+            }
+        }
+        if ($resolvedFile !== '') {
+            // If the DB-stored path is relative and doesn't match where the file
+            // actually lives, fix the DB to use the absolute path so future
+            // descargar-contrato.php calls find it. One-shot correction for
+            // contracts regenerated before Round 90 v4.
+            $needsPathFix = ($existingPath === '' || $existingPath[0] !== '/' || !is_file($existingPath));
+            if ($needsPathFix && $resolvedFile !== $existingPath) {
+                try {
+                    $pdo->prepare("UPDATE transacciones SET contrato_pdf_path = ? WHERE id = ?")
+                        ->execute([$resolvedFile, (int)$tx['id']]);
+                    echo '<div class="success">✅ Ya regenerado el ' . htmlspecialchars((string)$tx['contrato_regenerado_admin_fecha']) . '. <strong>Path en BD corregido</strong>: <code>' . htmlspecialchars($existingPath) . '</code> → <code>' . htmlspecialchars($resolvedFile) . '</code></div>';
+                } catch (Throwable $e) {
+                    echo '<div class="err">No se pudo corregir el path: ' . htmlspecialchars($e->getMessage()) . '</div>';
+                }
+            } else {
+                echo '<div class="success">✅ Ya regenerado el ' . htmlspecialchars((string)$tx['contrato_regenerado_admin_fecha']) . '. Archivo encontrado en <code>' . htmlspecialchars($resolvedFile) . '</code>. Nada que hacer.</div>';
+            }
+            $viewUrl = '/configurador/php/descargar-contrato.php?pedido=TX' . (int)$tx['id'] . '&inline=1';
+            echo '<p><a class="btn" href="' . htmlspecialchars($viewUrl) . '" target="_blank" style="background:#10b981;">📄 Ver PDF</a> <a class="btn ghost" href="?">← Volver a la lista</a></p>';
+            echo '</body></html>';
+            exit;
+        }
+        // File missing → proceed with re-run.
+        echo '<div class="hint">⚠ Esta transacción ya tiene flag contrato_regenerado_admin=1 pero el archivo PDF no se encuentra en disco. Re-generando...</div>';
     }
 
     // 2) Resolve modelo precio
@@ -249,8 +290,13 @@ if ($action === 'apply' && ($pedido !== '' || $txId > 0) && $_SERVER['REQUEST_ME
         exit;
     }
 
-    // 8) Persist new path + forensic markers
-    $relPath = 'contratos/' . basename($newPdfPath);
+    // 8) Persist new path + forensic markers.
+    // Round 90 v4 (2026-05-26) — store the ABSOLUTE path. generateContractPDF
+    // saves to configurador/php/contratos/ but descargar-contrato.php's
+    // relative-path resolver assumes configurador/contratos/ (different folder).
+    // Storing the absolute path is unambiguous — descargar-contrato.php's line
+    // 150 handles absolute paths directly without folder guessing.
+    $relPath = $newPdfPath;  // absolute
     $hash    = @hash_file('sha256', $newPdfPath) ?: null;
     $adminUser = $_SESSION['admin_user_id'] ?? null;
     $adminName = $_SESSION['admin_user_nombre'] ?? ($_SESSION['admin_email'] ?? 'admin');
