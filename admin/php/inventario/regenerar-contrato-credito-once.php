@@ -112,6 +112,22 @@ echo '<p class="crumb"><a href="?">← Lista de candidatos</a></p>';
 // ──────────────────────────────────────────────────────────────────────────
 // ACTION: APPLY — actually regenerate the contract
 // ──────────────────────────────────────────────────────────────────────────
+// reset_and_regen — same as apply but FIRST clears the contrato_regenerado_admin
+// flag so the idempotency guard doesn't short-circuit. Used when the PDF
+// from a previous regen was cleaned up from /tmp.
+if ($action === 'reset_and_regen' && $txId > 0 && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $pdo->prepare("UPDATE transacciones
+            SET contrato_regenerado_admin = 0
+            WHERE id = ?")->execute([$txId]);
+    } catch (Throwable $e) {
+        echo '<div class="err">No se pudo resetear el flag: ' . htmlspecialchars($e->getMessage()) . '</div></body></html>';
+        exit;
+    }
+    // Promote to a regular apply.
+    $action = 'apply';
+}
+
 if ($action === 'apply' && ($pedido !== '' || $txId > 0) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $plazoMeses = max(12, min(60, (int)($_POST['plazo'] ?? 36)));
 
@@ -461,7 +477,22 @@ if ($action === 'preview' && ($pedido !== '' || $txId > 0)) {
         } elseif ($resolvedFile !== '') {
             echo '<div class="success">Ya regenerado. Archivo OK en <code>' . htmlspecialchars($resolvedFile) . '</code>.</div>';
         } else {
-            echo '<div class="err">Ya regenerado pero el archivo PDF no se encuentra en disco. Borra <code>contrato_regenerado_admin</code> en la BD para permitir re-generar:<br><code>UPDATE transacciones SET contrato_regenerado_admin = 0 WHERE id = ' . (int)$tx['id'] . ';</code></div>';
+            echo '<div class="err">Ya regenerado pero el archivo PDF no se encuentra en disco (probablemente fue limpiado de /tmp). Necesitas resetear el flag y re-generar.</div>';
+            // Inline form to reset flag + immediately re-regenerate.
+            echo '<form method="post" style="margin-top:14px;">';
+            echo '<input type="hidden" name="action" value="reset_and_regen">';
+            echo '<input type="hidden" name="tx_id" value="' . (int)$tx['id'] . '">';
+            echo '<label><strong>plazoMeses:</strong> ';
+            echo '<select name="plazo">';
+            foreach ([12, 18, 24, 36, 48] as $p) {
+                $sel = $p === 36 ? ' selected' : '';
+                echo '<option value="' . $p . '"' . $sel . '>' . $p . ' meses</option>';
+            }
+            echo '</select></label>';
+            echo ' <button class="btn" type="submit" style="background:#dc2626;" onclick="return confirm(\'¿Resetear flag y re-generar? Esto reescribe el PDF con la firma autógrafa existente del cliente.\')">🔄 Resetear flag y re-generar</button>';
+            echo '</form>';
+            echo '<p style="margin-top:14px;"><a class="btn ghost" href="?">← Volver a la lista</a></p>';
+            echo '</div></body></html>'; exit;
         }
         $viewUrl = '/configurador/php/descargar-contrato.php?pedido=TX' . (int)$tx['id'] . '&inline=1';
         echo '<p style="margin-top:14px;">';
