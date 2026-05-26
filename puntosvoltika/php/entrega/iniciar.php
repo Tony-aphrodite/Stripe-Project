@@ -23,16 +23,69 @@ if (!$moto['cliente_telefono']) puntoJsonOut(['error' => 'Moto no tiene cliente 
 $pagoEstado = strtolower(trim($moto['pago_estado'] ?? ''));
 $pagoOk = in_array($pagoEstado, ['pagada'], true);
 
-if (!$pagoOk && $pagoEstado === 'parcial') {
-    // Credito flow — allow only if the subscription is current and has no overdue cycles.
-    // The real table is `subscripciones_credito`, linked to the moto via `inventario_moto_id`.
+// Round 100 (2026-05-26) — Multi-source credit check.
+// Previous code only matched subscriptions by inventario_moto_id, which
+// is often NULL (the linkage is set during admin moto assignment but
+// frequently never gets backfilled). Caso Carlos Ricardo Sánchez: paid
+// $12,065 enganche, subscripcion_credito row exists with estado='activa',
+// but inventario_moto_id was never linked → entrega blocked.
+//
+// We now fall back to cliente_id, email, telefono — same multi-source
+// pattern used by compras.php and other portal endpoints. We also accept
+// pago_estado='parcial' AND pago_estado='pendiente_firma' (legacy state
+// for credit customers before Round 99 backfill) as the "credit family
+// gate" cases.
+$creditFamilyState = in_array($pagoEstado, ['parcial', 'pendiente_firma'], true);
+if (!$pagoOk && $creditFamilyState) {
     try {
+        $subId = null;
+        // 1) primary: by direct moto link
         $sq = $pdo->prepare("SELECT s.id FROM subscripciones_credito s
-            WHERE s.inventario_moto_id = ? AND s.estado IN ('activa','active','completada','completed')
+            WHERE s.inventario_moto_id = ?
+              AND s.estado IN ('activa','active','completada','completed')
             ORDER BY s.id DESC LIMIT 1");
         $sq->execute([$motoId]);
-        $subId = $sq->fetchColumn();
+        $subId = $sq->fetchColumn() ?: null;
+
+        // 2) fallback: by cliente_id on the moto row
+        if (!$subId && !empty($moto['cliente_id'])) {
+            $sq = $pdo->prepare("SELECT s.id FROM subscripciones_credito s
+                WHERE s.cliente_id = ?
+                  AND s.estado IN ('activa','active','completada','completed')
+                ORDER BY s.id DESC LIMIT 1");
+            $sq->execute([(int)$moto['cliente_id']]);
+            $subId = $sq->fetchColumn() ?: null;
+        }
+
+        // 3) fallback: by email/telefono from the moto row
+        if (!$subId) {
+            $mEmail = trim((string)($moto['cliente_email']    ?? ''));
+            $mTel   = trim((string)($moto['cliente_telefono'] ?? ''));
+            if ($mEmail !== '' || $mTel !== '') {
+                $sq = $pdo->prepare("SELECT s.id FROM subscripciones_credito s
+                    WHERE s.estado IN ('activa','active','completada','completed')
+                      AND (
+                            (LENGTH(?) > 0 AND s.email = ?)
+                         OR (LENGTH(?) > 0 AND s.telefono = ?)
+                      )
+                    ORDER BY s.id DESC LIMIT 1");
+                $sq->execute([$mEmail, $mEmail, $mTel, $mTel]);
+                $subId = $sq->fetchColumn() ?: null;
+            }
+        }
+
         if ($subId) {
+            // Self-heal: persist the linkage so future deliveries hit the
+            // primary lookup directly instead of falling back.
+            try {
+                $pdo->prepare("UPDATE subscripciones_credito
+                    SET inventario_moto_id = ?
+                    WHERE id = ? AND (inventario_moto_id IS NULL OR inventario_moto_id = 0)")
+                    ->execute([$motoId, (int)$subId]);
+            } catch (Throwable $e) { /* non-fatal */ }
+
+            // Reject only if there are TRULY overdue (vencidos) cycles.
+            // Brand-new enganche customers have 0 ciclos still — that's fine.
             $vq = $pdo->prepare("SELECT COUNT(*) FROM ciclos_pago
                 WHERE subscripcion_id = ? AND estado IN ('overdue','pending')
                   AND fecha_vencimiento < CURDATE()");
@@ -44,9 +97,22 @@ if (!$pagoOk && $pagoEstado === 'parcial') {
 }
 
 if (!$pagoOk) {
+    // Round 100 — include diagnostic info so admin can see WHY it's blocking
+    // instead of getting a generic "pago no está completo" message.
+    $diag = [
+        'moto_id'         => $motoId,
+        'pago_estado'     => $pagoEstado ?: 'desconocido',
+        'cliente_id'      => $moto['cliente_id']      ?? null,
+        'cliente_email'   => $moto['cliente_email']   ?? null,
+        'cliente_telefono'=> $moto['cliente_telefono']?? null,
+        'credit_family'   => $creditFamilyState,
+    ];
     puntoJsonOut([
-        'error' => 'No se puede iniciar la entrega: el pago no está completo.',
-        'pago_estado' => $pagoEstado ?: 'desconocido'
+        'error' => 'No se puede iniciar la entrega: el pago no está completo. '
+                 . 'pago_estado=' . ($pagoEstado ?: 'desconocido')
+                 . ($creditFamilyState ? ' · sin subscripción activa enlazada al cliente' : ''),
+        'pago_estado' => $pagoEstado ?: 'desconocido',
+        'diag' => $diag,
     ], 403);
 }
 

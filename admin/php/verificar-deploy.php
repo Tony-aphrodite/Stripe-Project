@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 100 (2026-05-26) — Multi-source credit payment check on delivery start ──
+    'r100_iniciar_credit_fallback' => _checkFile(
+        $base . '/puntosvoltika/php/entrega/iniciar.php',
+        'Round 100 (2026-05-26)',
+        'Round 100 — puntosvoltika/php/entrega/iniciar.php: cuando pago_estado="parcial" (crédito con enganche pagado), el lookup de subscripciones_credito ahora prueba tres fuentes en orden: inventario_moto_id → cliente_id → email/telefono. Self-heal: cuando se encuentra por fallback, persiste el linkage inventario_moto_id para futuras consultas. También acepta "pendiente_firma" como estado credit-family legítimo. Caso Carlos Ricardo Sánchez (entrega hoy, $12,065 enganche pagado, subscripcion activa pero inventario_moto_id NULL). El mensaje de error ahora incluye diagnóstico (pago_estado, cliente_id, credit_family flag).'
+    ),
+
     // ── Round 99 (2026-05-26) — Propagate contrato_pdf_path to all credit-family rows ──
     'r99_retro_propagate_pdf_path' => _checkFile(
         $base . '/clientes/php/firmar-contrato-retro-guardar.php',
