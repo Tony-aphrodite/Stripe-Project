@@ -879,6 +879,50 @@ window.AD_inventario = (function(){
         html += '<a class="ad-btn sm ghost" href="/admin/php/checklists/herramienta-firma-acta.php" target="_blank" rel="noopener" '+
                 'style="text-decoration:none;">📝 Solicitar firma al cliente</a>';
       }
+      // Round 83 — Regenerate button. Shown when the ACTA is signed but
+      // the cincel status is "autograph_pending" (i.e., the PDF was
+      // generated blank and the signature image wasn't embedded). Also
+      // safe to run on any signed ACTA — it just rebuilds the PDF from
+      // the latest signature in firmas_contratos.
+      if (actaSigned) {
+        var needsRegen = (m.cincel_acta_status === 'autograph_pending' || !hasHash);
+        var regenLabel = needsRegen ? '⚙ Regenerar ACTA con firma' : '⚙ Regenerar';
+        var regenColor = needsRegen ? 'background:#d97706;color:#fff;border-color:#d97706;' : '';
+        var regenId = 'adRegenActa-' + m.id;
+        html += '<button class="ad-btn sm" id="'+regenId+'" data-moto="'+m.id+'" '+
+                'style="'+regenColor+'">'+regenLabel+'</button>';
+        html += '<span id="'+regenId+'-status" style="font-size:11.5px;color:#475569;margin-left:8px;align-self:center;"></span>';
+        setTimeout(function(){
+          var btn = document.getElementById(regenId);
+          var status = document.getElementById(regenId + '-status');
+          if (!btn) return;
+          btn.addEventListener('click', function(){
+            if (!confirm('¿Regenerar ACTA con la firma del cliente embebida y aplicar sello NOM-151?\n\nEsto reemplaza el PDF actual del ACTA. La firma se toma de firmas_contratos para este cliente.')) return;
+            btn.disabled = true;
+            status.textContent = '⏳ Regenerando…';
+            status.style.color = '#1e40af';
+            ADApp.api('inventario/regenerar-acta.php', { moto_id: parseInt(btn.dataset.moto, 10) })
+              .done(function(r){
+                if (r && r.ok) {
+                  status.textContent = '✓ ' + (r.message || 'Regenerado');
+                  status.style.color = '#15803d';
+                  setTimeout(function(){ showDetail(m.id); }, 800);
+                } else {
+                  status.textContent = '⚠ ' + ((r && r.message) || 'Falló la regeneración');
+                  status.style.color = '#b91c1c';
+                  btn.disabled = false;
+                }
+              })
+              .fail(function(xhr){
+                var msg = 'Error de red';
+                try { msg = (JSON.parse(xhr.responseText).message) || msg; } catch (e) {}
+                status.textContent = '✗ ' + msg;
+                status.style.color = '#b91c1c';
+                btn.disabled = false;
+              });
+          });
+        }, 0);
+      }
       html += '</div>';
       html += '</div>';
 

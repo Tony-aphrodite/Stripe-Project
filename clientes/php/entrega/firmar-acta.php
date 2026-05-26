@@ -59,25 +59,59 @@ try {
         WHERE id = ?")
         ->execute([$firma, $_SERVER['REMOTE_ADDR'] ?? null, $motoId]);
 
-    // Round 73 (2026-05-24) — Apply Cincel NOM-151 timestamp to the ACTA PDF.
-    // cincel-firma-acta.php saved the PDF disk path on inventario_motos when it
-    // generated the document; we look it up now and stamp it. The stamp is
-    // idempotent by hash, so even if a customer somehow re-signs we don't
-    // double-charge a Cincel c.Doc credit.
+    // Round 83 (2026-05-26) — REGENERATE the ACTA PDF with the signature
+    // image embedded, then apply Cincel NOM-151 timestamp on the NEW hash.
     //
-    // The whole try/catch is non-fatal: if Cincel is down or the PDF path is
-    // missing, the ACTA is still marked as signed (we already updated the
-    // row above) — the timestamp is added best-effort.
+    // Before Round 83, this path only saved the signature flag and applied
+    // the NOM-151 stamp to the OLD blank PDF that cincel-firma-acta.php
+    // had generated BEFORE the customer signed. Result: the saved PDF
+    // never contained the customer's actual signature image. The signed
+    // ACTA looked legal in DB (cliente_acta_firmada=1) but the document
+    // itself had a blank signature line. Inconsistent with the standalone
+    // Round 80 path which DID embed the signature.
+    //
+    // Round 83 fix: use the shared generarActaPdf() helper to regenerate
+    // the PDF WITH the signature embedded, then stamp the new PDF hash
+    // via Cincel. Now both signing paths (Round 73 SPA + Round 80 standalone)
+    // produce IDENTICAL signed PDFs.
     $tsHashOut = null;
+    $newPdfPath = null;
     try {
-        $pathRow = $pdo->prepare("SELECT cincel_acta_pdf_path FROM inventario_motos WHERE id = ? LIMIT 1");
-        $pathRow->execute([$motoId]);
-        $actaPdfPath = (string)($pathRow->fetchColumn() ?: '');
-        if ($actaPdfPath !== '' && is_file($actaPdfPath)) {
+        // Reload the moto row in full — we need cliente_*, modelo, color,
+        // pedido_num, punto_voltika_id, etc. for the regen.
+        $mRow = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? LIMIT 1");
+        $mRow->execute([$motoId]);
+        $motoFull = $mRow->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        if ($motoFull && is_string($signatureData) && strpos($signatureData, 'data:image') === 0) {
+            require_once __DIR__ . '/../acta-pdf-generator.php';
+            $clientIp = $_SERVER['REMOTE_ADDR'] ?? null;
+            $newPdfPath = generarActaPdf($pdo, $motoFull, $signatureData, $clientIp);
+            if ($newPdfPath) {
+                // Persist the new path so Round 82 viewer and future stamps
+                // reference the SIGNED PDF, not the old blank one.
+                try { $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN cincel_acta_pdf_path VARCHAR(600) NULL"); } catch (Throwable $e) {}
+                try {
+                    $pdo->prepare("UPDATE inventario_motos
+                        SET cincel_acta_pdf_path = ?
+                        WHERE id = ?")
+                        ->execute([$newPdfPath, $motoId]);
+                } catch (Throwable $e) { error_log('firmar-acta persist new pdf path: ' . $e->getMessage()); }
+            }
+        }
+
+        // Fall back to the existing PDF path if regen didn't run (no sig data, etc.)
+        if (!$newPdfPath) {
+            $pathRow = $pdo->prepare("SELECT cincel_acta_pdf_path FROM inventario_motos WHERE id = ? LIMIT 1");
+            $pathRow->execute([$motoId]);
+            $newPdfPath = (string)($pathRow->fetchColumn() ?: '');
+        }
+
+        if ($newPdfPath && is_file($newPdfPath)) {
             require_once __DIR__ . '/../../../configurador/php/cincel-timestamp.php';
-            $ts = cincelGetOrCreateTimestamp($actaPdfPath);
+            $ts = cincelGetOrCreateTimestamp($newPdfPath);
             if (!empty($ts['ok'])) {
-                cincelSaveTimestamp($pdo, $ts, null, $actaPdfPath);
+                cincelSaveTimestamp($pdo, $ts, null, $newPdfPath);
                 $tsHashOut = $ts['hash'] ?? null;
                 try { $pdo->exec("ALTER TABLE inventario_motos ADD COLUMN cincel_acta_timestamp_hash CHAR(64) NULL"); } catch (Throwable $e) {}
                 if ($tsHashOut) {
@@ -94,8 +128,8 @@ try {
             }
         }
     } catch (Throwable $e) {
-        // Never block delivery confirmation if Cincel has an outage.
-        error_log('firmar-acta cincel timestamp exception: ' . $e->getMessage());
+        // Never block delivery confirmation if regen or Cincel fails.
+        error_log('firmar-acta regen+stamp exception: ' . $e->getMessage());
     }
 
     // Log

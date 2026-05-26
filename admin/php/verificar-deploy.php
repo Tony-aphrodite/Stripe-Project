@@ -245,6 +245,23 @@ $checks = [
         'Round 82 — admin/js/modules/admin-inventario.js: en el detalle del moto aparece ahora una sección "ACTA DE ENTREGA" con el estado (✓ Firmada o ⏳ Pendiente), fecha, firma, hash NOM-151, y un botón "📄 Ver ACTA PDF" que abre el PDF en una pestaña nueva vía /admin/php/inventario/view-acta.php?moto_id=N. Si no está firmada, también muestra botón "Solicitar firma al cliente" (Round 80).'
     ),
 
+    // ── Round 83 (2026-05-26) — Real fix: regenerate PDF with signature ──
+    'r83_acta_pdf_generator' => _checkFile(
+        $base . '/clientes/php/acta-pdf-generator.php',
+        'Round 83, 2026-05-26',
+        'Round 83 — clientes/php/acta-pdf-generator.php: helper compartido generarActaPdf($pdo, $moto, $sigDataUrl, $ip). Construye el PDF de ACTA con FPDF, EMBEBE la imagen de la firma (PNG base64) en el espacio entre el nombre y la línea, y aplica voltikaActaSanitizeFullName() para deduplicar nombres como "Adrian Montoya Diaz Montoya Diaz". Usado por firmar-acta.php (SPA), firmar-acta-directa-guardar.php (Round 80) y regenerar-acta.php (admin).'
+    ),
+    'r83_firmar_acta_regen' => _checkFile(
+        $base . '/clientes/php/entrega/firmar-acta.php',
+        'Round 83 (2026-05-26)',
+        'Round 83 — clientes/php/entrega/firmar-acta.php: después de guardar la firma, ahora llama generarActaPdf() para REGENERAR el PDF del ACTA con la firma embebida (antes solo guardaba el flag cliente_acta_firmada=1 sin tocar el PDF). El nuevo path se persiste y se sella con NOM-151. Corrige el bug donde el PDF mostraba línea de firma vacía aunque cliente_acta_firmada=1.'
+    ),
+    'r83_regenerar_acta_endpoint' => _checkFile(
+        $base . '/admin/php/inventario/regenerar-acta.php',
+        'Round 83, 2026-05-26',
+        'Round 83 — admin/php/inventario/regenerar-acta.php: endpoint admin que regenera el ACTA PDF de cualquier moto, tomando la firma más reciente desde firmas_contratos (matched por email/teléfono). Aplica NOM-151 sobre el nuevo hash y actualiza inventario_motos.cincel_acta_pdf_path + cincel_acta_status. Fixea retroactivamente ACTAs con autograph_pending status (caso Adrian Montoya).'
+    ),
+
     // ── Round 78 (2026-05-25) — Estado vs checklist consistency banner ──
     'r78_estado_inconsistencia_banner' => _checkFile(
         $base . '/admin/js/modules/admin-inventario.js',
