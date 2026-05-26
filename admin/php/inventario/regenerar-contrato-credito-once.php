@@ -70,12 +70,15 @@ foreach ([
     try { $pdo->exec("ALTER TABLE transacciones ADD COLUMN $col $def"); } catch (Throwable $e) {}
 }
 
-$action = (string)($_GET['action'] ?? $_POST['action'] ?? 'list');
-$pedido = trim((string)($_GET['pedido'] ?? $_POST['pedido'] ?? ''));
-// Round 90 (2026-05-26) — also accept tx_id (transacciones.id) so rows
-// with empty/null pedido (some legacy webhook paths never set it) can
-// still be processed via the Preview button.
-$txId   = (int)($_GET['tx_id'] ?? $_POST['tx_id'] ?? 0);
+// Round 90 v3 (2026-05-26) — POST must override GET for $action. When the
+// preview form POSTs back to the same URL, the URL still carries
+// ?action=preview, so the old GET-first precedence made $action='preview'
+// even though the form's hidden input set action='apply'. The apply
+// branch never ran and the preview page re-rendered. Symptoms:
+// "Regenerar contrato" button looked like a no-op.
+$action = (string)($_POST['action'] ?? $_GET['action'] ?? 'list');
+$pedido = trim((string)($_POST['pedido'] ?? $_GET['pedido'] ?? ''));
+$txId   = (int)($_POST['tx_id'] ?? $_GET['tx_id'] ?? 0);
 
 // ──────────────────────────────────────────────────────────────────────────
 // Render helpers
