@@ -57,6 +57,21 @@ window.VK_pagos = (function(){
     var prox = e.proximo_pago||{};
     var fechaProx = prox.fecha_vencimiento||'';
 
+    // Round 91 (2026-05-26) — Render a CONTADO-specific view when the
+    // active compra was a 100% upfront payment. The old code blindly
+    // showed the credit progress UI ("Pagado a la fecha $0", "0 de 0 pagos",
+    // "Avance de tu crédito 0%") for contado customers, which is wrong:
+    // they have ALREADY paid in full and have no payment schedule. Caso
+    // Adrian Montoya (TX-Stripe contado for M05 $48,260): his Mis Pagos
+    // tab showed all zeros — confusing because his payment is complete.
+    var active   = VKApp.state.activeCompra || {};
+    var tipoPortal = e.tipo_portal || active.tipo || '';
+    var isContado  = (tipoPortal === 'contado' || tipoPortal === 'msi') && tipoPortal !== 'credito';
+    if (isContado) {
+        paintContado(h, e);
+        return;
+    }
+
     var pagado = Number(h.pagado_a_la_fecha||0);
     var realizados = h.pagos_realizados||0;
     var restantes = h.pagos_restantes||0;
@@ -177,5 +192,95 @@ window.VK_pagos = (function(){
       window.open('php/documentos/descargar.php?tipo=comprobantes' + extra, '_blank');
     });
   }
+
+  // Round 91 (2026-05-26) — Contado view: render a "paid in full" summary
+  // instead of the credit-progress UI. Shows the total amount, payment
+  // method, and a single-row history of the upfront transaction.
+  function paintContado(h, e){
+    var compra = e.compra || {};
+    var total      = Number(compra.total || h.pagado_a_la_fecha || 0);
+    var modelo     = compra.modelo || '';
+    var color      = compra.color || '';
+    var pagoEstado = (compra.pago_estado || '').toLowerCase();
+    var metodo     = compra.metodo_label || (compra.tpago || 'Contado').toUpperCase();
+    var last4      = compra.metodo_last4 ? (' •••• ' + compra.metodo_last4) : '';
+    var fechaCompra = compra.fecha ? formatFechaLarga(String(compra.fecha).substring(0,10)) : '—';
+    var isPaid     = (pagoEstado === 'pagada' || pagoEstado === 'aprobada' || pagoEstado === 'paid' || pagoEstado === 'approved');
+    var msiMeses   = compra.msi_meses ? Number(compra.msi_meses) : 0;
+    var msiLabel   = msiMeses > 0 ? (' · ' + msiMeses + ' MSI') : '';
+
+    var statusCard = isPaid
+      ? '<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:14px 16px;color:#166534;margin-bottom:14px;">'+
+          '<div style="display:flex;align-items:center;gap:10px;">'+
+            '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#16a34a" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>'+
+            '<strong style="font-size:15px;">✓ Pagado al 100%</strong>'+
+          '</div>'+
+          '<div style="font-size:13px;margin-top:4px;">Tu compra de contado ya está completamente liquidada. No tienes pagos pendientes.</div>'+
+        '</div>'
+      : '<div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:10px;padding:14px 16px;color:#92400e;margin-bottom:14px;">'+
+          '<strong>⏳ Pago en proceso</strong><div style="font-size:13px;margin-top:4px;">Tu pago de contado está siendo procesado. Esto puede tardar unos minutos.</div>'+
+        '</div>';
+
+    var amountHtml = '$' + total.toLocaleString('es-MX', {minimumFractionDigits:2});
+
+    VKApp.render(
+      '<div class="vk-h1">Mis pagos</div>'+
+      '<div class="vk-muted" style="margin-bottom:14px">Resumen de tu compra de contado.</div>'+
+
+      statusCard +
+
+      '<div class="vk-card">'+
+        '<div class="vk-h2" style="margin:0 0 14px;">Detalle de tu compra</div>'+
+        '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;">'+
+          '<span style="color:#64748b;">Modelo</span>'+
+          '<strong>'+esc(modelo)+(color ? ' · '+esc(color) : '')+'</strong>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;">'+
+          '<span style="color:#64748b;">Monto total</span>'+
+          '<strong style="color:#0c2340;font-size:18px;">'+amountHtml+' MXN</strong>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;">'+
+          '<span style="color:#64748b;">Método de pago</span>'+
+          '<span>'+esc(metodo)+esc(last4)+esc(msiLabel)+'</span>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:space-between;padding:8px 0;">'+
+          '<span style="color:#64748b;">Fecha de pago</span>'+
+          '<span>'+fechaCompra+'</span>'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="vk-card">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;">'+
+          '<div class="vk-h2" style="margin:0">Historial de pagos</div>'+
+          '<a class="vk-link vk-descargar-link" style="cursor:pointer">Descargar <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle"><path d="M8 3v8M5 8l3 3 3-3"/><path d="M3 13h10"/></svg></a>'+
+        '</div>'+
+        '<div class="vk-hist-list">'+
+          '<div class="vk-hist-row">'+
+            '<div class="vk-hist-left">'+
+              (isPaid ? '<span class="vk-hist-dot pagado"></span>' : '<span class="vk-hist-dot pendiente"></span>')+
+              '<div>'+
+                '<div class="vk-hist-fecha">'+fechaCompra+'</div>'+
+                '<div class="vk-hist-sub">Pago único '+esc(msiLabel ? '('+msiMeses+' MSI)' : 'de contado')+'</div>'+
+              '</div>'+
+            '</div>'+
+            '<div class="vk-hist-right">'+
+              '<div class="vk-hist-monto">'+amountHtml+'</div>'+
+              (isPaid
+                ? '<span class="vk-estado-badge pagado">Pagado</span>'
+                : '<span class="vk-estado-badge pendiente">Pendiente</span>')+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'
+    );
+
+    $('.vk-descargar-link').on('click', function(ev){
+      ev.preventDefault();
+      window.open('php/documentos/descargar.php?tipo=comprobantes', '_blank');
+    });
+  }
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
   return { render:render };
 })();

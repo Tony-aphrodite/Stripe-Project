@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 91 (2026-05-26) — Contado view for Mis Pagos ──
+    'r91_pagos_contado_view' => _checkFile(
+        $base . '/clientes/js/modules/pagos.js',
+        'Round 91 (2026-05-26)',
+        'Round 91 — clientes/js/modules/pagos.js: cuando la compra activa es CONTADO/MSI (no crédito), Mis Pagos renderiza una vista distinta: tarjeta verde "✓ Pagado al 100%", detalle de la transacción (modelo, monto, método de pago, fecha), e historial con UNA sola fila marcada Pagado. Antes mostraba el UI de crédito ("Pagado a la fecha $0", "0 de 0 pagos", "Avance 0%") porque pintaba el progreso semanal sin importar el tipo de compra — confuso para clientes contado como Adrian Montoya ($48,260 pagado en Stripe pero la pantalla decía $0).'
+    ),
+
     // ── Round 89 (2026-05-26) — Library-mode guard on generar-contrato-pdf ──
     'r89_pdf_library_mode_guard' => _checkFile(
         $base . '/configurador/php/generar-contrato-pdf.php',
