@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 97 (2026-05-26) — Admin viewer for PAGARÉ list ──
+    'r97_view_pagares' => _checkFile(
+        $base . '/admin/php/inventario/view-pagares.php',
+        'Round 97 (2026-05-26)',
+        'Round 97 — admin/php/inventario/view-pagares.php: lista todos los PAGARÉs generados (checklist_entrega_v2.pagare_pdf_path IS NOT NULL) con moto, cliente, hash PDF, estado del sello Cincel NOM-151, y botón "Ver PDF" que abre el archivo inline. Marca visualmente cuáles tienen sello Cincel (Round 96+) y cuáles son legacy (sin sello). Customer brief Óscar: "Can you share me the screen of the PAGARE?".'
+    ),
+
     // ── Round 96 (2026-05-26) — Apply Cincel NOM-151 to PAGARÉ ──
     'r96_pagare_cincel_timestamp' => _checkFile(
         $base . '/admin/php/checklists/generar-pagare.php',
