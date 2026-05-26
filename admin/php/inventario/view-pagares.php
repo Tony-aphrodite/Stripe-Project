@@ -18,6 +18,17 @@ require_once __DIR__ . '/../bootstrap.php';
 adminRequireAuth(['admin', 'cedis']);
 
 $pdo = getDB();
+
+// Ensure forensic columns exist (idempotent). Same columns generar-pagare.php
+// creates on demand — but if no pagaré has been generated since Round 96
+// deployed, the SELECT below would fail with "Unknown column".
+foreach ([
+    'cincel_pagare_timestamp_hash' => "CHAR(64) NULL",
+    'cincel_pagare_status'         => "VARCHAR(40) NULL",
+] as $col => $def) {
+    try { $pdo->exec("ALTER TABLE checklist_entrega_v2 ADD COLUMN $col $def"); } catch (Throwable $e) {}
+}
+
 $serveFile = (string)($_GET['f'] ?? '');
 
 // ──────────────────────────────────────────────────────────────────────────
