@@ -237,15 +237,25 @@ var PasoCreditoIdentidad = {
                          'contáctanos y revisaremos tu caso manualmente.';
                 break;
             default:
-                // Anything else from Truora (liveness, document tampering,
-                // inconsistent face, blacklist hit, etc.) → manual review.
-                msg = 'Tu verificación necesita revisión manual.';
-                detail = 'Detectamos información que requiere validación adicional por parte de nuestro equipo. ' +
-                         'Nos pondremos en contacto contigo a la brevedad para completar tu solicitud. ' +
-                         'Puedes escribirnos a ventas@voltika.mx o WhatsApp +52 55 1341 6370.' +
+                // Round 98 (2026-05-26) — ROOT CAUSE FIX. The original code
+                // set opts.retry=false here, which HID the "Reintentar"
+                // button — leaving customers permanently dead-ended on the
+                // "manual review" screen even though their failure was
+                // usually recoverable (bad lighting, finger covering INE,
+                // blinking selfie, brief network blip during liveness).
+                //
+                // Most "non-CURP" Truora declines are first-attempt recoverable
+                // — the customer just needs to retake the photo. We now show
+                // the retry button so they can try again immediately without
+                // waiting for manual intervention. The manualReview flag
+                // remains so admin still gets notified for audit, but the
+                // customer is no longer trapped.
+                msg = 'No pudimos confirmar tu identidad.';
+                detail = 'Intenta de nuevo asegurándote de: (1) buena iluminación, (2) tu INE completamente visible sin reflejos, (3) tu rostro centrado en la selfie. ' +
+                         'Si el problema persiste, escríbenos a ventas@voltika.mx o WhatsApp +52 55 1341 6370 — nuestro equipo te ayuda en minutos.' +
                          (fallbackDetail ? '\n\nDetalle: ' + fallbackDetail : '');
-                opts.retry = false;
-                opts.manualReview = true;
+                opts.retry = true;        // ← was false; this is the fix
+                opts.manualReview = true; // keep flag for admin notification
         }
         return { msg: msg, detail: detail, opts: opts };
     },

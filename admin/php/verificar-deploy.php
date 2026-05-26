@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 98 (2026-05-26) — Truora manual review dead-end fix ──
+    'r98_truora_retry_on_manual_review' => _checkFile(
+        $base . '/configurador/js/modules/paso-credito-identidad.js',
+        'Round 98 (2026-05-26)',
+        'Round 98 — configurador/js/modules/paso-credito-identidad.js: ROOT CAUSE FIX para el "Truora loop". El default case de _mapDeclinedReason ponía opts.retry=false que OCULTABA el botón "Reintentar", dejando al cliente atrapado en la pantalla de "revisión manual" sin opción de recuperar. La mayoría de los rechazos no-CURP (liveness, foto borrosa, dedo cubriendo INE) son recuperables en el segundo intento. Ahora se muestra el botón Reintentar — el botón ya estaba completamente cableado (líneas 156-177): reset state + fetch nuevo token + nuevo account_id + intento limpio. Mantiene opts.manualReview=true para que admin reciba notificación.'
+    ),
+
     // ── Round 97 (2026-05-26) — Admin viewer for PAGARÉ list ──
     'r97_view_pagares' => _checkFile(
         $base . '/admin/php/inventario/view-pagares.php',
