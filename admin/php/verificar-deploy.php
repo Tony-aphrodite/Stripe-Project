@@ -129,6 +129,23 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 99 (2026-05-26) — Propagate contrato_pdf_path to all credit-family rows ──
+    'r99_retro_propagate_pdf_path' => _checkFile(
+        $base . '/clientes/php/firmar-contrato-retro-guardar.php',
+        'Round 99 (2026-05-26)',
+        'Round 99 — clientes/php/firmar-contrato-retro-guardar.php: tras actualizar el txn_id del token, también propaga contrato_pdf_path/hash a TODAS las demás filas credit-family del MISMO cliente que aún tienen el campo vacío. Antes la firma se persistía solo en una fila → admin Ventas mostraba "Falta firma" para las filas hermanas. Caso típico: cliente con múltiples filas (retries Stripe, OXXO refs, splits de enganche).'
+    ),
+    'r99_generar_propagate_pdf_path' => _checkFile(
+        $base . '/configurador/php/generar-contrato-pdf.php',
+        'Round 99 (2026-05-26)',
+        'Round 99 — configurador/php/generar-contrato-pdf.php: removida la cláusula LIMIT 1 del UPDATE de contrato_pdf_path. Ahora actualiza TODAS las filas credit-family del cliente que tengan el campo vacío. Misma corrección que firmar-contrato-retro-guardar.php — alinea la vista de admin Ventas con el portal del cliente.'
+    ),
+    'r99_backfill_firma_pdf' => _checkFile(
+        $base . '/admin/php/ventas/backfill-firma-pdf.php',
+        'Round 99 (2026-05-26)',
+        'Round 99 — admin/php/ventas/backfill-firma-pdf.php: herramienta 1-shot para arreglar clientes YA atorados con el bug. Encuentra todas las transacciones credit-family donde existe firma (firmas_contratos por email/teléfono) pero contrato_pdf_path está vacío. Modo preview por default, requiere click "Aplicar backfill" para commit.'
+    ),
+
     // ── Round 98 (2026-05-26) — Truora manual review dead-end fix ──
     'r98_truora_retry_on_manual_review' => _checkFile(
         $base . '/configurador/js/modules/paso-credito-identidad.js',

@@ -113,9 +113,14 @@ try {
                 if (!$cols) $pdoTx->exec("ALTER TABLE transacciones ADD COLUMN contrato_pdf_hash CHAR(64) NULL");
             } catch (Throwable $e) { /* non-fatal */ }
 
-            // Target the most-recent credit-family transaction for this
-            // customer. Limit to credit tpago so the contado flow keeps
-            // using its own update path in confirmar-orden.php.
+            // Round 99 (2026-05-26) — Update ALL credit-family rows for this
+            // customer, not just the most-recent one. Credit customers often
+            // have multiple transacciones rows (Stripe retries, OXXO refs,
+            // enganche splits). Previous LIMIT 1 left siblings without
+            // contrato_pdf_path → admin Ventas wrongly showed "Falta firma"
+            // even though the customer had signed. By propagating to all
+            // credit-family rows that lack the path, the admin and customer
+            // portal views stay consistent.
             $upd = $pdoTx->prepare(
                 "UPDATE transacciones
                     SET contrato_pdf_path = ?, contrato_pdf_hash = ?
@@ -124,7 +129,7 @@ try {
                      OR (LENGTH(?) > 0 AND telefono = ?)
                   )
                     AND tpago IN ('credito','enganche','parcial','credito-orfano')
-                  ORDER BY id DESC LIMIT 1"
+                    AND (contrato_pdf_path IS NULL OR contrato_pdf_path = '')"
             );
             $upd->execute([$relPath, $pdfHash, $emailKey, $emailKey, $telKey, $telKey]);
 

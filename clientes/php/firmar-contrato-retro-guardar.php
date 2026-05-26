@@ -245,20 +245,47 @@ try {
 
     // ─────────────────────────────────────────────────────────────────────
     // Update transacciones with new path / hash / timestamp
+    // Round 99 (2026-05-26) — Propagate the pdf_path to ALL credit-family
+    // rows for the same customer, not just the txn_id from the token.
+    // Customer brief Óscar: admin Ventas showed "Pagado · Falta firma" for
+    // customers who had already signed because there are typically MULTIPLE
+    // transacciones rows per credit customer (one per Stripe retry, OXXO
+    // reference, enganche split, etc.). The single-row UPDATE landed on the
+    // wrong one. Now we update ALL credit-family rows by email/telefono so
+    // the customer-facing portal AND the admin Ventas list both see the
+    // signature consistently.
     // ─────────────────────────────────────────────────────────────────────
     try {
         $cols = ["contrato_pdf_path = ?", "contrato_pdf_hash = ?"];
         $args = [$relPath, $newPdfHash];
-        // cincel_timestamp_hash column may not exist on older schemas; the
-        // cincel-timestamp module already added it idempotently above when
-        // it ran cincelEnsureSchema(), so the UPDATE should be safe.
         if ($tsHash) {
             $cols[] = "cincel_timestamp_hash = ?";
             $args[] = $tsHash;
         }
-        $args[] = $txnId;
+        // 1) Always update the specific txn_id from the token (canonical).
+        $argsId = $args; $argsId[] = $txnId;
         $pdo->prepare("UPDATE transacciones SET " . implode(', ', $cols) . " WHERE id = ?")
-            ->execute($args);
+            ->execute($argsId);
+
+        // 2) Propagate to other credit-family rows of the SAME customer that
+        // are missing the path. This catches sibling rows from retries.
+        $emailKey = trim((string)($tx['email'] ?? ''));
+        $telKey   = trim((string)($tx['telefono'] ?? ''));
+        if ($emailKey !== '' || $telKey !== '') {
+            $argsSib = $args;
+            $argsSib[] = $emailKey; $argsSib[] = $emailKey;
+            $argsSib[] = $telKey;   $argsSib[] = $telKey;
+            $argsSib[] = $txnId; // exclude the row already updated above
+            $pdo->prepare("UPDATE transacciones SET " . implode(', ', $cols) . "
+                WHERE (
+                      (LENGTH(?) > 0 AND email    = ?)
+                   OR (LENGTH(?) > 0 AND telefono = ?)
+                )
+                AND tpago IN ('credito','enganche','parcial','credito-orfano')
+                AND id <> ?
+                AND (contrato_pdf_path IS NULL OR contrato_pdf_path = '')")
+                ->execute($argsSib);
+        }
     } catch (Throwable $e) {
         error_log('firmar-contrato-retro: tx update: ' . $e->getMessage());
     }
