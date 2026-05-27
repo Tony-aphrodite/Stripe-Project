@@ -100,39 +100,115 @@ if (!empty($moto['cliente_id'])) {
 }
 
 // ── 3. Build data for PDF ───────────────────────────────────────────────
-$nombreCompleto = $moto['cliente_nombre'] ?? '';
-if ($cliente) {
-    $parts = array_filter([$cliente['nombre'] ?? '', $cliente['apellido_paterno'] ?? '', $cliente['apellido_materno'] ?? '']);
-    if ($parts) $nombreCompleto = implode(' ', $parts);
+// Load canonical name sanitizer if available (Round 83 v2 pattern)
+$_ccPath = __DIR__ . '/../../../configurador/php/contrato-contado.php';
+if (is_file($_ccPath) && !function_exists('contratoContadoSanitizeFullName')) {
+    @require_once $_ccPath;
 }
 
-$curp = $cliente['curp'] ?? '';
-$domicilio = $cliente['domicilio'] ?? ($trans['domicilio'] ?? '');
-$telCliente = $moto['cliente_telefono'] ?? ($cliente['telefono'] ?? '');
+$curp = (string)($cliente['curp'] ?? '');
+$domicilio = (string)($cliente['domicilio'] ?? ($trans['domicilio'] ?? ''));
+$telCliente = (string)($moto['cliente_telefono'] ?? ($cliente['telefono'] ?? ''));
 
-$montoTotal = 0;
+// Round 110 (2026-05-27) — Fix PAGARÉ amount calculation. Before this fix:
+// - Amount used transacciones.total which is the ENGANCHE (already paid)
+// - For Carlos: showed $12,065 (enganche) instead of the REMAINING debt
+// - Name only showed first name from clientes.nombre
+// - CURP/domicilio empty because clientes table is sparse
+//
+// The PAGARÉ amount MUST be the SALDO PENDIENTE (what the customer still
+// owes after the enganche) — that's the legal obligation the pagaré secures.
+// Source of truth: subscripciones_credito.monto_semanal * weeks.
+//
+// Catalog prices for computing precioContado when not in DB:
+$catalogo = [
+    'M05' => 48260, 'M03' => 39900, 'Ukko S+' => 89900,
+    'MC10 Streetx' => 109900, 'MC10' => 109900,
+    'Pesgo Plus' => 36600, 'Mino-B' => 41820, 'mino B' => 41820,
+];
+
+$precioContado = floatval($moto['precio_venta'] ?? 0);
+if (!$precioContado) {
+    $modelo = (string)($moto['modelo'] ?? '');
+    $precioContado = $catalogo[$modelo] ?? 0;
+    if (!$precioContado) {
+        foreach ($catalogo as $k => $v) {
+            if (stripos($modelo, $k) !== false) { $precioContado = $v; break; }
+        }
+    }
+}
+
 $enganche = 0;
 $pagoSemanal = 0;
 $numPagos = 0;
 $montoFinanciado = 0;
+$plazoMeses = 36;
 
+// For credit customers, transacciones.total IS the enganche (not the bike price)
 if ($trans) {
-    $montoTotal = floatval($trans['total'] ?? $trans['precio'] ?? 0);
-}
-if ($credito) {
-    $enganche = floatval($credito['enganche'] ?? 0);
-    $pagoSemanal = floatval($credito['pago_semanal'] ?? 0);
-    $plazoMeses = intval($credito['plazo_meses'] ?? 36);
-    $numPagos = round($plazoMeses * 4.33);
-    $montoFinanciado = floatval($credito['monto_financiado'] ?? ($montoTotal - $enganche));
-}
-if (!$montoTotal && $moto['precio_venta']) {
-    $montoTotal = floatval($moto['precio_venta']);
+    $enganche = floatval($trans['total'] ?? $trans['precio'] ?? 0);
 }
 
-// "Pago total a plazos" = enganche + (pago semanal × num pagos)
-$pagoTotalPlazos = $enganche + ($pagoSemanal * $numPagos);
-if (!$pagoTotalPlazos && $montoTotal) $pagoTotalPlazos = $montoTotal;
+if ($credito) {
+    // Use subscription data for payment schedule (source of truth for billing)
+    $pagoSemanal = floatval($credito['monto_semanal'] ?? 0);
+    $plazoMeses  = intval($credito['plazo_meses'] ?? 36);
+    $plazoSem    = intval($credito['plazo_semanas'] ?? 0);
+    $numPagos    = $plazoSem > 0 ? $plazoSem : (int)round($plazoMeses * 4.33);
+    // Override enganche from sub if available
+    if (!empty($credito['enganche'])) $enganche = floatval($credito['enganche']);
+    $montoFinanciado = floatval($credito['monto_financiado'] ?? 0);
+    if (!$montoFinanciado && $precioContado > 0) {
+        $montoFinanciado = $precioContado - $enganche;
+    }
+}
+
+// PAGARÉ amount = SALDO PENDIENTE (what customer still owes, excluding already-paid enganche)
+// This is the sum of all future weekly payments = pagoSemanal × numPagos
+$saldoPendiente = $pagoSemanal > 0 && $numPagos > 0
+    ? round($pagoSemanal * $numPagos, 2)
+    : ($montoFinanciado > 0 ? $montoFinanciado : ($precioContado - $enganche));
+// Never let the PAGARÉ amount be the enganche itself (that's already paid!)
+if ($saldoPendiente <= 0 && $precioContado > 0) $saldoPendiente = $precioContado - $enganche;
+$pagoTotalPlazos = $saldoPendiente;
+
+// Full customer name — use inventario_motos.cliente_nombre as primary (most reliable),
+// fall back to clientes table joined name.
+if (function_exists('contratoContadoSanitizeFullName')) {
+    $nombreCompleto = contratoContadoSanitizeFullName(
+        (string)($moto['cliente_nombre'] ?? $cliente['nombre'] ?? ''),
+        (string)($cliente['apellido_paterno'] ?? ''),
+        (string)($cliente['apellido_materno'] ?? '')
+    );
+} else {
+    $nombreCompleto = (string)($moto['cliente_nombre'] ?? '');
+    if ($cliente) {
+        $parts = array_filter([$cliente['nombre'] ?? '', $cliente['apellido_paterno'] ?? '', $cliente['apellido_materno'] ?? '']);
+        if ($parts) $nombreCompleto = implode(' ', $parts);
+    }
+}
+if ($nombreCompleto === '') $nombreCompleto = (string)($moto['cliente_nombre'] ?? 'Cliente');
+
+// CURP — try clientes, then verificaciones_identidad
+if (!$curp && !empty($moto['cliente_email'])) {
+    try {
+        $vq = $pdo->prepare("SELECT expected_curp, verified_curp FROM verificaciones_identidad
+            WHERE (email = ? OR telefono = ?) AND (expected_curp IS NOT NULL OR verified_curp IS NOT NULL)
+            ORDER BY id DESC LIMIT 1");
+        $vq->execute([$moto['cliente_email'], $moto['cliente_telefono'] ?? '']);
+        $vc = $vq->fetch(PDO::FETCH_ASSOC) ?: [];
+        $curp = (string)($vc['verified_curp'] ?: $vc['expected_curp'] ?: '');
+    } catch (Throwable $e) {}
+}
+
+// Domicilio — try transacciones ciudad+estado+cp
+if (!$domicilio && $trans) {
+    $parts = array_filter([
+        $trans['ciudad'] ?? '', $trans['estado'] ?? '',
+        !empty($trans['cp']) ? ('C.P. ' . $trans['cp']) : '',
+    ]);
+    if ($parts) $domicilio = implode(', ', $parts);
+}
 
 $montoLetra = numberToSpanishWords($pagoTotalPlazos);
 $montoNum = '$' . number_format($pagoTotalPlazos, 2) . ' MXN';
