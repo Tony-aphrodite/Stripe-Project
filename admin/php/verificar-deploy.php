@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 108 (2026-05-27) — PAGARÉ diagnostic + per-gap fix ──
+    'r108_pagare_diag_fix' => _checkFile(
+        $base . '/admin/php/inventario/pagare-diag-fix.php',
+        'Round 108 (2026-05-27)',
+        'Round 108 — admin/php/inventario/pagare-diag-fix.php: herramienta que muestra TODA la evidencia de firma de un cliente — firmas_contratos rows, checklist_entrega_v2.firma_pagare_data + pagare_pdf_path, y archivos PDF en disco. Identifica exactamente dónde está el gap (firma existe pero PDF no generado, o PDF existe pero no linkeado) y ofrece el botón de fix correspondiente. Resuelve casos donde "el cliente firmó pero no se ve nada".'
+    ),
+
     // ── Round 107 (2026-05-27) — On-demand ciclo generation tool ──
     'r107_generar_ciclos_ahora' => _checkFile(
         $base . '/admin/php/inventario/generar-ciclos-ahora.php',
