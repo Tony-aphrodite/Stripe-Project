@@ -173,7 +173,7 @@ $pagoTotalPlazos = $saldoPendiente;
 
 // Full customer name — use inventario_motos.cliente_nombre as primary,
 // fall back to clientes table. Simple inline dedup (no external includes).
-$nombreCompleto = (string)($moto['cliente_nombre'] ?? '');
+$nombreCompleto = trim((string)($moto['cliente_nombre'] ?? ''));
 try {
     if ($cliente) {
         $parts = array_filter([
@@ -181,10 +181,16 @@ try {
             trim((string)($cliente['apellido_paterno'] ?? '')),
             trim((string)($cliente['apellido_materno'] ?? '')),
         ], 'strlen');
-        if ($parts) $nombreCompleto = implode(' ', $parts);
+        $fromClientes = $parts ? implode(' ', $parts) : '';
+        // Only use clientes-assembled name if it's MORE complete than
+        // what inventario_motos already has. Carlos's moto has
+        // "Carlos Ricardo Sánchez" but clientes only has "Carlos".
+        if (strlen($fromClientes) > strlen($nombreCompleto)) {
+            $nombreCompleto = $fromClientes;
+        }
     }
 } catch (Throwable $e) {}
-if ($nombreCompleto === '') $nombreCompleto = (string)($moto['cliente_nombre'] ?? 'Cliente');
+if ($nombreCompleto === '') $nombreCompleto = 'Cliente';
 
 // CURP — try clientes, then verificaciones_identidad
 try {
