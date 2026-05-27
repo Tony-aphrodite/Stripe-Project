@@ -100,15 +100,14 @@ if (!empty($moto['cliente_id'])) {
 }
 
 // ── 3. Build data for PDF ───────────────────────────────────────────────
-// Load canonical name sanitizer if available (Round 83 v2 pattern)
-$_ccPath = __DIR__ . '/../../../configurador/php/contrato-contado.php';
-if (is_file($_ccPath) && !function_exists('contratoContadoSanitizeFullName')) {
-    @require_once $_ccPath;
-}
-
-$curp = (string)($cliente['curp'] ?? '');
-$domicilio = (string)($cliente['domicilio'] ?? ($trans['domicilio'] ?? ''));
-$telCliente = (string)($moto['cliente_telefono'] ?? ($cliente['telefono'] ?? ''));
+$curp = '';
+$domicilio = '';
+$telCliente = (string)($moto['cliente_telefono'] ?? '');
+try {
+    $curp = (string)($cliente['curp'] ?? '');
+    $domicilio = (string)($cliente['domicilio'] ?? ($trans['domicilio'] ?? ''));
+    if ($cliente) $telCliente = (string)($cliente['telefono'] ?? $telCliente);
+} catch (Throwable $e) {}
 
 // Round 110 (2026-05-27) — Fix PAGARÉ amount calculation. Before this fix:
 // - Amount used transacciones.total which is the ENGANCHE (already paid)
@@ -172,43 +171,47 @@ $saldoPendiente = $pagoSemanal > 0 && $numPagos > 0
 if ($saldoPendiente <= 0 && $precioContado > 0) $saldoPendiente = $precioContado - $enganche;
 $pagoTotalPlazos = $saldoPendiente;
 
-// Full customer name — use inventario_motos.cliente_nombre as primary (most reliable),
-// fall back to clientes table joined name.
-if (function_exists('contratoContadoSanitizeFullName')) {
-    $nombreCompleto = contratoContadoSanitizeFullName(
-        (string)($moto['cliente_nombre'] ?? $cliente['nombre'] ?? ''),
-        (string)($cliente['apellido_paterno'] ?? ''),
-        (string)($cliente['apellido_materno'] ?? '')
-    );
-} else {
-    $nombreCompleto = (string)($moto['cliente_nombre'] ?? '');
+// Full customer name — use inventario_motos.cliente_nombre as primary,
+// fall back to clientes table. Simple inline dedup (no external includes).
+$nombreCompleto = (string)($moto['cliente_nombre'] ?? '');
+try {
     if ($cliente) {
-        $parts = array_filter([$cliente['nombre'] ?? '', $cliente['apellido_paterno'] ?? '', $cliente['apellido_materno'] ?? '']);
+        $parts = array_filter([
+            trim((string)($cliente['nombre'] ?? '')),
+            trim((string)($cliente['apellido_paterno'] ?? '')),
+            trim((string)($cliente['apellido_materno'] ?? '')),
+        ], 'strlen');
         if ($parts) $nombreCompleto = implode(' ', $parts);
     }
-}
+} catch (Throwable $e) {}
 if ($nombreCompleto === '') $nombreCompleto = (string)($moto['cliente_nombre'] ?? 'Cliente');
 
 // CURP — try clientes, then verificaciones_identidad
-if (!$curp && !empty($moto['cliente_email'])) {
-    try {
-        $vq = $pdo->prepare("SELECT expected_curp, verified_curp FROM verificaciones_identidad
-            WHERE (email = ? OR telefono = ?) AND (expected_curp IS NOT NULL OR verified_curp IS NOT NULL)
-            ORDER BY id DESC LIMIT 1");
-        $vq->execute([$moto['cliente_email'], $moto['cliente_telefono'] ?? '']);
-        $vc = $vq->fetch(PDO::FETCH_ASSOC) ?: [];
-        $curp = (string)($vc['verified_curp'] ?: $vc['expected_curp'] ?: '');
-    } catch (Throwable $e) {}
-}
+try {
+    if (!$curp) {
+        $em = (string)($moto['cliente_email'] ?? '');
+        $tl = (string)($moto['cliente_telefono'] ?? '');
+        if ($em !== '' || $tl !== '') {
+            $vq = $pdo->prepare("SELECT expected_curp, verified_curp FROM verificaciones_identidad
+                WHERE (LENGTH(?) > 0 AND email = ?) OR (LENGTH(?) > 0 AND telefono = ?)
+                ORDER BY id DESC LIMIT 1");
+            $vq->execute([$em, $em, $tl, $tl]);
+            $vc = $vq->fetch(PDO::FETCH_ASSOC) ?: [];
+            $curp = (string)($vc['verified_curp'] ?: ($vc['expected_curp'] ?? ''));
+        }
+    }
+} catch (Throwable $e) {}
 
 // Domicilio — try transacciones ciudad+estado+cp
-if (!$domicilio && $trans) {
-    $parts = array_filter([
-        $trans['ciudad'] ?? '', $trans['estado'] ?? '',
-        !empty($trans['cp']) ? ('C.P. ' . $trans['cp']) : '',
-    ]);
-    if ($parts) $domicilio = implode(', ', $parts);
-}
+try {
+    if (!$domicilio && $trans) {
+        $parts = array_filter([
+            $trans['ciudad'] ?? '', $trans['estado'] ?? '',
+            !empty($trans['cp']) ? ('C.P. ' . $trans['cp']) : '',
+        ]);
+        if ($parts) $domicilio = implode(', ', $parts);
+    }
+} catch (Throwable $e) {}
 
 $montoLetra = numberToSpanishWords($pagoTotalPlazos);
 $montoNum = '$' . number_format($pagoTotalPlazos, 2) . ' MXN';
