@@ -83,48 +83,11 @@ $email = (string)($moto['cliente_email'] ?? '');
 $tel   = (string)($moto['cliente_telefono'] ?? '');
 
 // ── ACTIONS ───────────────────────────────────────────────────────────────
+// gen_from_firma action is now handled entirely client-side via JS fetch
+// (see generarPagareFromFirma function at the bottom of the page).
+// The old server-side curl approach returned HTTP 0 on Plesk.
 if ($action === 'gen_from_firma' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $firmaId = (int)$_POST['firma_id'];
-    try {
-        $fq = $pdo->prepare("SELECT firma_base64 FROM firmas_contratos WHERE id = ?");
-        $fq->execute([$firmaId]);
-        $firmaB64 = (string)($fq->fetchColumn() ?: '');
-        if ($firmaB64 === '') throw new RuntimeException('firma_base64 vacío en firmas_contratos id=' . $firmaId);
-        if (strpos($firmaB64, 'data:image/png;base64,') !== 0) {
-            $firmaB64 = 'data:image/png;base64,' . $firmaB64;
-        }
-        // Save signature to checklist (this is what generar-pagare uses to embed)
-        $cq = $pdo->prepare("SELECT id FROM checklist_entrega_v2 WHERE moto_id = ? ORDER BY id DESC LIMIT 1");
-        $cq->execute([$motoId]);
-        $clId = (int)($cq->fetchColumn() ?: 0);
-        if ($clId > 0) {
-            try { $pdo->prepare("UPDATE checklist_entrega_v2 SET firma_pagare_data = ? WHERE id = ?")
-                ->execute([$firmaB64, $clId]); } catch (Throwable $e) {}
-        }
-        // Call generar-pagare via internal HTTP (passes admin cookie)
-        $url = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'voltika.mx') . '/admin/php/checklists/generar-pagare.php';
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Cookie: ' . ($_SERVER['HTTP_COOKIE'] ?? '')],
-            CURLOPT_POSTFIELDS => json_encode(['moto_id' => $motoId]),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_TIMEOUT => 30,
-        ]);
-        $resp = curl_exec($ch);
-        $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        $r = json_decode((string)$resp, true) ?: [];
-        if (!empty($r['ok'])) {
-            echo '<div class="success-box">✅ PAGARÉ generado desde firma existente · pdf_hash=' . htmlspecialchars(substr((string)($r['pdf_hash'] ?? ''), 0, 16)) . '…'
-               . ' · cincel=' . (!empty($r['cincel_hash']) ? '<span class="ok">sellado</span>' : '<span class="warn">' . htmlspecialchars((string)($r['cincel_err'] ?? 'pendiente')) . '</span>') . '</div>';
-        } else {
-            echo '<div class="err">HTTP ' . $http . ' — ' . htmlspecialchars((string)($r['error'] ?? substr((string)$resp, 0, 200))) . '</div>';
-        }
-    } catch (Throwable $e) {
-        echo '<div class="err">Error: ' . htmlspecialchars($e->getMessage()) . '</div>';
-    }
+    echo '<div class="hint">⚠ La generación ahora se maneja vía JavaScript. Usa el botón verde "▶ Generar PAGARÉ con esta firma" directamente.</div>';
 }
 elseif ($action === 'link_pdf' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $fname = basename((string)$_POST['filename']);
@@ -183,12 +146,12 @@ try {
             echo '<td><code style="font-size:9.5px;">' . htmlspecialchars(substr((string)$f['firma_sha256'], 0, 16)) . '…</code></td>';
             echo '<td>';
             if ((int)$f['firma_bytes'] > 200) {
-                echo '<form method="post" style="margin:0;display:inline;">';
-                echo '<input type="hidden" name="action" value="gen_from_firma">';
-                echo '<input type="hidden" name="moto_id" value="' . $motoId . '">';
-                echo '<input type="hidden" name="firma_id" value="' . (int)$f['id'] . '">';
-                echo '<button type="submit" class="btn success" onclick="return confirm(\'¿Generar PAGARÉ usando esta firma?\')">▶ Generar PAGARÉ con esta firma</button>';
-                echo '</form>';
+                // Round 108 v3 — Use client-side fetch instead of server-side
+                // curl (which fails with HTTP 0 on Plesk due to loopback SSL).
+                // The admin's browser already has the VOLTIKA_ADMIN session
+                // cookie, so fetch('/admin/php/...', {credentials:'include'})
+                // authenticates correctly without any loopback tricks.
+                echo '<button class="btn success" onclick="generarPagareFromFirma(' . (int)$f['id'] . ', ' . $motoId . ', this)">▶ Generar PAGARÉ con esta firma</button>';
             }
             echo '</td>';
             echo '</tr>';
@@ -268,5 +231,46 @@ echo '<div class="hint"><strong>Lectura del diagnóstico:</strong>'
    . '<li><strong>Sección 3 tiene PDF pero Sección 2.pagare_pdf_path vacío</strong> → el PDF existe pero no está linkeado. Click "Vincular al checklist".</li>'
    . '<li><strong>Todo OK</strong> → revisa por qué la vista admin no lo encuentra (puede ser caché del navegador).</li>'
    . '</ul></div>';
+
+echo '<script>
+function generarPagareFromFirma(firmaId, motoId, btn) {
+    if (!confirm("¿Generar PAGARÉ usando firma #" + firmaId + "?")) return;
+    btn.disabled = true;
+    btn.textContent = "Procesando...";
+
+    // Step 1: Save the firma_pagare_data to checklist (so generar-pagare embeds it)
+    fetch("/admin/php/checklists/guardar-firma.php", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "include",
+        body: JSON.stringify({moto_id: motoId, tipo: "pagare", firma_id_source: firmaId})
+    }).then(function(r){ return r.json(); }).then(function(r1){
+        // Step 2: Generate the PAGARÉ PDF (Round 96 stamps with Cincel)
+        return fetch("/admin/php/checklists/generar-pagare.php", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            credentials: "include",
+            body: JSON.stringify({moto_id: motoId})
+        }).then(function(r){ return r.json(); });
+    }).then(function(r2){
+        if (r2 && r2.ok) {
+            btn.textContent = "✓ PAGARÉ generado";
+            btn.style.background = "#16a34a";
+            var msg = "✅ PAGARÉ generado\\n\\npdf_hash: " + (r2.pdf_hash || "?").substring(0,16) + "…"
+                    + "\\ncincel: " + (r2.cincel_hash ? "✓ sellado" : (r2.cincel_err || "pendiente"));
+            alert(msg);
+            location.reload();
+        } else {
+            btn.disabled = false;
+            btn.textContent = "▶ Reintentar";
+            alert("Error generando PAGARÉ: " + (r2 && r2.error ? r2.error : JSON.stringify(r2)));
+        }
+    }).catch(function(err){
+        btn.disabled = false;
+        btn.textContent = "▶ Reintentar";
+        alert("Error de red: " + err.message);
+    });
+}
+</script>';
 
 echo '</body></html>';

@@ -34,6 +34,25 @@ $motoId   = (int)($d['moto_id'] ?? 0);
 $tipo     = $d['tipo'] ?? 'acta';
 $firmaB64 = $d['firma_data'] ?? '';
 
+// Round 108 (2026-05-27) — When called from the PAGARÉ diagnostic tool,
+// the firma_data may not be in the request body. Instead, firma_id_source
+// points to an existing firmas_contratos row whose firma_base64 we should
+// reuse. This avoids the need for the customer to re-sign — their
+// original autograph is already in the DB.
+if (!$firmaB64 && !empty($d['firma_id_source'])) {
+    try {
+        $pdo = getDB();
+        $fq = $pdo->prepare("SELECT firma_base64 FROM firmas_contratos WHERE id = ?");
+        $fq->execute([(int)$d['firma_id_source']]);
+        $firmaB64 = (string)($fq->fetchColumn() ?: '');
+        if ($firmaB64 !== '' && strpos($firmaB64, 'data:image') !== 0) {
+            $firmaB64 = 'data:image/png;base64,' . $firmaB64;
+        }
+    } catch (Throwable $e) {
+        error_log('guardar-firma firma_id_source lookup: ' . $e->getMessage());
+    }
+}
+
 if (!$motoId || !$firmaB64) adminJsonOut(['error' => 'moto_id y firma_data requeridos'], 400);
 if (!in_array($tipo, ['acta', 'pagare'])) adminJsonOut(['error' => 'Tipo de firma inválido'], 400);
 
