@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 107 (2026-05-27) — On-demand ciclo generation tool ──
+    'r107_generar_ciclos_ahora' => _checkFile(
+        $base . '/admin/php/inventario/generar-ciclos-ahora.php',
+        'Round 107 (2026-05-27)',
+        'Round 107 — admin/php/inventario/generar-ciclos-ahora.php: herramienta admin que replica la lógica del cron generar-ciclos.php on-demand. Lista todas las subscripciones activas con fecha_inicio set y muestra cuántos ciclos existen vs cuántos faltan. Botón "Generar ciclos AHORA" ejecuta la lógica INSERT IGNORE (idempotente) y crea los ciclos pendientes. Útil cuando un cliente recién entregado necesita aparecer en Cobranza inmediato sin esperar la próxima corrida del cron.'
+    ),
+
     // ── Round 106 (2026-05-26) — Emergency tool also activates credit subscription ──
     'r106_emergency_activates_sub' => _checkFile(
         $base . '/admin/php/inventario/entrega-emergencia-once.php',
