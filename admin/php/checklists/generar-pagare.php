@@ -593,6 +593,12 @@ adminJsonOut([
         'monto_fmt' => $montoNum,
         'vin' => $moto['vin_display'] ?? $moto['vin'] ?? '',
     ],
+    // DEBUG — remove after verifying name fix works
+    '_debug_nombre' => [
+        'moto_cliente_nombre' => (string)($moto['cliente_nombre'] ?? '(null)'),
+        'cliente_nombre'      => $cliente ? (string)($cliente['nombre'] ?? '(null)') : '(no cliente row)',
+        'final_nombreCompleto'=> $nombreCompleto,
+    ],
 ]);
 
 // ── Helper: Number to Spanish words ─────────────────────────────────────
