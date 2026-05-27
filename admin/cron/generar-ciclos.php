@@ -17,9 +17,12 @@ if ($cronToken) {
 
 $pdo = getDB();
 
-// Get active subscriptions with a start date
+// Get active subscriptions with a start date.
+// Round 109 (2026-05-27) — Also select plazo_meses as fallback for when
+// plazo_semanas is NULL (common when the sub was created by the regen tool
+// or by legacy webhooks that only set plazo_meses).
 $subs = $pdo->query("
-    SELECT id, cliente_id, monto_semanal, plazo_semanas, fecha_inicio
+    SELECT id, cliente_id, monto_semanal, plazo_semanas, plazo_meses, fecha_inicio
     FROM subscripciones_credito
     WHERE estado = 'activa' AND fecha_inicio IS NOT NULL
 ")->fetchAll(PDO::FETCH_ASSOC);
@@ -35,8 +38,20 @@ foreach ($subs as $sub) {
     if ($inicio > $hoy) continue;
 
     $semanasTranscurridas = (int)floor($diffDays / 7);
-    // Cap at plazo_semanas
-    $maxSemana = min($semanasTranscurridas + 1, (int)$sub['plazo_semanas']);
+    // Round 109 (2026-05-27) — Derive plazo_semanas from plazo_meses when
+    // the column is NULL/0. Without this, subs with only plazo_meses set
+    // get maxSemana=0 → zero ciclos ever generated → invisible in Cobranza.
+    // Caso Carlos Ricardo Sánchez: sub id=3, plazo_meses=36, plazo_semanas=NULL.
+    $plazoSemanas = (int)($sub['plazo_semanas'] ?? 0);
+    if ($plazoSemanas <= 0 && !empty($sub['plazo_meses'])) {
+        $plazoSemanas = (int)round((int)$sub['plazo_meses'] * 4.33);
+        // Self-heal: persist the derived value so future runs don't recalculate
+        try {
+            $pdo->prepare("UPDATE subscripciones_credito SET plazo_semanas = ? WHERE id = ? AND (plazo_semanas IS NULL OR plazo_semanas = 0)")
+                ->execute([$plazoSemanas, (int)$sub['id']]);
+        } catch (Throwable $e) { /* non-fatal */ }
+    }
+    $maxSemana = min($semanasTranscurridas + 1, $plazoSemanas);
 
     $stmt = $pdo->prepare("
         INSERT IGNORE INTO ciclos_pago

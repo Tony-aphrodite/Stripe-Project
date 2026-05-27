@@ -52,7 +52,7 @@ echo '<p style="color:#64748b;font-size:13px;margin-top:0;">Replica la lógica d
 // Apply generation
 if ($apply) {
     $subs = $pdo->query("
-        SELECT id, cliente_id, monto_semanal, plazo_semanas, fecha_inicio, nombre, telefono, email
+        SELECT id, cliente_id, monto_semanal, plazo_semanas, plazo_meses, fecha_inicio, nombre, telefono, email
           FROM subscripciones_credito
          WHERE estado = 'activa' AND fecha_inicio IS NOT NULL
     ")->fetchAll(PDO::FETCH_ASSOC);
@@ -74,7 +74,16 @@ if ($apply) {
             }
             $diffDays = (int)$inicio->diff($hoy)->days;
             $semanasTranscurridas = (int)floor($diffDays / 7);
-            $maxSemana = min($semanasTranscurridas + 1, (int)$sub['plazo_semanas']);
+            // Round 109 — derive plazo_semanas from plazo_meses when NULL
+            $plazoSemanas = (int)($sub['plazo_semanas'] ?? 0);
+            if ($plazoSemanas <= 0 && !empty($sub['plazo_meses'])) {
+                $plazoSemanas = (int)round((int)$sub['plazo_meses'] * 4.33);
+                try {
+                    $pdo->prepare("UPDATE subscripciones_credito SET plazo_semanas = ? WHERE id = ? AND (plazo_semanas IS NULL OR plazo_semanas = 0)")
+                        ->execute([$plazoSemanas, (int)$sub['id']]);
+                } catch (Throwable $e) {}
+            }
+            $maxSemana = min($semanasTranscurridas + 1, $plazoSemanas);
             $createdHere = 0;
             for ($semana = 1; $semana <= $maxSemana; $semana++) {
                 $venc = (clone $inicio)->modify('+' . ($semana * 7) . ' days')->format('Y-m-d');
