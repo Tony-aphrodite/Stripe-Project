@@ -823,131 +823,292 @@ window.PV_entrega = (function(){
     return tp === 'credito' || tp === 'enganche' || tp === 'parcial' || tp === 'credito-orfano';
   }
 
-  // Round 102 — Step PAGARÉ. Customer signs the executive promissory note
-  // with their finger at the punto. After signing:
-  //   1) Save autograph signature to firmas_contratos (via checklists/guardar-firma)
-  //   2) Generate PAGARÉ PDF via checklists/generar-pagare (Round 96 stamps it
-  //      with Cincel NOM-151 automatically)
-  //   3) Move to step5 (ACTA + finalize)
+  // Round 111 (2026-05-27) — Redesigned stepPagare with CURP + full address
+  // + operation summary + validation gates per 5-27.md legal specification.
+  // The operator verifies/fills all legally-required data before the customer
+  // signs. The data flows to generar-pagare.php which validates + generates
+  // the PDF. This ensures the PAGARÉ is legally enforceable in Juicio
+  // Ejecutivo Mercantil.
   function stepPagare(){
     autosave('stepPagare', { pagare_pending: true });
 
-    var html = steps(4) +
+    // Show loading while we fetch prefill data
+    PVApp.modal(steps(4) +
       '<div class="ad-h2">5a. Firma del Pagaré</div>' +
-      '<div class="ad-card" style="background:#fef3c7;border-left:4px solid #f59e0b;font-size:13px;color:#92400e;">' +
-        '<strong>📝 Pagaré ejecutivo de crédito</strong><br>' +
-        'Como esta compra es a plazos, el cliente debe firmar el pagaré con su dedo. ' +
-        'Este documento permite a Voltika cobrar el saldo en caso de incumplimiento. ' +
-        'Se sella automáticamente con NOM-151 vía Cincel al guardar.' +
-      '</div>' +
-      '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:12px;">' +
-        '<div style="font-size:13px;color:#374151;margin-bottom:6px;font-weight:600;">Firma del cliente</div>' +
+      '<div style="text-align:center;padding:40px;"><span class="ad-spin"></span><br>Cargando datos del pagaré...</div>'
+    );
+
+    // Fetch pre-populated data from backend
+    function callAdminApi(absoluteUrl, payload, method) {
+      return $.ajax({
+        url: absoluteUrl + (method === 'GET' && payload ? '?' + $.param(payload) : ''),
+        method: method || (payload && method !== 'GET' ? 'POST' : 'GET'),
+        data: method !== 'GET' && payload ? JSON.stringify(payload) : undefined,
+        contentType: method !== 'GET' ? 'application/json' : undefined,
+        dataType: 'json',
+        xhrFields: { withCredentials: true }
+      });
+    }
+
+    callAdminApi('/admin/php/checklists/pagare-prefill.php', { moto_id: ctx.moto_id }, 'GET')
+    .done(function(pf){
+      if (!pf || !pf.ok) {
+        PVApp.modal(steps(4) + '<div class="ad-h2">5a. Firma del Pagaré</div>' +
+          '<div class="ad-card" style="color:#991b1b;background:#fee2e2;">Error cargando datos: ' + (pf && pf.error ? pf.error : 'sin respuesta') + '</div>' +
+          noExitosaBtnHtml());
+        bindNoExitosa();
+        return;
+      }
+      renderPagareForm(pf);
+    })
+    .fail(function(x){
+      PVApp.modal(steps(4) + '<div class="ad-h2">5a. Firma del Pagaré</div>' +
+        '<div class="ad-card" style="color:#991b1b;background:#fee2e2;">Error de red cargando prefill: ' + (x.responseJSON && x.responseJSON.error || x.status) + '</div>' +
+        noExitosaBtnHtml());
+      bindNoExitosa();
+    });
+
+    function renderPagareForm(pf) {
+      var addr = pf.address || {};
+      var amt  = pf.amounts || {};
+      var otp  = pf.otp || {};
+      var veh  = pf.vehicle || {};
+      var curpVal = pf.curp || '';
+      var fmtMoney = function(n){ return '$' + Number(n||0).toLocaleString('es-MX', {minimumFractionDigits:2}); };
+
+      var html = steps(4) +
+        '<div class="ad-h2">5a. Firma del Pagaré</div>' +
+        '<div class="ad-card" style="background:#fef3c7;border-left:4px solid #f59e0b;font-size:13px;color:#92400e;">' +
+          '<strong>📝 Pagaré ejecutivo de crédito</strong><br>' +
+          'Verifica los datos del cliente y pide que firme con su dedo. El pagaré se genera con sello NOM-151 vía Cincel.' +
+        '</div>';
+
+      // ── Section 1: Customer data form ────────────────────────────────
+      html += '<div class="ad-card" style="margin-bottom:12px;">' +
+        '<div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:10px;">Datos del suscriptor</div>';
+
+      // CURP
+      html += '<label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:2px;">CURP <span style="color:#dc2626">*</span></label>' +
+        '<input id="pvPagCurp" type="text" maxlength="18" value="' + esc(curpVal) + '" ' +
+          'style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:14px;font-family:monospace;text-transform:uppercase;margin-bottom:4px;" ' +
+          'placeholder="SARC920415HDMNRL05">' +
+        '<div id="pvPagCurpHint" style="font-size:11px;color:#6b7280;margin-bottom:10px;">18 caracteres. Se valida al enviar.</div>';
+
+      // Address fields
+      html += '<div style="font-weight:600;font-size:12px;color:#374151;margin-bottom:6px;">Domicilio del suscriptor</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 80px 80px;gap:6px;margin-bottom:6px;">' +
+          '<input id="pvPagCalle" type="text" placeholder="Calle *" value="' + esc(addr.calle||'') + '" class="pvPagAddr" style="padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;">' +
+          '<input id="pvPagNumExt" type="text" placeholder="Num Ext *" value="' + esc(addr.num_exterior||'') + '" class="pvPagAddr" style="padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;">' +
+          '<input id="pvPagNumInt" type="text" placeholder="Int" value="' + esc(addr.num_interior||'') + '" style="padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;">' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">' +
+          '<input id="pvPagColonia" type="text" placeholder="Colonia *" value="' + esc(addr.colonia||'') + '" class="pvPagAddr" style="padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;">' +
+          '<input id="pvPagAlcaldia" type="text" placeholder="Alcaldía / Municipio *" value="' + esc(addr.alcaldia||'') + '" class="pvPagAddr" style="padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;">' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 100px;gap:6px;margin-bottom:10px;">' +
+          '<input id="pvPagEstado" type="text" placeholder="Estado *" value="' + esc(addr.estado||'') + '" class="pvPagAddr" style="padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;">' +
+          '<input id="pvPagCp" type="text" placeholder="C.P. *" maxlength="5" value="' + esc(addr.cp||'') + '" class="pvPagAddr" style="padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;">' +
+        '</div>';
+
+      html += '</div>';
+
+      // ── Section 2: Operation summary (read-only) ─────────────────────
+      html += '<div class="ad-card" style="background:#f0f9ff;margin-bottom:12px;">' +
+        '<div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:8px;">Resumen de la operación</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:13px;">' +
+          '<div style="color:#64748b;">Monto total operación:</div><div style="font-weight:700;">' + fmtMoney(amt.total_operacion) + ' MXN</div>' +
+          '<div style="color:#64748b;">Enganche pagado:</div><div>' + fmtMoney(amt.enganche) + '</div>' +
+          '<div style="color:#64748b;">Pago semanal:</div><div>' + fmtMoney(amt.pago_semanal) + ' × ' + (amt.num_pagos||0) + ' semanas</div>' +
+          '<div style="color:#64748b;">Plazo:</div><div>' + (amt.plazo_meses||0) + ' meses</div>' +
+          '<div style="color:#64748b;">Fecha vencimiento final:</div><div>' + (pf.maturity_date||'—') + '</div>' +
+          '<div style="color:#64748b;">Vehículo:</div><div>' + esc(veh.modelo) + ' ' + esc(veh.color) + ' · VIN ' + esc(veh.vin) + '</div>' +
+        '</div>' +
+        '<div style="margin-top:8px;font-size:12px;">' +
+          (otp.verified
+            ? '<span style="color:#15803d;font-weight:700;">✓ OTP Verificado</span> ' + (otp.verified_at||'')
+            : '<span style="color:#dc2626;font-weight:700;">⚠ OTP NO verificado</span> — el pagaré no puede generarse') +
+        '</div>' +
+      '</div>';
+
+      // ── Section 3: Signature canvas ──────────────────────────────────
+      html += '<div class="ad-card" style="margin-bottom:12px;">' +
+        '<div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px;">Firma del suscriptor</div>' +
         '<canvas id="pvPagareSig" width="500" height="200" style="display:block;width:100%;height:200px;border:2px dashed #cbd5e1;border-radius:8px;background:#fafafa;touch-action:none;cursor:crosshair;"></canvas>' +
         '<div style="display:flex;gap:8px;margin-top:8px;">' +
           '<button id="pvPagareSigClear" class="ad-btn" style="flex:1;background:#fff;color:#0c2340;border:1px solid #cbd5e1;">Limpiar firma</button>' +
         '</div>' +
-        '<div style="font-size:11px;color:#6b7280;margin-top:6px;">Pide al cliente que firme con el dedo en el recuadro de arriba.</div>' +
-      '</div>' +
-      '<button id="pvPagareSubmit" class="ad-btn primary" style="width:100%" disabled>Firmar Pagaré y continuar</button>' +
-      noExitosaBtnHtml();
+        '<div style="font-size:11px;color:#6b7280;margin-top:4px;">Pide al cliente que firme con el dedo en el recuadro.</div>' +
+      '</div>';
 
-    PVApp.modal(html);
-    bindNoExitosa();
+      // Validation hint + submit
+      html += '<div id="pvPagHint" style="font-size:12px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;padding:8px 10px;border-radius:4px;margin-bottom:10px;display:none;"></div>' +
+        '<button id="pvPagareSubmit" class="ad-btn primary" style="width:100%" disabled>▶ Generar Pagaré y continuar</button>' +
+        noExitosaBtnHtml();
 
-    // Canvas signature capture (touch + mouse)
-    var canvas = document.getElementById('pvPagareSig');
-    var ctx2d  = canvas.getContext('2d');
-    var drawing = false;
-    var hasInk  = false;
-    function resizeCanvas() {
-      var rect = canvas.getBoundingClientRect();
-      var dpr  = window.devicePixelRatio || 1;
-      canvas.width  = rect.width  * dpr;
-      canvas.height = rect.height * dpr;
-      ctx2d.scale(dpr, dpr);
-      ctx2d.strokeStyle = '#0c2340';
-      ctx2d.lineWidth   = 2.5;
-      ctx2d.lineCap     = 'round';
-      ctx2d.lineJoin    = 'round';
+      PVApp.modal(html);
+      bindNoExitosa();
+      bindPagareInteractions(pf);
     }
-    resizeCanvas();
 
-    function getPoint(e) {
-      var rect = canvas.getBoundingClientRect();
-      var t = (e.touches && e.touches[0]) || e;
-      return { x: t.clientX - rect.left, y: t.clientY - rect.top };
-    }
-    function start(e) { e.preventDefault(); drawing = true; var p = getPoint(e); ctx2d.beginPath(); ctx2d.moveTo(p.x, p.y); }
-    function move(e)  { if (!drawing) return; e.preventDefault(); var p = getPoint(e); ctx2d.lineTo(p.x, p.y); ctx2d.stroke(); hasInk = true; $('#pvPagareSubmit').prop('disabled', false); }
-    function end(e)   { e.preventDefault(); drawing = false; }
-    canvas.addEventListener('mousedown',  start);
-    canvas.addEventListener('mousemove',  move);
-    canvas.addEventListener('mouseup',    end);
-    canvas.addEventListener('mouseleave', end);
-    canvas.addEventListener('touchstart', start);
-    canvas.addEventListener('touchmove',  move);
-    canvas.addEventListener('touchend',   end);
+    function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
-    $('#pvPagareSigClear').on('click', function(){
-      ctx2d.clearRect(0, 0, canvas.width, canvas.height);
-      hasInk = false;
-      $('#pvPagareSubmit').prop('disabled', true);
-    });
+    function bindPagareInteractions(pf) {
+      var hasInk = false;
+      var curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$/;
 
-    $('#pvPagareSubmit').on('click', function(){
-      if (!hasInk) { alert('Pide al cliente que firme primero.'); return; }
-      var $b = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Procesando...');
-      var firmaData = canvas.toDataURL('image/png');
-
-      // Round 102 — Use ABSOLUTE URLs to reach /admin/php/* endpoints from
-      // the punto SPA. PVApp.api prepends 'php/' which would route to the
-      // wrong path. The admin endpoints accept punto session auth (Round 102
-      // patch in guardar-firma.php + generar-pagare.php).
-      function callAdminApi(absoluteUrl, payload) {
-        return $.ajax({
-          url: absoluteUrl,
-          method: 'POST',
-          data: JSON.stringify(payload),
-          contentType: 'application/json',
-          dataType: 'json',
-          xhrFields: { withCredentials: true }
-        });
+      // Canvas signature capture (touch + mouse)
+      var canvas = document.getElementById('pvPagareSig');
+      var ctx2d  = canvas.getContext('2d');
+      var drawing = false;
+      function resizeCanvas() {
+        var rect = canvas.getBoundingClientRect();
+        var dpr  = window.devicePixelRatio || 1;
+        canvas.width  = rect.width  * dpr;
+        canvas.height = rect.height * dpr;
+        ctx2d.scale(dpr, dpr);
+        ctx2d.strokeStyle = '#0c2340';
+        ctx2d.lineWidth   = 2.5;
+        ctx2d.lineCap     = 'round';
+        ctx2d.lineJoin    = 'round';
       }
-      // 1) Save signature via guardar-firma (admin endpoint, now accepts punto auth)
-      callAdminApi('/admin/php/checklists/guardar-firma.php', {
-        moto_id: ctx.moto_id,
-        tipo:    'pagare',
-        firma_data: firmaData
-      }).done(function(r1){
-        if (!r1 || !r1.ok) {
-          $b.prop('disabled', false).text('Firmar Pagaré y continuar');
-          alert('No se pudo guardar la firma: ' + ((r1 && r1.error) || 'error desconocido'));
-          return;
+      resizeCanvas();
+
+      function getPoint(e) {
+        var rect = canvas.getBoundingClientRect();
+        var t = (e.touches && e.touches[0]) || e;
+        return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+      }
+      function start(e) { e.preventDefault(); drawing = true; var p = getPoint(e); ctx2d.beginPath(); ctx2d.moveTo(p.x, p.y); }
+      function move(e)  { if (!drawing) return; e.preventDefault(); var p = getPoint(e); ctx2d.lineTo(p.x, p.y); ctx2d.stroke(); hasInk = true; refreshSubmitBtn(); }
+      function end(e)   { e.preventDefault(); drawing = false; }
+      canvas.addEventListener('mousedown',  start);
+      canvas.addEventListener('mousemove',  move);
+      canvas.addEventListener('mouseup',    end);
+      canvas.addEventListener('mouseleave', end);
+      canvas.addEventListener('touchstart', start);
+      canvas.addEventListener('touchmove',  move);
+      canvas.addEventListener('touchend',   end);
+
+      $('#pvPagareSigClear').on('click', function(){
+        ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+        hasInk = false;
+        refreshSubmitBtn();
+      });
+
+      // Auto-replace "Distrito Federal" → "Ciudad de México"
+      $('#pvPagEstado').on('blur', function(){
+        var v = $(this).val();
+        if (/distrito\s*federal/i.test(v)) $(this).val('Ciudad de México');
+        refreshSubmitBtn();
+      });
+
+      // CURP validation on input
+      $('#pvPagCurp').on('input', function(){
+        var v = $(this).val().toUpperCase().replace(/[^A-Z0-9]/g,'');
+        $(this).val(v);
+        if (curpRegex.test(v)) {
+          $(this).css('borderColor','#22c55e');
+          $('#pvPagCurpHint').html('<span style="color:#15803d;">✓ CURP válido</span>');
+        } else if (v.length > 0) {
+          $(this).css('borderColor','#f59e0b');
+          $('#pvPagCurpHint').html('<span style="color:#b45309;">' + v.length + '/18 caracteres</span>');
+        } else {
+          $(this).css('borderColor','#dc2626');
+          $('#pvPagCurpHint').html('<span style="color:#dc2626;">CURP requerido</span>');
         }
-        // 2) Generate the PAGARÉ PDF (Round 96 stamps it with Cincel)
-        callAdminApi('/admin/php/checklists/generar-pagare.php', {
-          moto_id: ctx.moto_id
-        }).done(function(r2){
-          if (!r2 || !r2.ok) {
-            $b.prop('disabled', false).text('Firmar Pagaré y continuar');
-            alert('No se pudo generar el Pagaré: ' + ((r2 && r2.error) || 'error desconocido'));
+        refreshSubmitBtn();
+      });
+
+      // Refresh validation on any address field change
+      $('.pvPagAddr, #pvPagCurp').on('input change blur', refreshSubmitBtn);
+
+      function refreshSubmitBtn(){
+        var missing = [];
+        var c = $('#pvPagCurp').val().toUpperCase();
+        if (!curpRegex.test(c)) missing.push('CURP válido');
+        if (!$('#pvPagCalle').val().trim()) missing.push('Calle');
+        if (!$('#pvPagNumExt').val().trim()) missing.push('Num. Exterior');
+        if (!$('#pvPagColonia').val().trim()) missing.push('Colonia');
+        if (!$('#pvPagAlcaldia').val().trim()) missing.push('Alcaldía');
+        if (!$('#pvPagEstado').val().trim()) missing.push('Estado');
+        if (!/^\d{5}$/.test($('#pvPagCp').val().trim())) missing.push('C.P. (5 dígitos)');
+        if (!hasInk) missing.push('Firma del cliente');
+
+        var ready = missing.length === 0;
+        $('#pvPagareSubmit').prop('disabled', !ready);
+        if (ready) {
+          $('#pvPagHint').hide();
+        } else {
+          $('#pvPagHint').text('⚠ Faltan: ' + missing.join(', ')).show();
+        }
+      }
+
+      // Initial check
+      refreshSubmitBtn();
+      // Trigger CURP input event to show validation state
+      $('#pvPagCurp').trigger('input');
+
+      // Submit handler
+      $('#pvPagareSubmit').on('click', function(){
+        if (!hasInk) { alert('Pide al cliente que firme primero.'); return; }
+        var $b = $(this).prop('disabled', true).html('<span class="ad-spin"></span> Procesando...');
+        var firmaData = canvas.toDataURL('image/png');
+
+        function callAdminApiPost(absoluteUrl, payload) {
+          return $.ajax({
+            url: absoluteUrl,
+            method: 'POST',
+            data: JSON.stringify(payload),
+            contentType: 'application/json',
+            dataType: 'json',
+            xhrFields: { withCredentials: true }
+          });
+        }
+
+        // 1) Save signature
+        callAdminApiPost('/admin/php/checklists/guardar-firma.php', {
+          moto_id: ctx.moto_id,
+          tipo:    'pagare',
+          firma_data: firmaData
+        }).done(function(r1){
+          if (!r1 || !r1.ok) {
+            $b.prop('disabled', false).text('▶ Generar Pagaré y continuar');
+            alert('No se pudo guardar la firma: ' + ((r1 && r1.error) || 'error desconocido'));
             return;
           }
-          autosave('stepPagare', {
-            pagare_signed: true,
-            pagare_pdf_hash: r2.pdf_hash || null,
-            cincel_hash: r2.cincel_hash || null
+          // 2) Generate PAGARÉ PDF with all the validated data
+          callAdminApiPost('/admin/php/checklists/generar-pagare.php', {
+            moto_id:       ctx.moto_id,
+            curp:          $('#pvPagCurp').val().toUpperCase().trim(),
+            calle:         $('#pvPagCalle').val().trim(),
+            num_exterior:  $('#pvPagNumExt').val().trim(),
+            num_interior:  $('#pvPagNumInt').val().trim(),
+            colonia:       $('#pvPagColonia').val().trim(),
+            alcaldia:      $('#pvPagAlcaldia').val().trim(),
+            estado_dir:    $('#pvPagEstado').val().trim(),
+            cp:            $('#pvPagCp').val().trim()
+          }).done(function(r2){
+            if (!r2 || !r2.ok) {
+              $b.prop('disabled', false).text('▶ Generar Pagaré y continuar');
+              alert('No se pudo generar el Pagaré: ' + ((r2 && r2.error) || 'error desconocido'));
+              return;
+            }
+            autosave('stepPagare', {
+              pagare_signed: true,
+              pagare_pdf_hash: r2.pdf_hash || null,
+              cincel_hash: r2.cincel_hash || null
+            });
+            step5();
+          }).fail(function(x){
+            $b.prop('disabled', false).text('▶ Generar Pagaré y continuar');
+            alert('Error generando Pagaré: ' + ((x.responseJSON && x.responseJSON.error) || 'red'));
           });
-          step5();
         }).fail(function(x){
-          $b.prop('disabled', false).text('Firmar Pagaré y continuar');
-          alert('Error generando Pagaré: ' + ((x.responseJSON && x.responseJSON.error) || 'red'));
+          $b.prop('disabled', false).text('▶ Generar Pagaré y continuar');
+          alert('Error guardando firma: ' + ((x.responseJSON && x.responseJSON.error) || 'red'));
         });
-      }).fail(function(x){
-        $b.prop('disabled', false).text('Firmar Pagaré y continuar');
-        alert('Error guardando firma: ' + ((x.responseJSON && x.responseJSON.error) || 'red'));
       });
-    });
+    }
   }
   // Step 5: Wait for ACTA + finalize.
   //

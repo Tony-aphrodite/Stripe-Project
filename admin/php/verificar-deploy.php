@@ -129,6 +129,23 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 111 (2026-05-27) — PAGARÉ legal enforceability overhaul ──
+    'r111_pagare_legal_overhaul' => _checkFile(
+        $base . '/admin/php/checklists/generar-pagare.php',
+        'Round 111 (2026-05-27)',
+        'Round 111 — admin/php/checklists/generar-pagare.php: overhaul completo per 5-27.md spec legal. 5 bugs críticos: (1) CURP obligatorio con regex, (2) domicilio completo 7 campos, (3) OTP verificado como gate antes de generar PDF, (4) monto = TOTAL operación incluyendo enganche (reversa Round 110), (5) fecha de vencimiento final. Plus: VIN en cuerpo del documento, cláusula vencimiento anticipado con Art. 167 LGTOC, aceptación explícita tasa moratoria, referencia Art. 1391 CdC. Schema: 12 columnas nuevas en checklist_entrega_v2.'
+    ),
+    'r111_pagare_prefill' => _checkFile(
+        $base . '/admin/php/checklists/pagare-prefill.php',
+        'Round 111 (2026-05-27)',
+        'Round 111 — admin/php/checklists/pagare-prefill.php: endpoint GET que devuelve CURP, dirección parcial, OTP status, montos de crédito, fecha vencimiento y datos del vehículo para auto-rellenar el formulario de stepPagare en el punto.'
+    ),
+    'r111_punto_step_pagare_form' => _checkFile(
+        $base . '/puntosvoltika/js/modules/punto-entrega.js',
+        'Round 111 (2026-05-27)',
+        'Round 111 — puntosvoltika/js/modules/punto-entrega.js: stepPagare rediseñado con formulario de datos (CURP + 7 campos dirección) + resumen de operación (monto total, enganche, plazo, vencimiento, OTP status) + canvas de firma + validación completa. Operador verifica/completa datos antes de que cliente firme. Frontend pasa todos los campos al backend para generación del PDF legalmente válido.'
+    ),
+
     // ── Round 108 (2026-05-27) — PAGARÉ diagnostic + per-gap fix ──
     'r108_pagare_diag_fix' => _checkFile(
         $base . '/admin/php/inventario/pagare-diag-fix.php',

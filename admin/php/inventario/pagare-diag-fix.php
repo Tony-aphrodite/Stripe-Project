@@ -245,12 +245,20 @@ function generarPagareFromFirma(firmaId, motoId, btn) {
         credentials: "include",
         body: JSON.stringify({moto_id: motoId, tipo: "pagare", firma_id_source: firmaId})
     }).then(function(r){ return r.json(); }).then(function(r1){
-        // Step 2: Generate the PAGARÉ PDF (Round 96 stamps with Cincel)
+        // Step 2: Generate the PAGARÉ PDF. Round 111 added gates (CURP, OTP, address).
+        // For legacy/diagnostic regeneration, pass _skip flags so the generation
+        // proceeds with whatever data the backend can find from DB lookups.
+        // For new deliveries, the punto stepPagare form collects all data properly.
         return fetch("/admin/php/checklists/generar-pagare.php", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             credentials: "include",
-            body: JSON.stringify({moto_id: motoId})
+            body: JSON.stringify({
+                moto_id: motoId,
+                _skip_curp_gate: 1,
+                _skip_otp_gate: 1,
+                _skip_address_gate: 1
+            })
         }).then(function(r){ return r.json(); });
     }).then(function(r2){
         if (r2 && r2.ok) {
