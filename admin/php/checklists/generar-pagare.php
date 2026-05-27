@@ -37,6 +37,8 @@ $firmaB64 = $d['firma_data'] ?? '';
 // which often returned empty. Now the operator verifies/fills these at the punto and the
 // frontend passes them in the POST body — the authoritative source.
 $inputCurp        = strtoupper(trim((string)($d['curp'] ?? '')));
+$inputRfc         = strtoupper(trim((string)($d['rfc'] ?? '')));
+$inputDob         = trim((string)($d['fecha_nacimiento'] ?? ''));
 $inputCalle       = trim((string)($d['calle'] ?? ''));
 $inputNumExt      = trim((string)($d['num_exterior'] ?? ''));
 $inputNumInt      = trim((string)($d['num_interior'] ?? ''));
@@ -44,6 +46,8 @@ $inputColonia     = trim((string)($d['colonia'] ?? ''));
 $inputAlcaldia    = trim((string)($d['alcaldia'] ?? ''));
 $inputEstadoDir   = trim((string)($d['estado_dir'] ?? ''));
 $inputCp          = trim((string)($d['cp'] ?? ''));
+$inputGeoLat      = trim((string)($d['geolat'] ?? ''));
+$inputGeoLng      = trim((string)($d['geolng'] ?? ''));
 
 if (!$motoId) adminJsonOut(['error' => 'moto_id requerido'], 400);
 
@@ -373,9 +377,11 @@ if ($ip !== 'N/A') $ip = trim(explode(',', $ip)[0]);
 if (!isset($ua) || $ua === '') $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'N/A';
 $fechaFirma = date('d/m/Y H:i:s');
 $emailCliente = (string)($moto['cliente_email'] ?? '');
-$fechaNacimiento = '';
-try { $fechaNacimiento = (string)($cliente['fecha_nacimiento'] ?? ''); } catch (Throwable $e) {}
+$fechaNacimiento = $inputDob;
+if (!$fechaNacimiento) { try { $fechaNacimiento = (string)($cliente['fecha_nacimiento'] ?? ''); } catch (Throwable $e) {} }
+$rfcCliente = $inputRfc;
 $vinDisplay = (string)($moto['vin_display'] ?? $moto['vin'] ?? '—');
+$geoDisplay = ($inputGeoLat !== '' && $inputGeoLng !== '') ? ($inputGeoLat . ', ' . $inputGeoLng) : '—';
 
 $pdf = new FPDF();
 $pdf->SetAutoPageBreak(true, 15);
@@ -558,7 +564,7 @@ $pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(15, 5, $enc('CURP:'), 0);
 $pdf->SetFont('Arial', '', 8.5); $pdf->Cell(0, 5, $enc($curp ?: '________________________________'), 0, 1);
 // Row 2: RFC + Fecha nacimiento + Nacionalidad
 $pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(15, 5, $enc('RFC:'), 0);
-$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(40, 5, $enc('—'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(40, 5, $enc($rfcCliente ?: '—'), 0);
 $pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(35, 5, $enc('Fecha de nacimiento:'), 0);
 $pdf->SetFont('Arial', '', 8.5); $pdf->Cell(25, 5, $enc($fechaNacimiento ?: '—'), 0);
 $pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(25, 5, $enc('Nacionalidad:'), 0);
@@ -626,15 +632,20 @@ $pdf->Cell(0, 5, $enc('Validación electrónica:'), 0, 1);
 $pdf->Ln(1);
 $pdf->SetFont('Arial', '', 8);
 $otpDisplay = $otpVerified ? $otpCode : 'Pendiente';
+// Two-pass: distinct fixed-length placeholders replaced after hash + Cincel in pass 2.
+// Each placeholder is exactly 30 ISO-8859-1 bytes so str_pad keeps PDF byte offsets stable.
+$_hashPlaceholder   = isset($_twoPassHash)   ? $_twoPassHash   : '@@HASH_PLACEHOLDER_PAGARE_@@@@';
+$_nom151Placeholder = isset($_twoPassNom151) ? $_twoPassNom151 : '@@NOM151_PLACEHOLDER_PAGAR@@@@';
+$_cincelPlaceholder = isset($_twoPassCincel) ? $_twoPassCincel : '@@CINCEL_PLACEHOLDER_PAGAR@@@@';
 $validacionItems = [
     ['OTP capturado:', $otpDisplay],
     ['Fecha y hora de firma:', $fechaFirma],
     ['Dirección IP:', $ip],
-    ['Geolocalización:', '—'],
+    ['Geolocalización:', $geoDisplay],
     ['Dispositivo:', substr($ua, 0, 80)],
-    ['Hash del documento (SHA-256):', 'Se genera al firmar'],
-    ['Folio NOM-151:', 'Se genera al firmar'],
-    ['Folio CINCEL:', 'Se genera al firmar'],
+    ['Hash del documento (SHA-256):', $_hashPlaceholder],
+    ['Folio NOM-151:', $_nom151Placeholder],
+    ['Folio CINCEL:', $_cincelPlaceholder],
 ];
 foreach ($validacionItems as $vi) {
     $pdf->SetFont('Arial', 'B', 8); $pdf->Cell(6, 4.5, $enc(chr(149)), 0, 0);
@@ -669,12 +680,66 @@ $pdf->MultiCell(0, 4.5, $enc(
 ));
 // (Old footer metadata removed — now in FIRMA DEL SUSCRIPTOR validation section above)
 
-// ── Output PDF ──────────────────────────────────────────────────────────
+// ── Output PDF (Pass 1 — placeholders for hash/NOM-151/CINCEL) ─────────
 $pdf->Output('F', $filepath);
+$pdfHash = hash_file('sha256', $filepath);
+
+// ── Cincel NOM-151 stamp (between pass 1 and pass 2) ───────────────────
+$cincelHash = null;
+$cincelErr  = null;
+$cincelFolio = null;
+$cincelEnabled = strtolower((string)(getenv('CINCEL_TIMESTAMP_ENABLED') ?: '1'));
+if (in_array($cincelEnabled, ['1','true','yes','on'], true)) {
+    try {
+        require_once __DIR__ . '/../../../configurador/php/cincel-timestamp.php';
+        try { $pdo->exec("ALTER TABLE checklist_entrega_v2 ADD COLUMN cincel_pagare_timestamp_hash CHAR(64) NULL"); } catch (Throwable $e) {}
+        try { $pdo->exec("ALTER TABLE checklist_entrega_v2 ADD COLUMN cincel_pagare_status VARCHAR(40) NULL"); } catch (Throwable $e) {}
+        $ts = cincelGetOrCreateTimestamp($filepath);
+        if (!empty($ts['ok'])) {
+            cincelSaveTimestamp($pdo, $ts, null, $filepath);
+            $cincelHash  = $ts['hash'] ?? null;
+            $cincelFolio = $ts['folio'] ?? $ts['id'] ?? $cincelHash;
+            if ($cincelHash) {
+                try {
+                    $pdo->prepare("UPDATE checklist_entrega_v2
+                        SET cincel_pagare_timestamp_hash = ?,
+                            cincel_pagare_status = 'signed_with_timestamp'
+                        WHERE id = ?")
+                        ->execute([$cincelHash, $checkId]);
+                } catch (Throwable $e) { error_log('generar-pagare cincel persist: ' . $e->getMessage()); }
+            }
+            adminLog('pagare_cincel_timestamp', [
+                'moto_id' => $motoId, 'checklist_id' => $checkId,
+                'cincel_hash' => $cincelHash, 'folio' => $folio,
+            ]);
+        } else {
+            $cincelErr = 'Cincel respondió HTTP ' . ($ts['http'] ?? '?') . ' — ' . ($ts['error'] ?? 'sin detalle');
+            error_log('generar-pagare cincel failed: ' . json_encode($ts));
+        }
+    } catch (Throwable $e) {
+        $cincelErr = 'Cincel exception: ' . $e->getMessage();
+        error_log('generar-pagare cincel exception: ' . $e->getMessage());
+    }
+}
+
+// ── Round 112 (2026-05-28) — Two-pass: replace distinct placeholders ──────
+// Each placeholder is exactly 30 ISO-8859-1 bytes. We replace each with a
+// str_pad'd value of the same length so PDF byte offsets stay valid.
+$pass1Content = file_get_contents($filepath);
+$nom151Value = $cincelFolio ?: ($cincelErr ?: 'No disponible');
+$cincelValue = $cincelFolio ?: ($cincelErr ?: 'No disponible');
+$replacements = [
+    '@@HASH_PLACEHOLDER_PAGARE_@@@@' => str_pad(substr($pdfHash, 0, 30), 30),
+    '@@NOM151_PLACEHOLDER_PAGAR@@@@' => str_pad(substr($nom151Value, 0, 30), 30),
+    '@@CINCEL_PLACEHOLDER_PAGAR@@@@' => str_pad(substr($cincelValue, 0, 30), 30),
+];
+foreach ($replacements as $placeholder => $value) {
+    $pass1Content = str_replace($placeholder, $value, $pass1Content);
+}
+file_put_contents($filepath, $pass1Content);
+$pdfHash = hash_file('sha256', $filepath);
 
 if ($firmaImgPath && file_exists($firmaImgPath)) @unlink($firmaImgPath);
-
-$pdfHash = hash_file('sha256', $filepath);
 
 // ── 5. Save to DB ───────────────────────────────────────────────────────
 // Round 111 — enriched evidence + new columns for legal enforceability
@@ -718,58 +783,6 @@ adminLog('pagare_pdf_generado', [
     'pdf_hash' => $pdfHash,
 ]);
 
-// ── Round 96 (2026-05-26) — Apply Cincel NOM-151 timestamp to the PAGARÉ ──
-// Customer brief (Óscar, today's Carlos Ricardo Sánchez delivery): "I need
-// you to make sure that the promissory note works properly and that the PDF
-// is signed with CINCEL." Before this fix, the PAGARÉ PDF was generated and
-// stored but no actual Cincel NOM-151 stamp was applied — the PDF text
-// mentioned NOM-151 but no API call was ever made. Now we mirror the
-// Round 71/73 pattern from firmar-acta.php / confirmar-orden.php: get-or-
-// create timestamp via Cincel, persist the result in cincel_timestamps,
-// and store the certified hash in checklist_entrega_v2.cincel_pagare_timestamp_hash
-// so admin can verify the legal trail.
-//
-// Failure-safe: any exception is logged but never blocks the response.
-// The pagaré PDF + DB row already exist; Cincel stamping can be retried
-// later by re-running this endpoint or via admin/php/diagnostico-cincel-timestamp-create.php.
-// Gateable globally via CINCEL_TIMESTAMP_ENABLED=0 in case Cincel has an outage.
-$cincelHash = null;
-$cincelErr  = null;
-$cincelEnabled = strtolower((string)(getenv('CINCEL_TIMESTAMP_ENABLED') ?: '1'));
-if (in_array($cincelEnabled, ['1','true','yes','on'], true)) {
-    try {
-        require_once __DIR__ . '/../../../configurador/php/cincel-timestamp.php';
-        // Idempotent column add — older installs may not have these columns.
-        try { $pdo->exec("ALTER TABLE checklist_entrega_v2 ADD COLUMN cincel_pagare_timestamp_hash CHAR(64) NULL"); } catch (Throwable $e) {}
-        try { $pdo->exec("ALTER TABLE checklist_entrega_v2 ADD COLUMN cincel_pagare_status VARCHAR(40) NULL"); } catch (Throwable $e) {}
-
-        $ts = cincelGetOrCreateTimestamp($filepath);
-        if (!empty($ts['ok'])) {
-            cincelSaveTimestamp($pdo, $ts, null, $filepath);
-            $cincelHash = $ts['hash'] ?? null;
-            if ($cincelHash) {
-                try {
-                    $pdo->prepare("UPDATE checklist_entrega_v2
-                        SET cincel_pagare_timestamp_hash = ?,
-                            cincel_pagare_status = 'signed_with_timestamp'
-                        WHERE id = ?")
-                        ->execute([$cincelHash, $checkId]);
-                } catch (Throwable $e) { error_log('generar-pagare cincel persist: ' . $e->getMessage()); }
-            }
-            adminLog('pagare_cincel_timestamp', [
-                'moto_id' => $motoId, 'checklist_id' => $checkId,
-                'cincel_hash' => $cincelHash, 'folio' => $folio,
-            ]);
-        } else {
-            $cincelErr = 'Cincel respondió HTTP ' . ($ts['http'] ?? '?') . ' — ' . ($ts['error'] ?? 'sin detalle');
-            error_log('generar-pagare cincel failed: ' . json_encode($ts));
-        }
-    } catch (Throwable $e) {
-        $cincelErr = 'Cincel exception: ' . $e->getMessage();
-        error_log('generar-pagare cincel exception: ' . $e->getMessage());
-    }
-}
-
 adminJsonOut([
     'ok' => true,
     'folio' => $folio,
@@ -783,12 +796,6 @@ adminJsonOut([
         'monto' => $pagoTotalPlazos,
         'monto_fmt' => $montoNum,
         'vin' => $moto['vin_display'] ?? $moto['vin'] ?? '',
-    ],
-    // DEBUG — remove after verifying name fix works
-    '_debug_nombre' => [
-        'moto_cliente_nombre' => (string)($moto['cliente_nombre'] ?? '(null)'),
-        'cliente_nombre'      => $cliente ? (string)($cliente['nombre'] ?? '(null)') : '(no cliente row)',
-        'final_nombreCompleto'=> $nombreCompleto,
     ],
 ]);
 

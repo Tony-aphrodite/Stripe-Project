@@ -129,6 +129,13 @@ $checks = [
         'Round 88 — configurador/php/create-payment-intent.php: cuando el SPA marca el PI con tipo="enganche"/"credito" ($isEngancheFlow=true), el metadata.tpago se almacena como "enganche" SIN importar el método de pago elegido (card/oxxo/spei). Antes el fallback ($installments?"msi":$method) sobrescribía con "oxxo" para clientes de crédito que pagaban su enganche en OXXO. Resultado: stripe-webhook insertaba la transacción con tpago="oxxo" → confirmar-orden:775 evaluaba $esCredito=false → generaba el "Contrato de compraventa AL CONTADO" en vez del Carátula de crédito. Caso Leobardo Arreola (pedido VK-2605-0004, $14,478 enganche vía OXXO) recibió contrato CONTADO siendo cliente de crédito.'
     ),
 
+    // ── Round 112 (2026-05-28) — Two-pass PDF fix: distinct placeholders + deduplicate Cincel ──
+    'r112_twopass_pdf_fix' => _checkFile(
+        $base . '/admin/php/checklists/generar-pagare.php',
+        'Round 112 (2026-05-28)',
+        'Round 112 — admin/php/checklists/generar-pagare.php: fixed two-pass PDF generation. Old code replaced ALL "Se genera al firmar" instances with the same hash substring — hash/NOM-151/CINCEL fields all showed the same value. Now uses 3 distinct 30-byte placeholders (@@HASH_PLACEHOLDER_PAGARE_@@@@, @@NOM151_PLACEHOLDER_PAGAR@@@@, @@CINCEL_PLACEHOLDER_PAGAR@@@@) each replaced with its correct value. Also removed duplicate Cincel block (Round 96 code was still present after Round 111 added its own Cincel call, causing double API calls). Cleaned up debug output.'
+    ),
+
     // ── Round 111 (2026-05-27) — PAGARÉ legal enforceability overhaul ──
     'r111_pagare_legal_overhaul' => _checkFile(
         $base . '/admin/php/checklists/generar-pagare.php',

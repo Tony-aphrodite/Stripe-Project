@@ -838,6 +838,18 @@ window.PV_entrega = (function(){
       '<div style="text-align:center;padding:40px;"><span class="ad-spin"></span><br>Cargando datos del pagaré...</div>'
     );
 
+    // Capture geolocation in background (non-blocking)
+    var geoLat = '', geoLng = '';
+    try {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(pos) { geoLat = pos.coords.latitude.toFixed(6); geoLng = pos.coords.longitude.toFixed(6); },
+          function() { /* silently ignore denial */ },
+          { timeout: 10000, enableHighAccuracy: true }
+        );
+      }
+    } catch(e){}
+
     // Fetch pre-populated data from backend
     function callAdminApi(absoluteUrl, payload, method) {
       return $.ajax({
@@ -893,6 +905,18 @@ window.PV_entrega = (function(){
           'style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:14px;font-family:monospace;text-transform:uppercase;margin-bottom:4px;" ' +
           'placeholder="SARC920415HDMNRL05">' +
         '<div id="pvPagCurpHint" style="font-size:11px;color:#6b7280;margin-bottom:10px;">18 caracteres. Se valida al enviar.</div>';
+
+      // RFC + Fecha de nacimiento
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">' +
+        '<div>' +
+          '<label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:2px;">RFC</label>' +
+          '<input id="pvPagRfc" type="text" maxlength="13" value="" placeholder="XXXX000000XXX" style="width:100%;padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:monospace;text-transform:uppercase;">' +
+        '</div>' +
+        '<div>' +
+          '<label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:2px;">Fecha de nacimiento</label>' +
+          '<input id="pvPagDob" type="date" value="" style="width:100%;padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;">' +
+        '</div>' +
+      '</div>';
 
       // Address fields
       html += '<div style="font-weight:600;font-size:12px;color:#374151;margin-bottom:6px;">Domicilio del suscriptor</div>' +
@@ -1080,13 +1104,17 @@ window.PV_entrega = (function(){
           callAdminApiPost('/admin/php/checklists/generar-pagare.php', {
             moto_id:       ctx.moto_id,
             curp:          $('#pvPagCurp').val().toUpperCase().trim(),
+            rfc:           $('#pvPagRfc').val().toUpperCase().trim(),
+            fecha_nacimiento: $('#pvPagDob').val().trim(),
             calle:         $('#pvPagCalle').val().trim(),
             num_exterior:  $('#pvPagNumExt').val().trim(),
             num_interior:  $('#pvPagNumInt').val().trim(),
             colonia:       $('#pvPagColonia').val().trim(),
             alcaldia:      $('#pvPagAlcaldia').val().trim(),
             estado_dir:    $('#pvPagEstado').val().trim(),
-            cp:            $('#pvPagCp').val().trim()
+            cp:            $('#pvPagCp').val().trim(),
+            geolat:        geoLat,
+            geolng:        geoLng
           }).done(function(r2){
             if (!r2 || !r2.ok) {
               $b.prop('disabled', false).text('▶ Generar Pagaré y continuar');
