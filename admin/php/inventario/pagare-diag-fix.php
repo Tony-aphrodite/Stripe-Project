@@ -264,13 +264,11 @@ function generarPagareFromFirma(firmaId, motoId, btn) {
         if (r2 && r2.ok) {
             btn.textContent = "✓ PAGARÉ generado";
             btn.style.background = "#16a34a";
-            var dbg = r2._debug_nombre || {};
+            var d = r2.datos || {};
             var msg = "✅ PAGARÉ generado\\n\\npdf_hash: " + (r2.pdf_hash || "?").substring(0,16) + "…"
                     + "\\ncincel: " + (r2.cincel_hash ? "✓ sellado" : (r2.cincel_err || "pendiente"))
-                    + "\\n\\n--- DEBUG NOMBRE ---"
-                    + "\\nmoto.cliente_nombre: " + (dbg.moto_cliente_nombre || "?")
-                    + "\\nclientes.nombre: " + (dbg.cliente_nombre || "?")
-                    + "\\nfinal: " + (dbg.final_nombreCompleto || "?");
+                    + "\\nnombre: " + (d.nombre || "—")
+                    + "\\nmonto: " + (d.monto_fmt || "—");
             alert(msg);
             location.reload();
         } else {
