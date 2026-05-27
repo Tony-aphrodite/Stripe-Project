@@ -325,6 +325,16 @@ if (!is_dir($storageDir)) @mkdir($storageDir, 0777, true);
 $filename = 'pagare_moto' . $motoId . '_' . date('Ymd_His') . '.pdf';
 $filepath = $storageDir . $filename;
 
+// Round 111 — Fallback: if no signature in POST body, read from checklist DB
+if (!$firmaB64 || strpos($firmaB64, 'data:image') !== 0) {
+    try {
+        $fq = $pdo->prepare("SELECT firma_pagare_data FROM checklist_entrega_v2 WHERE id = ? AND firma_pagare_data IS NOT NULL AND firma_pagare_data <> ''");
+        $fq->execute([$checkId]);
+        $dbFirma = (string)($fq->fetchColumn() ?: '');
+        if ($dbFirma !== '' && strlen($dbFirma) > 200) $firmaB64 = $dbFirma;
+    } catch (Throwable $e) {}
+}
+
 // Save signature image temporarily if provided
 $firmaImgPath = null;
 if ($firmaB64 && strpos($firmaB64, 'data:image/png;base64,') === 0) {
