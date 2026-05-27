@@ -345,275 +345,329 @@ if ($firmaB64 && strpos($firmaB64, 'data:image/png;base64,') === 0) {
 
 // Helper
 $enc = function($s) { return iconv('UTF-8', 'ISO-8859-1//TRANSLIT//IGNORE', (string)$s); };
+// Bullet helper
+$bullet = function($pdf, $enc, $text) {
+    $pdf->SetFont('Arial', 'B', 8);
+    $x = $pdf->GetX();
+    $pdf->Cell(6, 4.5, $enc(chr(149)), 0, 0); // bullet character
+    $pdf->SetFont('Arial', '', 8.5);
+    $pdf->MultiCell(0, 4.5, $enc($text));
+    $pdf->Ln(0.5);
+};
+// Section divider
+$divider = function($pdf) {
+    $pdf->SetDrawColor(180, 180, 180);
+    $pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
+    $pdf->Ln(3);
+};
+// Section title
+$secTitle = function($pdf, $enc, $title) {
+    $pdf->SetFont('Arial', 'B', 11);
+    $pdf->Cell(0, 8, $enc($title), 0, 1);
+    $pdf->Ln(1);
+};
+
+// Evidence data (collected early for use in PDF body)
+if (!isset($ip) || $ip === '') $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? ($_SERVER['REMOTE_ADDR'] ?? 'N/A');
+if ($ip !== 'N/A') $ip = trim(explode(',', $ip)[0]);
+if (!isset($ua) || $ua === '') $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'N/A';
+$fechaFirma = date('d/m/Y H:i:s');
+$emailCliente = (string)($moto['cliente_email'] ?? '');
+$fechaNacimiento = '';
+try { $fechaNacimiento = (string)($cliente['fecha_nacimiento'] ?? ''); } catch (Throwable $e) {}
+$vinDisplay = (string)($moto['vin_display'] ?? $moto['vin'] ?? '—');
 
 $pdf = new FPDF();
 $pdf->SetAutoPageBreak(true, 15);
 
 // ═══════════════════════════════════════════════════════════════════════
-// PAGE 1 — PAGARÉ header + legal text
+// PAGE 1 — Header + Obligación + Vencimiento + Moratorios
+// Matches Voltika_Pagare_Corregido_v2.pdf page 1
 // ═══════════════════════════════════════════════════════════════════════
 $pdf->AddPage();
 
 // Title
 $pdf->SetFont('Arial', 'B', 20);
-$pdf->Cell(0, 12, $enc('PAGARÉ'), 0, 1, 'C');
+$pdf->Cell(0, 12, $enc('PAGARÉ'), 0, 1);
 $pdf->Ln(2);
 
-// Amount line — number + letter
+// Amount
 $pdf->SetFont('Arial', 'B', 10);
-$pdf->Cell(0, 7, $enc('Por la cantidad de ' . $montoNum), 0, 1, 'C');
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell(0, 6, $enc('(' . $montoLetra . ')'), 0, 1, 'C');
-$pdf->Ln(3);
+$pdf->MultiCell(0, 6, $enc('Por la cantidad de ' . $montoNum . ' (' . $montoLetra . ')'));
+$pdf->Ln(2);
 
-// Place, date, and maturity (Bug #5)
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell(95, 6, $enc('Lugar de suscripción: ' . $lugarSuscripcion), 0, 0);
-$pdf->Cell(95, 6, $enc('Fecha de suscripción: ' . $fechaSuscripcion), 0, 1, 'R');
-$pdf->Cell(95, 6, '', 0, 0);
-$pdf->Cell(95, 6, $enc('Fecha de vencimiento final: ' . $fechaVencimiento), 0, 1, 'R');
-$pdf->Ln(3);
+// Place, dates
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(0, 6, $enc(
+    'Lugar de suscripción: ' . $lugarSuscripcion
+    . '  Fecha de suscripción: ' . $fechaSuscripcion
+    . '  Fecha de vencimiento final: ' . $fechaVencimiento
+), 0, 1);
+$pdf->Ln(4);
 
-// ── Main obligation text ────────────────────────────────────────────────
+// ── OBLIGACIÓN DE PAGO ─────────────────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'OBLIGACIÓN DE PAGO');
 $pdf->SetFont('Arial', '', 8.5);
 $pdf->MultiCell(0, 4.5, $enc(
     'DEBO Y PAGARÉ incondicionalmente a la orden de MTECH GEARS, S.A. DE C.V. (VOLTIKA), '
     . 'la cantidad señalada en el presente documento, obligándome a cubrirla en el domicilio del '
     . 'acreedor o en el lugar que éste designe.'
 ));
-$pdf->Ln(1);
+$pdf->Ln(2);
 $pdf->MultiCell(0, 4.5, $enc(
-    'La obligación consignada en este pagaré es líquida, cierta, exigible y de plazo vencido en '
-    . 'los términos aquí establecidos, constituyendo una obligación directa, autónoma e independiente '
+    'La obligación consignada en este pagaré es líquida, cierta, exigible y de plazo vencido '
+    . 'desde su suscripción, constituyendo una obligación directa, autónoma e independiente '
     . 'conforme a la Ley General de Títulos y Operaciones de Crédito.'
 ));
-$pdf->Ln(1);
-$pdf->MultiCell(0, 4.5, $enc(
-    'El presente pagaré se suscribe con motivo de una operación de compraventa a plazos celebrada '
-    . 'entre las partes; sin embargo, su validez, existencia y exigibilidad no dependen de dicho '
-    . 'contrato ni de documento alguno.'
-));
-$pdf->Ln(3);
+$pdf->Ln(4);
 
-// ── DATOS DEL VEHÍCULO (Fix #6 — VIN prominent in body) ────────────────
-$pdf->SetDrawColor(180, 180, 180);
-$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
-$pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('DATOS DEL VEHÍCULO'), 0, 1);
+// ── VENCIMIENTO Y EXIGIBILIDAD ─────────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'VENCIMIENTO Y EXIGIBILIDAD');
 $pdf->SetFont('Arial', '', 8.5);
-$pdf->Cell(50, 5, $enc('Marca:'), 0); $pdf->Cell(0, 5, $enc('VOLTIKA (MTECH GEARS, S.A. DE C.V.)'), 0, 1);
-$pdf->Cell(50, 5, $enc('Modelo:'), 0); $pdf->Cell(0, 5, $enc((string)($moto['modelo'] ?? '—')), 0, 1);
-$pdf->Cell(50, 5, $enc('Color:'), 0); $pdf->Cell(0, 5, $enc((string)($moto['color'] ?? '—')), 0, 1);
-$pdf->Cell(50, 5, $enc('VIN / NIV:'), 0); $pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(0, 5, $enc((string)($moto['vin_display'] ?? $moto['vin'] ?? '—')), 0, 1); $pdf->SetFont('Arial', '', 8.5);
-$pdf->Cell(50, 5, $enc('Año modelo:'), 0); $pdf->Cell(0, 5, $enc((string)($moto['anio_modelo'] ?? date('Y'))), 0, 1);
-$pdf->Ln(3);
+$pdf->MultiCell(0, 4.5, $enc(
+    'El presente pagaré es exigible íntegramente desde su suscripción. No obstante, las partes '
+    . 'reconocen que el acreedor ha otorgado al suscriptor la facilidad de cubrir esta obligación '
+    . 'mediante pagos parciales, conforme a lo establecido en el Contrato de Compraventa a Plazos '
+    . 'celebrado entre las partes.'
+));
+$pdf->Ln(4);
 
-// ── VENCIMIENTO Y EXIGIBILIDAD (Fix #5 — updated clause per 5-27.md spec) ─
-$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
-$pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('VENCIMIENTO Y EXIGIBILIDAD'), 0, 1);
+// ── VENCIMIENTO ANTICIPADO POR INCUMPLIMIENTO ──────────────────────────
+$secTitle($pdf, $enc, 'VENCIMIENTO ANTICIPADO POR INCUMPLIMIENTO');
 $pdf->SetFont('Arial', '', 8.5);
 $pdf->MultiCell(0, 4.5, $enc(
-    'El presente pagaré es exigible íntegramente desde su suscripción. No obstante, las partes reconocen '
-    . 'que el acreedor ha otorgado al suscriptor la facilidad de cubrir esta obligación mediante pagos '
-    . 'parciales, conforme a lo establecido en el Contrato de Compraventa a Plazos celebrado entre las partes.'
+    'En caso de que el suscriptor incurra en incumplimiento de cualquiera de los pagos parciales '
+    . 'pactados en el referido Contrato, el saldo insoluto del presente pagaré se considerará '
+    . 'vencido anticipadamente y será exigible en su totalidad de forma inmediata, sin necesidad '
+    . 'de requerimiento, aviso previo, interpelación judicial o extrajudicial.'
 ));
 $pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('VENCIMIENTO ANTICIPADO POR INCUMPLIMIENTO'), 0, 1);
-$pdf->SetFont('Arial', '', 8.5);
-$pdf->MultiCell(0, 4.5, $enc(
-    'En caso de que el suscriptor incurra en incumplimiento de cualquiera de los pagos parciales pactados '
-    . 'en el referido Contrato, el saldo insoluto del presente pagaré se considerará vencido anticipadamente '
-    . 'y será exigible en su totalidad de forma inmediata, sin necesidad de requerimiento, aviso previo, '
-    . 'interpelación judicial o extrajudicial.'
-));
-$pdf->Ln(1);
 $pdf->MultiCell(0, 4.5, $enc(
     'La validez, existencia y exigibilidad del presente pagaré no dependen del Contrato referido, '
-    . 'conforme al principio de autonomía cambiaria establecido en el artículo 167 de la Ley General '
-    . 'de Títulos y Operaciones de Crédito.'
+    . 'conforme al principio de autonomía cambiaria establecido en el artículo 167 de la Ley '
+    . 'General de Títulos y Operaciones de Crédito.'
 ));
-$pdf->Ln(3);
+$pdf->Ln(4);
 
-// ── INTERESES MORATORIOS ────────────────────────────────────────────────
-$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
-$pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('INTERESES MORATORIOS'), 0, 1);
+// ── INTERESES MORATORIOS ───────────────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'INTERESES MORATORIOS');
 $pdf->SetFont('Arial', '', 8.5);
 $pdf->MultiCell(0, 4.5, $enc(
-    'En caso de incumplimiento, el suscriptor se obliga a pagar un interés moratorio sobre el saldo '
-    . 'insoluto a una tasa del 3.5% (tres punto cinco por ciento) mensual, calculado desde la fecha de '
-    . 'incumplimiento y hasta la total liquidación del adeudo.'
+    'En caso de incumplimiento, el suscriptor se obliga a pagar un interés moratorio sobre el '
+    . 'saldo insoluto a una tasa del 3.5% (tres punto cinco por ciento) mensual, calculado '
+    . 'desde la fecha de incumplimiento y hasta la total liquidación del adeudo.'
 ));
-$pdf->Ln(1);
+$pdf->Ln(2);
 $pdf->MultiCell(0, 4.5, $enc(
     'Dicha tasa constituye una estimación razonable de los daños y perjuicios derivados del '
     . 'incumplimiento, incluyendo costos administrativos, operativos y de recuperación.'
 ));
-$pdf->Ln(1);
+$pdf->Ln(2);
 $pdf->MultiCell(0, 4.5, $enc(
-    'El suscriptor reconoce y acepta expresamente la tasa de interés moratorio del 3.5% mensual '
-    . 'y reconoce que la misma es razonable y proporcional considerando los costos administrativos, '
-    . 'operativos y de recuperación.'
+    'El suscriptor reconoce y acepta expresamente la tasa pactada.'
 ));
-$pdf->Ln(1);
+$pdf->Ln(2);
 $pdf->MultiCell(0, 4.5, $enc(
     'Los intereses moratorios no se capitalizarán ni generarán intereses sobre intereses.'
 ));
-$pdf->Ln(3);
+$pdf->Ln(4);
 
-// ── APLICACIÓN DE PAGOS ─────────────────────────────────────────────────
-$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
-$pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('APLICACIÓN DE PAGOS'), 0, 1);
+// ── APLICACIÓN DE PAGOS ────────────────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'APLICACIÓN DE PAGOS');
 $pdf->SetFont('Arial', '', 8.5);
 $pdf->MultiCell(0, 4.5, $enc(
-    'Todos los pagos que realice el suscriptor serán aplicados al presente pagaré, reduciendo el '
-    . 'saldo exigible en la proporción correspondiente, sin afectar la validez ni exigibilidad del mismo.'
+    'Todos los pagos que realice el suscriptor serán aplicados al presente pagaré, reduciendo '
+    . 'el saldo exigible en la proporción correspondiente, sin afectar la validez ni exigibilidad '
+    . 'del mismo.'
 ));
-$pdf->Ln(3);
-
-// ── RENUNCIA Y JURISDICCIÓN ─────────────────────────────────────────────
-$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
 $pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('RENUNCIA Y JURISDICCIÓN'), 0, 1);
+$pdf->MultiCell(0, 4.5, $enc(
+    'El acreedor expedirá comprobante por cada pago recibido y mantendrá registro actualizado '
+    . 'del saldo insoluto.'
+));
+$pdf->Ln(4);
+
+// ── RENUNCIA Y JURISDICCIÓN ────────────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'RENUNCIA Y JURISDICCIÓN');
 $pdf->SetFont('Arial', '', 8.5);
 $pdf->MultiCell(0, 4.5, $enc(
-    'El suscriptor renuncia expresamente a cualquier fuero que pudiera corresponderle por razón de su '
-    . 'domicilio presente o futuro, sometiéndose irrevocablemente a la jurisdicción y competencia de '
-    . 'los tribunales de la Ciudad de México.'
+    'El suscriptor renuncia expresamente a cualquier fuero que pudiera corresponderle por razón '
+    . 'de su domicilio presente o futuro, sometiéndose irrevocablemente a la jurisdicción y '
+    . 'competencia de los tribunales de la Ciudad de México.'
 ));
 
 // ═══════════════════════════════════════════════════════════════════════
-// PAGE 2 — Declaration + Signature + Evidence
+// PAGE 2 — Declaración + Firma electrónica + Datos suscriptor
 // ═══════════════════════════════════════════════════════════════════════
 $pdf->AddPage();
 
-// ── DECLARACIÓN EXPRESA DEL SUSCRIPTOR ──────────────────────────────────
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('DECLARACIÓN EXPRESA DEL SUSCRIPTOR'), 0, 1);
-$pdf->Ln(1);
+// ── DECLARACIÓN EXPRESA DEL SUSCRIPTOR ─────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'DECLARACIÓN EXPRESA DEL SUSCRIPTOR');
 $pdf->SetFont('Arial', '', 8.5);
 $pdf->MultiCell(0, 4.5, $enc('El suscriptor declara bajo protesta de decir verdad que:'));
-$pdf->Ln(1);
-
+$pdf->Ln(2);
 $declaraciones = [
     'Ha leído, comprendido y aceptado íntegramente el contenido del presente pagaré.',
     'Reconoce de manera expresa una obligación incondicional de pago por la cantidad total consignada en este documento.',
     'Reconoce que la obligación es exigible por la vía ejecutiva mercantil conforme al artículo 1391 del Código de Comercio.',
     'Firma electrónicamente de forma libre, informada y voluntaria, con plena validez jurídica conforme al Código de Comercio, la Ley General de Títulos y Operaciones de Crédito y demás legislación aplicable.',
     'Reconoce que este pagaré constituye un título de crédito autónomo, independiente de cualquier otro documento o contrato.',
+    'Acepta expresamente la tasa de interés moratorio pactada y reconoce que la misma es razonable y proporcional.',
 ];
-foreach ($declaraciones as $decl) {
-    $pdf->SetFont('Arial', 'B', 8);
-    $pdf->Cell(5, 4.5, $enc('•'), 0, 0);
-    $pdf->SetFont('Arial', '', 8.5);
-    $pdf->MultiCell(0, 4.5, $enc($decl));
-    $pdf->Ln(0.5);
-}
-$pdf->Ln(3);
+foreach ($declaraciones as $decl) { $bullet($pdf, $enc, $decl); }
+$pdf->Ln(4);
 
-// ── FIRMA ELECTRÓNICA Y EVIDENCIA DIGITAL ───────────────────────────────
-$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
-$pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('FIRMA ELECTRÓNICA Y EVIDENCIA DIGITAL'), 0, 1);
+// ── FIRMA ELECTRÓNICA Y EVIDENCIA DIGITAL ──────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'FIRMA ELECTRÓNICA Y EVIDENCIA DIGITAL');
 $pdf->SetFont('Arial', '', 8.5);
 $pdf->MultiCell(0, 4.5, $enc(
-    'El presente pagaré podrá ser firmado mediante medios electrónicos a través de la plataforma '
-    . 'CINCEL u otra herramienta de firma electrónica avanzada, garantizando:'
+    'El presente pagaré se firma mediante la plataforma CINCEL, garantizando:'
 ));
-$pdf->Ln(1);
+$pdf->Ln(2);
 $garantias = [
-    'Identificación plena del firmante',
-    'Integridad del documento',
-    'Autenticidad de la firma',
-    'Conservación conforme a NOM-151',
+    'Identificación plena del firmante mediante validación previa de identidad (INE/Truora)',
+    'Integridad del documento mediante hash criptográfico SHA-256',
+    'Autenticidad de la firma mediante validación OTP de doble factor',
+    'Conservación conforme a la NOM-151-SCFI-2016 mediante sello de tiempo emitido por Autoridad Certificadora autorizada por la Secretaría de Economía',
+    'Cumplimiento de los artículos 89 al 114 del Código de Comercio sobre firma electrónica avanzada',
 ];
-foreach ($garantias as $g) {
-    $pdf->Cell(8, 4.5, $enc('- '), 0, 0);
-    $pdf->Cell(0, 4.5, $enc($g), 0, 1);
-}
-$pdf->Ln(1);
+foreach ($garantias as $g) { $bullet($pdf, $enc, $g); }
+$pdf->Ln(2);
 $pdf->MultiCell(0, 4.5, $enc(
-    'El suscriptor acepta que los registros electrónicos asociados a la firma, incluyendo dirección IP, '
-    . 'fecha, hora, geolocalización, dispositivo y validación mediante código OTP, constituyen prueba '
-    . 'plena en cualquier procedimiento judicial o extrajudicial.'
+    'El suscriptor acepta expresamente que los registros electrónicos asociados a la firma, '
+    . 'incluyendo dirección IP, fecha, hora, geolocalización, dispositivo y validación mediante '
+    . 'código OTP, constituyen prueba plena en cualquier procedimiento judicial o extrajudicial.'
 ));
 $pdf->Ln(4);
 
-// ── DATOS DEL SUSCRIPTOR (auto-filled) ──────────────────────────────────
-$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
+// ── DATOS DEL SUSCRIPTOR (CLIENTE) ─────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'DATOS DEL SUSCRIPTOR (CLIENTE)');
+$pdf->SetFont('Arial', '', 8.5);
+// Row 1: Nombre + CURP
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(35, 5, $enc('Nombre completo:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(60, 5, $enc($nombreCompleto), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(15, 5, $enc('CURP:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(0, 5, $enc($curp ?: '________________________________'), 0, 1);
+// Row 2: RFC + Fecha nacimiento + Nacionalidad
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(15, 5, $enc('RFC:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(40, 5, $enc('—'), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(35, 5, $enc('Fecha de nacimiento:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(25, 5, $enc($fechaNacimiento ?: '—'), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(25, 5, $enc('Nacionalidad:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(0, 5, $enc('Mexicana'), 0, 1);
 $pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('DATOS DEL SUSCRIPTOR (CLIENTE)'), 0, 1);
+// Address
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(35, 5, $enc('Domicilio completo:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->MultiCell(0, 5, $enc($domicilio ?: '________________________________'));
 $pdf->Ln(1);
+// Phone + Email
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(30, 5, $enc('Teléfono celular:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(50, 5, $enc($telCliente ? ('+52 ' . $telCliente) : '—'), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(30, 5, $enc('Correo electrónico:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(0, 5, $enc($emailCliente ?: '—'), 0, 1);
+$pdf->Ln(4);
 
-$w1 = 40; $h = 7;
-$suscriptorRows = [
-    ['Nombre completo', $nombreCompleto ?: '________________________________'],
-    ['CURP', $curp ?: '________________________________'],
-    ['Domicilio', $domicilio ?: '________________________________'],
-    ['Teléfono', $telCliente ? ('+52 ' . $telCliente) : '________________________________'],
-];
-foreach ($suscriptorRows as $row) {
-    $pdf->SetFont('Arial', 'B', 8.5);
-    $pdf->Cell($w1, $h, $enc($row[0] . ':'), 0, 0);
-    $pdf->SetFont('Arial', '', 8.5);
-    $pdf->Cell(0, $h, $enc($row[1]), 'B', 1);
-}
-$pdf->Ln(5);
+// ═══════════════════════════════════════════════════════════════════════
+// PAGE 3 — Acreedor + Vehículo + Firma + Validación + Aceptación + Notas
+// ═══════════════════════════════════════════════════════════════════════
+$pdf->AddPage();
 
-// ── FIRMA DEL SUSCRIPTOR ────────────────────────────────────────────────
-$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
-$pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('FIRMA DEL SUSCRIPTOR'), 0, 1);
-$pdf->Ln(1);
+// ── DATOS DEL ACREEDOR ─────────────────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'DATOS DEL ACREEDOR');
+$pdf->SetFont('Arial', '', 8.5);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(25, 5, $enc('Razón social:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(65, 5, $enc('MTECH GEARS, S.A. DE C.V.'), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(30, 5, $enc('Nombre comercial:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(0, 5, $enc('VOLTIKA'), 0, 1);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(15, 5, $enc('RFC:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(40, 5, $enc('MGE230316KA2'), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(25, 5, $enc('Domicilio fiscal:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(0, 5, $enc('Jaime Balmes 71 Int 101, Polanco, Miguel Hidalgo, CDMX C.P. 11510'), 0, 1);
+$pdf->Ln(4);
 
+// ── DATOS DEL VEHÍCULO AMPARADO ────────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'DATOS DEL VEHÍCULO AMPARADO');
+$pdf->SetFont('Arial', '', 8.5);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(18, 5, $enc('Modelo:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(40, 5, $enc((string)($moto['modelo'] ?? '—')), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(15, 5, $enc('Color:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(30, 5, $enc((string)($moto['color'] ?? '—')), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(18, 5, $enc('VIN/NIV:'), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(40, 5, $enc($vinDisplay), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(12, 5, $enc('Año:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(0, 5, $enc((string)($moto['anio_modelo'] ?? date('Y'))), 0, 1);
+$pdf->Ln(4);
+
+// ── FIRMA DEL SUSCRIPTOR ───────────────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'FIRMA DEL SUSCRIPTOR');
 if ($firmaImgPath && file_exists($firmaImgPath)) {
-    $pdf->Image($firmaImgPath, $pdf->GetX() + 30, $pdf->GetY(), 80, 30);
-    $pdf->Ln(32);
+    $pdf->Image($firmaImgPath, $pdf->GetX() + 20, $pdf->GetY(), 80, 30);
+    $pdf->Ln(35);
 } else {
     $pdf->SetFont('Arial', '', 8);
-    $pdf->Cell(0, 6, $enc('Firma electrónica: ________________________________'), 0, 1);
-    $pdf->Ln(2);
+    $pdf->Cell(0, 25, $enc('[ESPACIO PARA FIRMA GRÁFICA O CINCEL]'), 0, 1, 'C');
 }
-$pdf->SetFont('Arial', 'I', 8);
-$pdf->Cell(0, 5, $enc('(Validación mediante CINCEL y/o código OTP)'), 0, 1, 'C');
-$pdf->Ln(5);
-
-// ── ACREEDOR ────────────────────────────────────────────────────────────
-$pdf->Line(10, $pdf->GetY(), 200, $pdf->GetY());
 $pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('ACREEDOR'), 0, 1);
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell(0, 6, $enc('MTECH GEARS, S.A. DE C.V.'), 0, 1);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(0, 6, $enc('(VOLTIKA)'), 0, 1);
-$pdf->Ln(3);
 
-// ── Evidence metadata (small footer) ────────────────────────────────────
-$ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'N/A';
-if ($ip !== 'N/A') $ip = explode(',', $ip)[0];
-$ua = $_SERVER['HTTP_USER_AGENT'] ?? 'N/A';
-// Bug #3 fix: use real OTP data from entregas table (not checklist fase4 flag)
-$otpInfo = $otpVerified
-    ? ('Validado — Código: ' . substr($otpCode, 0, 3) . '*** — ' . $otpTimestamp)
-    : 'Pendiente';
+// Validación electrónica (structured bullet list per v2 template)
+$pdf->SetFont('Arial', 'B', 8.5);
+$pdf->Cell(0, 5, $enc('Validación electrónica:'), 0, 1);
+$pdf->Ln(1);
+$pdf->SetFont('Arial', '', 8);
+$otpDisplay = $otpVerified ? $otpCode : 'Pendiente';
+$validacionItems = [
+    ['OTP capturado:', $otpDisplay],
+    ['Fecha y hora de firma:', $fechaFirma],
+    ['Dirección IP:', $ip],
+    ['Geolocalización:', '—'],
+    ['Dispositivo:', substr($ua, 0, 80)],
+    ['Hash del documento (SHA-256):', 'Se genera al firmar'],
+    ['Folio NOM-151:', 'Se genera al firmar'],
+    ['Folio CINCEL:', 'Se genera al firmar'],
+];
+foreach ($validacionItems as $vi) {
+    $pdf->SetFont('Arial', 'B', 8); $pdf->Cell(6, 4.5, $enc(chr(149)), 0, 0);
+    $pdf->Cell(50, 4.5, $enc($vi[0]), 0, 0);
+    $pdf->SetFont('Arial', '', 8); $pdf->Cell(0, 4.5, $enc($vi[1]), 0, 1);
+}
+$pdf->Ln(4);
 
-$pdf->SetFont('Arial', '', 6.5);
-$pdf->SetTextColor(120, 120, 120);
-$pdf->Cell(0, 4, $enc('Folio: ' . $folio . '  |  IP: ' . $ip . '  |  OTP: ' . $otpInfo . '  |  VIN: ' . ($moto['vin_display'] ?? $moto['vin'] ?? 'N/A')), 0, 1);
-$pdf->Cell(0, 4, $enc('Generado: ' . date('Y-m-d H:i:s') . '  |  Dispositivo: ' . substr($ua, 0, 90)), 0, 1);
-$pdf->SetTextColor(0, 0, 0);
+// ── ACEPTACIÓN DEL ACREEDOR ────────────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'ACEPTACIÓN DEL ACREEDOR');
+$pdf->SetFont('Arial', '', 8.5);
+$pdf->MultiCell(0, 5, $enc(
+    'MTECH GEARS, S.A. DE C.V. (VOLTIKA) acepta el presente título de crédito.'
+));
+$pdf->Ln(1);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(25, 5, $enc('Folio interno:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(60, 5, $enc($folio), 0);
+$pdf->SetFont('Arial', 'B', 8.5); $pdf->Cell(20, 5, $enc('Generado:'), 0);
+$pdf->SetFont('Arial', '', 8.5); $pdf->Cell(0, 5, $enc($fechaFirma), 0, 1);
+$pdf->Ln(4);
+
+// ── NOTAS LEGALES ──────────────────────────────────────────────────────
+$divider($pdf);
+$secTitle($pdf, $enc, 'NOTAS LEGALES');
+$pdf->SetFont('Arial', '', 8);
+$pdf->MultiCell(0, 4.5, $enc(
+    'Este pagaré se rige por la Ley General de Títulos y Operaciones de Crédito (artículos 170 a '
+    . '174 para pagarés), el Código de Comercio (artículos 89-114 para firma electrónica y 1391-1414 '
+    . 'para vía ejecutiva mercantil), la Norma Oficial Mexicana NOM-151-SCFI-2016, y demás '
+    . 'disposiciones aplicables.'
+));
+// (Old footer metadata removed — now in FIRMA DEL SUSCRIPTOR validation section above)
 
 // ── Output PDF ──────────────────────────────────────────────────────────
 $pdf->Output('F', $filepath);
