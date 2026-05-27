@@ -384,6 +384,7 @@ $vinDisplay = (string)($moto['vin_display'] ?? $moto['vin'] ?? '—');
 $geoDisplay = ($inputGeoLat !== '' && $inputGeoLng !== '') ? ($inputGeoLat . ', ' . $inputGeoLng) : '—';
 
 $pdf = new FPDF();
+$pdf->SetCompression(false);
 $pdf->SetAutoPageBreak(true, 15);
 
 // ═══════════════════════════════════════════════════════════════════════
