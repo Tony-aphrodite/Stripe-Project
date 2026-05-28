@@ -23,6 +23,30 @@ require_once __DIR__ . '/lib/catalog-normalize.php';
  * single canonical "VK-XXXX" form. Defined in master-bootstrap so
  * both /admin/ and /configurador/admin-cedis.php paths can reuse it.
  */
+/**
+ * Returns the durable storage path for a given subdirectory (contratos, pagares, ...).
+ * Plesk locks the directories under httpdocs/, but PHP can write to private_storage/
+ * (one level above httpdocs/). Created lazily, idempotent.
+ *
+ * Falls back to /tmp ONLY if private_storage isn't accessible — but logs a CRITICAL
+ * warning because /tmp gets wiped by the OS.
+ */
+if (!function_exists('voltikaDurableStorageDir')) {
+    function voltikaDurableStorageDir(string $subdir): string {
+        $sub = trim($subdir, '/');
+        $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2);
+        $vhost   = dirname($docRoot);  // /var/www/vhosts/voltika.mx
+        $dir     = $vhost . '/private_storage/' . $sub;
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+        if (is_dir($dir) && is_writable($dir)) return $dir;
+        $fallback = sys_get_temp_dir() . '/voltika_' . $sub;
+        if (!is_dir($fallback)) @mkdir($fallback, 0777, true);
+        error_log('CRITICAL: durable storage unavailable, using EPHEMERAL ' . $fallback
+                . ' — files will be lost on /tmp cleanup. Subdir requested: ' . $sub);
+        return $fallback;
+    }
+}
+
 if (!function_exists('voltikaNormalizePedidoNum')) {
     function voltikaNormalizePedidoNum(string $rawPedido): string {
         $clean = preg_replace('/^(VK-)+/i', '', trim($rawPedido));

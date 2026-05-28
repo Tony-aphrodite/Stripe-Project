@@ -15,8 +15,14 @@ if ($file === '' || !preg_match('/^pagare_moto\d+_\d{8}_\d{6}(_v2)?\.pdf$/', $fi
     exit;
 }
 
-$path = sys_get_temp_dir() . '/voltika_pagares/' . $file;
-if (!is_file($path)) {
+// Search durable location first, then legacy /tmp paths.
+$candidates = [
+    voltikaDurableStorageDir('pagares') . '/' . $file,
+    sys_get_temp_dir() . '/voltika_pagares/' . $file,
+];
+$path = null;
+foreach ($candidates as $c) { if (is_file($c)) { $path = $c; break; } }
+if (!$path) {
     http_response_code(404);
     header('Content-Type: text/plain');
     echo 'PDF no encontrado en disco.';

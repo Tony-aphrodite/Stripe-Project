@@ -40,11 +40,11 @@ if ($serveFile !== '') {
         http_response_code(400);
         exit('Nombre de archivo inválido');
     }
-    $storageDir = sys_get_temp_dir() . '/voltika_pagares/';
-    $filePath = $storageDir . $filename;
+    // Search durable location first, then legacy /tmp + uploads paths.
+    $filePath = voltikaDurableStorageDir('pagares') . '/' . $filename;
     if (!file_exists($filePath)) {
-        // Fallback to other known dirs
         foreach ([
+            sys_get_temp_dir() . '/voltika_pagares/',
             __DIR__ . '/../../../configurador/php/uploads/pagares/',
             __DIR__ . '/../../../configurador/php/pagares/',
         ] as $dir) {

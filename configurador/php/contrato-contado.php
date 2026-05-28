@@ -104,24 +104,15 @@ function contratoContadoVerifyToken(string $pedido, string $stripePi, string $to
 // ─────────────────────────────────────────────────────────────────────────
 
 function contratoContadoOutputDir(): string {
+    // Prefer the legacy code-tree dir if it's writable (keeps existing files findable).
     $dir = __DIR__ . '/../contratos/contado';
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
         @chmod($dir, 0775);
     }
-    // Plesk-style hosting often denies the PHP runtime user write access
-    // to code-tree directories. Fall back to /tmp so the contrato write
-    // never silently fails (chargeback evidence MUST be available).
-    if (!is_writable($dir)) {
-        $alt = sys_get_temp_dir() . '/voltika_contratos_contado';
-        if (!is_dir($alt)) @mkdir($alt, 0777, true);
-        @chmod($alt, 0777);
-        if (is_writable($alt)) {
-            $GLOBALS['_contrato_using_temp_dir'] = true;
-            return $alt;
-        }
-    }
-    return $dir;
+    if (is_writable($dir)) return $dir;
+    // Otherwise use the durable private_storage helper. Avoids /tmp which gets wiped.
+    return voltikaDurableStorageDir('contratos');
 }
 
 function contratoContadoPdfPath(string $pedido): string {

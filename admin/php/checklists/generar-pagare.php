@@ -323,8 +323,10 @@ if (!$fpdfFound) {
     adminJsonOut(['error' => 'FPDF library not found. Upload fpdf.php to admin/php/lib/'], 500);
 }
 
-$storageDir = sys_get_temp_dir() . '/voltika_pagares/';
-if (!is_dir($storageDir)) @mkdir($storageDir, 0777, true);
+// Durable storage (master-bootstrap.php helper) — files in /tmp/ get wiped
+// by the OS, losing the pagaré. private_storage/pagares is outside httpdocs
+// but writable by PHP. Viewers still search /tmp for legacy files.
+$storageDir = voltikaDurableStorageDir('pagares') . '/';
 
 $filename = 'pagare_moto' . $motoId . '_' . date('Ymd_His') . '.pdf';
 $filepath = $storageDir . $filename;

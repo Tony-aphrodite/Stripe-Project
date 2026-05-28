@@ -96,8 +96,9 @@ elseif ($action === 'link_pdf' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $cq->execute([$motoId]);
         $clId = (int)($cq->fetchColumn() ?: 0);
         if ($clId > 0) {
-            // Compute hash from file if it exists
-            $candidatePath = sys_get_temp_dir() . '/voltika_pagares/' . $fname;
+            // Compute hash from file if it exists — search durable first, then /tmp.
+            $candidatePath = voltikaDurableStorageDir('pagares') . '/' . $fname;
+            if (!is_file($candidatePath)) $candidatePath = sys_get_temp_dir() . '/voltika_pagares/' . $fname;
             $hash = is_file($candidatePath) ? hash_file('sha256', $candidatePath) : null;
             $pdo->prepare("UPDATE checklist_entrega_v2 SET pagare_pdf_path = ?, pagare_pdf_hash = COALESCE(?, pagare_pdf_hash) WHERE id = ?")
                 ->execute([$fname, $hash, $clId]);
@@ -190,6 +191,7 @@ echo '</div>';
 // 3) PDF files on disk
 echo '<div class="sec"><h2>3) Archivos PDF de PAGARÉ en disco (para moto_id ' . $motoId . ')</h2>';
 $searchDirs = [
+    voltikaDurableStorageDir('pagares') . '/',
     sys_get_temp_dir() . '/voltika_pagares/',
     __DIR__ . '/../../../configurador/php/uploads/pagares/',
     __DIR__ . '/../../../configurador/php/pagares/',

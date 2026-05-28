@@ -152,8 +152,10 @@ if ($pdfPath !== '') {
         $searchPaths[] = __DIR__ . '/../' . ltrim($pdfPath, '/'); // DB stored relative
     }
 }
-$searchPaths[] = __DIR__ . '/../contratos/contado/' . $filename;            // canonical
-$searchPaths[] = sys_get_temp_dir() . '/voltika_contratos_contado/' . $filename; // /tmp fallback
+$searchPaths[] = voltikaDurableStorageDir('contratos') . '/' . $filename;        // durable (private_storage)
+$searchPaths[] = __DIR__ . '/../contratos/contado/' . $filename;                 // canonical (legacy)
+$searchPaths[] = sys_get_temp_dir() . '/voltika_contratos_contado/' . $filename; // /tmp fallback (legacy)
+$searchPaths[] = sys_get_temp_dir() . '/voltika_contratos/' . $filename;         // /tmp fallback (legacy)
 
 // Force regeneration when test mode is on or ?regen=1 is passed. Customer
 // report 2026-04-30: a cached PDF on disk was being served with its
@@ -227,6 +229,7 @@ if (!empty($_GET['check_only'])) {
         $safeName = preg_replace('/[^a-zA-Z0-9]/', '_', $clientName);
         if ($safeName !== '') {
             $candidates = array_merge(
+                @glob(voltikaDurableStorageDir('contratos') . '/contrato_*' . $safeName . '*.pdf') ?: [],
                 @glob(__DIR__ . '/contratos/contrato_*' . $safeName . '*.pdf') ?: [],
                 @glob(sys_get_temp_dir() . '/voltika_contratos/contrato_*' . $safeName . '*.pdf') ?: []
             );
@@ -345,13 +348,14 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
                 $creditSearchPatterns = [];
                 if ($safeName !== '') {
                     $creditSearchPatterns = [
+                        voltikaDurableStorageDir('contratos') . '/contrato_*' . $safeName . '*.pdf',
                         __DIR__ . '/contratos/contrato_*' . $safeName . '*.pdf',
                         sys_get_temp_dir() . '/voltika_contratos/contrato_*' . $safeName . '*.pdf',
                     ];
-                    $candidates = array_merge(
-                        glob($creditSearchPatterns[0]) ?: [],
-                        glob($creditSearchPatterns[1]) ?: []
-                    );
+                    $candidates = [];
+                    foreach ($creditSearchPatterns as $pattern) {
+                        $candidates = array_merge($candidates, glob($pattern) ?: []);
+                    }
                 }
                 if ($candidates) {
                     usort($candidates, function($a, $b) { return filemtime($b) - filemtime($a); });
