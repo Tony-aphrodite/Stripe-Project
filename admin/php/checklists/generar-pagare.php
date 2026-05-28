@@ -679,14 +679,21 @@ $pdf->SetFont('Arial', '', 8.5); $pdf->Cell(0, 5, $enc($fechaFirma), 0, 1);
 $pdf->Ln(4);
 
 // ── NOTAS LEGALES ──────────────────────────────────────────────────────
+// Updated 2026-05-28 per 5-28.md customer legal spec: cite LGTOC Art. 5 + 5 Bis
+// (DOF reform of 26-03-2024) which explicitly recognizes electronic credit titles.
+// This is the strongest current legal basis for electronic pagarés in Mexico.
 $divider($pdf);
 $secTitle($pdf, $enc, 'NOTAS LEGALES');
 $pdf->SetFont('Arial', '', 8);
 $pdf->MultiCell(0, 4.5, $enc(
-    'Este pagaré se rige por la Ley General de Títulos y Operaciones de Crédito (artículos 170 a '
-    . '174 para pagarés), el Código de Comercio (artículos 89-114 para firma electrónica y 1391-1414 '
-    . 'para vía ejecutiva mercantil), la Norma Oficial Mexicana NOM-151-SCFI-2016, y demás '
-    . 'disposiciones aplicables.'
+    'Este pagaré se emite como título de crédito electrónico conforme a los artículos 5 y 5 Bis '
+    . 'de la Ley General de Títulos y Operaciones de Crédito (reforma DOF 26-03-2024), que '
+    . 'reconocen la validez jurídica, exigibilidad y eficacia de los títulos de crédito emitidos '
+    . 'a través de medios electrónicos como mensajes de datos. Se rige asimismo por los artículos '
+    . '170 a 174 de la misma Ley (requisitos del pagaré), los artículos 89 al 114 del Código de '
+    . 'Comercio (firma electrónica y mensajes de datos), los artículos 1391 a 1414 del Código de '
+    . 'Comercio (vía ejecutiva mercantil), la Norma Oficial Mexicana NOM-151-SCFI-2016 '
+    . '(conservación de mensajes de datos), y demás disposiciones aplicables.'
 ));
 // (Old footer metadata removed — now in FIRMA DEL SUSCRIPTOR validation section above)
 
