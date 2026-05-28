@@ -256,12 +256,18 @@ function generateContractPDF($nombre, $email, $telefono, $modelo, $color,
                               $ciudad, $estado, $cp, $credito, $firmaBase64,
                               $curp, $domicilio, $customerId) {
 
+    // Try the durable location first (configurador/php/contratos/).
+    // Only fall back to /tmp if durable storage is unwritable — and LOG LOUDLY
+    // because /tmp is wiped by the OS and contracts saved there get lost
+    // (Fernando Barush 2026-05-20 case: file vanished after /tmp cleanup).
     $uploadDir = __DIR__ . '/contratos/';
-    if (!is_dir($uploadDir)) {
-        if (!mkdir($uploadDir, 0777, true)) {
-            $uploadDir = sys_get_temp_dir() . '/voltika_contratos/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
-        }
+    if (!is_dir($uploadDir)) @mkdir($uploadDir, 0775, true);
+    if (!is_dir($uploadDir) || !is_writable($uploadDir)) {
+        $uploadDir = sys_get_temp_dir() . '/voltika_contratos/';
+        if (!is_dir($uploadDir)) @mkdir($uploadDir, 0777, true);
+        error_log('CRITICAL: contrato PDF saved to EPHEMERAL /tmp — will be lost on OS cleanup. '
+                . 'Fix permissions on ' . __DIR__ . '/contratos/ for durable storage. '
+                . 'Customer: ' . $nombre);
     }
 
     $filename = 'contrato_' . preg_replace('/[^a-zA-Z0-9]/', '_', $nombre) . '_' . date('Ymd_His') . '.pdf';
