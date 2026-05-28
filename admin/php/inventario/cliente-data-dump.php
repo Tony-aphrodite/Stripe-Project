@@ -204,6 +204,40 @@ if (!$firmas) {
 }
 echo '</div>';
 
+// ── 7b. consultas_buro (CDC — Círculo de Crédito) ─────────────────────
+echo '<h2>7b. consultas_buro (CDC — Círculo de Crédito)</h2><div class="card">';
+$nombre = (string)($moto['cliente_nombre'] ?? '');
+$firstName = trim(explode(' ', $nombre)[0] ?? '');
+try {
+    $params = [];
+    $where  = [];
+    if ($firstName !== '') {
+        $where[] = "(nombre LIKE ? OR CONCAT(nombre,' ',apellido_paterno) LIKE ?)";
+        $params[] = '%' . strtoupper($firstName) . '%';
+        $params[] = '%' . strtoupper($nombre) . '%';
+    }
+    if ($where) {
+        $q = $pdo->prepare("SELECT * FROM consultas_buro WHERE " . implode(' OR ', $where) . " ORDER BY id DESC LIMIT 5");
+        $q->execute($params);
+        $buros = $q->fetchAll(PDO::FETCH_ASSOC);
+    } else { $buros = []; }
+    if (!$buros) {
+        echo '<div class="empty">(ninguna consulta CDC para este nombre)</div>';
+    } else {
+        foreach ($buros as $b) {
+            echo '<h3 style="font-size:13px;margin:8px 0;">id=' . (int)$b['id'] . ' · ' . htmlspecialchars((string)($b['nombre'] ?? '')) . ' ' . htmlspecialchars((string)($b['apellido_paterno'] ?? '')) . '</h3><table>';
+            foreach ($b as $k => $vv) {
+                if ($k === 'raw_response') continue;
+                echo _row($k, $vv);
+            }
+            echo '</table>';
+        }
+    }
+} catch (Throwable $e) {
+    echo '<div class="empty">(tabla no existe o error: ' . htmlspecialchars($e->getMessage()) . ')</div>';
+}
+echo '</div>';
+
 // ── 7. truora_curp_audit ──────────────────────────────────────────────
 echo '<h2>7. truora_curp_audit</h2><div class="card">';
 try {

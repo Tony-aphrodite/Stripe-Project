@@ -163,6 +163,41 @@ if ($truoraPayload) {
     }
 }
 
+// ── 3) consultas_buro (CDC) — has FULL RFC with homoclave + clean address ──
+// CDC query data persists customer info from Círculo de Crédito. We match by
+// CURP first (most reliable) then by name+birth-date if CURP is empty.
+$buroRow = null;
+try {
+    if ($curp !== '') {
+        $bq = $pdo->prepare("SELECT * FROM consultas_buro WHERE curp = ? ORDER BY id DESC LIMIT 1");
+        $bq->execute([$curp]);
+        $buroRow = $bq->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+    if (!$buroRow && $nombre !== '' && $dob !== '') {
+        // Fallback: match by name fragment + birth date
+        $bq = $pdo->prepare("SELECT * FROM consultas_buro
+            WHERE fecha_nacimiento = ?
+              AND (nombre LIKE ? OR CONCAT(nombre,' ',apellido_paterno,' ',apellido_materno) LIKE ?)
+            ORDER BY id DESC LIMIT 1");
+        $bq->execute([$dob, '%' . strtoupper(explode(' ', $nombre)[0]) . '%', '%' . strtoupper($nombre) . '%']);
+        $buroRow = $bq->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+} catch (Throwable $e) {}
+
+// Overlay CDC data when available — fills RFC homoclave + address components
+// that may not have parsed cleanly from the Truora INE string.
+$rfcFromBuro = '';
+if ($buroRow) {
+    $rfcFromBuro = strtoupper(trim((string)($buroRow['rfc'] ?? '')));
+    if ($address['calle'] === '' && !empty($buroRow['calle_numero'])) $address['calle']    = trim((string)$buroRow['calle_numero']);
+    if ($address['colonia'] === '' && !empty($buroRow['colonia']))    $address['colonia']  = trim((string)$buroRow['colonia']);
+    if ($address['alcaldia'] === '' && !empty($buroRow['municipio'])) $address['alcaldia'] = trim((string)$buroRow['municipio']);
+    if ($address['estado'] === '' && !empty($buroRow['estado']))      $address['estado']   = trim((string)$buroRow['estado']);
+    if ($address['cp'] === '' && !empty($buroRow['cp']))              $address['cp']       = trim((string)$buroRow['cp']);
+    if ($dob === '' && !empty($buroRow['fecha_nacimiento']))          $dob                 = trim((string)$buroRow['fecha_nacimiento']);
+    if ($addressSource === '')                                         $addressSource = 'consultas_buro';
+}
+
 // Fall back to transacciones if Truora didn't yield CP / state
 if ($address['estado'] === '' || $address['cp'] === '') {
     try {
@@ -273,13 +308,16 @@ $vehicle = [
     'anio'   => (string)($moto['anio_modelo'] ?? date('Y')),
 ];
 
-// Derive RFC base from CURP — first 4 letters + 6 birth-date digits.
-// The Mexican RFC for personas físicas is 4-letter-name + YYMMDD + 3-char homoclave.
-// The first 10 chars are the same as CURP's first 10 (same name + birth-date rules).
-// The 3-char homoclave requires a SAT lookup we don't have; emit just the base.
+// RFC priority: CDC consultas_buro (has full 13-char with SAT homoclave)
+// > derived from CURP (10-char base, no homoclave).
 $rfc = '';
-if ($curp !== '' && preg_match('/^([A-Z]{4}\d{6})/', $curp, $rm)) {
+$rfcSource = '';
+if ($rfcFromBuro !== '') {
+    $rfc = $rfcFromBuro;
+    $rfcSource = 'consultas_buro';
+} elseif ($curp !== '' && preg_match('/^([A-Z]{4}\d{6})/', $curp, $rm)) {
     $rfc = $rm[1];  // 10-char RFC base, legally identifiable without homoclave
+    $rfcSource = 'derived_from_curp';
 }
 
 adminJsonOut([
@@ -287,6 +325,7 @@ adminJsonOut([
     'curp'           => $curp,
     'curp_source'    => $curpSource,
     'rfc'            => $rfc,
+    'rfc_source'     => $rfcSource,
     'fecha_nacimiento' => $dob,
     'nombre'         => $nombre,
     'address'        => $address,
