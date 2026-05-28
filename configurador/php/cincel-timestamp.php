@@ -145,12 +145,18 @@ function cincelTimestampExists(string $hash): ?array {
     $rootHost = preg_replace('#/v\d+$#', '', $apiUrl) ?: 'https://api.cincel.digital';
     $url = $rootHost . '/v3/timestamps/' . $hash;
 
+    // Cincel changed this endpoint to require JWT auth (was public before).
+    // Without the Bearer token Cincel returns 404; with it, 300 + JSON body.
+    $jwt = cincelGetJWT();
+    $headers = ['Accept: application/json'];
+    if ($jwt) $headers[] = 'Authorization: Bearer ' . $jwt;
+
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 10,
         CURLOPT_CONNECTTIMEOUT => 6,
-        CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+        CURLOPT_HTTPHEADER     => $headers,
     ]);
     $raw  = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
