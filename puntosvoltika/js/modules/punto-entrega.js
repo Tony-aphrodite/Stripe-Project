@@ -915,8 +915,8 @@ window.PV_entrega = (function(){
       // CURP-derived (RFC base, 10 chars without SAT homoclave)
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">' +
         '<div>' +
-          '<label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:2px;">RFC</label>' +
-          '<input id="pvPagRfc" type="text" maxlength="13" value="' + esc(rfcVal) + '" placeholder="XXXX000000XXX" style="width:100%;padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:monospace;text-transform:uppercase;">' +
+          '<label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:2px;">RFC (10 o 13 caracteres)</label>' +
+          '<input id="pvPagRfc" type="text" maxlength="13" value="' + esc(rfcVal) + '" placeholder="Sin homoclave o con homoclave" style="width:100%;padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:monospace;text-transform:uppercase;">' +
         '</div>' +
         '<div>' +
           '<label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:2px;">Fecha de nacimiento</label>' +
@@ -1030,6 +1030,18 @@ window.PV_entrega = (function(){
         var v = $(this).val();
         if (/distrito\s*federal/i.test(v)) $(this).val('Ciudad de México');
         refreshSubmitBtn();
+      });
+
+      // RFC validation on input — accept 10 chars (base) or 13 chars (with SAT homoclave)
+      var rfcRegex = /^[A-Z&Ñ]{3,4}\d{6}([A-Z0-9]{3})?$/;
+      $('#pvPagRfc').on('input', function(){
+        var v = $(this).val().toUpperCase().replace(/[^A-Z0-9&Ñ]/g,'');
+        $(this).val(v);
+        if (v === '' || rfcRegex.test(v)) {
+          $(this).css('borderColor', v ? '#22c55e' : '#cbd5e1');
+        } else {
+          $(this).css('borderColor','#f59e0b');
+        }
       });
 
       // CURP validation on input

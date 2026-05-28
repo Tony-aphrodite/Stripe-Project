@@ -260,7 +260,7 @@ echo '<style>
   <label>CURP (18 caracteres)</label>
   <input id="pmCurp" maxlength="18" placeholder="SACA920415HDFNRL05">
   <div class="row">
-    <div><label>RFC (13 caracteres)</label><input id="pmRfc" maxlength="13" placeholder="SACA920415AB1"></div>
+    <div><label>RFC (10 o 13 caracteres)</label><input id="pmRfc" maxlength="13" placeholder="RISC020130 o RISC020130AB7"></div>
     <div><label>Fecha de nacimiento</label><input id="pmDob" type="date"></div>
   </div>
   <label>Calle</label>
@@ -406,6 +406,11 @@ document.addEventListener("DOMContentLoaded", function() {
         var cp       = (document.getElementById("pmCp").value || "").trim();
         if (curp && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$/.test(curp)) {
             alert("CURP con formato inválido. Debe tener 18 caracteres.");
+            return;
+        }
+        // RFC: accept both 10-char (base) and 13-char (with SAT homoclave) forms
+        if (rfc && !/^[A-Z&Ñ]{3,4}\d{6}([A-Z0-9]{3})?$/.test(rfc)) {
+            alert("RFC con formato inválido. Acepta 10 caracteres (sin homoclave) o 13 caracteres (con homoclave).");
             return;
         }
         if (cp && !/^\d{5}$/.test(cp)) {
