@@ -238,6 +238,8 @@ function generarPagareFromFirma(firmaId, motoId, btn) {
     btn.disabled = true;
     btn.textContent = "Procesando...";
 
+    var prefillData = {};
+
     // Step 1: Save the firma_pagare_data to checklist (so generar-pagare embeds it)
     fetch("/admin/php/checklists/guardar-firma.php", {
         method: "POST",
@@ -245,16 +247,32 @@ function generarPagareFromFirma(firmaId, motoId, btn) {
         credentials: "include",
         body: JSON.stringify({moto_id: motoId, tipo: "pagare", firma_id_source: firmaId})
     }).then(function(r){ return r.json(); }).then(function(r1){
-        // Step 2: Generate the PAGARÉ PDF. Round 111 added gates (CURP, OTP, address).
-        // For legacy/diagnostic regeneration, pass _skip flags so the generation
-        // proceeds with whatever data the backend can find from DB lookups.
-        // For new deliveries, the punto stepPagare form collects all data properly.
+        // Step 2: Fetch prefill data (CURP, address, etc) from clientes + verificaciones_identidad
+        return fetch("/admin/php/checklists/pagare-prefill.php?moto_id=" + motoId, {
+            credentials: "include"
+        }).then(function(r){ return r.json(); });
+    }).then(function(pre){
+        prefillData = pre || {};
+        // Step 3: Generate the PAGARÉ PDF with CURP + address from prefill.
+        // Skip gates are still passed because diag tool is for legacy regeneration
+        // — if prefill returns empty for a field, generation proceeds without it
+        // rather than blocking. For new deliveries, stepPagare in the punto
+        // collects this data interactively and validates strictly.
+        var addr = prefillData.address || {};
         return fetch("/admin/php/checklists/generar-pagare.php", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             credentials: "include",
             body: JSON.stringify({
                 moto_id: motoId,
+                curp:         prefillData.curp || "",
+                calle:        addr.calle || "",
+                num_exterior: addr.num_exterior || "",
+                num_interior: addr.num_interior || "",
+                colonia:      addr.colonia || "",
+                alcaldia:     addr.alcaldia || "",
+                estado_dir:   addr.estado || "",
+                cp:           addr.cp || "",
                 _skip_curp_gate: 1,
                 _skip_otp_gate: 1,
                 _skip_address_gate: 1
@@ -265,10 +283,14 @@ function generarPagareFromFirma(firmaId, motoId, btn) {
             btn.textContent = "✓ PAGARÉ generado";
             btn.style.background = "#16a34a";
             var d = r2.datos || {};
+            var curpInfo = prefillData.curp
+                ? prefillData.curp + " (origen: " + (prefillData.curp_source || "?") + ")"
+                : "NO ENCONTRADO en clientes ni verificaciones_identidad";
             var msg = "✅ PAGARÉ generado\\n\\npdf_hash: " + (r2.pdf_hash || "?").substring(0,16) + "…"
                     + "\\ncincel: " + (r2.cincel_hash ? "✓ sellado" : (r2.cincel_err || "pendiente"))
                     + "\\nnombre: " + (d.nombre || "—")
-                    + "\\nmonto: " + (d.monto_fmt || "—");
+                    + "\\nmonto: " + (d.monto_fmt || "—")
+                    + "\\nCURP: " + curpInfo;
             alert(msg);
             location.reload();
         } else {
