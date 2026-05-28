@@ -54,6 +54,9 @@ if (!$motoId) {
 
 function _row(string $label, $value): string {
     $v = is_array($value) ? json_encode($value) : (string)$value;
+    // Massive blobs (raw_truora_payload, raw_response) get truncated so the
+    // rest of the dump remains readable.
+    if (strlen($v) > 400) $v = substr($v, 0, 400) . ' …[truncated ' . (strlen($v) - 400) . ' chars]';
     $has = $v !== '' && $v !== null && $v !== '—';
     $cls = $has ? 'has' : 'empty';
     return '<tr><td class="lbl">' . htmlspecialchars($label) . '</td>'
