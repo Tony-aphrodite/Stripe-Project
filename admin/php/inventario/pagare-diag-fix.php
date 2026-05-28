@@ -234,11 +234,73 @@ echo '<div class="hint"><strong>Lectura del diagnóstico:</strong>'
    . '<li><strong>Todo OK</strong> → revisa por qué la vista admin no lo encuentra (puede ser caché del navegador).</li>'
    . '</ul></div>';
 
-echo '<script>
+echo '<style>
+#pagareModal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:9999;display:none;align-items:center;justify-content:center;}
+#pagareModal .box{background:#fff;border-radius:10px;padding:22px 24px;max-width:560px;width:92%;max-height:88vh;overflow:auto;}
+#pagareModal h3{margin:0 0 6px;font-size:18px;}
+#pagareModal label{display:block;font-size:11.5px;font-weight:600;color:#475569;margin:8px 0 2px;text-transform:uppercase;letter-spacing:.4px;}
+#pagareModal input{width:100%;padding:7px 9px;border:1px solid #cbd5e1;border-radius:5px;font-size:13px;box-sizing:border-box;}
+#pagareModal input:focus{outline:2px solid #039fe1;border-color:#039fe1;}
+#pagareModal .row{display:flex;gap:10px;}
+#pagareModal .row > div{flex:1;}
+#pagareModal .actions{margin-top:18px;display:flex;gap:8px;justify-content:flex-end;}
+#pagareModal .btn-go{background:#16a34a;color:#fff;border:0;padding:9px 16px;border-radius:5px;cursor:pointer;font-weight:600;font-size:13px;}
+#pagareModal .btn-cancel{background:#f1f5f9;color:#0c2340;border:1px solid #cbd5e1;padding:9px 16px;border-radius:5px;cursor:pointer;font-size:13px;}
+#pagareModal .hint-row{background:#fef9c3;border:1px solid #fcd34d;padding:8px 11px;border-radius:6px;font-size:11.5px;color:#78350f;margin-bottom:10px;}
+</style>
+<div id="pagareModal"><div class="box">
+  <h3>Capturar datos del cliente</h3>
+  <div class="hint-row">📋 Los datos en blanco se cargan del INE del cliente. Edita lo que necesites antes de generar el PAGARÉ.</div>
+  <label>CURP (18 caracteres)</label>
+  <input id="pmCurp" maxlength="18" placeholder="SACA920415HDFNRL05">
+  <div class="row">
+    <div><label>RFC (13 caracteres)</label><input id="pmRfc" maxlength="13" placeholder="SACA920415AB1"></div>
+    <div><label>Fecha de nacimiento</label><input id="pmDob" type="date"></div>
+  </div>
+  <label>Calle</label>
+  <input id="pmCalle" placeholder="Insurgentes Sur">
+  <div class="row">
+    <div><label>Núm. exterior</label><input id="pmNumExt" placeholder="1234"></div>
+    <div><label>Núm. interior</label><input id="pmNumInt" placeholder="5 (opcional)"></div>
+  </div>
+  <div class="row">
+    <div><label>Colonia</label><input id="pmColonia" placeholder="Del Valle Centro"></div>
+    <div><label>Alcaldía / Municipio</label><input id="pmAlcaldia" placeholder="Benito Juárez"></div>
+  </div>
+  <div class="row">
+    <div><label>Estado</label><input id="pmEstado" value="Ciudad de México"></div>
+    <div><label>C.P.</label><input id="pmCp" maxlength="5" placeholder="03100"></div>
+  </div>
+  <div class="actions">
+    <button class="btn-cancel" onclick="closePagareModal()">Cancelar</button>
+    <button class="btn-go" id="pmSubmit">▶ Generar PAGARÉ</button>
+  </div>
+</div></div>
+<script>
+var pagareCtx = {};
+function openPagareModal(prefill) {
+    document.getElementById("pmCurp").value     = prefill.curp || "";
+    document.getElementById("pmRfc").value      = "";
+    document.getElementById("pmDob").value      = "";
+    var a = prefill.address || {};
+    document.getElementById("pmCalle").value    = a.calle || "";
+    document.getElementById("pmNumExt").value   = a.num_exterior || "";
+    document.getElementById("pmNumInt").value   = a.num_interior || "";
+    document.getElementById("pmColonia").value  = a.colonia || "";
+    document.getElementById("pmAlcaldia").value = a.alcaldia || "";
+    document.getElementById("pmEstado").value   = a.estado || "Ciudad de México";
+    document.getElementById("pmCp").value       = a.cp || "";
+    document.getElementById("pagareModal").style.display = "flex";
+}
+function closePagareModal() {
+    document.getElementById("pagareModal").style.display = "none";
+    if (pagareCtx.btn) { pagareCtx.btn.disabled = false; pagareCtx.btn.textContent = "▶ Generar PAGARÉ con esta firma"; }
+}
 function generarPagareFromFirma(firmaId, motoId, btn) {
     if (!confirm("¿Generar PAGARÉ usando firma #" + firmaId + "?")) return;
     btn.disabled = true;
     btn.textContent = "Procesando...";
+    pagareCtx = { firmaId: firmaId, motoId: motoId, btn: btn };
 
     var prefillData = {};
 
@@ -255,70 +317,89 @@ function generarPagareFromFirma(firmaId, motoId, btn) {
         }).then(function(r){ return r.json(); });
     }).then(function(pre){
         prefillData = pre || {};
-        // If prefill did not find CURP, ask the admin to type it (from the customer INE).
-        if (!prefillData.curp) {
-            var typed = prompt("CURP no encontrado en clientes ni verificaciones_identidad.\\nCaptúralo del INE del cliente (18 caracteres) o deja vacío para continuar sin CURP:", "");
-            if (typed) {
-                typed = typed.trim().toUpperCase();
-                if (/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$/.test(typed)) {
-                    prefillData.curp = typed;
-                    prefillData.curp_source = "admin_input";
-                } else if (typed !== "") {
-                    alert("CURP con formato inválido (debe tener 18 caracteres). Continuando sin CURP.");
-                }
-            }
+        pagareCtx.prefillData = prefillData;
+        // Step 3: Show modal so admin can fill missing fields (CURP, RFC, DOB, full address)
+        openPagareModal(prefillData);
+    }).catch(function(err){
+        btn.disabled = false;
+        btn.textContent = "▶ Reintentar";
+        alert("Error preparando datos: " + err.message);
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById("pmSubmit").addEventListener("click", function() {
+        var curp     = (document.getElementById("pmCurp").value || "").trim().toUpperCase();
+        var rfc      = (document.getElementById("pmRfc").value || "").trim().toUpperCase();
+        var dob      = (document.getElementById("pmDob").value || "").trim();
+        var calle    = (document.getElementById("pmCalle").value || "").trim();
+        var numExt   = (document.getElementById("pmNumExt").value || "").trim();
+        var numInt   = (document.getElementById("pmNumInt").value || "").trim();
+        var colonia  = (document.getElementById("pmColonia").value || "").trim();
+        var alcaldia = (document.getElementById("pmAlcaldia").value || "").trim();
+        var estado   = (document.getElementById("pmEstado").value || "").trim();
+        var cp       = (document.getElementById("pmCp").value || "").trim();
+        if (curp && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$/.test(curp)) {
+            alert("CURP con formato inválido. Debe tener 18 caracteres.");
+            return;
         }
-        // Step 3: Generate the PAGARÉ PDF with CURP + address from prefill.
-        // Skip gates are still passed because diag tool is for legacy regeneration
-        // — if prefill returns empty for a field, generation proceeds without it
-        // rather than blocking. For new deliveries, stepPagare in the punto
-        // collects this data interactively and validates strictly.
-        var addr = prefillData.address || {};
-        return fetch("/admin/php/checklists/generar-pagare.php", {
+        if (cp && !/^\d{5}$/.test(cp)) {
+            alert("C.P. debe tener 5 dígitos.");
+            return;
+        }
+        document.getElementById("pmSubmit").disabled = true;
+        document.getElementById("pmSubmit").textContent = "Generando...";
+        fetch("/admin/php/checklists/generar-pagare.php", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             credentials: "include",
             body: JSON.stringify({
-                moto_id: motoId,
-                curp:         prefillData.curp || "",
-                calle:        addr.calle || "",
-                num_exterior: addr.num_exterior || "",
-                num_interior: addr.num_interior || "",
-                colonia:      addr.colonia || "",
-                alcaldia:     addr.alcaldia || "",
-                estado_dir:   addr.estado || "",
-                cp:           addr.cp || "",
+                moto_id:          pagareCtx.motoId,
+                curp:             curp,
+                rfc:              rfc,
+                fecha_nacimiento: dob,
+                calle:            calle,
+                num_exterior:     numExt,
+                num_interior:     numInt,
+                colonia:          colonia,
+                alcaldia:         alcaldia,
+                estado_dir:       estado,
+                cp:               cp,
                 _skip_curp_gate: 1,
                 _skip_otp_gate: 1,
                 _skip_address_gate: 1
             })
-        }).then(function(r){ return r.json(); });
-    }).then(function(r2){
-        if (r2 && r2.ok) {
-            btn.textContent = "✓ PAGARÉ generado";
-            btn.style.background = "#16a34a";
-            var d = r2.datos || {};
-            var curpInfo = prefillData.curp
-                ? prefillData.curp + " (origen: " + (prefillData.curp_source || "?") + ")"
-                : "NO ENCONTRADO en clientes ni verificaciones_identidad";
-            var msg = "✅ PAGARÉ generado\\n\\npdf_hash: " + (r2.pdf_hash || "?").substring(0,16) + "…"
-                    + "\\ncincel: " + (r2.cincel_hash ? "✓ sellado" : (r2.cincel_err || "pendiente"))
-                    + "\\nnombre: " + (d.nombre || "—")
-                    + "\\nmonto: " + (d.monto_fmt || "—")
-                    + "\\nCURP: " + curpInfo;
-            alert(msg);
-            location.reload();
-        } else {
-            btn.disabled = false;
-            btn.textContent = "▶ Reintentar";
-            alert("Error generando PAGARÉ: " + (r2 && r2.error ? r2.error : JSON.stringify(r2)));
-        }
-    }).catch(function(err){
-        btn.disabled = false;
-        btn.textContent = "▶ Reintentar";
-        alert("Error de red: " + err.message);
+        }).then(function(r){ return r.json(); }).then(function(r2){
+            var btn = pagareCtx.btn;
+            document.getElementById("pagareModal").style.display = "none";
+            if (r2 && r2.ok) {
+                btn.textContent = "✓ PAGARÉ generado";
+                btn.style.background = "#16a34a";
+                var d = r2.datos || {};
+                var msg = "✅ PAGARÉ generado\\n\\npdf_hash: " + (r2.pdf_hash || "?").substring(0,16) + "…"
+                        + "\\ncincel: " + (r2.cincel_hash ? "✓ sellado" : (r2.cincel_err || "pendiente"))
+                        + "\\nnombre: " + (d.nombre || "—")
+                        + "\\nmonto: " + (d.monto_fmt || "—")
+                        + "\\nCURP: " + (curp || "(sin CURP)")
+                        + "\\nDir: " + (calle ? (calle + " " + numExt + ", " + colonia + ", CP " + cp) : "(sin dirección)");
+                alert(msg);
+                location.reload();
+            } else {
+                btn.disabled = false;
+                btn.textContent = "▶ Reintentar";
+                document.getElementById("pmSubmit").disabled = false;
+                document.getElementById("pmSubmit").textContent = "▶ Generar PAGARÉ";
+                alert("Error generando PAGARÉ: " + (r2 && r2.error ? r2.error : JSON.stringify(r2)));
+            }
+        }).catch(function(err){
+            var btn = pagareCtx.btn;
+            if (btn) { btn.disabled = false; btn.textContent = "▶ Reintentar"; }
+            document.getElementById("pmSubmit").disabled = false;
+            document.getElementById("pmSubmit").textContent = "▶ Generar PAGARÉ";
+            alert("Error de red: " + err.message);
+        });
     });
-}
+});
 </script>';
 
 echo '</body></html>';
