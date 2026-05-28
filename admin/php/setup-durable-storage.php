@@ -21,15 +21,62 @@ adminRequireAuth(['admin']);
 
 $action = (string)($_GET['action'] ?? '');
 
+// Find the document root, then probe candidate writable durable locations.
+$docRoot = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2);
+$vhost   = dirname($docRoot);  // /var/www/vhosts/voltika.mx (parent of httpdocs)
+
+// Candidate locations PHP might be able to write to durably.
+// We'll probe each and use the first writable one.
+$candidates = [
+    $vhost   . '/private_storage',         // Plesk-style private (often writable)
+    $vhost   . '/storage',
+    $vhost   . '/files',
+    $docRoot . '/storage',
+    $docRoot . '/uploads',
+    $docRoot . '/files',
+    $docRoot . '/configurador/contratos',  // one level up from php/ — may already exist
+    $docRoot . '/configurador/uploads',
+    $docRoot . '/admin/storage',
+    $docRoot . '/admin/uploads',
+    $docRoot . '/voltika_storage',
+];
+
+function _probeWritable(string $path): array {
+    // Either already a writable dir, or its parent allows creating it.
+    if (is_dir($path)) {
+        return ['writable' => is_writable($path), 'creatable' => false, 'exists' => true];
+    }
+    $parent = dirname($path);
+    if (!is_dir($parent)) return ['writable' => false, 'creatable' => false, 'exists' => false];
+    // Try a probe: attempt to create the dir, then remove it.
+    $created = @mkdir($path, 0775, true);
+    if ($created) {
+        $writable = is_writable($path);
+        @rmdir($path);
+        return ['writable' => $writable, 'creatable' => true, 'exists' => false];
+    }
+    return ['writable' => false, 'creatable' => false, 'exists' => false];
+}
+
+$probes = [];
+$selectedRoot = null;
+foreach ($candidates as $c) {
+    $p = _probeWritable($c);
+    $probes[$c] = $p;
+    if (!$selectedRoot && ($p['writable'] || $p['creatable'])) {
+        $selectedRoot = $c;
+    }
+}
+
 $dirs = [
     'contratos' => [
-        'durable' => realpath(__DIR__ . '/../../configurador/php') . '/contratos',
+        'durable' => $selectedRoot ? ($selectedRoot . '/contratos') : null,
         'tmp'     => sys_get_temp_dir() . '/voltika_contratos',
         'tmp_alt' => sys_get_temp_dir() . '/voltika_contratos_contado',
         'label'   => 'Contratos (configurador firma)',
     ],
     'pagares' => [
-        'durable' => realpath(__DIR__) . '/checklists/pagares',
+        'durable' => $selectedRoot ? ($selectedRoot . '/pagares') : null,
         'tmp'     => sys_get_temp_dir() . '/voltika_pagares',
         'tmp_alt' => null,
         'label'   => 'Pagarés (PAGARÉ checklist)',
@@ -37,7 +84,8 @@ $dirs = [
 ];
 
 // ── Helpers ─────────────────────────────────────────────────────────────
-function _dirState(string $path): array {
+function _dirState(?string $path): array {
+    if (!$path) return ['exists' => false, 'writable' => false, 'perms' => '—', 'owner' => '—', 'count' => 0];
     $exists   = is_dir($path);
     $writable = $exists && is_writable($path);
     $perms    = $exists ? substr(sprintf('%o', fileperms($path)), -4) : '—';
@@ -48,7 +96,8 @@ function _dirState(string $path): array {
     return compact('exists', 'writable', 'perms', 'owner', 'count');
 }
 
-function _ensureDir(string $path): array {
+function _ensureDir(?string $path): array {
+    if (!$path) return ['ok' => false, 'created' => false, 'msg' => 'No hay ubicación durable candidata escribible.'];
     if (is_dir($path) && is_writable($path)) {
         return ['ok' => true, 'created' => false, 'msg' => 'Ya existía y es escribible.'];
     }
@@ -152,6 +201,41 @@ code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-size:11px;font-fa
 
 <h1>📁 Setup durable storage</h1>
 <div class="muted"><?= date('Y-m-d H:i:s') ?> · Repara la pérdida de archivos en /tmp ejecutando lo necesario desde PHP.</div>
+
+<h2>0. Probes — ¿qué ubicaciones puede escribir PHP?</h2>
+<div class="card">
+  <?php if ($selectedRoot): ?>
+    <div class="banner banner-ok">
+      ✅ Ubicación durable elegida: <code><?= htmlspecialchars($selectedRoot) ?></code>
+    </div>
+  <?php else: ?>
+    <div class="banner banner-err">
+      ❌ Ninguna ubicación candidata es escribible desde PHP. Ningún directorio puede usarse para almacenamiento durable.
+    </div>
+  <?php endif; ?>
+  <table>
+    <thead><tr><th>Path candidato</th><th>Existe</th><th>Escribible</th><th>Creable</th></tr></thead>
+    <tbody>
+    <?php foreach ($probes as $path => $p):
+        $usable = $p['writable'] || $p['creatable'];
+    ?>
+      <tr style="<?= $usable && $path === $selectedRoot ? 'background:#dcfce7;' : '' ?>">
+        <td><code><?= htmlspecialchars($path) ?></code></td>
+        <td class="<?= $p['exists'] ? 'ok' : 'muted' ?>"><?= $p['exists'] ? 'SÍ' : 'no' ?></td>
+        <td class="<?= $p['writable'] ? 'ok' : 'muted' ?>"><?= $p['writable'] ? 'SÍ' : 'no' ?></td>
+        <td class="<?= $p['creatable'] ? 'ok' : 'muted' ?>"><?= $p['creatable'] ? 'SÍ' : 'no' ?></td>
+      </tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table>
+  <?php if ($selectedRoot): ?>
+    <p style="font-size:12.5px;margin:10px 0 0;color:#475569;">
+      Después de Asegurar, también necesitarás <strong>actualizar el código</strong> de
+      <code>generar-contrato-pdf.php</code> y <code>generar-pagare.php</code> para que usen
+      <code><?= htmlspecialchars($selectedRoot) ?></code> como destino primario.
+    </p>
+  <?php endif; ?>
+</div>
 
 <h2>1. Estado actual de los directorios</h2>
 <div class="card">
