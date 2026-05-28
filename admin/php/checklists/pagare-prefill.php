@@ -56,20 +56,32 @@ try {
         if ($curp !== '') $curpSource = 'clientes';
     }
 } catch (Throwable $e) {}
-// 2) verificaciones_identidad (Truora) — find latest row WITH actual data,
-// not just the latest row (which may be an empty retry). Carlos had 11+ rows
-// where most were empty retries; only one (id=69) had verified_curp populated.
+// 2) verificaciones_identidad (Truora) — find latest row WITH verified_curp.
+// Carlos had 11+ rows where most were empty retries; only id=69 had real data.
+// Fallback: latest row with raw_truora_payload (if verified_curp extraction
+// failed on Truora's end, the payload still has the INE data).
 try {
     if ($email !== '' || $tel !== '') {
+        $vc = null;
+        // First: row with verified_curp populated
         $vq = $pdo->prepare("SELECT verified_curp, expected_curp, raw_truora_payload
             FROM verificaciones_identidad
             WHERE ((LENGTH(?) > 0 AND email = ?) OR (LENGTH(?) > 0 AND telefono = ?))
-              AND (verified_curp IS NOT NULL AND verified_curp <> ''
-                   OR raw_truora_payload IS NOT NULL AND raw_truora_payload <> '')
+              AND verified_curp IS NOT NULL AND verified_curp <> ''
             ORDER BY id DESC LIMIT 1");
         $vq->execute([$email, $email, $tel, $tel]);
-        $vc = $vq->fetch(PDO::FETCH_ASSOC) ?: [];
-        if ($curp === '') {
+        $vc = $vq->fetch(PDO::FETCH_ASSOC) ?: null;
+        // Fallback: row with payload but no verified_curp
+        if (!$vc) {
+            $vq2 = $pdo->prepare("SELECT verified_curp, expected_curp, raw_truora_payload
+                FROM verificaciones_identidad
+                WHERE ((LENGTH(?) > 0 AND email = ?) OR (LENGTH(?) > 0 AND telefono = ?))
+                  AND raw_truora_payload IS NOT NULL AND raw_truora_payload <> ''
+                ORDER BY id DESC LIMIT 1");
+            $vq2->execute([$email, $email, $tel, $tel]);
+            $vc = $vq2->fetch(PDO::FETCH_ASSOC) ?: [];
+        }
+        if ($curp === '' && $vc) {
             $curp = strtoupper(trim((string)($vc['verified_curp'] ?: ($vc['expected_curp'] ?? ''))));
             if ($curp !== '') $curpSource = 'verificaciones_identidad';
         }
