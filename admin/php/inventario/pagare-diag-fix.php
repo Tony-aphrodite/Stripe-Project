@@ -30,8 +30,14 @@ $action = (string)($_POST['action'] ?? $_GET['action'] ?? 'lookup');
 $search = trim((string)($_GET['q'] ?? ''));
 $motoId = (int)($_GET['moto_id'] ?? $_POST['moto_id'] ?? 0);
 
+// Force browsers + CDN to never cache this page so deploys appear immediately.
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 header('Content-Type: text/html; charset=utf-8');
+$pageVersion = 'R113-modal-' . substr((string)@filemtime(__FILE__), -6);
 echo '<!doctype html><html><head><meta charset="utf-8"><title>PAGARÉ diag + fix</title>';
+echo '<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">';
 echo '<style>
 body{font-family:system-ui,-apple-system,sans-serif;background:#f0f4f8;color:#0c2340;padding:20px;max-width:1180px;margin:0 auto;line-height:1.5;}
 h1{font-size:22px;margin:0 0 4px;}
@@ -51,7 +57,7 @@ td{padding:8px 10px;border-top:1px solid #f1f5f9;vertical-align:top;}
 code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-size:11px;}
 input[type=text]{padding:8px 12px;border:1px solid #cbd5e1;border-radius:5px;font-size:13px;width:300px;}
 </style></head><body>';
-echo '<h1>🔎 PAGARÉ diag + fix</h1>';
+echo '<h1>🔎 PAGARÉ diag + fix <span style="font-size:11px;background:#16a34a;color:#fff;padding:3px 8px;border-radius:4px;vertical-align:middle;font-weight:600;">' . htmlspecialchars($pageVersion) . '</span></h1>';
 echo '<p style="color:#64748b;font-size:13px;margin-top:0;">Encuentra dónde se guardó la firma del PAGARÉ y por qué no es visible en los paneles admin.</p>';
 
 // Resolve moto
