@@ -284,6 +284,57 @@ echo '<style>
 </div></div>
 <script>
 var pagareCtx = {};
+function submitPagareDirect(pre) {
+    var a = pre.address || {};
+    var payload = {
+        moto_id:          pagareCtx.motoId,
+        curp:             pre.curp || "",
+        rfc:              pre.rfc || "",
+        fecha_nacimiento: pre.fecha_nacimiento || "",
+        calle:            a.calle || "",
+        num_exterior:     a.num_exterior || "",
+        num_interior:     a.num_interior || "",
+        colonia:          a.colonia || "",
+        alcaldia:         a.alcaldia || "",
+        estado_dir:       a.estado || "Ciudad de México",
+        cp:               a.cp || "",
+        _skip_curp_gate: 1,
+        _skip_otp_gate: 1,
+        _skip_address_gate: 1
+    };
+    fetch("/admin/php/checklists/generar-pagare.php", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "include",
+        body: JSON.stringify(payload)
+    }).then(function(r){ return r.json(); }).then(function(r2){
+        var btn = pagareCtx.btn;
+        if (r2 && r2.ok) {
+            btn.textContent = "✓ PAGARÉ generado";
+            btn.style.background = "#16a34a";
+            var d = r2.datos || {};
+            var msg = "✅ PAGARÉ generado automáticamente con datos del INE (Truora)\\n\\n"
+                    + "pdf_hash: " + (r2.pdf_hash || "?").substring(0,16) + "…\\n"
+                    + "cincel: " + (r2.cincel_hash ? "✓ sellado" : (r2.cincel_err || "pendiente")) + "\\n"
+                    + "nombre: " + (d.nombre || "—") + "\\n"
+                    + "monto: " + (d.monto_fmt || "—") + "\\n"
+                    + "CURP: " + payload.curp + " (origen: " + (pre.curp_source || "?") + ")\\n"
+                    + "DOB: " + payload.fecha_nacimiento + "\\n"
+                    + "Dir: " + payload.calle + " " + payload.num_exterior + ", Col. " + payload.colonia + ", " + payload.alcaldia + ", CP " + payload.cp;
+            alert(msg);
+            location.reload();
+        } else {
+            btn.disabled = false;
+            btn.textContent = "▶ Reintentar";
+            alert("Error generando PAGARÉ: " + (r2 && r2.error ? r2.error : JSON.stringify(r2)));
+        }
+    }).catch(function(err){
+        var btn = pagareCtx.btn;
+        if (btn) { btn.disabled = false; btn.textContent = "▶ Reintentar"; }
+        alert("Error de red: " + err.message);
+    });
+}
+
 function openPagareModal(prefill) {
     document.getElementById("pmCurp").value     = prefill.curp || "";
     document.getElementById("pmRfc").value      = "";
@@ -324,7 +375,13 @@ function generarPagareFromFirma(firmaId, motoId, btn) {
     }).then(function(pre){
         prefillData = pre || {};
         pagareCtx.prefillData = prefillData;
-        // Step 3: Show modal so admin can fill missing fields (CURP, RFC, DOB, full address)
+        var a = prefillData.address || {};
+        // If prefill found CURP, auto-submit directly (data extracted from Truora INE).
+        // Only show modal if CURP is missing (legacy customers without Truora data).
+        if (prefillData.curp) {
+            submitPagareDirect(prefillData);
+            return;
+        }
         openPagareModal(prefillData);
     }).catch(function(err){
         btn.disabled = false;
