@@ -118,23 +118,58 @@ if (!$clientes) {
 }
 echo '</div>';
 
-// ── 3. verificaciones_identidad (Truora) ───────────────────────────────
-echo '<h2>3. verificaciones_identidad (Truora INE OCR)</h2><div class="card">';
+// ── 3. verificaciones_identidad (Truora) — only rows WITH actual data ──
+echo '<h2>3. verificaciones_identidad (Truora INE OCR — sólo filas con datos)</h2><div class="card">';
 $vis = [];
+$visEmptyCount = 0;
 if ($email || $tel) {
     $q = $pdo->prepare("SELECT * FROM verificaciones_identidad
         WHERE (LENGTH(?) > 0 AND email = ?) OR (LENGTH(?) > 0 AND telefono = ?)
         ORDER BY id DESC");
     $q->execute([$email, $email, $tel, $tel]);
-    $vis = $q->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        // Keep only rows with real data — skip the empty Truora retries
+        $hasData = !empty($r['verified_curp']) || !empty($r['expected_curp'])
+                || !empty($r['raw_truora_payload']) || !empty($r['verified_name']);
+        if ($hasData) $vis[] = $r;
+        else $visEmptyCount++;
+    }
+}
+if ($visEmptyCount > 0) {
+    echo '<div class="empty" style="margin-bottom:8px;">(' . $visEmptyCount . ' filas vacías de intentos/retries de Truora omitidas)</div>';
 }
 if (!$vis) {
-    echo '<div class="empty">(ninguna verificación de identidad)</div>';
+    echo '<div class="empty">(ninguna verificación con datos)</div>';
 } else {
     foreach ($vis as $v) {
-        echo '<h3 style="font-size:13px;margin:8px 0;">id=' . (int)$v['id'] . ' · status=' . htmlspecialchars((string)($v['status'] ?? '?')) . '</h3><table>';
-        foreach ($v as $k => $vv) echo _row($k, $vv);
+        echo '<h3 style="font-size:13px;margin:8px 0;">id=' . (int)$v['id'] . ' · truora_status=' . htmlspecialchars((string)($v['truora_status'] ?? '?')) . '</h3><table>';
+        foreach ($v as $k => $vv) {
+            // Skip the giant Truora JSON — we extract the relevant fields separately
+            if ($k === 'raw_truora_payload' || $k === 'webhook_payload') continue;
+            echo _row($k, $vv);
+        }
         echo '</table>';
+        // Extract and show key fields from raw_truora_payload (the useful ones)
+        if (!empty($v['raw_truora_payload'])) {
+            $p = json_decode((string)$v['raw_truora_payload'], true);
+            $extract = function($arr) use (&$extract) {
+                if (!is_array($arr)) return null;
+                if (isset($arr['document_validation']) && is_array($arr['document_validation'])) return $arr['document_validation'];
+                foreach ($arr as $v) {
+                    if (is_array($v)) { $r = $extract($v); if ($r) return $r; }
+                }
+                return null;
+            };
+            $doc = $extract($p);
+            if ($doc) {
+                echo '<div style="margin-top:6px;font-size:12px;color:#475569;"><strong>Datos extraídos del raw_truora_payload (document_validation):</strong></div><table>';
+                foreach (['document_number','name','last_name','date_of_birth','postal_code','municipality_name','state_name','residence_address'] as $f) {
+                    if (isset($doc[$f])) echo _row($f, $doc[$f]);
+                }
+                if (!empty($p['geolocation_device'])) echo _row('geolocation_device', $p['geolocation_device']);
+                echo '</table>';
+            }
+        }
     }
 }
 echo '</div>';
