@@ -886,6 +886,11 @@ window.PV_entrega = (function(){
       var otp  = pf.otp || {};
       var veh  = pf.vehicle || {};
       var curpVal = pf.curp || '';
+      var rfcVal  = pf.rfc || '';                  // derived from CURP server-side
+      var dobVal  = pf.fecha_nacimiento || '';     // from Truora INE OCR
+      // Truora-captured geolocation as fallback if browser geolocation is denied
+      if (!geoLat && pf.geolat) geoLat = pf.geolat;
+      if (!geoLng && pf.geolng) geoLng = pf.geolng;
       var fmtMoney = function(n){ return '$' + Number(n||0).toLocaleString('es-MX', {minimumFractionDigits:2}); };
 
       var html = steps(4) +
@@ -906,15 +911,16 @@ window.PV_entrega = (function(){
           'placeholder="SARC920415HDMNRL05">' +
         '<div id="pvPagCurpHint" style="font-size:11px;color:#6b7280;margin-bottom:10px;">18 caracteres. Se valida al enviar.</div>';
 
-      // RFC + Fecha de nacimiento
+      // RFC + Fecha de nacimiento — auto-filled from Truora INE OCR (DOB) and
+      // CURP-derived (RFC base, 10 chars without SAT homoclave)
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">' +
         '<div>' +
           '<label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:2px;">RFC</label>' +
-          '<input id="pvPagRfc" type="text" maxlength="13" value="" placeholder="XXXX000000XXX" style="width:100%;padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:monospace;text-transform:uppercase;">' +
+          '<input id="pvPagRfc" type="text" maxlength="13" value="' + esc(rfcVal) + '" placeholder="XXXX000000XXX" style="width:100%;padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:monospace;text-transform:uppercase;">' +
         '</div>' +
         '<div>' +
           '<label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:2px;">Fecha de nacimiento</label>' +
-          '<input id="pvPagDob" type="date" value="" style="width:100%;padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;">' +
+          '<input id="pvPagDob" type="date" value="' + esc(dobVal) + '" style="width:100%;padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;">' +
         '</div>' +
       '</div>';
 
