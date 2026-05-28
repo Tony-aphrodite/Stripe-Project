@@ -287,7 +287,7 @@ var pagareCtx = {};
 function openPagareModal(prefill) {
     document.getElementById("pmCurp").value     = prefill.curp || "";
     document.getElementById("pmRfc").value      = "";
-    document.getElementById("pmDob").value      = "";
+    document.getElementById("pmDob").value      = prefill.fecha_nacimiento || "";
     var a = prefill.address || {};
     document.getElementById("pmCalle").value    = a.calle || "";
     document.getElementById("pmNumExt").value   = a.num_exterior || "";

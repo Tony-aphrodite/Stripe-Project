@@ -45,6 +45,8 @@ $tel   = (string)($moto['cliente_telefono'] ?? '');
 // ── CURP ────────────────────────────────────────────────────────────────
 $curp = '';
 $curpSource = '';
+$dob = '';
+$truoraPayload = null;
 // 1) clientes table
 try {
     if (!empty($moto['cliente_id'])) {
@@ -54,42 +56,115 @@ try {
         if ($curp !== '') $curpSource = 'clientes';
     }
 } catch (Throwable $e) {}
-// 2) verificaciones_identidad (Truora)
-if ($curp === '') {
-    try {
-        if ($email !== '' || $tel !== '') {
-            $vq = $pdo->prepare("SELECT expected_curp, verified_curp FROM verificaciones_identidad
-                WHERE (LENGTH(?) > 0 AND email = ?) OR (LENGTH(?) > 0 AND telefono = ?)
-                ORDER BY id DESC LIMIT 1");
-            $vq->execute([$email, $email, $tel, $tel]);
-            $vc = $vq->fetch(PDO::FETCH_ASSOC) ?: [];
+// 2) verificaciones_identidad (Truora) — find latest row WITH actual data,
+// not just the latest row (which may be an empty retry). Carlos had 11+ rows
+// where most were empty retries; only one (id=69) had verified_curp populated.
+try {
+    if ($email !== '' || $tel !== '') {
+        $vq = $pdo->prepare("SELECT verified_curp, expected_curp, raw_truora_payload
+            FROM verificaciones_identidad
+            WHERE ((LENGTH(?) > 0 AND email = ?) OR (LENGTH(?) > 0 AND telefono = ?))
+              AND (verified_curp IS NOT NULL AND verified_curp <> ''
+                   OR raw_truora_payload IS NOT NULL AND raw_truora_payload <> '')
+            ORDER BY id DESC LIMIT 1");
+        $vq->execute([$email, $email, $tel, $tel]);
+        $vc = $vq->fetch(PDO::FETCH_ASSOC) ?: [];
+        if ($curp === '') {
             $curp = strtoupper(trim((string)($vc['verified_curp'] ?: ($vc['expected_curp'] ?? ''))));
             if ($curp !== '') $curpSource = 'verificaciones_identidad';
+        }
+        if (!empty($vc['raw_truora_payload'])) {
+            $truoraPayload = json_decode((string)$vc['raw_truora_payload'], true);
+        }
+    }
+} catch (Throwable $e) {}
+
+// ── Address — parse from Truora INE OCR payload (residence_address), then
+// fall back to transacciones for state/CP only. Truora captures the full
+// address from the customer's INE — street, number, colonia, CP, alcaldía,
+// state — so we extract it via regex.
+$address = ['calle'=>'','num_exterior'=>'','num_interior'=>'','colonia'=>'','alcaldia'=>'','estado'=>'','cp'=>''];
+$addressSource = '';
+
+// Helper: extract Truora document_validation block from any payload shape
+$_findDocVal = function($p) use (&$_findDocVal) {
+    if (!is_array($p)) return null;
+    if (isset($p['document_validation']) && is_array($p['document_validation'])) return $p['document_validation'];
+    foreach ($p as $v) {
+        if (is_array($v)) {
+            $r = $_findDocVal($v);
+            if ($r) return $r;
+        }
+    }
+    return null;
+};
+
+if ($truoraPayload) {
+    $doc = $_findDocVal($truoraPayload);
+    if ($doc) {
+        $resAddr = trim((string)($doc['residence_address'] ?? ''));
+        $cp      = trim((string)($doc['postal_code']       ?? ''));
+        $alc     = trim((string)($doc['municipality_name'] ?? ''));
+        $est     = trim((string)($doc['state_name']        ?? ''));
+        $dob     = trim((string)($doc['date_of_birth']     ?? ''));
+
+        // Parse residence_address — typical INE format:
+        // "C NORTE 80 4748 COL NUEVA TENOCHTITLAN 07890 GUSTAVO A. MADERO, CDMX"
+        // pattern: <street> COL <colonia> <CP> <alcaldia>, <state>
+        if ($resAddr !== '' && preg_match('/^(.+?)\s+COL\s+(.+?)\s+(\d{5})\s+(.+?),\s*(.+)$/i', $resAddr, $m)) {
+            $streetPart = trim($m[1]);
+            $address['colonia']  = trim($m[2]);
+            $address['cp']       = trim($m[3]);
+            $address['alcaldia'] = trim($m[4]);
+            $address['estado']   = trim($m[5]);
+            // Try to split street into name + numbers: last numeric tokens = number
+            if (preg_match('/^(.+?)\s+(\d+(?:\s+\d+)?)$/', $streetPart, $sm)) {
+                $address['calle']        = trim($sm[1]);
+                $address['num_exterior'] = trim($sm[2]);
+            } else {
+                $address['calle'] = $streetPart;
+            }
+            $addressSource = 'truora_ine_ocr';
+        } elseif ($resAddr !== '') {
+            // Couldn't parse — at least preserve the full string and INE-OCR fields
+            $address['calle']    = $resAddr;
+            $address['cp']       = $cp;
+            $address['alcaldia'] = $alc;
+            $address['estado']   = $est;
+            $addressSource = 'truora_ine_ocr_raw';
+        }
+        // Always overlay CP/alcaldia/estado if they came from Truora separately
+        if ($address['cp'] === '' && $cp !== '')       $address['cp'] = $cp;
+        if ($address['alcaldia'] === '' && $alc !== '') $address['alcaldia'] = $alc;
+        if ($address['estado'] === '' && $est !== '')   $address['estado'] = $est;
+    }
+}
+
+// Fall back to transacciones if Truora didn't yield CP / state
+if ($address['estado'] === '' || $address['cp'] === '') {
+    try {
+        $trans = null;
+        if (!empty($moto['transaccion_id'])) {
+            $tq = $pdo->prepare("SELECT ciudad, estado, cp FROM transacciones WHERE id = ?");
+            $tq->execute([(int)$moto['transaccion_id']]);
+            $trans = $tq->fetch(PDO::FETCH_ASSOC);
+        }
+        if (!$trans && $email !== '') {
+            $tq = $pdo->prepare("SELECT ciudad, estado, cp FROM transacciones WHERE email = ? ORDER BY freg DESC LIMIT 1");
+            $tq->execute([$email]);
+            $trans = $tq->fetch(PDO::FETCH_ASSOC);
+        }
+        if ($trans) {
+            if ($address['estado'] === '') $address['estado'] = trim((string)($trans['estado'] ?? ''));
+            if ($address['cp'] === '')     $address['cp']     = trim((string)($trans['cp'] ?? ''));
+            if ($addressSource === '')     $addressSource = 'transacciones';
         }
     } catch (Throwable $e) {}
 }
 
-// ── Address (partial from transacciones) ────────────────────────────────
-$address = ['calle'=>'','num_exterior'=>'','num_interior'=>'','colonia'=>'','alcaldia'=>'','estado'=>'','cp'=>''];
-try {
-    $trans = null;
-    if (!empty($moto['transaccion_id'])) {
-        $tq = $pdo->prepare("SELECT ciudad, estado, cp FROM transacciones WHERE id = ?");
-        $tq->execute([(int)$moto['transaccion_id']]);
-        $trans = $tq->fetch(PDO::FETCH_ASSOC);
-    }
-    if (!$trans && $email !== '') {
-        $tq = $pdo->prepare("SELECT ciudad, estado, cp FROM transacciones WHERE email = ? ORDER BY freg DESC LIMIT 1");
-        $tq->execute([$email]);
-        $trans = $tq->fetch(PDO::FETCH_ASSOC);
-    }
-    if ($trans) {
-        $est = trim((string)($trans['estado'] ?? ''));
-        if (preg_match('/distrito\s*federal/i', $est)) $est = 'Ciudad de México';
-        $address['estado'] = $est;
-        $address['cp']     = trim((string)($trans['cp'] ?? ''));
-    }
-} catch (Throwable $e) {}
+// Normalize legacy "Distrito Federal" → "Ciudad de México"
+if (preg_match('/distrito\s*federal/i', $address['estado'])) $address['estado'] = 'Ciudad de México';
+if (strtoupper($address['estado']) === 'CDMX') $address['estado'] = 'Ciudad de México';
 
 // ── OTP status ──────────────────────────────────────────────────────────
 $otp = ['verified' => false, 'verified_at' => null, 'code' => null];
@@ -176,19 +251,21 @@ $vehicle = [
 ];
 
 adminJsonOut([
-    'ok'            => true,
-    'curp'          => $curp,
-    'curp_source'   => $curpSource,
-    'nombre'        => $nombre,
-    'address'       => $address,
-    'otp'           => $otp,
-    'amounts'       => [
+    'ok'             => true,
+    'curp'           => $curp,
+    'curp_source'    => $curpSource,
+    'fecha_nacimiento' => $dob,
+    'nombre'         => $nombre,
+    'address'        => $address,
+    'address_source' => $addressSource,
+    'otp'            => $otp,
+    'amounts'        => [
         'enganche'        => $enganche,
         'pago_semanal'    => $pagoSemanal,
         'num_pagos'       => $numPagos,
         'total_operacion' => $totalOperacion,
         'plazo_meses'     => $plazoMeses,
     ],
-    'maturity_date' => $maturityDate,
-    'vehicle'       => $vehicle,
+    'maturity_date'  => $maturityDate,
+    'vehicle'        => $vehicle,
 ]);
