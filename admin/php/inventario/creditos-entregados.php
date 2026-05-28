@@ -65,27 +65,16 @@ echo '<h1>💳 Créditos entregados — Vista unificada</h1>';
 echo '<p class="muted">Cliente · Vehículo · Contrato · PAGARÉ · Subscripción · Pagos · Próximo vencimiento</p>';
 
 // ── Query: all credit deliveries with full join ────────────────────────
-// Use correlated subqueries to pick the LATEST sub/checklist per moto.
-// Joining directly causes Cartesian multiplication when a moto has multiple
-// subscripciones or multiple checklists.
+// Start from subscripciones_credito (one row per credit customer).
+// This guarantees we see EVERY credit customer, regardless of moto state.
+// Then LEFT JOIN moto/transaccion/checklist for additional context.
 $sql = "
 SELECT
-  m.id AS moto_id,
-  m.cliente_nombre,
-  m.cliente_email,
-  m.cliente_telefono,
-  m.modelo,
-  m.color,
-  COALESCE(m.vin_display, m.vin) AS vin,
-  m.estado AS moto_estado,
-  m.freg AS moto_freg,
-  m.transaccion_id,
-  t.contrato_pdf_path,
-  t.contrato_pdf_hash,
-  t.cincel_timestamp_hash,
-  t.tpago,
-  t.fecha_estimada_entrega,
   sc.id AS sub_id,
+  sc.cliente_id,
+  sc.nombre AS sub_nombre,
+  sc.email AS sub_email,
+  sc.telefono AS sub_telefono,
   sc.status AS sub_status,
   sc.estado AS sub_estado,
   sc.monto_semanal,
@@ -94,20 +83,38 @@ SELECT
   sc.fecha_entrega,
   sc.cobro_fallos_seguidos,
   sc.stripe_payment_method_id,
+  sc.inventario_moto_id,
+  sc.modelo AS sub_modelo,
+  sc.color AS sub_color,
+  sc.freg AS sub_freg,
+  m.cliente_nombre,
+  m.cliente_email,
+  m.cliente_telefono,
+  m.modelo,
+  m.color,
+  COALESCE(m.vin_display, m.vin) AS vin,
+  m.estado AS moto_estado,
+  m.transaccion_id,
+  t.contrato_pdf_path,
+  t.contrato_pdf_hash,
+  t.cincel_timestamp_hash,
+  t.tpago,
+  t.pago_estado,
+  t.fecha_estimada_entrega,
   ce.id AS checklist_id,
   ce.pagare_pdf_path,
   ce.pagare_status,
   ce.cincel_pagare_timestamp_hash,
   ce.completado AS checklist_completado
-FROM inventario_motos m
+FROM subscripciones_credito sc
+LEFT JOIN inventario_motos m ON m.id = sc.inventario_moto_id
 LEFT JOIN transacciones t ON t.id = m.transaccion_id
-LEFT JOIN subscripciones_credito sc
-       ON sc.id = (SELECT MAX(id) FROM subscripciones_credito WHERE inventario_moto_id = m.id)
 LEFT JOIN checklist_entrega_v2 ce
        ON ce.id = (SELECT MAX(id) FROM checklist_entrega_v2 WHERE moto_id = m.id)
-WHERE m.estado IN ('entregada','en_punto','asignada')
-  AND (t.tpago = 'enganche' OR sc.id IS NOT NULL)
-ORDER BY (m.estado = 'entregada') DESC, m.id DESC
+WHERE sc.id = (SELECT MAX(id) FROM subscripciones_credito sc2
+               WHERE sc2.cliente_id = sc.cliente_id
+                  OR (sc2.email = sc.email AND sc2.telefono = sc.telefono))
+ORDER BY (m.estado = 'entregada') DESC, sc.id DESC
 LIMIT 200
 ";
 
@@ -124,9 +131,10 @@ if (!$rows) {
 
 // ── Summary stats ──────────────────────────────────────────────────────
 $total = count($rows);
-$entregadas = $contratoOk = $pagareOk = $cincelOk = $subActiva = 0;
+$entregadas = $contratoOk = $pagareOk = $cincelOk = $subActiva = $sinMoto = 0;
 foreach ($rows as $r) {
-    if ($r['moto_estado'] === 'entregada') $entregadas++;
+    if (($r['moto_estado'] ?? '') === 'entregada') $entregadas++;
+    if (empty($r['inventario_moto_id'])) $sinMoto++;
     if (!empty($r['contrato_pdf_path']))   $contratoOk++;
     if (!empty($r['pagare_pdf_path']))     $pagareOk++;
     if (!empty($r['cincel_pagare_timestamp_hash'])) $cincelOk++;
@@ -134,9 +142,9 @@ foreach ($rows as $r) {
 }
 
 echo '<div class="summary">';
-echo '<div class="stat"><div class="stat-label">Total créditos</div><div class="stat-num">' . $total . '</div></div>';
-echo '<div class="stat stat-ok"><div class="stat-label">Entregadas</div><div class="stat-num">' . $entregadas . '</div></div>';
-echo '<div class="stat ' . ($contratoOk === $total ? 'stat-ok' : 'stat-warn') . '"><div class="stat-label">Contrato firmado</div><div class="stat-num">' . $contratoOk . '/' . $total . '</div></div>';
+echo '<div class="stat"><div class="stat-label">Total subs crédito</div><div class="stat-num">' . $total . '</div></div>';
+echo '<div class="stat stat-ok"><div class="stat-label">Entregadas</div><div class="stat-num">' . $entregadas . '/' . $total . '</div></div>';
+echo '<div class="stat ' . ($sinMoto === 0 ? 'stat-ok' : 'stat-err') . '"><div class="stat-label">Sin moto asignada</div><div class="stat-num">' . $sinMoto . '</div></div>';
 echo '<div class="stat ' . ($pagareOk === $entregadas ? 'stat-ok' : 'stat-warn') . '"><div class="stat-label">PAGARÉ generado</div><div class="stat-num">' . $pagareOk . '/' . $entregadas . '</div></div>';
 echo '<div class="stat ' . ($cincelOk === $pagareOk ? 'stat-ok' : 'stat-warn') . '"><div class="stat-label">NOM-151 sellado</div><div class="stat-num">' . $cincelOk . '/' . $pagareOk . '</div></div>';
 echo '</div>';
@@ -182,27 +190,38 @@ echo '<thead><tr>'
 
 foreach ($rows as $r) {
     $stats = getCiclosStats($pdo, $r['sub_id'] ? (int)$r['sub_id'] : null);
+    // Use moto data when available, fall back to sub data
+    $clientName = $r['cliente_nombre'] ?: $r['sub_nombre'];
+    $clientTel  = $r['cliente_telefono'] ?: $r['sub_telefono'];
+    $clientEmail = $r['cliente_email'] ?: $r['sub_email'];
+    $modelo = $r['modelo'] ?: $r['sub_modelo'];
+    $color  = $r['color']  ?: $r['sub_color'];
+    $motoEstado = $r['moto_estado'] ?: 'sin moto';
+
     $alerts = [];
-    if (empty($r['contrato_pdf_path']))   $alerts[] = 'Contrato faltante';
-    if (empty($r['pagare_pdf_path']) && $r['moto_estado'] === 'entregada') $alerts[] = 'PAGARÉ faltante';
+    if (empty($r['inventario_moto_id'])) $alerts[] = 'Sin moto asignada';
+    elseif (empty($r['contrato_pdf_path'])) $alerts[] = 'Contrato faltante';
+    if (empty($r['pagare_pdf_path']) && $motoEstado === 'entregada') $alerts[] = 'PAGARÉ faltante';
     if (empty($r['cincel_pagare_timestamp_hash']) && !empty($r['pagare_pdf_path'])) $alerts[] = 'Sin sello Cincel';
-    if (empty($r['sub_id'])) $alerts[] = 'Sin subscripción';
-    elseif (!in_array($r['sub_estado'] ?? '', ['activa','active'], true)) $alerts[] = 'Sub no activa: ' . $r['sub_estado'];
+    if (!in_array($r['sub_estado'] ?? '', ['activa','active'], true)) $alerts[] = 'Sub estado: ' . ($r['sub_estado'] ?: 'null');
     if ((int)($r['cobro_fallos_seguidos'] ?? 0) >= 3) $alerts[] = 'Stripe falló ' . (int)$r['cobro_fallos_seguidos'] . 'x';
     if (empty($r['stripe_payment_method_id'])) $alerts[] = 'Sin tarjeta activa';
     if ($stats['overdue'] > 0) $alerts[] = $stats['overdue'] . ' ciclos vencidos';
-    if (!empty($r['sub_id']) && $stats['total'] === 0) $alerts[] = 'Ciclos no generados';
+    if (empty($r['fecha_inicio'])) $alerts[] = 'Sin fecha_inicio (no entregada)';
+    elseif ($stats['total'] === 0) $alerts[] = 'Ciclos no generados';
 
     echo '<tr>';
     // Cliente
-    echo '<td><div class="client-name">' . htmlspecialchars((string)($r['cliente_nombre'] ?? '—')) . '</div>'
-       . '<div class="client-contact">' . htmlspecialchars((string)($r['cliente_telefono'] ?? '')) . '</div>'
-       . '<div class="client-contact">VIN: ' . htmlspecialchars(substr((string)($r['vin'] ?? '—'), 0, 17)) . '</div></td>';
+    echo '<td><div class="client-name">' . htmlspecialchars((string)$clientName) . '</div>'
+       . '<div class="client-contact">' . htmlspecialchars((string)$clientTel) . '</div>'
+       . '<div class="client-contact">' . htmlspecialchars((string)$clientEmail) . '</div>'
+       . (!empty($r['vin']) ? '<div class="client-contact">VIN: ' . htmlspecialchars(substr((string)$r['vin'], 0, 17)) . '</div>' : '')
+       . '<div class="client-contact" style="font-size:10px;">sub_id=' . (int)$r['sub_id'] . '</div></td>';
     // Vehículo
-    echo '<td>' . htmlspecialchars((string)($r['modelo'] ?? '—')) . '<br><span class="muted-cell">' . htmlspecialchars((string)($r['color'] ?? '')) . '</span></td>';
+    echo '<td>' . htmlspecialchars((string)($modelo ?: '—')) . '<br><span class="muted-cell">' . htmlspecialchars((string)$color) . '</span></td>';
     // Estado moto
-    $estClass = $r['moto_estado'] === 'entregada' ? 'b-ok' : ($r['moto_estado'] === 'en_punto' ? 'b-info' : 'b-muted');
-    echo '<td><span class="badge ' . $estClass . '">' . htmlspecialchars((string)$r['moto_estado']) . '</span></td>';
+    $estClass = $motoEstado === 'entregada' ? 'b-ok' : ($motoEstado === 'en_punto' ? 'b-info' : ($motoEstado === 'sin moto' ? 'b-err' : 'b-muted'));
+    echo '<td><span class="badge ' . $estClass . '">' . htmlspecialchars($motoEstado) . '</span></td>';
     // Contrato
     if (!empty($r['contrato_pdf_path'])) {
         echo '<td><span class="badge b-ok">✓ Firmado</span>'
