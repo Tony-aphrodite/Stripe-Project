@@ -253,6 +253,19 @@ function generarPagareFromFirma(firmaId, motoId, btn) {
         }).then(function(r){ return r.json(); });
     }).then(function(pre){
         prefillData = pre || {};
+        // If prefill did not find CURP, ask the admin to type it (from the customer INE).
+        if (!prefillData.curp) {
+            var typed = prompt("CURP no encontrado en clientes ni verificaciones_identidad.\\nCaptúralo del INE del cliente (18 caracteres) o deja vacío para continuar sin CURP:", "");
+            if (typed) {
+                typed = typed.trim().toUpperCase();
+                if (/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$/.test(typed)) {
+                    prefillData.curp = typed;
+                    prefillData.curp_source = "admin_input";
+                } else if (typed !== "") {
+                    alert("CURP con formato inválido (debe tener 18 caracteres). Continuando sin CURP.");
+                }
+            }
+        }
         // Step 3: Generate the PAGARÉ PDF with CURP + address from prefill.
         // Skip gates are still passed because diag tool is for legacy regeneration
         // — if prefill returns empty for a field, generation proceeds without it
