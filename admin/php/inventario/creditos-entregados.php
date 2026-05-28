@@ -65,6 +65,9 @@ echo '<h1>💳 Créditos entregados — Vista unificada</h1>';
 echo '<p class="muted">Cliente · Vehículo · Contrato · PAGARÉ · Subscripción · Pagos · Próximo vencimiento</p>';
 
 // ── Query: all credit deliveries with full join ────────────────────────
+// Use correlated subqueries to pick the LATEST sub/checklist per moto.
+// Joining directly causes Cartesian multiplication when a moto has multiple
+// subscripciones or multiple checklists.
 $sql = "
 SELECT
   m.id AS moto_id,
@@ -98,8 +101,10 @@ SELECT
   ce.completado AS checklist_completado
 FROM inventario_motos m
 LEFT JOIN transacciones t ON t.id = m.transaccion_id
-LEFT JOIN subscripciones_credito sc ON sc.inventario_moto_id = m.id
-LEFT JOIN checklist_entrega_v2 ce ON ce.moto_id = m.id
+LEFT JOIN subscripciones_credito sc
+       ON sc.id = (SELECT MAX(id) FROM subscripciones_credito WHERE inventario_moto_id = m.id)
+LEFT JOIN checklist_entrega_v2 ce
+       ON ce.id = (SELECT MAX(id) FROM checklist_entrega_v2 WHERE moto_id = m.id)
 WHERE m.estado IN ('entregada','en_punto','asignada')
   AND (t.tpago = 'enganche' OR sc.id IS NOT NULL)
 ORDER BY (m.estado = 'entregada') DESC, m.id DESC
