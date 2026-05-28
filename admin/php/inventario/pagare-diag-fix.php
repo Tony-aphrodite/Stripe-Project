@@ -298,6 +298,8 @@ function submitPagareDirect(pre) {
         alcaldia:         a.alcaldia || "",
         estado_dir:       a.estado || "Ciudad de México",
         cp:               a.cp || "",
+        geolat:           pre.geolat || "",
+        geolng:           pre.geolng || "",
         _skip_curp_gate: 1,
         _skip_otp_gate: 1,
         _skip_address_gate: 1

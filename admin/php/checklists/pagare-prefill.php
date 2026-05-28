@@ -111,6 +111,17 @@ $_findDocVal = function($p) use (&$_findDocVal) {
     return null;
 };
 
+// Geolocation captured by Truora at signing time — top-level field in payload
+$geolat = '';
+$geolng = '';
+if ($truoraPayload && !empty($truoraPayload['geolocation_device'])) {
+    $g = (string)$truoraPayload['geolocation_device'];
+    if (preg_match('/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/', $g, $gm)) {
+        $geolat = $gm[1];
+        $geolng = $gm[2];
+    }
+}
+
 if ($truoraPayload) {
     $doc = $_findDocVal($truoraPayload);
     if ($doc) {
@@ -262,14 +273,26 @@ $vehicle = [
     'anio'   => (string)($moto['anio_modelo'] ?? date('Y')),
 ];
 
+// Derive RFC base from CURP — first 4 letters + 6 birth-date digits.
+// The Mexican RFC for personas físicas is 4-letter-name + YYMMDD + 3-char homoclave.
+// The first 10 chars are the same as CURP's first 10 (same name + birth-date rules).
+// The 3-char homoclave requires a SAT lookup we don't have; emit just the base.
+$rfc = '';
+if ($curp !== '' && preg_match('/^([A-Z]{4}\d{6})/', $curp, $rm)) {
+    $rfc = $rm[1];  // 10-char RFC base, legally identifiable without homoclave
+}
+
 adminJsonOut([
     'ok'             => true,
     'curp'           => $curp,
     'curp_source'    => $curpSource,
+    'rfc'            => $rfc,
     'fecha_nacimiento' => $dob,
     'nombre'         => $nombre,
     'address'        => $address,
     'address_source' => $addressSource,
+    'geolat'         => $geolat ?? '',
+    'geolng'         => $geolng ?? '',
     'otp'            => $otp,
     'amounts'        => [
         'enganche'        => $enganche,
