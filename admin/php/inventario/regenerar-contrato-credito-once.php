@@ -260,19 +260,36 @@ if ($action === 'apply' && ($pedido !== '' || $txId > 0)) {
         exit;
     }
 
-    // 4) Compute credit terms (mirrors VkCalculadora.calcular)
+    // 4) Compute credit terms.
+    // PREFER the customer's actual subscripciones_credito row (monto_semanal +
+    // plazo_semanas) since that's what the customer is actually paying via
+    // Stripe. Falls back to the formula only if no subscription exists.
     $montoFinanciado = $precioContado - $enganchePagado;
-    // Annual rate matches the JS calculator. Inspect calculadora-credito.js
-    // for the canonical value; the credit Carátula is computed off these
-    // numbers so any drift here will produce a contract that differs from
-    // what the customer was quoted.
-    $tasaAnual = 0.42; // 42% annual (approx) — adjust if calculator differs
-    $r = $tasaAnual / 52;
     $n = (int)round($plazoMeses * 4.33);
-    $pagoSemanal = $r > 0
-        ? $montoFinanciado * $r / (1 - pow(1 + $r, -$n))
-        : $montoFinanciado / $n;
-    $pagoSemanal = (int)round($pagoSemanal);
+    $pagoSemanal = null;
+    try {
+        $sq = $pdo->prepare("SELECT monto_semanal, plazo_semanas, plazo_meses
+            FROM subscripciones_credito
+            WHERE (telefono = ? OR email = ?) AND modelo = ?
+              AND monto_semanal IS NOT NULL AND monto_semanal > 0
+            ORDER BY id DESC LIMIT 1");
+        $sq->execute([(string)($tx['telefono'] ?? ''), (string)($tx['email'] ?? ''), $modelo]);
+        $subRow = $sq->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($subRow) {
+            $pagoSemanal = (int)round((float)$subRow['monto_semanal']);
+            // Trust the subscription's plazo over the form value if both differ
+            $subPlazoSem = (int)($subRow['plazo_semanas'] ?? 0);
+            if ($subPlazoSem > 0) $n = $subPlazoSem;
+        }
+    } catch (Throwable $e) {}
+    if (!$pagoSemanal) {
+        // Fallback: amortization formula at 42% annual (legacy default)
+        $tasaAnual = 0.42;
+        $r = $tasaAnual / 52;
+        $pagoSemanal = (int)round($r > 0
+            ? $montoFinanciado * $r / (1 - pow(1 + $r, -$n))
+            : $montoFinanciado / $n);
+    }
 
     // 5) Fetch existing autograph signature (matched by email/telefono)
     $email = trim((string)($tx['email']    ?? ''));
