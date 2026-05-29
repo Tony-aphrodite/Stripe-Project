@@ -35,6 +35,47 @@ $pdo = getDB();
 $commit  = isset($_POST['commit']) && $_POST['commit'] === '1';
 $daysBack = max(1, min(365, (int)($_GET['days'] ?? $_POST['days'] ?? 90)));
 
+// Voltika's folio_otorgante assigned by CDC. Same constant used by
+// configurador/php/consultar-buro.php (CDC_FOLIO).
+const VOLTIKA_CDC_FOLIO_BFILL = '0000004694';
+
+// RFC computation — duplicated from consultar-buro.php::cdcComputeRFC()
+// so backfilled rows have a valid 13-char RFC (with XXX placeholder
+// homoclave) instead of NULL.
+function _bfill_ascii(string $s): string {
+    if ($s === '') return '';
+    $s = strtoupper($s);
+    $s = strtr($s, [
+        'Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N',
+        'á'=>'A','é'=>'E','í'=>'I','ó'=>'O','ú'=>'U','ü'=>'U','ñ'=>'N',
+    ]);
+    return trim((string)preg_replace('/[^\x20-\x7E]/', '', $s));
+}
+function _bfill_computeRFC(string $nombre, string $paterno, string $materno, string $fechaNac): string {
+    $nombre = _bfill_ascii($nombre);
+    $paterno = _bfill_ascii($paterno);
+    $materno = _bfill_ascii($materno);
+    if ($paterno === '' || $nombre === '') return '';
+    $l1 = substr($paterno, 0, 1);
+    $l2 = 'X';
+    for ($i = 1; $i < strlen($paterno); $i++) {
+        $c = $paterno[$i];
+        if (in_array($c, ['A','E','I','O','U'], true)) { $l2 = $c; break; }
+    }
+    $l3 = $materno !== '' ? substr($materno, 0, 1) : 'X';
+    $nameParts = preg_split('/\s+/', $nombre);
+    $first = $nameParts[0];
+    if (in_array($first, ['JOSE','MARIA','MA','J'], true) && isset($nameParts[1])) {
+        $first = $nameParts[1];
+    }
+    $l4 = substr($first, 0, 1);
+    $digits = '000000';
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $fechaNac, $m)) {
+        $digits = substr($m[1], 2, 2) . $m[2] . $m[3];
+    }
+    return $l1 . $l2 . $l3 . $l4 . $digits . 'XXX';
+}
+
 // Ensure target table exists with the columns we'll write into
 try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS consultas_buro (
@@ -158,6 +199,15 @@ foreach ($rows as $r) {
     if ($addr['estado'] === '' && !empty($r['estado'])) $addr['estado'] = (string)$r['estado'];
     if ($addr['cp']     === '' && !empty($r['cp']))     $addr['cp']     = (string)$r['cp'];
 
+    // Compute RFC from name + DOB so the row has a valid identifier in the
+    // CDC export (otherwise the RFC column is empty for backfilled rows).
+    $computedRfc = _bfill_computeRFC(
+        (string)$r['nombre'],
+        (string)$r['apellido_paterno'],
+        (string)($r['apellido_materno'] ?? ''),
+        $dob
+    );
+
     $toInsert[] = [
         'preap_id' => $r['id'],
         'nombre'   => $r['nombre'],
@@ -168,6 +218,7 @@ foreach ($rows as $r) {
         'modelo'   => $r['modelo'],
         'freg'     => $r['freg'],
         'addr'     => $addr,
+        'rfc'      => $computedRfc,
         'has_addr' => trim($addr['direccion'] . $addr['ciudad']) !== '',
     ];
 }
@@ -181,13 +232,17 @@ echo '<div class="banner banner-info">'
 // Commit phase
 if ($commit) {
     $inserted = 0; $errors = 0;
+    // INSERT now includes rfc and usuario_api so the CDC export CSV has
+    // complete data for backfilled rows. Both fields were missing before
+    // (customer brief 2026-05-29 round 2: yellow rows in CDC export had
+    // empty RFC + USUARIO columns).
     $ins = $pdo->prepare("INSERT INTO consultas_buro
-        (nombre, apellido_paterno, apellido_materno, fecha_nacimiento,
-         cp, ciudad, estado, calle_numero, colonia,
+        (nombre, apellido_paterno, apellido_materno, fecha_nacimiento, rfc,
+         cp, ciudad, estado, calle_numero, colonia, usuario_api,
          tipo_consulta, ingreso_nip_ciec, respuesta_leyenda, aceptacion_tyc,
          fecha_consulta, hora_consulta, fecha_aprobacion_consulta, hora_aprobacion_consulta,
          origen, status, freg)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PF', 'SI', 'SI', 'SI', ?, ?, ?, ?,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PF', 'SI', 'SI', 'SI', ?, ?, ?, ?,
                 'backfill_preaprobaciones', 'backfilled', ?)");
     foreach ($toInsert as $row) {
         try {
@@ -197,8 +252,10 @@ if ($commit) {
             $ins->execute([
                 $row['nombre'], $row['apellido_paterno'], $row['apellido_materno'],
                 $row['fecha_nacimiento'] ?: null,
+                $row['rfc'] ?: null,
                 $row['addr']['cp'] ?: null, $row['addr']['ciudad'] ?: null, $row['addr']['estado'] ?: null,
                 $row['addr']['direccion'] ?: null, $row['addr']['colonia'] ?: null,
+                VOLTIKA_CDC_FOLIO_BFILL,
                 $fd, $ft, $fd, $ft, $f,
             ]);
             $inserted++;
