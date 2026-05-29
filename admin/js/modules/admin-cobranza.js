@@ -40,7 +40,7 @@ window.AD_cobranza = (function(){
 
     // ── Filter tabs ──
     html += '<div class="ad-tabs" id="cbTabs">';
-    html += tabBtn('', 'Todos los atrasados');
+    html += tabBtn('', 'Atrasados (vencidos)');
     html += tabBtn('1-7', '1-7 días');
     html += tabBtn('8-30', '8-30 días');
     html += tabBtn('30+', '30+ días');
