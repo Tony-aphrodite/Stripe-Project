@@ -134,9 +134,11 @@ try {
     $stmt->execute([$motoId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Use admin's serve endpoint so the same URL works whether the file
-    // lives in admin/uploads (production path) or sys_get_temp_dir (fallback).
-    $relativeUrl = '/admin/php/checklists/serve-foto.php?f=' . $filename;
+    // Customer brief 2026-05-29: photos shown as broken thumbnails on PoS
+    // because admin's serve-foto.php requires adminRequireAuth and PoS
+    // operators don't have admin sessions. Return the PoS-scoped serve
+    // endpoint instead (same file storage, different auth).
+    $relativeUrl = '/puntosvoltika/php/checklists/serve-foto.php?f=' . $filename;
 
     if ($row) {
         $existing = json_decode($row[$campo] ?: '[]', true) ?: [];
@@ -152,7 +154,7 @@ try {
     error_log('punto subir-foto DB: ' . $e->getMessage());
     echo json_encode([
         'ok'       => true,
-        'url'      => '/admin/php/checklists/serve-foto.php?f=' . $filename,
+        'url'      => '/puntosvoltika/php/checklists/serve-foto.php?f=' . $filename,
         'filename' => $filename,
         'warning'  => 'Foto guardada, pero no se pudo vincular: ' . $e->getMessage(),
     ]);
