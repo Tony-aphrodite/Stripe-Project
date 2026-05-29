@@ -132,7 +132,7 @@ if ($action === 'reset_and_regen' && $txId > 0) {
 }
 
 if ($action === 'apply' && ($pedido !== '' || $txId > 0)) {
-    $plazoMeses = max(12, min(60, (int)($_POST['plazo'] ?? 36)));
+    $plazoMeses = max(12, min(60, (int)($_POST['plazo'] ?? $_GET['plazo'] ?? 36)));
 
     // 1) Load transacciones row — prefer tx_id when given (it's unique), fall back to pedido.
     if ($txId > 0) {
