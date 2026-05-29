@@ -58,7 +58,7 @@ window.AD_buro = (function(){
           '<td>'+(r.nombre||'')+' '+(r.apellido_paterno||'')+' '+(r.apellido_materno||'')+'</td>'+
           '<td><code style="font-size:11px;">'+(ident||'-')+'</code></td>'+
           '<td><strong>'+(r.score||'-')+'</strong></td>'+
-          '<td style="font-size:11px;max-width:280px;">'+direccion+'</td>'+
+          '<td style="font-size:11px;max-width:280px;white-space:normal;word-break:break-word;line-height:1.4;">'+direccion+'</td>'+
           '<td>'+(r.fecha_consulta||fmtDate(r.freg)||'-')+'</td>'+
           '<td>'+(r.hora_consulta||fmtTime(r.freg)||'-')+'</td>'+
           '<td><span class="ad-badge blue">'+(r.tipo_consulta||'PF')+'</span></td>'+
