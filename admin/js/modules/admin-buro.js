@@ -40,22 +40,28 @@ window.AD_buro = (function(){
       }
 
       var html = '<div class="ad-table-wrap"><div style="overflow-x:auto;"><table class="ad-table"><thead><tr>'+
-        '<th>Folio CDC</th><th>Nombre</th><th>Score</th><th>Tipo</th>'+
-        '<th>Fecha aprobacion</th><th>Hora aprobacion</th>'+
-        '<th>Fecha consulta</th><th>Hora consulta</th>'+
+        '<th>Folio CDC</th><th>Nombre</th><th>RFC / CURP</th><th>Score</th>'+
+        '<th>Domicilio</th>'+
+        '<th>Fecha consulta</th>'+
+        '<th>Hora</th><th>Tipo</th>'+
         '<th>NIP</th><th>Leyenda</th><th>TyC</th>'+
         '</tr></thead><tbody>';
 
       rows.forEach(function(r){
+        var direccion = [r.calle_numero, r.colonia, r.municipio, r.ciudad, r.estado, r.cp ? ('CP ' + r.cp) : '']
+          .filter(function(x){ return x && String(x).trim() !== ''; })
+          .join(' · ');
+        if (!direccion) direccion = '<span style="color:#94a3b8;">(sin dirección)</span>';
+        var ident = (r.rfc || '') + (r.curp ? '<br><small>' + r.curp + '</small>' : '');
         html += '<tr>'+
           '<td>'+(r.folio_consulta||'-')+'</td>'+
           '<td>'+(r.nombre||'')+' '+(r.apellido_paterno||'')+' '+(r.apellido_materno||'')+'</td>'+
+          '<td><code style="font-size:11px;">'+(ident||'-')+'</code></td>'+
           '<td><strong>'+(r.score||'-')+'</strong></td>'+
-          '<td><span class="ad-badge blue">'+(r.tipo_consulta||'PF')+'</span></td>'+
-          '<td>'+(r.fecha_aprobacion_consulta||'-')+'</td>'+
-          '<td>'+(r.hora_aprobacion_consulta||'-')+'</td>'+
+          '<td style="font-size:11px;max-width:280px;">'+direccion+'</td>'+
           '<td>'+(r.fecha_consulta||fmtDate(r.freg)||'-')+'</td>'+
           '<td>'+(r.hora_consulta||fmtTime(r.freg)||'-')+'</td>'+
+          '<td><span class="ad-badge blue">'+(r.tipo_consulta||'PF')+'</span></td>'+
           '<td><span class="ad-badge green">'+(r.ingreso_nip_ciec||'SI')+'</span></td>'+
           '<td><span class="ad-badge green">'+(r.respuesta_leyenda||'SI')+'</span></td>'+
           '<td><span class="ad-badge green">'+(r.aceptacion_tyc||'SI')+'</span></td>'+

@@ -26,6 +26,8 @@ try {
 
     $rows = $pdo->query("
         SELECT id, folio_consulta, nombre, apellido_paterno, apellido_materno,
+               rfc, curp, fecha_nacimiento,
+               calle_numero, colonia, municipio, ciudad, estado, cp,
                score, tipo_consulta, fecha_aprobacion_consulta, hora_aprobacion_consulta,
                fecha_consulta, hora_consulta, usuario_api,
                ingreso_nip_ciec, respuesta_leyenda, aceptacion_tyc, freg
