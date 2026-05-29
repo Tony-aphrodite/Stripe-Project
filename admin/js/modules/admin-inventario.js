@@ -871,11 +871,14 @@ window.AD_inventario = (function(){
                   '<strong>Estado Cincel:</strong> '+esc(m.cincel_acta_status)+
                 '</div>';
       }
-      // View ACTA button — opens the PDF in a new tab
+      // View ACTA button — opens the PDF in a new tab. Only shown when the
+      // ACTA was actually signed; otherwise we offer the signing flow link
+      // so admin doesn't click "Ver PDF" and hit a "no disponible" error.
       html += '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">';
-      html += '<a class="ad-btn sm" href="/admin/php/inventario/view-acta.php?moto_id='+m.id+'" target="_blank" rel="noopener" '+
-              'style="background:#039fe1;color:#fff;border-color:#039fe1;text-decoration:none;">📄 Ver ACTA PDF</a>';
-      if (!actaSigned) {
+      if (actaSigned) {
+        html += '<a class="ad-btn sm" href="/admin/php/inventario/view-acta.php?moto_id='+m.id+'" target="_blank" rel="noopener" '+
+                'style="background:#039fe1;color:#fff;border-color:#039fe1;text-decoration:none;">📄 Ver ACTA PDF</a>';
+      } else {
         html += '<a class="ad-btn sm ghost" href="/admin/php/checklists/herramienta-firma-acta.php" target="_blank" rel="noopener" '+
                 'style="text-decoration:none;">📝 Solicitar firma al cliente</a>';
       }
