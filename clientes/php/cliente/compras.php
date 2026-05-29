@@ -203,8 +203,18 @@ try {
 
         // Normalize legacy tpago='unico' to 'contado' for display (Round 86).
         $tpagoNorm = ($t['tpago'] === 'unico') ? 'contado' : $t['tpago'];
+        // Map tpago to a UI tipo. enganche/credito/parcial are PART of a
+        // credit purchase — flagged separately so the dedup step below can
+        // merge them with the matching subscripciones_credito card.
+        if (in_array($tpagoNorm, ['enganche','credito','parcial'], true)) {
+            $tipoUi = 'enganche_credito';
+        } elseif ($tpagoNorm === 'msi') {
+            $tipoUi = 'msi';
+        } else {
+            $tipoUi = 'contado';
+        }
         $compras[] = [
-            'tipo'         => ($tpagoNorm === 'msi' ? 'msi' : 'contado'),
+            'tipo'         => $tipoUi,
             'id'           => (int)$t['id'],
             'pedido'       => $t['pedido'],
             'modelo'       => $t['modelo'] ?? ($moto['modelo'] ?? null),
@@ -274,6 +284,46 @@ foreach ($compras as $c) {
     $c['duplicate_ids']      = [];
     $dedup[] = $c;
 }
+
+// Second dedup pass: a credit purchase produces BOTH a subscripciones_credito
+// row (tipo='credito') AND an enganche transaction (tipo='enganche_credito')
+// for the same vehicle. The portal should show ONE entry per real purchase.
+// Strategy: when we have a credit sub + enganche TX for the same modelo,
+// merge the enganche details into the credit sub and drop the TX.
+$creditByKey = [];
+foreach ($dedup as $i => $c) {
+    if (($c['tipo'] ?? '') === 'credito') {
+        $k = strtolower(trim((string)($c['modelo'] ?? '')));
+        $creditByKey[$k] = $i;
+    }
+}
+$merged = [];
+foreach ($dedup as $c) {
+    if (($c['tipo'] ?? '') === 'enganche_credito') {
+        $k = strtolower(trim((string)($c['modelo'] ?? '')));
+        if (isset($creditByKey[$k])) {
+            // Merge enganche details into the credit sub, drop this TX entry
+            $idx = $creditByKey[$k];
+            $merged[$idx]['enganche_pagado'] = (float)($c['total'] ?? 0);
+            $merged[$idx]['enganche_pedido'] = (string)($c['pedido'] ?? '');
+            // Use the moto + entrega info from the TX if the sub didn't have it
+            if (empty($merged[$idx]['moto']) && !empty($c['moto'])) {
+                $merged[$idx]['moto'] = $c['moto'];
+            }
+            if (empty($merged[$idx]['entrega']) && !empty($c['entrega'])) {
+                $merged[$idx]['entrega'] = $c['entrega'];
+            }
+            continue;
+        }
+    }
+    $merged[] = $c;
+    if (($c['tipo'] ?? '') === 'credito') {
+        // Update creditByKey to point to the new index in $merged
+        $k = strtolower(trim((string)($c['modelo'] ?? '')));
+        $creditByKey[$k] = count($merged) - 1;
+    }
+}
+$dedup = $merged;
 
 portalJsonOut([
     'ok'      => true,
