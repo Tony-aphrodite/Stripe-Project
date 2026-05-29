@@ -101,6 +101,9 @@ echo '<p class="muted" style="font-size:12.5px;">For every preaprobacion in the 
 
 // Build candidate list
 $cutoff = date('Y-m-d H:i:s', strtotime('-' . $daysBack . ' days'));
+// Exclude test customers: same filter the production dashboards use.
+// Phone 5500000000 and the Voltika Diag synthetic profile are the canonical
+// test identities; rejecting them keeps the CDC NIP-CIEC report clean.
 $candidates = $pdo->prepare("SELECT p.id, p.nombre, p.apellido_paterno, p.apellido_materno,
         p.fecha_nacimiento, p.cp, p.ciudad, p.estado, p.email, p.telefono, p.modelo,
         p.status AS pa_status, p.score AS pa_score, p.freg
@@ -108,6 +111,11 @@ $candidates = $pdo->prepare("SELECT p.id, p.nombre, p.apellido_paterno, p.apelli
     WHERE p.freg >= ?
       AND p.nombre IS NOT NULL AND p.nombre != ''
       AND p.apellido_paterno IS NOT NULL AND p.apellido_paterno != ''
+      AND (p.telefono IS NULL OR p.telefono != '5500000000')
+      AND p.nombre NOT LIKE '%TEST%'
+      AND p.nombre NOT LIKE '%Voltika Diag%'
+      AND p.apellido_paterno NOT LIKE '%Voltika Diag%'
+      AND p.apellido_paterno NOT LIKE '%Diag%'
     ORDER BY p.freg DESC");
 $candidates->execute([$cutoff]);
 $rows = $candidates->fetchAll(PDO::FETCH_ASSOC);
