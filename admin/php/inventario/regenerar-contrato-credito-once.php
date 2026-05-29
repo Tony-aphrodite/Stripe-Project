@@ -115,7 +115,10 @@ echo '<p class="crumb"><a href="?">← Lista de candidatos</a></p>';
 // reset_and_regen — same as apply but FIRST clears the contrato_regenerado_admin
 // flag so the idempotency guard doesn't short-circuit. Used when the PDF
 // from a previous regen was cleaned up from /tmp.
-if ($action === 'reset_and_regen' && $txId > 0 && $_SERVER['REQUEST_METHOD'] === 'POST') {
+// Accept reset_and_regen via GET too (admin convenience: lets you trigger
+// it from a direct URL without needing to interact with a form). Auth is
+// still admin-only via the require_once at the top.
+if ($action === 'reset_and_regen' && $txId > 0) {
     try {
         $pdo->prepare("UPDATE transacciones
             SET contrato_regenerado_admin = 0
@@ -128,7 +131,7 @@ if ($action === 'reset_and_regen' && $txId > 0 && $_SERVER['REQUEST_METHOD'] ===
     $action = 'apply';
 }
 
-if ($action === 'apply' && ($pedido !== '' || $txId > 0) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($action === 'apply' && ($pedido !== '' || $txId > 0)) {
     $plazoMeses = max(12, min(60, (int)($_POST['plazo'] ?? 36)));
 
     // 1) Load transacciones row — prefer tx_id when given (it's unique), fall back to pedido.
