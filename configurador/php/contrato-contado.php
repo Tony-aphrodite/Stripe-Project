@@ -881,11 +881,14 @@ function _ccPdfTable(FPDF $pdf, array $rows): void {
         $value = (string)$r[1];
         if ($value === '') $value = '—';
 
+        // Measure both label and value wrap lines so a long label (e.g.,
+        // "Firma autógrafa del COMPRADOR (al momento de la compra)") doesn't
+        // overflow into the value column. Row height = max of both.
         $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetFillColor(248, 250, 252);
-        // Determine the row height by measuring the value's wrapped lines.
+        $labLines = max(1, _ccPdfLineCount($pdf, $label, $w1 - 3));
+        $pdf->SetFont('Arial', '', 8);
         $valLines = max(1, _ccPdfLineCount($pdf, $value, $w2 - 4));
-        $h = max(5.5, $valLines * 4.2 + 1.5);
+        $h = max(5.5, max($labLines, $valLines) * 4.2 + 1.5);
 
         $x = $pdf->GetX();
         $y = $pdf->GetY();
@@ -897,10 +900,14 @@ function _ccPdfTable(FPDF $pdf, array $rows): void {
             $x = $pdf->GetX();
         }
 
+        // Label cell — MultiCell so long labels wrap inside the cell width.
+        $pdf->SetFillColor(248, 250, 252);
         $pdf->Rect($x, $y, $w1, $h, 'DF');
+        $pdf->SetFont('Arial', 'B', 8);
         $pdf->SetXY($x + 1.5, $y + 1.2);
-        $pdf->Cell($w1 - 3, 4.2, _contratoContadoEnc($label), 0, 0, 'L');
+        $pdf->MultiCell($w1 - 3, 4.2, _contratoContadoEnc($label), 0, 'L');
 
+        // Value cell
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetFillColor(255);
         $pdf->Rect($x + $w1, $y, $w2, $h, 'D');
