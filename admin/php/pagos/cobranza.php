@@ -16,44 +16,57 @@ $safeScalar = function($sql, $params = [], $default = 0) use ($pdo) {
     } catch (Throwable $e) { return $default; }
 };
 
+// Exclude test customers (Voltika Diag fixture) from all collection queries.
+// Test markers: phone=5500000000, email contains 'diag-test' or 'voltika.mx'.
+$excludeTest = " AND subscripcion_id NOT IN (
+    SELECT id FROM subscripciones_credito
+    WHERE telefono = '5500000000'
+       OR email LIKE '%diag-test%'
+       OR LOWER(nombre) LIKE '%voltika diag%'
+       OR LOWER(nombre) LIKE '%test%'
+) ";
+
 // ── KPIs ──
 $cobradoHoy = (float)$safeScalar(
-    "SELECT COALESCE(SUM(monto),0) FROM ciclos_pago WHERE estado IN ('paid_auto','paid_manual') AND DATE(fecha_pago)=?",
+    "SELECT COALESCE(SUM(monto),0) FROM ciclos_pago WHERE estado IN ('paid_auto','paid_manual') AND DATE(fecha_pago)=?" . $excludeTest,
     [$today]
 );
 $pendientesHoy = (int)$safeScalar(
-    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='pending' AND fecha_vencimiento=?",
+    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='pending' AND fecha_vencimiento=?" . $excludeTest,
     [$today]
 );
 $montoPendienteHoy = (float)$safeScalar(
-    "SELECT COALESCE(SUM(monto),0) FROM ciclos_pago WHERE estado='pending' AND fecha_vencimiento=?",
+    "SELECT COALESCE(SUM(monto),0) FROM ciclos_pago WHERE estado='pending' AND fecha_vencimiento=?" . $excludeTest,
     [$today]
 );
-$totalOverdue = (int)$safeScalar("SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue'");
+$totalOverdue = (int)$safeScalar("SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue'" . $excludeTest);
 
 // ── Overdue Buckets ──
 $bucket1_7 = (int)$safeScalar(
-    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue' AND DATEDIFF(?,fecha_vencimiento) BETWEEN 1 AND 7",
+    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue' AND DATEDIFF(?,fecha_vencimiento) BETWEEN 1 AND 7" . $excludeTest,
     [$today]
 );
 $bucket8_30 = (int)$safeScalar(
-    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue' AND DATEDIFF(?,fecha_vencimiento) BETWEEN 8 AND 30",
+    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue' AND DATEDIFF(?,fecha_vencimiento) BETWEEN 8 AND 30" . $excludeTest,
     [$today]
 );
 $bucket30plus = (int)$safeScalar(
-    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue' AND DATEDIFF(?,fecha_vencimiento) > 30",
+    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue' AND DATEDIFF(?,fecha_vencimiento) > 30" . $excludeTest,
     [$today]
 );
 
 // ── Failed payments (Stripe PI with failed status) ──
 $pagosRechazados = (int)$safeScalar(
-    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue' AND stripe_payment_intent IS NOT NULL AND stripe_payment_intent <> ''"
+    "SELECT COUNT(*) FROM ciclos_pago WHERE estado='overdue' AND stripe_payment_intent IS NOT NULL AND stripe_payment_intent <> ''" . $excludeTest
 );
 
 // ── Customers without active card ──
 $sinTarjeta = (int)$safeScalar(
     "SELECT COUNT(*) FROM subscripciones_credito
      WHERE (stripe_payment_method_id IS NULL OR stripe_payment_method_id='')
+     AND telefono != '5500000000'
+     AND (email IS NULL OR email NOT LIKE '%diag-test%')
+     AND (LOWER(nombre) NOT LIKE '%voltika diag%' AND LOWER(nombre) NOT LIKE '%test%')
      AND " . (function() use ($pdo) {
         try {
             $cols = $pdo->query("SHOW COLUMNS FROM subscripciones_credito")->fetchAll(PDO::FETCH_COLUMN);
@@ -93,6 +106,10 @@ if ($bucket === '1-7') {
 
 $rows = [];
 try {
+    // Filter out test customers from list (same markers as KPIs)
+    $testFilter = " AND (s.telefono IS NULL OR s.telefono != '5500000000')"
+                . " AND (s.email IS NULL OR s.email NOT LIKE '%diag-test%')"
+                . " AND (s.nombre IS NULL OR (LOWER(s.nombre) NOT LIKE '%voltika diag%' AND LOWER(s.nombre) NOT LIKE '%test%'))";
     $sql = "SELECT c.id, c.subscripcion_id, c.cliente_id, c.monto, c.fecha_vencimiento,
                 c.estado, c.stripe_payment_intent, c.fecha_pago, c.semana_num,
                 COALESCE(cl.nombre, '') as nombre, s.email, s.telefono, s.modelo, s.color,
@@ -101,7 +118,7 @@ try {
             FROM ciclos_pago c
             LEFT JOIN subscripciones_credito s ON c.subscripcion_id = s.id
             LEFT JOIN clientes cl ON c.cliente_id = cl.id
-            WHERE {$where}
+            WHERE {$where}{$testFilter}
             ORDER BY {$orderBy}
             LIMIT {$limit} OFFSET {$offset}";
     $stmt = $pdo->prepare($sql);

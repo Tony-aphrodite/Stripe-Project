@@ -16,6 +16,22 @@ window.AD_pagares = (function(){
   return { render: render };
 })();
 
+// Admin module: Cuentas de crédito (per-customer detail).
+window.AD_cuentasCredito = (function(){
+  function render(){
+    var back = '<button class="ad-back" onclick="ADApp.go(\'dashboard\')">'
+             + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>';
+    var html = back
+      + '<div class="ad-toolbar"><div class="ad-h1">💳 Cuentas de crédito</div>'
+      + '<button class="ad-btn sm ghost" onclick="document.getElementById(\'cuentasFrame\').contentWindow.location.reload()">Actualizar</button>'
+      + '</div>'
+      + '<iframe id="cuentasFrame" src="/admin/php/inventario/cuenta-credito.php" '
+      + 'style="width:100%;height:calc(100vh - 160px);border:1px solid #e2e8f0;border-radius:8px;background:#fff;"></iframe>';
+    ADApp.render(html);
+  }
+  return { render: render };
+})();
+
 // Admin module: Créditos entregados (unified dashboard).
 window.AD_creditosEntregados = (function(){
   function render(){
