@@ -45,6 +45,8 @@ window.AD_cobranza = (function(){
     html += tabBtn('8-30', '8-30 días');
     html += tabBtn('30+', '30+ días');
     html += tabBtn('pending', 'Pendientes hoy');
+    html += tabBtn('next7', 'Próximos 7 días');
+    html += tabBtn('all_pending', 'Todas pendientes');
     html += tabBtn('paid', 'Pagados');
     html += '</div>';
 
@@ -88,8 +90,21 @@ window.AD_cobranza = (function(){
         html += '<td>' + esc(c.modelo || '') + ' ' + esc(c.color || '') + '</td>';
         html += '<td><strong>' + ADApp.money(c.monto) + '</strong></td>';
         html += '<td>' + (c.fecha_vencimiento || '—') + '</td>';
-        html += '<td><span class="ad-badge ' + diasBadge + '">' + diasAtraso + ' días</span></td>';
-        html += '<td><span class="ad-badge ' + estadoBadge + '">' + (c.estado === 'overdue' ? 'Atrasado' : 'Pendiente') + '</span></td>';
+        // For future cycles (negative dias_atraso), show "en X días" with green badge.
+        var diasLabel, diasColor;
+        if (diasAtraso < 0) {
+          diasLabel = 'en ' + Math.abs(diasAtraso) + ' días';
+          diasColor = 'green';
+        } else if (diasAtraso === 0) {
+          diasLabel = 'hoy';
+          diasColor = 'yellow';
+        } else {
+          diasLabel = diasAtraso + ' días';
+          diasColor = diasBadge;
+        }
+        html += '<td><span class="ad-badge ' + diasColor + '">' + diasLabel + '</span></td>';
+        var estadoLabel = c.estado === 'overdue' ? 'Atrasado' : (diasAtraso < 0 ? 'Por vencer' : 'Pendiente');
+        html += '<td><span class="ad-badge ' + estadoBadge + '">' + estadoLabel + '</span></td>';
         html += '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">';
 
         // Action buttons

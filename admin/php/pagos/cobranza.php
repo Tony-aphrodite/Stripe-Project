@@ -96,8 +96,17 @@ if ($bucket === '1-7') {
 } elseif ($bucket === 'pending') {
     $where = "c.estado='pending' AND c.fecha_vencimiento=?";
     $params[] = $today;
+} elseif ($bucket === 'next7') {
+    // Cycles due in the next 7 days (including today). Helps the collection
+    // team plan the upcoming week and see customers like Carlos before their
+    // payment is overdue.
+    $where = "c.estado='pending' AND c.fecha_vencimiento BETWEEN ? AND DATE_ADD(?, INTERVAL 7 DAY)";
+    $params[] = $today;
+    $params[] = $today;
+    $orderBy = 'c.fecha_vencimiento ASC';
 } elseif ($bucket === 'all_pending') {
     $where = "c.estado='pending'";
+    $orderBy = 'c.fecha_vencimiento ASC';
 } elseif ($bucket === 'paid') {
     // Historical payments (auto-charge or manually marked)
     $where = "c.estado IN ('paid_auto','paid_manual')";
