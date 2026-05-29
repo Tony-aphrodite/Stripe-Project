@@ -167,12 +167,12 @@ if (!$sub && !$compra) {
     // reason as compras.php: pre-normalization webhook rows (Adrian Montoya
     // case) had this value and were invisible to the portal "Inicio" hero card.
     if ($tel10) {
-        $stmt = $pdo->prepare("SELECT * FROM transacciones WHERE RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''),10) = ? AND tpago IN ('contado','msi','unico') ORDER BY id DESC LIMIT 1");
+        $stmt = $pdo->prepare("SELECT * FROM transacciones WHERE RIGHT(REPLACE(REPLACE(telefono,'+',''),' ',''),10) = ? AND tpago IN ('contado','msi','unico','enganche','credito','parcial','spei','oxxo') ORDER BY id DESC LIMIT 1");
         $stmt->execute([$tel10]);
         $compra = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
     if (!$compra && $em) {
-        $stmt = $pdo->prepare("SELECT * FROM transacciones WHERE email = ? AND tpago IN ('contado','msi','unico') ORDER BY id DESC LIMIT 1");
+        $stmt = $pdo->prepare("SELECT * FROM transacciones WHERE email = ? AND tpago IN ('contado','msi','unico','enganche','credito','parcial','spei','oxxo') ORDER BY id DESC LIMIT 1");
         $stmt->execute([$em]);
         $compra = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
@@ -483,7 +483,7 @@ try {
         $sql = "SELECT id, pedido, modelo, color, total, tpago, msi_meses, freg, pago_estado
                 FROM transacciones
                 WHERE (" . implode(' OR ', $where) . ")
-                  AND tpago IN ('contado','msi','unico')
+                  AND tpago IN ('contado','msi','unico','enganche','credito','parcial','spei','oxxo')
                 ORDER BY id DESC";
         $tStmt = $pdo->prepare($sql);
         $tStmt->execute($params);

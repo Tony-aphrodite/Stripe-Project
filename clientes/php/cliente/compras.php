@@ -169,7 +169,7 @@ try {
                    pago_estado, stripe_pi, punto_nombre, estado AS estado_mx, ciudad, cp
             FROM transacciones
             WHERE (" . implode(' OR ', $where) . ")
-              AND tpago IN ('contado','msi','spei','oxxo','unico')
+              AND tpago IN ('contado','msi','spei','oxxo','unico','enganche','credito','parcial')
             ORDER BY id DESC";
     $tStmt = $pdo->prepare($sql);
     $tStmt->execute($params);
