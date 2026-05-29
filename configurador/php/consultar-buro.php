@@ -482,6 +482,41 @@ if (!$data) {
 // ── Extraer datos para preaprobación V3 ─────────────────────────────────────
 $result = extractPreaprobacionData($data);
 
+// Customer brief 2026-05-29: address fields in consultas_buro were empty
+// because we only saved what the configurador SENT in the request, not what
+// CDC returned. Extract address from CDC's response (domicilios array) and
+// overlay onto our request-supplied values. CDC's data is canonical — the
+// customer may not have entered it yet at the moment we query.
+$cdcDomicilio = null;
+foreach ([
+    $data['personas'][0]['domicilios'][0] ?? null,
+    $data['domicilios'][0] ?? null,
+    $data['persona']['domicilios'][0] ?? null,
+] as $candidate) {
+    if (is_array($candidate)) { $cdcDomicilio = $candidate; break; }
+}
+if ($cdcDomicilio) {
+    $pickField = function(array $row, array $keys): string {
+        foreach ($keys as $k) {
+            if (!empty($row[$k])) return strtoupper(trim((string)$row[$k]));
+        }
+        return '';
+    };
+    $cdcCalle    = $pickField($cdcDomicilio, ['direccion','calle','calleNumero','calle_numero']);
+    $cdcColonia  = $pickField($cdcDomicilio, ['coloniaPoblacion','colonia']);
+    $cdcMunic    = $pickField($cdcDomicilio, ['delegacionMunicipio','municipio','delegacion']);
+    $cdcCiudad   = $pickField($cdcDomicilio, ['ciudad']);
+    $cdcEstado   = $pickField($cdcDomicilio, ['estado']);
+    $cdcCp       = $pickField($cdcDomicilio, ['cp','codigoPostal']);
+    // Use CDC values when available (request values may be empty or stale)
+    if ($cdcCalle   !== '') $direccion = $cdcCalle;
+    if ($cdcColonia !== '') $colonia   = $cdcColonia;
+    if ($cdcMunic   !== '') $municipio = $cdcMunic;
+    if ($cdcCiudad  !== '') $ciudad    = $cdcCiudad;
+    if ($cdcEstado  !== '') $estado    = $cdcEstado;
+    if ($cdcCp      !== '') $cp        = $cdcCp;
+}
+
 // Guardar en sesión para que preaprobacion-v3.php los use
 $_SESSION['cdc_score']             = $result['score'];
 $_SESSION['cdc_pago_mensual_buro'] = $result['pago_mensual_buro'];
