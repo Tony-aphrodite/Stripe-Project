@@ -427,6 +427,20 @@ if ($isPersonNotFound) {
     $_SESSION['cdc_dpd90_flag']        = false;
     $_SESSION['cdc_dpd_max']           = 0;
     $_SESSION['cdc_person_found']      = false; // <── new, prevents fake-identity approval
+    // Customer brief 2026-05-29: CDC was charging us for these queries and
+    // logging them on their register, but our consultas_buro table was empty
+    // because we exited before INSERT. Save the attempt so the dashboard
+    // reflects every billable CDC query (with status='person_not_found').
+    saveConsultaBuroFailure(compact(
+        'primerNombre','apellidoPaterno','apellidoMaterno','fechaNacimiento','cp',
+        'rfc','curp','direccion','colonia','municipio','ciudad','estado',
+        'tipoConsulta','fechaAprobacionConsulta','horaAprobacionConsulta',
+        'fechaConsulta','horaConsulta','ingresoNipCiec','respuestaLeyenda','aceptacionTyc'
+    ) + [
+        'status'         => 'person_not_found',
+        'folio_consulta' => $parsedResp['folioConsulta'] ?? ($parsedResp['errores'][0]['folio'] ?? null),
+        'http_code'      => $httpCode,
+    ]);
     echo json_encode([
         'success'           => true,
         'sin_historial'     => false,          // legitimate thin-file path uses this; we removed it here
@@ -451,6 +465,19 @@ if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
     $_SESSION['cdc_dpd90_flag']        = false;
     $_SESSION['cdc_dpd_max']           = 0;
     $_SESSION['cdc_person_found']      = null; // unreachable — identity not confirmed, not denied
+    // Customer brief 2026-05-29: CDC may bill us for the attempt even on
+    // 5xx (some Apigee gateway errors still charge). Save the attempt with
+    // status='cdc_unreachable' so the dashboard knows about it.
+    saveConsultaBuroFailure(compact(
+        'primerNombre','apellidoPaterno','apellidoMaterno','fechaNacimiento','cp',
+        'rfc','curp','direccion','colonia','municipio','ciudad','estado',
+        'tipoConsulta','fechaAprobacionConsulta','horaAprobacionConsulta',
+        'fechaConsulta','horaConsulta','ingresoNipCiec','respuestaLeyenda','aceptacionTyc'
+    ) + [
+        'status'         => 'cdc_unreachable',
+        'folio_consulta' => null,
+        'http_code'      => $httpCode,
+    ]);
     echo json_encode([
         'success'           => true,
         'score'             => null,
@@ -469,6 +496,18 @@ if ($curlErr || $httpCode < 200 || $httpCode >= 300) {
 $data = json_decode($response, true);
 if (!$data) {
     $_SESSION['cdc_score'] = null;
+    // Customer brief 2026-05-29: save the failed attempt so the dashboard
+    // knows about it (CDC may still charge for malformed/non-JSON responses).
+    saveConsultaBuroFailure(compact(
+        'primerNombre','apellidoPaterno','apellidoMaterno','fechaNacimiento','cp',
+        'rfc','curp','direccion','colonia','municipio','ciudad','estado',
+        'tipoConsulta','fechaAprobacionConsulta','horaAprobacionConsulta',
+        'fechaConsulta','horaConsulta','ingresoNipCiec','respuestaLeyenda','aceptacionTyc'
+    ) + [
+        'status'         => 'invalid_json',
+        'folio_consulta' => null,
+        'http_code'      => $httpCode,
+    ]);
     http_response_code(502);
     echo json_encode([
         'success' => false,
@@ -617,6 +656,86 @@ try {
 echo json_encode($result);
 
 // ── Funciones auxiliares ────────────────────────────────────────────────────
+
+/**
+ * Persist a CDC query attempt that ended in a non-success path (person not
+ * found, CDC unreachable, malformed JSON, etc).
+ *
+ * Before this helper existed (commit 2026-05-29), consultar-buro.php exited
+ * early on these paths without saving to consultas_buro — even though CDC
+ * already logged the query on their register and may have billed for it.
+ * Result: the admin dashboard was missing many real queries.
+ *
+ * This is purely additive — the SUCCESS path's INSERT is unchanged. Errors
+ * here are logged but never thrown, so the user-facing flow is not affected
+ * if the DB is briefly down.
+ */
+function saveConsultaBuroFailure(array $r): void {
+    try {
+        $pdo = getDB();
+        // Make sure base table and NIP-CIEC columns exist
+        $pdo->exec("CREATE TABLE IF NOT EXISTS consultas_buro (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(200), apellido_paterno VARCHAR(100), apellido_materno VARCHAR(100),
+            fecha_nacimiento VARCHAR(20), cp VARCHAR(10),
+            score INT, pago_mensual DECIMAL(12,2), dpd90_flag TINYINT(1), dpd_max INT,
+            num_cuentas INT, folio_consulta VARCHAR(100),
+            freg DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        ensureConsultasBuroColumns($pdo);
+        // Add columns specific to failure tracking (status + http code + origen)
+        foreach ([
+            'status'    => "VARCHAR(40) NULL",
+            'http_code' => "INT NULL",
+            'origen'    => "VARCHAR(40) NULL DEFAULT 'configurador'",
+        ] as $col => $def) {
+            try { $pdo->exec("ALTER TABLE consultas_buro ADD COLUMN `$col` $def"); }
+            catch (PDOException $e) { /* column already exists */ }
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO consultas_buro
+            (nombre, apellido_paterno, apellido_materno, fecha_nacimiento, cp,
+             rfc, curp, calle_numero, colonia, municipio, ciudad, estado,
+             tipo_consulta, fecha_aprobacion_consulta, hora_aprobacion_consulta,
+             fecha_consulta, hora_consulta, usuario_api,
+             ingreso_nip_ciec, respuesta_leyenda, aceptacion_tyc,
+             folio_consulta, score, status, http_code, origen)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        $stmt->execute([
+            $r['primerNombre']           ?? null,
+            $r['apellidoPaterno']        ?? null,
+            $r['apellidoMaterno']        ?? null,
+            $r['fechaNacimiento']        ?? null,
+            $r['cp']                     ?? null,
+            $r['rfc']                    ?? null,
+            $r['curp']                   ?? null,
+            $r['direccion']              ?? null,
+            $r['colonia']                ?? null,
+            $r['municipio']              ?? null,
+            $r['ciudad']                 ?? null,
+            $r['estado']                 ?? null,
+            $r['tipoConsulta']           ?? 'PF',
+            $r['fechaAprobacionConsulta']?? null,
+            $r['horaAprobacionConsulta'] ?? null,
+            $r['fechaConsulta']          ?? null,
+            $r['horaConsulta']           ?? null,
+            CDC_FOLIO,
+            $r['ingresoNipCiec']         ?? 'SI',
+            $r['respuestaLeyenda']       ?? 'SI',
+            $r['aceptacionTyc']          ?? 'SI',
+            $r['folio_consulta']         ?? null,
+            null,                              // score: not available on failure
+            $r['status']                 ?? 'unknown_failure',
+            $r['http_code']              ?? null,
+            'configurador',
+        ]);
+    } catch (Throwable $e) {
+        // Never throw — the user-facing CDC flow has already decided how to
+        // respond. We only want this row for the admin dashboard.
+        error_log('saveConsultaBuroFailure (' . ($r['status'] ?? '?') . '): ' . $e->getMessage());
+    }
+}
 
 /**
  * Idempotently add NIP-CIEC compliance columns to consultas_buro.
