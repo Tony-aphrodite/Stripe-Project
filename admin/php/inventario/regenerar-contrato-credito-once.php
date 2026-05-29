@@ -203,6 +203,27 @@ if ($action === 'apply' && ($pedido !== '' || $txId > 0) && $_SERVER['REQUEST_ME
             }
             $viewUrl = '/configurador/php/descargar-contrato.php?pedido=TX' . (int)$tx['id'] . '&inline=1';
             echo '<p><a class="btn" href="' . htmlspecialchars($viewUrl) . '" target="_blank" style="background:#10b981;">📄 Ver PDF</a> <a class="btn ghost" href="?">← Volver a la lista</a></p>';
+
+            // Allow forcing a re-regeneration with a different plazo (e.g. correcting
+            // from default 36 months to the customer\'s real plan like 18 months).
+            // Uses the existing reset_and_regen action which clears the idempotency flag.
+            echo '<div class="hint" style="margin-top:14px;">'
+               . '<strong>¿Necesitas regenerar con otro plazo?</strong> '
+               . 'Por ejemplo cambiar de 36 a 18 meses si el plan real del cliente es distinto.'
+               . '<form method="post" style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
+               . '<input type="hidden" name="action" value="reset_and_regen">'
+               . '<input type="hidden" name="tx_id" value="' . (int)$tx['id'] . '">'
+               . '<input type="hidden" name="pedido" value="' . htmlspecialchars((string)$tx['pedido']) . '">'
+               . 'Plazo: <select name="plazo">'
+               . '<option value="12">12 meses</option>'
+               . '<option value="18">18 meses</option>'
+               . '<option value="24">24 meses</option>'
+               . '<option value="36" selected>36 meses</option>'
+               . '<option value="48">48 meses</option>'
+               . '<option value="60">60 meses</option>'
+               . '</select> '
+               . '<button class="btn danger" type="submit">⚙ Forzar re-regeneración</button>'
+               . '</form></div>';
             echo '</body></html>';
             exit;
         }
