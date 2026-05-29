@@ -144,3 +144,4 @@ header('Content-Disposition: inline; filename="' . $filename . '"');
 header('Content-Length: ' . filesize($realPdfPath));
 header('Cache-Control: no-cache, no-store, must-revalidate');
 readfile($realPdfPath);
+exit;
