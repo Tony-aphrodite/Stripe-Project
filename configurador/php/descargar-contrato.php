@@ -152,7 +152,9 @@ if ($pdfPath !== '') {
         $searchPaths[] = __DIR__ . '/../' . ltrim($pdfPath, '/'); // DB stored relative
     }
 }
-$searchPaths[] = voltikaDurableStorageDir('contratos') . '/' . $filename;        // durable (private_storage)
+if (function_exists('voltikaDurableStorageDir')) {
+    $searchPaths[] = voltikaDurableStorageDir('contratos') . '/' . $filename;    // durable (private_storage)
+}
 $searchPaths[] = __DIR__ . '/../contratos/contado/' . $filename;                 // canonical (legacy)
 $searchPaths[] = sys_get_temp_dir() . '/voltika_contratos_contado/' . $filename; // /tmp fallback (legacy)
 $searchPaths[] = sys_get_temp_dir() . '/voltika_contratos/' . $filename;         // /tmp fallback (legacy)
@@ -228,11 +230,15 @@ if (!empty($_GET['check_only'])) {
     if (!$available && $isCredit) {
         $safeName = preg_replace('/[^a-zA-Z0-9]/', '_', $clientName);
         if ($safeName !== '') {
-            $candidates = array_merge(
-                @glob(voltikaDurableStorageDir('contratos') . '/contrato_*' . $safeName . '*.pdf') ?: [],
-                @glob(__DIR__ . '/contratos/contrato_*' . $safeName . '*.pdf') ?: [],
-                @glob(sys_get_temp_dir() . '/voltika_contratos/contrato_*' . $safeName . '*.pdf') ?: []
-            );
+            $globPaths = [
+                __DIR__ . '/contratos/contrato_*' . $safeName . '*.pdf',
+                sys_get_temp_dir() . '/voltika_contratos/contrato_*' . $safeName . '*.pdf',
+            ];
+            if (function_exists('voltikaDurableStorageDir')) {
+                array_unshift($globPaths, voltikaDurableStorageDir('contratos') . '/contrato_*' . $safeName . '*.pdf');
+            }
+            $candidates = [];
+            foreach ($globPaths as $g) $candidates = array_merge($candidates, @glob($g) ?: []);
             $available = !empty($candidates);
         }
     }
@@ -348,10 +354,13 @@ if (($absPath === '' || !is_readable($absPath)) && ($adminOk || $forceRegen)) {
                 $creditSearchPatterns = [];
                 if ($safeName !== '') {
                     $creditSearchPatterns = [
-                        voltikaDurableStorageDir('contratos') . '/contrato_*' . $safeName . '*.pdf',
                         __DIR__ . '/contratos/contrato_*' . $safeName . '*.pdf',
                         sys_get_temp_dir() . '/voltika_contratos/contrato_*' . $safeName . '*.pdf',
                     ];
+                    if (function_exists('voltikaDurableStorageDir')) {
+                        array_unshift($creditSearchPatterns,
+                            voltikaDurableStorageDir('contratos') . '/contrato_*' . $safeName . '*.pdf');
+                    }
                     $candidates = [];
                     foreach ($creditSearchPatterns as $pattern) {
                         $candidates = array_merge($candidates, glob($pattern) ?: []);

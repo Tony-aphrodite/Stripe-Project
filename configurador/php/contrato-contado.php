@@ -111,8 +111,20 @@ function contratoContadoOutputDir(): string {
         @chmod($dir, 0775);
     }
     if (is_writable($dir)) return $dir;
-    // Otherwise use the durable private_storage helper. Avoids /tmp which gets wiped.
-    return voltikaDurableStorageDir('contratos');
+    // Use the durable helper if available; otherwise derive private_storage inline.
+    if (function_exists('voltikaDurableStorageDir')) {
+        return voltikaDurableStorageDir('contratos');
+    }
+    $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2);
+    $vhost   = dirname($docRoot);
+    $alt     = $vhost . '/private_storage/contratos';
+    if (!is_dir($alt)) @mkdir($alt, 0775, true);
+    if (is_dir($alt) && is_writable($alt)) return $alt;
+    // Last resort: /tmp
+    $tmp = sys_get_temp_dir() . '/voltika_contratos_contado';
+    if (!is_dir($tmp)) @mkdir($tmp, 0777, true);
+    $GLOBALS['_contrato_using_temp_dir'] = true;
+    return $tmp;
 }
 
 function contratoContadoPdfPath(string $pedido): string {

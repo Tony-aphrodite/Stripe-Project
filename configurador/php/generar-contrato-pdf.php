@@ -257,10 +257,22 @@ function generateContractPDF($nombre, $email, $telefono, $modelo, $color,
                               $curp, $domicilio, $customerId) {
 
     // Use the durable storage helper (master-bootstrap.php). It writes to
-    // /var/www/vhosts/voltika.mx/private_storage/contratos which is outside
-    // httpdocs (not web-exposed) but writable by PHP. Old /tmp paths are
-    // still searched by descargar-contrato.php for backward compatibility.
-    $uploadDir = voltikaDurableStorageDir('contratos') . '/';
+    // private_storage/contratos which is outside httpdocs (not web-exposed)
+    // but writable by PHP. If the helper isn't available (old deploy),
+    // fall back to deriving the same path inline so this never 500s.
+    if (function_exists('voltikaDurableStorageDir')) {
+        $uploadDir = voltikaDurableStorageDir('contratos') . '/';
+    } else {
+        $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2);
+        $vhost   = dirname($docRoot);
+        $uploadDir = $vhost . '/private_storage/contratos/';
+        if (!is_dir($uploadDir)) @mkdir($uploadDir, 0775, true);
+        if (!is_dir($uploadDir) || !is_writable($uploadDir)) {
+            $uploadDir = sys_get_temp_dir() . '/voltika_contratos/';
+            if (!is_dir($uploadDir)) @mkdir($uploadDir, 0777, true);
+            error_log('CRITICAL: contrato saved to /tmp (ephemeral) — fix private_storage permissions.');
+        }
+    }
 
     $filename = 'contrato_' . preg_replace('/[^a-zA-Z0-9]/', '_', $nombre) . '_' . date('Ymd_His') . '.pdf';
     $filepath = $uploadDir . $filename;
