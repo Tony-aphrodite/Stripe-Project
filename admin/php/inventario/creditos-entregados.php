@@ -210,13 +210,15 @@ foreach ($rows as $r) {
     if (empty($r['fecha_inicio'])) $alerts[] = 'Sin fecha_inicio (no entregada)';
     elseif ($stats['total'] === 0) $alerts[] = 'Ciclos no generados';
 
-    echo '<tr>';
+    // Each row links to the per-customer credit account detail
+    $detailUrl = '/admin/php/inventario/cuenta-credito.php?sub_id=' . (int)$r['sub_id'];
+    echo '<tr style="cursor:pointer;" onclick="window.open(\'' . $detailUrl . '\', \'_blank\')">';
     // Cliente
-    echo '<td><div class="client-name">' . htmlspecialchars((string)$clientName) . '</div>'
+    echo '<td><div class="client-name"><a href="' . $detailUrl . '" target="_blank" style="color:#039fe1;text-decoration:none;">' . htmlspecialchars((string)$clientName) . '</a></div>'
        . '<div class="client-contact">' . htmlspecialchars((string)$clientTel) . '</div>'
        . '<div class="client-contact">' . htmlspecialchars((string)$clientEmail) . '</div>'
        . (!empty($r['vin']) ? '<div class="client-contact">VIN: ' . htmlspecialchars(substr((string)$r['vin'], 0, 17)) . '</div>' : '')
-       . '<div class="client-contact" style="font-size:10px;">sub_id=' . (int)$r['sub_id'] . '</div></td>';
+       . '<div class="client-contact" style="font-size:10px;">sub_id=' . (int)$r['sub_id'] . ' · 👆 click para detalle</div></td>';
     // Vehículo
     echo '<td>' . htmlspecialchars((string)($modelo ?: '—')) . '<br><span class="muted-cell">' . htmlspecialchars((string)$color) . '</span></td>';
     // Estado moto
