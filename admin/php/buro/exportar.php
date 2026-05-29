@@ -132,6 +132,17 @@ try {
         ");
     } catch (Throwable $e) { error_log('buro backfill from preaprobaciones: ' . $e->getMessage()); }
 
+    // Backfill estado_geo from estado when estado_geo is empty. consultar-buro.php
+    // writes the geographic state into `estado` (not `estado_geo`), but the CDC
+    // template column "Estado" maps to estado_geo. This UPDATE makes them
+    // consistent without losing data — only fills rows where estado_geo is empty.
+    try {
+        $pdo->exec("UPDATE consultas_buro
+            SET estado_geo = estado
+            WHERE (estado_geo IS NULL OR estado_geo = '')
+              AND estado IS NOT NULL AND estado != ''");
+    } catch (Throwable $e) { error_log('buro backfill estado_geo from estado: ' . $e->getMessage()); }
+
     // Also fall back to transacciones when no preaprobacion matches —
     // useful for contado/MSI customers that ran CDC outside the credit flow.
     try {
@@ -261,8 +272,10 @@ try {
             strtoupper((string)($r['colonia'] ?? '')),
             // 8. CIUDAD
             strtoupper((string)($r['ciudad'] ?? '')),
-            // 9. Estado (geographic)
-            strtoupper((string)($r['estado_geo'] ?? '')),
+            // 9. Estado (geographic) — fall back to 'estado' column when
+            // 'estado_geo' is empty. Newer rows from consultar-buro.php write
+            // into 'estado'; only legacy rows had 'estado_geo' populated.
+            strtoupper((string)(!empty($r['estado_geo']) ? $r['estado_geo'] : ($r['estado'] ?? ''))),
             // 10. TIPO_CONSULTA — always "PF" for persona física
             strtoupper((string)($r['tipo_consulta'] ?? 'PF')),
             // 11. USUARIO — CDC API user
