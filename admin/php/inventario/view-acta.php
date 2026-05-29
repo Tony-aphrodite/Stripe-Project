@@ -91,6 +91,46 @@ if ($pdfPath === '' || !is_file($pdfPath)) {
     if ($found) $pdfPath = $found;
 }
 
+// AUTO-REGEN: if the file is missing but the customer DID sign, try to
+// regenerate it from the saved signature before showing the error page.
+// This way "Ver ACTA" just works for older deliveries whose PDFs were lost
+// to /tmp cleanup, without requiring the admin to use a separate tool.
+if (($pdfPath === '' || !is_file($pdfPath)) && (int)($row['cliente_acta_firmada'] ?? 0) === 1) {
+    try {
+        // Need email/telefono to find the signature row
+        $_motoFull = $pdo->prepare("SELECT * FROM inventario_motos WHERE id = ? LIMIT 1");
+        $_motoFull->execute([$motoId]);
+        $_motoFull = $_motoFull->fetch(PDO::FETCH_ASSOC) ?: $row;
+        $_tel   = trim((string)($_motoFull['cliente_telefono'] ?? ''));
+        $_email = trim((string)($_motoFull['cliente_email']    ?? ''));
+        if ($_tel !== '' || $_email !== '') {
+            $_where = [];
+            $_args  = [];
+            if ($_tel !== '')   { $_where[] = 'telefono = ?'; $_args[] = $_tel; }
+            if ($_email !== '') { $_where[] = 'email = ?';    $_args[] = $_email; }
+            $_fs = $pdo->prepare("SELECT firma_base64 FROM firmas_contratos
+                WHERE (" . implode(' OR ', $_where) . ")
+                  AND firma_base64 IS NOT NULL AND firma_base64 <> ''
+                ORDER BY id DESC LIMIT 1");
+            $_fs->execute($_args);
+            $_sig = (string)($_fs->fetchColumn() ?: '');
+            if ($_sig !== '') {
+                require_once __DIR__ . '/../../../clientes/php/acta-pdf-generator.php';
+                $_newPath = generarActaPdf($pdo, $_motoFull, $_sig, $_SERVER['REMOTE_ADDR'] ?? null);
+                if ($_newPath && is_file($_newPath)) {
+                    $pdfPath = $_newPath;
+                    try {
+                        $pdo->prepare("UPDATE inventario_motos SET cincel_acta_pdf_path = ? WHERE id = ?")
+                            ->execute([$_newPath, $motoId]);
+                    } catch (Throwable $e) { /* persist failure is non-fatal */ }
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('view-acta auto-regen: ' . $e->getMessage());
+    }
+}
+
 if ($pdfPath === '' || !is_file($pdfPath)) {
     http_response_code(404);
     header('Content-Type: text/html; charset=utf-8');
@@ -121,10 +161,15 @@ if ($pdfPath === '' || !is_file($pdfPath)) {
 
 // Path validation — must be inside one of the safe directories.
 $realPdfPath = realpath($pdfPath);
+// Include the durable private_storage location (where regenerated ACTAs go)
+$_docRoot = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 3);
+$_vhost   = dirname($_docRoot);
 $safeRoots = array_filter([
     realpath(sys_get_temp_dir() . '/voltika_actas'),
     realpath(__DIR__ . '/../../../configurador/php/uploads/actas'),
     realpath(__DIR__ . '/../../../configurador/contratos/actas'),
+    realpath($_vhost . '/private_storage/actas'),
+    realpath($_vhost . '/private_storage'),
 ]);
 $isSafe = false;
 foreach ($safeRoots as $root) {
