@@ -66,6 +66,30 @@ function checkStripePaymentMethod(string $key, string $pmId, string $customerId)
     return ($data['customer'] ?? null) === $customerId;
 }
 
+// Query Stripe for ALL card payment methods attached to a customer.
+// Returns most recent PM id if any, else null. Used to find a usable card
+// when the stored payment_method_id is stale but the customer has another
+// card on file (e.g. added via Checkout but not propagated to our DB).
+function findAnyCardForCustomer(string $key, string $customerId): ?string {
+    $url = 'https://api.stripe.com/v1/customers/' . urlencode($customerId)
+         . '/payment_methods?type=card&limit=10';
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $key],
+        CURLOPT_TIMEOUT => 8,
+    ]);
+    $resp = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($code < 200 || $code >= 300) return null;
+    $data = json_decode((string)$resp, true) ?: [];
+    $list = $data['data'] ?? [];
+    if (!is_array($list) || empty($list)) return null;
+    // Stripe returns most recent first
+    return $list[0]['id'] ?? null;
+}
+
 // 1. Get all active subscriptions
 $subs = $pdo->query("SELECT id, cliente_id, nombre, email, telefono,
         stripe_customer_id, stripe_payment_method_id, factivacion, freg
@@ -95,19 +119,31 @@ foreach ($byClient as $cid => $rows) {
     $donor = $valid[0];
 
     foreach ($invalid as $broken) {
-        // Verify donor's payment method actually belongs to donor's customer
+        // First try the donor's stored payment method
+        $pmCandidate = (string)$donor['stripe_payment_method_id'];
         $pmValid = checkStripePaymentMethod(
-            $stripeKey,
-            (string)$donor['stripe_payment_method_id'],
-            (string)$donor['stripe_customer_id']
+            $stripeKey, $pmCandidate, (string)$donor['stripe_customer_id']
         );
+        $pmSource = 'donor_row';
+        // If donor's stored PM is invalid, ask Stripe directly for any card
+        // attached to the donor's valid customer (it may have one added via
+        // Checkout that wasn't written back to our DB).
+        if (!$pmValid) {
+            $altPm = findAnyCardForCustomer($stripeKey, (string)$donor['stripe_customer_id']);
+            if ($altPm) {
+                $pmCandidate = $altPm;
+                $pmValid = true;
+                $pmSource = 'stripe_api_lookup';
+            }
+        }
         $plan[] = [
             'broken_id' => (int)$broken['id'],
             'broken_customer' => $broken['stripe_customer_id'],
             'donor_id' => (int)$donor['id'],
             'donor_customer' => $donor['stripe_customer_id'],
-            'donor_pm' => $donor['stripe_payment_method_id'],
+            'donor_pm' => $pmCandidate,
             'pm_valid' => $pmValid,
+            'pm_source' => $pmSource,
             'cliente_id' => $cid,
             'nombre' => $broken['nombre'],
             'email' => $broken['email'],
@@ -190,8 +226,13 @@ if (empty($plan)) {
         echo '<td>→</td>';
         echo '<td>' . $p['donor_id'] . '</td>';
         echo '<td><code class="ok">' . htmlspecialchars((string)$p['donor_customer']) . '</code></td>';
-        echo '<td>' . htmlspecialchars((string)$p['donor_pm']);
-        echo $p['pm_valid'] ? ' <span class="ok">✓</span>' : ' <span class="err">✗ skipped</span>';
+        echo '<td><code>' . htmlspecialchars((string)$p['donor_pm']) . '</code>';
+        if ($p['pm_valid']) {
+            echo ' <span class="ok">✓</span>';
+            echo '<br><small class="ok">source: ' . htmlspecialchars($p['pm_source']) . '</small>';
+        } else {
+            echo ' <span class="err">✗ no valid card on donor</span>';
+        }
         echo '</td>';
         echo '</tr>';
     }
