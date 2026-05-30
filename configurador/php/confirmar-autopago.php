@@ -72,6 +72,11 @@ try {
             'color'          => "ALTER TABLE subscripciones_credito ADD COLUMN color VARCHAR(50) NULL",
             'precio_contado' => "ALTER TABLE subscripciones_credito ADD COLUMN precio_contado DECIMAL(12,2) NULL",
             'plazo_meses'    => "ALTER TABLE subscripciones_credito ADD COLUMN plazo_meses INT NULL",
+            // Root-cause prevention 2026-05-30: record which Stripe key mode
+            // (TEST/LIVE) was active when the customer ID was created. This
+            // makes future test↔live migrations auditable — we can identify
+            // exactly which subscriptions need their customer_id rotated.
+            'stripe_key_mode_at_creation' => "ALTER TABLE subscripciones_credito ADD COLUMN stripe_key_mode_at_creation VARCHAR(10) NULL",
         ];
         foreach ($ensure as $col => $sql) {
             if (!in_array($col, $existing, true)) {
@@ -79,6 +84,13 @@ try {
             }
         }
     } catch (Throwable $e) { /* noop */ }
+
+    // Detect Stripe key mode at the moment we persist the customer ID
+    $stripeKeyMode = null;
+    if (defined('STRIPE_SECRET_KEY') && STRIPE_SECRET_KEY) {
+        if (strpos(STRIPE_SECRET_KEY, 'sk_live_') === 0) $stripeKeyMode = 'LIVE';
+        elseif (strpos(STRIPE_SECRET_KEY, 'sk_test_') === 0) $stripeKeyMode = 'TEST';
+    }
 
     $stmt = $pdo->prepare("
         UPDATE subscripciones_credito
@@ -92,6 +104,7 @@ try {
             color                    = COALESCE(NULLIF(:color, ''),  color),
             precio_contado           = COALESCE(NULLIF(:precio, 0),  precio_contado),
             plazo_meses              = COALESCE(NULLIF(:plazo, 0),   plazo_meses),
+            stripe_key_mode_at_creation = COALESCE(stripe_key_mode_at_creation, :keymode),
             factivacion              = NOW()
         WHERE stripe_setup_intent_id = :sid
     ");
@@ -105,6 +118,7 @@ try {
         ':color'    => $ciColor,
         ':precio'   => $ciPrecio,
         ':plazo'    => $ciPlazo,
+        ':keymode'  => $stripeKeyMode,
         ':sid'      => $setupIntentId,
     ]);
 

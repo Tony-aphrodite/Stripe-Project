@@ -144,6 +144,27 @@ if ($code >= 200 && $code < 300 && ($data['status'] ?? '') === 'succeeded') {
 
 // Failure — release locked rows
 $pdo->rollBack();
-$err = $data['error']['message'] ?? 'No se pudo procesar el pago';
-portalLog('payment_fail', ['success' => 0, 'detalle' => $err]);
-portalJsonOut(['error' => $err, 'stripe' => $data['error'] ?? null], 402);
+$rawErr = $data['error']['message'] ?? 'No se pudo procesar el pago';
+$errCode = $data['error']['code'] ?? '';
+
+// Customer brief 2026-05-30: "No such customer" exposed raw Stripe message
+// to the customer (e.g. "No such customer: 'cus_UWTuomajH0DXGM'"). The
+// stored stripe_customer_id is stale (account migration, dashboard
+// deletion, or test/live mismatch). Show a clear next step instead.
+$friendlyErr = $rawErr;
+$needsNewCard = false;
+if ($errCode === 'resource_missing' || stripos($rawErr, 'no such customer') !== false
+    || stripos($rawErr, 'no such payment_method') !== false) {
+    $friendlyErr = 'Tu método de pago guardado ya no es válido. '
+                 . 'Por favor agrega una tarjeta nueva desde "Cambiar tarjeta" '
+                 . 'y vuelve a intentar el pago.';
+    $needsNewCard = true;
+}
+
+portalLog('payment_fail', ['success' => 0, 'detalle' => $rawErr]);
+portalJsonOut([
+    'error'           => $friendlyErr,
+    'needs_new_card'  => $needsNewCard,
+    'stripe_error_code' => $errCode ?: null,
+    'stripe'          => $data['error'] ?? null,
+], 402);
