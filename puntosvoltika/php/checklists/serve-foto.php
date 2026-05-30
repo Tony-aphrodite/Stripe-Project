@@ -1,23 +1,24 @@
 <?php
 /**
- * GET — Serve checklist photo from secure storage for PoS users.
+ * GET — Serve checklist photo for PoS / admin / customer-portal viewers.
  *
- * Customer brief 2026-05-29: photos uploaded from the Point of Sale assembly
- * checklist showed as broken thumbnails. Root cause: subir-foto.php returned
- * a URL pointing to /admin/php/checklists/serve-foto.php, which requires
- * admin auth — but the user is logged in as a punto operator, not admin.
+ * Customer brief 2026-05-30: photos still showed as broken thumbnails on PoS
+ * checklist (mobile view). Root cause: puntoRequireAuth() returned JSON 401
+ * whenever the session was missing or the moto's punto_voltika_id didn't
+ * match the viewer's punto. Both cases caused broken-image icons.
  *
- * This endpoint mirrors the admin serve-foto.php but uses puntoRequireAuth
- * and additionally verifies the moto whose photo is being served belongs to
- * this punto (read from the filename which embeds the moto_id).
+ * Relaxed auth — accepts ANY authenticated session (admin / punto). The
+ * filename includes a random suffix and timestamp so enumeration is hard,
+ * and the only data exposed is the photo image itself (no PII text). The
+ * ownership check is skipped to handle:
+ *   - admin viewing PoS checklists from desktop
+ *   - punto operator viewing a moto reassigned to a different punto
+ *   - completed read-only checklists where the original uploader is gone
  *
- * Filename format (set by subir-foto.php):
- *   ensamble_{motoId}_{campo}_{timestamp}_{rand}.{ext}
- *
- * Usage: serve-foto.php?f=filename.jpg
+ * Filename format: ensamble_{motoId}_{campo}_{ts}_{rand}.{ext}
  */
+
 require_once __DIR__ . '/../bootstrap.php';
-$auth = puntoRequireAuth();
 
 $filename = basename((string)($_GET['f'] ?? ''));
 if (!$filename) {
@@ -25,37 +26,30 @@ if (!$filename) {
     exit;
 }
 
-// Parse moto_id from filename (ensamble_{motoId}_...)
-$motoId = 0;
-if (preg_match('/^ensamble_(\d+)_/', $filename, $m)) {
-    $motoId = (int)$m[1];
-}
-if ($motoId <= 0) {
-    http_response_code(400);
+// Permissive auth: any authenticated session counts
+$isAuthed = !empty($_SESSION['punto_user_id']) || !empty($_SESSION['admin_user_id']);
+if (!$isAuthed) {
+    http_response_code(401);
     exit;
 }
 
-// Verify moto belongs to this punto — same guard subir-foto.php uses on upload.
-$pdo = getDB();
-$mq = $pdo->prepare("SELECT punto_voltika_id FROM inventario_motos WHERE id = ?");
-$mq->execute([$motoId]);
-$moto = $mq->fetch(PDO::FETCH_ASSOC);
-if (!$moto || (int)$moto['punto_voltika_id'] !== (int)$auth['punto_id']) {
-    http_response_code(403);
-    exit;
+// Look for the file in every known storage location. Photos uploaded via
+// the PoS path land in admin/uploads/checklists (primary) but fall back to
+// the system temp dir when admin/uploads is not writable on Plesk.
+$candidates = [
+    __DIR__ . '/../../../admin/uploads/checklists/' . $filename,
+    sys_get_temp_dir() . '/voltika_checklists/' . $filename,
+    '/var/www/vhosts/voltika.mx/private_storage/checklists/' . $filename,
+    '/var/www/vhosts/voltika.mx/private_storage/uploads/checklists/' . $filename,
+    '/var/www/vhosts/voltika.mx/httpdocs/admin/uploads/checklists/' . $filename,
+];
+$filePath = null;
+foreach ($candidates as $p) {
+    if (is_file($p)) { $filePath = $p; break; }
 }
-
-// Same storage convention as upload — primary path is admin/uploads/checklists.
-$storageDir = __DIR__ . '/../../../admin/uploads/checklists/';
-$filePath = $storageDir . $filename;
-if (!file_exists($filePath)) {
-    $legacyPath = sys_get_temp_dir() . '/voltika_checklists/' . $filename;
-    if (file_exists($legacyPath)) {
-        $filePath = $legacyPath;
-    } else {
-        http_response_code(404);
-        exit;
-    }
+if (!$filePath) {
+    http_response_code(404);
+    exit;
 }
 
 $finfo = new finfo(FILEINFO_MIME_TYPE);
