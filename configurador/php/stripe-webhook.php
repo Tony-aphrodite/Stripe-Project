@@ -92,6 +92,19 @@ switch ($eventType) {
         handleRefundProcessed($event->data->object, $eventType);
         break;
 
+    // ── Setup intent / Checkout setup-mode (customer brief 2026-05-30) ──
+    // ROOT CAUSE FIX: cambiar-tarjeta.php creates a Checkout Session in
+    // setup mode tagged with metadata[purpose]=replace_backup_card and
+    // metadata[cliente_id]=N. When the customer finishes the Checkout,
+    // Stripe fires setup_intent.succeeded (and checkout.session.completed)
+    // with the new payment_method attached to the customer. Without this
+    // handler, the new PM was lost and every subsequent PAGAR hit the
+    // stale PM → "PaymentMethod does not belong to Customer" error.
+    case 'setup_intent.succeeded':
+    case 'checkout.session.completed':
+        handleSetupIntentSucceeded($event->data->object, $eventType);
+        break;
+
     default:
         webhookLog("Unhandled event type: $eventType");
         break;
@@ -1125,5 +1138,115 @@ function handleRefundProcessed($obj, string $eventType): void {
         webhookLog("refund processed: pi=$piId rows_updated=$rows event=$eventType");
     } catch (Throwable $e) {
         webhookLog("refund handler error: " . $e->getMessage());
+    }
+}
+
+/**
+ * Handle setup_intent.succeeded and checkout.session.completed (setup mode).
+ *
+ * Customer brief 2026-05-30 — ROOT CAUSE FIX: cambiar-tarjeta.php creates a
+ * Checkout Session in setup mode, customer enters a new card, Stripe attaches
+ * the new payment_method to the customer and fires this event. Before this
+ * handler existed, the new payment_method was lost — DB still pointed to the
+ * OLD payment_method (which belonged to the old/deleted customer). Result:
+ * every subsequent payment failed with "PaymentMethod does not belong to
+ * Customer".
+ *
+ * This handler:
+ *   1. Reads the new payment_method + customer + cliente_id (from metadata)
+ *   2. Locates the cliente's most recent active subscripcion
+ *   3. UPDATEs stripe_customer_id + stripe_payment_method_id atomically
+ *   4. Logs every update for auditability
+ *
+ * Supports both event shapes:
+ *   - setup_intent.succeeded → object has .customer and .payment_method
+ *   - checkout.session.completed (setup mode) → object has .customer and
+ *     .setup_intent (we then read the setup_intent to get payment_method)
+ */
+function handleSetupIntentSucceeded($obj, string $eventType): void {
+    try {
+        $pdo = getDB();
+
+        $customerId      = (string)($obj->customer ?? '');
+        $paymentMethodId = (string)($obj->payment_method ?? '');
+        $metadata        = (array)($obj->metadata ?? []);
+
+        // checkout.session.completed (setup mode): payment_method is not on
+        // the session itself — must read the underlying setup_intent.
+        if ($paymentMethodId === '' && !empty($obj->setup_intent)) {
+            $setupIntentId = is_string($obj->setup_intent) ? $obj->setup_intent : (string)($obj->setup_intent->id ?? '');
+            if ($setupIntentId !== '' && defined('STRIPE_SECRET_KEY') && STRIPE_SECRET_KEY) {
+                $ch = curl_init('https://api.stripe.com/v1/setup_intents/' . urlencode($setupIntentId));
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . STRIPE_SECRET_KEY],
+                    CURLOPT_TIMEOUT        => 8,
+                ]);
+                $resp = curl_exec($ch);
+                $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                if ($code >= 200 && $code < 300) {
+                    $si = json_decode((string)$resp, true) ?: [];
+                    $paymentMethodId = (string)($si['payment_method'] ?? '');
+                    if ($customerId === '') $customerId = (string)($si['customer'] ?? '');
+                    if (empty($metadata) && !empty($si['metadata'])) $metadata = (array)$si['metadata'];
+                }
+            }
+        }
+
+        if ($customerId === '' || $paymentMethodId === '') {
+            webhookLog("setup_intent: missing customer ($customerId) or payment_method ($paymentMethodId) — skipping");
+            return;
+        }
+
+        $clienteId = (int)($metadata['cliente_id'] ?? 0);
+        $purpose   = (string)($metadata['purpose'] ?? '');
+
+        // Find the target subscripcion. Prefer the one already linked to
+        // this customer; fall back to the cliente's most recent active sub.
+        $subRow = null;
+        $st = $pdo->prepare("SELECT id, stripe_customer_id, stripe_payment_method_id
+            FROM subscripciones_credito
+            WHERE stripe_customer_id = ?
+              AND (estado IS NULL OR estado NOT IN ('cancelada','liquidada'))
+            ORDER BY id DESC LIMIT 1");
+        $st->execute([$customerId]);
+        $subRow = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        if (!$subRow && $clienteId > 0) {
+            $st = $pdo->prepare("SELECT id, stripe_customer_id, stripe_payment_method_id
+                FROM subscripciones_credito
+                WHERE cliente_id = ?
+                  AND (estado IS NULL OR estado NOT IN ('cancelada','liquidada'))
+                ORDER BY id DESC LIMIT 1");
+            $st->execute([$clienteId]);
+            $subRow = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        if (!$subRow) {
+            webhookLog("setup_intent: no matching subscripcion for customer=$customerId cliente_id=$clienteId");
+            return;
+        }
+
+        // Atomic UPDATE — overwrites both fields so they always match.
+        // This is exactly what fix-pm-customer-mismatch.php does manually,
+        // but now happens automatically every time a customer changes card.
+        $up = $pdo->prepare("UPDATE subscripciones_credito
+            SET stripe_customer_id = ?, stripe_payment_method_id = ?
+            WHERE id = ?");
+        $up->execute([$customerId, $paymentMethodId, (int)$subRow['id']]);
+        $rows = $up->rowCount();
+
+        webhookLog(sprintf(
+            "setup_intent processed: event=%s sub_id=%d cliente_id=%d old_customer=%s new_customer=%s old_pm=%s new_pm=%s rows=%d purpose=%s",
+            $eventType, (int)$subRow['id'], $clienteId,
+            (string)($subRow['stripe_customer_id'] ?? ''),
+            $customerId,
+            (string)($subRow['stripe_payment_method_id'] ?? ''),
+            $paymentMethodId,
+            $rows, $purpose
+        ));
+    } catch (Throwable $e) {
+        webhookLog("setup_intent handler error: " . $e->getMessage());
     }
 }
